@@ -153,5 +153,196 @@ def get_logging_config():
     }
 
 
+def get_target_config(target: str = None, targets_file: str = None) -> dict:
+    """
+    Get target-specific configuration for multi-environment setups.
+
+    Loads configuration from a targets file (YAML) with environment-specific
+    settings. Supports environment variable overrides.
+
+    Args:
+        target: Target environment name (e.g., "production", "staging").
+               If None, uses default_target from config or TARGET env var.
+        targets_file: Path to targets YAML file.
+                     Default: ~/.{APP_NAME}/targets.yaml or TARGETS_FILE env var
+
+    Returns:
+        Dictionary with target configuration
+
+    Example targets.yaml:
+        default_target: development
+
+        targets:
+          production:
+            database_url: postgresql://prod.example.com/db
+            api_key: ${PROD_API_KEY}
+
+          development:
+            database_url: postgresql://localhost/db
+            api_key: dev-key-123
+
+    Usage:
+        config = get_target_config("production")
+        db_url = config["database_url"]
+
+        # Or with env var: export TARGET=staging
+        config = get_target_config()
+    """
+    import yaml
+    from pathlib import Path
+
+    # Determine targets file path
+    if targets_file is None:
+        targets_file = os.getenv("TARGETS_FILE")
+
+    if targets_file is None:
+        # Default to ~/.{APP_NAME}/targets.yaml
+        home = Path.home()
+        targets_file = home / f".{APP_NAME}" / "targets.yaml"
+
+    targets_path = Path(targets_file).expanduser()
+
+    if not targets_path.exists():
+        raise FileNotFoundError(
+            f"Targets configuration file not found: {targets_path}\n"
+            f"Create it with your environment configurations."
+        )
+
+    # Load targets file
+    with open(targets_path) as f:
+        targets_data = yaml.safe_load(f) or {}
+
+    # Determine target name
+    if target is None:
+        target = os.getenv("TARGET") or targets_data.get("default_target")
+
+    if not target:
+        raise ValueError(
+            "No target specified. Set TARGET env var, provide target parameter, "
+            "or define default_target in targets file."
+        )
+
+    # Get target config
+    targets = targets_data.get("targets", {})
+    if target not in targets:
+        available = ", ".join(targets.keys())
+        raise ValueError(
+            f"Target '{target}' not found in configuration.\n" f"Available targets: {available}"
+        )
+
+    target_config = targets[target].copy()
+    target_config["target_name"] = target
+
+    return target_config
+
+
+def init_config_directory(
+    app_name: str = None,
+    config_dir: str = None,
+    create_targets: bool = True,
+    create_env: bool = True,
+) -> Path:
+    """
+    Initialize configuration directory for CLI/daemon applications.
+
+    Creates config directory structure and optional template files:
+    - ~/.{app_name}/
+    - ~/.{app_name}/config/       (config files)
+    - ~/.{app_name}/targets.yaml  (multi-environment config)
+    - ~/.{app_name}/.env          (environment variables)
+
+    Args:
+        app_name: Application name (default: APP_NAME from config)
+        config_dir: Custom config directory (default: ~/.{app_name})
+        create_targets: Create targets.yaml template
+        create_env: Create .env template
+
+    Returns:
+        Path to config directory
+
+    Example:
+        from hyperlib.config import init_config_directory
+
+        # Initialize with defaults
+        config_dir = init_config_directory("my-cli")
+
+        # Or custom location
+        config_dir = init_config_directory(
+            "my-cli",
+            config_dir="/etc/my-cli",
+            create_targets=True
+        )
+    """
+    from pathlib import Path
+
+    if app_name is None:
+        app_name = APP_NAME
+
+    # Determine config directory
+    if config_dir is None:
+        config_dir = Path.home() / f".{app_name}"
+    else:
+        config_dir = Path(config_dir)
+
+    # Create directory structure
+    config_dir.mkdir(parents=True, exist_ok=True)
+    (config_dir / "config").mkdir(exist_ok=True)
+
+    # Create targets.yaml template
+    if create_targets:
+        targets_file = config_dir / "targets.yaml"
+        if not targets_file.exists():
+            targets_template = f"""# Multi-environment configuration for {app_name}
+# Reference: https://docs.hyperlib.io/config/targets
+
+default_target: development
+
+targets:
+  production:
+    # Production environment settings
+    # Use ${{ENV_VAR}} for environment variable substitution
+    example_setting: value
+
+  staging:
+    # Staging environment settings
+    example_setting: value
+
+  development:
+    # Development environment settings
+    example_setting: value
+"""
+            targets_file.write_text(targets_template)
+            print(f"✅ Created targets template: {targets_file}")
+
+    # Create .env template
+    if create_env:
+        env_file = config_dir / ".env"
+        if not env_file.exists():
+            env_template = f"""# Environment variables for {app_name}
+# These override settings in targets.yaml
+
+# Select target environment
+# TARGET=production
+
+# Application settings
+# {ENV_PREFIX}_SETTING_NAME=value
+"""
+            env_file.write_text(env_template)
+            print(f"✅ Created .env template: {env_file}")
+
+    print(f"✅ Config directory initialized: {config_dir}")
+    return config_dir
+
+
 # Export for direct access
-__all__ = ["settings", "get_settings", "setup", "get_api_config", "get_logging_config", "ENV_PREFIX", "APP_NAME"]
+__all__ = [
+    "settings",
+    "get_settings",
+    "setup",
+    "get_api_config",
+    "get_logging_config",
+    "get_target_config",
+    "init_config_directory",
+    "ENV_PREFIX",
+    "APP_NAME",
+]

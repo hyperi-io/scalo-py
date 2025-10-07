@@ -54,7 +54,6 @@ class ContainerConfig:
     shutdown_timeout: int = 30
     startup_timeout: int = 60
 
-    # Resource management
     memory_limit_detection: bool = True
     memory_safety_margin: float = 0.2  # Reserve 20% for safety
     memory_monitoring: bool = True
