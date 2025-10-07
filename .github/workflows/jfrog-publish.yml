@@ -1,6 +1,9 @@
-name: JFrog Publish (disabled by default)
+name: JFrog Publish
 
 on:
+  push:
+    tags:
+      - 'v*'
   workflow_dispatch:
     inputs:
       version_tag:

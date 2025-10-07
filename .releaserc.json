@@ -8,15 +8,23 @@
     [
       "@semantic-release/exec",
       {
-        "prepareCmd": "rm -rf dist build src/*.egg-info && .venv-ci/bin/python -m build",
-        "publishCmd": "TWINE_USERNAME=$JF_USER TWINE_PASSWORD=$JF_PASSWORD .venv-ci/bin/python -m twine upload --repository-url https://hypersec.jfrog.io/artifactory/api/pypi/hypersec-pypi-local dist/*"
+        "prepareCmd": "rm -rf dist build src/*.egg-info && .venv-ci/bin/python -m build"
       }
     ],
     [
       "@semantic-release/git",
       {
-        "assets": ["CHANGELOG.md"],
+        "assets": ["CHANGELOG.md", "VERSION", "pyproject.toml", "src/hyperlib/__init__.py"],
         "message": "chore(release): ${nextRelease.version} [skip ci]\n\n${nextRelease.notes}"
+      }
+    ],
+    [
+      "@semantic-release/github",
+      {
+        "assets": [
+          {"path": "dist/*.whl", "label": "Python Wheel"},
+          {"path": "dist/*.tar.gz", "label": "Source Distribution"}
+        ]
       }
     ]
   ]
