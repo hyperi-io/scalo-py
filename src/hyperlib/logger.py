@@ -22,12 +22,12 @@ def setup(settings=None):
     # Get logging config
     config = get_logging_config()
 
-    # Add console handler with RFC 3339 format
+    # Add console handler with RFC 3339 format (Solarized colors)
     if config.get("console", True):
         logger.add(
             sys.stderr,
             level=config.get("level", "INFO"),
-            format="<green>{time:YYYY-MM-DDTHH:mm:ss.SSSZZ}</green> | <level>{level: <8}</level> | <cyan>{name}</cyan>:<cyan>{function}</cyan>:<cyan>{line}</cyan> - <level>{message}</level>",
+            format="<fg #859900>{time:YYYY-MM-DDTHH:mm:ss.SSSZZ}</fg #859900> | <level>{level: <8}</level> | <fg #2aa198>{name}</fg #2aa198>:<fg #2aa198>{function}</fg #2aa198>:<fg #2aa198>{line}</fg #2aa198> - <level>{message}</level>",
             colorize=True,
         )
 
