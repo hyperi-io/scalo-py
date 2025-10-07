@@ -235,83 +235,80 @@ class ResourceManager:
 
 
 class MetricsManager:
-    """Manages Prometheus metrics and monitoring"""
+    """Manages Prometheus metrics and monitoring using hyperlib.prometheus"""
 
     def __init__(self, config: ContainerConfig, resources: dict[str, Any]):
         self.config = config
         self.resources = resources
         self.logger = logger
-        self.registry = None  # Initialize registry
+        self.metrics = None
 
         if config.enable_prometheus:
             self._setup_prometheus_metrics()
 
     def _setup_prometheus_metrics(self):
-        """Setup default enterprise metrics"""
+        """Setup default enterprise metrics using hyperlib.prometheus"""
         try:
-            from prometheus_client import CollectorRegistry, Counter, Gauge, Histogram
+            from ..prometheus import create_metrics
 
-            # Create custom registry for this app
-            self.registry = CollectorRegistry()
-
-            # Process metrics
-            self.memory_usage = Gauge(
-                "container_memory_usage_bytes", "Container memory usage in bytes", registry=self.registry
+            # Create metrics manager with auto-update
+            self.metrics = create_metrics(
+                app_name=self.config.app_name,
+                enable_auto_update=True,
+                update_interval=5,
             )
 
-            self.memory_limit = Gauge(
-                "container_memory_limit_bytes", "Container memory limit in bytes", registry=self.registry
-            )
+            if not self.metrics.enabled:
+                self.logger.warning("Prometheus metrics disabled")
+                return
 
-            self.cpu_usage = Gauge(
-                "container_cpu_usage_percent", "Container CPU usage percentage", registry=self.registry
-            )
-
-            self.thread_count = Gauge("container_thread_count", "Number of threads in use", registry=self.registry)
-
-            # Application metrics
-            self.requests_total = Counter(
+            # Add custom application metrics
+            self.requests_total = self.metrics.counter(
                 "app_requests_total",
                 "Total application requests",
-                ["method", "endpoint", "status"],
-                registry=self.registry,
+                labels=["method", "endpoint", "status"],
             )
 
-            self.request_duration = Histogram(
-                "app_request_duration_seconds", "Application request duration", registry=self.registry
+            self.request_duration = self.metrics.histogram(
+                "app_request_duration_seconds",
+                "Application request duration",
+                labels=["method", "endpoint"],
             )
 
             # LLM-specific metrics
-            self.llm_requests_total = Counter(
-                "llm_requests_total", "Total LLM API requests", ["provider", "model", "status"], registry=self.registry
+            self.llm_requests_total = self.metrics.counter(
+                "llm_requests_total",
+                "Total LLM API requests",
+                labels=["provider", "model", "status"],
             )
 
-            self.llm_response_size = Histogram(
-                "llm_response_size_bytes", "LLM response size in bytes", registry=self.registry
+            self.llm_response_size = self.metrics.histogram(
+                "llm_response_size_bytes",
+                "LLM response size in bytes",
             )
 
-            # Initialize static metrics
-            if self.resources["memory_bytes"]:
-                self.memory_limit.set(self.resources["memory_bytes"])
+            self.logger.info("Prometheus metrics initialized via hyperlib.prometheus")
 
-            self.logger.info("Prometheus metrics initialized")
-
-        except ImportError:
-            self.logger.warning("prometheus-client not available, metrics disabled")
-            self.registry = None
+        except ImportError as e:
+            self.logger.warning(f"Prometheus setup failed: {e}")
+            self.metrics = None
 
     def get_metrics_endpoint(self) -> str:
         """Get Prometheus metrics in standard format"""
-        if not self.registry:
+        if not self.metrics or not self.metrics.enabled:
             return "# Metrics not available\n"
 
         try:
-            from prometheus_client import generate_latest
-
-            return generate_latest(self.registry).decode("utf-8")
+            return self.metrics.get_metrics_text()
         except Exception as e:
             self.logger.error(f"Metrics generation failed: {e}")
             return f"# Error generating metrics: {e}\n"
+
+    def get_content_type(self) -> str:
+        """Get Prometheus content type for HTTP responses"""
+        if self.metrics and self.metrics.enabled:
+            return self.metrics.get_content_type()
+        return "text/plain"
 
 
 class ContainerApp:
@@ -423,14 +420,8 @@ class ContainerApp:
             memory_usage = process.memory_info().rss
             memory_percent = (memory_usage / self.resources["memory_bytes"]) * 100
 
-            # Update metrics
-            if self.metrics_manager.registry:
-                self.metrics_manager.memory_usage.set(memory_usage)
-                self.metrics_manager.cpu_usage.set(psutil.cpu_percent())
-
-                # Count active threads
-                thread_count = threading.active_count()
-                self.metrics_manager.thread_count.set(thread_count)
+            # Metrics are auto-updated by hyperlib.prometheus background thread
+            # No manual updates needed - ProcessMetrics and ContainerMetrics handle this
 
             # Progressive memory pressure response
             if memory_percent > self.config.memory_alert_threshold * 100:
@@ -595,14 +586,18 @@ class ContainerApp:
 
     def _start_metrics_server(self):
         """Start Prometheus metrics HTTP server"""
-        if not self.config.enable_prometheus or not self.metrics_manager.registry:
+        if not self.config.enable_prometheus or not self.metrics_manager.metrics:
+            return
+
+        if not self.metrics_manager.metrics.enabled:
+            logger.warning("Metrics disabled, not starting metrics server")
             return
 
         try:
             from prometheus_client import start_http_server
 
-            start_http_server(self.config.metrics_port, registry=self.metrics_manager.registry)
-            logger.info(f"Metrics server started on port {self.config.metrics_port}")
+            start_http_server(self.config.metrics_port, registry=self.metrics_manager.metrics.registry)
+            logger.info(f"📊 Metrics server started on port {self.config.metrics_port}")
         except Exception as e:
             logger.error(f"Could not start metrics server: {e}")
 
