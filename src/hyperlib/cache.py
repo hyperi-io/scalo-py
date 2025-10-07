@@ -1,6 +1,6 @@
 """
 HyperLib Smart Caching System
-Multi-layer caching with retention management for log processing pipeline
+Multi-layer caching with retention management
 """
 
 import hashlib
