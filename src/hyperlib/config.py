@@ -20,16 +20,20 @@ else:
 
 config_dir = container_root / "app" / "config"
 
-# Configurable environment variable prefix
+# Configurable environment variable prefix and app name
 # Set HYPERLIB_ENV_PREFIX to override (e.g., HYPERLIB_ENV_PREFIX=MYAPP)
 # Default: APP (e.g., APP_LOG_LEVEL, APP_DATABASE_URL)
 ENV_PREFIX = os.getenv("HYPERLIB_ENV_PREFIX", "APP")
+
+# Set HYPERLIB_APP_NAME for app-specific config directories
+# Default: "app" (generic name)
+APP_NAME = os.getenv("HYPERLIB_APP_NAME", "app")
 
 settings = Dynaconf(
     envvar_prefix=ENV_PREFIX,  # Environment variables use {ENV_PREFIX}_ prefix
     settings_files=[
         str(config_dir / "config.yaml"),  # Override config (4th priority)
-        str(config_dir / "dfe_ai" / "default.yaml"),  # Default config (5th priority)
+        str(config_dir / APP_NAME / "default.yaml"),  # App-specific default config (5th priority)
     ],
     load_dotenv=True,  # Load .env file (3rd priority)
     environments=False,  # Single config approach
@@ -134,7 +138,7 @@ def get_logging_config():
     log_file = logging_config.get("file")
     if log_file and not log_file.startswith("/"):
         # Relative path - make it container-aware
-        log_file = str(container_root / "var" / "log" / "dfe_ai" / log_file)
+        log_file = str(container_root / "var" / "log" / APP_NAME / log_file)
 
     return {
         "level": log_level,
@@ -150,4 +154,4 @@ def get_logging_config():
 
 
 # Export for direct access
-__all__ = ["settings", "get_settings", "setup", "get_api_config", "get_logging_config", "ENV_PREFIX"]
+__all__ = ["settings", "get_settings", "setup", "get_api_config", "get_logging_config", "ENV_PREFIX", "APP_NAME"]
