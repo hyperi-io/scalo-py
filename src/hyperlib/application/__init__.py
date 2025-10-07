@@ -11,10 +11,10 @@ Provides:
 Pattern: Composition over inheritance (like Flask, FastAPI, Click)
 """
 
-from .base import Application
 from .api import APIApplication
-from .daemon import DaemonApplication
+from .base import Application
 from .cli import CLIApplication
+from .daemon import DaemonApplication
 from .oneshot import OneshotApplication
 
 __all__ = [

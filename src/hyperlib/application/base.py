@@ -3,8 +3,9 @@ HyperLib Application Factory
 Main entry point for creating applications
 """
 
+from collections.abc import Callable
 from pathlib import Path
-from typing import Any, Callable
+from typing import Any
 
 from ..container import MountConfig
 

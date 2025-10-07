@@ -5,8 +5,9 @@ Long-running background service with scheduled tasks and worker pools
 
 import asyncio
 import time
+from collections.abc import Callable
 from pathlib import Path
-from typing import Any, Callable
+from typing import Any
 
 from ..container import ContainerApp, ContainerConfig, MountConfig
 from ..logger import logger

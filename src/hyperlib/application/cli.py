@@ -3,7 +3,7 @@ HyperLib CLI Application
 Command-line interface using Click framework
 """
 
-from typing import Callable
+from collections.abc import Callable
 
 from ..logger import logger
 
@@ -61,8 +61,9 @@ class CLIApplication:
 
         # Create Click group
         try:
-            import click
             import sys
+
+            import click
 
             self.click = click
             self.sys = sys

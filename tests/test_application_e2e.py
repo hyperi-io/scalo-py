@@ -78,7 +78,7 @@ class TestAPIE2E:
             shutdown_called.append(True)
 
         # Create test client (triggers startup)
-        with TestClient(app.fastapi) as client:
+        with TestClient(app.fastapi):
             # Startup should have been called
             assert len(startup_called) == 1
 
@@ -87,8 +87,9 @@ class TestAPIE2E:
 
     def test_api_exception_handler_works(self):
         """Test exception handler decorator."""
-        from hyperlib import Application
         from fastapi.responses import JSONResponse
+
+        from hyperlib import Application
 
         app = Application.api(name="test-api")
 
@@ -112,8 +113,9 @@ class TestAPIE2E:
 
     def test_api_include_router_works(self):
         """Test include_router for modular API organization."""
-        from hyperlib import Application
         from fastapi import APIRouter
+
+        from hyperlib import Application
 
         app = Application.api(name="test-api")
 
@@ -144,8 +146,9 @@ class TestAPIE2E:
 
     def test_api_add_middleware_works(self):
         """Test add_middleware for custom middleware."""
-        from hyperlib import Application
         from starlette.middleware.base import BaseHTTPMiddleware
+
+        from hyperlib import Application
 
         app = Application.api(name="test-api")
 
@@ -172,8 +175,9 @@ class TestAPIE2E:
 
     def test_api_multiple_routers_work(self):
         """Test multiple routers with different prefixes."""
-        from hyperlib import Application
         from fastapi import APIRouter
+
+        from hyperlib import Application
 
         app = Application.api(name="test-api")
 
@@ -213,8 +217,9 @@ class TestCLIE2E:
 
     def test_cli_command_works(self):
         """Test that @app.command decorator works."""
-        from hyperlib import Application
         from click.testing import CliRunner
+
+        from hyperlib import Application
 
         app = Application.cli(name="test-cli")
 
@@ -233,8 +238,9 @@ class TestCLIE2E:
 
     def test_cli_without_logging_flags(self):
         """Test CLI without verbose/quiet flags (avoid logging issues in tests)."""
-        from hyperlib import Application
         from click.testing import CliRunner
+
+        from hyperlib import Application
 
         # Create app without verbose/quiet to avoid logging conflicts
         app = Application.cli(
@@ -258,8 +264,9 @@ class TestCLIE2E:
 
     def test_cli_version_flag_works(self):
         """Test built-in --version flag."""
-        from hyperlib import Application
         from click.testing import CliRunner
+
+        from hyperlib import Application
 
         app = Application.cli(name="test-cli", version="2.5.3")
 

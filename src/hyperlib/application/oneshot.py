@@ -3,8 +3,9 @@ HyperLib Oneshot Application
 Single-execution task with container monitoring and resource management
 """
 
+from collections.abc import Callable
 from pathlib import Path
-from typing import Any, Callable
+from typing import Any
 
 from ..container import ContainerApp, ContainerConfig, MountConfig
 from ..logger import logger
