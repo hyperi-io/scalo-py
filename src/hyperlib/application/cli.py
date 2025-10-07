@@ -36,27 +36,103 @@ class CLIApplication:
         app.run()
     """
 
-    def __init__(self, name: str, **kwargs):
+    def __init__(
+        self,
+        name: str,
+        version: str = "1.0.0",
+        add_verbose: bool = True,
+        add_quiet: bool = True,
+        add_version: bool = True,
+        **kwargs,
+    ):
         """
         Initialize CLI application.
 
         Args:
             name: Application name (used in --help output)
+            version: Application version (for --version flag)
+            add_verbose: Add global --verbose/-v flag
+            add_quiet: Add global --quiet/-q flag
+            add_version: Add global --version flag
             **kwargs: Additional Click group options
         """
         self.name = name
+        self.version = version
 
         # Create Click group
         try:
             import click
+            import sys
 
             self.click = click
-            self.group = click.Group(name=name, **kwargs)
+            self.sys = sys
+
+            # Create context settings for passing state
+            ctx_settings = kwargs.pop("context_settings", {})
+            ctx_settings["obj"] = ctx_settings.get("obj", {})
+
+            self.group = click.Group(name=name, context_settings=ctx_settings, **kwargs)
+
+            # Add global options if requested
+            if add_verbose or add_quiet:
+                self._add_logging_options(add_verbose, add_quiet)
+
+            if add_version:
+                self._add_version_option()
 
         except ImportError:
             raise ImportError("Click is required for CLI applications. " "Install it with: pip install click")
 
         logger.info(f"🖥️  CLIApplication '{name}' initialized")
+
+    def _add_logging_options(self, add_verbose: bool, add_quiet: bool):
+        """Add global verbose and quiet logging options."""
+        original_callback = self.group.callback
+
+        @self.click.pass_context
+        def logging_callback(ctx, verbose=None, quiet=None, **kwargs):
+            """Configure logging based on verbose/quiet flags."""
+            import sys
+
+            # Store in context
+            ctx.ensure_object(dict)
+            ctx.obj["verbose"] = verbose
+            ctx.obj["quiet"] = quiet
+
+            # Configure logging
+            if quiet:
+                logger.remove()
+                logger.add(sys.stderr, level="ERROR")
+            elif verbose:
+                logger.remove()
+                logger.add(sys.stderr, level="DEBUG")
+                logger.debug(f"{self.name} v{self.version} - Verbose mode enabled")
+            else:
+                logger.remove()
+                logger.add(sys.stderr, level="INFO")
+
+            # Call original callback if it exists
+            if original_callback:
+                original_callback(ctx, **kwargs)
+
+        # Add options to callback
+        if add_verbose:
+            logging_callback = self.click.option(
+                "-v", "--verbose", is_flag=True, help="Enable verbose output"
+            )(logging_callback)
+
+        if add_quiet:
+            logging_callback = self.click.option(
+                "-q", "--quiet", is_flag=True, help="Suppress non-error output"
+            )(logging_callback)
+
+        # Set as group callback
+        self.group.callback = logging_callback
+
+    def _add_version_option(self):
+        """Add --version flag to CLI group."""
+        # Click's version_option decorator
+        self.group = self.click.version_option(version=self.version, prog_name=self.name)(self.group)
 
     def command(self, name: str | None = None, **kwargs) -> Callable:
         """

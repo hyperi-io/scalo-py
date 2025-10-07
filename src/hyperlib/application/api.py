@@ -41,6 +41,8 @@ class APIApplication:
         port: int = 8000,
         metrics_port: int = 8080,
         mounts: MountConfig | None = None,
+        enable_cors: bool = False,
+        cors_origins: list[str] | None = None,
         **kwargs,
     ):
         """
@@ -51,11 +53,15 @@ class APIApplication:
             port: API server port
             metrics_port: Prometheus metrics port
             mounts: Container mount configuration
+            enable_cors: Enable CORS middleware
+            cors_origins: List of allowed origins (default: ["*"])
             **kwargs: Additional ContainerConfig options
         """
         self.name = name
         self.port = port
         self.metrics_port = metrics_port
+        self.startup_handlers: list[Callable] = []
+        self.shutdown_handlers: list[Callable] = []
 
         # Create FastAPI app
         try:
@@ -71,6 +77,10 @@ class APIApplication:
                 "FastAPI is required for API applications. "
                 "Install it with: pip install fastapi uvicorn[standard]"
             )
+
+        # Add CORS middleware if enabled
+        if enable_cors:
+            self._add_cors_middleware(cors_origins or ["*"])
 
         # Add default health endpoints
         self._add_health_endpoints()
@@ -95,6 +105,22 @@ class APIApplication:
         self.container: ContainerApp | None = None
 
         logger.info(f"🚀 APIApplication '{name}' initialized (port={port})")
+
+    def _add_cors_middleware(self, origins: list[str]):
+        """Add CORS middleware to FastAPI app."""
+        try:
+            from fastapi.middleware.cors import CORSMiddleware
+
+            self.fastapi.add_middleware(
+                CORSMiddleware,
+                allow_origins=origins,
+                allow_credentials=True,
+                allow_methods=["*"],
+                allow_headers=["*"],
+            )
+            logger.debug(f"CORS middleware enabled with origins: {origins}")
+        except ImportError:
+            logger.warning("CORSMiddleware not available, skipping CORS setup")
 
     def _add_health_endpoints(self):
         """Add default health and ready endpoints."""
@@ -160,6 +186,59 @@ class APIApplication:
             methods = ["GET"]
 
         self.fastapi.add_api_route(path, endpoint, methods=methods, **kwargs)
+
+    def on_startup(self, func: Callable) -> Callable:
+        """
+        Decorator to register startup event handler.
+
+        Example:
+            @app.on_startup
+            async def startup():
+                logger.info("API starting...")
+                # Initialize database connections, etc.
+        """
+        self.startup_handlers.append(func)
+        self.fastapi.add_event_handler("startup", func)
+        logger.debug(f"Registered startup handler: {func.__name__}")
+        return func
+
+    def on_shutdown(self, func: Callable) -> Callable:
+        """
+        Decorator to register shutdown event handler.
+
+        Example:
+            @app.on_shutdown
+            async def shutdown():
+                logger.info("API shutting down...")
+                # Close database connections, etc.
+        """
+        self.shutdown_handlers.append(func)
+        self.fastapi.add_event_handler("shutdown", func)
+        logger.debug(f"Registered shutdown handler: {func.__name__}")
+        return func
+
+    def exception_handler(self, exc_class: type[Exception]) -> Callable:
+        """
+        Decorator to register exception handler.
+
+        Args:
+            exc_class: Exception class to handle
+
+        Example:
+            @app.exception_handler(ValueError)
+            async def handle_value_error(request, exc: ValueError):
+                return JSONResponse(
+                    status_code=400,
+                    content={"error": str(exc)}
+                )
+        """
+
+        def decorator(func: Callable) -> Callable:
+            self.fastapi.add_exception_handler(exc_class, func)
+            logger.debug(f"Registered exception handler for {exc_class.__name__}")
+            return func
+
+        return decorator
 
     def run(self):
         """
