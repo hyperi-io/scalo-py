@@ -19,6 +19,15 @@ def setup(settings=None):
     # Remove default handler
     logger.remove()
 
+    # Configure Solarized color scheme for log levels
+    logger.level("TRACE", color="<fg #586e75>")      # base01 - gray
+    logger.level("DEBUG", color="<fg #586e75>")      # base01 - gray
+    logger.level("INFO", color="<fg #268bd2>")       # blue - primary accent
+    logger.level("SUCCESS", color="<fg #859900>")    # green - success
+    logger.level("WARNING", color="<fg #b58900>")    # yellow - attention
+    logger.level("ERROR", color="<fg #cb4b16>")      # orange - error
+    logger.level("CRITICAL", color="<fg #dc322f>")   # red - critical
+
     # Get logging config
     config = get_logging_config()
 
