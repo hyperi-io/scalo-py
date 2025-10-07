@@ -11,6 +11,7 @@ __version__ = "1.5.5"
 import sys
 
 from . import config, container, logger, sampling, timeout
+from .application import Application
 from .config import get_logging_config
 
 # Re-export commonly used functions for convenience
@@ -18,6 +19,7 @@ from .logger import get_logger
 from .logger import setup as setup_logger
 
 __all__ = [
+    "Application",  # Primary user-facing API
     "config",
     "logger",
     "timeout",
