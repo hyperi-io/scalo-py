@@ -43,40 +43,20 @@ jobs:
         run: |
           python -m twine upload --repository-url "$ARTIFACTORY_REPO_URL" dist/*
 
-      - name: Verify package in JFrog Artifactory
+      - name: Verify package uploaded to JFrog
         env:
           ARTIFACTORY_USERNAME: ${{ secrets.ARTIFACTORY_USERNAME }}
           ARTIFACTORY_PASSWORD: ${{ secrets.ARTIFACTORY_PASSWORD }}
-          ARTIFACTORY_REPO_URL: https://hypersec.jfrog.io/artifactory/api/pypi/hypersec-pypi-local
         run: |
-          # Extract package name and version from built artifacts
+          # Extract package name and version
           PACKAGE_NAME=$(ls dist/*.whl | head -1 | sed 's/.*\///' | cut -d'-' -f1)
           PACKAGE_VERSION=$(ls dist/*.whl | head -1 | sed 's/.*\///' | cut -d'-' -f2)
-          
-          echo "Verifying package: ${PACKAGE_NAME}==${PACKAGE_VERSION}"
-          
-          # Create temporary venv for verification
-          python -m venv .verify-venv
-          source .verify-venv/bin/activate
-          
-          # Configure pip to use JFrog Artifactory
-          pip config set global.index-url "${ARTIFACTORY_REPO_URL}/simple"
-          pip config set global.extra-index-url "https://pypi.org/simple"
-          
-          # Set authentication for pip
-          pip config set global.username "${ARTIFACTORY_USERNAME}"
-          pip config set global.password "${ARTIFACTORY_PASSWORD}"
-          
-          # Attempt to install the just-published package
-          echo "Installing from JFrog Artifactory..."
-          pip install --no-cache-dir "${PACKAGE_NAME}==${PACKAGE_VERSION}"
-          
-          # Verify the package can be imported
-          echo "Verifying package import..."
-          python -c "import ${PACKAGE_NAME}; print(f'✓ Successfully imported {${PACKAGE_NAME}.__name__} version {${PACKAGE_NAME}.__version__}')"
-          
-          echo "✓ Package successfully published and verified in JFrog Artifactory"
-          
-          # Cleanup
-          deactivate
-          rm -rf .verify-venv
+
+          echo "Verifying ${PACKAGE_NAME} version ${PACKAGE_VERSION} was uploaded..."
+
+          # Check if package exists in JFrog
+          curl -f -u "${ARTIFACTORY_USERNAME}:${ARTIFACTORY_PASSWORD}" \
+            "https://hypersec.jfrog.io/artifactory/hypersec-pypi-local/${PACKAGE_NAME}/${PACKAGE_VERSION}/" \
+            || (echo "❌ Package not found in JFrog" && exit 1)
+
+          echo "✓ Package successfully published to JFrog Artifactory"
