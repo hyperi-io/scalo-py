@@ -139,48 +139,55 @@ class RuntimeEnvironment:
 
     def _get_local_paths(self) -> RuntimePaths:
         """
-        Get XDG-compliant local paths for development/testing.
+        Get local paths for CLI tools and daemons.
 
-        Follows XDG Base Directory specification:
-        - ~/.config/appname     - Configuration
-        - ~/.local/share/appname - Persistent data
-        - /tmp/appname          - Ephemeral storage
-        - ~/.local/share/appname/logs - Log files
+        Follows Unix daemon/CLI conventions:
+        - /etc/appname or ~/.appname/config  - Configuration
+        - /var/lib/appname or ~/.appname/data - Persistent data
+        - /tmp/appname                        - Ephemeral storage
+        - /var/log/appname or ~/.appname/logs - Log files
+
+        For non-root users: Everything under ~/.appname/
+        For root/system: Standard Unix paths (/etc, /var/lib, /var/log)
         """
 
         system = platform.system()
         home = Path.home()
 
-        if system == "Linux":
-            # XDG Base Directory specification
-            config_base = Path(os.getenv("XDG_CONFIG_HOME", home / ".config"))
-            data_base = Path(os.getenv("XDG_DATA_HOME", home / ".local/share"))
-            cache_base = Path(os.getenv("XDG_CACHE_HOME", home / ".cache"))
+        # Check if running as root/system user
+        is_root = os.getuid() == 0 if hasattr(os, "getuid") else False
 
-        elif system == "Darwin":  # macOS
-            config_base = home / "Library/Application Support"
-            data_base = home / "Library/Application Support"
-            cache_base = home / "Library/Caches"
+        if system == "Linux" or system == "Darwin":
+            if is_root:
+                # System daemon paths (traditional Unix)
+                config_dir = Path("/etc") / self.app_name
+                data_dir = Path("/var/lib") / self.app_name
+                temp_dir = Path("/tmp") / self.app_name
+                log_dir = Path("/var/log") / self.app_name
+            else:
+                # User daemon/CLI paths
+                app_home = home / f".{self.app_name}"
+                config_dir = app_home / "config"
+                data_dir = app_home / "data"
+                temp_dir = Path("/tmp") / f"{self.app_name}-{os.getuid()}"
+                log_dir = app_home / "logs"
 
         elif system == "Windows":
-            # Windows paths
+            # Windows paths (always user-scoped)
             appdata = Path(os.getenv("APPDATA", home / "AppData/Roaming"))
             localappdata = Path(os.getenv("LOCALAPPDATA", home / "AppData/Local"))
-            config_base = appdata
-            data_base = localappdata
-            cache_base = localappdata
+            config_dir = appdata / self.app_name
+            data_dir = localappdata / self.app_name
+            temp_dir = localappdata / self.app_name / "temp"
+            log_dir = localappdata / self.app_name / "logs"
 
         else:
-            # Fallback for unknown systems
-            config_base = home / ".config"
-            data_base = home / ".local/share"
-            cache_base = home / ".cache"
-
-        # Application-specific paths
-        config_dir = config_base / self.app_name
-        data_dir = data_base / self.app_name
-        temp_dir = Path("/tmp") / self.app_name if system != "Windows" else cache_base / self.app_name / "temp"
-        log_dir = data_dir / "logs"
+            # Fallback for unknown systems (user-scoped)
+            app_home = home / f".{self.app_name}"
+            config_dir = app_home / "config"
+            data_dir = app_home / "data"
+            temp_dir = Path("/tmp") / self.app_name
+            log_dir = app_home / "logs"
 
         return RuntimePaths(
             config_dir=config_dir,

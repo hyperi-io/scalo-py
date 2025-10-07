@@ -32,10 +32,17 @@ temp_file = paths.temp_dir / "cache.json"
 - `data_dir` → `/app/data`
 - `temp_dir` → `/app/tmp`
 
-**Local mode:**
-- `config_dir` → `~/.config/my-app`
-- `data_dir` → `~/.local/share/my-app`
+**Local mode (non-root user):**
+- `config_dir` → `~/.my-app/config`
+- `data_dir` → `~/.my-app/data`
+- `temp_dir` → `/tmp/my-app-{uid}`
+- `log_dir` → `~/.my-app/logs`
+
+**Local mode (root user):**
+- `config_dir` → `/etc/my-app`
+- `data_dir` → `/var/lib/my-app`
 - `temp_dir` → `/tmp/my-app`
+- `log_dir` → `/var/log/my-app`
 
 ## Path Semantics
 
@@ -46,9 +53,13 @@ temp_file = paths.temp_dir / "cache.json"
 - Configuration files (YAML, JSON, etc.)
 - Never write to this directory in production
 
-**Local:** `~/.config/my-app` (XDG_CONFIG_HOME)
+**Local (non-root):** `~/.my-app/config` (daemon convention)
 - Writable during development
 - User-specific configuration
+
+**Local (root):** `/etc/my-app` (system daemon convention)
+- System-wide configuration
+- Requires root privileges to modify
 
 **Usage:**
 ```python
@@ -64,9 +75,13 @@ with open(settings_file) as f:
 - Database files, uploaded content, application state
 - Backed by network storage (NFS, Ceph, EBS)
 
-**Local:** `~/.local/share/my-app` (XDG_DATA_HOME)
+**Local (non-root):** `~/.my-app/data` (daemon convention)
 - User-specific application data
 - Survives between runs
+
+**Local (root):** `/var/lib/my-app` (system daemon convention)
+- System-wide application data
+- Standard Unix daemon storage location
 
 **Usage:**
 ```python
@@ -82,8 +97,13 @@ uploads_dir = paths.data_dir / "uploads"
 - Fast local SSD/RAM storage
 - Temporary files, caches, processing
 
-**Local:** `/tmp/my-app` or `~/.cache/my-app`
+**Local (non-root):** `/tmp/my-app-{uid}` (user-isolated)
 - Temporary files
+- UID suffix prevents conflicts between users
+- May be cleared by system
+
+**Local (root):** `/tmp/my-app`
+- System daemon temporary storage
 - May be cleared by system
 
 **Usage:**
@@ -99,10 +119,15 @@ processing_dir = paths.temp_dir / "work"
 - No log files needed
 - Aggregated by Kubernetes/Docker
 
-**Local:** `~/.local/share/my-app/logs`
+**Local (non-root):** `~/.my-app/logs` (daemon convention)
 - File-based logging
 - Rotated log files
 - Useful for debugging
+
+**Local (root):** `/var/log/my-app` (system daemon convention)
+- System daemon logs
+- Managed by log rotation
+- Standard Unix logging location
 
 **Usage:**
 ```python
@@ -217,7 +242,8 @@ app = Application.api(name="my-service", port=8000)
 
 # Automatically uses RuntimePaths internally
 # Container mode: /app/config, /app/data, /app/tmp
-# Local mode: ~/.config/my-service, ~/.local/share/my-service, /tmp/my-service
+# Local mode (non-root): ~/.my-service/config, ~/.my-service/data, /tmp/my-service-{uid}
+# Local mode (root): /etc/my-service, /var/lib/my-service, /var/log/my-service
 ```
 
 ### Manual Integration
@@ -243,26 +269,37 @@ app = Application.daemon(
 
 ## Cross-Platform Support
 
-### Linux (XDG Base Directory)
+### Linux/Unix (Daemon/CLI Conventions)
 
+**Non-root user:**
 ```
-config_dir: $XDG_CONFIG_HOME/appname (~/.config/appname)
-data_dir:   $XDG_DATA_HOME/appname (~/.local/share/appname)
+config_dir: ~/.appname/config
+data_dir:   ~/.appname/data
+temp_dir:   /tmp/appname-{uid}
+log_dir:    ~/.appname/logs
+```
+
+**Root user (system daemon):**
+```
+config_dir: /etc/appname
+data_dir:   /var/lib/appname
 temp_dir:   /tmp/appname
-log_dir:    $XDG_DATA_HOME/appname/logs
+log_dir:    /var/log/appname
 ```
 
-### macOS
+### macOS (Daemon/CLI Conventions)
 
+**Same as Linux** - Uses Unix daemon conventions:
 ```
-config_dir: ~/Library/Application Support/appname
-data_dir:   ~/Library/Application Support/appname
-temp_dir:   ~/Library/Caches/appname
-log_dir:    ~/Library/Application Support/appname/logs
+config_dir: ~/.appname/config
+data_dir:   ~/.appname/data
+temp_dir:   /tmp/appname-{uid}  (non-root) or /tmp/appname (root)
+log_dir:    ~/.appname/logs (non-root) or /var/log/appname (root)
 ```
 
-### Windows
+### Windows (Not Currently Supported)
 
+**Future support planned:**
 ```
 config_dir: %APPDATA%\appname
 data_dir:   %LOCALAPPDATA%\appname
@@ -331,10 +368,11 @@ volumes:
 # No configuration needed!
 python -m my_app.main
 
-# Automatically uses:
-# ~/.config/my-app/
-# ~/.local/share/my-app/
-# /tmp/my-app/
+# Automatically uses (non-root):
+# ~/.my-app/config/
+# ~/.my-app/data/
+# /tmp/my-app-{uid}/
+# ~/.my-app/logs/
 ```
 
 ## Testing
@@ -382,12 +420,16 @@ def test_app_works_in_both_modes():
 
 ```python
 # ❌ Breaks in containers
-CONFIG_DIR = Path.home() / ".config/my-app"
-DATA_DIR = Path.home() / ".local/share/my-app"
+CONFIG_DIR = Path.home() / ".my-app/config"
+DATA_DIR = Path.home() / ".my-app/data"
 
 # ❌ Breaks in local development
 CONFIG_DIR = Path("/app/config")
 DATA_DIR = Path("/app/data")
+
+# ❌ Doesn't support both root and non-root users
+CONFIG_DIR = Path("/etc/my-app")  # Won't work for non-root
+CONFIG_DIR = Path.home() / ".my-app/config"  # Won't work for root daemon
 ```
 
 ### After (Unified Runtime)

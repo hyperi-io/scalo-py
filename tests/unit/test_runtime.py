@@ -60,24 +60,27 @@ class TestRuntimeEnvironment:
 
     @pytest.mark.skipif(platform.system() == "Windows", reason="Unix-specific test")
     def test_local_paths_linux(self):
-        """Test local paths on Linux (XDG)."""
+        """Test local paths on Linux (daemon/CLI conventions)."""
         runtime = RuntimeEnvironment("my-app", force_mode="local")
         paths = runtime.detect_runtime()
 
         home = Path.home()
-        assert paths.config_dir == home / ".config/my-app"
-        assert paths.data_dir == home / ".local/share/my-app"
-        assert paths.temp_dir == Path("/tmp/my-app")
-        assert paths.log_dir == home / ".local/share/my-app/logs"
+        # Non-root user: ~/.my-app/* structure
+        assert paths.config_dir == home / ".my-app/config"
+        assert paths.data_dir == home / ".my-app/data"
+        assert paths.temp_dir == Path(f"/tmp/my-app-{os.getuid()}")
+        assert paths.log_dir == home / ".my-app/logs"
 
     @pytest.mark.skipif(platform.system() != "Darwin", reason="macOS-specific test")
     def test_local_paths_macos(self):
-        """Test local paths on macOS."""
+        """Test local paths on macOS (daemon/CLI conventions)."""
         runtime = RuntimeEnvironment("my-app", force_mode="local")
         paths = runtime.detect_runtime()
 
-        assert "Library/Application Support" in str(paths.config_dir)
-        assert "my-app" in str(paths.config_dir)
+        home = Path.home()
+        # Non-root user: ~/.my-app/* structure (same as Linux)
+        assert paths.config_dir == home / ".my-app/config"
+        assert paths.data_dir == home / ".my-app/data"
 
     def test_container_detection_dockerenv(self):
         """Test container detection via /.dockerenv."""
@@ -278,9 +281,8 @@ class TestIntegration:
 
     def test_full_workflow_local(self, tmp_path, monkeypatch):
         """Test full workflow in local mode."""
-        # Force XDG paths to tmp_path for testing
-        monkeypatch.setenv("XDG_CONFIG_HOME", str(tmp_path / "config"))
-        monkeypatch.setenv("XDG_DATA_HOME", str(tmp_path / "data"))
+        # Force HOME to tmp_path for testing (daemon paths use ~/.appname)
+        monkeypatch.setenv("HOME", str(tmp_path))
 
         runtime = RuntimeEnvironment("my-test-app", force_mode="local")
         paths = runtime.detect_runtime()
@@ -305,6 +307,7 @@ class TestIntegration:
         runtime = RuntimeEnvironment("my-special-app", force_mode="local")
         paths = runtime.detect_runtime()
 
-        assert "my-special-app" in str(paths.config_dir)
-        assert "my-special-app" in str(paths.data_dir)
+        # Daemon paths: ~/.my-special-app/*
+        assert ".my-special-app" in str(paths.config_dir)
+        assert ".my-special-app" in str(paths.data_dir)
         assert "my-special-app" in str(paths.temp_dir)
