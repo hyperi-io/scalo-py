@@ -1,3 +1,13 @@
+## [1.5.5](https://github.com/hypersec-io/hyperlib/compare/v1.5.4...v1.5.5) (2025-10-07)
+
+
+### Bug Fixes
+
+* add configurable color schemes for logger ([b4fd16d](https://github.com/hypersec-io/hyperlib/commit/b4fd16ded352973d8105cd0de17daf3c6c814a90))
+* configure Solarized colors for all log levels ([2f84974](https://github.com/hypersec-io/hyperlib/commit/2f8497454b52c7ed17dce0402f103e3c5e7ede2f)), closes [#859900](https://github.com/hypersec-io/hyperlib/issues/859900) [#2aa198](https://github.com/hypersec-io/hyperlib/issues/2aa198) [#586e75](https://github.com/hypersec-io/hyperlib/issues/586e75) [#268bd2](https://github.com/hypersec-io/hyperlib/issues/268bd2) [#859900](https://github.com/hypersec-io/hyperlib/issues/859900) [#b58900](https://github.com/hypersec-io/hyperlib/issues/b58900) [#cb4b16](https://github.com/hypersec-io/hyperlib/issues/cb4b16) [#dc322](https://github.com/hypersec-io/hyperlib/issues/dc322)
+* remove trailing whitespace in cache.py docstring [skip ci] ([3c1ac67](https://github.com/hypersec-io/hyperlib/commit/3c1ac678506480918775fc14f2331ab1eeb48e74))
+* use proper Solarized color codes in logger format ([5f068eb](https://github.com/hypersec-io/hyperlib/commit/5f068ebb68247b6e1a6e36b655b1a95dc7fa514a)), closes [#859900](https://github.com/hypersec-io/hyperlib/issues/859900) [#2aa198](https://github.com/hypersec-io/hyperlib/issues/2aa198)
+
 ## [1.5.4](https://github.com/hypersec-io/hyperlib/compare/v1.5.3...v1.5.4) (2025-10-07)
 
 
