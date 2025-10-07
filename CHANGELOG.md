@@ -1,3 +1,11 @@
+## [1.5.4](https://github.com/hypersec-io/hyperlib/compare/v1.5.3...v1.5.4) (2025-10-07)
+
+
+### Bug Fixes
+
+* create pip.conf in .venv-ci for proper venv configuration ([5752dc5](https://github.com/hypersec-io/hyperlib/commit/5752dc59320280f73ba2829c1fcf060dd0799150))
+* simplify JFrog package verification using curl ([30b40ba](https://github.com/hypersec-io/hyperlib/commit/30b40ba6abcc7f6360fd8f11e19db18ce4e4d04c))
+
 ## [1.5.2](https://github.com/hypersec-io/hyperlib/compare/v1.5.1...v1.5.2) (2025-10-07)
 
 
