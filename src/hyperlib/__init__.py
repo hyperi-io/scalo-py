@@ -1,17 +1,16 @@
 """
 HyperLib - Enterprise Infrastructure for Containerized Python Applications
-Provides configuration, logging, timeout, and container management
+Provides configuration, logging, timeout, container, and resource management
 
 Requires Python 3.11+ for modern type hints and enterprise features
 """
 
-__version__ = "1.3.0"
+__version__ = "1.5.5"
 
 # Enforce Python 3.11+ requirement
 import sys
 
-from . import bootstrap, config, container, logger, timeout
-from .bootstrap import ensure_dependency, list_sorted_scripts, load_defaults_yaml, load_dotenv
+from . import config, container, logger, sampling, timeout
 from .config import get_logging_config
 
 # Re-export commonly used functions for convenience
@@ -23,13 +22,9 @@ __all__ = [
     "logger",
     "timeout",
     "container",
-    "bootstrap",
+    "sampling",
     "get_logger",
     "setup_logger",
     "get_logging_config",
-    "load_dotenv",
-    "list_sorted_scripts",
-    "load_defaults_yaml",
-    "ensure_dependency",
     "__version__",
 ]
