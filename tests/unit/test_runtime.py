@@ -82,37 +82,146 @@ class TestRuntimeEnvironment:
         assert paths.config_dir == home / ".my-app/config"
         assert paths.data_dir == home / ".my-app/data"
 
-    def test_container_detection_dockerenv(self):
-        """Test container detection via /.dockerenv."""
+    def test_container_detection_k8s_serviceaccount(self):
+        """Test container detection via K8s service account (highest priority)."""
         runtime = RuntimeEnvironment("test-app")
 
-        with mock.patch("pathlib.Path.exists") as mock_exists:
-            mock_exists.return_value = True
+        def mock_exists_k8s(self):
+            return str(self) == "/var/run/secrets/kubernetes.io/serviceaccount"
+
+        with mock.patch.object(Path, "exists", mock_exists_k8s):
             is_container, method = runtime._is_container()
 
             assert is_container is True
-            assert method == "dockerenv"
+            assert method == "k8s_serviceaccount"
 
     def test_container_detection_kubernetes(self):
         """Test container detection via Kubernetes env."""
         runtime = RuntimeEnvironment("test-app")
 
-        with mock.patch.dict(os.environ, {"KUBERNETES_SERVICE_HOST": "10.0.0.1"}):
+        with mock.patch.dict(os.environ, {"KUBERNETES_SERVICE_HOST": "10.0.0.1"}), mock.patch(
+            "pathlib.Path.exists", return_value=False
+        ):
             is_container, method = runtime._is_container()
 
             assert is_container is True
             assert method == "kubernetes"
 
-    def test_container_detection_cgroups(self):
-        """Test container detection via cgroups."""
+    def test_container_detection_dockerenv(self):
+        """Test container detection via /.dockerenv."""
         runtime = RuntimeEnvironment("test-app")
 
-        mock_open = mock.mock_open(read_data="12:memory:/kubepods/pod123")
-        with mock.patch("builtins.open", mock_open), mock.patch("pathlib.Path.exists", return_value=False):
+        def mock_exists_docker(self):
+            return str(self) == "/.dockerenv"
+
+        with mock.patch.object(Path, "exists", mock_exists_docker), mock.patch.dict(os.environ, {}, clear=True):
             is_container, method = runtime._is_container()
 
             assert is_container is True
-            assert method == "cgroups"
+            assert method == "dockerenv"
+
+    def test_container_detection_cgroups_proc1(self):
+        """Test container detection via /proc/1/cgroup."""
+        runtime = RuntimeEnvironment("test-app")
+
+        mock_open = mock.mock_open(read_data="12:memory:/kubepods/pod123")
+        with mock.patch("builtins.open", mock_open), mock.patch("pathlib.Path.exists", return_value=False), mock.patch.dict(
+            os.environ, {}, clear=True
+        ):
+            is_container, method = runtime._is_container()
+
+            assert is_container is True
+            assert method == "cgroups_cgroup"
+
+    def test_container_detection_cgroups_docker(self):
+        """Test container detection via cgroups with docker pattern."""
+        runtime = RuntimeEnvironment("test-app")
+
+        mock_open = mock.mock_open(read_data="12:memory:/docker/abc123")
+        with mock.patch("builtins.open", mock_open), mock.patch("pathlib.Path.exists", return_value=False), mock.patch.dict(
+            os.environ, {}, clear=True
+        ):
+            is_container, method = runtime._is_container()
+
+            assert is_container is True
+            assert method == "cgroups_cgroup"
+
+    def test_container_detection_cgroups_containerd(self):
+        """Test container detection via cgroups with containerd pattern."""
+        runtime = RuntimeEnvironment("test-app")
+
+        mock_open = mock.mock_open(read_data="0::/system.slice/containerd.service")
+        with mock.patch("builtins.open", mock_open), mock.patch("pathlib.Path.exists", return_value=False), mock.patch.dict(
+            os.environ, {}, clear=True
+        ):
+            is_container, method = runtime._is_container()
+
+            assert is_container is True
+            assert method == "cgroups_cgroup"
+
+    def test_container_detection_mountinfo(self):
+        """Test container detection via /proc/self/mountinfo."""
+        runtime = RuntimeEnvironment("test-app")
+
+        # Mock /proc/1/cgroup to not match, then mountinfo to match
+        def mock_open_mountinfo(path, *args, **kwargs):
+            if "cgroup" in path:
+                return mock.mock_open(read_data="0::/user.slice")(path, *args, **kwargs)
+            elif "mountinfo" in path:
+                return mock.mock_open(read_data="overlay /app overlay rw")(path, *args, **kwargs)
+            else:
+                raise FileNotFoundError
+
+        with mock.patch("builtins.open", side_effect=mock_open_mountinfo), mock.patch(
+            "pathlib.Path.exists", return_value=False
+        ), mock.patch.dict(os.environ, {}, clear=True):
+            is_container, method = runtime._is_container()
+
+            assert is_container is True
+            assert method == "mountinfo"
+
+    def test_container_detection_env_vars(self):
+        """Test container detection via container-specific env vars."""
+        runtime = RuntimeEnvironment("test-app")
+
+        # Test various container env vars
+        for env_var in ["container", "DOCKER_CONTAINER", "ECS_CONTAINER_METADATA_URI"]:
+            with mock.patch("pathlib.Path.exists", return_value=False), mock.patch.dict(
+                os.environ, {env_var: "true"}, clear=True
+            ), mock.patch("builtins.open", side_effect=FileNotFoundError):
+                is_container, method = runtime._is_container()
+
+                assert is_container is True
+                assert method == f"env_{env_var.lower()}"
+
+    def test_container_detection_pid1_with_init_name(self):
+        """Test container detection via PID 1 with init process name."""
+        runtime = RuntimeEnvironment("test-app")
+
+        # Mock PID 1 with non-systemd init (e.g., tini, sh, python)
+        mock_open = mock.mock_open(read_data="tini")
+        with mock.patch("os.getpid", return_value=1), mock.patch("builtins.open", mock_open), mock.patch(
+            "pathlib.Path.exists", return_value=False
+        ), mock.patch.dict(os.environ, {}, clear=True):
+            is_container, method = runtime._is_container()
+
+            assert is_container is True
+            assert method == "pid1_tini"
+
+    def test_container_detection_pid1_systemd_not_container(self):
+        """Test PID 1 with systemd is NOT detected as container."""
+        runtime = RuntimeEnvironment("test-app")
+
+        # Mock PID 1 with systemd (not a container)
+        mock_open = mock.mock_open(read_data="systemd")
+        with mock.patch("os.getpid", return_value=1), mock.patch("builtins.open", mock_open), mock.patch(
+            "pathlib.Path.exists", return_value=False
+        ), mock.patch.dict(os.environ, {}, clear=True):
+            is_container, method = runtime._is_container()
+
+            # Should NOT detect as container (systemd is normal init)
+            assert is_container is False
+            assert method == "none"
 
     def test_container_detection_none(self):
         """Test no container detection (local mode)."""
@@ -122,11 +231,29 @@ class TestRuntimeEnvironment:
             mock.patch("pathlib.Path.exists", return_value=False),
             mock.patch.dict(os.environ, {}, clear=True),
             mock.patch("os.getpid", return_value=1234),
+            mock.patch("builtins.open", side_effect=FileNotFoundError),
         ):
             is_container, method = runtime._is_container()
 
             assert is_container is False
             assert method == "none"
+
+    def test_container_detection_priority_order(self):
+        """Test detection priority: K8s serviceaccount > K8s env > dockerenv."""
+        runtime = RuntimeEnvironment("test-app")
+
+        # Mock all detection methods returning true, verify K8s serviceaccount wins
+        def mock_exists_all(self):
+            return str(self) in ["/var/run/secrets/kubernetes.io/serviceaccount", "/.dockerenv"]
+
+        with mock.patch.object(Path, "exists", mock_exists_all), mock.patch.dict(
+            os.environ, {"KUBERNETES_SERVICE_HOST": "10.0.0.1"}
+        ):
+            is_container, method = runtime._is_container()
+
+            # K8s serviceaccount should be detected first (highest priority)
+            assert is_container is True
+            assert method == "k8s_serviceaccount"
 
     def test_ensure_directories_local(self, tmp_path):
         """Test directory creation in local mode."""

@@ -90,30 +90,71 @@ class RuntimeEnvironment:
         """
         Detect if running inside a container.
 
+        Uses layered detection with high-confidence checks first:
+        1. K8s service account token (100% reliable for K8s)
+        2. Kubernetes environment variables
+        3. Docker-specific files
+        4. cgroups inspection (v1 and v2)
+        5. Mountinfo inspection
+        6. Container-specific env vars
+        7. Init process check (PID 1)
+
         Returns:
             (is_container, detection_method)
         """
 
-        # Method 1: Check for /.dockerenv (Docker)
-        if Path("/.dockerenv").exists():
-            return True, "dockerenv"
+        # HIGH CONFIDENCE CHECKS (do these first)
 
-        # Method 2: Check for Kubernetes environment
+        # 1. K8s service account token (100% reliable for K8s)
+        if Path("/var/run/secrets/kubernetes.io/serviceaccount").exists():
+            return True, "k8s_serviceaccount"
+
+        # 2. Kubernetes env vars
         if os.getenv("KUBERNETES_SERVICE_HOST"):
             return True, "kubernetes"
 
-        # Method 3: Check cgroups (Docker/K8s)
+        # 3. Docker-specific file
+        if Path("/.dockerenv").exists():
+            return True, "dockerenv"
+
+        # MEDIUM CONFIDENCE CHECKS
+
+        # 4. cgroups v1 and v2 (both /proc/1/cgroup and /proc/self/cgroup)
+        for cgroup_file in ["/proc/1/cgroup", "/proc/self/cgroup"]:
+            try:
+                with open(cgroup_file) as f:
+                    content = f.read()
+                    if any(x in content for x in ["docker", "kubepods", "containerd", "crio"]):
+                        return True, f"cgroups_{cgroup_file.split('/')[-1]}"
+            except (FileNotFoundError, PermissionError):
+                pass
+
+        # 5. Mountinfo inspection (very reliable)
         try:
-            with open("/proc/1/cgroup") as f:
+            with open("/proc/self/mountinfo") as f:
                 content = f.read()
-                if "docker" in content or "kubepods" in content:
-                    return True, "cgroups"
+                if any(x in content for x in ["docker", "kubelet", "overlay", "containerd"]):
+                    return True, "mountinfo"
         except (FileNotFoundError, PermissionError):
             pass
 
-        # Method 4: Check if running as PID 1 (container init process)
+        # 6. Container-specific env vars
+        container_vars = ["container", "DOCKER_CONTAINER", "ECS_CONTAINER_METADATA_URI"]
+        for var in container_vars:
+            if os.getenv(var):
+                return True, f"env_{var.lower()}"
+
+        # LOW CONFIDENCE CHECKS (only if nothing else matched)
+
+        # 7. Init process check (PID 1 running non-systemd)
         if os.getpid() == 1:
-            return True, "pid1"
+            try:
+                with open("/proc/1/comm") as f:
+                    init_name = f.read().strip()
+                    if init_name not in ["systemd", "init", "launchd"]:
+                        return True, f"pid1_{init_name}"
+            except (FileNotFoundError, PermissionError):
+                return True, "pid1"
 
         # Default: local environment
         return False, "none"
