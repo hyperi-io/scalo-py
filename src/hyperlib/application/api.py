@@ -240,6 +240,60 @@ class APIApplication:
 
         return decorator
 
+    def include_router(self, router, *, prefix: str = "", **kwargs):
+        """
+        Include an APIRouter for modular API organization.
+
+        Args:
+            router: FastAPI APIRouter instance
+            prefix: URL prefix for all routes in this router
+            **kwargs: Additional FastAPI router options (tags, dependencies, etc.)
+
+        Example:
+            from fastapi import APIRouter
+
+            auth_router = APIRouter()
+
+            @auth_router.get("/login")
+            def login():
+                return {"token": "..."}
+
+            @auth_router.post("/logout")
+            def logout():
+                return {"status": "logged out"}
+
+            app = Application.api(name="my-api")
+            app.include_router(auth_router, prefix="/auth", tags=["Authentication"])
+        """
+        self.fastapi.include_router(router, prefix=prefix, **kwargs)
+        logger.debug(f"Included router with prefix: {prefix}")
+
+    def add_middleware(self, middleware_class, **options):
+        """
+        Add custom middleware to the API.
+
+        Args:
+            middleware_class: Middleware class (e.g., BaseHTTPMiddleware subclass)
+            **options: Middleware-specific configuration options
+
+        Example:
+            from starlette.middleware.base import BaseHTTPMiddleware
+            import time
+
+            class TimingMiddleware(BaseHTTPMiddleware):
+                async def dispatch(self, request, call_next):
+                    start = time.time()
+                    response = await call_next(request)
+                    elapsed = time.time() - start
+                    response.headers["X-Process-Time"] = str(elapsed)
+                    return response
+
+            app = Application.api(name="my-api")
+            app.add_middleware(TimingMiddleware)
+        """
+        self.fastapi.add_middleware(middleware_class, **options)
+        logger.debug(f"Added middleware: {middleware_class.__name__}")
+
     def run(self):
         """
         Start the API service.

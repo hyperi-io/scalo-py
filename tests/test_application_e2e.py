@@ -110,6 +110,102 @@ class TestAPIE2E:
         assert response.json()["error"] == "Value error"
         assert "Test error" in response.json()["detail"]
 
+    def test_api_include_router_works(self):
+        """Test include_router for modular API organization."""
+        from hyperlib import Application
+        from fastapi import APIRouter
+
+        app = Application.api(name="test-api")
+
+        # Create a separate router
+        auth_router = APIRouter()
+
+        @auth_router.get("/login")
+        def login():
+            return {"token": "abc123"}
+
+        @auth_router.post("/logout")
+        def logout():
+            return {"status": "logged out"}
+
+        # Include router with prefix
+        app.include_router(auth_router, prefix="/auth", tags=["Authentication"])
+
+        # Test routes are accessible with prefix
+        client = TestClient(app.fastapi)
+
+        response = client.get("/auth/login")
+        assert response.status_code == 200
+        assert response.json()["token"] == "abc123"
+
+        response = client.post("/auth/logout")
+        assert response.status_code == 200
+        assert response.json()["status"] == "logged out"
+
+    def test_api_add_middleware_works(self):
+        """Test add_middleware for custom middleware."""
+        from hyperlib import Application
+        from starlette.middleware.base import BaseHTTPMiddleware
+
+        app = Application.api(name="test-api")
+
+        # Create custom middleware
+        class CustomHeaderMiddleware(BaseHTTPMiddleware):
+            async def dispatch(self, request, call_next):
+                response = await call_next(request)
+                response.headers["X-Custom-Header"] = "test-value"
+                return response
+
+        # Add middleware
+        app.add_middleware(CustomHeaderMiddleware)
+
+        @app.route("/test")
+        def test_endpoint():
+            return {"message": "test"}
+
+        # Test middleware was applied
+        client = TestClient(app.fastapi)
+        response = client.get("/test")
+
+        assert response.status_code == 200
+        assert response.headers["X-Custom-Header"] == "test-value"
+
+    def test_api_multiple_routers_work(self):
+        """Test multiple routers with different prefixes."""
+        from hyperlib import Application
+        from fastapi import APIRouter
+
+        app = Application.api(name="test-api")
+
+        # Auth router
+        auth_router = APIRouter()
+
+        @auth_router.get("/status")
+        def auth_status():
+            return {"auth": "active"}
+
+        # Data router
+        data_router = APIRouter()
+
+        @data_router.get("/list")
+        def data_list():
+            return {"data": [1, 2, 3]}
+
+        # Include both routers
+        app.include_router(auth_router, prefix="/auth")
+        app.include_router(data_router, prefix="/data")
+
+        # Test both routes work
+        client = TestClient(app.fastapi)
+
+        response = client.get("/auth/status")
+        assert response.status_code == 200
+        assert response.json()["auth"] == "active"
+
+        response = client.get("/data/list")
+        assert response.status_code == 200
+        assert response.json()["data"] == [1, 2, 3]
+
 
 @pytest.mark.skipif(not CLICK_AVAILABLE, reason="Click not installed")
 class TestCLIE2E:

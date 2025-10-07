@@ -295,3 +295,45 @@ class TestAPIApplication:
             assert app is not None
         except ImportError:
             pytest.skip("FastAPI not installed")
+
+    @pytest.mark.skipif(not FASTAPI_AVAILABLE, reason="FastAPI not installed")
+    def test_api_include_router(self):
+        """Test include_router method."""
+        from hyperlib import Application
+
+        try:
+            from fastapi import APIRouter
+
+            app = Application.api(name="test-api")
+            router = APIRouter()
+
+            @router.get("/test")
+            def test_route():
+                return {"test": "route"}
+
+            # Include router should not raise
+            app.include_router(router, prefix="/v1")
+            assert app is not None
+        except ImportError:
+            pytest.skip("FastAPI not installed")
+
+    @pytest.mark.skipif(not FASTAPI_AVAILABLE, reason="FastAPI not installed")
+    def test_api_add_middleware(self):
+        """Test add_middleware method."""
+        from hyperlib import Application
+
+        try:
+            from starlette.middleware.base import BaseHTTPMiddleware
+
+            app = Application.api(name="test-api")
+
+            class TestMiddleware(BaseHTTPMiddleware):
+                async def dispatch(self, request, call_next):
+                    response = await call_next(request)
+                    return response
+
+            # Add middleware should not raise
+            app.add_middleware(TestMiddleware)
+            assert app is not None
+        except ImportError:
+            pytest.skip("FastAPI not installed")
