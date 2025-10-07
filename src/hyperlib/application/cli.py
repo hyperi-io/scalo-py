@@ -99,17 +99,22 @@ class CLIApplication:
             ctx.obj["verbose"] = verbose
             ctx.obj["quiet"] = quiet
 
-            # Configure logging
-            if quiet:
-                logger.remove()
-                logger.add(sys.stderr, level="ERROR")
-            elif verbose:
-                logger.remove()
-                logger.add(sys.stderr, level="DEBUG")
-                logger.debug(f"{self.name} v{self.version} - Verbose mode enabled")
-            else:
-                logger.remove()
-                logger.add(sys.stderr, level="INFO")
+            # Configure logging (safely handle test environments)
+            try:
+                if quiet:
+                    logger.remove()
+                    logger.add(sys.stderr, level="ERROR")
+                elif verbose:
+                    logger.remove()
+                    logger.add(sys.stderr, level="DEBUG")
+                    logger.debug(f"{self.name} v{self.version} - Verbose mode enabled")
+                else:
+                    logger.remove()
+                    logger.add(sys.stderr, level="INFO")
+            except (ValueError, OSError):
+                # Logging reconfiguration failed (e.g., in test environment)
+                # Continue without logging changes
+                pass
 
             # Call original callback if it exists
             if original_callback:
