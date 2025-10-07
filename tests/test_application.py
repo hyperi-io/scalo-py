@@ -5,6 +5,21 @@ Factory pattern for API, Daemon, CLI, and Oneshot applications
 
 import pytest
 
+# Check for optional dependencies
+try:
+    import click
+
+    CLICK_AVAILABLE = True
+except ImportError:
+    CLICK_AVAILABLE = False
+
+try:
+    import fastapi
+
+    FASTAPI_AVAILABLE = True
+except ImportError:
+    FASTAPI_AVAILABLE = False
+
 
 class TestApplicationFactory:
     """Test Application factory methods."""
@@ -136,7 +151,7 @@ class TestDaemonApplication:
 class TestCLIApplication:
     """Test CLIApplication functionality."""
 
-    @pytest.mark.skipif(True, reason="Click might not be installed")
+    @pytest.mark.skipif(not CLICK_AVAILABLE, reason="Click not installed")
     def test_cli_creation(self):
         """Test creating a CLI application."""
         from hyperlib import Application
@@ -148,7 +163,7 @@ class TestCLIApplication:
         except ImportError:
             pytest.skip("Click not installed")
 
-    @pytest.mark.skipif(True, reason="Click might not be installed")
+    @pytest.mark.skipif(not CLICK_AVAILABLE, reason="Click not installed")
     def test_cli_command_decorator(self):
         """Test @app.command decorator."""
         from hyperlib import Application
@@ -204,7 +219,7 @@ class TestOneshotApplication:
 class TestAPIApplication:
     """Test APIApplication functionality."""
 
-    @pytest.mark.skipif(True, reason="FastAPI might not be installed")
+    @pytest.mark.skipif(not FASTAPI_AVAILABLE, reason="FastAPI not installed")
     def test_api_creation(self):
         """Test creating an API application."""
         from hyperlib import Application
@@ -216,7 +231,7 @@ class TestAPIApplication:
         except ImportError:
             pytest.skip("FastAPI not installed")
 
-    @pytest.mark.skipif(True, reason="FastAPI might not be installed")
+    @pytest.mark.skipif(not FASTAPI_AVAILABLE, reason="FastAPI not installed")
     def test_api_cors_enabled(self):
         """Test CORS middleware configuration."""
         from hyperlib import Application
@@ -232,7 +247,7 @@ class TestAPIApplication:
         except ImportError:
             pytest.skip("FastAPI not installed")
 
-    @pytest.mark.skipif(True, reason="FastAPI might not be installed")
+    @pytest.mark.skipif(not FASTAPI_AVAILABLE, reason="FastAPI not installed")
     def test_api_startup_decorator(self):
         """Test @app.on_startup decorator."""
         from hyperlib import Application
@@ -248,7 +263,7 @@ class TestAPIApplication:
         except ImportError:
             pytest.skip("FastAPI not installed")
 
-    @pytest.mark.skipif(True, reason="FastAPI might not be installed")
+    @pytest.mark.skipif(not FASTAPI_AVAILABLE, reason="FastAPI not installed")
     def test_api_shutdown_decorator(self):
         """Test @app.on_shutdown decorator."""
         from hyperlib import Application
@@ -264,7 +279,7 @@ class TestAPIApplication:
         except ImportError:
             pytest.skip("FastAPI not installed")
 
-    @pytest.mark.skipif(True, reason="FastAPI might not be installed")
+    @pytest.mark.skipif(not FASTAPI_AVAILABLE, reason="FastAPI not installed")
     def test_api_exception_handler_decorator(self):
         """Test @app.exception_handler decorator."""
         from hyperlib import Application
