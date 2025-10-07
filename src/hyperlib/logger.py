@@ -12,31 +12,71 @@ from .config import get_logging_config
 # Standard logger instance
 logger = _logger
 
+# Solarized color palette (https://ethanschoonover.com/solarized/)
+SOLARIZED = {
+    "base03": "#002b36",
+    "base02": "#073642",
+    "base01": "#586e75",
+    "base00": "#657b83",
+    "base0": "#839496",
+    "base1": "#93a1a1",
+    "base2": "#eee8d5",
+    "base3": "#fdf6e3",
+    "yellow": "#b58900",
+    "orange": "#cb4b16",
+    "red": "#dc322f",
+    "magenta": "#d33682",
+    "violet": "#6c71c4",
+    "blue": "#268bd2",
+    "cyan": "#2aa198",
+    "green": "#859900",
+}
 
-def setup(settings=None):
-    """Setup standard logging with RFC 3339 compliance"""
+
+def setup(settings=None, color_scheme="solarized"):
+    """Setup standard logging with RFC 3339 compliance
+
+    Args:
+        settings: Optional settings dict (deprecated, use config instead)
+        color_scheme: Color scheme to use - "solarized" (default) or "loguru"
+    """
 
     # Remove default handler
     logger.remove()
 
-    # Configure Solarized color scheme for log levels
-    logger.level("TRACE", color="<fg #586e75>")      # base01 - gray
-    logger.level("DEBUG", color="<fg #586e75>")      # base01 - gray
-    logger.level("INFO", color="<fg #268bd2>")       # blue - primary accent
-    logger.level("SUCCESS", color="<fg #859900>")    # green - success
-    logger.level("WARNING", color="<fg #b58900>")    # yellow - attention
-    logger.level("ERROR", color="<fg #cb4b16>")      # orange - error
-    logger.level("CRITICAL", color="<fg #dc322f>")   # red - critical
-
     # Get logging config
     config = get_logging_config()
 
-    # Add console handler with RFC 3339 format (Solarized colors)
+    # Configure color scheme
+    if color_scheme == "solarized":
+        # Solarized color scheme for log levels
+        logger.level("TRACE", color=f"<fg {SOLARIZED['base01']}>")  # base01 - gray
+        logger.level("DEBUG", color=f"<fg {SOLARIZED['base01']}>")  # base01 - gray
+        logger.level("INFO", color=f"<fg {SOLARIZED['blue']}>")  # blue - primary accent
+        logger.level("SUCCESS", color=f"<fg {SOLARIZED['green']}>")  # green - success
+        logger.level("WARNING", color=f"<fg {SOLARIZED['yellow']}>")  # yellow - attention
+        logger.level("ERROR", color=f"<fg {SOLARIZED['orange']}>")  # orange - error
+        logger.level("CRITICAL", color=f"<fg {SOLARIZED['red']}>")  # red - critical
+
+        # Solarized format with explicit colors
+        console_format = (
+            f"<fg {SOLARIZED['green']}>{{time:YYYY-MM-DDTHH:mm:ss.SSSZZ}}</fg {SOLARIZED['green']}> | "
+            f"<level>{{level: <8}}</level> | "
+            f"<fg {SOLARIZED['cyan']}>{{name}}</fg {SOLARIZED['cyan']}>:"
+            f"<fg {SOLARIZED['cyan']}>{{function}}</fg {SOLARIZED['cyan']}>:"
+            f"<fg {SOLARIZED['cyan']}>{{line}}</fg {SOLARIZED['cyan']}> - "
+            f"<level>{{message}}</level>"
+        )
+    else:
+        # Loguru default colors (don't configure levels, use built-in defaults)
+        console_format = "<green>{time:YYYY-MM-DDTHH:mm:ss.SSSZZ}</green> | <level>{level: <8}</level> | <cyan>{name}</cyan>:<cyan>{function}</cyan>:<cyan>{line}</cyan> - <level>{message}</level>"
+
+    # Add console handler with RFC 3339 format
     if config.get("console", True):
         logger.add(
             sys.stderr,
             level=config.get("level", "INFO"),
-            format="<fg #859900>{time:YYYY-MM-DDTHH:mm:ss.SSSZZ}</fg #859900> | <level>{level: <8}</level> | <fg #2aa198>{name}</fg #2aa198>:<fg #2aa198>{function}</fg #2aa198>:<fg #2aa198>{line}</fg #2aa198> - <level>{message}</level>",
+            format=console_format,
             colorize=True,
         )
 
@@ -68,7 +108,7 @@ def get_logger(name=None):
     return logger
 
 
-# Initialize with default setup
+# Initialize with default setup (Solarized)
 setup()
 
 
