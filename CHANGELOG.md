@@ -1,3 +1,10 @@
+## [1.5.2](https://github.com/hypersec-io/hyperlib/compare/v1.5.1...v1.5.2) (2025-10-07)
+
+
+### Bug Fixes
+
+* clean all build artifacts before building to prevent duplicate versions ([3b24743](https://github.com/hypersec-io/hyperlib/commit/3b24743cf6b40bd70762ba5e82f5d2635ac2c833))
+
 ## [1.5.1](https://github.com/hypersec-io/hyperlib/compare/v1.5.0...v1.5.1) (2025-10-07)
 
 
