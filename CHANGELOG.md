@@ -1,3 +1,10 @@
+## [1.5.1](https://github.com/hypersec-io/hyperlib/compare/v1.5.0...v1.5.1) (2025-10-07)
+
+
+### Bug Fixes
+
+* make ENV_PREFIX configurable via HYPERLIB_ENV_PREFIX ([2703e7e](https://github.com/hypersec-io/hyperlib/commit/2703e7e748d6e6d5720b181f0c209acf51b1c2eb))
+
 # [1.5.0](https://github.com/hypersec-io/hyperlib/compare/v1.4.0...v1.5.0) (2025-10-01)
 
 
