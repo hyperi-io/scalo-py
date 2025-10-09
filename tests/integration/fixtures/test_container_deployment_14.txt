@@ -50,13 +50,13 @@ spec:
       volumes:
       {{- if .Values.mounts.config.enabled }}
       - name: config
-        emptyDir: {{}}
+        emptyDir: {}
       {{- end }}
       {{- if .Values.mounts.data.enabled }}
       - name: data
-        emptyDir: {{}}
+        emptyDir: {}
       {{- end }}
       {{- if .Values.mounts.secrets.enabled }}
       - name: secrets
-        emptyDir: {{}}
+        emptyDir: {}
       {{- end }}

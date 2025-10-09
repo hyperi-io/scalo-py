@@ -1,51 +1,38 @@
 """
 HyperLib Oneshot Application
-Single-execution task with container monitoring and resource management
+Single-execution task with monitoring
 """
 
+import time
 from collections.abc import Callable
 from pathlib import Path
 from typing import Any
 
-from ..container import ContainerApp, ContainerConfig, MountConfig
+from ..config import MountConfig, get_mount_config
 from ..logger import logger
 
 
 class OneshotApplication:
     """
-    One-shot task application with container monitoring.
+    One-shot task execution application.
 
     Provides:
-    - Single task execution
-    - Container resource detection
-    - Prometheus metrics during execution
-    - Memory monitoring
-    - Thread/process pool access
-    - Graceful error handling
+    - Single task execution with monitoring
+    - Mount point management (config, data, temp)
+    - Execution time tracking
+    - Error handling and reporting
 
     Example:
-        app = Application.oneshot(name="my-task")
+        app = Application.oneshot(name="batch-job")
 
         @app.task
-        def process_data():
-            logger.info("Processing data...")
-            return {"status": "success"}
+        def process_batch():
+            logger.info("Processing batch...")
+            # Process data
+            return {"processed": 100}
 
         result = app.run()
-        print(result)
-
-    Or with thread pools:
-
-        app = Application.oneshot(name="parallel-task")
-
-        @app.task
-        def parallel_process(thread_pool, process_pool):
-            # Use thread pool for I/O-bound work
-            futures = [thread_pool.submit(fetch_url, url) for url in urls]
-            results = [f.result() for f in futures]
-            return results
-
-        result = app.run()
+        print(f"Result: {result}")
     """
 
     def __init__(
@@ -60,42 +47,34 @@ class OneshotApplication:
 
         Args:
             name: Application name
-            task_func: Optional task function to execute
+            task_func: Task function to execute
             mounts: Container mount configuration
-            **kwargs: Additional ContainerConfig options
+            **kwargs: Additional options
         """
         self.name = name
         self.task_func = task_func
+        self.decorated_task: Callable | None = None
 
-        # Create container config
+        # Get or use mount config
         if mounts is None:
-            mounts = MountConfig(
-                config_dir=Path("/app/config"),
-                data_dir=Path("/app/data"),
-                temp_dir=Path("/app/tmp"),
-            )
+            mounts = get_mount_config()
 
-        self.config = ContainerConfig(
-            app_name=name,
-            mounts=mounts,
-            **kwargs,
-        )
-
-        # Container app will be created when run() is called
-        self.container: ContainerApp | None = None
+        self.mounts = mounts
 
         logger.info(f"⚡ OneshotApplication '{name}' initialized")
 
     def task(self, func: Callable) -> Callable:
         """
-        Decorator to register task function.
+        Decorator to register the main task.
 
         Example:
             @app.task
-            def process_data():
-                return {"result": "success"}
+            def process():
+                logger.info("Processing...")
+                return {"status": "complete"}
         """
-        self.task_func = func
+        self.decorated_task = func
+        self.task_func = func  # Also set task_func for compatibility
         logger.debug(f"Registered task: {func.__name__}")
         return func
 
@@ -104,28 +83,35 @@ class OneshotApplication:
         Execute the one-shot task.
 
         Returns:
-            Task return value
+            Task result (if any)
 
         Raises:
-            ValueError: If no task function registered
-            Exception: If task execution fails
+            RuntimeError: If no task is defined
         """
-        if not self.task_func:
-            raise ValueError(
-                f"No task function registered for '{self.name}'. "
-                "Use @app.task decorator or pass task_func to Application.oneshot()"
+        # Determine which task to run
+        task = self.decorated_task or self.task_func
+
+        if not task:
+            raise RuntimeError(
+                "No task defined. Use @app.task decorator or pass task_func to constructor"
             )
 
-        logger.info(f"⚡ Starting oneshot task '{self.name}'")
+        logger.info(f"Starting one-shot task '{self.name}'")
 
-        # Create container app
-        self.container = ContainerApp(
-            business_logic=None,  # We'll run task directly
-            config=self.config,
-        )
+        start_time = time.time()
+        result = None
 
-        # Run task with container monitoring
-        result = self.container.run_oneshot(self.task_func)
+        try:
+            # Execute the task
+            logger.info(f"Executing task: {task.__name__}")
+            result = task()
 
-        logger.success(f"✅ Oneshot task '{self.name}' completed")
+            duration = time.time() - start_time
+            logger.info(f"Task completed successfully in {duration:.2f}s")
+
+        except Exception as e:
+            duration = time.time() - start_time
+            logger.error(f"Task failed after {duration:.2f}s: {e}")
+            raise
+
         return result

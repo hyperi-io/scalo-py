@@ -235,26 +235,32 @@ def smart_run(
         failure_patterns = [
             r"Error:",
             r"Exception:",
-            r"❌",
             r"FAILED",
-            r"Traceback",
-            r"VIOLATION",
-            r"No models returned",
-            r"Empty response",
+            r"Traceback \(most recent call last\):",  # Python traceback start
+            r"TypeError:",
+            r"ValueError:",
+            r"RuntimeError:",
+            r"AttributeError:",
+            r"ImportError:",
+            r"ModuleNotFoundError:",
+            r"FileNotFoundError:",
+            r"SyntaxError:",
+            r"AssertionError:",
         ]
 
     if success_patterns is None:
-        success_patterns = [r"SUCCESS", r"WORKING", r"models ranked", r"completed successfully"]
+        success_patterns = [r"SUCCESS", r"PASSED", r"completed successfully", r"✓"]
 
     if progress_patterns is None:
         progress_patterns = [
             r"Testing",
             r"Executing",
-            r"Response:",
+            r"Running",
+            r"Processing",
             r"Found:",
-            r"models returned",
             r"INFO",
             r"PROGRESS",
+            r"Starting",
         ]
 
     activity_indicators = ActivityIndicator(output_monitors=failure_patterns + success_patterns + progress_patterns)
@@ -266,90 +272,8 @@ def smart_run(
     )
 
 
-# Removed LLM-specific function - use generic smart_run() instead
-
-
-# Convenience functions for common test patterns using generic smart_run
-def run_baseline_test() -> TimeoutResult:
-    """Run Stage 1 baseline test with appropriate timeouts"""
-    return smart_run(
-        command=["uv", "run", "python", "-m", "pytest", "tests/test_baseline_generation.py", "-v", "-s"],
-        description="Stage 1 Baseline VRL Generation",
-        activity_timeout=60,  # 1 minute no activity
-        total_timeout=300,  # 5 minutes total
-        success_patterns=[r"✅", r"PASSED", r"models ranked", r"SUCCESS"],
-        failure_patterns=[r"❌", r"FAILED", r"ERROR", r"Exception", r"No models"],
-    )
-
-
-def run_incremental_test() -> TimeoutResult:
-    """Run Stage 2 incremental test with appropriate timeouts"""
-    return run_llm_test_with_smart_timeout(
-        test_command=["uv", "run", "python", "-m", "pytest", "tests/test_llm_2_incremental.py", "-v", "-s"],
-        test_name="Stage 2 Incremental Improvement",
-        activity_timeout=180,  # 3 minutes no activity (iterations take time)
-        total_timeout=1800,  # 30 minutes total (up to 5 iterations)
-        result_files=["tests/incremental_results.json", "tests/baseline_results.json"],
-    )
-
-
-def run_research_test() -> TimeoutResult:
-    """Run Stage 3 research test with appropriate timeouts"""
-    return run_llm_test_with_smart_timeout(
-        test_command=["uv", "run", "python", "-m", "pytest", "tests/test_llm_3_research.py", "-v", "-s"],
-        test_name="Stage 3 Research-Enhanced Discovery",
-        activity_timeout=240,  # 4 minutes no activity (research takes time)
-        total_timeout=2400,  # 40 minutes total (research + iterations)
-        result_files=["tests/research_results.json", "tests/incremental_results.json"],
-    )
-
-
-def run_tree_based_test() -> TimeoutResult:
-    """Run tree-based multi-candidate exploration test with appropriate timeouts"""
-    return run_llm_test_with_smart_timeout(
-        test_command=[
-            "uv",
-            "run",
-            "python",
-            "-c",
-            """
-import sys
-from pathlib import Path
-sys.path.insert(0, str(Path.cwd() / 'src'))
-
-from dfe_ai_parser_vrl.core.tree_optimization import TreeBasedVRLImprover
-import json
-
-# Load baseline VRL
-with open('tests/baseline_results.json', 'r') as f:
-    baseline = json.load(f)
-
-# Load test logs
-import random
-from . import logger
-logs = []
-for i in range(100):
-    logs.append({
-        'message': f'SSH test log {i}',
-        'hostname': f'test-server-{i:02d}'
-    })
-
-# Run tree-based improvement
-improver = TreeBasedVRLImprover()
-result = improver.improve_with_tree_exploration(
-    baseline['vrl_code'], logs, 'ssh', 15.0
-)
-
-logger.info(f'Tree exploration result: {result[\"success\"]}')
-logger.info(f'Final score: {result.get(\"final_score\", 0.0):.3f}')
-logger.info(f'Candidates explored: {result.get(\"tree_summary\", {}).get(\"total_candidates\", 0)}')
-""",
-        ],
-        test_name="Tree-Based Multi-Candidate Exploration",
-        activity_timeout=300,  # 5 minutes no activity (multiple branches take time)
-        total_timeout=3600,  # 60 minutes total (20 iterations across branches)
-        result_files=["tests/baseline_results.json"],
-    )
+# End of generic smart_run() - all convenience functions removed
+# Use smart_run() directly with custom patterns for specific test needs
 
 
 class FunctionTimeoutMonitor:

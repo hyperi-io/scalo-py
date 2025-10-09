@@ -29,7 +29,7 @@ spec:
     configMap:
       name: {configmap_name}
   - name: config
-    emptyDir: {{}}
+    emptyDir: {}
   - name: data
-    emptyDir: {{}}
+    emptyDir: {}
   restartPolicy: Never

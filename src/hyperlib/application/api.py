@@ -5,9 +5,9 @@ FastAPI-based REST API service with container management
 
 from collections.abc import Callable
 from pathlib import Path
-from typing import Any
+from typing import Any, Optional
 
-from ..container import ContainerApp, ContainerConfig, MountConfig
+from ..config import MountConfig, get_mount_config
 from ..logger import logger
 
 
@@ -18,7 +18,6 @@ class APIApplication:
     Provides:
     - FastAPI integration with automatic container management
     - Prometheus metrics on separate port
-    - Health/ready endpoints
     - Graceful shutdown handling
     - Resource monitoring (memory, CPU)
 
@@ -44,6 +43,7 @@ class APIApplication:
         mounts: MountConfig | None = None,
         enable_cors: bool = False,
         cors_origins: list[str] | None = None,
+        version: str = "1.0.0",
         **kwargs,
     ):
         """
@@ -56,11 +56,13 @@ class APIApplication:
             mounts: Container mount configuration
             enable_cors: Enable CORS middleware
             cors_origins: List of allowed origins (default: ["*"])
-            **kwargs: Additional ContainerConfig options
+            version: Application version
+            **kwargs: Additional configuration options
         """
         self.name = name
         self.port = port
         self.metrics_port = metrics_port
+        self.version = version
         self.startup_handlers: list[Callable] = []
         self.shutdown_handlers: list[Callable] = []
 
@@ -71,7 +73,7 @@ class APIApplication:
             self.fastapi = FastAPI(
                 title=name,
                 description=f"{name} - HyperLib API Service",
-                version="1.0.0",
+                version=version,
             )
         except ImportError:
             raise ImportError(
@@ -83,27 +85,11 @@ class APIApplication:
         if enable_cors:
             self._add_cors_middleware(cors_origins or ["*"])
 
-        # Add default health endpoints
-        self._add_health_endpoints()
-
-        # Create container config
+        # Get or use mount config
         if mounts is None:
-            mounts = MountConfig(
-                config_dir=Path("/app/config"),
-                data_dir=Path("/app/data"),
-                temp_dir=Path("/app/tmp"),
-            )
+            mounts = get_mount_config()
 
-        self.config = ContainerConfig(
-            app_name=name,
-            mounts=mounts,
-            api_port=port,
-            metrics_port=metrics_port,
-            **kwargs,
-        )
-
-        # Container app will be created when run() is called
-        self.container: ContainerApp | None = None
+        self.mounts = mounts
 
         logger.info(f"🚀 APIApplication '{name}' initialized (port={port})")
 
@@ -122,25 +108,6 @@ class APIApplication:
             logger.debug(f"CORS middleware enabled with origins: {origins}")
         except ImportError:
             logger.warning("CORSMiddleware not available, skipping CORS setup")
-
-    def _add_health_endpoints(self):
-        """Add default health and ready endpoints."""
-
-        @self.fastapi.get("/health")
-        async def health():
-            """Health check endpoint for Kubernetes liveness probe."""
-            return {
-                "status": "healthy",
-                "service": self.name,
-            }
-
-        @self.fastapi.get("/ready")
-        async def ready():
-            """Readiness check endpoint for Kubernetes readiness probe."""
-            return {
-                "status": "ready",
-                "service": self.name,
-            }
 
     def route(self, path: str, **kwargs) -> Callable:
         """
@@ -301,17 +268,22 @@ class APIApplication:
 
         Starts:
         - FastAPI server on api_port
-        - Prometheus metrics on metrics_port
         - Health/ready endpoints
-        - Graceful shutdown handling
         """
         logger.info(f"Starting API service '{self.name}' on port {self.port}")
 
-        # Create container app (business logic is None for pure API)
-        self.container = ContainerApp(
-            business_logic=None,
-            config=self.config,
-        )
+        # Run FastAPI directly with uvicorn
+        try:
+            import uvicorn
 
-        # Run daemon with API
-        self.container.run_daemon_api(fastapi_app=self.fastapi)
+            uvicorn.run(
+                self.fastapi,
+                host="0.0.0.0",
+                port=self.port,
+                log_config=None  # Use hyperlib logger
+            )
+        except ImportError:
+            raise ImportError(
+                "uvicorn is required to run the API. "
+                "Install it with: pip install uvicorn[standard]"
+            )

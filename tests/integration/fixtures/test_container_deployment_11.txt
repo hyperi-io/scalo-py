@@ -34,9 +34,9 @@ spec:
           mountPath: /data
       volumes:
       - name: config
-        emptyDir: {{}}
+        emptyDir: {}
       - name: data
-        emptyDir: {{}}
+        emptyDir: {}
 ---
 apiVersion: v1
 kind: Service

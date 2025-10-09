@@ -14,3 +14,4 @@ build/
 *.temp
 .DS_Store
 Thumbs.db
+/logs

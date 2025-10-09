@@ -7,7 +7,7 @@ from collections.abc import Callable
 from pathlib import Path
 from typing import Any
 
-from ..container import MountConfig
+from ..config import MountConfig
 
 
 class Application:

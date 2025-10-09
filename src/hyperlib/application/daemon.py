@@ -4,12 +4,14 @@ Long-running background service with scheduled tasks and worker pools
 """
 
 import asyncio
+import signal
+import threading
 import time
 from collections.abc import Callable
 from pathlib import Path
 from typing import Any
 
-from ..container import ContainerApp, ContainerConfig, MountConfig
+from ..config import MountConfig, get_mount_config
 from ..logger import logger
 
 
@@ -18,28 +20,32 @@ class DaemonApplication:
     Long-running daemon service application.
 
     Provides:
-    - Scheduled background tasks (decorator pattern)
-    - Worker thread/process pools from container
-    - Graceful shutdown handling (SIGTERM, SIGINT)
-    - Prometheus metrics
-    - Memory monitoring and OOM protection
-    - Container resource detection (cgroups v2)
+    - Scheduled task execution (e.g., run every N seconds)
+    - Worker pools for parallel task processing
+    - Startup and shutdown hooks
+    - Graceful shutdown handling
+    - Mount point management (config, data, temp)
 
     Example:
-        app = Application.daemon(name="my-worker")
+        app = Application.daemon(name="worker")
 
         @app.scheduled(interval=60)
-        async def process_queue():
-            # Background task every 60 seconds
-            logger.info("Processing queue...")
+        def check_queue():
+            logger.info("Checking work queue...")
+            # Process items
 
-        @app.startup
-        async def on_startup():
-            logger.info("Daemon starting...")
+        @app.scheduled(interval=300)
+        async def sync_data():
+            logger.info("Syncing data...")
+            # Async sync operation
 
-        @app.shutdown
-        async def on_shutdown():
-            logger.info("Daemon stopping...")
+        @app.on_startup
+        def startup():
+            logger.info("Starting up...")
+
+        @app.on_shutdown
+        def shutdown():
+            logger.info("Shutting down...")
 
         app.run()
     """
@@ -47,7 +53,7 @@ class DaemonApplication:
     def __init__(
         self,
         name: str,
-        business_logic: Any | None = None,
+        business_logic: Any = None,
         mounts: MountConfig | None = None,
         **kwargs,
     ):
@@ -56,47 +62,40 @@ class DaemonApplication:
 
         Args:
             name: Application name
-            business_logic: Optional business logic object with run_daemon() method
+            business_logic: Optional business logic class with run_daemon() method
             mounts: Container mount configuration
-            **kwargs: Additional ContainerConfig options
+            **kwargs: Additional options
         """
         self.name = name
         self.business_logic = business_logic
         self.scheduled_tasks: list[tuple[Callable, int]] = []  # (func, interval_seconds)
         self.startup_hooks: list[Callable] = []
         self.shutdown_hooks: list[Callable] = []
+        self.shutdown_event = threading.Event()
 
-        # Create container config
+        # Get or use mount config
         if mounts is None:
-            mounts = MountConfig(
-                config_dir=Path("/app/config"),
-                data_dir=Path("/app/data"),
-                temp_dir=Path("/app/tmp"),
-            )
+            mounts = get_mount_config()
 
-        self.config = ContainerConfig(
-            app_name=name,
-            mounts=mounts,
-            **kwargs,
-        )
+        self.mounts = mounts
 
-        # Container app will be created when run() is called
-        self.container: ContainerApp | None = None
+        # Aliases for backward compatibility
+        self.startup = self.on_startup
+        self.shutdown = self.on_shutdown
 
         logger.info(f"🔧 DaemonApplication '{name}' initialized")
 
     def scheduled(self, interval: int) -> Callable:
         """
-        Decorator to register scheduled background task.
+        Decorator to register a scheduled task.
 
         Args:
-            interval: Interval in seconds between task executions
+            interval: Interval in seconds between executions
 
         Example:
             @app.scheduled(interval=60)
-            async def hourly_sync():
-                # Runs every 60 seconds
-                logger.info("Syncing data...")
+            def periodic_task():
+                logger.info("Running every 60 seconds")
         """
 
         def decorator(func: Callable) -> Callable:
@@ -106,133 +105,134 @@ class DaemonApplication:
 
         return decorator
 
-    def startup(self, func: Callable) -> Callable:
+    def on_startup(self, func: Callable) -> Callable:
         """
         Decorator to register startup hook.
 
         Example:
-            @app.startup
-            async def on_startup():
+            @app.on_startup
+            def startup():
                 logger.info("Daemon starting...")
+                # Initialize resources
         """
         self.startup_hooks.append(func)
         logger.debug(f"Registered startup hook: {func.__name__}")
         return func
 
-    def shutdown(self, func: Callable) -> Callable:
+    def on_shutdown(self, func: Callable) -> Callable:
         """
         Decorator to register shutdown hook.
 
         Example:
-            @app.shutdown
-            async def on_shutdown():
+            @app.on_shutdown
+            def shutdown():
                 logger.info("Daemon stopping...")
+                # Cleanup resources
         """
         self.shutdown_hooks.append(func)
         logger.debug(f"Registered shutdown hook: {func.__name__}")
         return func
+
+    def _setup_signal_handlers(self):
+        """Setup graceful shutdown signal handlers."""
+
+        def signal_handler(signum, frame):
+            signal_name = signal.Signals(signum).name
+            logger.info(f"Received {signal_name}, initiating graceful shutdown...")
+            self.shutdown_event.set()
+
+        # Register handlers for graceful shutdown
+        signal.signal(signal.SIGTERM, signal_handler)  # Docker stop
+        signal.signal(signal.SIGINT, signal_handler)   # Ctrl+C
+
+        logger.info("Signal handlers registered")
+
+    def _run_scheduled_task(self, func: Callable, interval: int):
+        """Run a single scheduled task in a loop."""
+        while not self.shutdown_event.is_set():
+            try:
+                start_time = time.time()
+
+                if asyncio.iscoroutinefunction(func):
+                    asyncio.run(func())
+                else:
+                    func()
+
+                # Calculate time to next run
+                elapsed = time.time() - start_time
+                sleep_time = max(0, interval - elapsed)
+
+                # Sleep with periodic checks for shutdown
+                for _ in range(int(sleep_time)):
+                    if self.shutdown_event.is_set():
+                        break
+                    time.sleep(1)
+
+            except Exception as e:
+                logger.error(f"Scheduled task {func.__name__} failed: {e}")
+                time.sleep(interval)  # Wait before retry
 
     def run(self):
         """
         Start the daemon service.
 
         Starts:
-        - Container resource detection and limits
-        - Prometheus metrics server
-        - Memory guardian (OOM protection)
+        - Signal handlers for graceful shutdown
         - All scheduled tasks
         - Business logic (if provided)
-        - Graceful shutdown handling
+        - Startup and shutdown hooks
         """
         logger.info(f"Starting daemon '{self.name}'")
 
-        # If business logic provided, use it directly
-        if self.business_logic:
-            self.container = ContainerApp(
-                business_logic=self.business_logic,
-                config=self.config,
+        # Setup signal handlers
+        self._setup_signal_handlers()
+
+        # Run startup hooks
+        for hook in self.startup_hooks:
+            try:
+                if asyncio.iscoroutinefunction(hook):
+                    asyncio.run(hook())
+                else:
+                    hook()
+            except Exception as e:
+                logger.error(f"Startup hook failed: {hook.__name__}: {e}")
+
+        # Start scheduled tasks in separate threads
+        task_threads = []
+        for func, interval in self.scheduled_tasks:
+            thread = threading.Thread(
+                target=self._run_scheduled_task,
+                args=(func, interval),
+                name=f"{self.name}_{func.__name__}",
+                daemon=True
             )
-            self.container.run_daemon()
-            return
+            thread.start()
+            task_threads.append(thread)
+            logger.info(f"Started scheduled task: {func.__name__} (every {interval}s)")
 
-        # Otherwise, create wrapper with scheduled tasks
-        class DaemonBusinessLogic:
-            def __init__(self, daemon_app: "DaemonApplication"):
-                self.daemon_app = daemon_app
+        try:
+            # If business logic provided, run it
+            if self.business_logic and hasattr(self.business_logic, "run_daemon"):
+                self.business_logic.run_daemon(
+                    shutdown_event=self.shutdown_event
+                )
+            else:
+                # Otherwise just wait for shutdown
+                logger.info("Daemon running - press Ctrl+C to stop")
+                while not self.shutdown_event.is_set():
+                    time.sleep(1)
 
-            def run_daemon(self, shutdown_event, thread_pool, process_pool):
-                """Main daemon loop with scheduled tasks."""
-                # Run startup hooks
-                for hook in self.daemon_app.startup_hooks:
-                    try:
-                        if asyncio.iscoroutinefunction(hook):
-                            asyncio.run(hook())
-                        else:
-                            hook()
-                    except Exception as e:
-                        logger.error(f"Startup hook failed: {hook.__name__}: {e}")
+        except KeyboardInterrupt:
+            logger.info("Keyboard interrupt received")
+        finally:
+            # Run shutdown hooks
+            for hook in self.shutdown_hooks:
+                try:
+                    if asyncio.iscoroutinefunction(hook):
+                        asyncio.run(hook())
+                    else:
+                        hook()
+                except Exception as e:
+                    logger.error(f"Shutdown hook failed: {hook.__name__}: {e}")
 
-                # If no scheduled tasks, just wait for shutdown
-                if not self.daemon_app.scheduled_tasks:
-                    logger.info("No scheduled tasks - waiting for shutdown signal")
-                    while not shutdown_event.is_set():
-                        time.sleep(1)
-                    return
-
-                # Schedule tasks
-                task_threads = []
-                for task_func, interval in self.daemon_app.scheduled_tasks:
-                    logger.info(f"Starting scheduled task: {task_func.__name__} (every {interval}s)")
-
-                    def task_runner(func, interval_sec):
-                        """Run task at specified interval."""
-                        while not shutdown_event.is_set():
-                            try:
-                                start_time = time.time()
-
-                                # Execute task
-                                if asyncio.iscoroutinefunction(func):
-                                    asyncio.run(func())
-                                else:
-                                    func()
-
-                                # Sleep for remaining interval
-                                elapsed = time.time() - start_time
-                                sleep_time = max(0, interval_sec - elapsed)
-
-                                if sleep_time > 0:
-                                    shutdown_event.wait(timeout=sleep_time)
-
-                            except Exception as e:
-                                logger.error(f"Scheduled task error: {func.__name__}: {e}")
-                                shutdown_event.wait(timeout=interval_sec)
-
-                    # Submit task to thread pool
-                    future = thread_pool.submit(task_runner, task_func, interval)
-                    task_threads.append(future)
-
-                # Wait for shutdown
-                logger.info(f"Daemon '{self.daemon_app.name}' running with {len(task_threads)} scheduled tasks")
-                shutdown_event.wait()
-
-                # Run shutdown hooks
-                for hook in self.daemon_app.shutdown_hooks:
-                    try:
-                        if asyncio.iscoroutinefunction(hook):
-                            asyncio.run(hook())
-                        else:
-                            hook()
-                    except Exception as e:
-                        logger.error(f"Shutdown hook failed: {hook.__name__}: {e}")
-
-            def cleanup(self):
-                """Optional cleanup method called during graceful shutdown."""
-                logger.info("Daemon cleanup completed")
-
-        # Create container with daemon wrapper
-        self.container = ContainerApp(
-            business_logic=DaemonBusinessLogic(self),
-            config=self.config,
-        )
-
-        self.container.run_daemon()
+            logger.info("Daemon shutdown complete")

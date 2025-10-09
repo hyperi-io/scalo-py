@@ -447,23 +447,24 @@ class TestDockerDeployment(ContainerTestBase):
             # Wait for container to start
             time.sleep(8)
 
-            # Save container logs before checking
-            self.save_container_logs(container_name, "docker-metrics-test")
-
             # Check container is running
             result = self.run_command(["docker", "ps", "--filter", f"name={container_name}"])
             assert container_name in result.stdout
 
-            # Make a request to generate metrics
+            # Make a request to generate metrics (use python urllib - always available)
             self.run_command([
                 "docker", "exec", container_name,
-                "sh", "-c", "for i in 1 2 3 4 5; do wget -q -O - http://localhost:8000/ > /dev/null; done"
+                "python", "-c",
+                "import urllib.request; "
+                "[urllib.request.urlopen('http://localhost:8000/').read() for _ in range(5)]"
             ], check=False)
 
             # Check metrics endpoint
             result = self.run_command([
                 "docker", "exec", container_name,
-                "wget", "-q", "-O", "-", "http://localhost:8080/"
+                "python", "-c",
+                "import urllib.request; import sys; "
+                "sys.stdout.buffer.write(urllib.request.urlopen('http://localhost:8080/').read())"
             ], check=False)
 
             # Verify Prometheus metrics are exposed
@@ -533,9 +534,9 @@ class TestDockerDeployment(ContainerTestBase):
             result = self.run_command(["docker", "ps", "--filter", f"name={container_name}"])
             assert container_name in result.stdout
 
-            # Check logs
+            # Check logs (loguru outputs to stderr by default)
             result = self.run_command(["docker", "logs", container_name])
-            assert "Daemon starting in Docker container" in result.stdout
+            assert "Starting daemon 'docker-test-daemon'" in result.stderr
 
             # Stop container gracefully
             self.run_command(["docker", "stop", container_name], timeout=15)
@@ -720,7 +721,7 @@ class TestHelmBasedDeployment(ContainerTestBase):
                 "-n", namespace,
                 "--wait",
                 "--timeout", "60s"
-            ])
+            ], timeout=90)
             helm_env["releases"].append(release_name)
 
             # Wait for pod to complete
@@ -798,7 +799,7 @@ class TestHelmBasedDeployment(ContainerTestBase):
                 "-n", namespace,
                 "--wait",
                 "--timeout", "90s"
-            ])
+            ], timeout=120)
             helm_env["releases"].append(release_name)
 
             # Wait for deployment to be ready
@@ -897,7 +898,7 @@ class TestHelmBasedDeployment(ContainerTestBase):
                 "-n", namespace,
                 "--wait",
                 "--timeout", "90s"
-            ])
+            ], timeout=120)
             helm_env["releases"].append(release_name)
 
             # Wait for deployment to be ready
@@ -1009,7 +1010,7 @@ class TestHelmDeployment(ContainerTestBase):
                 "-n", namespace,
                 "--wait",
                 "--timeout", "60s"
-            ])
+            ], timeout=90)
             helm_test_env["releases"].append(release_name)
 
             # Verify deployment
@@ -1111,7 +1112,7 @@ data:
                 str(chart_dir),
                 "-f", str(custom_values_file),
                 "-n", namespace
-            ])
+            ], timeout=90)
             helm_test_env["releases"].append(release_name)
 
             # Verify custom values were applied
