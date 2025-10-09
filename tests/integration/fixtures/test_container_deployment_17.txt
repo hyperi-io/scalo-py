@@ -9,8 +9,8 @@ RUN pip install --no-cache-dir uv
 COPY pyproject.toml /app/
 COPY src/hyperlib /app/src/hyperlib
 
-# Install hyperlib with metrics extras
-RUN cd /app && uv pip install --system -e '.[metrics]'
+# Install hyperlib with api and metrics extras
+RUN cd /app && uv pip install --system -e '.[api,metrics]'
 
 # Copy application
 COPY app_metrics.py /app/
