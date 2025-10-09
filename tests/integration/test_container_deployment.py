@@ -187,14 +187,26 @@ class ContainerTestBase:
         return fixture_path.read_text()
 
     @staticmethod
-    def save_container_logs(container_name: str, log_prefix: str):
-        """Save Docker container logs to /logs directory."""
-        logs_dir = Path(__file__).parent.parent.parent / "logs"
-        logs_dir.mkdir(exist_ok=True)
-
+    def create_test_log_file(test_name: str) -> Path:
+        """Create test-specific log file with timestamp."""
         timestamp = time.strftime("%Y%m%d-%H%M%S")
-        log_file = logs_dir / f"{log_prefix}-{timestamp}.log"
+        logs_dir = Path(__file__).parent.parent.parent / "logs"
+        logs_dir.mkdir(parents=True, exist_ok=True)
 
+        log_file = logs_dir / f"{test_name}-{timestamp}.log"
+
+        # Write header
+        with log_file.open("w") as f:
+            f.write(f"{'='*80}\n")
+            f.write(f"Test: {test_name}\n")
+            f.write(f"Started: {time.strftime('%Y-%m-%d %H:%M:%S')}\n")
+            f.write(f"{'='*80}\n\n")
+
+        return log_file
+
+    @staticmethod
+    def append_container_logs(container_name: str, log_file: Path):
+        """Append Docker container logs to test log file."""
         try:
             result = subprocess.run(
                 ["docker", "logs", container_name],
@@ -202,19 +214,25 @@ class ContainerTestBase:
                 text=True,
                 timeout=10
             )
-            log_file.write_text(f"=== Container: {container_name} ===\n\n{result.stdout}\n\n{result.stderr}")
+            with log_file.open("a") as f:
+                f.write(f"\n{'='*80}\n")
+                f.write(f"Container: {container_name}\n")
+                f.write(f"{'='*80}\n\n")
+                if result.stdout:
+                    f.write("STDOUT:\n")
+                    f.write(result.stdout)
+                    f.write("\n")
+                if result.stderr:
+                    f.write("\nSTDERR:\n")
+                    f.write(result.stderr)
+                    f.write("\n")
         except Exception as e:
-            log_file.write_text(f"Failed to capture logs for {container_name}: {e}")
+            with log_file.open("a") as f:
+                f.write(f"\nFailed to capture logs for {container_name}: {e}\n")
 
     @staticmethod
-    def save_pod_logs(pod_name: str, namespace: str, log_prefix: str):
-        """Save Kubernetes pod logs to /logs directory."""
-        logs_dir = Path(__file__).parent.parent.parent / "logs"
-        logs_dir.mkdir(exist_ok=True)
-
-        timestamp = time.strftime("%Y%m%d-%H%M%S")
-        log_file = logs_dir / f"{log_prefix}-{timestamp}.log"
-
+    def append_pod_logs(pod_name: str, namespace: str, log_file: Path):
+        """Append Kubernetes pod logs to test log file."""
         try:
             result = subprocess.run(
                 ["kubectl", "logs", pod_name, "-n", namespace],
@@ -222,9 +240,21 @@ class ContainerTestBase:
                 text=True,
                 timeout=10
             )
-            log_file.write_text(f"=== Pod: {pod_name} (namespace: {namespace}) ===\n\n{result.stdout}\n\n{result.stderr}")
+            with log_file.open("a") as f:
+                f.write(f"\n{'='*80}\n")
+                f.write(f"Pod: {pod_name} (namespace: {namespace})\n")
+                f.write(f"{'='*80}\n\n")
+                if result.stdout:
+                    f.write("STDOUT:\n")
+                    f.write(result.stdout)
+                    f.write("\n")
+                if result.stderr:
+                    f.write("\nSTDERR:\n")
+                    f.write(result.stderr)
+                    f.write("\n")
         except Exception as e:
-            log_file.write_text(f"Failed to capture logs for {pod_name}: {e}")
+            with log_file.open("a") as f:
+                f.write(f"\nFailed to capture logs for {pod_name}: {e}\n")
 
     @staticmethod
     def run_command(cmd: list, timeout: int = 30, check: bool = True, cwd: str = None) -> subprocess.CompletedProcess:
@@ -261,7 +291,7 @@ class TestDockerDeployment(ContainerTestBase):
     """Test hyperlib applications in Docker containers."""
 
     @pytest.fixture
-    def docker_test_env(self) -> Generator[dict, None, None]:
+    def docker_test_env(self, request) -> Generator[dict, None, None]:
         """Fixture providing Docker test environment with cleanup."""
         test_id = f"hyperlib-test-{uuid.uuid4().hex[:8]}"
         containers = []
@@ -269,12 +299,17 @@ class TestDockerDeployment(ContainerTestBase):
         networks = []
         volumes = []
 
+        # Create test log file
+        test_name = request.node.name
+        log_file = self.create_test_log_file(test_name)
+
         env = {
             "test_id": test_id,
             "containers": containers,
             "images": images,
             "networks": networks,
             "volumes": volumes,
+            "log_file": log_file,
         }
 
         yield env
@@ -282,7 +317,7 @@ class TestDockerDeployment(ContainerTestBase):
         # Cleanup - capture logs before removing containers
         for container in containers:
             try:
-                self.save_container_logs(container, f"docker-cleanup-{test_id}")
+                self.append_container_logs(container, log_file)
             except Exception:
                 pass  # Ignore log capture failures during cleanup
             self.run_command(["docker", "rm", "-f", container], check=False)
@@ -593,10 +628,14 @@ class TestHelmBasedDeployment(ContainerTestBase):
     """Test hyperlib applications with Helm charts in Kubernetes (Minikube)."""
 
     @pytest.fixture
-    def helm_env(self) -> Generator[dict, None, None]:
+    def helm_env(self, request) -> Generator[dict, None, None]:
         """Fixture providing Helm test environment with cleanup."""
         test_id = f"hyperlib-{uuid.uuid4().hex[:8]}"
         namespace = f"helm-{test_id}"
+
+        # Create test log file
+        test_name = request.node.name
+        log_file = self.create_test_log_file(test_name)
 
         # Create namespace
         self.run_command([
@@ -607,6 +646,7 @@ class TestHelmBasedDeployment(ContainerTestBase):
             "test_id": test_id,
             "namespace": namespace,
             "releases": [],
+            "log_file": log_file,
         }
 
         yield env
@@ -620,7 +660,7 @@ class TestHelmBasedDeployment(ContainerTestBase):
             for pod_line in result.stdout.strip().split("\n"):
                 if pod_line:
                     pod_name = pod_line.replace("pod/", "")
-                    self.save_pod_logs(pod_name, namespace, f"helm-cleanup-{test_id}")
+                    self.append_pod_logs(pod_name, namespace, log_file)
         except Exception:
             pass  # Ignore log capture failures during cleanup
 
