@@ -7,7 +7,7 @@ RUN pip install --no-cache-dir uv
 
 # Copy pyproject.toml and hyperlib source
 COPY pyproject.toml /app/
-COPY hyperlib /app/src/hyperlib
+COPY src/hyperlib /app/src/hyperlib
 
 # Install hyperlib with dependencies
 RUN cd /app && uv pip install --system -e .
