@@ -49,7 +49,7 @@ class TestAPIE2E:
         app = Application.api(name="test-api")
 
         # Add a simple test route
-        @app.get("/test")
+        @app.fastapi.get("/test")
         def test_endpoint():
             return {"status": "ok", "message": "test"}
 
