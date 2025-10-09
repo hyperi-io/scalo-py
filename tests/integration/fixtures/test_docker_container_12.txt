@@ -1,0 +1,23 @@
+import os
+
+# Check cgroup limits if available
+memory_limit_file = "/sys/fs/cgroup/memory.max"
+cpu_limit_file = "/sys/fs/cgroup/cpu.max"
+
+if os.path.exists(memory_limit_file):
+    with open(memory_limit_file, "r") as f:
+        memory_limit = f.read().strip()
+        print(f"MEMORY_LIMIT={memory_limit}")
+else:
+    print("MEMORY_LIMIT=not_found")
+
+if os.path.exists(cpu_limit_file):
+    with open(cpu_limit_file, "r") as f:
+        cpu_limit = f.read().strip()
+        print(f"CPU_LIMIT={cpu_limit}")
+else:
+    print("CPU_LIMIT=not_found")
+
+# Check if we can detect we're in a container
+if os.path.exists("/.dockerenv"):
+    print("CONTAINER_TYPE=docker")

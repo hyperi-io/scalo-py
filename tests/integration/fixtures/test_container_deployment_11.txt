@@ -1,0 +1,51 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {deployment_name}
+  namespace: {namespace}
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: {app_label}
+  template:
+    metadata:
+      labels:
+        app: {app_label}
+    spec:
+      containers:
+      - name: api
+        image: nginx:alpine
+        ports:
+        - containerPort: 80
+        env:
+        - name: APP_NAME
+          value: hyperlib-api
+        - name: POSTGRES_HOST
+          value: postgres.{namespace}.svc.cluster.local
+        - name: POSTGRES_USER
+          value: apiuser
+        - name: POSTGRES_DATABASE
+          value: apidb
+        volumeMounts:
+        - name: config
+          mountPath: /config
+        - name: data
+          mountPath: /data
+      volumes:
+      - name: config
+        emptyDir: {{}}
+      - name: data
+        emptyDir: {{}}
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: {service_name}
+  namespace: {namespace}
+spec:
+  selector:
+    app: {app_label}
+  ports:
+  - port: 80
+    targetPort: 80

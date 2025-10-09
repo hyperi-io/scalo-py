@@ -1,0 +1,24 @@
+FROM python:3.11-slim
+
+WORKDIR /app
+
+# Install uv
+RUN pip install --no-cache-dir uv
+
+# Copy pyproject.toml and hyperlib source
+COPY pyproject.toml /app/
+COPY hyperlib /app/src/hyperlib
+
+# Install hyperlib with dependencies
+RUN cd /app && uv pip install --system -e .
+
+# Copy application
+COPY daemon.py /app/
+
+# Create mount directories
+RUN mkdir -p /data /logs /tmp
+
+# Set environment
+ENV APP_NAME=docker-test-daemon
+
+CMD ["python", "daemon.py"]

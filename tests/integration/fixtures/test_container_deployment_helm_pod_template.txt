@@ -1,0 +1,32 @@
+apiVersion: v1
+kind: Pod
+metadata:
+  name: {{ .Release.Name }}-pod
+  namespace: {{ .Release.Namespace }}
+  labels:
+    app: {{ .Release.Name }}
+spec:
+  restartPolicy: {{ .Values.restartPolicy }}
+  containers:
+  - name: app
+    image: {{ .Values.image.repository }}:{{ .Values.image.tag }}
+    imagePullPolicy: {{ .Values.image.pullPolicy }}
+    command: ["python", "/app/app.py"]
+    env:
+    - name: APP_NAME
+      value: {{ .Values.env.APP_NAME | quote }}
+    - name: POD_NAME
+      valueFrom:
+        fieldRef:
+          fieldPath: metadata.name
+    - name: POD_NAMESPACE
+      valueFrom:
+        fieldRef:
+          fieldPath: metadata.namespace
+    volumeMounts:
+    - name: app-code
+      mountPath: /app
+  volumes:
+  - name: app-code
+    configMap:
+      name: {{ .Release.Name }}-app

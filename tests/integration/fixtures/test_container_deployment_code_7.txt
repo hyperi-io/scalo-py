@@ -1,0 +1,19 @@
+import os
+from pathlib import Path
+
+# Check environment detection
+k8s_token = Path("/var/run/secrets/kubernetes.io/serviceaccount/token")
+print(f"Kubernetes detected: {k8s_token.exists()}")
+
+# Check standard K8s environment variables
+print(f"KUBERNETES_SERVICE_HOST: {os.getenv('KUBERNETES_SERVICE_HOST', 'not set')}")
+print(f"POD_NAME: {os.getenv('POD_NAME', 'not set')}")
+print(f"POD_NAMESPACE: {os.getenv('POD_NAMESPACE', 'not set')}")
+
+# Check mount paths
+mounts = {
+    "/config": Path("/config").exists(),
+    "/data": Path("/data").exists(),
+    "/tmp": Path("/tmp").exists(),
+}
+print(f"Mount paths: {mounts}")

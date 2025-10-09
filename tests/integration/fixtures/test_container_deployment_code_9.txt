@@ -1,0 +1,48 @@
+import os
+import time
+import http.server
+import socketserver
+
+# Simple metrics
+metrics = {
+    'hyperlib_requests_total': 0,
+    'hyperlib_errors_total': 0,
+    'hyperlib_uptime_seconds': time.time()
+}
+
+class MetricsHandler(http.server.BaseHTTPRequestHandler):
+    def do_GET(self):
+        if self.path == '/metrics':
+            # Generate Prometheus-format metrics
+            output = []
+            output.append('# HELP hyperlib_requests_total Total requests')
+            output.append('# TYPE hyperlib_requests_total counter')
+            output.append(f'hyperlib_requests_total {metrics["hyperlib_requests_total"]}')
+            output.append('# HELP hyperlib_errors_total Total errors')
+            output.append('# TYPE hyperlib_errors_total counter')
+            output.append(f'hyperlib_errors_total {metrics["hyperlib_errors_total"]}')
+            output.append('# HELP hyperlib_uptime_seconds Uptime in seconds')
+            output.append('# TYPE hyperlib_uptime_seconds gauge')
+            uptime = time.time() - metrics["hyperlib_uptime_seconds"]
+            output.append(f'hyperlib_uptime_seconds {uptime}')
+
+            self.send_response(200)
+            self.send_header('Content-type', 'text/plain')
+            self.end_headers()
+            self.wfile.write('\\n'.join(output).encode())
+        else:
+            metrics['hyperlib_requests_total'] += 1
+            self.send_response(200)
+            self.send_header('Content-type', 'text/plain')
+            self.end_headers()
+            self.wfile.write(b'OK')
+
+    def log_message(self, format, *args):
+        pass  # Suppress logs
+
+# Start server
+PORT = 8080
+Handler = MetricsHandler
+with socketserver.TCPServer(("", PORT), Handler) as httpd:
+    print(f"Metrics server running on port {PORT}")
+    httpd.serve_forever()

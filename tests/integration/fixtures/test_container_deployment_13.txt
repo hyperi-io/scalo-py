@@ -1,0 +1,30 @@
+replicaCount: 1
+
+image:
+  repository: nginx
+  tag: alpine
+  pullPolicy: IfNotPresent
+
+service:
+  type: ClusterIP
+  port: 80
+
+env:
+  APP_NAME: hyperlib-helm-app
+  LOG_LEVEL: INFO
+
+postgresql:
+  host: postgres
+  database: helmdb
+  user: helmuser
+
+mounts:
+  config:
+    enabled: true
+    path: /config
+  data:
+    enabled: true
+    path: /data
+  secrets:
+    enabled: true
+    path: /secrets

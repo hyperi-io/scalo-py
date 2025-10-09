@@ -1,0 +1,23 @@
+FROM python:3.11-slim
+
+WORKDIR /app
+
+# Install uv
+RUN pip install --no-cache-dir uv
+
+# Copy pyproject.toml and hyperlib source
+COPY pyproject.toml /app/
+COPY hyperlib /app/src/hyperlib
+
+# Install hyperlib with metrics extras
+RUN cd /app && uv pip install --system -e '.[metrics]'
+
+# Copy application
+COPY app_metrics.py /app/
+
+# Expose both API and metrics ports
+EXPOSE 8000 8080
+
+ENV APP_NAME=metrics-test-api
+
+CMD ["python", "app_metrics.py"]

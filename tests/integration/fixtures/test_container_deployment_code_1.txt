@@ -1,0 +1,29 @@
+import sys
+import os
+
+# hyperlib is installed as a package now, no need to modify path
+from hyperlib import Application, get_mount_config, get_database_config
+
+# Create API application
+app = Application.api(name="docker-test-api", port=8000)
+
+@app.route("/")
+def root():
+    return {"status": "running", "container": "docker"}
+
+@app.route("/config")
+def config():
+    mounts = get_mount_config()
+    return {
+        "config_dir": str(mounts.config_dir),
+        "data_dir": str(mounts.data_dir),
+        "temp_dir": str(mounts.temp_dir),
+    }
+
+@app.route("/database")
+def database():
+    db_config = get_database_config("postgresql")
+    return {k: str(v) for k, v in db_config.items() if k != "password"}
+
+if __name__ == "__main__":
+    app.run()

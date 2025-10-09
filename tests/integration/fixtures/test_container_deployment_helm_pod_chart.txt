@@ -1,0 +1,4 @@
+apiVersion: v2
+name: hyperlib-pod-test
+version: 0.1.0
+description: Helm chart for hyperlib Pod deployment test

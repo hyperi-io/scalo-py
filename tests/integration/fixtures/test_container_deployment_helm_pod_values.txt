@@ -1,0 +1,9 @@
+image:
+  repository: python
+  tag: "3.11-slim"
+  pullPolicy: IfNotPresent
+
+restartPolicy: Never
+
+env:
+  APP_NAME: hyperlib-pod-app

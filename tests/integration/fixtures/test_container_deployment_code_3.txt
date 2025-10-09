@@ -1,0 +1,32 @@
+import sys
+import os
+sys.path.insert(0, '/app')
+
+from hyperlib import Application, get_mount_config
+
+# Create daemon application
+app = Application.daemon(name="docker-test-daemon")
+
+counter = 0
+
+@app.scheduled(interval=5)
+def periodic_task():
+    global counter
+    counter += 1
+    print(f"Task execution #{counter}")
+
+    # Write to data directory
+    mounts = get_mount_config()
+    status_file = mounts.data_dir / "status.txt"
+    status_file.write_text(f"Counter: {counter}")
+
+@app.on_startup
+def startup():
+    print("Daemon starting in Docker container")
+
+@app.on_shutdown
+def shutdown():
+    print("Daemon shutting down")
+
+if __name__ == "__main__":
+    app.run()

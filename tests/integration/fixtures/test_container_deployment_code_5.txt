@@ -1,0 +1,12 @@
+import os
+
+# hyperlib is installed as a package
+from hyperlib import get_database_config, build_database_url
+
+# Get database configuration
+db_config = get_database_config("postgresql")
+db_url = build_database_url("postgresql", **db_config)
+
+print(f"Database URL: {db_url}")
+print(f"Host: {db_config['host']}")
+print(f"Database: {db_config['database']}")

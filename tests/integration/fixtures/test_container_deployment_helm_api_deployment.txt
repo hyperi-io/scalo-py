@@ -1,0 +1,32 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ .Release.Name }}
+  namespace: {{ .Release.Namespace }}
+spec:
+  replicas: {{ .Values.replicaCount }}
+  selector:
+    matchLabels:
+      app: {{ .Release.Name }}
+  template:
+    metadata:
+      labels:
+        app: {{ .Release.Name }}
+    spec:
+      containers:
+      - name: app
+        image: {{ .Values.image.repository }}:{{ .Values.image.tag }}
+        imagePullPolicy: {{ .Values.image.pullPolicy }}
+        command: ["python", "-c", "import time; time.sleep(300)"]
+        ports:
+        - containerPort: 8000
+          name: http
+        env:
+        - name: APP_NAME
+          value: {{ .Values.env.APP_NAME | quote }}
+        - name: POSTGRES_HOST
+          value: {{ tpl .Values.env.POSTGRES_HOST . | quote }}
+        - name: POSTGRES_USER
+          value: {{ .Values.env.POSTGRES_USER | quote }}
+        - name: POSTGRES_DATABASE
+          value: {{ .Values.env.POSTGRES_DATABASE | quote }}

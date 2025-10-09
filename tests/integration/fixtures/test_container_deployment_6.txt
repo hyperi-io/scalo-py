@@ -1,0 +1,15 @@
+FROM python:3.11-slim
+WORKDIR /app
+
+# Install uv
+RUN pip install --no-cache-dir uv
+
+# Copy pyproject.toml and source
+COPY pyproject.toml /app/
+COPY src /app/src
+
+# Install hyperlib with database extras
+RUN uv pip install --system -e '.[database]'
+
+COPY app.py /app/
+CMD ["python", "app.py"]

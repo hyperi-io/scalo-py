@@ -1,0 +1,12 @@
+import os
+import json
+
+# Simulate API reading database config
+db_config = {
+    "host": os.getenv("POSTGRES_HOST", "localhost"),
+    "port": os.getenv("POSTGRES_PORT", "5432"),
+    "user": os.getenv("POSTGRES_USER", "postgres"),
+    "database": os.getenv("POSTGRES_DATABASE", "mydb")
+}
+
+print(json.dumps({"status": "ready", "database": db_config}))

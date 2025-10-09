@@ -1,0 +1,26 @@
+import os
+import json
+
+# Check HELM-style mount points
+helm_paths = {
+    "config": "/config",
+    "secrets": "/secrets",
+    "data": "/data",
+    "logs": "/logs"
+}
+
+results = {}
+for name, path in helm_paths.items():
+    results[name] = os.path.exists(path)
+    if os.path.exists(path):
+        # Try to write a test file
+        try:
+            test_file = os.path.join(path, "test.txt")
+            with open(test_file, "w") as f:
+                f.write("test")
+            results[f"{name}_writable"] = True
+            os.remove(test_file)
+        except:
+            results[f"{name}_writable"] = False
+
+print(json.dumps(results))

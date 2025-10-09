@@ -1,0 +1,8 @@
+FROM python:3.11-slim
+WORKDIR /app
+# Create HELM-style directories
+RUN mkdir -p /config /secrets /data /logs
+# Set appropriate permissions
+RUN chmod 755 /config /data /logs && chmod 700 /secrets
+COPY check_helm.py /app/
+CMD ["python", "check_helm.py"]

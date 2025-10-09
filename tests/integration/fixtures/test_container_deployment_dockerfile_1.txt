@@ -1,0 +1,29 @@
+FROM python:3.11-slim
+
+WORKDIR /app
+
+# Install uv
+RUN pip install --no-cache-dir uv
+
+# Copy pyproject.toml and hyperlib source first
+COPY pyproject.toml /app/
+COPY hyperlib /app/src/hyperlib
+
+# Install hyperlib and its dependencies with API extras
+RUN cd /app && uv pip install --system -e '.[api,metrics,database]'
+
+# Copy application
+COPY app.py /app/
+
+# Create mount directories
+RUN mkdir -p /config /data /logs /tmp
+
+# Set environment variables
+ENV APP_NAME=docker-test-api
+ENV POSTGRES_HOST=postgres
+ENV POSTGRES_USER=testuser
+ENV POSTGRES_DATABASE=testdb
+
+EXPOSE 8000
+
+CMD ["python", "app.py"]
