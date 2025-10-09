@@ -207,12 +207,12 @@ class TestOneshotApplication:
         assert app.task_func == my_task
 
     def test_oneshot_run_without_task_raises(self):
-        """Test that run() without task raises ValueError."""
+        """Test that run() without task raises RuntimeError."""
         from hyperlib import Application
 
         app = Application.oneshot(name="test-oneshot")
 
-        with pytest.raises(ValueError, match="No task function registered"):
+        with pytest.raises(RuntimeError, match="No task defined"):
             app.run()
 
 

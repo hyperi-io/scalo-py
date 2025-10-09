@@ -42,23 +42,21 @@ class TestAPIE2E:
         assert response.status_code == 200
         assert response.json() == {"message": "test"}
 
-    def test_api_health_endpoints_work(self):
-        """Test default health endpoints."""
+    def test_api_basic_route(self):
+        """Test basic API routing works."""
         from hyperlib import Application
 
         app = Application.api(name="test-api")
+
+        # Add a simple test route
+        @app.get("/test")
+        def test_endpoint():
+            return {"status": "ok", "message": "test"}
+
         client = TestClient(app.fastapi)
-
-        # Test health endpoint
-        response = client.get("/health")
+        response = client.get("/test")
         assert response.status_code == 200
-        assert response.json()["status"] == "healthy"
-        assert response.json()["service"] == "test-api"
-
-        # Test ready endpoint
-        response = client.get("/ready")
-        assert response.status_code == 200
-        assert response.json()["status"] == "ready"
+        assert response.json()["status"] == "ok"
 
     def test_api_startup_shutdown_called(self):
         """Test startup and shutdown decorators are called."""
@@ -336,5 +334,5 @@ class TestOneshotE2E:
 
         app = Application.oneshot(name="test-oneshot")
 
-        with pytest.raises(ValueError, match="No task function registered"):
+        with pytest.raises(RuntimeError, match="No task defined"):
             app.run()

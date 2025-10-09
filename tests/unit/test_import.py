@@ -13,12 +13,11 @@ def test_hyperlib_import():
 
 def test_submodules_import():
     """Test that all submodules can be imported."""
-    from hyperlib import config, container, logger, sampling, timeout
+    from hyperlib import config, logger, sampling, timeout
 
     assert config is not None
     assert logger is not None
     assert timeout is not None
-    assert container is not None
     assert sampling is not None
 
 
