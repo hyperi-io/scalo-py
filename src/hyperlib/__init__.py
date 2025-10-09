@@ -10,7 +10,7 @@ __version__ = "1.5.5"
 # Enforce Python 3.11+ requirement
 import sys
 
-from . import config, dbconn, logger, prometheus, runtime, sampling, timeout
+from . import config, dbconn, harness, logger, prometheus, runtime, sampling
 from .application import Application
 from .config import get_logging_config, get_mount_config, get_environment
 from .dbconn import build_database_url, get_database_config, get_database_url_from_env
@@ -25,8 +25,8 @@ __all__ = [
     "Application",  # Primary user-facing API
     "config",
     "dbconn",
+    "harness",
     "logger",
-    "timeout",
     "runtime",
     "prometheus",
     "sampling",

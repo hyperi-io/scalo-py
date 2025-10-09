@@ -188,14 +188,20 @@ class ContainerTestBase:
 
     @staticmethod
     def create_test_log_file(test_name: str) -> Path:
-        """Create test-specific log file with timestamp."""
-        timestamp = time.strftime("%Y%m%d-%H%M%S")
+        """Create test-specific log file, renaming previous with timestamp."""
         logs_dir = Path(__file__).parent.parent.parent / "logs"
         logs_dir.mkdir(parents=True, exist_ok=True)
 
-        log_file = logs_dir / f"{test_name}-{timestamp}.log"
+        log_file = logs_dir / f"{test_name}.log"
 
-        # Write header
+        # Rename existing log with its modification time
+        if log_file.exists():
+            mtime = log_file.stat().st_mtime
+            timestamp = time.strftime("%Y%m%d-%H%M%S", time.localtime(mtime))
+            archived_log = logs_dir / f"{test_name}-{timestamp}.log"
+            log_file.rename(archived_log)
+
+        # Write header to new log
         with log_file.open("w") as f:
             f.write(f"{'='*80}\n")
             f.write(f"Test: {test_name}\n")

@@ -1,6 +1,18 @@
 """
-HyperLib Smart Timeout System - Generic Intelligent Process Monitoring
-Replaces simple timeouts with intelligent activity detection for any long-running process
+HyperLib Process Execution Harness - Intelligent Subprocess Monitoring and Testing
+
+Provides smart process execution with:
+- Activity-based monitoring (detects hangs early via output patterns)
+- Flexible timeout handling (activity timeout + total execution timeout)
+- Output pattern matching (failure, success, progress detection)
+- Early termination on detected failures
+- Detailed execution results for debugging
+
+Use cases:
+- Running tests with intelligent hang detection
+- Monitoring long-running CI/CD processes
+- Container/K8s deployment verification
+- Any subprocess that needs smarter timeout handling than simple wall-clock limits
 """
 
 import os
@@ -13,13 +25,14 @@ from enum import Enum
 from pathlib import Path
 
 
-class TimeoutReason(Enum):
-    """Reasons for timeout termination"""
+class TerminationReason(Enum):
+    """Reasons for process termination"""
 
-    NO_ACTIVITY = "no_activity"
-    TOTAL_EXECUTION = "total_execution"
-    MANUAL_STOP = "manual_stop"
-    COMPLETED = "completed"
+    NO_ACTIVITY = "no_activity"  # Process hung (no output/activity detected)
+    TOTAL_EXECUTION = "total_execution"  # Total time limit exceeded
+    FAILURE_DETECTED = "failure_detected"  # Failure pattern found in output
+    MANUAL_STOP = "manual_stop"  # Manually stopped or exception
+    COMPLETED = "completed"  # Process completed successfully
 
 
 @dataclass
@@ -40,11 +53,11 @@ class ActivityIndicator:
 
 
 @dataclass
-class TimeoutResult:
-    """Result of smart timeout execution"""
+class HarnessResult:
+    """Result of harness process execution"""
 
     success: bool
-    timeout_reason: TimeoutReason
+    termination_reason: TerminationReason
     total_duration: float
     last_activity_time: float
     activity_count: int
