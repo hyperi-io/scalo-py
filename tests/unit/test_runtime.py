@@ -34,6 +34,8 @@ class TestRuntimeEnvironment:
         assert paths.data_dir == Path("/app/data")
         assert paths.temp_dir == Path("/app/tmp")
         assert paths.log_dir is None  # Container logs to stdout
+        assert paths.cache_dir == Path("/app/cache")
+        assert paths.run_dir == Path("/run/test-app")
 
     def test_force_local_mode(self):
         """Test forced local mode."""
@@ -45,6 +47,8 @@ class TestRuntimeEnvironment:
         assert "test-app" in str(paths.data_dir)
         assert "test-app" in str(paths.temp_dir)
         assert paths.log_dir is not None
+        assert paths.cache_dir is not None
+        assert "test-app" in str(paths.cache_dir)
 
     def test_container_paths_structure(self):
         """Test container paths follow K8s conventions."""
@@ -319,6 +323,8 @@ class TestRuntimePaths:
         assert paths.data_dir == Path("/app/data")
         assert paths.temp_dir == Path("/app/tmp")
         assert paths.log_dir is None
+        assert paths.cache_dir is None
+        assert paths.run_dir is None
         assert paths.is_container is True
         assert paths.detection_method == "kubernetes"
 
@@ -335,6 +341,48 @@ class TestRuntimePaths:
 
         assert paths.log_dir == Path("/home/user/.local/share/app/logs")
         assert paths.is_container is False
+
+    def test_runtime_paths_with_cache_and_run(self):
+        """Test RuntimePaths with cache and run directories."""
+        paths = RuntimePaths(
+            config_dir=Path("/app/config"),
+            data_dir=Path("/app/data"),
+            temp_dir=Path("/app/tmp"),
+            cache_dir=Path("/app/cache"),
+            run_dir=Path("/run/myapp"),
+            is_container=True,
+            detection_method="kubernetes",
+        )
+
+        assert paths.cache_dir == Path("/app/cache")
+        assert paths.run_dir == Path("/run/myapp")
+        assert paths.effective_cache_dir == Path("/app/cache")
+
+    def test_effective_cache_dir_with_explicit_cache(self):
+        """Test effective_cache_dir returns explicit cache_dir when set."""
+        paths = RuntimePaths(
+            config_dir=Path("/app/config"),
+            data_dir=Path("/app/data"),
+            temp_dir=Path("/app/tmp"),
+            cache_dir=Path("/app/cache"),
+            is_container=True,
+            detection_method="test",
+        )
+
+        assert paths.effective_cache_dir == Path("/app/cache")
+
+    def test_effective_cache_dir_fallback_to_data(self):
+        """Test effective_cache_dir falls back to data_dir/cache when cache_dir is None."""
+        paths = RuntimePaths(
+            config_dir=Path("/app/config"),
+            data_dir=Path("/app/data"),
+            temp_dir=Path("/app/tmp"),
+            cache_dir=None,
+            is_container=True,
+            detection_method="test",
+        )
+
+        assert paths.effective_cache_dir == Path("/app/data/cache")
 
 
 class TestConvenienceFunction:

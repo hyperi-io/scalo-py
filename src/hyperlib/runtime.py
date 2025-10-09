@@ -24,16 +24,25 @@ class RuntimePaths:
     - data_dir: Persistent data (PVC in K8s, ~/.local/share locally)
     - temp_dir: Ephemeral data (EmptyDir in K8s, /tmp locally)
     - log_dir: Log output (stdout in container, file locally)
+    - cache_dir: Cache data (defaults to data_dir/cache if not set)
+    - run_dir: Runtime state - PID files, sockets (optional)
     """
 
     config_dir: Path
     data_dir: Path
     temp_dir: Path
     log_dir: Path | None = None
+    cache_dir: Path | None = None
+    run_dir: Path | None = None
 
     # Runtime metadata
     is_container: bool = False
     detection_method: str = "unknown"
+
+    @property
+    def effective_cache_dir(self) -> Path:
+        """Get cache directory, falling back to data_dir/cache if not explicitly set."""
+        return self.cache_dir or (self.data_dir / "cache")
 
 
 class RuntimeEnvironment:
@@ -167,6 +176,8 @@ class RuntimeEnvironment:
         - /app/config - ConfigMap (read-only configuration)
         - /app/data   - PVC (persistent data)
         - /app/tmp    - EmptyDir (ephemeral storage)
+        - /app/cache  - Cache data (can be EmptyDir or PVC)
+        - /run/{app}  - Runtime state (PID files, sockets)
         - stdout/stderr for logs (captured by container runtime)
         """
         return RuntimePaths(
@@ -174,6 +185,8 @@ class RuntimeEnvironment:
             data_dir=Path("/app/data"),
             temp_dir=Path("/app/tmp"),
             log_dir=None,  # Container logs go to stdout
+            cache_dir=Path("/app/cache"),
+            run_dir=Path(f"/run/{self.app_name}"),
             is_container=True,
             detection_method=detection_method,
         )
@@ -183,58 +196,47 @@ class RuntimeEnvironment:
         Get local paths for CLI tools and daemons.
 
         Follows Unix daemon/CLI conventions:
-        - /etc/appname or ~/.appname/config  - Configuration
-        - /var/lib/appname or ~/.appname/data - Persistent data
-        - /tmp/appname                        - Ephemeral storage
-        - /var/log/appname or ~/.appname/logs - Log files
+        - /etc/appname or ~/.appname/config       - Configuration
+        - /var/lib/appname or ~/.appname/data     - Persistent data
+        - /tmp/appname                            - Ephemeral storage
+        - /var/log/appname or ~/.appname/logs     - Log files
+        - /var/cache/appname or data/cache        - Cache data
+        - /run/appname or /var/run/appname        - Runtime state (PID files, sockets)
 
         For non-root users: Everything under ~/.appname/
-        For root/system: Standard Unix paths (/etc, /var/lib, /var/log)
+        For root/system: Standard Unix paths (/etc, /var/lib, /var/log, /var/cache, /run)
         """
 
-        system = platform.system()
         home = Path.home()
 
         # Check if running as root/system user
         is_root = os.getuid() == 0 if hasattr(os, "getuid") else False
 
-        if system == "Linux" or system == "Darwin":
-            if is_root:
-                # System daemon paths (traditional Unix)
-                config_dir = Path("/etc") / self.app_name
-                data_dir = Path("/var/lib") / self.app_name
-                temp_dir = Path("/tmp") / self.app_name
-                log_dir = Path("/var/log") / self.app_name
-            else:
-                # User daemon/CLI paths
-                app_home = home / f".{self.app_name}"
-                config_dir = app_home / "config"
-                data_dir = app_home / "data"
-                temp_dir = Path("/tmp") / f"{self.app_name}-{os.getuid()}"
-                log_dir = app_home / "logs"
-
-        elif system == "Windows":
-            # Windows paths (always user-scoped)
-            appdata = Path(os.getenv("APPDATA", home / "AppData/Roaming"))
-            localappdata = Path(os.getenv("LOCALAPPDATA", home / "AppData/Local"))
-            config_dir = appdata / self.app_name
-            data_dir = localappdata / self.app_name
-            temp_dir = localappdata / self.app_name / "temp"
-            log_dir = localappdata / self.app_name / "logs"
-
+        if is_root:
+            # System daemon paths (traditional Unix)
+            config_dir = Path("/etc") / self.app_name
+            data_dir = Path("/var/lib") / self.app_name
+            temp_dir = Path("/tmp") / self.app_name
+            log_dir = Path("/var/log") / self.app_name
+            cache_dir = Path("/var/cache") / self.app_name
+            run_dir = Path("/run") / self.app_name
         else:
-            # Fallback for unknown systems (user-scoped)
+            # User daemon/CLI paths
             app_home = home / f".{self.app_name}"
             config_dir = app_home / "config"
             data_dir = app_home / "data"
-            temp_dir = Path("/tmp") / self.app_name
+            temp_dir = Path("/tmp") / f"{self.app_name}-{os.getuid()}"
             log_dir = app_home / "logs"
+            cache_dir = app_home / "cache"
+            run_dir = None  # Non-root doesn't typically use /run
 
         return RuntimePaths(
             config_dir=config_dir,
             data_dir=data_dir,
             temp_dir=temp_dir,
             log_dir=log_dir,
+            cache_dir=cache_dir,
+            run_dir=run_dir,
             is_container=False,
             detection_method="local",
         )
@@ -256,6 +258,17 @@ class RuntimeEnvironment:
         if paths.log_dir:
             paths.log_dir.mkdir(parents=True, exist_ok=True)
 
+        # Create cache directory (use effective_cache_dir for fallback)
+        paths.effective_cache_dir.mkdir(parents=True, exist_ok=True)
+
+        # Create run directory if specified
+        if paths.run_dir:
+            try:
+                paths.run_dir.mkdir(parents=True, exist_ok=True)
+            except PermissionError:
+                # /run may require elevated permissions, skip silently
+                logger.debug(f"Could not create run directory: {paths.run_dir}")
+
         # Only create config in local mode (containers mount ConfigMaps)
         if create_config or not paths.is_container:
             paths.config_dir.mkdir(parents=True, exist_ok=True)
@@ -264,8 +277,11 @@ class RuntimeEnvironment:
         logger.debug(f"  Config: {paths.config_dir}")
         logger.debug(f"  Data: {paths.data_dir}")
         logger.debug(f"  Temp: {paths.temp_dir}")
+        logger.debug(f"  Cache: {paths.effective_cache_dir}")
         if paths.log_dir:
             logger.debug(f"  Logs: {paths.log_dir}")
+        if paths.run_dir:
+            logger.debug(f"  Run: {paths.run_dir}")
 
 
 # Convenience function
