@@ -187,6 +187,46 @@ class ContainerTestBase:
         return fixture_path.read_text()
 
     @staticmethod
+    def save_container_logs(container_name: str, log_prefix: str):
+        """Save Docker container logs to /logs directory."""
+        logs_dir = Path(__file__).parent.parent.parent / "logs"
+        logs_dir.mkdir(exist_ok=True)
+
+        timestamp = time.strftime("%Y%m%d-%H%M%S")
+        log_file = logs_dir / f"{log_prefix}-{timestamp}.log"
+
+        try:
+            result = subprocess.run(
+                ["docker", "logs", container_name],
+                capture_output=True,
+                text=True,
+                timeout=10
+            )
+            log_file.write_text(f"=== Container: {container_name} ===\n\n{result.stdout}\n\n{result.stderr}")
+        except Exception as e:
+            log_file.write_text(f"Failed to capture logs for {container_name}: {e}")
+
+    @staticmethod
+    def save_pod_logs(pod_name: str, namespace: str, log_prefix: str):
+        """Save Kubernetes pod logs to /logs directory."""
+        logs_dir = Path(__file__).parent.parent.parent / "logs"
+        logs_dir.mkdir(exist_ok=True)
+
+        timestamp = time.strftime("%Y%m%d-%H%M%S")
+        log_file = logs_dir / f"{log_prefix}-{timestamp}.log"
+
+        try:
+            result = subprocess.run(
+                ["kubectl", "logs", pod_name, "-n", namespace],
+                capture_output=True,
+                text=True,
+                timeout=10
+            )
+            log_file.write_text(f"=== Pod: {pod_name} (namespace: {namespace}) ===\n\n{result.stdout}\n\n{result.stderr}")
+        except Exception as e:
+            log_file.write_text(f"Failed to capture logs for {pod_name}: {e}")
+
+    @staticmethod
     def run_command(cmd: list, timeout: int = 30, check: bool = True, cwd: str = None) -> subprocess.CompletedProcess:
         """Run a command with timeout and error handling."""
         try:
@@ -239,8 +279,12 @@ class TestDockerDeployment(ContainerTestBase):
 
         yield env
 
-        # Cleanup
+        # Cleanup - capture logs before removing containers
         for container in containers:
+            try:
+                self.save_container_logs(container, f"docker-cleanup-{test_id}")
+            except Exception:
+                pass  # Ignore log capture failures during cleanup
             self.run_command(["docker", "rm", "-f", container], check=False)
 
         for network in networks:
@@ -367,6 +411,9 @@ class TestDockerDeployment(ContainerTestBase):
 
             # Wait for container to start
             time.sleep(8)
+
+            # Save container logs before checking
+            self.save_container_logs(container_name, "docker-metrics-test")
 
             # Check container is running
             result = self.run_command(["docker", "ps", "--filter", f"name={container_name}"])
@@ -563,6 +610,19 @@ class TestHelmBasedDeployment(ContainerTestBase):
         }
 
         yield env
+
+        # Capture pod logs before cleanup
+        try:
+            result = self.run_command(
+                ["kubectl", "get", "pods", "-n", namespace, "-o", "name"],
+                check=False
+            )
+            for pod_line in result.stdout.strip().split("\n"):
+                if pod_line:
+                    pod_name = pod_line.replace("pod/", "")
+                    self.save_pod_logs(pod_name, namespace, f"helm-cleanup-{test_id}")
+        except Exception:
+            pass  # Ignore log capture failures during cleanup
 
         # Cleanup Helm releases
         for release in env["releases"]:
