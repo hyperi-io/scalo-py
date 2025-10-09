@@ -20,6 +20,8 @@ import warnings
 from pathlib import Path
 from typing import Generator, Tuple
 
+from hyperlib import harness
+
 
 # Check and warn about missing tools at module import time
 def check_tools_and_warn():
@@ -214,24 +216,13 @@ class ContainerTestBase:
     def append_container_logs(container_name: str, log_file: Path):
         """Append Docker container logs to test log file."""
         try:
-            result = subprocess.run(
+            harness.run(
                 ["docker", "logs", container_name],
-                capture_output=True,
-                text=True,
-                timeout=10
+                timeout=10,
+                check=False,
+                log_file=log_file,
+                log_label=f"Container: {container_name}",
             )
-            with log_file.open("a") as f:
-                f.write(f"\n{'='*80}\n")
-                f.write(f"Container: {container_name}\n")
-                f.write(f"{'='*80}\n\n")
-                if result.stdout:
-                    f.write("STDOUT:\n")
-                    f.write(result.stdout)
-                    f.write("\n")
-                if result.stderr:
-                    f.write("\nSTDERR:\n")
-                    f.write(result.stderr)
-                    f.write("\n")
         except Exception as e:
             with log_file.open("a") as f:
                 f.write(f"\nFailed to capture logs for {container_name}: {e}\n")
@@ -240,46 +231,36 @@ class ContainerTestBase:
     def append_pod_logs(pod_name: str, namespace: str, log_file: Path):
         """Append Kubernetes pod logs to test log file."""
         try:
-            result = subprocess.run(
+            harness.run(
                 ["kubectl", "logs", pod_name, "-n", namespace],
-                capture_output=True,
-                text=True,
-                timeout=10
+                timeout=10,
+                check=False,
+                log_file=log_file,
+                log_label=f"Pod: {pod_name} (namespace: {namespace})",
             )
-            with log_file.open("a") as f:
-                f.write(f"\n{'='*80}\n")
-                f.write(f"Pod: {pod_name} (namespace: {namespace})\n")
-                f.write(f"{'='*80}\n\n")
-                if result.stdout:
-                    f.write("STDOUT:\n")
-                    f.write(result.stdout)
-                    f.write("\n")
-                if result.stderr:
-                    f.write("\nSTDERR:\n")
-                    f.write(result.stderr)
-                    f.write("\n")
         except Exception as e:
             with log_file.open("a") as f:
                 f.write(f"\nFailed to capture logs for {pod_name}: {e}\n")
 
     @staticmethod
-    def run_command(cmd: list, timeout: int = 30, check: bool = True, cwd: str = None) -> subprocess.CompletedProcess:
-        """Run a command with timeout and error handling."""
-        try:
-            return subprocess.run(
-                cmd,
-                capture_output=True,
-                text=True,
-                timeout=timeout,
-                check=check,
-                cwd=cwd
-            )
-        except subprocess.TimeoutExpired:
-            pytest.fail(f"Command timed out: {' '.join(cmd)}")
-        except subprocess.CalledProcessError as e:
-            if check:
-                pytest.fail(f"Command failed: {' '.join(cmd)}\\n{e.stderr}")
-            return e
+    def run_command(
+        cmd: list,
+        timeout: int = 30,
+        check: bool = True,
+        cwd: str = None,
+        log_file: Path = None,
+        log_label: str = None,
+    ) -> subprocess.CompletedProcess:
+        """Run a command with timeout, error handling, and optional logging."""
+        return harness.run(
+            cmd=cmd,
+            timeout=timeout,
+            check=check,
+            cwd=cwd,
+            log_file=log_file,
+            log_label=log_label,
+            pytest_fail=True,
+        )
 
     @staticmethod
     def wait_for_condition(check_func, timeout: int = 60, interval: int = 2) -> bool:

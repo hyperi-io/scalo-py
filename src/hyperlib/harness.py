@@ -66,6 +66,79 @@ class HarnessResult:
     error_message: str | None = None
 
 
+def run(
+    cmd: list[str],
+    timeout: int = 30,
+    check: bool = True,
+    cwd: str | None = None,
+    log_file: Path | None = None,
+    log_label: str | None = None,
+    pytest_fail: bool = False,
+) -> subprocess.CompletedProcess:
+    """
+    Run a subprocess command with optional logging to file.
+
+    Args:
+        cmd: Command to execute
+        timeout: Timeout in seconds
+        check: Raise exception on non-zero exit
+        cwd: Working directory
+        log_file: Optional Path to log file for capturing output
+        log_label: Optional label for log section (e.g., "Container: foo")
+        pytest_fail: If True, use pytest.fail() on errors (for test integration)
+
+    Returns:
+        CompletedProcess with stdout/stderr
+
+    Raises:
+        subprocess.CalledProcessError: If check=True and command fails (unless pytest_fail=True)
+        subprocess.TimeoutExpired: If command times out (unless pytest_fail=True)
+    """
+    try:
+        result = subprocess.run(
+            cmd,
+            capture_output=True,
+            text=True,
+            timeout=timeout,
+            check=check,
+            cwd=cwd,
+        )
+    except subprocess.TimeoutExpired as e:
+        if pytest_fail:
+            import pytest
+            pytest.fail(f"Command timed out: {' '.join(cmd)}")
+        raise
+    except subprocess.CalledProcessError as e:
+        if pytest_fail and check:
+            import pytest
+            pytest.fail(f"Command failed: {' '.join(cmd)}\n{e.stderr}")
+        raise
+
+    # Log to file if specified
+    if log_file:
+        with log_file.open("a") as f:
+            f.write(f"\n{'='*80}\n")
+            if log_label:
+                f.write(f"{log_label}\n")
+            else:
+                f.write(f"Command: {' '.join(cmd)}\n")
+            f.write(f"{'='*80}\n\n")
+
+            if result.stdout:
+                f.write("STDOUT:\n")
+                f.write(result.stdout)
+                f.write("\n\n")
+
+            if result.stderr:
+                f.write("STDERR:\n")
+                f.write(result.stderr)
+                f.write("\n\n")
+
+            f.write(f"Exit code: {result.returncode}\n")
+
+    return result
+
+
 class SmartTimeoutMonitor:
     """
     Smart timeout system with dual-level monitoring:
@@ -101,7 +174,7 @@ class SmartTimeoutMonitor:
         activity_indicators: ActivityIndicator,
         working_dir: str | None = None,
         env: dict | None = None,
-    ) -> TimeoutResult:
+    ) -> HarnessResult:
         """
         Run command with smart timeout monitoring
 
@@ -112,7 +185,7 @@ class SmartTimeoutMonitor:
             env: Environment variables
 
         Returns:
-            TimeoutResult with execution details
+            HarnessResult with execution details
         """
 
         self.start_time = time.time()
@@ -145,7 +218,7 @@ class SmartTimeoutMonitor:
             timeout_reason = self._read_output_with_monitoring(activity_indicators)
 
             # Wait for process completion or timeout
-            if timeout_reason == TimeoutReason.COMPLETED:
+            if timeout_reason == TerminationReason.COMPLETED:
                 return_code = self.process.wait()
             else:
                 # Terminate process due to timeout
@@ -154,8 +227,8 @@ class SmartTimeoutMonitor:
 
             total_duration = time.time() - self.start_time
 
-            return TimeoutResult(
-                success=(timeout_reason == TimeoutReason.COMPLETED and return_code == 0),
+            return HarnessResult(
+                success=(timeout_reason == TerminationReason.COMPLETED and return_code == 0),
                 timeout_reason=timeout_reason,
                 total_duration=total_duration,
                 last_activity_time=time.time() - self.last_activity_time,
@@ -165,9 +238,9 @@ class SmartTimeoutMonitor:
             )
 
         except Exception as e:
-            return TimeoutResult(
+            return HarnessResult(
                 success=False,
-                timeout_reason=TimeoutReason.MANUAL_STOP,
+                timeout_reason=TerminationReason.MANUAL_STOP,
                 total_duration=time.time() - self.start_time if self.start_time else 0,
                 last_activity_time=0,
                 activity_count=self.activity_count,
@@ -226,7 +299,7 @@ def smart_run(
     failure_patterns: list[str] = None,
     success_patterns: list[str] = None,
     progress_patterns: list[str] = None,
-) -> TimeoutResult:
+) -> HarnessResult:
     """
     Generic smart timeout for any command with stdout/stderr monitoring
 
@@ -240,7 +313,7 @@ def smart_run(
         progress_patterns: Patterns that indicate progress
 
     Returns:
-        TimeoutResult with execution details
+        HarnessResult with execution details
     """
 
     # Default patterns if not provided
@@ -315,7 +388,7 @@ class FunctionTimeoutMonitor:
 
     def run_function_with_timeout(
         self, func: Callable, args: tuple = (), kwargs: dict = None, description: str = "", capture_output: bool = True
-    ) -> TimeoutResult:
+    ) -> HarnessResult:
         """
         Run Python function with smart timeout monitoring
 
@@ -327,7 +400,7 @@ class FunctionTimeoutMonitor:
             capture_output: Whether to capture stdout/stderr
 
         Returns:
-            TimeoutResult with execution details
+            HarnessResult with execution details
         """
 
         if kwargs is None:
@@ -353,7 +426,7 @@ def smart_run_function(
     activity_timeout: int = 60,
     total_timeout: int = 300,
     capture_output: bool = True,
-) -> TimeoutResult:
+) -> HarnessResult:
     """
     Smart timeout for Python functions with intelligent monitoring
 
@@ -367,7 +440,7 @@ def smart_run_function(
         capture_output: Whether to capture stdout/stderr from function
 
     Returns:
-        TimeoutResult with execution details
+        HarnessResult with execution details
 
     Example:
         # Test a /src component directly
