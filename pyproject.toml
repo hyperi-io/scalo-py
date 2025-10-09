@@ -8,7 +8,7 @@ build-backend = "setuptools.build_meta"
 [project]
 name = "hyperlib"
 version = "1.5.5"
-description = "HyperSec shared library for Python projects"
+description = "Enterprise infrastructure for containerized Python applications - configuration, logging, timeouts, database, metrics, and application framework"
 readme = "README.md"
 authors = [
     { name = "HyperSec Team", email = "dev@hypersec.io" },
@@ -18,7 +18,7 @@ maintainers = [
 ]
 requires-python = ">=3.11"
 classifiers = [
-    "Development Status :: 3 - Alpha",
+    "Development Status :: 5 - Production/Stable",
     "Intended Audience :: Developers",
     "License :: Other/Proprietary License",
     "Programming Language :: Python :: 3",
@@ -27,13 +27,23 @@ classifiers = [
     "Programming Language :: Python :: 3.13",
     "Programming Language :: Python :: 3 :: Only",
     "Operating System :: OS Independent",
+    "Topic :: Software Development :: Libraries :: Application Frameworks",
+    "Topic :: System :: Monitoring",
+    "Topic :: System :: Logging",
 ]
 keywords = [
     "hypersec",
-    "library",
-    "utilities",
+    "enterprise",
+    "containerization",
+    "kubernetes",
+    "docker",
     "logging",
     "configuration",
+    "prometheus",
+    "metrics",
+    "database",
+    "application-framework",
+    "fastapi",
 ]
 dependencies = [
     "dynaconf>=3.2.11",
