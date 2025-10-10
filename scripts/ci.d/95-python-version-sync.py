@@ -266,28 +266,65 @@ def sync_action(logger, root: Path) -> int:
     return 0
 
 
+def sync_to_version(logger, root: Path, version: str) -> int:
+    """
+    Synchronize all version files to a specific version.
+
+    Used by semantic-release to update VERSION, pyproject.toml, and __init__.py
+    to the version it calculated from commits.
+
+    Args:
+        logger: Logger instance
+        root: Project root path
+        version: Version string (e.g., '1.6.1')
+
+    Returns:
+        0 on success, 1 on failure
+    """
+    logger.info(f"Syncing all versions to: {version}")
+
+    # Update pyproject.toml (if exists)
+    if (root / "pyproject.toml").exists():
+        if update_pyproject_version(root, version):
+            logger.info("✓ Updated pyproject.toml")
+        else:
+            logger.warning("⚠ Could not update pyproject.toml (tomli_w not available)")
+
+    # Update __init__.py (if found)
+    if update_init_version(root, version):
+        logger.info("✓ Updated __init__.py files")
+
+    return 0
+
+
 def main() -> int:
     """Main entry point."""
     logger = get_logger("python-version-sync")
-    
+
     if len(sys.argv) < 2:
-        logger.error("Usage: %s [check|install|sync]", sys.argv[0])
+        logger.error("Usage: %s [check|install|sync|sync <version>]", sys.argv[0])
         return 1
-    
+
     action = sys.argv[1]
     root = Path(__file__).resolve().parent.parent.parent
-    
+
     if action == "check":
         return check_action(logger, root)
-    
+
     elif action == "install":
         # No installation needed
         logger.info("No installation required for version sync")
         return 0
-    
+
     elif action == "sync":
-        return sync_action(logger, root)
-    
+        # If version provided as argument, use it (for semantic-release)
+        if len(sys.argv) >= 3:
+            version = sys.argv[2]
+            return sync_to_version(logger, root, version)
+        else:
+            # Otherwise sync to git tag version (for manual use)
+            return sync_action(logger, root)
+
     else:
         logger.error("Unknown action: %s", action)
         return 1

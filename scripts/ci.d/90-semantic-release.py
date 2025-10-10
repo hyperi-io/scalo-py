@@ -244,53 +244,28 @@ def run_semantic_release(logger, root: Path, dry_run: bool = False) -> bool:
         logger.info(f"Not on release branch (current: {current_branch}), skipping release")
         return False
 
-    # Get current version
+    # Get current version for logging
     old_version = get_current_version(root)
     logger.info(f"Current version: {old_version or 'none'}")
-
-    # Get next version BEFORE running semantic-release
-    next_version = get_next_version()
-    if not next_version:
-        logger.info("No release needed (no releasable commits)")
-        return False
-
-    logger.info(f"Next version will be: {next_version}")
-
-    # Update VERSION file BEFORE semantic-release runs
-    version_file = root / "VERSION"
-    current_file_version = None
-    if version_file.exists():
-        current_file_version = version_file.read_text().strip()
-
-    if current_file_version != next_version:
-        logger.info(f"Updating VERSION file: {current_file_version} -> {next_version}")
-        update_version_file(next_version, root)
-
-        # Commit VERSION file change (and pyproject.toml, __init__.py if Python project)
-        # This chore commit doesn't trigger a version bump
-        try:
-            files_to_add = ["VERSION"]
-            if (root / "pyproject.toml").exists():
-                files_to_add.append("pyproject.toml")
-            # Add any updated __init__.py files
-            if (root / "src").exists():
-                subprocess.run(["git", "add", "-u", "src/"], check=False)
-
-            subprocess.run(["git", "add"] + files_to_add, check=True)
-            subprocess.run(
-                ["git", "commit", "-m", f"chore: update VERSION to {next_version} [skip ci]"],
-                check=True
-            )
-            logger.info(f"Committed version update: {', '.join(files_to_add)} + src/__init__.py files")
-        except subprocess.CalledProcessError as e:
-            logger.warning(f"Could not commit version files: {e}")
 
     if dry_run:
         logger.info("Dry run mode - would run semantic-release now")
         return True
 
-    # Now run semantic-release
-    logger.info("Running semantic-release")
+    # Run semantic-release - it handles EVERYTHING:
+    # 1. Analyzes commits to determine next version
+    # 2. Updates CHANGELOG.md
+    # 3. Runs prepareCmd which:
+    #    - Writes VERSION file: echo '${nextRelease.version}' > VERSION
+    #    - Updates pyproject.toml and __init__.py via sync script
+    #    - Builds package
+    # 4. Creates ONE commit with all changes: VERSION + CHANGELOG.md + pyproject.toml + __init__.py
+    # 5. Creates git tag
+    #
+    # NO chicken-and-egg problem because semantic-release knows the version
+    # before running prepareCmd, so it can update VERSION correctly.
+    logger.info("Running semantic-release (handles VERSION, CHANGELOG, tag, build)")
+    logger.info("See .releaserc.json for full workflow")
     result = subprocess.run(
         ["semantic-release"],
         capture_output=False,
