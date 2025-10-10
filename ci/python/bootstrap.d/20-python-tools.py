@@ -85,21 +85,16 @@ def main() -> int:
         "build>=1.0.0",
     ]
     
-    # Development tools (installed only with --install)
-    dev_tools = [
-        "copier>=9.1.0",
-        "nox>=2024.0.0",
-        "pytest>=8.0.0",
-        "ruff>=0.1.0",
-        "black>=24.0.0",
-        "mypy>=1.8.0",
-        "twine>=5.0.0",
-        "tomli-w>=1.0.0",  # Required for version sync (pyproject.toml writing)
-        "python-semantic-release>=9.0.0",  # Pure Python semantic versioning (replaces Node.js)
-        "pip-audit>=2.6.0",
-        "bandit[toml]>=1.7.0",
-        "safety>=3.0.0",
-        "vermin>=1.6.0",
+    # CI tools (only what's actually used by CI scripts)
+    ci_tools = [
+        "loguru>=0.7.0",  # Logging with RFC3339 timestamps
+        "pytest>=8.0.0",  # Testing (20-python-test.py)
+        "ruff>=0.1.0",  # Linting (20-python-test.py)
+        "black>=24.0.0",  # Formatting (20-python-test.py)
+        "mypy>=1.8.0",  # Type checking (20-python-test.py)
+        "twine>=5.0.0",  # Publishing to JFrog (80-build.py)
+        "python-semantic-release>=9.0.0",  # Versioning (90-semantic-release.py)
+        "vermin>=1.6.0",  # Dependency analysis (21-python-dependency-update.py)
     ]
     
     if action == "check":
@@ -128,7 +123,7 @@ def main() -> int:
         
         # Install dev tools
         logger.info("Installing Python development tools")
-        for tool in dev_tools:
+        for tool in ci_tools:
             # Don't fail on individual tool failures
             install_tool(tool, logger)
         
