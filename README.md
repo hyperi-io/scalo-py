@@ -33,8 +33,8 @@ pip install hyperlib --extra-index-url "https://${JF_USER}:${JF_PASSWORD}@hypers
 git clone https://github.com/hypersec-io/hyperlib
 cd hyperlib
 
-# Bootstrap (3-phase: creates .venv-ci, installs hyperlib, runs bootstrap.d scripts)
-./scripts/bootstrap --install
+# Bootstrap (3-phase: creates ci/.venv, installs hyperlib, runs bootstrap.d scripts)
+./ci/bootstrap --install
 
 # Or set up manually
 python -m venv .venv
@@ -66,7 +66,7 @@ metrics = create_metrics(namespace="myapp")
 ## Local CI (default)
 
 ```bash
-./scripts/ci
+./ci/ci
 ```
 
 CI is local-first. GitHub Actions are disabled by default and should be enabled only for tasks requiring hosted secrets (e.g., publishing).
@@ -93,7 +93,7 @@ CI is local-first. GitHub Actions are disabled by default and should be enabled 
 ### CI Commands
 
 ```bash
-./scripts/ci [action] [flags]
+./ci/ci [action] [flags]
 
 Actions:
   check     - Run all CI checks (lint, test, type-check)
@@ -107,7 +107,7 @@ Actions:
 
 ```bash
 # Full release with automatic versioning and publishing
-FORCE_RELEASE=1 ./scripts/ci publish
+FORCE_RELEASE=1 ./ci/ci publish
 ```
 
 This will:
@@ -124,7 +124,7 @@ This will:
 
 **Publishing happens ONLY via GitHub Actions:**
 
-1. Local: `./scripts/ci publish` creates version, tag, and pushes
+1. Local: `./ci/ci publish` creates version, tag, and pushes
 2. GitHub Actions: Triggered by tag push, builds and publishes to JFrog
 3. Uses GitHub Secrets: `ARTIFACTORY_USERNAME` and `ARTIFACTORY_PASSWORD`
 

@@ -10,8 +10,8 @@
 - ❌ `docs/ARTIFACTORY.md` had reference to `../../../docs/GITHUB-SECRETS.md`
 - ❌ `docs/TEMPLATE-CHANGES.md` had references to `modules/hypersec-forge-python/`
 - ❌ `DEPLOYMENT.md` had absolute path `/projects/hypersec-forge/modules/hyperlib`
-- ❌ `scripts/ci-actions-python.yaml` had `extends: "../hypersec-forge-core/scripts/ci-actions.yaml"`
-- ❌ `scripts/hyperlib/__init__.py` mentioned `modules/hypersec-forge-core/scripts/hyperlib`
+- ❌ `ci/ci-actions-python.yaml` had `extends: "../hypersec-forge-core/ci/ci-actions.yaml"`
+- ❌ `ci/hyperlib/__init__.py` mentioned `modules/hypersec-forge-core/ci/hyperlib`
 
 **All Fixed**: Changed to either:
 - Self-referential paths within hyperlib
@@ -22,30 +22,30 @@
 
 ---
 
-### 2. Does forge create both .venv-ci (all project types) and .venv (python project type)?
+### 2. Does forge create both ci/.venv (all project types) and .venv (python project type)?
 
 **Current State**: ⚠️ PARTIAL
 
 **What Bootstrap Does**:
-1. Creates `.venv-ci` - ✅ YES (universal, all project types)
+1. Creates `ci/.venv` - ✅ YES (universal, all project types)
    - Created by `ensure_ci_venv_and_reexec()` in `hyperlib`
    - Used for ALL CI tools (nox, ruff, black, mypy, pytest, etc.)
    - Consistent across all projects
 
 2. Creates `.venv` - ⚠️ NO (not by bootstrap)
    - Bootstrap script `20-python-dev-tools.py` exists
-   - BUT: Only handles `.venv-ci` population
+   - BUT: Only handles `ci/.venv` population
    - Does NOT create developer `.venv`
 
 **Evidence from `bootstrap.d/20-python-dev-tools.py`**:
 ```python
 def install_missing_tools(venv_ci: Path) -> None:
-    """Attempt to install missing Python tools into .venv-ci."""
-    # Only installs into .venv-ci
+    """Attempt to install missing Python tools into ci/.venv."""
+    # Only installs into ci/.venv
 ```
 
 **Expected Behavior**:
-- `.venv-ci` → CI tools (nox, ruff, black, mypy, pytest, etc.) ✅
+- `ci/.venv` → CI tools (nox, ruff, black, mypy, pytest, etc.) ✅
 - `.venv` → Project dependencies for development ❌ NOT CREATED
 
 **Issue**: Developers must manually create `.venv`:
@@ -57,11 +57,11 @@ python -m venv .venv
 **Should It?**: 🤔 YES - for better developer experience
 - Template should create both venvs
 - `.venv` for development (project deps)
-- `.venv-ci` for CI/tools (isolated)
+- `ci/.venv` for CI/tools (isolated)
 
 ---
 
-### 3. Shouldn't nox be pre-deployed by the [forge] .venv-ci?
+### 3. Shouldn't nox be pre-deployed by the [forge] ci/.venv?
 
 **Status**: ✅ YES - IT SHOULD BE (and mostly is)
 
@@ -87,10 +87,10 @@ PYTHON_CI_TOOLS = [
 **The Problem**:
 ```bash
 # This only checks (doesn't install)
-./scripts/bootstrap
+./ci/bootstrap
 
 # This installs
-./scripts/bootstrap --install  # ← Must use this!
+./ci/bootstrap --install  # ← Must use this!
 ```
 
 **Why It Wasn't There**:
@@ -99,11 +99,11 @@ We ran bootstrap in check-only mode, so nox wasn't installed.
 **Solution**:
 Always run bootstrap with `--install` during project setup:
 ```bash
-./scripts/bootstrap --install  # First time setup
-./scripts/ci                    # Regular CI runs
+./ci/bootstrap --install  # First time setup
+./ci/ci                    # Regular CI runs
 ```
 
-Or better: CI should call `./scripts/bootstrap --install` first!
+Or better: CI should call `./ci/bootstrap --install` first!
 
 ---
 
@@ -139,7 +139,7 @@ Or better: CI should call `./scripts/bootstrap --install` first!
 
 2. **Phase 2**: Populate venvs
    ```python
-   # .venv-ci gets: nox, ruff, black, mypy, pytest, bandit, etc.
+   # ci/.venv gets: nox, ruff, black, mypy, pytest, bandit, etc.
    # .venv gets: pip install -e .[dev]  ← Missing!
    ```
 
@@ -148,10 +148,10 @@ Or better: CI should call `./scripts/bootstrap --install` first!
 ```markdown
 ### 9. Bootstrap doesn't create developer .venv
 
-**Issue**: Bootstrap only creates `.venv-ci`, not `.venv` for development.
+**Issue**: Bootstrap only creates `ci/.venv`, not `.venv` for development.
 
 **Current State**:
-- `.venv-ci` created ✅
+- `ci/.venv` created ✅
 - `.venv` must be created manually ❌
 
 **Required Fix**:
@@ -181,7 +181,7 @@ def ensure_dev_venv(root: Path, install: bool) -> None:
 **Solutions**:
 1. **Option A**: Change default to `--install` (breaking change)
 2. **Option B**: Document clearly in README
-3. **Option C**: CI should always call `./scripts/bootstrap --install`
+3. **Option C**: CI should always call `./ci/bootstrap --install`
 
 **Recommended**: Option C - Make CI call bootstrap with --install
 
@@ -190,10 +190,10 @@ def ensure_dev_venv(root: Path, install: bool) -> None:
 ## Summary
 
 ✅ **Question 1**: Hyperlib is NOW self-contained (fixed)
-⚠️ **Question 2**: Bootstrap creates `.venv-ci` but NOT `.venv` (needs fix)
+⚠️ **Question 2**: Bootstrap creates `ci/.venv` but NOT `.venv` (needs fix)
 ✅ **Question 3**: Nox IS pre-deployed (when using `--install` flag)
 
 **Next Steps**:
 1. Add issue #9 to TEMPLATE-CHANGES.md about missing .venv creation
-2. Update CI to call `./scripts/bootstrap --install`
+2. Update CI to call `./ci/bootstrap --install`
 3. Apply all 9 issues to forge templates

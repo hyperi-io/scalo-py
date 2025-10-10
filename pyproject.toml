@@ -66,21 +66,10 @@ database = [
 ]
 enhanced = []
 dev = [
-    "nox>=2024.0.0",
-    "pytest>=8.0.0",
-    "pytest-cov>=5.0.0",
-    "ruff>=0.1.0",
-    "black>=24.0.0",
-    "mypy>=1.8.0",
-    "vermin>=1.6.0",
-    "python-dotenv>=1.0.0",
-    "pyyaml>=6.0.1",
-    "pre-commit>=3.0.0",
-    "isort>=5.12.0",
-    "requests>=2.31.0",
-    "build>=1.0.0",
-    "twine>=5.0.0",
-    "tomli-w>=1.0.0",
+    # Local development tools only (NOT used by CI)
+    # CI tools are installed via ci/bootstrap.d/20-python-tools.py
+    "pre-commit>=3.0.0",  # Local git hooks
+    "isort>=5.12.0",      # Local import sorting
 ]
 docs = [
     "sphinx>=8.0.0",
@@ -244,13 +233,13 @@ strict_optional = false
 ignore_missing_imports = true
 overrides = [
     { module = "tests.*", ignore_errors = true },
-    { module = "scripts.*", ignore_errors = true },
+    { module = "ci.*", ignore_errors = true },
 ]
 
 [tool.bandit]
 exclude_dirs = [
     "tests",
-    "scripts",
+    "ci",
 ]
 skips = [
     "B101",
@@ -271,7 +260,7 @@ version_toml = ["pyproject.toml:project.version"]
 version_variables = [
     "src/hyperlib/__init__.py:__version__",
 ]
-build_command = "rm -rf dist build src/*.egg-info && .venv-ci/bin/python -m build"
+build_command = "rm -rf dist build src/*.egg-info && ci/.venv/bin/python -m build"
 major_on_zero = true
 tag_format = "v{version}"
 commit_message = "chore(release): {version} [skip ci]"

@@ -18,7 +18,7 @@ from pathlib import Path
 from typing import Dict, List, Optional, Set, Tuple
 
 
-# Import hyperlib (in generated projects it's at scripts/hyperlib)
+# Import hyperlib (in generated projects it's at ci/hyperlib)
 THIS_DIR = Path(__file__).resolve().parent
 SCRIPTS_DIR = THIS_DIR.parent
 sys.path.insert(0, str(SCRIPTS_DIR))
@@ -351,10 +351,10 @@ def main() -> int:
     logger = get_logger("dependency-update")
     root_dir = Path.cwd()
     
-    # Assume .venv-ci has been created by core bootstrap
-    venv_ci = root_dir / ".venv-ci"
+    # Assume ci/.venv has been created by core bootstrap
+    venv_ci = root_dir / "ci/.venv"
     if not venv_ci.exists():
-        logger.error(".venv-ci missing. Core CI should run bootstrap with installs first.")
+        logger.error("ci/.venv missing. Core CI should run bootstrap with installs first.")
         return 1
     
     venv_prefix = str(venv_ci / "bin") + "/"

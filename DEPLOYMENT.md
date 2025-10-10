@@ -50,13 +50,13 @@ For local testing or manual deployment:
 rm -rf dist/ build/ src/*.egg-info
 
 # Build package
-.venv-ci/bin/python -m build
+ci/.venv/bin/python -m build
 
 # Publish to JFrog Artifactory
 export TWINE_USERNAME="${ARTIFACTORY_USERNAME}"
 export TWINE_PASSWORD="${ARTIFACTORY_PASSWORD}"
 
-.venv-ci/bin/twine upload \
+ci/.venv/bin/twine upload \
   --repository-url https://hypersec.jfrog.io/artifactory/api/pypi/hypersec-pypi-local \
   dist/*
 ```

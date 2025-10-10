@@ -2,19 +2,19 @@
 """Bootstrap entrypoint - installs hyperlib from JFrog before importing it.
 
 Usage:
-- `scripts/bootstrap` (default): Check-only mode, verify tools are present
-- `scripts/bootstrap --install`: Enable installation of missing tools
+- `ci/bootstrap` (default): Check-only mode, verify tools are present
+- `ci/bootstrap --install`: Enable installation of missing tools
 
 CRITICAL SAFEGUARDS:
-- This script MUST run in a virtual environment (.venv-ci)
+- This script MUST run in a virtual environment (ci/.venv)
 - System Python is ONLY used for initial venv creation
-- All pip installations MUST target .venv-ci
+- All pip installations MUST target ci/.venv
 - NO operations should use system Python after venv creation
 
 Three-phase bootstrap process:
-1. Phase 0: Create .venv-ci if needed (system Python)
+1. Phase 0: Create ci/.venv if needed (system Python)
 2. Phase 1: Install hyperlib from JFrog (venv Python)
-3. Phase 2: Import hyperlib and run bootstrap.d scripts (venv Python)
+3. Phase 2: Import hyperlib and run ci/bootstrap.d scripts (venv Python)
 """
 import argparse
 import os
@@ -99,7 +99,7 @@ def get_jfrog_index_url() -> str:
 
 
 def install_hyperlib(venv_python: Path) -> None:
-    """Install hyperlib from JFrog Artifactory into .venv-ci."""
+    """Install hyperlib from JFrog Artifactory into ci/.venv."""
     try:
         # Check if hyperlib is already installed
         result = subprocess.run(
@@ -156,8 +156,8 @@ def main() -> int:
     else:
         os.environ.setdefault("BOOTSTRAP_INSTALL", "0")
 
-    # Phase 0: Ensure .venv-ci exists
-    venv_name = os.environ.get("HSF_CI_VENV", ".venv-ci")
+    # Phase 0: Ensure ci/.venv exists
+    venv_name = os.environ.get("HSF_CI_VENV", "ci/.venv")
     venv_dir = PROJECT_ROOT / venv_name
     venv_python = venv_dir / "bin" / "python"
 
@@ -183,10 +183,10 @@ def main() -> int:
         print("[INFO] Hyperlib should have been installed in Phase 1")
         return 1
 
-    print("[INFO] Running bootstrap in .venv-ci")
+    print("[INFO] Running bootstrap in ci/.venv")
 
     # Run bootstrap.d scripts
-    boot_dir = PROJECT_ROOT / "scripts" / "bootstrap.d"
+    boot_dir = PROJECT_ROOT / "ci" / "bootstrap.d"
     if not boot_dir.exists():
         print("[INFO] No bootstrap.d directory found")
         return 0

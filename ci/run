@@ -6,13 +6,13 @@ This script runs all scripts in ci.d/ directories in sorted order.
 It ensures bootstrap has run first (to install hyperlib and tools).
 
 Usage:
-- ./scripts/ci              # Run all CI checks
-- ./scripts/ci check        # Same as above
-- ./scripts/ci --help       # Show help
+- ./ci/run              # Run all CI checks
+- ./ci/run check        # Same as above
+- ./ci/run --help       # Show help
 
 CI Directory Discovery:
-1. Core ci.d/: subtrees/hypersec-forge-core/scripts/ci.d/
-2. Project ci.d/: scripts/ci.d/ (or HSF_CI_D env var)
+1. Core ci.d/: subtrees/hypersec-forge-core/ci/ci.d/
+2. Project ci.d/: ci/ci.d/ (or HSF_CI_D env var)
 3. Language ci.d/: Can be added via subtrees
 
 All scripts are run in sorted order with "check" action.
@@ -26,25 +26,25 @@ from pathlib import Path
 
 # Get project root
 # CRITICAL: When this script is symlinked, we need the REAL project root (where it was called from),
-# not the symlink source. Use the script's parent directory (scripts/), then go up one level.
+# not the symlink source. Use the script's parent directory (ci/), then go up one level.
 # __file__ gives us the symlink path if called via symlink, which is what we want.
 SCRIPT_PATH = Path(__file__).resolve(strict=False)  # Resolves symlink to actual file
-SCRIPT_DIR = SCRIPT_PATH.parent  # This will be hypersec-forge-core/scripts
+SCRIPT_DIR = SCRIPT_PATH.parent  # This will be hypersec-forge-core/ci
 
 # The project root is where the symlink exists, which we can find from argv[0]
 # or by checking if we're in hypersec-forge-core
 if "hypersec-forge-core" in str(SCRIPT_DIR):
     # We're being called via symlink or from forge-core directly
     # The PROJECT_ROOT should be determined from the current working directory
-    # Walk up from cwd to find scripts/ directory
+    # Walk up from cwd to find ci/ directory
     cwd = Path.cwd()
-    if (cwd / "scripts" / "ci").exists() or (cwd / "scripts" / "ci").is_symlink():
+    if (cwd / "ci" / "run").exists() or (cwd / "ci" / "run").is_symlink():
         PROJECT_ROOT = cwd
     else:
         # Walk up to find project root
         PROJECT_ROOT = cwd
         while PROJECT_ROOT != PROJECT_ROOT.parent:
-            if (PROJECT_ROOT / "scripts" / "ci").exists() or (PROJECT_ROOT / "scripts" / "ci").is_symlink():
+            if (PROJECT_ROOT / "ci" / "run").exists() or (PROJECT_ROOT / "ci" / "run").is_symlink():
                 break
             PROJECT_ROOT = PROJECT_ROOT.parent
 else:
@@ -69,7 +69,7 @@ def find_ci_directories() -> list:
         if project_ci_d.exists():
             ci_dirs.append(("project", project_ci_d))
     else:
-        project_ci_d = PROJECT_ROOT / "scripts" / "ci.d"
+        project_ci_d = PROJECT_ROOT / "ci" / "ci.d"
         if project_ci_d.exists() and project_ci_d != core_ci_d:
             ci_dirs.append(("project", project_ci_d))
 
@@ -161,12 +161,12 @@ def run_script(script: Path, action: str = "check") -> int:
     print(f"Running: {script.name}")
     print(f"{'='*60}")
 
-    # CRITICAL: CI scripts MUST use .venv-ci Python (FAIL HARD if missing)
-    venv_python = PROJECT_ROOT / ".venv-ci" / "bin" / "python"
+    # CRITICAL: CI scripts MUST use ci/.venv Python (FAIL HARD if missing)
+    venv_python = PROJECT_ROOT / "ci" / ".venv" / "bin" / "python"
     if not venv_python.exists():
-        print("\nERROR: .venv-ci not found!")
-        print("CI scripts require .venv-ci to be set up.")
-        print("Run: ./scripts/bootstrap --install")
+        print("\nERROR: ci/.venv not found!")
+        print("CI scripts require ci/.venv to be set up.")
+        print("Run: ./ci/bootstrap --install")
         return 1
 
     # Determine how to run the script
@@ -187,12 +187,12 @@ def main():
         description="CI runner for HyperSec projects",
         epilog="""
 Examples:
-  ./scripts/ci check       # Run all checks (lint, test, type-check)
-  ./scripts/ci build       # Build package locally
-  ./scripts/ci release     # Full release (version, tag, build)
-  ./scripts/ci publish     # Full release + push (triggers GitHub Actions to publish to JFrog)
-  ./scripts/ci clean       # Remove build artifacts
-  ./scripts/ci --script 80-build.py check  # Run single script
+  ./ci/run check       # Run all checks (lint, test, type-check)
+  ./ci/run build       # Build package locally
+  ./ci/run release     # Full release (version, tag, build)
+  ./ci/run publish     # Full release + push (triggers GitHub Actions to publish to JFrog)
+  ./ci/run clean       # Remove build artifacts
+  ./ci/run --script 80-build.py check  # Run single script
         """
     )
     parser.add_argument(
@@ -243,7 +243,7 @@ Examples:
         args.push = True
 
     # Ensure bootstrap has run (except for clean which doesn't need it)
-    bootstrap_script = PROJECT_ROOT / "scripts" / "bootstrap"
+    bootstrap_script = PROJECT_ROOT / "ci" / "bootstrap"
     if bootstrap_script.exists():
         print("\n[Ensuring bootstrap has run...]")
         result = subprocess.run(
@@ -251,7 +251,7 @@ Examples:
             cwd=PROJECT_ROOT
         )
         if result.returncode != 0:
-            print("\nERROR: Bootstrap failed. Run: ./scripts/bootstrap --install")
+            print("\nERROR: Bootstrap failed. Run: ./ci/bootstrap --install")
             return 1
     else:
         print("\nWARNING: No bootstrap script found, skipping bootstrap check")

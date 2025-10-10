@@ -2,13 +2,13 @@
 """
 Python Tools Bootstrap
 
-This script ensures Python development tools are available in .venv-ci.
+This script ensures Python development tools are available in ci/.venv.
 
 CRITICAL SAFEGUARDS:
-- MUST run inside .venv-ci (enforced by bootstrap.py)
+- MUST run inside ci/.venv (enforced by bootstrap.py)
 - NEVER uses system Python for pip operations
 - Can install ANY Python package as needed
-- All installations target .venv-ci only
+- All installations target ci/.venv only
 """
 
 import os
@@ -38,7 +38,7 @@ def install_tool(tool_spec: str, logger) -> bool:
     """
     Install a Python tool using pip.
     
-    SAFEGUARD: This MUST be called from within .venv-ci
+    SAFEGUARD: This MUST be called from within ci/.venv
     The bootstrap.py ensures we're in the venv before calling this.
     """
     # Double-check we're in a venv (belt and suspenders)

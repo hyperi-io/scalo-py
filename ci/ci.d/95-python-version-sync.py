@@ -18,12 +18,12 @@ import subprocess
 from pathlib import Path
 from typing import Optional, Dict, Any
 
-# CRITICAL: Enforce .venv-ci usage (FAIL HARD if not in .venv-ci)
-if ".venv-ci" not in sys.prefix:
-    print("ERROR: This script must run in .venv-ci")
+# CRITICAL: Enforce ci/.venv usage (FAIL HARD if not in ci/.venv)
+if "ci/.venv" not in sys.prefix:
+    print("ERROR: This script must run in ci/.venv")
     print(f"Current Python: {sys.executable}")
-    print("Expected: .venv-ci/bin/python")
-    print("Run via: ./scripts/ci check")
+    print("Expected: ci/.venv/bin/python")
+    print("Run via: ./ci/ci check")
     sys.exit(1)
 
 # Add parent dir to path for hyperlib

@@ -143,7 +143,7 @@ def test_api_route_works():
 Tests run automatically via CI scripts:
 
 ```bash
-./scripts/ci check  # Runs all tests
+./ci/ci check  # Runs all tests
 ```
 
 Individual test commands used by CI:

@@ -8,18 +8,18 @@ This script runs standard Python package checks:
 3. black --check (formatting check)
 4. mypy (type checking)
 
-Uses tools from .venv-ci for consistent versions.
+Uses tools from ci/.venv for consistent versions.
 """
 import subprocess
 import sys
 from pathlib import Path
 
-# CRITICAL: Enforce .venv-ci usage (FAIL HARD if not in .venv-ci)
-if ".venv-ci" not in sys.prefix:
-    print("ERROR: This script must run in .venv-ci")
+# CRITICAL: Enforce ci/.venv usage (FAIL HARD if not in ci/.venv)
+if "ci/.venv" not in sys.prefix:
+    print("ERROR: This script must run in ci/.venv")
     print(f"Current Python: {sys.executable}")
-    print("Expected: .venv-ci/bin/python")
-    print("Run via: ./scripts/ci check")
+    print("Expected: ci/.venv/bin/python")
+    print("Run via: ./ci/ci check")
     sys.exit(1)
 
 # Import hyperlib for logging
@@ -31,11 +31,11 @@ logger = get_logger("python-test")
 def main():
     """Run Python package tests and checks."""
     project_root = Path(__file__).parent.parent.parent
-    venv_ci = project_root / ".venv-ci"
+    venv_ci = project_root / "ci/.venv"
     venv_bin = venv_ci / "bin"
 
     if not venv_ci.exists():
-        logger.error(".venv-ci not found - run ./scripts/bootstrap first")
+        logger.error("ci/.venv not found - run ./ci/bootstrap first")
         return 1
 
     failed = []

@@ -151,13 +151,13 @@ license = "LicenseRef-HyperSec-EULA"  # SPDX expression for proprietary
 **Issue**: Generated projects don't have clear CI execution instructions.
 
 **Required Fix**: Ensure generated projects include:
-- `scripts/bootstrap` wrapper that sets up `.venv-ci`
-- `scripts/ci` wrapper for running CI locally
+- `ci/bootstrap` wrapper that sets up `ci/.venv`
+- `ci/ci` wrapper for running CI locally
 - Clear `README.md` section on running CI
 
 **Template Files to Update**:
-- Verify `scripts/bootstrap` is in template
-- Verify `scripts/ci` is in template
+- Verify `ci/bootstrap` is in template
+- Verify `ci/ci` is in template
 - Add CI instructions to `README.md.jinja`
 
 **Priority**: MEDIUM - Improves developer experience
@@ -226,10 +226,10 @@ nox --no-venv -s tests  # Pass flag instead of setting option
 
 ### 9. Bootstrap doesn't create developer .venv
 
-**Issue**: Bootstrap only creates `.venv-ci` for CI tools, not `.venv` for development work.
+**Issue**: Bootstrap only creates `ci/.venv` for CI tools, not `.venv` for development work.
 
 **Current State**:
-- `.venv-ci` is created and populated with CI tools (nox, ruff, black, mypy, pytest, etc.) ✅
+- `ci/.venv` is created and populated with CI tools (nox, ruff, black, mypy, pytest, etc.) ✅
 - `.venv` must be created manually by developers ❌
 - Poor first-time developer experience
 
@@ -279,19 +279,19 @@ def main():
 ```
 
 **Benefits**:
-- First-time setup is complete after `./scripts/bootstrap --install`
+- First-time setup is complete after `./ci/bootstrap --install`
 - Developers can immediately start working
 - Consistent setup across team
-- `.venv` for development, `.venv-ci` for CI (proper isolation)
+- `.venv` for development, `ci/.venv` for CI (proper isolation)
 
 **Template Files to Update**:
-- `hypersec-forge-python: scripts/bootstrap.d/20-python-dev-tools.py`
+- `hypersec-forge-python: ci/bootstrap.d/20-python-dev-tools.py`
 
 **Priority**: MEDIUM - Improves developer experience significantly
 
 **Note**: Should also update README to document:
 - `.venv` - Development environment (project dependencies)
-- `.venv-ci` - CI environment (testing/linting tools)
+- `ci/.venv` - CI environment (testing/linting tools)
 
 ---
 
@@ -303,7 +303,7 @@ When applying changes back to template, verify:
 - [ ] Build package: `python -m build`
 - [ ] Run tests: `pytest tests/`
 - [ ] Verify `__version__` is accessible: `python -c "import pkg; print(pkg.__version__)"`
-- [ ] Run CI: `./scripts/ci`
+- [ ] Run CI: `./ci/ci`
 - [ ] Test GitHub workflow (if applicable)
 - [ ] Check all documentation is generated
 - [ ] Verify no deprecation warnings during build
@@ -326,7 +326,7 @@ When applying changes back to template, verify:
 
    # Test build and CI
    cd test-apply
-   ./scripts/bootstrap
+   ./ci/bootstrap
    python -m build
    pytest tests/
    ```
@@ -384,7 +384,7 @@ When applying changes back to template, verify:
 ### ✅ Issue #6: Bootstrap and CI configuration
 **Status**: COMPLETED (Commit: d661b39)
 **Applied**: `README.md.jinja`
-**Fix**: Added comprehensive CI/bootstrap instructions with .venv vs .venv-ci explanation
+**Fix**: Added comprehensive CI/bootstrap instructions with .venv vs ci/.venv explanation
 **Verified**: README now includes complete development setup guide
 
 ### ✅ Issue #7: Missing DEPLOYMENT.md for library projects
@@ -401,7 +401,7 @@ When applying changes back to template, verify:
 
 ### ✅ Issue #9: Bootstrap doesn't create developer .venv
 **Status**: VERIFIED - Already Implemented
-**Location**: `scripts/bootstrap.d/20-python-dev-tools.py`
+**Location**: `ci/bootstrap.d/20-python-dev-tools.py`
 **Result**: No changes needed - install_action() already creates .venv correctly
 **Verified**: Code review confirmed .venv creation logic exists (lines 126-190)
 

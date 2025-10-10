@@ -36,39 +36,39 @@ Follow the official installation guide: https://minikube.sigs.k8s.io/docs/start/
 
 ```bash
 # Run complete test suite (unit + integration + e2e)
-.venv-ci/bin/pytest tests/ -v
+ci/.venv/bin/pytest tests/ -v
 ```
 
 ### Test Categories
 
 ```bash
 # Unit tests only (fast, no external dependencies)
-.venv-ci/bin/pytest tests/unit/ -v
+ci/.venv/bin/pytest tests/unit/ -v
 
 # Integration tests (Docker + K8s/Helm)
-.venv-ci/bin/pytest tests/integration/ -v
+ci/.venv/bin/pytest tests/integration/ -v
 
 # E2E tests (application-level)
-.venv-ci/bin/pytest tests/e2e/ -v
+ci/.venv/bin/pytest tests/e2e/ -v
 ```
 
 ### Specific Test Suites
 
 ```bash
 # Docker deployment tests
-.venv-ci/bin/pytest tests/integration/test_docker_container.py -v
-.venv-ci/bin/pytest tests/integration/test_container_deployment.py::TestDockerDeployment -v
+ci/.venv/bin/pytest tests/integration/test_docker_container.py -v
+ci/.venv/bin/pytest tests/integration/test_container_deployment.py::TestDockerDeployment -v
 
 # Kubernetes/Helm deployment tests
-.venv-ci/bin/pytest tests/integration/test_container_deployment.py::TestHelmBasedDeployment -v
-.venv-ci/bin/pytest tests/integration/test_container_deployment.py::TestHelmDeployment -v
+ci/.venv/bin/pytest tests/integration/test_container_deployment.py::TestHelmBasedDeployment -v
+ci/.venv/bin/pytest tests/integration/test_container_deployment.py::TestHelmDeployment -v
 ```
 
 ### Single Test
 
 ```bash
 # Run specific test
-.venv-ci/bin/pytest tests/unit/test_application.py::TestApplication::test_api_application_creation -v
+ci/.venv/bin/pytest tests/unit/test_application.py::TestApplication::test_api_application_creation -v
 ```
 
 ## Test Logging

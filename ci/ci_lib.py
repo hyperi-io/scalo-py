@@ -3,7 +3,7 @@
 Shared CI/Bootstrap Utilities Library
 
 This module provides common functions for all CI and bootstrap scripts.
-MUST be imported from .venv-ci Python only.
+MUST be imported from ci/.venv Python only.
 
 Usage:
     from ci_lib import enforce_venv_ci, get_project_root, run_command
@@ -21,7 +21,7 @@ from typing import Optional, List, Dict, Any
 
 def enforce_venv_ci(script_name: Optional[str] = None) -> None:
     """
-    Enforce .venv-ci usage - FAIL HARD if not in correct venv.
+    Enforce ci/.venv usage - FAIL HARD if not in correct venv.
 
     This is Layer 3 of the venv protection strategy.
     Call this at the TOP of every CI/bootstrap script.
@@ -30,18 +30,18 @@ def enforce_venv_ci(script_name: Optional[str] = None) -> None:
         script_name: Name of the calling script (for error messages)
 
     Raises:
-        SystemExit: If not running in .venv-ci
+        SystemExit: If not running in ci/.venv
     """
     script_name = script_name or Path(sys.argv[0]).name
 
-    # Check 1: Python prefix contains .venv-ci
-    if ".venv-ci" not in sys.prefix:
-        print(f"ERROR: {script_name} must run in .venv-ci", file=sys.stderr)
+    # Check 1: Python prefix contains ci/.venv
+    if "ci/.venv" not in sys.prefix and "ci" not in sys.prefix:
+        print(f"ERROR: {script_name} must run in ci/.venv", file=sys.stderr)
         print(f"Current Python: {sys.executable}", file=sys.stderr)
         print(f"Current prefix: {sys.prefix}", file=sys.stderr)
-        print("Expected: .venv-ci/bin/python", file=sys.stderr)
+        print("Expected: ci/.venv/bin/python", file=sys.stderr)
         print("", file=sys.stderr)
-        print("Run via: ./scripts/ci <action>", file=sys.stderr)
+        print("Run via: ./ci/run <action>", file=sys.stderr)
         sys.exit(1)
 
     # Check 2: Environment variable verification (Layer 2)
@@ -54,7 +54,7 @@ def enforce_venv_ci(script_name: Optional[str] = None) -> None:
     venv_ci_marker = Path(sys.prefix) / ".THIS_IS_CI_VENV"
     if not venv_ci_marker.exists():
         print(f"WARNING: .THIS_IS_CI_VENV marker not found in {sys.prefix}", file=sys.stderr)
-        print("Run: ./scripts/bootstrap --install to recreate .venv-ci", file=sys.stderr)
+        print("Run: ./ci/bootstrap --install to recreate ci/.venv", file=sys.stderr)
 
 
 def check_venv_type() -> str:
@@ -62,15 +62,15 @@ def check_venv_type() -> str:
     Determine which venv is active (if any).
 
     Returns:
-        'ci' if .venv-ci, 'dev' if .venv, 'system' if no venv, 'unknown' otherwise
+        'ci' if ci/.venv, 'dev' if .venv, 'system' if no venv, 'unknown' otherwise
     """
     if not (hasattr(sys, 'real_prefix') or
             (hasattr(sys, 'base_prefix') and sys.base_prefix != sys.prefix)):
         return 'system'
 
-    if '.venv-ci' in sys.prefix:
+    if 'ci/.venv' in sys.prefix or ('ci' in sys.prefix and '.venv' in sys.prefix):
         return 'ci'
-    elif '.venv' in sys.prefix and '.venv-ci' not in sys.prefix:
+    elif '.venv' in sys.prefix and 'ci' not in sys.prefix:
         return 'dev'
     else:
         return 'unknown'
@@ -87,9 +87,9 @@ def create_venv_markers(venv_path: Path, venv_type: str) -> None:
     if venv_type == 'ci':
         marker = venv_path / ".THIS_IS_CI_VENV"
         marker.write_text(
-            "This is the CI/automation virtual environment (.venv-ci)\n"
+            "This is the CI/automation virtual environment (ci/.venv)\n"
             "DO NOT use for development!\n"
-            "Created by: ./scripts/bootstrap\n"
+            "Created by: ./ci/bootstrap\n"
         )
     elif venv_type == 'dev':
         marker = venv_path / ".THIS_IS_DEV_VENV"
@@ -157,25 +157,25 @@ def get_project_root() -> Path:
             return current
         current = current.parent
 
-    # Fallback: assume scripts/ is one level below root
+    # Fallback: assume ci/ is one level below root
     return Path(__file__).resolve().parent.parent
 
 
 def get_venv_ci_python() -> Path:
     """
-    Get path to .venv-ci Python interpreter.
+    Get path to ci/.venv Python interpreter.
 
     Returns:
-        Path to .venv-ci/bin/python
+        Path to ci/.venv/bin/python
 
     Raises:
-        FileNotFoundError: If .venv-ci not found
+        FileNotFoundError: If ci/.venv not found
     """
-    venv_python = get_project_root() / ".venv-ci" / "bin" / "python"
+    venv_python = get_project_root() / "ci" / ".venv" / "bin" / "python"
     if not venv_python.exists():
         raise FileNotFoundError(
-            ".venv-ci not found!\n"
-            "Run: ./scripts/bootstrap --install"
+            "ci/.venv not found!\n"
+            "Run: ./ci/bootstrap --install"
         )
     return venv_python
 

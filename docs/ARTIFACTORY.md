@@ -65,13 +65,13 @@ For local testing or manual deployment:
 ```bash
 # Build package
 rm -rf dist/ build/
-.venv-ci/bin/python -m build
+ci/.venv/bin/python -m build
 
 # Publish using twine
 export TWINE_USERNAME="${ARTIFACTORY_USERNAME}"
 export TWINE_PASSWORD="${ARTIFACTORY_PASSWORD}"
 
-.venv-ci/bin/twine upload \
+ci/.venv/bin/twine upload \
   --repository-url https://hypersec.jfrog.io/artifactory/api/pypi/hypersec-pypi-local \
   dist/*
 ```

@@ -29,7 +29,7 @@
 * add router inclusion and generic middleware support to APIApplication ([ccaa071](https://github.com/hypersec-io/hyperlib/commit/ccaa07193c4f3f4b522afd982de92825d07fa1a2))
 * add unified runtime environment for container and local deployment ([d9ab1b1](https://github.com/hypersec-io/hyperlib/commit/d9ab1b18f6bebb34f26312d803d1c5914b4ebaa0))
 * capture Docker and K8s pod logs to /logs directory with timestamps ([213cba0](https://github.com/hypersec-io/hyperlib/commit/213cba012e69af372021aacce6a654c7a76ed124))
-* enforce .venv-ci for all CI scripts (FAIL HARD) ([8d1c1a1](https://github.com/hypersec-io/hyperlib/commit/8d1c1a112789d028ae728ec0435ac2f0140a5e75))
+* enforce ci/.venv for all CI scripts (FAIL HARD) ([8d1c1a1](https://github.com/hypersec-io/hyperlib/commit/8d1c1a112789d028ae728ec0435ac2f0140a5e75))
 * enforce CHARS-POLICY.md in logger with terminal detection ([fbcb44c](https://github.com/hypersec-io/hyperlib/commit/fbcb44c0513eb1755c211844ca66c4fb431fec9d))
 * enhance container detection with 7-layer strategy ([5b3d298](https://github.com/hypersec-io/hyperlib/commit/5b3d2981efa42830dc82a78915abd1e63c7efd94))
 * integrate harness.run() into tests for centralized logging ([f606605](https://github.com/hypersec-io/hyperlib/commit/f60660593610372190ccf62a59d0b174c5ed1081))
@@ -63,7 +63,7 @@
 * add router inclusion and generic middleware support to APIApplication ([ccaa071](https://github.com/hypersec-io/hyperlib/commit/ccaa07193c4f3f4b522afd982de92825d07fa1a2))
 * add unified runtime environment for container and local deployment ([d9ab1b1](https://github.com/hypersec-io/hyperlib/commit/d9ab1b18f6bebb34f26312d803d1c5914b4ebaa0))
 * capture Docker and K8s pod logs to /logs directory with timestamps ([213cba0](https://github.com/hypersec-io/hyperlib/commit/213cba012e69af372021aacce6a654c7a76ed124))
-* enforce .venv-ci for all CI scripts (FAIL HARD) ([8d1c1a1](https://github.com/hypersec-io/hyperlib/commit/8d1c1a112789d028ae728ec0435ac2f0140a5e75))
+* enforce ci/.venv for all CI scripts (FAIL HARD) ([8d1c1a1](https://github.com/hypersec-io/hyperlib/commit/8d1c1a112789d028ae728ec0435ac2f0140a5e75))
 * enforce CHARS-POLICY.md in logger with terminal detection ([fbcb44c](https://github.com/hypersec-io/hyperlib/commit/fbcb44c0513eb1755c211844ca66c4fb431fec9d))
 * enhance container detection with 7-layer strategy ([5b3d298](https://github.com/hypersec-io/hyperlib/commit/5b3d2981efa42830dc82a78915abd1e63c7efd94))
 * integrate harness.run() into tests for centralized logging ([f606605](https://github.com/hypersec-io/hyperlib/commit/f60660593610372190ccf62a59d0b174c5ed1081))
@@ -83,7 +83,7 @@
 
 ### Bug Fixes
 
-* create pip.conf in .venv-ci for proper venv configuration ([5752dc5](https://github.com/hypersec-io/hyperlib/commit/5752dc59320280f73ba2829c1fcf060dd0799150))
+* create pip.conf in ci/.venv for proper venv configuration ([5752dc5](https://github.com/hypersec-io/hyperlib/commit/5752dc59320280f73ba2829c1fcf060dd0799150))
 * simplify JFrog package verification using curl ([30b40ba](https://github.com/hypersec-io/hyperlib/commit/30b40ba6abcc7f6360fd8f11e19db18ce4e4d04c))
 
 ## [1.5.2](https://github.com/hypersec-io/hyperlib/compare/v1.5.1...v1.5.2) (2025-10-07)
@@ -143,7 +143,7 @@
 ### Bug Fixes
 
 * **ci:** semantic-release now updates __init__.py and uses tomllib ([ca5ba93](https://github.com/hypersec-io/hyperlib/commit/ca5ba93a50d126cf417472d5ea8d13c5c67786ef))
-* **ci:** use .venv-ci python for semantic-release build command ([9a8487d](https://github.com/hypersec-io/hyperlib/commit/9a8487d4ad8809110427c753518b65aa4c7a527f))
+* **ci:** use ci/.venv python for semantic-release build command ([9a8487d](https://github.com/hypersec-io/hyperlib/commit/9a8487d4ad8809110427c753518b65aa4c7a527f))
 
 ## [1.2.1](https://github.com/hypersec-io/hyperlib/compare/v1.2.0...v1.2.1) (2025-10-01)
 
@@ -151,7 +151,7 @@
 ### Bug Fixes
 
 * **ci:** semantic-release now updates __init__.py and uses tomllib ([ca5ba93](https://github.com/hypersec-io/hyperlib/commit/ca5ba93a50d126cf417472d5ea8d13c5c67786ef))
-* **ci:** use .venv-ci python for semantic-release build command ([9a8487d](https://github.com/hypersec-io/hyperlib/commit/9a8487d4ad8809110427c753518b65aa4c7a527f))
+* **ci:** use ci/.venv python for semantic-release build command ([9a8487d](https://github.com/hypersec-io/hyperlib/commit/9a8487d4ad8809110427c753518b65aa4c7a527f))
 
 ## [1.2.1](https://github.com/hypersec-io/hyperlib/compare/v1.2.0...v1.2.1) (2025-10-01)
 
@@ -159,7 +159,7 @@
 ### Bug Fixes
 
 * **ci:** semantic-release now updates __init__.py and uses tomllib ([ca5ba93](https://github.com/hypersec-io/hyperlib/commit/ca5ba93a50d126cf417472d5ea8d13c5c67786ef))
-* **ci:** use .venv-ci python for semantic-release build command ([9a8487d](https://github.com/hypersec-io/hyperlib/commit/9a8487d4ad8809110427c753518b65aa4c7a527f))
+* **ci:** use ci/.venv python for semantic-release build command ([9a8487d](https://github.com/hypersec-io/hyperlib/commit/9a8487d4ad8809110427c753518b65aa4c7a527f))
 
 # [1.2.0](https://github.com/hypersec-io/hyperlib/compare/v1.1.2...v1.2.0) (2025-10-01)
 

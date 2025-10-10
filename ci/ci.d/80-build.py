@@ -12,12 +12,12 @@ import subprocess
 import sys
 from pathlib import Path
 
-# CRITICAL: Enforce .venv-ci usage (FAIL HARD if not in .venv-ci)
-if ".venv-ci" not in sys.prefix:
-    print("ERROR: This script must run in .venv-ci")
+# CRITICAL: Enforce ci/.venv usage (FAIL HARD if not in ci/.venv)
+if "ci/.venv" not in sys.prefix:
+    print("ERROR: This script must run in ci/.venv")
     print(f"Current Python: {sys.executable}")
-    print("Expected: .venv-ci/bin/python")
-    print("Run via: ./scripts/ci build")
+    print("Expected: ci/.venv/bin/python")
+    print("Run via: ./ci/ci build")
     sys.exit(1)
 
 # Get project root
@@ -32,9 +32,9 @@ logger = get_logger("build")
 
 def check_action(logger) -> int:
     """Check if build dependencies are available."""
-    venv_python = PROJECT_ROOT / ".venv-ci" / "bin" / "python"
+    venv_python = PROJECT_ROOT / "ci/.venv" / "bin" / "python"
     if not venv_python.exists():
-        logger.error(".venv-ci not found. Run: ./scripts/bootstrap --install")
+        logger.error("ci/.venv not found. Run: ./ci/bootstrap --install")
         return 1
 
     # Check if build module is available
@@ -44,7 +44,7 @@ def check_action(logger) -> int:
     )
     if result.returncode != 0:
         logger.error("build module not available")
-        logger.info("Install with: .venv-ci/bin/pip install build")
+        logger.info("Install with: ci/.venv/bin/pip install build")
         return 1
 
     logger.info("✓ Build dependencies available")
@@ -53,9 +53,9 @@ def check_action(logger) -> int:
 
 def install_action(logger) -> int:
     """Install build dependencies."""
-    venv_python = PROJECT_ROOT / ".venv-ci" / "bin" / "python"
+    venv_python = PROJECT_ROOT / "ci/.venv" / "bin" / "python"
     if not venv_python.exists():
-        logger.error(".venv-ci not found. Run: ./scripts/bootstrap --install")
+        logger.error("ci/.venv not found. Run: ./ci/bootstrap --install")
         return 1
 
     logger.info("Installing build dependencies...")
@@ -75,9 +75,9 @@ def build_action(logger) -> int:
     """Build package distributions."""
     import shutil
 
-    venv_python = PROJECT_ROOT / ".venv-ci" / "bin" / "python"
+    venv_python = PROJECT_ROOT / "ci/.venv" / "bin" / "python"
     if not venv_python.exists():
-        logger.error(".venv-ci not found. Run: ./scripts/bootstrap --install")
+        logger.error("ci/.venv not found. Run: ./ci/bootstrap --install")
         return 1
 
     # Clean dist directory

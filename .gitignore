@@ -16,3 +16,8 @@ build/
 Thumbs.db
 /logs
 .env
+
+# Virtual environments
+.venv/
+.venv-ci/
+ci/.venv/

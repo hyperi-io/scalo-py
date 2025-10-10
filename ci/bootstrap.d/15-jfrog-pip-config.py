@@ -87,14 +87,14 @@ trusted-host = hypersec.jfrog.io
     pip_conf = pip_conf_dir / "pip.conf"
     pip_conf.write_text(pip_conf_content)
 
-    # ALSO write to .venv-ci/pip.conf (site-level config for the venv)
+    # ALSO write to ci/.venv/pip.conf (site-level config for the venv)
     # This is where pip actually looks for venv-specific configuration
-    venv_ci_pip_conf = Path.cwd() / ".venv-ci" / "pip.conf"
+    venv_ci_pip_conf = Path.cwd() / "ci/.venv" / "pip.conf"
     if venv_ci_pip_conf.parent.exists():
         venv_ci_pip_conf.write_text(pip_conf_content)
         logger.info(f"Created pip config: {pip_conf} and {venv_ci_pip_conf}")
     else:
-        logger.info(f"Created pip config: {pip_conf} (.venv-ci not yet created)")
+        logger.info(f"Created pip config: {pip_conf} (ci/.venv not yet created)")
 
     # Set PIP_CONFIG_FILE so pip uses this config in current process
     os.environ["PIP_CONFIG_FILE"] = str(pip_conf)
