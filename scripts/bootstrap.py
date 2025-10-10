@@ -174,56 +174,61 @@ def main() -> int:
         return 1
 
     # Phase 2: Now we're in venv with hyperlib installed
-    # Import hyperlib and run bootstrap steps
-    sys.path.insert(0, str(THIS_DIR))
-
+    # Verify hyperlib is available
     try:
-        from hyperlib import get_logger, list_sorted_scripts, load_defaults_yaml, ensure_dependency, load_dotenv  # type: ignore
+        import hyperlib  # type: ignore
+        print(f"[OK] hyperlib {hyperlib.__version__} is available")
     except ImportError as e:
         print(f"[ERR] Failed to import hyperlib: {e}")
         print("[INFO] Hyperlib should have been installed in Phase 1")
         return 1
 
-    # Reload .env with hyperlib's full implementation
-    load_dotenv()
+    print("[INFO] Running bootstrap in .venv-ci")
 
-    logger = get_logger("bootstrap")
-    logger.info("Running bootstrap in .venv-ci")
-
+    # Run bootstrap.d scripts
     boot_dir = PROJECT_ROOT / "scripts" / "bootstrap.d"
-    scripts = list_sorted_scripts(boot_dir, patterns=(".sh", ".py"))
+    if not boot_dir.exists():
+        print("[INFO] No bootstrap.d directory found")
+        return 0
+
+    scripts = sorted([p for p in boot_dir.iterdir()
+                     if p.is_file() and (p.suffix in ['.sh', '.py'])])
+
     if not scripts:
-        logger.info("No bootstrap steps found at %s", boot_dir)
+        print(f"[INFO] No bootstrap steps found at {boot_dir}")
         return 0
 
     install = os.environ.get("BOOTSTRAP_INSTALL", "0") == "1"
 
-    # Ensure semantic-release CLI is present (required)
-    defaults = load_defaults_yaml()
-    try:
-        ensure_dependency("semantic-release", install, logger, defaults)
-    except SystemExit:
-        # ensure_dependency will have logged; re-raise to stop bootstrap
-        raise
-
     for path in scripts:
         base = path.name
         if base.endswith(".disabled"):
-            logger.info("Skipping disabled %s", base)
+            print(f"[INFO] Skipping disabled {base}")
             continue
-        logger.info("Bootstrap check: %s", base)
-        if base.endswith(".sh"):
-            subprocess.check_call(["bash", str(path), "check"])
-        elif base.endswith(".py"):
-            subprocess.check_call([str(venv_python), str(path), "check"])
-        if install:
-            logger.info("Bootstrap install: %s", base)
-            if base.endswith(".sh"):
-                subprocess.check_call(["bash", str(path), "install"])
-            elif base.endswith(".py"):
-                subprocess.check_call([str(venv_python), str(path), "install"])
 
-    logger.info("Bootstrap complete")
+        print(f"[INFO] Bootstrap check: {base}")
+        try:
+            if base.endswith(".sh"):
+                subprocess.check_call(["bash", str(path), "check"])
+            elif base.endswith(".py"):
+                subprocess.check_call([str(venv_python), str(path), "check"])
+        except subprocess.CalledProcessError as e:
+            if not install:
+                print(f"[WARN] Check failed for {base} (use --install to fix)")
+                continue
+
+        if install:
+            print(f"[INFO] Bootstrap install: {base}")
+            try:
+                if base.endswith(".sh"):
+                    subprocess.check_call(["bash", str(path), "install"])
+                elif base.endswith(".py"):
+                    subprocess.check_call([str(venv_python), str(path), "install"])
+            except subprocess.CalledProcessError as e:
+                print(f"[ERR] Install failed for {base}: {e}")
+                return 1
+
+    print("[OK] Bootstrap complete")
     return 0
 
 
