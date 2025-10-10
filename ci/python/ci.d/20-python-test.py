@@ -33,9 +33,42 @@ except ImportError:
     logging.basicConfig(level=logging.INFO, format='[%(levelname)s] %(message)s')
     logger = logging.getLogger("python-test")
 
+def detect_coverage_source(project_root: Path) -> str:
+    """
+    Auto-detect what to measure coverage for.
+
+    Returns coverage source path:
+    - Package name (e.g., "mypackage") if src/ layout
+    - "src" directory if it exists
+    - "." (current directory) for application/script projects
+    - Can be overridden with COVERAGE_SOURCE env var
+    """
+    # Allow manual override
+    override = os.environ.get("COVERAGE_SOURCE")
+    if override:
+        return override
+
+    # Check for src/ directory (package layout)
+    src_dir = project_root / "src"
+    if src_dir.exists():
+        packages = [p.name for p in src_dir.iterdir()
+                   if p.is_dir() and not p.name.startswith('_') and not p.name.endswith('.egg-info')]
+        if packages:
+            return packages[0]  # Return first package found
+        return "src"  # No package found, but src/ exists
+
+    # Check for common application directories
+    for app_dir in ["app", "lib", "core"]:
+        if (project_root / app_dir).exists():
+            return app_dir
+
+    # Fallback: measure current directory (for scripts/flat projects)
+    return "."
+
+
 def main():
     """Run Python package tests and checks."""
-    project_root = Path(__file__).parent.parent.parent
+    project_root = Path(__file__).parent.parent.parent.parent
     venv_ci = project_root / "ci/.venv"
     venv_bin = venv_ci / "bin"
 
@@ -45,6 +78,9 @@ def main():
 
     failed = []
 
+    # Auto-detect coverage source (works for packages, apps, scripts)
+    coverage_source = detect_coverage_source(project_root)
+
     # Run pytest (with coverage if available)
     logger.info("Running pytest...")
     pytest_args = [str(venv_bin / "pytest"), "-v"]
@@ -53,7 +89,8 @@ def main():
     try:
         subprocess.run([str(venv_bin / "python"), "-c", "import pytest_cov"],
                       capture_output=True, check=True)
-        pytest_args.extend(["--cov=hyperlib", "--cov-report=term-missing"])
+        pytest_args.extend([f"--cov={coverage_source}", "--cov-report=term-missing"])
+        logger.info(f"Coverage enabled for: {coverage_source}")
     except subprocess.CalledProcessError:
         logger.info("pytest-cov not available, running without coverage")
 

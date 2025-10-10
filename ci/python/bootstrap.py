@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Bootstrap entrypoint - installs hyperlib from JFrog before importing it.
+"""Bootstrap entrypoint - creates venvs and runs bootstrap checks.
 
 Usage:
 - `ci/bootstrap` (default): Check-only mode, verify tools are present
@@ -11,10 +11,14 @@ CRITICAL SAFEGUARDS:
 - All pip installations MUST target ci/.venv
 - NO operations should use system Python after venv creation
 
-Three-phase bootstrap process:
-1. Phase 0: Create ci/.venv if needed (system Python)
-2. Phase 1: Install hyperlib from JFrog (venv Python)
-3. Phase 2: Import hyperlib and run ci/bootstrap.d scripts (venv Python)
+Two-phase bootstrap process:
+1. Phase 0: Create ci/.venv and .venv if needed (system Python)
+2. Phase 1: Run ci/bootstrap.d scripts to install tools (venv Python)
+
+CI Environment:
+- ci/.venv: Self-contained CI tools (pytest, ruff, black, mypy, etc.)
+- .venv: Development environment with uv enforced
+- NO project-specific dependencies in ci/.venv (completely portable)
 """
 import argparse
 import os
@@ -175,8 +179,15 @@ def get_jfrog_index_url() -> str:
     """Get JFrog PyPI index URL with credentials from environment.
 
     Precedence: JF_TOKEN (with JF_TOKEN_USER) > JF_USER/JF_PASSWORD
+
+    Configuration via environment variables:
+    - JFROG_URL: Full JFrog PyPI URL (optional, has default)
+    - Default: https://hypersec.jfrog.io/artifactory/api/pypi/hypersec-pypi-local/simple
     """
-    base_url = "https://hypersec.jfrog.io/artifactory/api/pypi/hypersec-pypi-local/simple"
+    base_url = os.environ.get(
+        "JFROG_URL",
+        "https://hypersec.jfrog.io/artifactory/api/pypi/hypersec-pypi-local/simple"
+    )
 
     # Check for token first (preferred)
     jf_token = os.environ.get("JF_TOKEN", "")
@@ -202,24 +213,35 @@ def get_jfrog_index_url() -> str:
     return base_url
 
 
-def install_hyperlib(venv_python: Path) -> bool:
+def install_project_package(venv_python: Path, package_name: str) -> bool:
     """
-    Install hyperlib from JFrog Artifactory into ci/.venv (optional).
+    Install project package from JFrog Artifactory into ci/.venv (optional).
 
-    Returns True if hyperlib is available, False otherwise.
-    This is OPTIONAL - projects don't need hyperlib to use this CI infrastructure.
+    Args:
+        venv_python: Path to ci/.venv Python interpreter
+        package_name: Name of package to install (from BOOTSTRAP_PACKAGE env var)
+
+    Returns:
+        True if package is available, False otherwise.
+
+    This is OPTIONAL - projects don't need a JFrog package to use this CI.
+    Set BOOTSTRAP_PACKAGE env var to enable (e.g., BOOTSTRAP_PACKAGE=mylib).
     """
+    if not package_name:
+        print("[INFO] No BOOTSTRAP_PACKAGE specified, skipping package installation")
+        return False
+
     try:
-        # Check if hyperlib is already installed
+        # Check if package is already installed
         result = subprocess.run(
-            [str(venv_python), "-c", "import hyperlib; print(hyperlib.__version__)"],
+            [str(venv_python), "-c", f"import {package_name}; print({package_name}.__version__)"],
             capture_output=True,
             text=True,
             check=False
         )
         if result.returncode == 0:
             version = result.stdout.strip()
-            print(f"[INFO] hyperlib {version} already installed")
+            print(f"[INFO] {package_name} {version} already installed")
             return True
     except Exception:
         pass
@@ -228,25 +250,25 @@ def install_hyperlib(venv_python: Path) -> bool:
     jfrog_url = get_jfrog_index_url()
     if "://" not in jfrog_url or "@" not in jfrog_url:
         # No credentials available
-        print("[INFO] Skipping hyperlib installation (no JFrog credentials)")
-        print("[INFO] This is OK - hyperlib is optional")
+        print(f"[INFO] Skipping {package_name} installation (no JFrog credentials)")
+        print("[INFO] This is OK - JFrog packages are optional")
         return False
 
-    print("[INFO] Installing hyperlib from JFrog Artifactory...")
+    print(f"[INFO] Installing {package_name} from JFrog Artifactory...")
 
-    # Try to install hyperlib with fallback to PyPI if JFrog unavailable
+    # Try to install package
     try:
         subprocess.check_call(
-            [str(venv_python), "-m", "pip", "install", "hyperlib",
+            [str(venv_python), "-m", "pip", "install", package_name,
              "--extra-index-url", jfrog_url,
              "--quiet"],
             stderr=subprocess.STDOUT
         )
-        print("[OK] hyperlib installed successfully")
+        print(f"[OK] {package_name} installed successfully")
         return True
     except subprocess.CalledProcessError as e:
-        print(f"[WARN] Failed to install hyperlib: {e}")
-        print("[INFO] Continuing without hyperlib (optional dependency)")
+        print(f"[WARN] Failed to install {package_name}: {e}")
+        print(f"[INFO] Continuing without {package_name} (optional dependency)")
         return False
 
 
@@ -284,29 +306,16 @@ def main() -> int:
         # Also ensure .venv exists for development (safe, non-destructive)
         ensure_dev_venv(PROJECT_ROOT)
 
-        # Phase 1: Install hyperlib from JFrog (optional)
-        hyperlib_available = install_hyperlib(venv_python)
-        os.environ["HYPERLIB_AVAILABLE"] = "1" if hyperlib_available else "0"
+        # Phase 1: CI tools will be installed by bootstrap.d scripts
+        # No project-specific packages installed here - CI is self-contained
 
         # Re-exec in venv
         reexec_in_venv(venv_python)
         # Should never reach here
         return 1
 
-    # Phase 2: Now we're in venv (hyperlib is optional)
-    # Check if hyperlib is available
-    hyperlib_available = os.environ.get("HYPERLIB_AVAILABLE") == "1"
-    if hyperlib_available:
-        try:
-            import hyperlib  # type: ignore
-            print(f"[OK] hyperlib {hyperlib.__version__} is available")
-        except ImportError:
-            print("[INFO] hyperlib not available (optional dependency)")
-            hyperlib_available = False
-    else:
-        print("[INFO] Running without hyperlib (optional dependency)")
-
-    print("[INFO] Running bootstrap in ci/.venv")
+    # Phase 2: Now we're in ci/.venv (self-contained, no project dependencies)
+    print("[INFO] Running in ci/.venv (self-contained CI environment)")
 
     # Collect bootstrap.d scripts from common/ and language-specific directories
     bootstrap_dirs = [
