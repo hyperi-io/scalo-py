@@ -61,11 +61,27 @@ def run_semantic_release(logger, root: Path, dry_run: bool = False) -> bool:
     6. Creating git tag
     7. Optionally pushing to remote
 
+    CRITICAL: Tests must pass before release!
+    Set CI_TESTS_PASSED=1 to confirm tests ran successfully.
+
     Returns True if a new version was created.
     """
+    # CRITICAL: Ensure tests have been run before releasing
+    tests_marker = root / ".tmp" / "tests-passed"
+    tests_passed = tests_marker.exists() and tests_marker.read_text().strip() == "1"
+    force_release = os.environ.get("FORCE_RELEASE") == "1"
+
+    if not tests_passed and not force_release:
+        logger.error("Tests have not been run! Cannot release without passing tests.")
+        logger.error("Marker file not found: .tmp/tests-passed")
+        logger.error("")
+        logger.error("Either:")
+        logger.error("  1. Run: ./ci/run release (runs all checks including tests)")
+        logger.error("  2. Set FORCE_RELEASE=1 to bypass (dangerous!)")
+        return False
+
     # Check if we're in CI or if release is explicitly requested
     is_ci = os.environ.get("CI") == "true"
-    force_release = os.environ.get("FORCE_RELEASE") == "1"
 
     if not is_ci and not force_release:
         logger.info("Not in CI and FORCE_RELEASE not set, skipping release")

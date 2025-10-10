@@ -10,6 +10,7 @@ This script runs standard Python package checks:
 
 Uses tools from ci/.venv for consistent versions.
 """
+import os
 import subprocess
 import sys
 from pathlib import Path
@@ -93,6 +94,10 @@ def main():
         return 1
     else:
         logger.info("All Python checks passed")
+        # Create marker file to signal tests passed (for semantic-release)
+        marker_file = project_root / ".tmp" / "tests-passed"
+        marker_file.parent.mkdir(exist_ok=True)
+        marker_file.write_text("1")
         return 0
 
 if __name__ == "__main__":
