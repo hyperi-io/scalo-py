@@ -8,6 +8,42 @@
 * API test route decorator, add comprehensive testing documentation ([eb2e504](https://github.com/hypersec-io/hyperlib/commit/eb2e50425337caae022134f815201e8230f6c9ad))
 * apply ruff formatting fixes to application code and tests ([88d01a7](https://github.com/hypersec-io/hyperlib/commit/88d01a760ba24d9dd1cbc6e0c71c04b235519772))
 * clean up test infrastructure and timeout.py ([0a55a30](https://github.com/hypersec-io/hyperlib/commit/0a55a3079440b6a38ce7b45a531b80332dd8ddca))
+* eliminate double-commit in semantic-release, let it handle VERSION completely ([6990646](https://github.com/hypersec-io/hyperlib/commit/6990646ee6140fe658ce52ab7cec201e858225f4))
+* implement multi-layer venv protection strategy with shared CI utilities ([f13e7a1](https://github.com/hypersec-io/hyperlib/commit/f13e7a13ce11c6f5a3c47faf350f61d46e057a58))
+* improve application test coverage with proper dependency detection ([0e04294](https://github.com/hypersec-io/hyperlib/commit/0e0429449cbe690486bfde42ca04aa09c07d919a))
+* improve README description to accurately reflect current features ([66817ea](https://github.com/hypersec-io/hyperlib/commit/66817ea680ca67d91f6fe6df16c024cbcba62594))
+* remove health endpoint test, fix oneshot error type, fix Helm template syntax ([bf1b3f2](https://github.com/hypersec-io/hyperlib/commit/bf1b3f298a0f627cc772a55b07a309741001b8ae))
+* simplify bootstrap to be self-contained without hyperlib dependencies ([885ba79](https://github.com/hypersec-io/hyperlib/commit/885ba79109826c5c3ca30bd27cb65b8759f47615))
+* standardize all test fixtures to _N.txt format, fix Docker build context issues ([6b45b07](https://github.com/hypersec-io/hyperlib/commit/6b45b0771e5e584c719d3f0dcd93a6fdaee1e7cb))
+* update Dockerfile fixtures to use pyproject.toml optional extras ([210edea](https://github.com/hypersec-io/hyperlib/commit/210edeada520153ad89da95f7faafc0da2f6413a))
+* update pyproject.toml - Python 3.11+, remove unused deps, add optional extras ([21572f9](https://github.com/hypersec-io/hyperlib/commit/21572f90589785c83826194d345c813a545696b4))
+* update pyproject.toml metadata - production status, accurate description and keywords ([4536222](https://github.com/hypersec-io/hyperlib/commit/4536222c9b0b450b1fed7c812b6cee140dd330ad))
+
+
+### Features
+
+* add CLI enhancements for multi-environment configuration ([aedff4f](https://github.com/hypersec-io/hyperlib/commit/aedff4f08c2029a934b2eab000fcaaf9d47ce4d8))
+* add comprehensive Prometheus metrics module with custom metrics API ([7d54416](https://github.com/hypersec-io/hyperlib/commit/7d544169c21d37b5efdb507a6c35839eb4b848ca))
+* add hyperlib.application factory pattern ([e583cca](https://github.com/hypersec-io/hyperlib/commit/e583ccab486c0eac180fa8901428ee0999308aa3))
+* add missing enterprise features to application module ([96615d4](https://github.com/hypersec-io/hyperlib/commit/96615d46672c8d1f857f8ccdf7751236fd7639c1))
+* add router inclusion and generic middleware support to APIApplication ([ccaa071](https://github.com/hypersec-io/hyperlib/commit/ccaa07193c4f3f4b522afd982de92825d07fa1a2))
+* add unified runtime environment for container and local deployment ([d9ab1b1](https://github.com/hypersec-io/hyperlib/commit/d9ab1b18f6bebb34f26312d803d1c5914b4ebaa0))
+* capture Docker and K8s pod logs to /logs directory with timestamps ([213cba0](https://github.com/hypersec-io/hyperlib/commit/213cba012e69af372021aacce6a654c7a76ed124))
+* enforce .venv-ci for all CI scripts (FAIL HARD) ([8d1c1a1](https://github.com/hypersec-io/hyperlib/commit/8d1c1a112789d028ae728ec0435ac2f0140a5e75))
+* enforce CHARS-POLICY.md in logger with terminal detection ([fbcb44c](https://github.com/hypersec-io/hyperlib/commit/fbcb44c0513eb1755c211844ca66c4fb431fec9d))
+* enhance container detection with 7-layer strategy ([5b3d298](https://github.com/hypersec-io/hyperlib/commit/5b3d2981efa42830dc82a78915abd1e63c7efd94))
+* integrate harness.run() into tests for centralized logging ([f606605](https://github.com/hypersec-io/hyperlib/commit/f60660593610372190ccf62a59d0b174c5ed1081))
+
+# [1.6.0](https://github.com/hypersec-io/hyperlib/compare/v1.5.5...v1.6.0) (2025-10-10)
+
+
+### Bug Fixes
+
+* add api extras to metrics test Dockerfile, remove orphaned jinja template ([152c2a2](https://github.com/hypersec-io/hyperlib/commit/152c2a25ba5c3a0e4500e75a75ac713492d89082))
+* add cache_dir and run_dir to RuntimePaths, remove jinja templates ([5af078d](https://github.com/hypersec-io/hyperlib/commit/5af078d9a9b020a8e250daf155ae13b8db50be6e))
+* API test route decorator, add comprehensive testing documentation ([eb2e504](https://github.com/hypersec-io/hyperlib/commit/eb2e50425337caae022134f815201e8230f6c9ad))
+* apply ruff formatting fixes to application code and tests ([88d01a7](https://github.com/hypersec-io/hyperlib/commit/88d01a760ba24d9dd1cbc6e0c71c04b235519772))
+* clean up test infrastructure and timeout.py ([0a55a30](https://github.com/hypersec-io/hyperlib/commit/0a55a3079440b6a38ce7b45a531b80332dd8ddca))
 * improve application test coverage with proper dependency detection ([0e04294](https://github.com/hypersec-io/hyperlib/commit/0e0429449cbe690486bfde42ca04aa09c07d919a))
 * improve README description to accurately reflect current features ([66817ea](https://github.com/hypersec-io/hyperlib/commit/66817ea680ca67d91f6fe6df16c024cbcba62594))
 * remove health endpoint test, fix oneshot error type, fix Helm template syntax ([bf1b3f2](https://github.com/hypersec-io/hyperlib/commit/bf1b3f298a0f627cc772a55b07a309741001b8ae))
