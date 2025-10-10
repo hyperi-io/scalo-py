@@ -1,19 +1,16 @@
-# Hyperlib v1.5.0
+# Hyperlib
 
-HyperSec shared library for Python projects - Enterprise infrastructure for configuration, logging, timeouts, and container management.
-
-**Status**: Production (v1.5.0 published to JFrog Artifactory 2025-10-01)
+HyperSec shared library for Python projects - Configuration, logging, timeouts, and container management.
 
 ## Features
 
+- **Application Framework**: Primary API for application lifecycle management
 - **Logging**: Structured logging with Loguru and RFC 3339 timestamps
 - **Configuration**: Cascading configuration with Dynaconf
-- **Bootstrap**: Utilities for project bootstrap (dotenv, script discovery, dependency checking)
-- **Caching**: Intelligent caching utilities
-- **Resources**: Resource management and cleanup
-- **Container**: Dependency injection and service container
-- **Timeout**: Async timeout utilities
-- **Sampling**: Data sampling utilities
+- **Runtime Management**: Container paths, environment detection, and resource management
+- **Prometheus Metrics**: Built-in metrics collection and export
+- **Database Utilities**: Connection URL building and configuration
+- **Test Harness**: Centralized test execution with logging
 
 ## Installation
 
@@ -48,19 +45,22 @@ pip install -e ".[dev]"
 ## Quick Start
 
 ```python
-# Logging
-from hyperlib import get_logger
+# Application Framework (recommended)
+from hyperlib import Application
+
+app = Application()
+app.logger.info("Application started")
+
+# Or use components directly
+from hyperlib import get_logger, get_runtime_paths, create_metrics
+
 logger = get_logger()
 logger.info("Application started")
 
-# Configuration
-from hyperlib.config import get_logging_config
-config = get_logging_config()
+runtime = get_runtime_paths()
+logger.info(f"Config path: {runtime.config_dir}")
 
-# Bootstrap utilities
-from hyperlib.bootstrap import load_dotenv, list_sorted_scripts
-load_dotenv()
-scripts = list_sorted_scripts(Path("scripts/bootstrap.d"))
+metrics = create_metrics(namespace="myapp")
 ```
 
 ## Local CI (default)
@@ -97,17 +97,16 @@ CI is local-first. GitHub Actions are disabled by default and should be enabled 
 
 Actions:
   check     - Run all CI checks (lint, test, type-check)
-  build     - Build wheel and sdist
-  deploy    - Build and publish to JFrog Artifactory
-  release   - Full semantic-release (version, build, deploy, tag)
-  publish   - Release + automatic push (shorthand for release --push)
+  build     - Build wheel and sdist locally (for testing)
+  release   - Full semantic-release (version, tag, build)
+  publish   - Release + push to GitHub (triggers GitHub Actions to publish to JFrog)
   clean     - Remove build artifacts
 ```
 
 ### Automated Release
 
 ```bash
-# Full release with automatic versioning and push
+# Full release with automatic versioning and publishing
 FORCE_RELEASE=1 ./scripts/ci publish
 ```
 
@@ -117,19 +116,19 @@ This will:
 3. Update VERSION, pyproject.toml, __init__.py
 4. Generate/update CHANGELOG.md
 5. Create git tag
-6. Build wheel and sdist
-7. Publish to JFrog Artifactory
-8. Push commits and tags to GitHub
+6. Build wheel and sdist locally
+7. Push commits and tags to GitHub
+8. **GitHub Actions** automatically builds and publishes to JFrog Artifactory
 
-### Manual Publishing
+### Publishing Workflow
 
-```bash
-# Build wheel and source distribution
-python -m build
+**Publishing happens ONLY via GitHub Actions:**
 
-# Publish to JFrog Artifactory
-python -m twine upload --repository-url https://hypersec.jfrog.io/artifactory/api/pypi/hypersec-pypi-local -u "$JF_USER" -p "$JF_PASSWORD" dist/*
-```
+1. Local: `./scripts/ci publish` creates version, tag, and pushes
+2. GitHub Actions: Triggered by tag push, builds and publishes to JFrog
+3. Uses GitHub Secrets: `ARTIFACTORY_USERNAME` and `ARTIFACTORY_PASSWORD`
+
+**Note:** `JF_USER`/`JF_PASSWORD` in `.env` are for bootstrap only (installing hyperlib during development), NOT for publishing.
 
 ## Development
 

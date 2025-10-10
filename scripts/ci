@@ -185,10 +185,9 @@ def main():
         epilog="""
 Examples:
   ./scripts/ci check       # Run all checks (lint, test, type-check)
-  ./scripts/ci build       # Build package
-  ./scripts/ci deploy      # Build and publish to JFrog
-  ./scripts/ci release     # Full release (version, build, deploy)
-  ./scripts/ci publish     # Full release + push to remote (shorthand for release --push)
+  ./scripts/ci build       # Build package locally
+  ./scripts/ci release     # Full release (version, tag, build)
+  ./scripts/ci publish     # Full release + push (triggers GitHub Actions to publish to JFrog)
   ./scripts/ci clean       # Remove build artifacts
   ./scripts/ci --script 80-build.py check  # Run single script
         """
@@ -197,7 +196,7 @@ Examples:
         "action",
         nargs="?",
         default="check",
-        choices=["check", "install", "lint", "test", "build", "deploy", "release", "publish", "clean", "all"],
+        choices=["check", "install", "lint", "test", "build", "release", "publish", "clean", "all"],
         help="Action to perform (default: check)"
     )
     parser.add_argument(
