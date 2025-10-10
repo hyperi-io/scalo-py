@@ -25,11 +25,15 @@ if "ci/.venv" not in sys.prefix:
 # Get project root
 PROJECT_ROOT = Path(__file__).resolve().parent.parent.parent
 
-# Setup Python path for hyperlib imports
-sys.path.insert(0, str(PROJECT_ROOT / "src"))
-from hyperlib import get_logger  # type: ignore
-
-logger = get_logger("build")
+# Setup Python path for hyperlib imports (optional)
+try:
+    sys.path.insert(0, str(PROJECT_ROOT / "src"))
+    from hyperlib import get_logger  # type: ignore
+    logger = get_logger("build")
+except ImportError:
+    import logging
+    logging.basicConfig(level=logging.INFO, format='[%(levelname)s] %(message)s')
+    logger = logging.getLogger("build")
 
 
 def check_action(logger) -> int:

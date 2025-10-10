@@ -16,8 +16,15 @@ import sys
 import subprocess
 from pathlib import Path
 
-# Import hyperlib from pip-installed package (installed by bootstrap Phase 1)
-from hyperlib import get_logger  # type: ignore
+# Import hyperlib if available (optional dependency)
+try:
+    from hyperlib import get_logger
+    logger = get_logger(__name__)
+except ImportError:
+    # Fallback if hyperlib not available
+    import logging
+    logging.basicConfig(level=logging.INFO, format='[%(levelname)s] %(message)s')
+    logger = logging.getLogger(__name__)
 
 
 def check_tool(tool_name: str) -> bool:

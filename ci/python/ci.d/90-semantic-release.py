@@ -24,8 +24,14 @@ if "ci/.venv" not in sys.prefix:
     print("Run via: ./ci/run release")
     sys.exit(1)
 
-# Import hyperlib from pip-installed package (installed by bootstrap)
-from hyperlib import get_logger  # type: ignore
+# Import hyperlib if available (optional dependency)
+try:
+    from hyperlib import get_logger  # type: ignore
+except ImportError:
+    import logging
+    def get_logger(name):
+        logging.basicConfig(level=logging.INFO, format='[%(levelname)s] %(message)s')
+        return logging.getLogger(name)
 
 
 def check_semantic_release() -> bool:

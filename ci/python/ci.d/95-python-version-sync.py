@@ -26,9 +26,15 @@ if "ci/.venv" not in sys.prefix:
     print("Run via: ./ci/ci check")
     sys.exit(1)
 
-# Add parent dir to path for hyperlib
+# Add parent dir to path for hyperlib (optional)
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
-from hyperlib import get_logger  # type: ignore
+try:
+    from hyperlib import get_logger  # type: ignore
+except ImportError:
+    import logging
+    def get_logger(name):
+        logging.basicConfig(level=logging.INFO, format='[%(levelname)s] %(message)s')
+        return logging.getLogger(name)
 
 try:
     import tomli

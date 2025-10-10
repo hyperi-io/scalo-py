@@ -18,11 +18,18 @@ from pathlib import Path
 from typing import Dict, List, Optional, Set, Tuple
 
 
-# Import hyperlib (in generated projects it's at ci/hyperlib)
+# Import hyperlib if available (optional dependency)
 THIS_DIR = Path(__file__).resolve().parent
 SCRIPTS_DIR = THIS_DIR.parent
 sys.path.insert(0, str(SCRIPTS_DIR))
-from hyperlib import get_logger  # type: ignore
+try:
+    from hyperlib import get_logger  # type: ignore
+except ImportError:
+    # Fallback if hyperlib not available
+    import logging
+    def get_logger(name):
+        logging.basicConfig(level=logging.INFO, format='[%(levelname)s] %(message)s')
+        return logging.getLogger(name)
 
 
 def run_vermin_scan(target_dir: Path, venv_prefix: str) -> Optional[Tuple[int, int]]:

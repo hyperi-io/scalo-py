@@ -99,8 +99,13 @@ def get_jfrog_index_url() -> str:
     return base_url
 
 
-def install_hyperlib(venv_python: Path) -> None:
-    """Install hyperlib from JFrog Artifactory into ci/.venv."""
+def install_hyperlib(venv_python: Path) -> bool:
+    """
+    Install hyperlib from JFrog Artifactory into ci/.venv (optional).
+
+    Returns True if hyperlib is available, False otherwise.
+    This is OPTIONAL - projects don't need hyperlib to use this CI infrastructure.
+    """
     try:
         # Check if hyperlib is already installed
         result = subprocess.run(
@@ -112,15 +117,21 @@ def install_hyperlib(venv_python: Path) -> None:
         if result.returncode == 0:
             version = result.stdout.strip()
             print(f"[INFO] hyperlib {version} already installed")
-            return
+            return True
     except Exception:
         pass
 
+    # Check if JFrog credentials are available
+    jfrog_url = get_jfrog_index_url()
+    if "://" not in jfrog_url or "@" not in jfrog_url:
+        # No credentials available
+        print("[INFO] Skipping hyperlib installation (no JFrog credentials)")
+        print("[INFO] This is OK - hyperlib is optional")
+        return False
+
     print("[INFO] Installing hyperlib from JFrog Artifactory...")
 
-    jfrog_url = get_jfrog_index_url()
-
-    # Install hyperlib with fallback to PyPI if JFrog unavailable
+    # Try to install hyperlib with fallback to PyPI if JFrog unavailable
     try:
         subprocess.check_call(
             [str(venv_python), "-m", "pip", "install", "hyperlib",
@@ -129,10 +140,11 @@ def install_hyperlib(venv_python: Path) -> None:
             stderr=subprocess.STDOUT
         )
         print("[OK] hyperlib installed successfully")
+        return True
     except subprocess.CalledProcessError as e:
-        print(f"[WARN] Failed to install hyperlib from JFrog: {e}")
-        print("[INFO] Hyperlib may not be published yet - check JFrog credentials")
-        sys.exit(1)
+        print(f"[WARN] Failed to install hyperlib: {e}")
+        print("[INFO] Continuing without hyperlib (optional dependency)")
+        return False
 
 
 def reexec_in_venv(venv_python: Path) -> None:
@@ -165,23 +177,27 @@ def main() -> int:
     if not os.environ.get("IN_CI_VENV"):
         create_venv_if_needed(venv_dir)
 
-        # Phase 1: Install hyperlib from JFrog
-        install_hyperlib(venv_python)
+        # Phase 1: Install hyperlib from JFrog (optional)
+        hyperlib_available = install_hyperlib(venv_python)
+        os.environ["HYPERLIB_AVAILABLE"] = "1" if hyperlib_available else "0"
 
         # Re-exec in venv
         reexec_in_venv(venv_python)
         # Should never reach here
         return 1
 
-    # Phase 2: Now we're in venv with hyperlib installed
-    # Verify hyperlib is available
-    try:
-        import hyperlib  # type: ignore
-        print(f"[OK] hyperlib {hyperlib.__version__} is available")
-    except ImportError as e:
-        print(f"[ERR] Failed to import hyperlib: {e}")
-        print("[INFO] Hyperlib should have been installed in Phase 1")
-        return 1
+    # Phase 2: Now we're in venv (hyperlib is optional)
+    # Check if hyperlib is available
+    hyperlib_available = os.environ.get("HYPERLIB_AVAILABLE") == "1"
+    if hyperlib_available:
+        try:
+            import hyperlib  # type: ignore
+            print(f"[OK] hyperlib {hyperlib.__version__} is available")
+        except ImportError:
+            print("[INFO] hyperlib not available (optional dependency)")
+            hyperlib_available = False
+    else:
+        print("[INFO] Running without hyperlib (optional dependency)")
 
     print("[INFO] Running bootstrap in ci/.venv")
 

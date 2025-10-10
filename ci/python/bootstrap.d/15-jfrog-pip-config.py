@@ -58,12 +58,11 @@ def configure_jfrog_pip():
         logger.info(f"Using JFrog username/password for pip authentication (user: {jf_user})")
 
     else:
-        logger.warning(
-            "No JFrog credentials found. Set one of:\n"
-            "  - JF_TOKEN + JF_TOKEN_USER (preferred)\n"
-            "  - JF_USER + JF_PASSWORD (fallback)"
-        )
-        return False
+        logger.info("No JFrog credentials found - JFrog access is optional")
+        logger.info("To enable JFrog, set one of:")
+        logger.info("  - JF_TOKEN + JF_TOKEN_USER (preferred)")
+        logger.info("  - JF_USER + JF_PASSWORD (fallback)")
+        return True  # Success - JFrog is optional
 
     # Export for current process and all subprocesses (including nox, pip, etc.)
     os.environ["PIP_EXTRA_INDEX_URL"] = pip_extra_index
