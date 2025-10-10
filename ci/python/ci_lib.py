@@ -6,7 +6,12 @@ This module provides common functions for all CI and bootstrap scripts.
 MUST be imported from ci/.venv Python only.
 
 Usage:
-    from ci_lib import enforce_venv_ci, get_project_root, run_command
+    import sys
+    from pathlib import Path
+    sys.path.insert(0, str(Path(__file__).parent.parent / "python"))
+    from ci_lib import get_logger, enforce_venv_ci, get_project_root, run_command
+
+    logger = get_logger(__name__)
 
 Subprocess Usage Policy:
 =======================
@@ -245,8 +250,42 @@ def run_command(
 
 
 # ============================================================================
-# Logging Utilities
+# Logging Utilities (Loguru with RFC 3339 timestamps)
 # ============================================================================
+
+def get_logger(name: Optional[str] = None):
+    """
+    Get logger instance with RFC 3339 timestamps and colored output.
+
+    Loguru is installed in ci/.venv by bootstrap.
+    Provides Solarized colors for terminal output.
+
+    Args:
+        name: Logger name (optional, for compatibility)
+
+    Returns:
+        Loguru logger instance
+    """
+    from loguru import logger
+
+    # Remove default handler
+    logger.remove()
+
+    # Add console handler with RFC 3339 timestamps and colors
+    logger.add(
+        sys.stderr,
+        format=(
+            "<green>{time:YYYY-MM-DDTHH:mm:ss.SSSZ}</green> | "
+            "<level>{level: <8}</level> | "
+            "<cyan>{name}</cyan>:<cyan>{function}</cyan>:<cyan>{line}</cyan> - "
+            "<level>{message}</level>"
+        ),
+        colorize=True,
+        level="INFO",
+    )
+
+    return logger
+
 
 def log_info(message: str) -> None:
     """Print info message to stdout."""
