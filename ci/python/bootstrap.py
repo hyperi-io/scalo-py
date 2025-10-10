@@ -72,8 +72,10 @@ def ensure_dev_venv(project_root: Path) -> None:
     """
     Ensure .venv exists for development (safe, non-destructive).
 
-    Creates .venv if missing and installs uv for project isolation.
+    Creates .venv if missing, installs uv, and enforces uv-only usage.
     This ensures developers and AI agents have a consistent dev environment.
+
+    CRITICAL: .venv MUST use uv (not pip directly) for package management.
     """
     dev_venv = project_root / ".venv"
 
@@ -99,8 +101,74 @@ def ensure_dev_venv(project_root: Path) -> None:
             print("[OK] uv installed in .venv")
         except subprocess.CalledProcessError:
             print("[WARN] Failed to install uv in .venv (optional)")
+            return
     else:
         print("[INFO] uv already available in .venv")
+
+    # Add UV enforcement markers and wrappers
+    add_uv_enforcement(dev_venv)
+
+
+def add_uv_enforcement(venv_path: Path) -> None:
+    """
+    Add UV enforcement to .venv (marker file, activation patch, pip wrapper).
+
+    This ensures .venv ONLY uses uv for package management, not pip directly.
+    """
+    # 1. Create marker file
+    marker = venv_path / ".USE_UV_ONLY"
+    if not marker.exists():
+        marker.write_text(
+            "This venv uses uv for package management.\n"
+            "DO NOT use pip directly!\n"
+            "\n"
+            "Instead of: pip install <package>\n"
+            "Use:        uv pip install <package>\n"
+            "\n"
+            "Created by: ci/python/bootstrap.py\n"
+        )
+
+    # 2. Patch activation script to set UV_ONLY env var
+    activate_script = venv_path / "bin" / "activate"
+    if activate_script.exists():
+        content = activate_script.read_text()
+        if "UV_ONLY" not in content:
+            # Add UV_ONLY environment variable
+            uv_patch = '\n# UV enforcement (added by bootstrap)\nexport UV_ONLY=1\nexport UV_PYTHON_INSTALL_DIR="$VIRTUAL_ENV"\n'
+            # Insert before deactivate function
+            if 'deactivate ()' in content:
+                content = content.replace('deactivate ()', f'{uv_patch}\ndeactivate ()')
+                activate_script.write_text(content)
+
+    # 3. Create pip wrapper that enforces uv usage
+    pip_wrapper = venv_path / "bin" / "pip-direct"
+    original_pip = venv_path / "bin" / "pip.bak"
+    pip_bin = venv_path / "bin" / "pip"
+
+    # Backup original pip if not already backed up
+    if pip_bin.exists() and not original_pip.exists():
+        import shutil
+        shutil.copy2(pip_bin, original_pip)
+
+        # Replace pip with enforcement wrapper
+        pip_wrapper_content = '''#!/bin/bash
+# pip enforcement wrapper - redirects to uv
+echo "ERROR: Direct pip usage not allowed in .venv" >&2
+echo "This project enforces uv for package management." >&2
+echo "" >&2
+echo "Instead of: pip install <package>" >&2
+echo "Use:        uv pip install <package>" >&2
+echo "" >&2
+echo "Or use uvx for one-off tools:" >&2
+echo "  uvx <command>" >&2
+echo "" >&2
+echo "To force pip anyway: .venv/bin/pip.bak \"$@\"" >&2
+exit 1
+'''
+        pip_bin.write_text(pip_wrapper_content)
+        pip_bin.chmod(0o755)
+
+    print("[OK] UV enforcement added to .venv")
 
 
 def get_jfrog_index_url() -> str:
