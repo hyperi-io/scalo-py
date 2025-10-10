@@ -63,8 +63,6 @@ def install_tool(tool_spec: str, logger) -> bool:
 
 def main() -> int:
     """Main entry point."""
-    logger = get_logger("python-tools")
-    
     if len(sys.argv) < 2:
         logger.error("Usage: %s [check|install]", sys.argv[0])
         return 1

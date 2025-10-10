@@ -253,22 +253,22 @@ def run_command(
 # Logging Utilities (Loguru with RFC 3339 timestamps)
 # ============================================================================
 
-# Configure module-level logger with RFC 3339 timestamps and Solarized colors
+# Configure module-level logger with RFC 3339 timestamps (plain text for CI)
 from loguru import logger
 
 # Remove default handler
 logger.remove()
 
-# Add console handler with RFC 3339 timestamps and colors
+# Add console handler with RFC 3339 timestamps (plain text, no colors/emojis for CI)
 logger.add(
     sys.stderr,
     format=(
-        "<green>{time:YYYY-MM-DDTHH:mm:ss.SSSZ}</green> | "
-        "<level>{level: <8}</level> | "
-        "<cyan>{name}</cyan>:<cyan>{function}</cyan>:<cyan>{line}</cyan> - "
-        "<level>{message}</level>"
+        "{time:YYYY-MM-DDTHH:mm:ss.SSSZZ} | "
+        "{level: <8} | "
+        "{name}:{function}:{line} - "
+        "{message}"
     ),
-    colorize=True,
+    colorize=False,
     level="INFO",
 )
 
