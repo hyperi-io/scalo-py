@@ -1,6 +1,6 @@
 # Hyperlib
 
-HyperSec shared library for Python projects - Configuration, logging, timeouts, and container management.
+HyperSec shared library for Python projects - Enterprise infrastructure for configuration, logging, metrics, and runtime management.
 
 ## Features
 
