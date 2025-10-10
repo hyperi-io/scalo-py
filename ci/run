@@ -2,8 +2,8 @@
 """
 Core CI entrypoint - Simple .d directory runner.
 
-This script runs all scripts in ci.d/ directories in sorted order.
-It ensures bootstrap has run first (to install hyperlib and tools).
+This script runs all scripts in ci/ directories in sorted order.
+It ensures bootstrap has run first (to install tools and dependencies).
 
 Usage:
 - ./ci/run              # Run all CI checks
@@ -11,9 +11,9 @@ Usage:
 - ./ci/run --help       # Show help
 
 CI Directory Discovery:
-1. Core ci.d/: subtrees/hypersec-forge-core/ci/ci.d/
-2. Project ci.d/: ci/ci.d/ (or HSF_CI_D env var)
-3. Language ci.d/: Can be added via subtrees
+1. Common ci.d/: ci/common/ci.d/ - Language-agnostic checks
+2. Language ci.d/: ci/python/ci.d/ - Language-specific checks
+3. Custom ci.d/: Can be added via CUSTOM_CI_D env var
 
 All scripts are run in sorted order with "check" action.
 """
@@ -24,54 +24,32 @@ import subprocess
 import sys
 from pathlib import Path
 
-# Get project root
-# CRITICAL: When this script is symlinked, we need the REAL project root (where it was called from),
-# not the symlink source. Use the script's parent directory (ci/), then go up one level.
-# __file__ gives us the symlink path if called via symlink, which is what we want.
-SCRIPT_PATH = Path(__file__).resolve(strict=False)  # Resolves symlink to actual file
-SCRIPT_DIR = SCRIPT_PATH.parent  # This will be hypersec-forge-core/ci
-
-# The project root is where the symlink exists, which we can find from argv[0]
-# or by checking if we're in hypersec-forge-core
-if "hypersec-forge-core" in str(SCRIPT_DIR):
-    # We're being called via symlink or from forge-core directly
-    # The PROJECT_ROOT should be determined from the current working directory
-    # Walk up from cwd to find ci/ directory
-    cwd = Path.cwd()
-    if (cwd / "ci" / "run").exists() or (cwd / "ci" / "run").is_symlink():
-        PROJECT_ROOT = cwd
-    else:
-        # Walk up to find project root
-        PROJECT_ROOT = cwd
-        while PROJECT_ROOT != PROJECT_ROOT.parent:
-            if (PROJECT_ROOT / "ci" / "run").exists() or (PROJECT_ROOT / "ci" / "run").is_symlink():
-                break
-            PROJECT_ROOT = PROJECT_ROOT.parent
-else:
-    # Running from project root directly (not symlinked)
-    PROJECT_ROOT = SCRIPT_DIR.parent
-
-THIS_DIR = SCRIPT_DIR
+# Get project root - simple approach
+# This script runs from ci/run, so project root is parent of ci/
+SCRIPT_PATH = Path(__file__).resolve()
+CI_DIR = SCRIPT_PATH.parent
+PROJECT_ROOT = CI_DIR.parent
 
 
 def find_ci_directories() -> list:
     """Find all ci.d directories to process."""
     ci_dirs = []
 
-    # Core ci.d (always present)
-    core_ci_d = THIS_DIR / "ci.d"
-    if core_ci_d.exists():
-        ci_dirs.append(("core", core_ci_d))
+    # Common ci.d (language-agnostic)
+    common_ci_d = CI_DIR / "common" / "ci.d"
+    if common_ci_d.exists():
+        ci_dirs.append(("common", common_ci_d))
 
-    # Project ci.d (from env or default location)
-    if os.environ.get("HSF_CI_D"):
-        project_ci_d = Path(os.environ["HSF_CI_D"])
-        if project_ci_d.exists():
-            ci_dirs.append(("project", project_ci_d))
-    else:
-        project_ci_d = PROJECT_ROOT / "ci" / "ci.d"
-        if project_ci_d.exists() and project_ci_d != core_ci_d:
-            ci_dirs.append(("project", project_ci_d))
+    # Language-specific ci.d (Python in this case)
+    python_ci_d = CI_DIR / "python" / "ci.d"
+    if python_ci_d.exists():
+        ci_dirs.append(("python", python_ci_d))
+
+    # Custom ci.d (from env)
+    if os.environ.get("CUSTOM_CI_D"):
+        custom_ci_d = Path(os.environ["CUSTOM_CI_D"])
+        if custom_ci_d.exists():
+            ci_dirs.append(("custom", custom_ci_d))
 
     return ci_dirs
 
@@ -160,13 +138,13 @@ def handle_clean_commit_action(args) -> int:
     print("\nCleaning AI attribution from last commit...")
 
     # Find the clean-commit script
-    script_path = PROJECT_ROOT / "ci" / "ci.d" / "15-clean-commit-message.py"
+    script_path = CI_DIR / "python" / "ci.d" / "15-clean-commit-message.py"
     if not script_path.exists():
         print(f"\nERROR: Script not found: {script_path}")
         return 1
 
     # Use ci/.venv Python
-    venv_python = PROJECT_ROOT / "ci" / ".venv" / "bin" / "python"
+    venv_python = CI_DIR / ".venv" / "bin" / "python"
     if not venv_python.exists():
         print("\nERROR: ci/.venv not found!")
         print("Run: ./ci/bootstrap --install")
@@ -184,7 +162,7 @@ def run_script(script: Path, action: str = "check") -> int:
     print(f"{'='*60}")
 
     # CRITICAL: CI scripts MUST use ci/.venv Python (FAIL HARD if missing)
-    venv_python = PROJECT_ROOT / "ci" / ".venv" / "bin" / "python"
+    venv_python = CI_DIR / ".venv" / "bin" / "python"
     if not venv_python.exists():
         print("\nERROR: ci/.venv not found!")
         print("CI scripts require ci/.venv to be set up.")
@@ -206,7 +184,7 @@ def run_script(script: Path, action: str = "check") -> int:
 def main():
     """Main entry point."""
     parser = argparse.ArgumentParser(
-        description="CI runner for HyperSec projects",
+        description="CI runner with language-agnostic and language-specific checks",
         epilog="""
 Examples:
   ./ci/run check        # Run all checks (lint, test, type-check)
@@ -262,7 +240,7 @@ Examples:
     args = parser.parse_args()
 
     print("="*60)
-    print("HyperSec CI")
+    print("CI Runner")
     print("="*60)
 
     # Handle special actions first
@@ -278,7 +256,7 @@ Examples:
         args.push = True
 
     # Ensure bootstrap has run (except for clean which doesn't need it)
-    bootstrap_script = PROJECT_ROOT / "ci" / "bootstrap"
+    bootstrap_script = CI_DIR / "bootstrap"
     if bootstrap_script.exists():
         print("\n[Ensuring bootstrap has run...]")
         result = subprocess.run(

@@ -22,8 +22,9 @@ import subprocess
 import sys
 from pathlib import Path
 
-THIS_DIR = Path(__file__).resolve().parent
-PROJECT_ROOT = THIS_DIR.parent
+THIS_DIR = Path(__file__).resolve().parent  # ci/python/
+CI_DIR = THIS_DIR.parent  # ci/
+PROJECT_ROOT = CI_DIR.parent  # project root
 
 
 def load_dotenv_minimal() -> None:
@@ -136,7 +137,7 @@ def install_hyperlib(venv_python: Path) -> None:
 
 def reexec_in_venv(venv_python: Path) -> None:
     """Re-exec this script using the venv Python."""
-    os.environ["HSF_IN_CI_VENV"] = "1"
+    os.environ["IN_CI_VENV"] = "1"
     os.execv(str(venv_python), [str(venv_python)] + sys.argv)
 
 
@@ -157,12 +158,11 @@ def main() -> int:
         os.environ.setdefault("BOOTSTRAP_INSTALL", "0")
 
     # Phase 0: Ensure ci/.venv exists
-    venv_name = os.environ.get("HSF_CI_VENV", "ci/.venv")
-    venv_dir = PROJECT_ROOT / venv_name
+    venv_dir = CI_DIR / ".venv"
     venv_python = venv_dir / "bin" / "python"
 
     # If not in venv yet, create it and re-exec
-    if not os.environ.get("HSF_IN_CI_VENV"):
+    if not os.environ.get("IN_CI_VENV"):
         create_venv_if_needed(venv_dir)
 
         # Phase 1: Install hyperlib from JFrog
@@ -185,28 +185,33 @@ def main() -> int:
 
     print("[INFO] Running bootstrap in ci/.venv")
 
-    # Run bootstrap.d scripts
-    boot_dir = PROJECT_ROOT / "ci" / "bootstrap.d"
-    if not boot_dir.exists():
-        print("[INFO] No bootstrap.d directory found")
-        return 0
+    # Collect bootstrap.d scripts from common/ and language-specific directories
+    bootstrap_dirs = [
+        (CI_DIR / "common" / "bootstrap.d", "common"),
+        (CI_DIR / "python" / "bootstrap.d", "python"),
+    ]
 
-    scripts = sorted([p for p in boot_dir.iterdir()
-                     if p.is_file() and (p.suffix in ['.sh', '.py'])])
+    all_scripts = []
+    for boot_dir, label in bootstrap_dirs:
+        if boot_dir.exists():
+            scripts = sorted([p for p in boot_dir.iterdir()
+                            if p.is_file() and (p.suffix in ['.sh', '.py'])])
+            for script in scripts:
+                all_scripts.append((script, label))
 
-    if not scripts:
-        print(f"[INFO] No bootstrap steps found at {boot_dir}")
+    if not all_scripts:
+        print("[INFO] No bootstrap steps found")
         return 0
 
     install = os.environ.get("BOOTSTRAP_INSTALL", "0") == "1"
 
-    for path in scripts:
+    for path, label in all_scripts:
         base = path.name
         if base.endswith(".disabled"):
             print(f"[INFO] Skipping disabled {base}")
             continue
 
-        print(f"[INFO] Bootstrap check: {base}")
+        print(f"[INFO] Bootstrap check [{label}]: {base}")
         try:
             if base.endswith(".sh"):
                 subprocess.check_call(["bash", str(path), "check"])
@@ -218,7 +223,7 @@ def main() -> int:
                 continue
 
         if install:
-            print(f"[INFO] Bootstrap install: {base}")
+            print(f"[INFO] Bootstrap install [{label}]: {base}")
             try:
                 if base.endswith(".sh"):
                     subprocess.check_call(["bash", str(path), "install"])
