@@ -7,6 +7,27 @@ MUST be imported from ci/.venv Python only.
 
 Usage:
     from ci_lib import enforce_venv_ci, get_project_root, run_command
+
+Subprocess Usage Policy:
+=======================
+This library uses subprocess for external tool invocations where appropriate.
+We intentionally use subprocess rather than Python wrappers in these cases:
+
+1. **git** - Standard CLI tool, available everywhere
+   - Libraries like GitPython wrap subprocess internally anyway
+   - Direct subprocess is more transparent and debuggable
+   - Consolidated via helpers: get_current_branch(), get_git_root(), get_latest_tag()
+
+2. **Build tools** (python -m build, twine) - Use Python modules directly
+   - These are true Python libraries, no subprocess needed
+   - Already using: python -m build, python -m twine
+
+3. **System commands** - Use subprocess when needed
+   - Examples: bash scripts during bootstrap
+   - Better than trying to reimplement shell logic in Python
+
+Philosophy: Use native Python where it makes sense (build, twine, requests),
+use subprocess for external tools that are standard parts of the environment (git).
 """
 import os
 import sys
@@ -248,7 +269,13 @@ def log_success(message: str) -> None:
 
 
 # ============================================================================
-# Git Utilities
+# Git Utilities (via subprocess - git is standard tool)
+# ============================================================================
+# NOTE: We use subprocess for git operations rather than GitPython because:
+# - git is a standard tool available everywhere
+# - GitPython wraps subprocess internally anyway
+# - Direct subprocess is more transparent and debuggable
+# - Fewer dependencies, simpler CI environment
 # ============================================================================
 
 def get_current_branch() -> str:
@@ -257,6 +284,9 @@ def get_current_branch() -> str:
 
     Returns:
         Branch name (e.g., 'main')
+
+    Raises:
+        subprocess.CalledProcessError: If git command fails
     """
     result = run_command(
         ["git", "rev-parse", "--abbrev-ref", "HEAD"],
@@ -272,6 +302,9 @@ def get_git_root() -> Path:
 
     Returns:
         Path to git root
+
+    Raises:
+        subprocess.CalledProcessError: If git command fails
     """
     result = run_command(
         ["git", "rev-parse", "--show-toplevel"],
