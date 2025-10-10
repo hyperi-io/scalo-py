@@ -169,7 +169,7 @@ def update_init_version(root: Path, version: str) -> bool:
             # Replace __version__ = "X.Y.Z" or __version__ = 'X.Y.Z'
             new_content = re.sub(
                 r'(__version__\s*=\s*["\'])[^"\']+(["\'])',
-                f'\\1{version}\\2',
+                r'\g<1>' + version + r'\g<2>',  # Use \g<1> to avoid ambiguity with version numbers
                 content
             )
             if new_content != content:
@@ -288,11 +288,14 @@ def sync_to_version(logger, root: Path, version: str) -> int:
         if update_pyproject_version(root, version):
             logger.info("✓ Updated pyproject.toml")
         else:
-            logger.warning("⚠ Could not update pyproject.toml (tomli_w not available)")
+            logger.error("✗ Could not update pyproject.toml (tomli_w not available)")
+            return 1
 
     # Update __init__.py (if found)
     if update_init_version(root, version):
         logger.info("✓ Updated __init__.py files")
+    else:
+        logger.warning("⚠ No __init__.py files found with __version__")
 
     return 0
 

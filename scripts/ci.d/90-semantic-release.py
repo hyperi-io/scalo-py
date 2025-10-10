@@ -282,7 +282,9 @@ def run_semantic_release(logger, root: Path, dry_run: bool = False) -> bool:
             logger.error(f"semantic-release failed with code {result.returncode}")
             return False
 
-    logger.info(f"Release {next_version} completed successfully")
+    # Get the version that was just released
+    new_version = get_current_version(root)
+    logger.info(f"Release {new_version} completed successfully")
 
     # Push to remote if CI_PUSH is set
     if os.environ.get("CI_PUSH") == "1":

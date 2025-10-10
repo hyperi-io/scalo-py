@@ -87,6 +87,7 @@ def main() -> int:
         "black>=24.0.0",
         "mypy>=1.8.0",
         "twine>=5.0.0",
+        "tomli-w>=1.0.0",  # Required for version sync (pyproject.toml writing)
         "pip-audit>=2.6.0",
         "bandit[toml]>=1.7.0",
         "safety>=3.0.0",
