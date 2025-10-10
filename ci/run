@@ -190,9 +190,13 @@ Examples:
   ./ci/run check       # Run all checks (lint, test, type-check)
   ./ci/run build       # Build package locally
   ./ci/run release     # Full release (version, tag, build)
-  ./ci/run publish     # Full release + push (triggers GitHub Actions to publish to JFrog)
+  ./ci/run publish     # Full release + push to remote (triggers GitHub Actions)
   ./ci/run clean       # Remove build artifacts
-  ./ci/run --script 80-build.py check  # Run single script
+
+  # JFrog publishing (local):
+  ./ci/run --script 80-build.py publish              # Publish to JFrog (auto-detect creds)
+  ./ci/run --script 80-build.py publish --no-publish # Skip JFrog publishing
+  JFROG_PUBLISH=false ./ci/run build                # Build without publishing
         """
     )
     parser.add_argument(
@@ -226,6 +230,11 @@ Examples:
         "--push",
         action="store_true",
         help="Push changes to remote after release (use with release action)"
+    )
+    parser.add_argument(
+        "--no-publish",
+        action="store_true",
+        help="Skip JFrog publishing (sets JFROG_PUBLISH=false)"
     )
     args = parser.parse_args()
 
@@ -265,6 +274,8 @@ Examples:
         os.environ["CI_DRY_RUN"] = "1"
     if args.push:
         os.environ["CI_PUSH"] = "1"
+    if args.no_publish:
+        os.environ["JFROG_PUBLISH"] = "false"
 
     # Find all ci.d directories
     ci_dirs = find_ci_directories()
