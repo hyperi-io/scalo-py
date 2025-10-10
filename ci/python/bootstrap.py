@@ -59,13 +59,48 @@ def is_in_venv() -> bool:
 
 
 def create_venv_if_needed(venv_dir: Path) -> bool:
-    """Create .venv-ci if it doesn't exist. Returns True if created."""
+    """Create venv if it doesn't exist. Returns True if created."""
     if venv_dir.exists():
         return False
 
     print(f"[INFO] Creating {venv_dir}...")
     subprocess.check_call([sys.executable, "-m", "venv", str(venv_dir)])
     return True
+
+
+def ensure_dev_venv(project_root: Path) -> None:
+    """
+    Ensure .venv exists for development (safe, non-destructive).
+
+    Creates .venv if missing and installs uv for project isolation.
+    This ensures developers and AI agents have a consistent dev environment.
+    """
+    dev_venv = project_root / ".venv"
+
+    # Create .venv if it doesn't exist
+    if not dev_venv.exists():
+        print("[INFO] Creating .venv for development...")
+        subprocess.check_call([sys.executable, "-m", "venv", str(dev_venv)])
+        print("[OK] .venv created")
+    else:
+        print("[INFO] .venv already exists")
+
+    # Install uv into .venv if not present
+    dev_python = dev_venv / "bin" / "python"
+    uv_bin = dev_venv / "bin" / "uv"
+
+    if not uv_bin.exists():
+        print("[INFO] Installing uv into .venv...")
+        try:
+            subprocess.check_call(
+                [str(dev_python), "-m", "pip", "install", "uv", "--quiet"],
+                stderr=subprocess.DEVNULL
+            )
+            print("[OK] uv installed in .venv")
+        except subprocess.CalledProcessError:
+            print("[WARN] Failed to install uv in .venv (optional)")
+    else:
+        print("[INFO] uv already available in .venv")
 
 
 def get_jfrog_index_url() -> str:
@@ -175,7 +210,11 @@ def main() -> int:
 
     # If not in venv yet, create it and re-exec
     if not os.environ.get("IN_CI_VENV"):
+        # Create ci/.venv for CI/automation
         create_venv_if_needed(venv_dir)
+
+        # Also ensure .venv exists for development (safe, non-destructive)
+        ensure_dev_venv(PROJECT_ROOT)
 
         # Phase 1: Install hyperlib from JFrog (optional)
         hyperlib_available = install_hyperlib(venv_python)
