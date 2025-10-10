@@ -88,6 +88,7 @@ def main() -> int:
         "mypy>=1.8.0",
         "twine>=5.0.0",
         "tomli-w>=1.0.0",  # Required for version sync (pyproject.toml writing)
+        "python-semantic-release>=9.0.0",  # Pure Python semantic versioning (replaces Node.js)
         "pip-audit>=2.6.0",
         "bandit[toml]>=1.7.0",
         "safety>=3.0.0",

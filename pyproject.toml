@@ -262,3 +262,29 @@ targets = [
     "3.11",
 ]
 no_tips = true
+
+# ============================================================================
+# Python Semantic Release Configuration
+# ============================================================================
+[tool.semantic_release]
+version_toml = ["pyproject.toml:project.version"]
+version_variables = [
+    "src/hyperlib/__init__.py:__version__",
+]
+build_command = "rm -rf dist build src/*.egg-info && .venv-ci/bin/python -m build"
+major_on_zero = true
+tag_format = "v{version}"
+commit_message = "chore(release): {version} [skip ci]"
+
+[tool.semantic_release.branches.main]
+match = "main"
+prerelease = false
+
+[tool.semantic_release.commit_parser_options]
+allowed_tags = ["feat", "fix", "perf", "refactor", "style", "test", "build", "ci", "docs", "chore"]
+minor_tags = ["feat"]
+patch_tags = ["fix", "perf"]
+
+[tool.semantic_release.changelog]
+changelog_file = "CHANGELOG.md"
+exclude_commit_patterns = []
