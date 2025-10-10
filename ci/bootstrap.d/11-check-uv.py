@@ -39,7 +39,12 @@ def install_uv() -> bool:
     Install uv (intentionally not implemented).
 
     uv installation is best done manually via the official installer.
+    If uv is already available, return True (nothing to install).
     """
+    # Check if uv is already available
+    if shutil.which("uv"):
+        return True  # Already installed, nothing to do
+
     print("[INFO] uv installation must be done manually")
     print("[INFO] Run: curl -LsSf https://astral.sh/uv/install.sh | sh")
     return False

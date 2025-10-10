@@ -38,7 +38,12 @@ def install_git() -> bool:
     Install git (intentionally not implemented).
 
     Git installation is environment-specific and should be done manually.
+    If git is already available, return True (nothing to install).
     """
+    # Check if git is already available
+    if shutil.which("git"):
+        return True  # Already installed, nothing to do
+
     print("[INFO] Git installation must be done manually for your environment")
     print("[INFO] - Debian/Ubuntu: sudo apt install git")
     print("[INFO] - Fedora: sudo dnf install git")

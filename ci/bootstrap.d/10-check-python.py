@@ -30,7 +30,12 @@ def install_python() -> bool:
     Install Python (intentionally not implemented).
 
     Python installation is environment-specific and should be done manually.
+    If Python 3.11+ is already available, return True (nothing to install).
     """
+    # Check if Python is already adequate
+    if check_python():
+        return True  # Already have Python 3.11+, nothing to do
+
     print("[INFO] Python installation must be done manually for your environment")
     print("[INFO] - Debian/Ubuntu: sudo apt install python3.11")
     print("[INFO] - Fedora: sudo dnf install python3.11")
