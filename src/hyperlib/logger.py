@@ -277,19 +277,8 @@ def setup(settings=None, color_scheme="solarized", use_emojis=None, allow_all_em
     return logger
 
 
-def get_logger(name=None):
-    """Get standard logger instance
-
-    Args:
-        name: Optional logger name (for compatibility, currently ignored)
-
-    Returns:
-        Logger instance
-    """
-    # Note: name parameter is accepted for API compatibility but ignored
-    # Loguru's logger is a singleton and uses module context for naming
-    return logger
-
+# NOTE: get_logger() removed - just use 'from hyperlib.logger import logger' instead
+# Loguru's logger is a singleton and uses module context for naming automatically
 
 # Initialize with default setup (Solarized)
 setup()
@@ -320,7 +309,6 @@ def debug(msg):
 __all__ = [
     "logger",
     "setup",
-    "get_logger",
     "info",
     "warning",
     "error",

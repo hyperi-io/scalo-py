@@ -253,37 +253,38 @@ def run_command(
 # Logging Utilities (Loguru with RFC 3339 timestamps)
 # ============================================================================
 
+# Configure module-level logger with RFC 3339 timestamps and Solarized colors
+from loguru import logger
+
+# Remove default handler
+logger.remove()
+
+# Add console handler with RFC 3339 timestamps and colors
+logger.add(
+    sys.stderr,
+    format=(
+        "<green>{time:YYYY-MM-DDTHH:mm:ss.SSSZ}</green> | "
+        "<level>{level: <8}</level> | "
+        "<cyan>{name}</cyan>:<cyan>{function}</cyan>:<cyan>{line}</cyan> - "
+        "<level>{message}</level>"
+    ),
+    colorize=True,
+    level="INFO",
+)
+
+
 def get_logger(name: Optional[str] = None):
     """
-    Get logger instance with RFC 3339 timestamps and colored output.
+    Get logger instance (returns module-level logger).
 
-    Loguru is installed in ci/.venv by bootstrap.
-    Provides Solarized colors for terminal output.
+    Kept for backward compatibility. Just use 'from ci_lib import logger' instead.
 
     Args:
-        name: Logger name (optional, for compatibility)
+        name: Logger name (ignored, for compatibility)
 
     Returns:
         Loguru logger instance
     """
-    from loguru import logger
-
-    # Remove default handler
-    logger.remove()
-
-    # Add console handler with RFC 3339 timestamps and colors
-    logger.add(
-        sys.stderr,
-        format=(
-            "<green>{time:YYYY-MM-DDTHH:mm:ss.SSSZ}</green> | "
-            "<level>{level: <8}</level> | "
-            "<cyan>{name}</cyan>:<cyan>{function}</cyan>:<cyan>{line}</cyan> - "
-            "<level>{message}</level>"
-        ),
-        colorize=True,
-        level="INFO",
-    )
-
     return logger
 
 

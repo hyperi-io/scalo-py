@@ -24,14 +24,9 @@ if "ci/.venv" not in sys.prefix:
     print("Run via: ./ci/run release")
     sys.exit(1)
 
-# Import hyperlib if available (optional dependency)
-try:
-    from hyperlib import get_logger  # type: ignore
-except ImportError:
-    import logging
-    def get_logger(name):
-        logging.basicConfig(level=logging.INFO, format='[%(levelname)s] %(message)s')
-        return logging.getLogger(name)
+# Import from ci_lib (installed in ci/.venv by bootstrap)
+sys.path.insert(0, str(Path(__file__).parent.parent.parent / "python"))
+from ci_lib import logger
 
 
 def check_semantic_release() -> bool:
@@ -163,8 +158,6 @@ def run_semantic_release(logger, root: Path, dry_run: bool = False) -> bool:
 
 def main() -> int:
     """Main entry point."""
-    logger = get_logger("semantic-release")
-
     if len(sys.argv) < 2:
         logger.error("Usage: %s [check|install|release]", sys.argv[0])
         return 1

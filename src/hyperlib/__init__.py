@@ -16,7 +16,6 @@ from .config import get_logging_config, get_mount_config, get_environment
 from .dbconn import build_database_url, get_database_config, get_database_url_from_env
 
 # Re-export commonly used functions for convenience
-from .logger import get_logger
 from .logger import setup as setup_logger
 from .prometheus import create_metrics
 from .runtime import get_runtime_paths
@@ -29,7 +28,6 @@ __all__ = [
     "logger",
     "runtime",
     "prometheus",
-    "get_logger",
     "setup_logger",
     "get_logging_config",
     "get_mount_config",

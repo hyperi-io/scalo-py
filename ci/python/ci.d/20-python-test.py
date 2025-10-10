@@ -23,15 +23,9 @@ if "ci/.venv" not in sys.prefix:
     print("Run via: ./ci/ci check")
     sys.exit(1)
 
-# Import hyperlib if available (optional dependency)
-try:
-    sys.path.insert(0, str(Path(__file__).parent.parent))
-    from hyperlib import get_logger  # type: ignore
-    logger = get_logger("python-test")
-except ImportError:
-    import logging
-    logging.basicConfig(level=logging.INFO, format='[%(levelname)s] %(message)s')
-    logger = logging.getLogger("python-test")
+# Import from ci_lib (loguru with RFC 3339 timestamps)
+sys.path.insert(0, str(Path(__file__).parent.parent))
+from ci_lib import logger
 
 def detect_coverage_source(project_root: Path) -> str:
     """

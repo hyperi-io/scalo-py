@@ -18,23 +18,16 @@ from pathlib import Path
 from typing import Dict, List, Optional, Set, Tuple
 
 
-# Import hyperlib if available (optional dependency)
+# Import from ci_lib (loguru with RFC 3339 timestamps)
 THIS_DIR = Path(__file__).resolve().parent
 SCRIPTS_DIR = THIS_DIR.parent
 sys.path.insert(0, str(SCRIPTS_DIR))
-try:
-    from hyperlib import get_logger  # type: ignore
-except ImportError:
-    # Fallback if hyperlib not available
-    import logging
-    def get_logger(name):
-        logging.basicConfig(level=logging.INFO, format='[%(levelname)s] %(message)s')
-        return logging.getLogger(name)
+from ci_lib import logger
 
 
 def run_vermin_scan(target_dir: Path, venv_prefix: str) -> Optional[Tuple[int, int]]:
     """Run vermin to scan source files and return (major, minor) version."""
-    logger = get_logger("dependency-update")
+
     vermin_cmd = f"{venv_prefix}vermin"
     
     try:
@@ -65,7 +58,7 @@ def run_vermin_scan(target_dir: Path, venv_prefix: str) -> Optional[Tuple[int, i
 
 def analyze_imports_in_source(src_dir: Path) -> Set[str]:
     """Analyze Python source files to extract imported module names."""
-    logger = get_logger("dependency-update")
+
     imports = set()
     
     try:
@@ -104,7 +97,7 @@ def analyze_imports_in_source(src_dir: Path) -> Set[str]:
 
 def get_package_versions_and_requirements(venv_prefix: str, imported_modules: Set[str]) -> Tuple[Dict[str, str], Optional[Tuple[int, int]]]:
     """Get installed package versions and find minimum Python requirement."""
-    logger = get_logger("dependency-update")
+
     pip_cmd = f"{venv_prefix}pip"
     package_versions = {}
     max_python_req = (3, 8)
@@ -181,7 +174,7 @@ def get_package_versions_and_requirements(venv_prefix: str, imported_modules: Se
 
 def get_dependency_min_python(venv_prefix: str) -> Optional[Tuple[int, int]]:
     """Check dependencies for their minimum Python requirements."""
-    logger = get_logger("dependency-update")
+
     pip_cmd = f"{venv_prefix}pip"
     
     try:
@@ -235,7 +228,7 @@ def get_dependency_min_python(venv_prefix: str) -> Optional[Tuple[int, int]]:
 
 def update_pyproject_dependencies(pyproject_path: Path, package_versions: Dict[str, str]) -> bool:
     """Update dependencies list in pyproject.toml with minimum versions."""
-    logger = get_logger("dependency-update")
+
     
     if not pyproject_path.exists() or not package_versions:
         return False
@@ -295,7 +288,7 @@ def update_pyproject_dependencies(pyproject_path: Path, package_versions: Dict[s
 
 def update_pyproject_toml(pyproject_path: Path, min_version: Tuple[int, int]) -> bool:
     """Update pyproject.toml with new minimum Python version."""
-    logger = get_logger("dependency-update")
+
     major, minor = min_version
     version_str = f"{major}.{minor}"
     
@@ -355,7 +348,7 @@ def update_pyproject_toml(pyproject_path: Path, min_version: Tuple[int, int]) ->
 
 
 def main() -> int:
-    logger = get_logger("dependency-update")
+
     root_dir = Path.cwd()
     
     # Assume ci/.venv has been created by core bootstrap

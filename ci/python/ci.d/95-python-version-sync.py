@@ -26,15 +26,9 @@ if "ci/.venv" not in sys.prefix:
     print("Run via: ./ci/ci check")
     sys.exit(1)
 
-# Add parent dir to path for hyperlib (optional)
+# Import from ci_lib (loguru with RFC 3339 timestamps)
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
-try:
-    from hyperlib import get_logger  # type: ignore
-except ImportError:
-    import logging
-    def get_logger(name):
-        logging.basicConfig(level=logging.INFO, format='[%(levelname)s] %(message)s')
-        return logging.getLogger(name)
+from ci_lib import logger
 
 try:
     import tomli
@@ -308,7 +302,6 @@ def sync_to_version(logger, root: Path, version: str) -> int:
 
 def main() -> int:
     """Main entry point."""
-    logger = get_logger("python-version-sync")
 
     if len(sys.argv) < 2:
         logger.error("Usage: %s [check|install|sync|sync <version>]", sys.argv[0])

@@ -18,15 +18,9 @@ import sys
 import urllib.parse
 from pathlib import Path
 
-# Import hyperlib if available (will be installed in Phase 1 of bootstrap)
-try:
-    from hyperlib import get_logger
-    logger = get_logger(__name__)
-except ImportError:
-    # Fallback if hyperlib not yet installed
-    import logging
-    logging.basicConfig(level=logging.INFO, format='%(levelname)s: %(message)s')
-    logger = logging.getLogger(__name__)
+# Import from ci_lib (loguru with RFC 3339 timestamps)
+sys.path.insert(0, str(Path(__file__).parent.parent))
+from ci_lib import logger
 
 
 def configure_jfrog_pip():
