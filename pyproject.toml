@@ -102,20 +102,6 @@ hyperlib = [
     "py.typed",
 ]
 
-[tool.semantic_release]
-version_variables = [
-    "src/hyperlib/__init__.py:__version__",
-    "pyproject.toml:version",
-]
-version_toml = [
-    "pyproject.toml:project.version",
-]
-branch = "main"
-build_command = ".venv-ci/bin/python -m build"
-upload_to_release = true
-upload_to_pypi = false
-commit_message = "chore: release {version} [skip ci]"
-
 [tool.pytest.ini_options]
 minversion = "8.0"
 testpaths = [
@@ -260,10 +246,19 @@ version_toml = ["pyproject.toml:project.version"]
 version_variables = [
     "src/hyperlib/__init__.py:__version__",
 ]
-build_command = "rm -rf dist build src/*.egg-info && ci/.venv/bin/python -m build"
+# VERSION file is written by build_command before build
+build_command = "echo '{version}' > VERSION && rm -rf dist build src/*.egg-info && ci/.venv/bin/python -m build"
 major_on_zero = true
 tag_format = "v{version}"
 commit_message = "chore(release): {version} [skip ci]"
+
+# Include VERSION file in release commit
+[tool.semantic_release.commit_author]
+env = "GIT_COMMIT_AUTHOR"
+default = "semantic-release <semantic-release>"
+
+[tool.semantic_release.changelog.environment]
+keep_trailing_newline = true
 
 [tool.semantic_release.branches.main]
 match = "main"
@@ -274,6 +269,8 @@ allowed_tags = ["feat", "fix", "perf", "refactor", "style", "test", "build", "ci
 minor_tags = ["feat"]
 patch_tags = ["fix", "perf"]
 
-[tool.semantic_release.changelog]
+[tool.semantic_release.changelog.default_templates]
 changelog_file = "CHANGELOG.md"
+
+[tool.semantic_release.changelog]
 exclude_commit_patterns = []
