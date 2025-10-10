@@ -14,6 +14,14 @@ import subprocess
 import sys
 from pathlib import Path
 
+# CRITICAL: Enforce .venv-ci usage (FAIL HARD if not in .venv-ci)
+if ".venv-ci" not in sys.prefix:
+    print("ERROR: This script must run in .venv-ci")
+    print(f"Current Python: {sys.executable}")
+    print("Expected: .venv-ci/bin/python")
+    print("Run via: ./scripts/ci check")
+    sys.exit(1)
+
 # Import hyperlib for logging
 sys.path.insert(0, str(Path(__file__).parent.parent))
 from hyperlib import get_logger  # type: ignore

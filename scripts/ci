@@ -161,10 +161,13 @@ def run_script(script: Path, action: str = "check") -> int:
     print(f"Running: {script.name}")
     print(f"{'='*60}")
 
-    # Use .venv-ci Python if available (required for hyperlib imports)
+    # CRITICAL: CI scripts MUST use .venv-ci Python (FAIL HARD if missing)
     venv_python = PROJECT_ROOT / ".venv-ci" / "bin" / "python"
     if not venv_python.exists():
-        venv_python = Path(sys.executable)
+        print("\nERROR: .venv-ci not found!")
+        print("CI scripts require .venv-ci to be set up.")
+        print("Run: ./scripts/bootstrap --install")
+        return 1
 
     # Determine how to run the script
     if script.suffix == ".py":

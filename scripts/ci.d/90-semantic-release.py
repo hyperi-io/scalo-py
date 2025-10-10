@@ -18,6 +18,14 @@ import subprocess
 from pathlib import Path
 from typing import Optional
 
+# CRITICAL: Enforce .venv-ci usage (FAIL HARD if not in .venv-ci)
+if ".venv-ci" not in sys.prefix:
+    print("ERROR: This script must run in .venv-ci")
+    print(f"Current Python: {sys.executable}")
+    print("Expected: .venv-ci/bin/python")
+    print("Run via: ./scripts/ci release")
+    sys.exit(1)
+
 # Import hyperlib from pip-installed package (installed by bootstrap)
 from hyperlib import get_logger  # type: ignore
 

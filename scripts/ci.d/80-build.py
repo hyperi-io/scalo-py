@@ -12,6 +12,14 @@ import subprocess
 import sys
 from pathlib import Path
 
+# CRITICAL: Enforce .venv-ci usage (FAIL HARD if not in .venv-ci)
+if ".venv-ci" not in sys.prefix:
+    print("ERROR: This script must run in .venv-ci")
+    print(f"Current Python: {sys.executable}")
+    print("Expected: .venv-ci/bin/python")
+    print("Run via: ./scripts/ci build")
+    sys.exit(1)
+
 # Get project root
 PROJECT_ROOT = Path(__file__).resolve().parent.parent.parent
 
