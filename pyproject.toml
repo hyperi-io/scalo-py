@@ -113,6 +113,7 @@ pythonpath = [
 ]
 markers = [
     "e2e: end-to-end integration tests",
+    "integration: integration tests that test multiple components together",
 ]
 filterwarnings = [
     "ignore::DeprecationWarning",
@@ -274,3 +275,23 @@ changelog_file = "CHANGELOG.md"
 
 [tool.semantic_release.changelog]
 exclude_commit_patterns = []
+
+# ============================================================================
+# Build Configuration
+# ============================================================================
+# CI build configuration has been moved to: ci/ci.yaml
+# This follows standard practice of separating project metadata from CI config.
+# See ci/ci.yaml for Nuitka builds, platform matrix, and publishing settings.
+
+# ============================================================================
+# Package Index Configuration (uv)
+# ============================================================================
+# Force Nuitka to ONLY use JFrog Artifactory (no fallback to public PyPI)
+# JFrog has Nuitka Commercial, public PyPI has OSS version
+[[tool.uv.index]]
+name = "jfrog"
+url = "https://hypersec.jfrog.io/artifactory/api/pypi/hypersec-pypi-local/simple"
+explicit = true
+
+[tool.uv.sources]
+nuitka = { index = "jfrog" }

@@ -1,0 +1,439 @@
+name: Nuitka Multi-Arch Release
+
+# Conditional triggers based on ci/ci.yaml configuration
+on:
+  push:
+    tags:
+      - 'v*'  # Only if nuitka.triggers.on_release_tags = true
+    branches:
+      - main  # Only if nuitka.triggers.on_push_to_main = true
+
+  pull_request:  # Only if nuitka.triggers.on_pull_requests = true
+
+  schedule:  # Only if nuitka.triggers.on_schedule = true
+    - cron: '0 2 * * 0'  # Default: Weekly Sunday 2am UTC (overridden by ci/ci.yaml)
+
+  workflow_dispatch:
+    inputs:
+      force_build:
+        description: 'Force Nuitka build (ignore ci/ci.yaml enabled flag)'
+        type: boolean
+        default: false
+      force_publish:
+        description: 'Force publish to JFrog (ignore ci/ci.yaml publish flag)'
+        type: boolean
+        default: false
+
+jobs:
+  # Job 1: Read configuration and decide if we should run
+  config:
+    name: Read Configuration
+    runs-on: ubuntu-latest
+    outputs:
+      should_run: ${{ steps.check.outputs.should_run }}
+      publish_jfrog: ${{ steps.check.outputs.publish_jfrog }}
+      protection_level: ${{ steps.check.outputs.protection_level }}
+      jfrog_repo: ${{ steps.check.outputs.jfrog_repo }}
+      matrix_json: ${{ steps.matrix.outputs.json }}
+      total_cost: ${{ steps.cost.outputs.total }}
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Install PyYAML
+        run: pip install pyyaml
+
+      - name: Read ci/ci.yaml and Check Triggers
+        id: check
+        run: |
+          python << 'EOF'
+          import yaml
+          import os
+          import sys
+
+          # Load ci/ci.yaml
+          with open('ci/ci.yaml', 'r') as f:
+              config = yaml.safe_load(f)
+
+          nuitka = config.get('nuitka', {})
+
+          # Check if Nuitka is enabled
+          enabled = nuitka.get('enabled', False)
+          force_build = '${{ github.event.inputs.force_build }}' == 'true'
+
+          # Check trigger conditions
+          triggers = nuitka.get('triggers', {})
+          event_name = '${{ github.event_name }}'
+          ref_type = '${{ github.ref_type }}'
+
+          should_run = force_build  # Default: only if forced
+
+          if enabled:
+              # Check specific triggers
+              if event_name == 'push' and ref_type == 'tag' and triggers.get('on_release_tags', True):
+                  should_run = True
+                  print("✓ Triggered by release tag (nuitka.triggers.on_release_tags = true)")
+
+              elif event_name == 'push' and ref_type == 'branch' and triggers.get('on_push_to_main', False):
+                  should_run = True
+                  print("✓ Triggered by push to main (nuitka.triggers.on_push_to_main = true)")
+
+              elif event_name == 'pull_request' and triggers.get('on_pull_requests', False):
+                  should_run = True
+                  print("✓ Triggered by PR (nuitka.triggers.on_pull_requests = true)")
+
+              elif event_name == 'schedule' and triggers.get('on_schedule', False):
+                  should_run = True
+                  cron = triggers.get('schedule_cron', '0 2 * * 0')
+                  print(f"✓ Triggered by schedule (nuitka.triggers.on_schedule = true, cron: {cron})")
+
+              elif event_name == 'workflow_dispatch':
+                  should_run = True
+                  print("✓ Triggered manually (workflow_dispatch)")
+          else:
+              print("✗ Nuitka builds disabled (nuitka.enabled = false in ci/ci.yaml)")
+
+          if not should_run and not force_build:
+              print("")
+              print("Nuitka build will be SKIPPED")
+              print("Reason: Trigger condition not met or nuitka.enabled = false")
+              print("")
+              print("To enable, update ci/ci.yaml:")
+              print("  nuitka.enabled: true")
+              print(f"  nuitka.triggers.{event_name}: true")
+
+          # Get other settings
+          publish = nuitka.get('publish', {})
+          publish_jfrog = str(publish.get('enabled', False)).lower()
+          jfrog_repo = publish.get('repository', 'hypersec-nuitka-binaries')
+          protection = nuitka.get('protection_level', 'recommended')
+
+          # Override with workflow_dispatch inputs
+          if '${{ github.event.inputs.force_publish }}' == 'true':
+              publish_jfrog = 'true'
+              print("⚠️  force_publish input: Will publish to JFrog regardless of config")
+
+          # Write to GitHub output
+          with open(os.environ['GITHUB_OUTPUT'], 'a') as f:
+              f.write(f'should_run={str(should_run).lower()}\n')
+              f.write(f'publish_jfrog={publish_jfrog}\n')
+              f.write(f'protection_level={protection}\n')
+              f.write(f'jfrog_repo={jfrog_repo}\n')
+
+          print("")
+          print("Configuration:")
+          print(f"  should_run: {should_run}")
+          print(f"  publish_jfrog: {publish_jfrog}")
+          print(f"  protection_level: {protection}")
+          print(f"  jfrog_repo: {jfrog_repo}")
+          EOF
+
+      - name: Build Matrix
+        id: matrix
+        if: steps.check.outputs.should_run == 'true'
+        run: |
+          python << 'EOF'
+          import yaml
+          import json
+          import os
+
+          with open('ci/ci.yaml', 'r') as f:
+              config = yaml.safe_load(f)
+
+          platforms = config.get('nuitka', {}).get('platforms', {})
+          matrix = {'include': []}
+
+          if platforms.get('linux_x64', True):
+              matrix['include'].append({
+                  'runner': 'ubuntu-latest',
+                  'platform': 'linux',
+                  'arch': 'x64',
+                  'cost_per_min': 0.008,
+                  'cost_multiplier': '1x',
+                  'estimated_time': 7
+              })
+
+          if platforms.get('linux_arm64', False):
+              matrix['include'].append({
+                  'runner': 'ubuntu-latest-arm64',
+                  'platform': 'linux',
+                  'arch': 'arm64',
+                  'cost_per_min': 0.016,
+                  'cost_multiplier': '2x',
+                  'estimated_time': 7
+              })
+
+          if platforms.get('macos_arm64', False):
+              matrix['include'].append({
+                  'runner': 'macos-latest',
+                  'platform': 'darwin',
+                  'arch': 'arm64',
+                  'cost_per_min': 0.16,
+                  'cost_multiplier': '20x',
+                  'estimated_time': 7
+              })
+
+          matrix_json = json.dumps(matrix)
+          with open(os.environ['GITHUB_OUTPUT'], 'a') as f:
+              f.write(f'json={matrix_json}\n')
+
+          print(f"Build matrix: {json.dumps(matrix, indent=2)}")
+          print(f"Total platforms: {len(matrix['include'])}")
+          EOF
+
+      - name: Calculate Total Cost
+        id: cost
+        if: steps.check.outputs.should_run == 'true'
+        run: |
+          python << 'EOF'
+          import json
+          import os
+
+          matrix = json.loads('${{ steps.matrix.outputs.json }}')
+          total_cost = sum(item['cost_per_min'] * item['estimated_time'] for item in matrix['include'])
+
+          with open(os.environ['GITHUB_OUTPUT'], 'a') as f:
+              f.write(f'total={total_cost:.2f}\n')
+
+          print("")
+          print("╔════════════════════════════════════════════════════════════════════════╗")
+          print("║                    TOTAL BUILD COST ESTIMATE                            ║")
+          print("╠════════════════════════════════════════════════════════════════════════╣")
+          for item in matrix['include']:
+              cost = item['cost_per_min'] * item['estimated_time']
+              plat = f"{item['platform']}-{item['arch']}"
+              print(f"║ {plat:20} │ {item['estimated_time']} min │ ${item['cost_per_min']}/min │ ${cost:.2f} ({item['cost_multiplier']:>4}) ║")
+          print("╠════════════════════════════════════════════════════════════════════════╣")
+          print(f"║ TOTAL ESTIMATED COST: ${total_cost:.2f}".ljust(73) + "║")
+          print("╚════════════════════════════════════════════════════════════════════════╝")
+          print("")
+          EOF
+
+  # Job 2: Build Nuitka binaries for each platform (parallel matrix)
+  build:
+    name: Build (${{ matrix.platform }}-${{ matrix.arch }})
+    runs-on: ${{ matrix.runner }}
+    needs: config
+    if: needs.config.outputs.should_run == 'true'
+
+    strategy:
+      fail-fast: false
+      matrix: ${{ fromJson(needs.config.outputs.matrix_json) }}
+
+    steps:
+      - name: Build Info
+        run: |
+          echo "════════════════════════════════════════════════════════════════"
+          echo "  Building: ${{ matrix.platform }}-${{ matrix.arch }}"
+          echo "  Runner: ${{ matrix.runner }}"
+          echo "  Protection: ${{ needs.config.outputs.protection_level }}"
+          echo "  Cost: \$${{ matrix.cost_per_min }}/min (${{ matrix.cost_multiplier }} vs Linux x64)"
+          echo "════════════════════════════════════════════════════════════════"
+
+          if [ "${{ matrix.platform }}" = "darwin" ]; then
+            echo ""
+            echo "⚠️⚠️⚠️  WARNING: macOS BUILD COSTS ~\$2.00  ⚠️⚠️⚠️"
+            echo "This is 20x more expensive than Linux builds!"
+            echo ""
+          fi
+
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Install C compiler (Linux)
+        if: runner.os == 'Linux'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y gcc g++ python3-dev
+
+      - name: Install C compiler (macOS)
+        if: runner.os == 'macOS'
+        run: xcode-select --install || true
+
+      - name: Bootstrap CI Environment
+        env:
+          JF_TOKEN: ${{ secrets.JFROG_TOKEN }}
+          JF_TOKEN_USER: artifactory@hypersec.io
+        run: ./ci/bootstrap --install
+
+      - name: Verify Nuitka Commercial (CRITICAL)
+        run: |
+          echo "Verifying Nuitka Commercial is installed..."
+          NUITKA_VERSION=$(ci/.venv/bin/python -m nuitka --version 2>&1)
+
+          echo "$NUITKA_VERSION"
+          echo ""
+
+          # Check if Commercial is installed (not OSS)
+          if echo "$NUITKA_VERSION" | grep -q "Commercial: None"; then
+            echo "================================================================"
+            echo "FATAL ERROR: Open-source Nuitka detected!"
+            echo "================================================================"
+            echo ""
+            echo "GitHub Actions MUST use Nuitka Commercial (not OSS)."
+            echo ""
+            echo "Installed: nuitka (OSS)"
+            echo "Expected: nuitka-commercial (Commercial)"
+            echo ""
+            echo "This means:"
+            echo "  - Bootstrap installed wrong package"
+            echo "  - JFrog credentials invalid or missing"
+            echo "  - nuitka-commercial not available in JFrog"
+            echo ""
+            echo "Action: Fix JFrog secrets or nuitka-commercial package"
+            echo "================================================================"
+            exit 1
+          elif echo "$NUITKA_VERSION" | grep -q "Commercial:"; then
+            COMMERCIAL_VER=$(echo "$NUITKA_VERSION" | grep "Commercial:" | awk '{print $2}')
+            echo "✓ Nuitka Commercial verified: $COMMERCIAL_VER"
+          else
+            echo "WARNING: Cannot determine Nuitka type - continuing"
+          fi
+
+      - name: Build Nuitka Compiled Wheel
+        run: |
+          echo "Building compiled wheel with Nuitka..."
+          ci/.venv/bin/python setup.py bdist_nuitka
+
+      - name: Verify Compiled Wheel
+        run: |
+          echo "Listing dist/:"
+          ls -lh dist/
+
+          # Check for compiled wheel
+          WHEEL=$(ls dist/*.whl | head -1)
+          if [ -z "$WHEEL" ]; then
+            echo "ERROR: No wheel found in dist/"
+            exit 1
+          fi
+
+          echo "✓ Wheel found: $(basename $WHEEL)"
+
+          # Verify it's compiled (contains .so file)
+          unzip -l "$WHEEL" | grep -q "\.so" && echo "✓ Contains compiled .so file" || echo "⚠️  No .so file found"
+
+      - name: Upload Wheel Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: wheel-${{ matrix.platform }}-${{ matrix.arch }}
+          path: dist/*.whl
+          retention-days: 90
+
+  # Job 3: Publish to JFrog (conditional on config)
+  publish-jfrog:
+    name: Publish to JFrog
+    runs-on: ubuntu-latest
+    needs: [config, build]
+    if: needs.config.outputs.publish_jfrog == 'true'
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Download All Artifacts
+        uses: actions/download-artifact@v4
+        with:
+          path: artifacts/
+
+      - name: List Downloaded Wheels
+        run: |
+          echo "Downloaded wheels:"
+          find artifacts/ -type f -name "*.whl"
+
+      - name: Install twine
+        run: pip install twine
+
+      - name: Upload Wheels to JFrog PyPI Repository
+        env:
+          TWINE_USERNAME: ${{ secrets.ARTIFACTORY_USERNAME }}
+          TWINE_PASSWORD: ${{ secrets.ARTIFACTORY_PASSWORD }}
+          TWINE_REPOSITORY_URL: https://hypersec.jfrog.io/artifactory/api/pypi/hypersec-pypi-local
+        run: |
+          echo "Publishing compiled wheels to JFrog PyPI repository..."
+          echo "Repository: hypersec-pypi-local"
+          echo ""
+
+          # Upload all wheels
+          WHEELS=$(find artifacts/ -type f -name "*.whl")
+          if [ -z "$WHEELS" ]; then
+            echo "ERROR: No wheels found in artifacts/"
+            exit 1
+          fi
+
+          for wheel in $WHEELS; do
+            echo "Uploading: $(basename $wheel)"
+            twine upload "$wheel"
+            if [ $? -eq 0 ]; then
+              echo "✓ Uploaded: $(basename $wheel)"
+            else
+              echo "✗ Failed: $(basename $wheel)"
+              exit 1
+            fi
+          done
+
+          echo ""
+          echo "✓ All compiled wheels published to JFrog PyPI repository"
+          echo ""
+          echo "Install with:"
+          echo "  pip install hyperlib --index-url https://hypersec.jfrog.io/artifactory/api/pypi/hypersec-pypi-local/simple"
+
+      - name: Build Summary
+        if: always()
+        run: |
+          echo "## Nuitka Build Summary 🎉" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+
+          if [ "${{ needs.config.outputs.should_run }}" = "true" ]; then
+            echo "### ✅ Builds Completed" >> $GITHUB_STEP_SUMMARY
+            echo "" >> $GITHUB_STEP_SUMMARY
+            echo "**Compiled wheels built:**" >> $GITHUB_STEP_SUMMARY
+            for artifact in artifacts/*/*.whl; do
+              if [ -f "$artifact" ]; then
+                FILENAME=$(basename "$artifact")
+                SIZE=$(du -h "$artifact" | cut -f1)
+                echo "- \`$FILENAME\` ($SIZE)" >> $GITHUB_STEP_SUMMARY
+              fi
+            done
+            echo "" >> $GITHUB_STEP_SUMMARY
+
+            echo "**Total estimated cost:** \$${{ needs.config.outputs.total_cost }}" >> $GITHUB_STEP_SUMMARY
+            echo "" >> $GITHUB_STEP_SUMMARY
+
+            if [ "${{ needs.config.outputs.publish_jfrog }}" = "true" ]; then
+              echo "**Published to JFrog PyPI:** ✅" >> $GITHUB_STEP_SUMMARY
+              echo "- Repository: \`hypersec-pypi-local\`" >> $GITHUB_STEP_SUMMARY
+              echo "- Install: \`pip install hyperlib --index-url https://hypersec.jfrog.io/...\`" >> $GITHUB_STEP_SUMMARY
+            else
+              echo "**Published to JFrog:** ❌ (disabled in ci/ci.yaml)" >> $GITHUB_STEP_SUMMARY
+            fi
+          else
+            echo "### ⏭️ Build Skipped" >> $GITHUB_STEP_SUMMARY
+            echo "" >> $GITHUB_STEP_SUMMARY
+            echo "Nuitka builds are disabled or trigger condition not met." >> $GITHUB_STEP_SUMMARY
+            echo "" >> $GITHUB_STEP_SUMMARY
+            echo "To enable, update \`ci/ci.yaml\`:" >> $GITHUB_STEP_SUMMARY
+            echo "\`\`\`yaml" >> $GITHUB_STEP_SUMMARY
+            echo "nuitka:" >> $GITHUB_STEP_SUMMARY
+            echo "  enabled: true" >> $GITHUB_STEP_SUMMARY
+            echo "  triggers:" >> $GITHUB_STEP_SUMMARY
+            echo "    on_release_tags: true" >> $GITHUB_STEP_SUMMARY
+            echo "\`\`\`" >> $GITHUB_STEP_SUMMARY
+          fi

@@ -1,0 +1,86 @@
+# ============================================================================
+# Hyperlib CI Configuration
+# ============================================================================
+# This file controls CI/CD behavior for hyperlib.
+# Changes to this file are version-controlled and affect all CI runs.
+
+# ============================================================================
+# Nuitka Build Configuration
+# ============================================================================
+nuitka:
+  # Master switch: Enable Nuitka compilation in CI
+  enabled: true
+
+  # Build type: What to build and where to put it
+  # - package: Compiled wheel (.whl with .so) → dist/ → JFrog PyPI repo
+  # - app: Standalone binary (.bin/.exe) → dist-bin/ → JFrog Generic repo or GitHub Releases
+  build_type: package  # Options: package, app
+
+  # When to build (multiple can be true)
+  triggers:
+    on_release_tags: true      # Build on version tags (v*)
+    on_pull_requests: false    # Build on PRs (expensive!)
+    on_push_to_main: false     # Build on every push to main
+    on_schedule: false         # Enable scheduled builds
+    schedule_cron: "0 2 * * 0" # Weekly on Sunday at 2am UTC (if on_schedule: true)
+
+  # Protection level for compiled binaries
+  # Options: none, minimal, data-hiding, traceback, recommended, opensource
+  # - none: Basic compilation only (no protection)
+  # - minimal: Standalone mode only
+  # - data-hiding: Encrypt string constants and names (Commercial only)
+  # - traceback: Encrypt stdout/stderr and tracebacks (Commercial only)
+  # - recommended: Full protection stack (Commercial only)
+  # - opensource: Best options for OSS Nuitka (auto-selected if OSS detected)
+  protection_level: recommended
+
+  # Platform matrix: Which architectures to build
+  platforms:
+    linux_x64: true          # Always enabled (cheap: $0.008/min)
+    linux_arm64: true        # Always enabled requires ARM64 runners (2x cost: $0.016/min)
+    macos_arm64: false       # EXPENSIVE! (20x cost: $0.16/min ≈ $2/build)
+
+  # Publishing to JFrog
+  publish:
+    enabled: true                             # Publish binaries to JFrog?
+    repository: "hypersec-nuitka-binaries"   # JFrog Generic repository name
+
+# ============================================================================
+# Python Package Build (Standard wheel/sdist)
+# ============================================================================
+package:
+  # Standard Python builds always run
+  # Publishing controlled by jfrog-publish.yml workflow
+
+# ============================================================================
+# Cost Optimization Notes
+# ============================================================================
+# Current settings cost estimate (if Nuitka enabled):
+#   - Linux x64: $0.056 per build
+#   - Add ARM64: +$0.112 per build
+#   - Add macOS: +$1.12 per build (WARNING: 20x expensive!)
+#
+# Recommended for development:
+#   - enabled: false (build locally when needed)
+#   - on_release_tags: true, all others: false
+#   - linux_x64: true, others: false
+#   - Cost: ~$0.56/month for 10 releases
+#
+# Production settings:
+#   - enabled: true
+#   - on_release_tags: true
+#   - linux_x64: true, linux_arm64: true
+#   - Cost: ~$1.68/month for 10 releases
+
+# ============================================================================
+# Environment Variable Overrides
+# ============================================================================
+# All settings can be overridden with environment variables using prefix:
+#   HYPERLIB_CI_<SETTING>
+#
+# Examples:
+#   HYPERLIB_CI_NUITKA_ENABLED=true
+#   HYPERLIB_CI_NUITKA_PROTECTION_LEVEL=none
+#   HYPERLIB_CI_NUITKA_PLATFORMS_MACOS_ARM64=true
+#
+# Precedence: ENV > ci/ci.yaml > defaults

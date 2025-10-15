@@ -205,8 +205,8 @@ def main() -> int:
             return 1
 
     else:
-        logger.error("Unknown action: %s", action)
-        return 1
+        # Unknown action - skip silently (other scripts may handle it)
+        return 0
 
 
 if __name__ == "__main__":

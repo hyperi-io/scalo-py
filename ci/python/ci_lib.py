@@ -254,23 +254,37 @@ def run_command(
 # ============================================================================
 
 # Configure module-level logger with RFC 3339 timestamps (plain text for CI)
-from loguru import logger
+# Handle case where loguru is not yet installed (during bootstrap)
+try:
+    from loguru import logger as _loguru_logger
 
-# Remove default handler
-logger.remove()
+    # Remove default handler
+    _loguru_logger.remove()
 
-# Add console handler with RFC 3339 timestamps (plain text, no colors/emojis for CI)
-logger.add(
-    sys.stderr,
-    format=(
-        "{time:YYYY-MM-DDTHH:mm:ss.SSSZZ} | "
-        "{level: <8} | "
-        "{name}:{function}:{line} - "
-        "{message}"
-    ),
-    colorize=False,
-    level="INFO",
-)
+    # Add console handler with RFC 3339 timestamps (plain text, no colors/emojis for CI)
+    _loguru_logger.add(
+        sys.stderr,
+        format=(
+            "{time:YYYY-MM-DDTHH:mm:ss.SSSZZ} | "
+            "{level: <8} | "
+            "{name}:{function}:{line} - "
+            "{message}"
+        ),
+        colorize=False,
+        level="INFO",
+    )
+    logger = _loguru_logger
+except ImportError:
+    # Loguru not installed yet (bootstrap phase)
+    # Create a simple logger replacement
+    class SimpleLogger:
+        """Simple logger for bootstrap phase (before loguru is installed)."""
+        def info(self, msg, *args): print(f"[INFO] {msg % args if args else msg}")
+        def warning(self, msg, *args): print(f"[WARN] {msg % args if args else msg}", file=sys.stderr)
+        def error(self, msg, *args): print(f"[ERR] {msg % args if args else msg}", file=sys.stderr)
+        def debug(self, msg, *args): pass  # Skip debug in bootstrap
+
+    logger = SimpleLogger()
 
 
 def get_logger(name: Optional[str] = None):
@@ -397,6 +411,196 @@ def write_version_file(version: str) -> None:
     """
     version_file = get_project_root() / "VERSION"
     version_file.write_text(f"{version}\n")
+
+
+# ============================================================================
+# Build Configuration (pyproject.toml + ENV overrides)
+# ============================================================================
+
+def get_build_config(key: str, default: any = None, env_prefix: str = "HYPERLIB_CI") -> any:
+    """
+    Get build configuration with precedence: ENV > ci/ci.yaml > default.
+
+    Precedence order:
+    1. Environment variable (highest priority)
+    2. ci/ci.yaml configuration file
+    3. Default value (lowest priority)
+
+    Args:
+        key: Configuration key with dot notation (e.g., 'nuitka.enabled')
+        default: Default value if not found anywhere
+        env_prefix: Environment variable prefix (default: HYPERLIB_CI)
+
+    Returns:
+        Configuration value with type preservation
+
+    Example:
+        # Check if Nuitka build is enabled
+        enabled = get_build_config('nuitka.enabled', False)
+
+        # Override via environment:
+        # HYPERLIB_CI_NUITKA_ENABLED=true ./ci/ci build
+    """
+    # 1. Check environment variable (highest priority)
+    # Convert dot notation to underscores: nuitka.enabled -> NUITKA_ENABLED
+    env_key = f"{env_prefix}_{key.replace('.', '_').upper()}"
+    env_value = os.environ.get(env_key)
+
+    if env_value is not None:
+        # Parse boolean strings
+        if env_value.lower() in ('true', '1', 'yes', 'on'):
+            return True
+        elif env_value.lower() in ('false', '0', 'no', 'off'):
+            return False
+        # Return as-is for strings/numbers
+        return env_value
+
+    # 2. Check ci/ci.yaml
+    try:
+        import yaml
+
+        ci_yaml_path = get_project_root() / "ci" / "ci.yaml"
+        if ci_yaml_path.exists():
+            with open(ci_yaml_path, 'r') as f:
+                config = yaml.safe_load(f)
+
+            # Navigate nested keys (e.g., 'nuitka.enabled' -> config['nuitka']['enabled'])
+            value = config
+            for part in key.split('.'):
+                if isinstance(value, dict) and part in value:
+                    value = value[part]
+                else:
+                    value = None
+                    break
+
+            if value is not None:
+                return value
+    except Exception as e:
+        logger.warning(f"Failed to read ci/ci.yaml: {e}")
+
+    # 3. Return default
+    return default
+
+
+def get_enabled_nuitka_platforms() -> list:
+    """
+    Get list of enabled Nuitka build platforms from config.
+
+    Returns list of platform strings like: ['linux-x64', 'linux-arm64', 'macos-arm64']
+    Only includes platforms explicitly enabled in ci/ci.yaml or via ENV vars.
+
+    Returns:
+        List of enabled platform identifiers
+    """
+    platforms = []
+
+    if get_build_config('nuitka.platforms.linux_x64', True):
+        platforms.append('linux-x64')
+
+    if get_build_config('nuitka.platforms.linux_arm64', False):
+        platforms.append('linux-arm64')
+
+    if get_build_config('nuitka.platforms.macos_arm64', False):
+        platforms.append('macos-arm64')
+
+    return platforms
+
+
+# ============================================================================
+# System Dependency Hints
+# ============================================================================
+
+def print_system_dependency_hint(package_name: str, command_name: Optional[str] = None) -> None:
+    """
+    Print platform-specific installation hints for missing system dependencies.
+
+    This is the standard way to notify users about missing system dependencies
+    across all bootstrap scripts. Bootstrap should NEVER auto-install system
+    packages - only provide clear guidance.
+
+    Args:
+        package_name: Human-readable name of the package (e.g., "C compiler", "Node.js")
+        command_name: Optional command to check (e.g., "gcc", "node")
+
+    Example:
+        if not shutil.which("gcc"):
+            print_system_dependency_hint("C compiler (gcc)", "gcc")
+    """
+    import platform
+
+    system = platform.system()
+    logger.error(f"System dependency not found: {package_name}")
+
+    if command_name:
+        logger.error(f"  Missing command: {command_name}")
+
+    logger.error("")
+    logger.error("Installation instructions:")
+
+    if system == "Linux":
+        try:
+            with open("/etc/os-release") as f:
+                os_release = f.read().lower()
+
+            if "fedora" in os_release or "rhel" in os_release or "centos" in os_release:
+                logger.error("  Fedora/RHEL: sudo dnf install <package>")
+                if package_name.lower() == "c compiler" or "gcc" in package_name.lower():
+                    logger.error("  Example: sudo dnf install gcc gcc-c++ python3-devel")
+            elif "debian" in os_release or "ubuntu" in os_release:
+                logger.error("  Debian/Ubuntu: sudo apt-get install <package>")
+                if package_name.lower() == "c compiler" or "gcc" in package_name.lower():
+                    logger.error("  Example: sudo apt-get install build-essential python3-dev")
+            else:
+                logger.error("  Use your distribution's package manager")
+        except Exception:
+            logger.error("  Use your distribution's package manager (dnf, apt, etc.)")
+
+    elif system == "Darwin":
+        logger.error("  macOS: Use Homebrew or system installers")
+        if package_name.lower() == "c compiler" or "gcc" in package_name.lower() or "clang" in package_name.lower():
+            logger.error("  Example: xcode-select --install")
+        else:
+            logger.error("  Example: brew install <package>")
+
+    elif system == "Windows":
+        logger.error("  Windows: Use system installers or package managers")
+        if package_name.lower() == "c compiler":
+            logger.error("  Example: Visual Studio Build Tools or MinGW")
+    else:
+        logger.error(f"  Platform: {system} (consult platform documentation)")
+
+    logger.error("")
+
+
+def get_platform_package_manager() -> str:
+    """
+    Detect the platform package manager.
+
+    Returns:
+        Package manager name (e.g., 'dnf', 'apt', 'brew', 'unknown')
+    """
+    import platform
+    import shutil
+
+    system = platform.system()
+
+    if system == "Linux":
+        if shutil.which("dnf"):
+            return "dnf"
+        elif shutil.which("apt-get"):
+            return "apt-get"
+        elif shutil.which("yum"):
+            return "yum"
+        elif shutil.which("pacman"):
+            return "pacman"
+        else:
+            return "unknown"
+    elif system == "Darwin":
+        return "brew" if shutil.which("brew") else "unknown"
+    elif system == "Windows":
+        return "choco" if shutil.which("choco") else "unknown"
+    else:
+        return "unknown"
 
 
 # ============================================================================

@@ -1,0 +1,53 @@
+# CI Environment Configuration
+# This pyproject.toml is for CI/.venv ONLY (not the project itself)
+# It configures tools and package sources for the CI environment
+
+[project]
+name = "hyperlib-ci"
+version = "1.0.0"
+description = "CI tools for hyperlib"
+requires-python = ">=3.9"  # CI tools work with Python 3.9+
+
+# CI tool dependencies (installed in ci/.venv)
+dependencies = [
+    "setuptools>=70.0.0",
+    "wheel>=0.42.0",
+    "build>=1.0.0",
+    "pyyaml>=6.0",      # MUST BE FIRST - required for ci/ci.yaml config
+    "loguru>=0.7.0",    # RFC3339 logging
+    "pytest>=8.0.0",    # Testing
+    "ruff>=0.1.0",      # Linting
+    "black>=24.0.0",    # Formatting
+    "mypy>=1.8.0",      # Type checking
+    "twine>=5.0.0",     # JFrog publishing
+    "python-semantic-release>=9.0.0",  # Versioning
+    "vermin>=1.6.0",    # Dependency analysis
+    "pycryptodomex>=3.20.0",  # Required for Nuitka traceback-encryption plugin
+]
+
+# Nuitka is NOT in dependencies - installed separately by 25-nuitka.py
+# This allows JFrog enforcement (nuitka-commercial vs nuitka OSS) and smart detection
+
+# ============================================================================
+# Package Index Configuration (uv)
+# ============================================================================
+# Force Nuitka to ONLY use JFrog Artifactory (no fallback to public PyPI)
+# JFrog has Nuitka Commercial 2.7.16, public PyPI has OSS 2.8.1
+#
+# NOTE: uv index URLs require credentials to be set via environment variables:
+#   UV_INDEX_<NAME>_USERNAME and UV_INDEX_<NAME>_PASSWORD
+#   OR use keyring for credential storage
+#
+# For now, we cannot use tool.uv.sources reliably because:
+# 1. URL authentication is complex with uv
+# 2. JFrog credentials need to be injected at runtime
+#
+# Instead, bootstrap will use uv pip install with explicit --index-url flag
+
+# [[tool.uv.index]]
+# name = "jfrog"
+# url = "https://hypersec.jfrog.io/artifactory/api/pypi/hypersec-pypi-local/simple"
+# explicit = true
+#
+# [tool.uv.sources]
+# nuitka = { index = "jfrog" }
