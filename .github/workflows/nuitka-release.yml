@@ -273,8 +273,9 @@ jobs:
 
       - name: Bootstrap CI Environment
         env:
-          JF_TOKEN: ${{ secrets.JFROG_TOKEN }}
-          JF_TOKEN_USER: artifactory@hypersec.io
+          # Map organization secrets to expected env vars
+          JF_USER: ${{ secrets.ARTIFACTORY_USERNAME }}
+          JF_PASSWORD: ${{ secrets.ARTIFACTORY_PASSWORD }}
         run: ./ci/bootstrap --install
 
       - name: Verify Nuitka Commercial (CRITICAL)
