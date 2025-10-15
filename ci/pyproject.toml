@@ -15,13 +15,27 @@ dependencies = [
     "build>=1.0.0",
     "pyyaml>=6.0",      # MUST BE FIRST - required for ci/ci.yaml config
     "loguru>=0.7.0",    # RFC3339 logging
-    "pytest>=8.0.0",    # Testing
-    "ruff>=0.1.0",      # Linting
-    "black>=24.0.0",    # Formatting
+    # Testing
+    "pytest>=8.0.0",
+    "pytest-cov>=4.0.0",  # Coverage reporting
+    # Code Quality
+    "ruff>=0.1.0",      # Linting (fast, modern)
+    "black>=24.0.0",    # Code formatting
+    "isort>=5.12.0",    # Import sorting
     "mypy>=1.8.0",      # Type checking
-    "twine>=5.0.0",     # JFrog publishing
-    "python-semantic-release>=9.0.0",  # Versioning
-    "vermin>=1.6.0",    # Dependency analysis
+    # Security
+    "bandit[toml]>=1.7.0",  # Security linting
+    "pip-audit>=2.6.0",     # Dependency vulnerability scanning
+    # Documentation
+    "interrogate>=1.5.0",   # Docstring coverage
+    # Code Analysis
+    "vulture>=2.7.0",   # Dead code detection
+    "vermin>=1.6.0",    # Python version compatibility
+    # Publishing
+    "twine>=5.0.0",     # Package publishing to JFrog
+    # Versioning
+    "python-semantic-release>=9.0.0",
+    # Nuitka Support
     "pycryptodomex>=3.20.0",  # Required for Nuitka traceback-encryption plugin
 ]
 
