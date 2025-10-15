@@ -107,12 +107,95 @@ BUILD_PROFILE=nuitka ./ci/ci build
 #         .keys/*.key (encryption key, if traceback encryption enabled)
 ```
 
-### Build Locally
+### Build Locally (Single Architecture)
 
 ```bash
-# Build Nuitka executable locally (publishing is GitHub Actions only)
+# Build Nuitka executable locally (local CPU architecture only)
 BUILD_PROFILE=nuitka ./ci/ci build
+
+# Output: dist-nuitka/hyperlib-linux-x64.bin (or -arm64.bin on ARM)
 ```
+
+**Note**: Local builds compile for **your current CPU architecture only** (x64 or ARM64). This is fast and free, perfect for testing before running expensive multi-arch GitHub Actions builds.
+
+### Multi-Architecture Builds (GitHub Actions)
+
+For production releases, use GitHub Actions to build for **multiple architectures**:
+
+**Supported Platforms** (configurable in `ci/ci.yaml`) - **Private repository pricing**:
+- **Linux x64**: `ubuntu-latest` ($0.008/min, ~$0.056 per build)
+- **Linux ARM64**: `ubuntu-24.04-arm` ($0.016/min, ~$0.112 per build) - **2x cost, native ARM64!**
+- **macOS ARM64**: `macos-latest` ($0.16/min, ~$1.12 per build) - **20x expensive!**
+
+**Note**: Public repos get ARM64 for free, but HyperSec uses **private repositories** which are billed.
+
+**Workflow**: `.github/workflows/nuitka-release.yml`
+
+**Trigger**:
+```bash
+# Create version tag (automatically triggers multi-arch build)
+FORCE_RELEASE=1 ./ci/ci publish
+```
+
+**Or manually trigger**:
+1. Go to GitHub Actions → Nuitka Multi-Arch Release
+2. Click "Run workflow"
+3. Optionally force build/publish
+
+**Configuration** (`ci/ci.yaml`):
+```yaml
+nuitka:
+  enabled: true
+  platforms:
+    linux_x64: true       # Always enable (cheap)
+    linux_arm64: true     # Enable if needed (2x cost)
+    macos_arm64: false    # EXPENSIVE! (20x cost)
+```
+
+**Output**:
+- Compiled wheels: `dist/*.whl` (one per architecture)
+- Each wheel contains platform-specific `.so` file (Nuitka-compiled)
+- Published to JFrog PyPI repository for `pip install`
+
+**Cost Management**:
+
+| Platform | Runner | Cost/min | Build Time | Cost/Build |
+|----------|--------|----------|------------|------------|
+| Linux x64 | ubuntu-latest | $0.008 | ~7 min | $0.056 |
+| Linux ARM64 | ubuntu-24.04-arm | $0.016 | ~7 min | $0.112 |
+| macOS ARM64 | macos-latest | $0.16 | ~7 min | $1.12 |
+
+**Monthly costs** (10 releases) - **Private repository pricing**:
+- Linux x64 only: $0.56/month
+- Linux x64 + ARM64: **$1.68/month** (current config)
+- All platforms (including macOS): $13.80/month
+
+**HyperSec Configuration**: Linux x64 + ARM64 enabled, macOS disabled.
+
+**Recommendation**: Keep current config (x64 + ARM64), only enable macOS if Apple Silicon distribution is critical.
+
+**ARM64 Runner Configuration**:
+
+GitHub Actions now provides **native ARM64 Linux runners**:
+- **Ubuntu 24.04 ARM64**: `runs-on: ubuntu-24.04-arm` (recommended)
+- **Ubuntu 22.04 ARM64**: `runs-on: ubuntu-22.04-arm`
+
+**Setup**:
+1. ARM64 runners are available on GitHub-hosted infrastructure
+2. Cost: 2x standard Linux runners ($0.016/min vs $0.008/min)
+3. Performance: Native ARM64 execution (no emulation needed)
+
+**No additional configuration needed** - just enable in `ci/ci.yaml`:
+```yaml
+nuitka:
+  platforms:
+    linux_arm64: true
+```
+
+**Alternatives** (if you want to avoid GitHub Actions costs):
+- **Self-hosted runner**: Set up your own ARM64 machine (free, but maintenance required)
+- **BuildJet**: Third-party ARM64 runners (https://buildjet.com) - may be cheaper for high volume
+- **Disable ARM64**: Set `linux_arm64: false` in `ci/ci.yaml` (build x64 only, free)
 
 ## Build Profiles
 

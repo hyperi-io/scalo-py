@@ -160,8 +160,11 @@ jobs:
               })
 
           if platforms.get('linux_arm64', False):
+              # Note: GitHub doesn't provide native ARM64 Linux runners
+              # Options: self-hosted runner, larger runner (ubuntu-24.04-arm), or buildjet
+              # Using larger runner label (requires GitHub Team/Enterprise)
               matrix['include'].append({
-                  'runner': 'ubuntu-latest-arm64',
+                  'runner': 'ubuntu-24.04-arm',  # Requires paid plan with larger runners
                   'platform': 'linux',
                   'arch': 'arm64',
                   'cost_per_min': 0.016,
@@ -304,8 +307,12 @@ jobs:
           fi
 
       - name: Build Nuitka Compiled Wheel
+        env:
+          # Enable Nuitka build mode
+          BUILD_PROFILE: nuitka
         run: |
-          echo "Building compiled wheel with Nuitka..."
+          echo "Building compiled wheel with Nuitka (setup.py bdist_nuitka)..."
+          echo "Protection level: ${{ needs.config.outputs.protection_level }}"
           ci/.venv/bin/python setup.py bdist_nuitka
 
       - name: Verify Compiled Wheel
@@ -323,7 +330,17 @@ jobs:
           echo "✓ Wheel found: $(basename $WHEEL)"
 
           # Verify it's compiled (contains .so file)
-          unzip -l "$WHEEL" | grep -q "\.so" && echo "✓ Contains compiled .so file" || echo "⚠️  No .so file found"
+          if unzip -l "$WHEEL" | grep -q "\.so"; then
+            echo "✓ Contains compiled .so file (Nuitka-compiled)"
+            echo "  Architecture-specific binary included"
+          else
+            echo "⚠️  WARNING: No .so file found - may not be Nuitka-compiled"
+          fi
+
+          # Show wheel details
+          echo ""
+          echo "Wheel contents:"
+          unzip -l "$WHEEL" | grep -E "\.(so|pyd)$" || echo "  No compiled files found"
 
       - name: Upload Wheel Artifact
         uses: actions/upload-artifact@v4
