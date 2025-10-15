@@ -160,15 +160,14 @@ jobs:
               })
 
           if platforms.get('linux_arm64', False):
-              # Note: GitHub doesn't provide native ARM64 Linux runners
-              # Options: self-hosted runner, larger runner (ubuntu-24.04-arm), or buildjet
-              # Using larger runner label (requires GitHub Team/Enterprise)
+              # Using BuildJet for ARM64 runners (already linked to hypersec-io org)
+              # BuildJet provides native ARM64 at $0.004/min (75% cheaper than GitHub)
               matrix['include'].append({
-                  'runner': 'ubuntu-24.04-arm',  # Requires paid plan with larger runners
+                  'runner': 'buildjet-2vcpu-ubuntu-2204-arm',  # BuildJet ARM64 runner
                   'platform': 'linux',
                   'arch': 'arm64',
-                  'cost_per_min': 0.016,
-                  'cost_multiplier': '2x',
+                  'cost_per_min': 0.004,  # BuildJet pricing
+                  'cost_multiplier': '0.5x',  # Actually cheaper than GitHub x64!
                   'estimated_time': 7
               })
 
@@ -211,7 +210,8 @@ jobs:
           for item in matrix['include']:
               cost = item['cost_per_min'] * item['estimated_time']
               plat = f"{item['platform']}-{item['arch']}"
-              print(f"║ {plat:20} │ {item['estimated_time']} min │ ${item['cost_per_min']}/min │ ${cost:.2f} ({item['cost_multiplier']:>4}) ║")
+              runner_type = "BuildJet" if "buildjet" in item['runner'] else "GitHub"
+              print(f"║ {plat:20} │ {item['estimated_time']} min │ ${item['cost_per_min']:.3f}/min │ ${cost:.2f} ({runner_type:>8}) ║")
           print("╠════════════════════════════════════════════════════════════════════════╣")
           print(f"║ TOTAL ESTIMATED COST: ${total_cost:.2f}".ljust(73) + "║")
           print("╚════════════════════════════════════════════════════════════════════════╝")
@@ -235,6 +235,11 @@ jobs:
           echo "════════════════════════════════════════════════════════════════"
           echo "  Building: ${{ matrix.platform }}-${{ matrix.arch }}"
           echo "  Runner: ${{ matrix.runner }}"
+          if [[ "${{ matrix.runner }}" == buildjet-* ]]; then
+            echo "  Provider: BuildJet (third-party)"
+          else
+            echo "  Provider: GitHub Actions"
+          fi
           echo "  Protection: ${{ needs.config.outputs.protection_level }}"
           echo "  Cost: \$${{ matrix.cost_per_min }}/min (${{ matrix.cost_multiplier }} vs Linux x64)"
           echo "════════════════════════════════════════════════════════════════"
