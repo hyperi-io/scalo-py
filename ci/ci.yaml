@@ -37,8 +37,18 @@ nuitka:
   # Platform matrix: Which architectures to build
   platforms:
     linux_x64: true          # Always enabled (cheap: $0.008/min)
-    linux_arm64: true        # Always enabled requires ARM64 runners (2x cost: $0.016/min)
+    linux_arm64: true        # BuildJet: $0.004/min, GitHub: N/A for private repos
     macos_arm64: false       # EXPENSIVE! (20x cost: $0.16/min ≈ $2/build)
+
+  # BuildJet configuration for ARM64 runners (private repos)
+  # BuildJet provides native ARM64 runners at 75% less cost than GitHub
+  buildjet:
+    enabled: true            # Use BuildJet for ARM64 builds (default: true)
+    # When enabled:
+    #   - ARM64 builds use: buildjet-2vcpu-ubuntu-2204-arm ($0.004/min)
+    # When disabled:
+    #   - ARM64 builds fail for private repos (GitHub doesn't support ARM64 for private)
+    #   - Or you can use self-hosted runners if configured
 
   # Publishing to JFrog
   publish:
@@ -56,9 +66,14 @@ package:
 # Cost Optimization Notes
 # ============================================================================
 # Current settings cost estimate (if Nuitka enabled):
-#   - Linux x64: $0.056 per build
-#   - Add ARM64: +$0.112 per build
-#   - Add macOS: +$1.12 per build (WARNING: 20x expensive!)
+#   - Linux x64 (GitHub): $0.056 per build
+#   - Linux ARM64 (BuildJet): +$0.028 per build (with buildjet.enabled: true)
+#   - Linux ARM64 (GitHub): Not available for private repos
+#   - macOS ARM64: +$1.12 per build (WARNING: 20x expensive!)
+#
+# With BuildJet enabled (default):
+#   - Total per release: $0.084 (x64 + ARM64)
+#   - Monthly (10 releases): ~$0.84
 #
 # Recommended for development:
 #   - enabled: false (build locally when needed)
@@ -66,11 +81,12 @@ package:
 #   - linux_x64: true, others: false
 #   - Cost: ~$0.56/month for 10 releases
 #
-# Production settings:
+# Production settings (current):
 #   - enabled: true
 #   - on_release_tags: true
 #   - linux_x64: true, linux_arm64: true
-#   - Cost: ~$1.68/month for 10 releases
+#   - buildjet.enabled: true
+#   - Cost: ~$0.84/month for 10 releases (with BuildJet)
 
 # ============================================================================
 # Environment Variable Overrides

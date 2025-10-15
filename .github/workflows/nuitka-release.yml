@@ -126,12 +126,17 @@ jobs:
               f.write(f'protection_level={protection}\n')
               f.write(f'jfrog_repo={jfrog_repo}\n')
 
+          # Read BuildJet config for output
+          buildjet_config = nuitka.get('buildjet', {})
+          buildjet_enabled_str = str(buildjet_config.get('enabled', True)).lower()
+
           print("")
           print("Configuration:")
           print(f"  should_run: {should_run}")
           print(f"  publish_jfrog: {publish_jfrog}")
           print(f"  protection_level: {protection}")
           print(f"  jfrog_repo: {jfrog_repo}")
+          print(f"  buildjet_enabled: {buildjet_enabled_str}")
           EOF
 
       - name: Build Matrix
@@ -146,7 +151,9 @@ jobs:
           with open('ci/ci.yaml', 'r') as f:
               config = yaml.safe_load(f)
 
-          platforms = config.get('nuitka', {}).get('platforms', {})
+          nuitka_config = config.get('nuitka', {})
+          platforms = nuitka_config.get('platforms', {})
+          buildjet_enabled = nuitka_config.get('buildjet', {}).get('enabled', True)
           matrix = {'include': []}
 
           if platforms.get('linux_x64', True):
@@ -160,16 +167,29 @@ jobs:
               })
 
           if platforms.get('linux_arm64', False):
-              # Using BuildJet for ARM64 runners (already linked to hypersec-io org)
-              # BuildJet provides native ARM64 at $0.004/min (75% cheaper than GitHub)
-              matrix['include'].append({
-                  'runner': 'buildjet-2vcpu-ubuntu-2204-arm',  # BuildJet ARM64 runner
-                  'platform': 'linux',
-                  'arch': 'arm64',
-                  'cost_per_min': 0.004,  # BuildJet pricing
-                  'cost_multiplier': '0.5x',  # Actually cheaper than GitHub x64!
-                  'estimated_time': 7
-              })
+              if buildjet_enabled:
+                  # Using BuildJet for ARM64 runners (already linked to hypersec-io org)
+                  # BuildJet provides native ARM64 at $0.004/min (75% cheaper than GitHub)
+                  print(f"✓ BuildJet enabled for ARM64 builds (buildjet.enabled = true)")
+                  matrix['include'].append({
+                      'runner': 'buildjet-2vcpu-ubuntu-2204-arm',  # BuildJet ARM64 runner
+                      'platform': 'linux',
+                      'arch': 'arm64',
+                      'cost_per_min': 0.004,  # BuildJet pricing
+                      'cost_multiplier': '0.5x',  # Actually cheaper than GitHub x64!
+                      'estimated_time': 7
+                  })
+              else:
+                  # Fallback to GitHub Actions (will fail for private repos)
+                  print(f"⚠️ BuildJet disabled - using GitHub Actions for ARM64 (may fail for private repos)")
+                  matrix['include'].append({
+                      'runner': 'ubuntu-24.04-arm',  # GitHub ARM64 runner (only works for public repos)
+                      'platform': 'linux',
+                      'arch': 'arm64',
+                      'cost_per_min': 0.016,  # GitHub pricing for private repos
+                      'cost_multiplier': '2x',
+                      'estimated_time': 7
+                  })
 
           if platforms.get('macos_arm64', False):
               matrix['include'].append({
