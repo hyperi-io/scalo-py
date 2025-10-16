@@ -730,6 +730,7 @@ print("SUCCESS: All tests passed!")
                 "--repository-url", jfrog_url,
                 "--username", username,
                 "--password", password,
+                "--skip-existing",  # Prevent conflicts on re-upload
                 "dist/*"
             ],
             cwd=TEST_PROJECT_ROOT,

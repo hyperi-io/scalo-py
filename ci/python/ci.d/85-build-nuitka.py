@@ -97,6 +97,52 @@ def get_protection_profile() -> str:
     return get_build_config('nuitka.protection_level', 'recommended').lower()
 
 
+def auto_detect_build_type() -> str:
+    """
+    Auto-detect if this is a library package or standalone application.
+
+    Detection logic:
+    1. Check pyproject.toml for [project.scripts] - indicates APPLICATION
+    2. Check for src/ directory structure - indicates LIBRARY PACKAGE
+    3. If ci/ci.yaml explicitly sets build_type, use that (override)
+
+    Returns:
+        "package" - Library package → build compiled wheels (.whl)
+        "app" - Standalone application → build executable binary (.bin/.exe)
+    """
+    # 1. Check for explicit override in ci/ci.yaml
+    yaml_build_type = get_build_config('nuitka.build_type', None)
+    if yaml_build_type:
+        logger.debug(f"Using explicit build_type from ci.yaml: {yaml_build_type}")
+        return yaml_build_type.lower()
+
+    # 2. Auto-detect from project structure
+    pyproject_path = PROJECT_ROOT / "pyproject.toml"
+    if not pyproject_path.exists():
+        logger.warning("No pyproject.toml found - defaulting to 'package'")
+        return "package"
+
+    import tomllib
+    with open(pyproject_path, 'rb') as f:
+        config = tomllib.load(f)
+
+    # Check for entry points (indicates APPLICATION)
+    if 'project' in config:
+        if 'scripts' in config['project'] or 'gui-scripts' in config['project']:
+            logger.debug("Detected entry points → build_type: app")
+            return "app"
+
+    # Check for src/ structure (indicates LIBRARY PACKAGE)
+    src_dir = PROJECT_ROOT / "src"
+    if src_dir.exists() and src_dir.is_dir():
+        logger.debug("Detected src/ structure → build_type: package")
+        return "package"
+
+    # Default: If unsure, assume package (safer default)
+    logger.warning("Could not auto-detect build type - defaulting to 'package'")
+    return "package"
+
+
 def get_architecture() -> str:
     """
     Detect CPU architecture.
@@ -373,32 +419,77 @@ def check_action(logger) -> int:
     return 0
 
 
-def build_action(logger) -> int:
-    """Build package with Nuitka compilation."""
-    # Skip if Nuitka build is not enabled
-    if not is_nuitka_build_enabled():
-        return 0  # Skip silently (regular build will handle it)
+def build_package_mode(logger, nuitka_type: str, protection: str) -> int:
+    """
+    Build compiled wheel using setup.py bdist_nuitka.
 
+    This creates a wheel (.whl) with compiled .so files in dist/.
+    """
+    logger.info("")
     logger.info("="*60)
-    logger.info("NUITKA BUILD PROFILE ACTIVE")
+    logger.info("BUILDING COMPILED WHEEL (package mode)")
     logger.info("="*60)
 
-    # Detect Nuitka type
-    nuitka_type = detect_nuitka_type()
-    logger.info(f"Nuitka type: {nuitka_type}")
+    # Clean dist directory
+    dist_dir = PROJECT_ROOT / "dist"
+    if dist_dir.exists():
+        logger.info("Cleaning dist/ directory...")
+        shutil.rmtree(dist_dir)
+    dist_dir.mkdir(parents=True)
 
-    if nuitka_type == "opensource":
-        logger.warning("="*60)
-        logger.warning("[WARN] Using OPEN-SOURCE Nuitka")
-        logger.warning("       Limited protection features available")
-        logger.warning("       Commercial features NOT available:")
-        logger.warning("         - data-hiding plugin (string encryption)")
-        logger.warning("         - traceback-encryption plugin")
-        logger.warning("="*60)
-    elif nuitka_type == "commercial":
-        logger.info("[OK] Using Nuitka Commercial - Full protection available")
+    # Determine platform and architecture
+    plat = get_platform_name()
+    arch = get_architecture()
+    logger.info(f"Target: {plat}-{arch}")
+
+    # Build command using setup.py bdist_nuitka
+    cmd = [sys.executable, "setup.py", "bdist_nuitka"]
+
+    logger.info("")
+    logger.info("Running: " + " ".join(cmd))
+    logger.info("Note: Protection configured in setup.py (data-hiding plugin)")
+    logger.info("")
+
+    # Run build
+    result = subprocess.run(cmd, cwd=PROJECT_ROOT)
+
+    if result.returncode != 0:
+        logger.error("Compiled wheel build failed")
+        return 1
+
+    # List built files
+    wheels = list(dist_dir.glob("*.whl"))
+    if wheels:
+        logger.info("")
+        logger.info(f"✓ Built {len(wheels)} compiled wheel(s):")
+        for wheel in wheels:
+            size_mb = wheel.stat().st_size / (1024 * 1024)
+            logger.info(f"  - {wheel.name} ({size_mb:.2f} MB)")
     else:
-        logger.warning("[WARN] Cannot determine Nuitka type - assuming basic features")
+        logger.error("No wheels found in dist/")
+        return 1
+
+    logger.info("")
+    logger.info("="*60)
+    logger.info("COMPILED WHEEL BUILD COMPLETE")
+    logger.info("="*60)
+    logger.info(f"Output: dist/")
+    logger.info(f"Type: Compiled wheel with .so modules")
+    logger.info("="*60)
+
+    return 0
+
+
+def build_app_mode(logger, nuitka_type: str, protection: str) -> int:
+    """
+    Build standalone binary using Nuitka.
+
+    This creates a .bin/.exe file in dist-nuitka/.
+    """
+    logger.info("")
+    logger.info("="*60)
+    logger.info("BUILDING STANDALONE BINARY (app mode)")
+    logger.info("="*60)
 
     # Detect platform and architecture
     plat = get_platform_name()
@@ -406,35 +497,11 @@ def build_action(logger) -> int:
     logger.info(f"Platform: {plat}")
     logger.info(f"Architecture: {arch}")
     logger.info(f"Building for: {plat}-{arch}")
+    logger.info(f"Protection: {protection}")
 
     # Show cost warning for macOS (EXPENSIVE!)
     if plat == 'darwin':
         print_macos_cost_warning()
-
-    # Get protection profile
-    protection = get_protection_profile()
-
-    # Auto-select 'opensource' profile if OSS Nuitka is detected
-    if nuitka_type == "opensource" and protection not in ["none", "minimal", "opensource"]:
-        logger.warning(f"[WARN] Protection profile '{protection}' not supported by OSS Nuitka")
-        logger.warning("       Auto-selecting 'opensource' profile")
-        protection = "opensource"
-
-    logger.info(f"Protection profile: {protection}")
-
-    # Validate protection profile
-    valid_profiles = ["none", "minimal", "data-hiding", "traceback", "recommended", "opensource"]
-    if protection not in valid_profiles:
-        logger.error(f"Invalid NUITKA_PROTECTION: {protection}")
-        logger.error(f"Valid options: {', '.join(valid_profiles)}")
-        return 1
-
-    # Warn if trying to use Commercial features with OSS
-    if nuitka_type == "opensource" and protection in ["data-hiding", "traceback", "recommended"]:
-        logger.error(f"[ERR] Protection profile '{protection}' requires Nuitka Commercial")
-        logger.error("      Open-source Nuitka does not support commercial plugins")
-        logger.error("      Use one of: none, minimal, opensource")
-        return 1
 
     # Set up keys directory
     keys_dir = setup_keys_directory()
@@ -542,6 +609,77 @@ To decrypt logs:
     logger.info("="*60)
 
     return 0
+
+
+def build_action(logger) -> int:
+    """
+    Build package with Nuitka compilation.
+
+    Auto-detects build type:
+    - "package" → Compiled wheel (.whl with .so) for libraries
+    - "app" → Standalone binary (.bin/.exe) for applications
+    """
+    # Skip if Nuitka build is not enabled
+    if not is_nuitka_build_enabled():
+        return 0  # Skip silently (regular build will handle it)
+
+    logger.info("="*60)
+    logger.info("NUITKA BUILD PROFILE ACTIVE")
+    logger.info("="*60)
+
+    # Auto-detect build type
+    build_type = auto_detect_build_type()
+    logger.info(f"Build type: {build_type} (auto-detected)")
+
+    # Detect Nuitka type
+    nuitka_type = detect_nuitka_type()
+    logger.info(f"Nuitka type: {nuitka_type}")
+
+    if nuitka_type == "opensource":
+        logger.warning("="*60)
+        logger.warning("[WARN] Using OPEN-SOURCE Nuitka")
+        logger.warning("       Limited protection features available")
+        logger.warning("       Commercial features NOT available:")
+        logger.warning("         - data-hiding plugin (string encryption)")
+        logger.warning("         - traceback-encryption plugin")
+        logger.warning("="*60)
+    elif nuitka_type == "commercial":
+        logger.info("[OK] Using Nuitka Commercial - Full protection available")
+    else:
+        logger.warning("[WARN] Cannot determine Nuitka type - assuming basic features")
+
+    # Get protection profile
+    protection = get_protection_profile()
+    logger.info(f"Protection profile: {protection}")
+
+    # Auto-select 'opensource' profile if OSS Nuitka is detected
+    if nuitka_type == "opensource" and protection not in ["none", "minimal", "opensource"]:
+        logger.warning(f"[WARN] Protection profile '{protection}' not supported by OSS Nuitka")
+        logger.warning("       Auto-selecting 'opensource' profile")
+        protection = "opensource"
+
+    # Validate protection profile
+    valid_profiles = ["none", "minimal", "data-hiding", "traceback", "recommended", "opensource"]
+    if protection not in valid_profiles:
+        logger.error(f"Invalid NUITKA_PROTECTION: {protection}")
+        logger.error(f"Valid options: {', '.join(valid_profiles)}")
+        return 1
+
+    # Warn if trying to use Commercial features with OSS
+    if nuitka_type == "opensource" and protection in ["data-hiding", "traceback", "recommended"]:
+        logger.error(f"[ERR] Protection profile '{protection}' requires Nuitka Commercial")
+        logger.error("      Open-source Nuitka does not support commercial plugins")
+        logger.error("      Use one of: none, minimal, opensource")
+        return 1
+
+    # Route to appropriate build function
+    if build_type == "package":
+        return build_package_mode(logger, nuitka_type, protection)
+    elif build_type == "app":
+        return build_app_mode(logger, nuitka_type, protection)
+    else:
+        logger.error(f"Unknown build type: {build_type}")
+        return 1
 
 
 def main() -> int:

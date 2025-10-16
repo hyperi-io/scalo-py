@@ -362,9 +362,10 @@ jobs:
           # Enable Nuitka build mode
           BUILD_PROFILE: nuitka
         run: |
-          echo "Building compiled wheel with Nuitka (setup.py bdist_nuitka)..."
+          echo "Building with Nuitka (auto-detects package vs app mode)..."
           echo "Protection level: ${{ needs.config.outputs.protection_level }}"
-          ci/.venv/bin/python setup.py bdist_nuitka
+          # Use 85-build-nuitka.py which auto-detects build type from project structure
+          ci/.venv/bin/python ci/python/ci.d/85-build-nuitka.py build
 
       - name: Verify Compiled Wheel
         run: |
@@ -448,7 +449,9 @@ jobs:
 
           for wheel in $WHEELS; do
             echo "Uploading: $(basename $wheel)"
-            twine upload "$wheel"
+            # Use --skip-existing to prevent conflicts with multi-arch builds
+            # (allows x64 and arm64 wheels to be uploaded independently)
+            twine upload --skip-existing "$wheel"
             if [ $? -eq 0 ]; then
               echo "✓ Uploaded: $(basename $wheel)"
             else
