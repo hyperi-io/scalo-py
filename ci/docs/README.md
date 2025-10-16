@@ -369,22 +369,25 @@ For JFrog publishing:
 - JFrog credentials in `.env`
 - GitHub secrets configured
 
-## Common Patterns
+## Common Patterns (Based on Hyperlib Application Types)
 
-### Pattern 1: Library Package
+Hyperlib provides 4 application types via `Application` factory methods. HyperCI auto-detects and builds appropriately:
+
+### Pattern 1: Package/Library
+
+**Use Case**: Shared library imported by other projects (like hyperlib itself)
 
 ```
 my-library/
 ├── ci/ ← hyperci subtree
-├── ci.yaml ← Project settings
-├── .env ← JFrog credentials
+├── ci.yaml
 ├── src/
 │   └── my_library/
 │       ├── __init__.py
 │       └── core.py
 ├── tests/
 │   └── test_core.py
-├── pyproject.toml
+├── pyproject.toml  # No [project.scripts]
 └── README.md
 ```
 
@@ -392,24 +395,35 @@ my-library/
 ```yaml
 nuitka:
   enabled: true
-  build_type: package  # Compiled wheels
+  build_type: package  # Compiled wheels (.whl with .so)
 ```
 
 **Auto-detection**: ✅ Detected as "package" (has src/, no entry points)
 
-### Pattern 2: CLI Application
+**Usage in code**: Not an application, just imported:
+```python
+from my_library import core
+```
+
+### Pattern 2: API Service
+
+**Use Case**: REST API, GraphQL API, web service (using hyperlib Application.api)
 
 ```
-my-app/
+my-api/
 ├── ci/ ← hyperci subtree
-├── ci.yaml ← Project settings
+├── ci.yaml
 ├── src/
-│   └── my_app/
+│   └── my_api/
 │       ├── __main__.py
-│       └── cli.py
+│       ├── api.py         # Uses Application.api()
+│       ├── routes/
+│       └── models/
+├── Dockerfile
+├── k8s/
 ├── pyproject.toml
 │   [project.scripts]
-│     my-app = "my_app.cli:main"
+│     my-api = "my_api.__main__:main"
 └── README.md
 ```
 
@@ -417,28 +431,124 @@ my-app/
 ```yaml
 nuitka:
   enabled: true
-  build_type: app  # Standalone binary
+  build_type: app  # Standalone binary for containers
 ```
 
-**Auto-detection**: ✅ Detected as "app" (has project.scripts entry point)
+**Auto-detection**: ✅ Detected as "app" (has entry point)
 
-### Pattern 3: Microservice/API
+**Usage in code**:
+```python
+from hyperlib import Application
+
+app = Application.api(
+    name="my-api",
+    port=8000,
+    metrics_port=9090
+)
+app.run()
+```
+
+### Pattern 3: CLI Tool
+
+**Use Case**: Command-line utility (using hyperlib Application.cli)
 
 ```
-my-service/
+my-tool/
 ├── ci/ ← hyperci subtree
 ├── ci.yaml
 ├── src/
-│   └── my_service/
-│       ├── api.py
-│       ├── models.py
-│       └── __main__.py
-├── Dockerfile
-├── k8s/
-└── pyproject.toml
+│   └── my_tool/
+│       ├── __main__.py
+│       ├── cli.py         # Uses Application.cli()
+│       └── commands/
+├── tests/
+├── pyproject.toml
+│   [project.scripts]
+│     my-tool = "my_tool.__main__:main"
+└── README.md
 ```
 
-HyperCI builds the package, Docker builds the container.
+**ci.yaml:**
+```yaml
+nuitka:
+  enabled: true
+  build_type: app  # Standalone binary (single executable)
+```
+
+**Auto-detection**: ✅ Detected as "app" (has entry point)
+
+**Usage in code**:
+```python
+from hyperlib import Application
+
+app = Application.cli(name="my-tool")
+
+@app.command()
+def process(input_file: str):
+    """Process input file."""
+    print(f"Processing {input_file}")
+
+app.run()
+```
+
+### Pattern 4: Daemon/Worker
+
+**Use Case**: Background worker, queue processor, scheduler (using hyperlib Application.daemon)
+
+```
+my-worker/
+├── ci/ ← hyperci subtree
+├── ci.yaml
+├── src/
+│   └── my_worker/
+│       ├── __main__.py
+│       ├── daemon.py      # Uses Application.daemon()
+│       ├── tasks/
+│       └── processors/
+├── pyproject.toml
+│   [project.scripts]
+│     my-worker = "my_worker.__main__:main"
+└── README.md
+```
+
+**ci.yaml:**
+```yaml
+nuitka:
+  enabled: true
+  build_type: app  # Standalone binary for deployment
+```
+
+**Auto-detection**: ✅ Detected as "app" (has entry point)
+
+**Usage in code**:
+```python
+from hyperlib import Application
+
+app = Application.daemon(
+    name="my-worker",
+    check_interval=60  # Health check every 60s
+)
+
+@app.task(schedule="*/5 * * * *")
+def process_queue():
+    """Process queue every 5 minutes."""
+    print("Processing queue...")
+
+app.run()
+```
+
+## Auto-Detection Logic
+
+HyperCI auto-detects from project structure:
+
+| Pattern | Detection | Nuitka Build Type |
+|---------|-----------|-------------------|
+| Package/Library | No `[project.scripts]`, has `src/` | `package` (compiled wheels) |
+| API Service | Has `[project.scripts]` entry point | `app` (standalone binary) |
+| CLI Tool | Has `[project.scripts]` entry point | `app` (standalone binary) |
+| Daemon/Worker | Has `[project.scripts]` entry point | `app` (standalone binary) |
+
+**Note**: API/CLI/Daemon all detect as "app" mode. The difference is in your Python code (which `Application.*` factory you use), not in CI configuration.
 
 ## Documentation Index
 
