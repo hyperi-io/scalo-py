@@ -209,3 +209,6 @@ docs/* linguist-documentation
 tests/fixtures/* linguist-generated
 tests/data/* linguist-generated
 output/* linguist-generated
+
+# Git Subtree: Protect project-specific ci/ci.yaml from hyperci subtree updates
+ci/ci.yaml merge=ours
