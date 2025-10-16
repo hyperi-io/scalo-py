@@ -1,9 +1,8 @@
 name: JFrog Publish
 
+# Triggers: MANUAL ONLY - triggered by 'ci/bootstrap publish' command
+# No automatic triggers on tag pushes
 on:
-  push:
-    tags:
-      - 'v*'
   workflow_dispatch:
     inputs:
       version_tag:

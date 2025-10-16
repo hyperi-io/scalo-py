@@ -1,12 +1,9 @@
 name: Nuitka Multi-Arch Release
 
-# Triggers: Workflow runs ONLY when needed, based on ci.yaml configuration
-# The "Read Configuration" job decides whether to actually build
+# Triggers: MANUAL ONLY - no automatic triggers
+# Workflow is triggered explicitly by 'ci/bootstrap publish' command or manual dispatch
+# This prevents accidental expensive builds on every tag push
 on:
-  push:
-    tags:
-      - 'v*'  # Trigger on version tags (respects ci.yaml nuitka.triggers.on_release_tags)
-
   workflow_dispatch:
     inputs:
       force_build:
