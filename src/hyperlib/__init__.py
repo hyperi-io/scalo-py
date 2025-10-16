@@ -12,7 +12,7 @@ import sys
 
 from . import config, dbconn, harness, logger, prometheus, runtime
 from .application import Application
-from .config import get_logging_config, get_mount_config, get_environment
+from .config import get_environment, get_logging_config, get_mount_config
 from .dbconn import build_database_url, get_database_config, get_database_url_from_env
 
 # Re-export commonly used functions for convenience

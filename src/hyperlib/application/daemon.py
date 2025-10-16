@@ -143,7 +143,7 @@ class DaemonApplication:
 
         # Register handlers for graceful shutdown
         signal.signal(signal.SIGTERM, signal_handler)  # Docker stop
-        signal.signal(signal.SIGINT, signal_handler)   # Ctrl+C
+        signal.signal(signal.SIGINT, signal_handler)  # Ctrl+C
 
         logger.info("Signal handlers registered")
 
@@ -201,10 +201,7 @@ class DaemonApplication:
         task_threads = []
         for func, interval in self.scheduled_tasks:
             thread = threading.Thread(
-                target=self._run_scheduled_task,
-                args=(func, interval),
-                name=f"{self.name}_{func.__name__}",
-                daemon=True
+                target=self._run_scheduled_task, args=(func, interval), name=f"{self.name}_{func.__name__}", daemon=True
             )
             thread.start()
             task_threads.append(thread)
@@ -213,9 +210,7 @@ class DaemonApplication:
         try:
             # If business logic provided, run it
             if self.business_logic and hasattr(self.business_logic, "run_daemon"):
-                self.business_logic.run_daemon(
-                    shutdown_event=self.shutdown_event
-                )
+                self.business_logic.run_daemon(shutdown_event=self.shutdown_event)
             else:
                 # Otherwise just wait for shutdown
                 logger.info("Daemon running - press Ctrl+C to stop")

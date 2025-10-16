@@ -206,12 +206,7 @@ class TestGlobalOptions:
         """Test disabling global options."""
         from hyperlib import Application
 
-        app = Application.cli(
-            name="test-cli",
-            add_verbose=False,
-            add_quiet=False,
-            add_version=False
-        )
+        app = Application.cli(name="test-cli", add_verbose=False, add_quiet=False, add_version=False)
 
         # Should still create app successfully
         assert app.name == "test-cli"
@@ -245,7 +240,8 @@ class TestTargetConfig:
 
         # Create temp targets file
         with tempfile.NamedTemporaryFile(mode="w", delete=False, suffix=".yaml") as f:
-            f.write("""
+            f.write(
+                """
 default_target: development
 
 targets:
@@ -256,7 +252,8 @@ targets:
   development:
     database_url: postgresql://localhost/db
     api_key: dev-key-123
-""")
+"""
+            )
             targets_file = f.name
 
         try:
@@ -281,7 +278,8 @@ targets:
         from hyperlib.config import get_target_config
 
         with tempfile.NamedTemporaryFile(mode="w", delete=False, suffix=".yaml") as f:
-            f.write("""
+            f.write(
+                """
 default_target: staging
 
 targets:
@@ -289,7 +287,8 @@ targets:
     env: staging
   production:
     env: production
-""")
+"""
+            )
             targets_file = f.name
 
         try:
@@ -307,7 +306,8 @@ targets:
         from hyperlib.config import get_target_config
 
         with tempfile.NamedTemporaryFile(mode="w", delete=False, suffix=".yaml") as f:
-            f.write("""
+            f.write(
+                """
 default_target: development
 
 targets:
@@ -315,7 +315,8 @@ targets:
     env: dev
   production:
     env: prod
-""")
+"""
+            )
             targets_file = f.name
 
         try:
@@ -333,11 +334,13 @@ targets:
         from hyperlib.config import get_target_config
 
         with tempfile.NamedTemporaryFile(mode="w", delete=False, suffix=".yaml") as f:
-            f.write("""
+            f.write(
+                """
 targets:
   development:
     env: dev
-""")
+"""
+            )
             targets_file = f.name
 
         try:
@@ -364,10 +367,7 @@ class TestInitConfigDirectory:
 
         with tempfile.TemporaryDirectory() as tmpdir:
             config_dir = init_config_directory(
-                app_name="test-app",
-                config_dir=tmpdir,
-                create_targets=False,
-                create_env=False
+                app_name="test-app", config_dir=tmpdir, create_targets=False, create_env=False
             )
 
             assert config_dir.exists()
@@ -379,10 +379,7 @@ class TestInitConfigDirectory:
 
         with tempfile.TemporaryDirectory() as tmpdir:
             config_dir = init_config_directory(
-                app_name="test-app",
-                config_dir=tmpdir,
-                create_targets=True,
-                create_env=False
+                app_name="test-app", config_dir=tmpdir, create_targets=True, create_env=False
             )
 
             targets_file = config_dir / "targets.yaml"
@@ -400,10 +397,7 @@ class TestInitConfigDirectory:
 
         with tempfile.TemporaryDirectory() as tmpdir:
             config_dir = init_config_directory(
-                app_name="test-app",
-                config_dir=tmpdir,
-                create_targets=False,
-                create_env=True
+                app_name="test-app", config_dir=tmpdir, create_targets=False, create_env=True
             )
 
             env_file = config_dir / ".env"
@@ -425,11 +419,7 @@ class TestInitConfigDirectory:
             targets_file.write_text("existing content")
 
             # Init should not overwrite
-            init_config_directory(
-                app_name="test-app",
-                config_dir=tmpdir,
-                create_targets=True
-            )
+            init_config_directory(app_name="test-app", config_dir=tmpdir, create_targets=True)
 
             # Content should be unchanged
             assert targets_file.read_text() == "existing content"
@@ -440,10 +430,6 @@ class TestInitConfigDirectory:
 
         with tempfile.TemporaryDirectory() as tmpdir:
             # Should use APP_NAME from hyperlib.config
-            config_dir = init_config_directory(
-                config_dir=tmpdir,
-                create_targets=False,
-                create_env=False
-            )
+            config_dir = init_config_directory(config_dir=tmpdir, create_targets=False, create_env=False)
 
             assert config_dir.exists()

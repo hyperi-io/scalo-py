@@ -100,7 +100,7 @@ class CLIApplication:
             Version string or "unknown" if not found
         """
         try:
-            from importlib.metadata import version, PackageNotFoundError
+            from importlib.metadata import PackageNotFoundError, version
 
             return version(package_name)
         except PackageNotFoundError:
@@ -217,14 +217,14 @@ class CLIApplication:
 
         # Add options to callback
         if add_verbose:
-            logging_callback = self.click.option(
-                "-v", "--verbose", is_flag=True, help="Enable verbose output"
-            )(logging_callback)
+            logging_callback = self.click.option("-v", "--verbose", is_flag=True, help="Enable verbose output")(
+                logging_callback
+            )
 
         if add_quiet:
-            logging_callback = self.click.option(
-                "-q", "--quiet", is_flag=True, help="Suppress non-error output"
-            )(logging_callback)
+            logging_callback = self.click.option("-q", "--quiet", is_flag=True, help="Suppress non-error output")(
+                logging_callback
+            )
 
         # Set as group callback
         self.group.callback = logging_callback

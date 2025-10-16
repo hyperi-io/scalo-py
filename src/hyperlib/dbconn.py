@@ -6,17 +6,15 @@ and managing database configurations across different deployment environments.
 """
 
 import os
-from typing import Optional, Dict, Any
-from urllib.parse import quote_plus, urlunparse
 from pathlib import Path
+from typing import Any, Dict, Optional
+from urllib.parse import quote_plus, urlunparse
 
 from .config import get_mount_config
 
 
 def get_database_config(
-    db_type: str = "postgresql",
-    env_prefix: Optional[str] = None,
-    use_standard_vars: bool = True
+    db_type: str = "postgresql", env_prefix: Optional[str] = None, use_standard_vars: bool = True
 ) -> Dict[str, Any]:
     """
     Get database configuration from environment variables.
@@ -78,13 +76,17 @@ def get_database_config(
                 config["database"] = os.getenv(f"{prefix}_DATABASE") or os.getenv(f"{prefix}_DB")
 
     # Override with specific prefix values
-    config.update({
-        "host": os.getenv(f"{env_prefix}_HOST", config.get("host", "localhost")),
-        "port": int(os.getenv(f"{env_prefix}_PORT", config.get("port") or default_ports.get(db_type.lower(), 5432))),
-        "user": os.getenv(f"{env_prefix}_USER", config.get("user")),
-        "password": os.getenv(f"{env_prefix}_PASSWORD", config.get("password")),
-        "database": os.getenv(f"{env_prefix}_DATABASE", config.get("database")),
-    })
+    config.update(
+        {
+            "host": os.getenv(f"{env_prefix}_HOST", config.get("host", "localhost")),
+            "port": int(
+                os.getenv(f"{env_prefix}_PORT", config.get("port") or default_ports.get(db_type.lower(), 5432))
+            ),
+            "user": os.getenv(f"{env_prefix}_USER", config.get("user")),
+            "password": os.getenv(f"{env_prefix}_PASSWORD", config.get("password")),
+            "database": os.getenv(f"{env_prefix}_DATABASE", config.get("database")),
+        }
+    )
 
     # Additional settings based on database type
     if db_type.lower() in ["postgresql", "postgres"]:
@@ -114,7 +116,7 @@ def build_database_url(
     password: Optional[str] = None,
     database: Optional[str] = None,
     env_prefix: Optional[str] = None,
-    **kwargs
+    **kwargs,
 ) -> str:
     """
     Build a complete database connection URL.
@@ -224,22 +226,12 @@ def build_database_url(
     query_string = "&".join(params) if params else ""
 
     # Build the complete URL
-    url_parts = (
-        scheme,
-        netloc,
-        database or "",
-        "",  # params (not used)
-        query_string,
-        ""   # fragment (not used)
-    )
+    url_parts = (scheme, netloc, database or "", "", query_string, "")  # params (not used)  # fragment (not used)
 
     return urlunparse(url_parts)
 
 
-def get_database_url_from_env(
-    env_var: str = "DATABASE_URL",
-    fallback_type: str = "postgresql"
-) -> Optional[str]:
+def get_database_url_from_env(env_var: str = "DATABASE_URL", fallback_type: str = "postgresql") -> Optional[str]:
     """
     Get database URL from environment variable or build from components.
 
@@ -283,7 +275,7 @@ def parse_database_url(url: str) -> Dict[str, Any]:
         >>> config["host"]
         'localhost'
     """
-    from urllib.parse import urlparse, parse_qs
+    from urllib.parse import parse_qs, urlparse
 
     parsed = urlparse(url)
 
@@ -303,7 +295,7 @@ def parse_database_url(url: str) -> Dict[str, Any]:
         "user": user,
         "password": password,
         "database": parsed.path.lstrip("/") if parsed.path else None,
-        "params": params
+        "params": params,
     }
 
 

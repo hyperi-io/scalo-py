@@ -151,6 +151,7 @@ def _add_emoji_to_record(use_emojis: bool, convert_to_text: bool = False, allow_
     Returns:
         Filter function for loguru
     """
+
     def filter_func(record):
         """Add emoji to record or convert emojis to text based on settings."""
         if use_emojis:
@@ -271,7 +272,9 @@ def setup(settings=None, color_scheme="solarized", use_emojis=None, allow_all_em
             format=file_format,
             rotation="10 MB",
             retention="7 days",
-            filter=_add_emoji_to_record(False, convert_to_text=True, allow_all=False),  # Convert emojis to text for machine-readable logs
+            filter=_add_emoji_to_record(
+                False, convert_to_text=True, allow_all=False
+            ),  # Convert emojis to text for machine-readable logs
         )
 
     return logger

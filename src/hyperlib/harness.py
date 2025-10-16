@@ -106,11 +106,13 @@ def run(
     except subprocess.TimeoutExpired as e:
         if pytest_fail:
             import pytest
+
             pytest.fail(f"Command timed out: {' '.join(cmd)}")
         raise
     except subprocess.CalledProcessError as e:
         if pytest_fail and check:
             import pytest
+
             pytest.fail(f"Command failed: {' '.join(cmd)}\n{e.stderr}")
         raise
 

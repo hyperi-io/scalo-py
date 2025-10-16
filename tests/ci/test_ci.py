@@ -10,19 +10,20 @@ This test creates a virtual project environment to test the entire CI pipeline:
 5. Verify the installed package works
 """
 
+import base64
+import json
 import os
-import sys
 import shutil
 import subprocess
+import sys
 import tempfile
-import json
+import urllib.error
+import urllib.request
+from pathlib import Path
+from typing import Any, Dict, Optional
+
 import pytest
 import yaml
-from pathlib import Path
-from typing import Dict, Any, Optional
-import urllib.request
-import urllib.error
-import base64
 
 # Get the real project root (2 levels up from tests/ci/)
 REAL_PROJECT_ROOT = Path(__file__).parent.parent.parent.resolve()
@@ -102,7 +103,8 @@ class TestCIPipeline:
 
         # Create a minimal .gitignore
         gitignore = TEST_PROJECT_ROOT / ".gitignore"
-        gitignore.write_text("""
+        gitignore.write_text(
+            """
 .venv/
 ci/.venv/
 *.pyc
@@ -113,7 +115,8 @@ build/
 *.egg-info/
 .keys/
 .tmp/
-""")
+"""
+        )
 
         # Initialize git repo (some CI scripts expect it)
         subprocess.run(["git", "init"], cwd=TEST_PROJECT_ROOT, check=True, capture_output=True)
@@ -130,12 +133,7 @@ build/
         self.create_virtual_project()
 
         # Run bootstrap
-        result = subprocess.run(
-            ["./ci/bootstrap", "--install"],
-            cwd=TEST_PROJECT_ROOT,
-            capture_output=True,
-            text=True
-        )
+        result = subprocess.run(["./ci/bootstrap", "--install"], cwd=TEST_PROJECT_ROOT, capture_output=True, text=True)
 
         print(f"Bootstrap output:\n{result.stdout}")
         if result.stderr:
@@ -153,10 +151,7 @@ build/
 
         # Check ci/.venv
         result = subprocess.run(
-            ["ci/.venv/bin/pip", "show", "hyperlib"],
-            cwd=TEST_PROJECT_ROOT,
-            capture_output=True,
-            text=True
+            ["ci/.venv/bin/pip", "show", "hyperlib"], cwd=TEST_PROJECT_ROOT, capture_output=True, text=True
         )
         if result.returncode == 0:
             hyperlib_found = True
@@ -165,10 +160,7 @@ build/
         # Check .venv (project venv)
         if not hyperlib_found and (TEST_PROJECT_ROOT / ".venv").exists():
             result = subprocess.run(
-                [".venv/bin/pip", "show", "hyperlib"],
-                cwd=TEST_PROJECT_ROOT,
-                capture_output=True,
-                text=True
+                [".venv/bin/pip", "show", "hyperlib"], cwd=TEST_PROJECT_ROOT, capture_output=True, text=True
             )
             if result.returncode == 0:
                 hyperlib_found = True
@@ -203,7 +195,7 @@ build/
             cwd=TEST_PROJECT_ROOT,
             capture_output=True,
             text=True,
-            env={**os.environ, "CI": "true"}  # Set CI env var
+            env={**os.environ, "CI": "true"},  # Set CI env var
         )
 
         if result.returncode != 0:
@@ -235,6 +227,7 @@ build/
             pytest.skip("ci.yaml not found")
 
         import yaml
+
         with open(ci_yaml_path) as f:
             config = yaml.safe_load(f)
 
@@ -256,7 +249,7 @@ build/
                 cwd=TEST_PROJECT_ROOT,
                 capture_output=True,
                 text=True,
-                env={**os.environ}
+                env={**os.environ},
             )
 
             # Check if Nuitka is available
@@ -281,9 +274,7 @@ build/
 
             # Install the compiled wheel
             result = subprocess.run(
-                [str(test_venv / "bin/pip"), "install", str(wheel_path)],
-                capture_output=True,
-                text=True
+                [str(test_venv / "bin/pip"), "install", str(wheel_path)], capture_output=True, text=True
             )
             assert result.returncode == 0, f"Failed to install compiled wheel: {result.stderr}"
 
@@ -322,19 +313,16 @@ if '.so' in module_file or '.pyd' in module_file:
 else:
     print("⚠ Running regular Python code")
 """
-            result = subprocess.run(
-                [str(test_venv / "bin/python"), "-c", test_code],
-                capture_output=True,
-                text=True
-            )
+            result = subprocess.run([str(test_venv / "bin/python"), "-c", test_code], capture_output=True, text=True)
 
             print(f"Test output:\n{result.stdout}")
             if result.returncode != 0:
                 print(f"Test stderr:\n{result.stderr}")
 
             assert result.returncode == 0, f"Compiled module test failed: {result.stderr}"
-            assert "✓ Running compiled Nuitka code!" in result.stdout or ".so" in result.stdout, \
-                "Not running compiled code!"
+            assert (
+                "✓ Running compiled Nuitka code!" in result.stdout or ".so" in result.stdout
+            ), "Not running compiled code!"
 
             print(f"✅ Nuitka compiled wheel tested successfully")
 
@@ -346,7 +334,7 @@ else:
                 cwd=TEST_PROJECT_ROOT,
                 capture_output=True,
                 text=True,
-                env={**os.environ, "BUILD_PROFILE": "nuitka", "NUITKA_PROTECTION": "none"}
+                env={**os.environ, "BUILD_PROFILE": "nuitka", "NUITKA_PROTECTION": "none"},
             )
 
             # Nuitka might not be available in test environment
@@ -366,11 +354,7 @@ else:
 
             # Run the binary with test code
             test_code = "import hyperlib; print(hyperlib.__version__)"
-            result = subprocess.run(
-                [str(binary_path), "-c", test_code],
-                capture_output=True,
-                text=True
-            )
+            result = subprocess.run([str(binary_path), "-c", test_code], capture_output=True, text=True)
 
             if result.returncode == 0:
                 print(f"✅ Nuitka standalone binary tested: {result.stdout.strip()}")
@@ -393,7 +377,7 @@ else:
             cwd=TEST_PROJECT_ROOT,
             capture_output=True,
             text=True,
-            env={**os.environ, "CI": "true", "JFROG_PUBLISH": "false"}
+            env={**os.environ, "CI": "true", "JFROG_PUBLISH": "false"},
         )
 
         # The command might fail if semantic-release is strict, but we check for expected behavior
@@ -459,6 +443,7 @@ else:
         api_url = f"https://hypersec.jfrog.io/artifactory/api/storage/hypersec-pypi-local/{package_name}"
 
         import time
+
         start_time = time.time()
         attempt = 0
 
@@ -467,17 +452,13 @@ else:
             print(f"  [{attempt}] Checking JFrog... ", end="", flush=True)
 
             try:
-                result = subprocess.run(
-                    ["curl", "-s", "-u", auth, api_url],
-                    capture_output=True,
-                    text=True,
-                    timeout=10
-                )
+                result = subprocess.run(["curl", "-s", "-u", auth, api_url], capture_output=True, text=True, timeout=10)
 
                 if result.returncode == 0 and '"uri"' in result.stdout:
                     print("✅ Package found in JFrog!")
                     # Parse JSON to show available versions
                     import json
+
                     try:
                         data = json.loads(result.stdout)
                         if "children" in data:
@@ -509,11 +490,7 @@ else:
 
         # Create a separate test venv for installation
         install_venv = TEST_PROJECT_ROOT / "test_install_venv"
-        subprocess.run(
-            [sys.executable, "-m", "venv", str(install_venv)],
-            check=True,
-            capture_output=True
-        )
+        subprocess.run([sys.executable, "-m", "venv", str(install_venv)], check=True, capture_output=True)
 
         # Read JFrog credentials from .env
         env_file = TEST_PROJECT_ROOT / ".env"
@@ -552,7 +529,7 @@ else:
         result = subprocess.run(
             [str(install_venv / "bin/pip"), "install", "hyperlib", "--index-url", auth_url],
             capture_output=True,
-            text=True
+            text=True,
         )
 
         if result.returncode != 0:
@@ -561,9 +538,7 @@ else:
             wheel_path = next((TEST_PROJECT_ROOT / "dist").glob("*.whl"), None)
             if wheel_path:
                 result = subprocess.run(
-                    [str(install_venv / "bin/pip"), "install", str(wheel_path)],
-                    capture_output=True,
-                    text=True
+                    [str(install_venv / "bin/pip"), "install", str(wheel_path)], capture_output=True, text=True
                 )
                 assert result.returncode == 0, f"Local install failed: {result.stderr}"
                 print("✅ Installed from local dist (JFrog not available)")
@@ -625,11 +600,7 @@ print("✓ Submodules accessible")
 
 print("SUCCESS: All tests passed!")
 """
-        result = subprocess.run(
-            [str(install_venv / "bin/python"), "-c", test_code],
-            capture_output=True,
-            text=True
-        )
+        result = subprocess.run([str(install_venv / "bin/python"), "-c", test_code], capture_output=True, text=True)
 
         print(f"Test output:\n{result.stdout}")
         if result.returncode != 0:
@@ -652,12 +623,12 @@ print("SUCCESS: All tests passed!")
         ONLY happens through GitHub Actions (.github/workflows/jfrog-publish.yml).
         Never publish manually to maintain security and audit trail.
         """
-        print("\n" + "="*60)
+        print("\n" + "=" * 60)
         print("JFROG PUBLISH - END-TO-END TEST")
-        print("="*60)
+        print("=" * 60)
         print("⚠️  NOTE: Production publishing ONLY via GitHub Actions")
         print("    This test is for CI pipeline validation only")
-        print("="*60)
+        print("=" * 60)
 
         # 1. Bootstrap
         self.test_bootstrap()
@@ -670,7 +641,7 @@ print("SUCCESS: All tests passed!")
             cwd=TEST_PROJECT_ROOT,
             capture_output=True,
             text=True,
-            env={**os.environ}
+            env={**os.environ},
         )
 
         print(f"Build output:\n{result.stdout}")
@@ -730,15 +701,19 @@ print("SUCCESS: All tests passed!")
         # This is correct behavior - same version should overwrite
         result = subprocess.run(
             [
-                "ci/.venv/bin/twine", "upload",
-                "--repository-url", jfrog_url,
-                "--username", username,
-                "--password", password,
-                "dist/*"
+                "ci/.venv/bin/twine",
+                "upload",
+                "--repository-url",
+                jfrog_url,
+                "--username",
+                username,
+                "--password",
+                password,
+                "dist/*",
             ],
             cwd=TEST_PROJECT_ROOT,
             capture_output=True,
-            text=True
+            text=True,
         )
 
         print(f"Twine output:\n{result.stdout}")
@@ -762,15 +737,15 @@ print("SUCCESS: All tests passed!")
         print("\n=== Installing from JFrog and Testing ===")
         self.test_jfrog_installation()
 
-        print("\n" + "="*60)
+        print("\n" + "=" * 60)
         print("✅ NUITKA PUBLISH AND INSTALL TEST PASSED")
-        print("="*60)
+        print("=" * 60)
 
     def test_full_pipeline(self):
         """Test the entire CI pipeline end-to-end."""
-        print("\n" + "="*60)
+        print("\n" + "=" * 60)
         print("COMPREHENSIVE CI PIPELINE TEST")
-        print("="*60)
+        print("=" * 60)
 
         # Run all tests in sequence
         self.test_bootstrap()
@@ -790,9 +765,9 @@ print("SUCCESS: All tests passed!")
         # Test JFrog installation - this is critical
         self.test_jfrog_installation()
 
-        print("\n" + "="*60)
+        print("\n" + "=" * 60)
         print("✅ CRITICAL TESTS PASSED")
-        print("="*60)
+        print("=" * 60)
 
 
 def test_ci_yaml_config():
@@ -829,6 +804,7 @@ if __name__ == "__main__":
     except Exception as e:
         print(f"\n❌ Test failed: {e}")
         import traceback
+
         traceback.print_exc()
         sys.exit(1)
     finally:

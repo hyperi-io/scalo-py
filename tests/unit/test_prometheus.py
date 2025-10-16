@@ -127,7 +127,10 @@ class TestContainerMetrics:
 
             # Mock "max" (unlimited) and psutil to avoid /proc/meminfo issues
             mock_open = mock.mock_open(read_data="max")
-            with mock.patch("builtins.open", mock_open), mock.patch("hyperlib.prometheus.psutil.virtual_memory") as mock_vm:
+            with (
+                mock.patch("builtins.open", mock_open),
+                mock.patch("hyperlib.prometheus.psutil.virtual_memory") as mock_vm,
+            ):
                 mock_vm.return_value.total = 16 * 1024 * 1024 * 1024  # 16GB
                 limit = metrics._read_cgroup_memory_limit()
 
@@ -469,10 +472,12 @@ class TestCustomMetrics:
         app_info = metrics.info("custom_app", "Application info")
 
         # Set info
-        app_info.info({
-            "version": "1.2.3",
-            "environment": "test",
-        })
+        app_info.info(
+            {
+                "version": "1.2.3",
+                "environment": "test",
+            }
+        )
 
         # Verify in output
         output = metrics.get_metrics_text()

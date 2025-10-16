@@ -16,8 +16,9 @@ class TestInteractiveConsoleDetection:
 
     def test_interactive_console_with_utf8_locale(self):
         """Test interactive console detection with UTF-8 locale (developer terminal)."""
-        with mock.patch("sys.stderr.isatty", return_value=True), mock.patch.dict(
-            os.environ, {"LANG": "en_US.UTF-8", "TERM": "xterm-256color"}
+        with (
+            mock.patch("sys.stderr.isatty", return_value=True),
+            mock.patch.dict(os.environ, {"LANG": "en_US.UTF-8", "TERM": "xterm-256color"}),
         ):
             from hyperlib.logger import _is_interactive_console
 
@@ -25,8 +26,9 @@ class TestInteractiveConsoleDetection:
 
     def test_non_interactive_without_tty(self):
         """Test non-interactive when not a TTY (Docker/K8s container)."""
-        with mock.patch("sys.stderr.isatty", return_value=False), mock.patch.dict(
-            os.environ, {"LANG": "en_US.UTF-8", "TERM": "xterm-256color"}
+        with (
+            mock.patch("sys.stderr.isatty", return_value=False),
+            mock.patch.dict(os.environ, {"LANG": "en_US.UTF-8", "TERM": "xterm-256color"}),
         ):
             from hyperlib.logger import _is_interactive_console
 
@@ -34,8 +36,9 @@ class TestInteractiveConsoleDetection:
 
     def test_non_interactive_with_dumb_terminal(self):
         """Test non-interactive with TERM=dumb."""
-        with mock.patch("sys.stderr.isatty", return_value=True), mock.patch.dict(
-            os.environ, {"LANG": "en_US.UTF-8", "TERM": "dumb"}
+        with (
+            mock.patch("sys.stderr.isatty", return_value=True),
+            mock.patch.dict(os.environ, {"LANG": "en_US.UTF-8", "TERM": "dumb"}),
         ):
             from hyperlib.logger import _is_interactive_console
 
@@ -43,8 +46,9 @@ class TestInteractiveConsoleDetection:
 
     def test_non_interactive_without_utf8_locale(self):
         """Test non-interactive without UTF-8 locale."""
-        with mock.patch("sys.stderr.isatty", return_value=True), mock.patch.dict(
-            os.environ, {"LANG": "C", "TERM": "xterm-256color"}
+        with (
+            mock.patch("sys.stderr.isatty", return_value=True),
+            mock.patch.dict(os.environ, {"LANG": "C", "TERM": "xterm-256color"}),
         ):
             from hyperlib.logger import _is_interactive_console
 
@@ -52,8 +56,9 @@ class TestInteractiveConsoleDetection:
 
     def test_interactive_with_lc_all_override(self):
         """Test LC_ALL overrides LANG for detection."""
-        with mock.patch("sys.stderr.isatty", return_value=True), mock.patch.dict(
-            os.environ, {"LANG": "C", "LC_ALL": "en_US.UTF-8", "TERM": "xterm"}
+        with (
+            mock.patch("sys.stderr.isatty", return_value=True),
+            mock.patch.dict(os.environ, {"LANG": "C", "LC_ALL": "en_US.UTF-8", "TERM": "xterm"}),
         ):
             from hyperlib.logger import _is_interactive_console
 
@@ -153,8 +158,9 @@ class TestLoggerSetup:
         """Test setup enables emojis with interactive terminal (developer)."""
         from hyperlib.logger import setup
 
-        with mock.patch("sys.stderr.isatty", return_value=True), mock.patch.dict(
-            os.environ, {"LANG": "en_US.UTF-8", "TERM": "xterm-256color"}
+        with (
+            mock.patch("sys.stderr.isatty", return_value=True),
+            mock.patch.dict(os.environ, {"LANG": "en_US.UTF-8", "TERM": "xterm-256color"}),
         ):
             logger_instance = setup(color_scheme="solarized")
             assert logger_instance is not None

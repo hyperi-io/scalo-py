@@ -103,8 +103,9 @@ class TestRuntimeEnvironment:
         """Test container detection via Kubernetes env."""
         runtime = RuntimeEnvironment("test-app")
 
-        with mock.patch.dict(os.environ, {"KUBERNETES_SERVICE_HOST": "10.0.0.1"}), mock.patch(
-            "pathlib.Path.exists", return_value=False
+        with (
+            mock.patch.dict(os.environ, {"KUBERNETES_SERVICE_HOST": "10.0.0.1"}),
+            mock.patch("pathlib.Path.exists", return_value=False),
         ):
             is_container, method = runtime._is_container()
 
@@ -129,8 +130,10 @@ class TestRuntimeEnvironment:
         runtime = RuntimeEnvironment("test-app")
 
         mock_open = mock.mock_open(read_data="12:memory:/kubepods/pod123")
-        with mock.patch("builtins.open", mock_open), mock.patch("pathlib.Path.exists", return_value=False), mock.patch.dict(
-            os.environ, {}, clear=True
+        with (
+            mock.patch("builtins.open", mock_open),
+            mock.patch("pathlib.Path.exists", return_value=False),
+            mock.patch.dict(os.environ, {}, clear=True),
         ):
             is_container, method = runtime._is_container()
 
@@ -142,8 +145,10 @@ class TestRuntimeEnvironment:
         runtime = RuntimeEnvironment("test-app")
 
         mock_open = mock.mock_open(read_data="12:memory:/docker/abc123")
-        with mock.patch("builtins.open", mock_open), mock.patch("pathlib.Path.exists", return_value=False), mock.patch.dict(
-            os.environ, {}, clear=True
+        with (
+            mock.patch("builtins.open", mock_open),
+            mock.patch("pathlib.Path.exists", return_value=False),
+            mock.patch.dict(os.environ, {}, clear=True),
         ):
             is_container, method = runtime._is_container()
 
@@ -155,8 +160,10 @@ class TestRuntimeEnvironment:
         runtime = RuntimeEnvironment("test-app")
 
         mock_open = mock.mock_open(read_data="0::/system.slice/containerd.service")
-        with mock.patch("builtins.open", mock_open), mock.patch("pathlib.Path.exists", return_value=False), mock.patch.dict(
-            os.environ, {}, clear=True
+        with (
+            mock.patch("builtins.open", mock_open),
+            mock.patch("pathlib.Path.exists", return_value=False),
+            mock.patch.dict(os.environ, {}, clear=True),
         ):
             is_container, method = runtime._is_container()
 
@@ -176,9 +183,11 @@ class TestRuntimeEnvironment:
             else:
                 raise FileNotFoundError
 
-        with mock.patch("builtins.open", side_effect=mock_open_mountinfo), mock.patch(
-            "pathlib.Path.exists", return_value=False
-        ), mock.patch.dict(os.environ, {}, clear=True):
+        with (
+            mock.patch("builtins.open", side_effect=mock_open_mountinfo),
+            mock.patch("pathlib.Path.exists", return_value=False),
+            mock.patch.dict(os.environ, {}, clear=True),
+        ):
             is_container, method = runtime._is_container()
 
             assert is_container is True
@@ -190,9 +199,11 @@ class TestRuntimeEnvironment:
 
         # Test various container env vars
         for env_var in ["container", "DOCKER_CONTAINER", "ECS_CONTAINER_METADATA_URI"]:
-            with mock.patch("pathlib.Path.exists", return_value=False), mock.patch.dict(
-                os.environ, {env_var: "true"}, clear=True
-            ), mock.patch("builtins.open", side_effect=FileNotFoundError):
+            with (
+                mock.patch("pathlib.Path.exists", return_value=False),
+                mock.patch.dict(os.environ, {env_var: "true"}, clear=True),
+                mock.patch("builtins.open", side_effect=FileNotFoundError),
+            ):
                 is_container, method = runtime._is_container()
 
                 assert is_container is True
@@ -204,9 +215,12 @@ class TestRuntimeEnvironment:
 
         # Mock PID 1 with non-systemd init (e.g., tini, sh, python)
         mock_open = mock.mock_open(read_data="tini")
-        with mock.patch("os.getpid", return_value=1), mock.patch("builtins.open", mock_open), mock.patch(
-            "pathlib.Path.exists", return_value=False
-        ), mock.patch.dict(os.environ, {}, clear=True):
+        with (
+            mock.patch("os.getpid", return_value=1),
+            mock.patch("builtins.open", mock_open),
+            mock.patch("pathlib.Path.exists", return_value=False),
+            mock.patch.dict(os.environ, {}, clear=True),
+        ):
             is_container, method = runtime._is_container()
 
             assert is_container is True
@@ -218,9 +232,12 @@ class TestRuntimeEnvironment:
 
         # Mock PID 1 with systemd (not a container)
         mock_open = mock.mock_open(read_data="systemd")
-        with mock.patch("os.getpid", return_value=1), mock.patch("builtins.open", mock_open), mock.patch(
-            "pathlib.Path.exists", return_value=False
-        ), mock.patch.dict(os.environ, {}, clear=True):
+        with (
+            mock.patch("os.getpid", return_value=1),
+            mock.patch("builtins.open", mock_open),
+            mock.patch("pathlib.Path.exists", return_value=False),
+            mock.patch.dict(os.environ, {}, clear=True),
+        ):
             is_container, method = runtime._is_container()
 
             # Should NOT detect as container (systemd is normal init)
@@ -250,8 +267,9 @@ class TestRuntimeEnvironment:
         def mock_exists_all(self):
             return str(self) in ["/var/run/secrets/kubernetes.io/serviceaccount", "/.dockerenv"]
 
-        with mock.patch.object(Path, "exists", mock_exists_all), mock.patch.dict(
-            os.environ, {"KUBERNETES_SERVICE_HOST": "10.0.0.1"}
+        with (
+            mock.patch.object(Path, "exists", mock_exists_all),
+            mock.patch.dict(os.environ, {"KUBERNETES_SERVICE_HOST": "10.0.0.1"}),
         ):
             is_container, method = runtime._is_container()
 
@@ -433,9 +451,10 @@ class TestConvenienceFunction:
 
     def test_get_runtime_paths_no_ensure(self):
         """Test convenience function without directory creation."""
-        with mock.patch("hyperlib.runtime.RuntimeEnvironment.detect_runtime") as mock_detect, mock.patch(
-            "hyperlib.runtime.RuntimeEnvironment.ensure_directories"
-        ) as mock_ensure:
+        with (
+            mock.patch("hyperlib.runtime.RuntimeEnvironment.detect_runtime") as mock_detect,
+            mock.patch("hyperlib.runtime.RuntimeEnvironment.ensure_directories") as mock_ensure,
+        ):
             mock_paths = RuntimePaths(
                 config_dir=Path("/app/config"),
                 data_dir=Path("/app/data"),

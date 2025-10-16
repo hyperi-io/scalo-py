@@ -8,17 +8,18 @@ NOTE: These tests require external tools to be installed:
 - Helm: Helm tests will be skipped if Helm is not installed
 """
 
-import os
 import json
-import time
+import os
+import shutil
 import subprocess
 import tempfile
-import pytest
-import shutil
+import time
 import uuid
 import warnings
 from pathlib import Path
 from typing import Generator, Tuple
+
+import pytest
 
 from hyperlib import harness
 
@@ -80,7 +81,9 @@ def cleanup_minikube():
         finally:
             del os.environ["_MINIKUBE_STARTED_BY_TEST"]
 
+
 import atexit
+
 atexit.register(cleanup_minikube)
 
 
@@ -88,12 +91,7 @@ atexit.register(cleanup_minikube)
 def docker_available() -> bool:
     """Check if Docker is available and running."""
     try:
-        result = subprocess.run(
-            ["docker", "info"],
-            capture_output=True,
-            text=True,
-            timeout=5
-        )
+        result = subprocess.run(["docker", "info"], capture_output=True, text=True, timeout=5)
         return result.returncode == 0
     except (FileNotFoundError, subprocess.TimeoutExpired):
         return False
@@ -103,22 +101,12 @@ def minikube_available() -> bool:
     """Check if Minikube is installed and can be started."""
     try:
         # Check if minikube is installed
-        result = subprocess.run(
-            ["minikube", "version"],
-            capture_output=True,
-            text=True,
-            timeout=5
-        )
+        result = subprocess.run(["minikube", "version"], capture_output=True, text=True, timeout=5)
         if result.returncode != 0:
             return False
 
         # Check if minikube is running
-        result = subprocess.run(
-            ["minikube", "status", "--format=json"],
-            capture_output=True,
-            text=True,
-            timeout=5
-        )
+        result = subprocess.run(["minikube", "status", "--format=json"], capture_output=True, text=True, timeout=5)
         if result.returncode == 0:
             try:
                 status = json.loads(result.stdout)
@@ -132,7 +120,7 @@ def minikube_available() -> bool:
             ["minikube", "start", "--driver=docker", "--memory=2048"],
             capture_output=True,
             text=True,
-            timeout=180  # 3 minutes timeout for starting
+            timeout=180,  # 3 minutes timeout for starting
         )
 
         if result.returncode == 0:
@@ -152,12 +140,7 @@ def minikube_available() -> bool:
 def kubectl_available() -> bool:
     """Check if kubectl is available."""
     try:
-        result = subprocess.run(
-            ["kubectl", "version", "--client"],
-            capture_output=True,
-            text=True,
-            timeout=5
-        )
+        result = subprocess.run(["kubectl", "version", "--client"], capture_output=True, text=True, timeout=5)
         return result.returncode == 0
     except (FileNotFoundError, subprocess.TimeoutExpired):
         return False
@@ -166,12 +149,7 @@ def kubectl_available() -> bool:
 def helm_available() -> bool:
     """Check if Helm is available."""
     try:
-        result = subprocess.run(
-            ["helm", "version", "--short"],
-            capture_output=True,
-            text=True,
-            timeout=5
-        )
+        result = subprocess.run(["helm", "version", "--short"], capture_output=True, text=True, timeout=5)
         return result.returncode == 0
     except (FileNotFoundError, subprocess.TimeoutExpired):
         return False
@@ -344,11 +322,7 @@ class TestDockerDeployment(ContainerTestBase):
 
             # Build image
             image_name = f"{test_id}-api:latest"
-            self.run_command(
-                ["docker", "build", "-t", image_name, "."],
-                cwd=str(temp_dir),
-                timeout=120
-            )
+            self.run_command(["docker", "build", "-t", image_name, "."], cwd=str(temp_dir), timeout=120)
             docker_test_env["images"].append(image_name)
 
             # Create network
@@ -358,22 +332,30 @@ class TestDockerDeployment(ContainerTestBase):
 
             # Run container
             container_name = f"{test_id}-api"
-            result = self.run_command([
-                "docker", "run", "-d",
-                "--name", container_name,
-                "--network", network_name,
-                "-p", "18000:8000",
-                "-v", f"{temp_dir}/config:/config",
-                "-v", f"{temp_dir}/data:/data",
-                image_name
-            ])
+            result = self.run_command(
+                [
+                    "docker",
+                    "run",
+                    "-d",
+                    "--name",
+                    container_name,
+                    "--network",
+                    network_name,
+                    "-p",
+                    "18000:8000",
+                    "-v",
+                    f"{temp_dir}/config:/config",
+                    "-v",
+                    f"{temp_dir}/data:/data",
+                    image_name,
+                ]
+            )
             docker_test_env["containers"].append(container_name)
 
             # Wait for container to be healthy
             def check_health():
                 result = self.run_command(
-                    ["docker", "exec", container_name, "curl", "-f", "http://localhost:8000/"],
-                    check=False
+                    ["docker", "exec", container_name, "curl", "-f", "http://localhost:8000/"], check=False
                 )
                 return result.returncode == 0
 
@@ -413,22 +395,14 @@ class TestDockerDeployment(ContainerTestBase):
 
             # Build image
             image_name = f"{test_id}-metrics:latest"
-            self.run_command(
-                ["docker", "build", "-t", image_name, "."],
-                cwd=str(temp_dir),
-                timeout=120
-            )
+            self.run_command(["docker", "build", "-t", image_name, "."], cwd=str(temp_dir), timeout=120)
             docker_test_env["images"].append(image_name)
 
             # Run container
             container_name = f"{test_id}-metrics"
-            self.run_command([
-                "docker", "run", "-d",
-                "--name", container_name,
-                "-p", "18001:8000",
-                "-p", "18080:8080",
-                image_name
-            ])
+            self.run_command(
+                ["docker", "run", "-d", "--name", container_name, "-p", "18001:8000", "-p", "18080:8080", image_name]
+            )
             docker_test_env["containers"].append(container_name)
 
             # Wait for container to start
@@ -439,20 +413,32 @@ class TestDockerDeployment(ContainerTestBase):
             assert container_name in result.stdout
 
             # Make a request to generate metrics (use python urllib - always available)
-            self.run_command([
-                "docker", "exec", container_name,
-                "python", "-c",
-                "import urllib.request; "
-                "[urllib.request.urlopen('http://localhost:8000/').read() for _ in range(5)]"
-            ], check=False)
+            self.run_command(
+                [
+                    "docker",
+                    "exec",
+                    container_name,
+                    "python",
+                    "-c",
+                    "import urllib.request; "
+                    "[urllib.request.urlopen('http://localhost:8000/').read() for _ in range(5)]",
+                ],
+                check=False,
+            )
 
             # Check metrics endpoint
-            result = self.run_command([
-                "docker", "exec", container_name,
-                "python", "-c",
-                "import urllib.request; import sys; "
-                "sys.stdout.buffer.write(urllib.request.urlopen('http://localhost:8080/').read())"
-            ], check=False)
+            result = self.run_command(
+                [
+                    "docker",
+                    "exec",
+                    container_name,
+                    "python",
+                    "-c",
+                    "import urllib.request; import sys; "
+                    "sys.stdout.buffer.write(urllib.request.urlopen('http://localhost:8080/').read())",
+                ],
+                check=False,
+            )
 
             # Verify Prometheus metrics are exposed
             metrics_output = result.stdout
@@ -492,11 +478,7 @@ class TestDockerDeployment(ContainerTestBase):
 
             # Build image
             image_name = f"{test_id}-daemon:latest"
-            self.run_command(
-                ["docker", "build", "-t", image_name, "."],
-                cwd=str(temp_dir),
-                timeout=120
-            )
+            self.run_command(["docker", "build", "-t", image_name, "."], cwd=str(temp_dir), timeout=120)
             docker_test_env["images"].append(image_name)
 
             # Create volume for data persistence
@@ -506,12 +488,9 @@ class TestDockerDeployment(ContainerTestBase):
 
             # Run daemon container
             container_name = f"{test_id}-daemon"
-            self.run_command([
-                "docker", "run", "-d",
-                "--name", container_name,
-                "-v", f"{volume_name}:/data",
-                image_name
-            ])
+            self.run_command(
+                ["docker", "run", "-d", "--name", container_name, "-v", f"{volume_name}:/data", image_name]
+            )
             docker_test_env["containers"].append(container_name)
 
             # Let daemon run for a bit
@@ -546,15 +525,24 @@ class TestDockerDeployment(ContainerTestBase):
 
         # Start PostgreSQL container
         postgres_name = f"{test_id}-postgres"
-        self.run_command([
-            "docker", "run", "-d",
-            "--name", postgres_name,
-            "--network", network_name,
-            "-e", "POSTGRES_USER=testuser",
-            "-e", "POSTGRES_PASSWORD=testpass",
-            "-e", "POSTGRES_DB=testdb",
-            "postgres:15-alpine"
-        ])
+        self.run_command(
+            [
+                "docker",
+                "run",
+                "-d",
+                "--name",
+                postgres_name,
+                "--network",
+                network_name,
+                "-e",
+                "POSTGRES_USER=testuser",
+                "-e",
+                "POSTGRES_PASSWORD=testpass",
+                "-e",
+                "POSTGRES_DB=testdb",
+                "postgres:15-alpine",
+            ]
+        )
         docker_test_env["containers"].append(postgres_name)
 
         # Wait for PostgreSQL to be ready
@@ -581,23 +569,28 @@ class TestDockerDeployment(ContainerTestBase):
 
             # Build image
             image_name = f"{test_id}-app:latest"
-            self.run_command(
-                ["docker", "build", "-t", image_name, "."],
-                cwd=str(temp_dir),
-                timeout=60
-            )
+            self.run_command(["docker", "build", "-t", image_name, "."], cwd=str(temp_dir), timeout=60)
             docker_test_env["images"].append(image_name)
 
             # Run application container
-            result = self.run_command([
-                "docker", "run", "--rm",
-                "--network", network_name,
-                "-e", f"POSTGRES_HOST={postgres_name}",
-                "-e", "POSTGRES_USER=testuser",
-                "-e", "POSTGRES_PASSWORD=testpass",
-                "-e", "POSTGRES_DATABASE=testdb",
-                image_name
-            ])
+            result = self.run_command(
+                [
+                    "docker",
+                    "run",
+                    "--rm",
+                    "--network",
+                    network_name,
+                    "-e",
+                    f"POSTGRES_HOST={postgres_name}",
+                    "-e",
+                    "POSTGRES_USER=testuser",
+                    "-e",
+                    "POSTGRES_PASSWORD=testpass",
+                    "-e",
+                    "POSTGRES_DATABASE=testdb",
+                    image_name,
+                ]
+            )
 
             # Verify output
             assert f"Host: {postgres_name}" in result.stdout
@@ -608,10 +601,7 @@ class TestDockerDeployment(ContainerTestBase):
             shutil.rmtree(temp_dir, ignore_errors=True)
 
 
-@pytest.mark.skipif(
-    not (helm_available() and minikube_available()),
-    reason="Helm or Minikube not available"
-)
+@pytest.mark.skipif(not (helm_available() and minikube_available()), reason="Helm or Minikube not available")
 class TestHelmBasedDeployment(ContainerTestBase):
     """Test hyperlib applications with Helm charts in Kubernetes (Minikube)."""
 
@@ -626,9 +616,7 @@ class TestHelmBasedDeployment(ContainerTestBase):
         log_file = self.create_test_log_file(test_name)
 
         # Create namespace
-        self.run_command([
-            "kubectl", "create", "namespace", namespace
-        ])
+        self.run_command(["kubectl", "create", "namespace", namespace])
 
         env = {
             "test_id": test_id,
@@ -641,10 +629,7 @@ class TestHelmBasedDeployment(ContainerTestBase):
 
         # Capture pod logs before cleanup
         try:
-            result = self.run_command(
-                ["kubectl", "get", "pods", "-n", namespace, "-o", "name"],
-                check=False
-            )
+            result = self.run_command(["kubectl", "get", "pods", "-n", namespace, "-o", "name"], check=False)
             for pod_line in result.stdout.strip().split("\n"):
                 if pod_line:
                     pod_name = pod_line.replace("pod/", "")
@@ -654,17 +639,10 @@ class TestHelmBasedDeployment(ContainerTestBase):
 
         # Cleanup Helm releases
         for release in env["releases"]:
-            self.run_command(
-                ["helm", "uninstall", release, "-n", namespace],
-                check=False
-            )
+            self.run_command(["helm", "uninstall", release, "-n", namespace], check=False)
 
         # Delete namespace
-        self.run_command(
-            ["kubectl", "delete", "namespace", namespace, "--timeout=60s"],
-            check=False,
-            timeout=70
-        )
+        self.run_command(["kubectl", "delete", "namespace", namespace, "--timeout=60s"], check=False, timeout=70)
 
     def test_helm_pod_deployment(self, helm_env):
         """Test deploying a hyperlib application as a Helm-managed Pod."""
@@ -694,38 +672,30 @@ class TestHelmBasedDeployment(ContainerTestBase):
             # Create ConfigMap with application code
             app_code = self.load_fixture("test_container_deployment_7")
             configmap_name = f"{test_id}-app"
-            self.run_command([
-                "kubectl", "create", "configmap", configmap_name,
-                f"--from-literal=app.py={app_code}",
-                "-n", namespace
-            ])
+            self.run_command(
+                ["kubectl", "create", "configmap", configmap_name, f"--from-literal=app.py={app_code}", "-n", namespace]
+            )
 
             # Install Helm chart
             release_name = f"pod-{test_id}"
-            self.run_command([
-                "helm", "install", release_name,
-                str(chart_dir),
-                "-n", namespace,
-                "--wait",
-                "--timeout", "60s"
-            ], timeout=90)
+            self.run_command(
+                ["helm", "install", release_name, str(chart_dir), "-n", namespace, "--wait", "--timeout", "60s"],
+                timeout=90,
+            )
             helm_env["releases"].append(release_name)
 
             # Wait for pod to complete
             def pod_completed():
-                result = self.run_command([
-                    "kubectl", "get", "pod", f"{release_name}-pod",
-                    "-n", namespace,
-                    "-o", "jsonpath={.status.phase}"
-                ], check=False)
+                result = self.run_command(
+                    ["kubectl", "get", "pod", f"{release_name}-pod", "-n", namespace, "-o", "jsonpath={.status.phase}"],
+                    check=False,
+                )
                 return result.stdout in ["Succeeded", "Failed", "Error"]
 
             assert self.wait_for_condition(pod_completed, timeout=30)
 
             # Get pod logs
-            result = self.run_command([
-                "kubectl", "logs", f"{release_name}-pod", "-n", namespace
-            ])
+            result = self.run_command(["kubectl", "logs", f"{release_name}-pod", "-n", namespace])
 
             # Verify Kubernetes environment was detected
             assert "Kubernetes detected: True" in result.stdout
@@ -746,84 +716,112 @@ class TestHelmBasedDeployment(ContainerTestBase):
 
         try:
             # Create Chart.yaml
-            (chart_dir / "Chart.yaml").write_text(
-                self.load_fixture("test_container_deployment_22")
-            )
+            (chart_dir / "Chart.yaml").write_text(self.load_fixture("test_container_deployment_22"))
 
             # Create values.yaml
-            (chart_dir / "values.yaml").write_text(
-                self.load_fixture("test_container_deployment_25")
-            )
+            (chart_dir / "values.yaml").write_text(self.load_fixture("test_container_deployment_25"))
 
             # Create templates directory
             templates_dir = chart_dir / "templates"
             templates_dir.mkdir()
 
             # Create Deployment template
-            (templates_dir / "deployment.yaml").write_text(
-                self.load_fixture("test_container_deployment_23")
-            )
+            (templates_dir / "deployment.yaml").write_text(self.load_fixture("test_container_deployment_23"))
 
             # Create Service template
-            (templates_dir / "service.yaml").write_text(
-                self.load_fixture("test_container_deployment_24")
-            )
+            (templates_dir / "service.yaml").write_text(self.load_fixture("test_container_deployment_24"))
 
             # Create ConfigMap with application code
             app_code = self.load_fixture("test_container_deployment_9")
             configmap_name = f"{test_id}-app"
-            self.run_command([
-                "kubectl", "create", "configmap", configmap_name,
-                f"--from-literal=metrics_app.py={app_code}",
-                "-n", namespace
-            ])
+            self.run_command(
+                [
+                    "kubectl",
+                    "create",
+                    "configmap",
+                    configmap_name,
+                    f"--from-literal=metrics_app.py={app_code}",
+                    "-n",
+                    namespace,
+                ]
+            )
 
             # Install Helm chart
             release_name = f"metrics-{test_id}"
-            self.run_command([
-                "helm", "install", release_name,
-                str(chart_dir),
-                "-n", namespace,
-                "--wait",
-                "--timeout", "90s"
-            ], timeout=120)
+            self.run_command(
+                ["helm", "install", release_name, str(chart_dir), "-n", namespace, "--wait", "--timeout", "90s"],
+                timeout=120,
+            )
             helm_env["releases"].append(release_name)
 
             # Wait for deployment to be ready
             def deployment_ready():
-                result = self.run_command([
-                    "kubectl", "get", "deployment", release_name,
-                    "-n", namespace,
-                    "-o", "jsonpath={.status.readyReplicas}"
-                ], check=False)
+                result = self.run_command(
+                    [
+                        "kubectl",
+                        "get",
+                        "deployment",
+                        release_name,
+                        "-n",
+                        namespace,
+                        "-o",
+                        "jsonpath={.status.readyReplicas}",
+                    ],
+                    check=False,
+                )
                 return result.stdout == "1"
 
             assert self.wait_for_condition(deployment_ready, timeout=60)
 
             # Get pod name
-            result = self.run_command([
-                "kubectl", "get", "pods",
-                "-n", namespace,
-                "-l", f"app={release_name}",
-                "-o", "jsonpath={.items[0].metadata.name}"
-            ])
+            result = self.run_command(
+                [
+                    "kubectl",
+                    "get",
+                    "pods",
+                    "-n",
+                    namespace,
+                    "-l",
+                    f"app={release_name}",
+                    "-o",
+                    "jsonpath={.items[0].metadata.name}",
+                ]
+            )
             pod_name = result.stdout.strip()
 
             # Make some requests to generate metrics
             for _ in range(5):
-                self.run_command([
-                    "kubectl", "exec", pod_name,
-                    "-n", namespace,
-                    "--", "sh", "-c",
-                    "wget -q -O - http://localhost:8080/"
-                ], check=False)
+                self.run_command(
+                    [
+                        "kubectl",
+                        "exec",
+                        pod_name,
+                        "-n",
+                        namespace,
+                        "--",
+                        "sh",
+                        "-c",
+                        "wget -q -O - http://localhost:8080/",
+                    ],
+                    check=False,
+                )
 
             # Check metrics endpoint
-            result = self.run_command([
-                "kubectl", "exec", pod_name,
-                "-n", namespace,
-                "--", "wget", "-q", "-O", "-", "http://localhost:8080/metrics"
-            ])
+            result = self.run_command(
+                [
+                    "kubectl",
+                    "exec",
+                    pod_name,
+                    "-n",
+                    namespace,
+                    "--",
+                    "wget",
+                    "-q",
+                    "-O",
+                    "-",
+                    "http://localhost:8080/metrics",
+                ]
+            )
 
             # Verify metrics
             assert "hyperlib_requests_total" in result.stdout
@@ -833,11 +831,9 @@ class TestHelmBasedDeployment(ContainerTestBase):
             assert "# TYPE" in result.stdout
 
             # Check annotations for Prometheus scraping
-            result = self.run_command([
-                "kubectl", "get", "pod", pod_name,
-                "-n", namespace,
-                "-o", "jsonpath={.metadata.annotations}"
-            ])
+            result = self.run_command(
+                ["kubectl", "get", "pod", pod_name, "-n", namespace, "-o", "jsonpath={.metadata.annotations}"]
+            )
             assert "prometheus.io/scrape" in result.stdout
 
         finally:
@@ -853,9 +849,7 @@ class TestHelmBasedDeployment(ContainerTestBase):
 
         try:
             # Create Chart.yaml
-            (chart_dir / "Chart.yaml").write_text(
-                self.load_fixture("test_container_deployment_18")
-            )
+            (chart_dir / "Chart.yaml").write_text(self.load_fixture("test_container_deployment_18"))
 
             # Create values.yaml with namespace interpolation
             values_content = self.load_fixture("test_container_deployment_21")
@@ -868,62 +862,65 @@ class TestHelmBasedDeployment(ContainerTestBase):
             templates_dir.mkdir()
 
             # Create Deployment template
-            (templates_dir / "deployment.yaml").write_text(
-                self.load_fixture("test_container_deployment_19")
-            )
+            (templates_dir / "deployment.yaml").write_text(self.load_fixture("test_container_deployment_19"))
 
             # Create Service template
-            (templates_dir / "service.yaml").write_text(
-                self.load_fixture("test_container_deployment_20")
-            )
+            (templates_dir / "service.yaml").write_text(self.load_fixture("test_container_deployment_20"))
 
             # Install Helm chart
             release_name = f"api-{test_id}"
-            self.run_command([
-                "helm", "install", release_name,
-                str(chart_dir),
-                "-n", namespace,
-                "--wait",
-                "--timeout", "90s"
-            ], timeout=120)
+            self.run_command(
+                ["helm", "install", release_name, str(chart_dir), "-n", namespace, "--wait", "--timeout", "90s"],
+                timeout=120,
+            )
             helm_env["releases"].append(release_name)
 
             # Wait for deployment to be ready
             def deployment_ready():
-                result = self.run_command([
-                    "kubectl", "get", "deployment", release_name,
-                    "-n", namespace,
-                    "-o", "jsonpath={.status.readyReplicas}"
-                ], check=False)
+                result = self.run_command(
+                    [
+                        "kubectl",
+                        "get",
+                        "deployment",
+                        release_name,
+                        "-n",
+                        namespace,
+                        "-o",
+                        "jsonpath={.status.readyReplicas}",
+                    ],
+                    check=False,
+                )
                 return result.stdout == "1"
 
             assert self.wait_for_condition(deployment_ready, timeout=60)
 
             # Check pod environment variables
-            result = self.run_command([
-                "kubectl", "get", "pods",
-                "-n", namespace,
-                "-l", f"app={release_name}",
-                "-o", "jsonpath={.items[0].metadata.name}"
-            ])
+            result = self.run_command(
+                [
+                    "kubectl",
+                    "get",
+                    "pods",
+                    "-n",
+                    namespace,
+                    "-l",
+                    f"app={release_name}",
+                    "-o",
+                    "jsonpath={.items[0].metadata.name}",
+                ]
+            )
             pod_name = result.stdout.strip()
 
             # Check environment in pod
-            result = self.run_command([
-                "kubectl", "exec", pod_name,
-                "-n", namespace,
-                "--", "env"
-            ])
+            result = self.run_command(["kubectl", "exec", pod_name, "-n", namespace, "--", "env"])
 
             assert "APP_NAME=hyperlib-api" in result.stdout
             assert f"POSTGRES_HOST=postgres.{namespace}.svc.cluster.local" in result.stdout
 
         finally:
             shutil.rmtree(chart_dir, ignore_errors=True)
-@pytest.mark.skipif(
-    not (helm_available() and minikube_available()),
-    reason="Helm or Minikube not available"
-)
+
+
+@pytest.mark.skipif(not (helm_available() and minikube_available()), reason="Helm or Minikube not available")
 class TestHelmDeployment(ContainerTestBase):
     """Test hyperlib applications with Helm charts."""
 
@@ -934,9 +931,7 @@ class TestHelmDeployment(ContainerTestBase):
         namespace = f"helm-test-{test_id}"
 
         # Create namespace
-        self.run_command([
-            "kubectl", "create", "namespace", namespace
-        ])
+        self.run_command(["kubectl", "create", "namespace", namespace])
 
         env = {
             "test_id": test_id,
@@ -948,17 +943,10 @@ class TestHelmDeployment(ContainerTestBase):
 
         # Cleanup Helm releases
         for release in env["releases"]:
-            self.run_command(
-                ["helm", "uninstall", release, "-n", namespace],
-                check=False
-            )
+            self.run_command(["helm", "uninstall", release, "-n", namespace], check=False)
 
         # Delete namespace
-        self.run_command(
-            ["kubectl", "delete", "namespace", namespace, "--timeout=60s"],
-            check=False,
-            timeout=70
-        )
+        self.run_command(["kubectl", "delete", "namespace", namespace, "--timeout=60s"], check=False, timeout=70)
 
     def test_helm_chart_deployment(self, helm_test_env):
         """Test deploying a hyperlib application via Helm chart."""
@@ -991,37 +979,35 @@ class TestHelmDeployment(ContainerTestBase):
 
             # Install Helm chart
             release_name = f"test-{test_id}"
-            self.run_command([
-                "helm", "install", release_name,
-                str(chart_dir),
-                "-n", namespace,
-                "--wait",
-                "--timeout", "60s"
-            ], timeout=90)
+            self.run_command(
+                ["helm", "install", release_name, str(chart_dir), "-n", namespace, "--wait", "--timeout", "60s"],
+                timeout=90,
+            )
             helm_test_env["releases"].append(release_name)
 
             # Verify deployment
-            result = self.run_command([
-                "helm", "list", "-n", namespace, "-o", "json"
-            ])
+            result = self.run_command(["helm", "list", "-n", namespace, "-o", "json"])
             releases = json.loads(result.stdout)
             assert any(r["name"] == release_name for r in releases)
 
             # Check that HELM environment variables are set
-            result = self.run_command([
-                "kubectl", "get", "pods",
-                "-n", namespace,
-                "-l", f"app={release_name}",
-                "-o", "jsonpath={.items[0].metadata.name}"
-            ])
+            result = self.run_command(
+                [
+                    "kubectl",
+                    "get",
+                    "pods",
+                    "-n",
+                    namespace,
+                    "-l",
+                    f"app={release_name}",
+                    "-o",
+                    "jsonpath={.items[0].metadata.name}",
+                ]
+            )
             pod_name = result.stdout.strip()
 
             # Check environment in pod
-            result = self.run_command([
-                "kubectl", "exec", pod_name,
-                "-n", namespace,
-                "--", "env"
-            ])
+            result = self.run_command(["kubectl", "exec", pod_name, "-n", namespace, "--", "env"])
 
             assert f"HELM_RELEASE_NAME={release_name}" in result.stdout
             assert "APP_NAME=hyperlib-helm-app" in result.stdout
@@ -1029,11 +1015,7 @@ class TestHelmDeployment(ContainerTestBase):
             assert "POSTGRES_DATABASE=helmdb" in result.stdout
 
             # Check mounts exist
-            result = self.run_command([
-                "kubectl", "exec", pod_name,
-                "-n", namespace,
-                "--", "ls", "-la", "/"
-            ])
+            result = self.run_command(["kubectl", "exec", pod_name, "-n", namespace, "--", "ls", "-la", "/"])
 
             assert "config" in result.stdout
             assert "data" in result.stdout
@@ -1052,24 +1034,29 @@ class TestHelmDeployment(ContainerTestBase):
 
         try:
             # Create Chart.yaml
-            (chart_dir / "Chart.yaml").write_text(f"""
+            (chart_dir / "Chart.yaml").write_text(
+                f"""
 apiVersion: v2
 name: hyperlib-custom
 version: 0.1.0
-""")
+"""
+            )
 
             # Create values.yaml with defaults
-            (chart_dir / "values.yaml").write_text("""
+            (chart_dir / "values.yaml").write_text(
+                """
 env:
   APP_NAME: default-app
   LOG_LEVEL: INFO
-""")
+"""
+            )
 
             # Create a simple ConfigMap template
             templates_dir = chart_dir / "templates"
             templates_dir.mkdir()
 
-            (templates_dir / "configmap.yaml").write_text("""
+            (templates_dir / "configmap.yaml").write_text(
+                """
 apiVersion: v1
 kind: ConfigMap
 metadata:
@@ -1077,38 +1064,30 @@ metadata:
 data:
   APP_NAME: {{ .Values.env.APP_NAME }}
   LOG_LEVEL: {{ .Values.env.LOG_LEVEL }}
-""")
+"""
+            )
 
             # Create custom values file
-            custom_values = {
-                "env": {
-                    "APP_NAME": "custom-hyperlib-app",
-                    "LOG_LEVEL": "DEBUG"
-                }
-            }
+            custom_values = {"env": {"APP_NAME": "custom-hyperlib-app", "LOG_LEVEL": "DEBUG"}}
 
             custom_values_file = chart_dir / "custom-values.yaml"
             import yaml
-            with open(custom_values_file, 'w') as f:
+
+            with open(custom_values_file, "w") as f:
                 yaml.dump(custom_values, f)
 
             # Install with custom values
             release_name = f"custom-{test_id}"
-            self.run_command([
-                "helm", "install", release_name,
-                str(chart_dir),
-                "-f", str(custom_values_file),
-                "-n", namespace
-            ], timeout=90)
+            self.run_command(
+                ["helm", "install", release_name, str(chart_dir), "-f", str(custom_values_file), "-n", namespace],
+                timeout=90,
+            )
             helm_test_env["releases"].append(release_name)
 
             # Verify custom values were applied
-            result = self.run_command([
-                "kubectl", "get", "configmap",
-                f"{release_name}-config",
-                "-n", namespace,
-                "-o", "jsonpath={.data}"
-            ])
+            result = self.run_command(
+                ["kubectl", "get", "configmap", f"{release_name}-config", "-n", namespace, "-o", "jsonpath={.data}"]
+            )
 
             assert "custom-hyperlib-app" in result.stdout
             assert "DEBUG" in result.stdout

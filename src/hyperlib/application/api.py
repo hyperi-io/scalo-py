@@ -77,8 +77,7 @@ class APIApplication:
             )
         except ImportError:
             raise ImportError(
-                "FastAPI is required for API applications. "
-                "Install it with: pip install fastapi uvicorn[standard]"
+                "FastAPI is required for API applications. " "Install it with: pip install fastapi uvicorn[standard]"
             )
 
         # Add CORS middleware if enabled
@@ -276,14 +275,6 @@ class APIApplication:
         try:
             import uvicorn
 
-            uvicorn.run(
-                self.fastapi,
-                host="0.0.0.0",
-                port=self.port,
-                log_config=None  # Use hyperlib logger
-            )
+            uvicorn.run(self.fastapi, host="0.0.0.0", port=self.port, log_config=None)  # Use hyperlib logger
         except ImportError:
-            raise ImportError(
-                "uvicorn is required to run the API. "
-                "Install it with: pip install uvicorn[standard]"
-            )
+            raise ImportError("uvicorn is required to run the API. " "Install it with: pip install uvicorn[standard]")

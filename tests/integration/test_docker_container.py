@@ -3,14 +3,15 @@ Docker container tests for hyperlib applications
 Tests containerized deployments with actual Docker containers
 """
 
-import os
-import time
 import json
+import os
+import shutil
 import subprocess
 import tempfile
-import pytest
+import time
 from pathlib import Path
-import shutil
+
+import pytest
 
 
 def docker_available():
@@ -70,17 +71,14 @@ class TestDockerContainer:
                 ["docker", "build", "-t", image_name, "--build-arg", f"host={Path.cwd()}", "."],
                 cwd=temp_dir,
                 capture_output=True,
-                text=True
+                text=True,
             )
 
             if result.returncode != 0:
                 # Try simpler Dockerfile without build context
                 dockerfile.write_text(self.load_fixture("test_docker_container_3"))
                 result = subprocess.run(
-                    ["docker", "build", "-t", image_name, "."],
-                    cwd=temp_dir,
-                    capture_output=True,
-                    text=True
+                    ["docker", "build", "-t", image_name, "."], cwd=temp_dir, capture_output=True, text=True
                 )
 
             docker_cleanup["images"].append(image_name)
@@ -88,9 +86,7 @@ class TestDockerContainer:
             # Run container
             container_name = "hyperlib-docker-test"
             result = subprocess.run(
-                ["docker", "run", "--name", container_name, "--rm", image_name],
-                capture_output=True,
-                text=True
+                ["docker", "run", "--name", container_name, "--rm", image_name], capture_output=True, text=True
             )
 
             output = result.stdout
@@ -115,21 +111,23 @@ class TestDockerContainer:
 
             # Build image
             image_name = "hyperlib-test:mounts"
-            subprocess.run(
-                ["docker", "build", "-t", image_name, "."],
-                cwd=temp_dir,
-                capture_output=True
-            )
+            subprocess.run(["docker", "build", "-t", image_name, "."], cwd=temp_dir, capture_output=True)
             docker_cleanup["images"].append(image_name)
 
             # Run container with volume mounts
             result = subprocess.run(
-                ["docker", "run", "--rm",
-                 "-v", f"{temp_dir}/config:/app/config",
-                 "-v", f"{temp_dir}/data:/app/data",
-                 image_name],
+                [
+                    "docker",
+                    "run",
+                    "--rm",
+                    "-v",
+                    f"{temp_dir}/config:/app/config",
+                    "-v",
+                    f"{temp_dir}/data:/app/data",
+                    image_name,
+                ],
                 capture_output=True,
-                text=True
+                text=True,
             )
 
             output = result.stdout
@@ -154,22 +152,25 @@ class TestDockerContainer:
 
             # Build image
             image_name = "hyperlib-test:env"
-            subprocess.run(
-                ["docker", "build", "-t", image_name, "."],
-                cwd=temp_dir,
-                capture_output=True
-            )
+            subprocess.run(["docker", "build", "-t", image_name, "."], cwd=temp_dir, capture_output=True)
             docker_cleanup["images"].append(image_name)
 
             # Run with environment variables
             result = subprocess.run(
-                ["docker", "run", "--rm",
-                 "-e", "APP_NAME=test-service",
-                 "-e", "POSTGRES_HOST=db.example.com",
-                 "-e", "POSTGRES_USER=testuser",
-                 image_name],
+                [
+                    "docker",
+                    "run",
+                    "--rm",
+                    "-e",
+                    "APP_NAME=test-service",
+                    "-e",
+                    "POSTGRES_HOST=db.example.com",
+                    "-e",
+                    "POSTGRES_USER=testuser",
+                    image_name,
+                ],
                 capture_output=True,
-                text=True
+                text=True,
             )
 
             output = result.stdout
@@ -197,30 +198,33 @@ class TestDockerContainer:
             # Build API image
             api_image = "hyperlib-test:api"
             subprocess.run(
-                ["docker", "build", "-f", "Dockerfile.api", "-t", api_image, "."],
-                cwd=temp_dir,
-                capture_output=True
+                ["docker", "build", "-f", "Dockerfile.api", "-t", api_image, "."], cwd=temp_dir, capture_output=True
             )
             docker_cleanup["images"].append(api_image)
 
             # Create a network for containers
             network_name = "hyperlib-test-network"
-            subprocess.run(
-                ["docker", "network", "create", network_name],
-                capture_output=True
-            )
+            subprocess.run(["docker", "network", "create", network_name], capture_output=True)
 
             try:
                 # Run API container with database environment
                 result = subprocess.run(
-                    ["docker", "run", "--rm",
-                     "--network", network_name,
-                     "-e", "POSTGRES_HOST=postgres",
-                     "-e", "POSTGRES_USER=apiuser",
-                     "-e", "POSTGRES_DATABASE=apidb",
-                     api_image],
+                    [
+                        "docker",
+                        "run",
+                        "--rm",
+                        "--network",
+                        network_name,
+                        "-e",
+                        "POSTGRES_HOST=postgres",
+                        "-e",
+                        "POSTGRES_USER=apiuser",
+                        "-e",
+                        "POSTGRES_DATABASE=apidb",
+                        api_image,
+                    ],
                     capture_output=True,
-                    text=True
+                    text=True,
                 )
 
                 output = result.stdout
@@ -232,10 +236,7 @@ class TestDockerContainer:
 
             finally:
                 # Clean up network
-                subprocess.run(
-                    ["docker", "network", "rm", network_name],
-                    capture_output=True
-                )
+                subprocess.run(["docker", "network", "rm", network_name], capture_output=True)
 
         finally:
             shutil.rmtree(temp_dir)
@@ -255,11 +256,7 @@ class TestDockerContainer:
 
             # Build image
             image_name = "hyperlib-test:helm"
-            subprocess.run(
-                ["docker", "build", "-t", image_name, "."],
-                cwd=temp_dir,
-                capture_output=True
-            )
+            subprocess.run(["docker", "build", "-t", image_name, "."], cwd=temp_dir, capture_output=True)
             docker_cleanup["images"].append(image_name)
 
             # Create host directories for mounting
@@ -268,14 +265,22 @@ class TestDockerContainer:
 
             # Run container with HELM-style mounts
             result = subprocess.run(
-                ["docker", "run", "--rm",
-                 "-v", f"{temp_dir}/config:/config",
-                 "-v", f"{temp_dir}/secrets:/secrets",
-                 "-v", f"{temp_dir}/data:/data",
-                 "-v", f"{temp_dir}/logs:/logs",
-                 image_name],
+                [
+                    "docker",
+                    "run",
+                    "--rm",
+                    "-v",
+                    f"{temp_dir}/config:/config",
+                    "-v",
+                    f"{temp_dir}/secrets:/secrets",
+                    "-v",
+                    f"{temp_dir}/data:/data",
+                    "-v",
+                    f"{temp_dir}/logs:/logs",
+                    image_name,
+                ],
                 capture_output=True,
-                text=True
+                text=True,
             )
 
             output = result.stdout
@@ -305,21 +310,14 @@ class TestDockerContainer:
 
             # Build image
             image_name = "hyperlib-test:resources"
-            subprocess.run(
-                ["docker", "build", "-t", image_name, "."],
-                cwd=temp_dir,
-                capture_output=True
-            )
+            subprocess.run(["docker", "build", "-t", image_name, "."], cwd=temp_dir, capture_output=True)
             docker_cleanup["images"].append(image_name)
 
             # Run with resource limits (512MB memory, 0.5 CPU)
             result = subprocess.run(
-                ["docker", "run", "--rm",
-                 "--memory", "512m",
-                 "--cpus", "0.5",
-                 image_name],
+                ["docker", "run", "--rm", "--memory", "512m", "--cpus", "0.5", image_name],
                 capture_output=True,
-                text=True
+                text=True,
             )
 
             output = result.stdout

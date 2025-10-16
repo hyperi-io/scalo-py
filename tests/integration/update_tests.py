@@ -11,24 +11,30 @@ content = test_file.read_text()
 # Define replacements - map from old code to fixture name
 replacements = [
     # Prometheus metrics app
-    (r'app_file\.write_text\(""".*?from hyperlib import Application, create_metrics.*?app\.run\(\)\n"""\)', 
-     'app_file.write_text(self.load_fixture("test_container_deployment_code_2"))'),
-    
+    (
+        r'app_file\.write_text\(""".*?from hyperlib import Application, create_metrics.*?app\.run\(\)\n"""\)',
+        'app_file.write_text(self.load_fixture("test_container_deployment_code_2"))',
+    ),
     # Daemon app
-    (r'app_file\.write_text\(""".*?from hyperlib import Application, get_mount_config.*?app\.run\(\)\n"""\)',
-     'app_file.write_text(self.load_fixture("test_container_deployment_code_3"))'),
-    
+    (
+        r'app_file\.write_text\(""".*?from hyperlib import Application, get_mount_config.*?app\.run\(\)\n"""\)',
+        'app_file.write_text(self.load_fixture("test_container_deployment_code_3"))',
+    ),
     # Database compose app
-    (r'app_file\.write_text\(""".*?from hyperlib import get_database_config, build_database_url.*?print\(f"Database: \{db_config\[\'database\'\]\}"\)\n"""\)',
-     'app_file.write_text(self.load_fixture("test_container_deployment_code_5"))'),
-    
+    (
+        r'app_file\.write_text\(""".*?from hyperlib import get_database_config, build_database_url.*?print\(f"Database: \{db_config\[\'database\'\]\}"\)\n"""\)',
+        'app_file.write_text(self.load_fixture("test_container_deployment_code_5"))',
+    ),
     # K8s pod app
-    (r'app_code = """.*?k8s_token = Path.*?print\(f"Mount paths: \{mounts\}"\)\n"""',
-     'app_code = self.load_fixture("test_container_deployment_7")'),
-     
-    # K8s metrics app  
-    (r'app_code = """.*?class MetricsHandler.*?httpd\.serve_forever\(\)\n"""',
-     'app_code = self.load_fixture("test_container_deployment_9")'),
+    (
+        r'app_code = """.*?k8s_token = Path.*?print\(f"Mount paths: \{mounts\}"\)\n"""',
+        'app_code = self.load_fixture("test_container_deployment_7")',
+    ),
+    # K8s metrics app
+    (
+        r'app_code = """.*?class MetricsHandler.*?httpd\.serve_forever\(\)\n"""',
+        'app_code = self.load_fixture("test_container_deployment_9")',
+    ),
 ]
 
 # Apply replacements

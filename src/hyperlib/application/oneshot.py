@@ -92,9 +92,7 @@ class OneshotApplication:
         task = self.decorated_task or self.task_func
 
         if not task:
-            raise RuntimeError(
-                "No task defined. Use @app.task decorator or pass task_func to constructor"
-            )
+            raise RuntimeError("No task defined. Use @app.task decorator or pass task_func to constructor")
 
         logger.info(f"Starting one-shot task '{self.name}'")
 

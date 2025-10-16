@@ -74,6 +74,7 @@ class MountConfig:
     - cache_dir: Application cache (Redis/computed data)
     - run_dir: Runtime state (PID files, sockets)
     """
+
     # Core paths
     config_dir: Optional[Path] = None
     secrets_dir: Optional[Path] = None
@@ -88,8 +89,7 @@ class MountConfig:
     def __post_init__(self):
         """Convert strings to Path objects and ensure directories exist"""
         # All fields in the dataclass
-        all_fields = ["config_dir", "secrets_dir", "data_dir", "temp_dir",
-                      "logs_dir", "cache_dir", "run_dir"]
+        all_fields = ["config_dir", "secrets_dir", "data_dir", "temp_dir", "logs_dir", "cache_dir", "run_dir"]
 
         # Read-only directories that shouldn't be created
         read_only_fields = ["config_dir", "secrets_dir"]
@@ -154,51 +154,51 @@ def detect_standard_mounts() -> dict[str, Path]:
 
     mount_checks = {
         "config_dir": [
-            "/config",                    # HELM standard
-            "/app/config",                # Docker standard
-            f"/etc/{app_name}",          # Linux standard with app name
-            "/etc/config",               # Generic Linux
-            f"/opt/{app_name}/config",   # Alternative app-specific
+            "/config",  # HELM standard
+            "/app/config",  # Docker standard
+            f"/etc/{app_name}",  # Linux standard with app name
+            "/etc/config",  # Generic Linux
+            f"/opt/{app_name}/config",  # Alternative app-specific
         ],
         "secrets_dir": [
-            "/secrets",                   # HELM standard
-            "/run/secrets",              # Docker secrets standard
-            "/app/secrets",              # Docker app-specific
+            "/secrets",  # HELM standard
+            "/run/secrets",  # Docker secrets standard
+            "/app/secrets",  # Docker app-specific
             f"/etc/{app_name}/secrets",  # Linux app-specific
-            "/var/run/secrets",          # Alternative runtime secrets
+            "/var/run/secrets",  # Alternative runtime secrets
         ],
         "data_dir": [
-            "/data",                      # HELM standard
-            "/app/data",                 # Docker standard
-            f"/var/lib/{app_name}",      # Linux standard with app name
-            "/persistent",               # Generic PVC
-            f"/opt/{app_name}/data",     # Alternative app-specific
+            "/data",  # HELM standard
+            "/app/data",  # Docker standard
+            f"/var/lib/{app_name}",  # Linux standard with app name
+            "/persistent",  # Generic PVC
+            f"/opt/{app_name}/data",  # Alternative app-specific
         ],
         "logs_dir": [
-            "/logs",                      # HELM simple standard
-            "/app/logs",                 # Docker standard
-            f"/var/log/{app_name}",      # Linux standard with app name
-            "/data/logs",                # Persistent logs in data volume
-            "/var/log",                  # Fallback to general log dir
+            "/logs",  # HELM simple standard
+            "/app/logs",  # Docker standard
+            f"/var/log/{app_name}",  # Linux standard with app name
+            "/data/logs",  # Persistent logs in data volume
+            "/var/log",  # Fallback to general log dir
         ],
         "temp_dir": [
-            "/tmp",                       # Universal standard
-            f"/tmp/{app_name}",          # App-specific temp
-            "/app/tmp",                  # Docker app temp
-            "/var/tmp",                  # Alternative system temp
-            "/run/tmp",                  # Runtime temp (tmpfs)
+            "/tmp",  # Universal standard
+            f"/tmp/{app_name}",  # App-specific temp
+            "/app/tmp",  # Docker app temp
+            "/var/tmp",  # Alternative system temp
+            "/run/tmp",  # Runtime temp (tmpfs)
         ],
         # Additional commonly used paths in DevOps
         "cache_dir": [
-            "/cache",                     # Simple cache volume
-            "/app/cache",                # Docker app cache
-            f"/var/cache/{app_name}",    # Linux standard cache
-            "/data/cache",               # Persistent cache in data
+            "/cache",  # Simple cache volume
+            "/app/cache",  # Docker app cache
+            f"/var/cache/{app_name}",  # Linux standard cache
+            "/data/cache",  # Persistent cache in data
         ],
         "run_dir": [
-            f"/run/{app_name}",          # Runtime state (PIDs, sockets)
-            f"/var/run/{app_name}",      # Alternative runtime
-            "/app/run",                  # Docker runtime
+            f"/run/{app_name}",  # Runtime state (PIDs, sockets)
+            f"/var/run/{app_name}",  # Alternative runtime
+            "/app/run",  # Docker runtime
         ],
     }
 
@@ -214,11 +214,7 @@ def detect_standard_mounts() -> dict[str, Path]:
     return detected
 
 
-def get_default_mounts(
-    environment: str,
-    app_name: str,
-    auto_detect: bool = True
-) -> MountConfig:
+def get_default_mounts(environment: str, app_name: str, auto_detect: bool = True) -> MountConfig:
     """
     Return sensible mount defaults based on detected environment.
 
@@ -243,7 +239,7 @@ def get_default_mounts(
             secrets_dir=Path("/app/secrets"),
             data_dir=Path("/app/data"),
             temp_dir=Path("/tmp"),
-            logs_dir=Path("/app/logs")
+            logs_dir=Path("/app/logs"),
         )
 
     # First, try to detect existing standard mounts
@@ -262,7 +258,7 @@ def get_default_mounts(
                 temp_dir=detected.get("temp_dir", Path("/tmp")),
                 logs_dir=detected.get("logs_dir", Path("/logs")),
                 cache_dir=detected.get("cache_dir"),  # Optional
-                run_dir=detected.get("run_dir"),      # Optional
+                run_dir=detected.get("run_dir"),  # Optional
             )
             if os.getenv("HYPERLIB_DEBUG"):
                 print(f"HELM K8s mount paths detected")
@@ -275,7 +271,7 @@ def get_default_mounts(
                 temp_dir=detected.get("temp_dir", Path("/tmp")),
                 logs_dir=detected.get("logs_dir", Path("/app/logs")),
                 cache_dir=detected.get("cache_dir"),  # Optional
-                run_dir=detected.get("run_dir"),      # Optional
+                run_dir=detected.get("run_dir"),  # Optional
             )
             if os.getenv("HYPERLIB_DEBUG"):
                 print(f"K8s mount paths - using app namespace")
@@ -304,7 +300,7 @@ def get_default_mounts(
             temp_dir=Path("/tmp") / app_name,
             logs_dir=home / f".local/share/{app_name}/logs",
             cache_dir=home / f".cache/{app_name}",
-            run_dir=Path(f"/run/user/{os.getuid()}/{app_name}") if hasattr(os, 'getuid') else None,
+            run_dir=Path(f"/run/user/{os.getuid()}/{app_name}") if hasattr(os, "getuid") else None,
         )
         if os.getenv("HYPERLIB_DEBUG"):
             print(f"Local mount paths - user home directory")
@@ -316,6 +312,7 @@ def get_default_mounts(
 # Set HYPERLIB_ENV_PREFIX to override (e.g., HYPERLIB_ENV_PREFIX=MYAPP)
 # Default: APP (e.g., APP_LOG_LEVEL, APP_DATABASE_URL)
 ENV_PREFIX = os.getenv("HYPERLIB_ENV_PREFIX", "APP")
+
 
 # Determine app name with proper priority:
 # 1. K8s/Docker standard APP_NAME environment variable
@@ -344,8 +341,8 @@ def get_app_name() -> str:
 
     # Priority 3: Try to detect root application package name
     try:
-        import sys
         import importlib.metadata
+        import sys
 
         # Get all installed packages
         for dist in importlib.metadata.distributions():
@@ -379,6 +376,7 @@ def get_app_name() -> str:
 
     # Priority 5: Default
     return "app"
+
 
 APP_NAME = get_app_name()
 
@@ -739,8 +737,9 @@ def get_target_config(target: str = None, targets_file: str = None) -> dict:
         # Or with env var: export TARGET=staging
         config = get_target_config()
     """
-    import yaml
     from pathlib import Path
+
+    import yaml
 
     # Determine targets file path
     if targets_file is None:
@@ -755,8 +754,7 @@ def get_target_config(target: str = None, targets_file: str = None) -> dict:
 
     if not targets_path.exists():
         raise FileNotFoundError(
-            f"Targets configuration file not found: {targets_path}\n"
-            f"Create it with your environment configurations."
+            f"Targets configuration file not found: {targets_path}\n" f"Create it with your environment configurations."
         )
 
     # Load targets file
@@ -777,9 +775,7 @@ def get_target_config(target: str = None, targets_file: str = None) -> dict:
     targets = targets_data.get("targets", {})
     if target not in targets:
         available = ", ".join(targets.keys())
-        raise ValueError(
-            f"Target '{target}' not found in configuration.\n" f"Available targets: {available}"
-        )
+        raise ValueError(f"Target '{target}' not found in configuration.\n" f"Available targets: {available}")
 
     target_config = targets[target].copy()
     target_config["target_name"] = target
