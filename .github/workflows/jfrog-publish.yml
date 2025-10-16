@@ -25,41 +25,27 @@ jobs:
         with:
           python-version: '3.11'
 
-      - name: Install build & twine
-        run: |
-          python -m pip install --upgrade pip
-          pip install build twine
-
-      - name: Build package
-        run: |
-          python -m build
-
-      - name: Publish to JFrog Artifactory (twine)
-        env:
-          # Credentials from repository secrets
-          TWINE_USERNAME: ${{ secrets.ARTIFACTORY_USERNAME }}
-          TWINE_PASSWORD: ${{ secrets.ARTIFACTORY_PASSWORD }}
-          # HyperSec JFrog Artifactory PyPI repository
-          ARTIFACTORY_REPO_URL: https://hypersec.jfrog.io/artifactory/api/pypi/hypersec-pypi-local
-        run: |
-          # JFrog will overwrite same version by default (no --skip-existing needed)
-          # Multi-arch builds have unique filenames so they won't conflict
-          python -m twine upload --repository-url "$ARTIFACTORY_REPO_URL" dist/*
-
-      - name: Verify package uploaded to JFrog
+      - name: Bootstrap CI
         env:
           ARTIFACTORY_USERNAME: ${{ secrets.ARTIFACTORY_USERNAME }}
           ARTIFACTORY_PASSWORD: ${{ secrets.ARTIFACTORY_PASSWORD }}
         run: |
-          # Extract package name and version
-          PACKAGE_NAME=$(ls dist/*.whl | head -1 | sed 's/.*\///' | cut -d'-' -f1)
-          PACKAGE_VERSION=$(ls dist/*.whl | head -1 | sed 's/.*\///' | cut -d'-' -f2)
+          # Create ci-local/.env with JFrog credentials
+          mkdir -p ci-local
+          cat > ci-local/.env << EOF
+          ARTIFACTORY_USERNAME=${ARTIFACTORY_USERNAME}
+          ARTIFACTORY_PASSWORD=${ARTIFACTORY_PASSWORD}
+          EOF
 
-          echo "Verifying ${PACKAGE_NAME} version ${PACKAGE_VERSION} was uploaded..."
+          # Bootstrap sets up ci/.venv using ci-local/uv.lock
+          ci/bootstrap --install
 
-          # Check if package exists in JFrog
-          curl -f -u "${ARTIFACTORY_USERNAME}:${ARTIFACTORY_PASSWORD}" \
-            "https://hypersec.jfrog.io/artifactory/hypersec-pypi-local/${PACKAGE_NAME}/${PACKAGE_VERSION}/" \
-            || (echo "❌ Package not found in JFrog" && exit 1)
-
-          echo "✓ Package successfully published to JFrog Artifactory"
+      - name: Build and Publish to JFrog
+        env:
+          ARTIFACTORY_USERNAME: ${{ secrets.ARTIFACTORY_USERNAME }}
+          ARTIFACTORY_PASSWORD: ${{ secrets.ARTIFACTORY_PASSWORD }}
+        run: |
+          # Use CI build script for everything (build + publish)
+          # This respects ci.yaml and uses tools from ci-local/uv.lock
+          ci/.venv/bin/python ci/python/ci.d/80-build.py build
+          ci/.venv/bin/python ci/python/ci.d/80-build.py publish
