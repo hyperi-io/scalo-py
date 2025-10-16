@@ -73,6 +73,7 @@ class TestCIPipeline:
             ("ci/bootstrap", "ci/bootstrap"),
             ("ci/ci", "ci/ci"),
             ("ci/ci.yaml", "ci/ci.yaml"),
+            ("ci/pyproject.toml", "ci/pyproject.toml"),  # CI tools configuration (build, pytest, etc.)
             ("ci/python/bootstrap.py", "ci/python/bootstrap.py"),  # Essential bootstrap module
             ("ci/python/ci_lib.py", "ci/python/ci_lib.py"),  # CI library
             # Copy all bootstrap.d scripts
@@ -299,16 +300,14 @@ build/
 import sys
 import git  # Test git import
 import hyperlib
-from hyperlib import get_logger, Application
-from hyperlib.runtime import get_project_root
+from hyperlib import logger, Application
 
 # Test basic functionality
-logger = get_logger(__name__)
 logger.info("Testing compiled hyperlib")
 
-# Test Application class
-app = Application("test_app", "1.0.0")
-print(f"App: {app.name} v{app.version}")
+# Test Application class factory methods
+app = Application.oneshot(name="test_app")
+print(f"App created: {app.__class__.__name__}")
 
 # Test that we can access version
 print(f"Hyperlib version: {hyperlib.__version__}")
@@ -586,27 +585,21 @@ import tempfile
 
 # Test hyperlib imports
 import hyperlib
-from hyperlib import get_logger, Application
+from hyperlib import logger, Application
 from hyperlib.config import get_logging_config
-from hyperlib.harness import TestHarness
-from hyperlib.runtime import get_project_root
+from hyperlib.runtime import get_runtime_paths
 
 # Test version
 print(f"Hyperlib version: {hyperlib.__version__}")
 
 # Test logger functionality
-logger = get_logger(__name__)
 logger.info("Testing hyperlib from JFrog")
 logger.debug("Debug message")
 logger.warning("Warning message")
 
-# Test Application class
-app = Application(
-    name="test_jfrog_app",
-    version="1.0.0",
-    description="Testing JFrog installation"
-)
-print(f"Application: {app.name} v{app.version}")
+# Test Application class factory methods
+app = Application.oneshot(name="test_jfrog_app")
+print(f"Application created: {app.__class__.__name__}")
 
 # Test configuration
 config = get_logging_config()

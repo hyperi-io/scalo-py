@@ -23,8 +23,8 @@ def test_submodules_import():
 
 def test_convenience_imports():
     """Test convenience function imports."""
-    from hyperlib import get_logger, get_logging_config, setup_logger
+    from hyperlib import logger, get_logging_config, Application
 
-    assert get_logger is not None
+    assert logger is not None
     assert get_logging_config is not None
-    assert setup_logger is not None
+    assert Application is not None

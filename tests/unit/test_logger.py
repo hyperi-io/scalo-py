@@ -283,24 +283,6 @@ class TestLoggerConvenience:
             mock_debug.assert_called_once_with("Test debug")
 
 
-class TestGetLogger:
-    """Test get_logger() function."""
-
-    def test_get_logger_returns_instance(self):
-        """Test get_logger() returns logger instance."""
-        from hyperlib.logger import get_logger, logger
-
-        logger_instance = get_logger()
-        assert logger_instance is logger
-
-    def test_get_logger_with_name(self):
-        """Test get_logger() accepts name parameter (for compatibility)."""
-        from hyperlib.logger import get_logger, logger
-
-        logger_instance = get_logger(name="my_module")
-        assert logger_instance is logger  # Name is ignored, returns singleton
-
-
 class TestLogLevelEnvironment:
     """Test LOG_LEVEL environment variable handling."""
 
