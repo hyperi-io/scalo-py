@@ -374,7 +374,7 @@ jobs:
           if [ "${{ matrix.platform }}" = "darwin" ]; then
             if [[ "${{ matrix.runner }}" == ghcr.io/cirruslabs/* ]]; then
               echo ""
-              echo "💰 macOS Build with Cirrus: ~\$0.11 per build (7 min)"
+              echo "⚡ macOS Build with Cirrus: ~\$0.11 per build (7 min)"
               echo "   95% cheaper than GitHub macOS (\$1.12/build)"
               echo "   Still 3.75x more than Linux BuildJet (\$0.028/build)"
               echo ""
@@ -562,7 +562,7 @@ jobs:
       - name: Build Summary
         if: always()
         run: |
-          echo "## Nuitka Build Summary 🎉" >> $GITHUB_STEP_SUMMARY
+          echo "## Nuitka Build Summary" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
 
           if [ "${{ needs.config.outputs.should_run }}" = "true" ]; then
