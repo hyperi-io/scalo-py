@@ -278,6 +278,28 @@ def reexec_in_venv(venv_python: Path) -> None:
     os.execv(str(venv_python), [str(venv_python)] + sys.argv)
 
 
+def ensure_ci_yaml() -> None:
+    """
+    Ensure PROJECT_ROOT/ci.yaml exists (copy from template if not).
+
+    This creates the project-specific configuration file on first bootstrap.
+    ci.yaml at project root is NOT part of hyperci subtree (project-specific).
+    """
+    project_ci_yaml = PROJECT_ROOT / "ci.yaml"
+    template_ci_yaml = CI_DIR / "ci.yaml.template"
+
+    if not project_ci_yaml.exists():
+        if template_ci_yaml.exists():
+            print("[INFO] Creating ci.yaml from template...")
+            import shutil
+            shutil.copy2(template_ci_yaml, project_ci_yaml)
+            print(f"[OK] Created {project_ci_yaml.relative_to(PROJECT_ROOT)}")
+            print("[INFO] Customize ci.yaml for your project settings")
+        else:
+            print("[WARN] ci/ci.yaml.template not found - continuing without ci.yaml")
+            print("[INFO] Project will use default configuration values")
+
+
 def main() -> int:
     """Bootstrap entrypoint."""
     parser = argparse.ArgumentParser(description="Bootstrap development environment")
@@ -287,6 +309,9 @@ def main() -> int:
 
     # Load .env file early
     load_dotenv_minimal()
+
+    # Ensure ci.yaml exists at project root (copy from template if not)
+    ensure_ci_yaml()
 
     # Set environment variable based on CLI flag
     if args.install:

@@ -419,12 +419,13 @@ def write_version_file(version: str) -> None:
 
 def get_build_config(key: str, default: any = None, env_prefix: str = "HYPERLIB_CI") -> any:
     """
-    Get build configuration with precedence: ENV > ci/ci.yaml > default.
+    Get build configuration with precedence: ENV > ci.yaml > ci/ci.yaml.template > default.
 
     Precedence order:
     1. Environment variable (highest priority)
-    2. ci/ci.yaml configuration file
-    3. Default value (lowest priority)
+    2. PROJECT_ROOT/ci.yaml (project-specific configuration)
+    3. PROJECT_ROOT/ci/ci.yaml.template (fallback from hyperci subtree)
+    4. Default value (lowest priority)
 
     Args:
         key: Configuration key with dot notation (e.g., 'nuitka.enabled')
@@ -455,11 +456,20 @@ def get_build_config(key: str, default: any = None, env_prefix: str = "HYPERLIB_
         # Return as-is for strings/numbers
         return env_value
 
-    # 2. Check ci/ci.yaml
+    # 2. Check PROJECT_ROOT/ci.yaml (project-specific configuration)
+    # 3. Check PROJECT_ROOT/ci/ci.yaml.template (default from hyperci subtree)
     try:
         import yaml
 
-        ci_yaml_path = get_project_root() / "ci" / "ci.yaml"
+        project_root = get_project_root()
+
+        # Priority 1: Project-specific ci.yaml at root
+        ci_yaml_path = project_root / "ci.yaml"
+
+        # Priority 2: Template from hyperci subtree (fallback)
+        if not ci_yaml_path.exists():
+            ci_yaml_path = project_root / "ci" / "ci.yaml.template"
+
         if ci_yaml_path.exists():
             with open(ci_yaml_path, 'r') as f:
                 config = yaml.safe_load(f)
@@ -476,7 +486,7 @@ def get_build_config(key: str, default: any = None, env_prefix: str = "HYPERLIB_
             if value is not None:
                 return value
     except Exception as e:
-        logger.warning(f"Failed to read ci/ci.yaml: {e}")
+        logger.warning(f"Failed to read ci.yaml: {e}")
 
     # 3. Return default
     return default
