@@ -25,7 +25,7 @@ if "ci/.venv" not in sys.prefix:
     sys.exit(1)
 
 # Import from ci_lib (installed in ci/.venv by bootstrap)
-sys.path.insert(0, str(Path(__file__).parent.parent.parent / "python"))
+sys.path.insert(0, str(Path(__file__).parent.parent))
 from ci_lib import logger
 
 

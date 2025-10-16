@@ -2,6 +2,90 @@
 
 Central CI/CD infrastructure for all HyperSec Python projects.
 
+## System Dependencies
+
+### Required (HARD REQUIREMENTS - Bootstrap FAILS without these)
+
+**All Projects:**
+- ✅ **Git 2.0+**: Version control (`git --version`)
+  - Must have `.git/` directory (initialized repository)
+  - Bootstrap validates and FAILS HARD if missing
+
+- ✅ **Python 3.9+**: For CI tools (`python3 --version`)
+  - Minimum: 3.9 (for CI tools: pytest, ruff, mypy)
+  - Projects can require higher (e.g., 3.11+ in ci.yaml)
+  - Bootstrap validates and FAILS HARD if version too low
+
+- ✅ **.gitignore**: Must exist and include:
+  ```
+  ci/.venv/    # CI environment (required)
+  .venv/       # Dev environment (required)
+  __pycache__/ # Python cache (recommended)
+  dist/        # Build outputs (recommended)
+  ```
+  - Bootstrap validates and FAILS HARD if missing
+  - Run `./ci/bootstrap --install` to auto-create
+
+**Python Projects:**
+- ✅ **pyproject.toml**: PEP 621 metadata (required)
+  - Bootstrap FAILS HARD if missing
+  - Must contain `[project]` section with name, version, dependencies
+
+- ✅ **Package Structure**: One of:
+  - `src/package_name/__init__.py` (src-layout, recommended)
+  - `package_name/__init__.py` (flat-layout)
+  - Bootstrap validates and WARNS if cannot detect
+
+### Optional (Enables Additional Features)
+
+**For JFrog Private Packages:**
+- ⚠️  **.env file** with credentials:
+  ```bash
+  ARTIFACTORY_USERNAME=your-email@hypersec.io
+  ARTIFACTORY_PASSWORD=your-password
+  # OR
+  ARTIFACTORY_TOKEN=your-access-token
+  ```
+  - Required only for accessing private PyPI repository
+  - Without this: Can only use public PyPI packages
+
+**For Nuitka Compilation:**
+- ⚠️  **C Compiler**:
+  - Linux: `gcc` or `clang` (`gcc --version`)
+  - macOS: Xcode Command Line Tools (`clang --version`)
+  - Windows: MSVC or MinGW (`cl.exe` or `gcc.exe`)
+  - Bootstrap checks and provides installation hints if missing
+
+- ⚠️  **setup.py**: For Nuitka bdist_nuitka (compiled wheels)
+  - Required only if building compiled wheels (package mode)
+  - Not needed for standalone binaries (app mode)
+
+- ⚠️  **Nuitka Commercial**: Via JFrog Artifactory
+  - Requires ARTIFACTORY_* credentials in .env
+  - Bootstrap auto-installs if credentials available
+  - Falls back to OSS Nuitka if not available
+
+**For Testing:**
+- ⚠️  **tests/ directory**: Recommended but not required
+  - Bootstrap warns if missing
+  - Can auto-create with `./ci/bootstrap --install`
+
+### Network Access
+
+**During Bootstrap (one-time):**
+- ✅ **JFrog Artifactory**: For private packages (if using)
+  - hypersec.jfrog.io (HTTPS, port 443)
+  - Requires: ARTIFACTORY_* credentials in .env
+
+- ✅ **PyPI**: For public packages
+  - pypi.org (HTTPS, port 443)
+  - Fallback if JFrog unavailable
+
+**After Bootstrap (offline capable):**
+- ✅ Can work offline (all tools in ci/.venv)
+- ✅ No network required for builds, tests, lint
+- ⚠️  Network needed only for publishing to JFrog
+
 ## Quick Start
 
 ### New Project Setup (5 minutes)

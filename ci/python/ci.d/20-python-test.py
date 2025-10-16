@@ -22,7 +22,7 @@ import sys
 from pathlib import Path
 
 # Import from ci_lib (loguru with RFC 3339 timestamps)
-sys.path.insert(0, str(Path(__file__).parent.parent))
+sys.path.insert(0, str(Path(__file__).parent.parent.parent / "common"))
 from ci_lib import logger
 
 # Note: ci/.venv enforcement is done by ci/run (not here - avoids redundancy)

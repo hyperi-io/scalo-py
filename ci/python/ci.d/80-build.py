@@ -28,7 +28,7 @@ if "ci/.venv" not in sys.prefix:
 PROJECT_ROOT = Path(__file__).resolve().parent.parent.parent.parent
 
 # Import from ci_lib (loguru with RFC 3339 timestamps)
-sys.path.insert(0, str(Path(__file__).parent.parent))
+sys.path.insert(0, str(Path(__file__).parent.parent.parent / "common"))
 from ci_lib import logger
 
 

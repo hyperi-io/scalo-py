@@ -23,13 +23,13 @@ import sys
 from pathlib import Path
 
 # Import from ci_lib (loguru with RFC 3339 timestamps)
-sys.path.insert(0, str(Path(__file__).parent.parent))
+sys.path.insert(0, str(Path(__file__).parent.parent.parent / "common"))
 from ci_lib import logger, print_system_dependency_hint
 
 
 def is_nuitka_build_enabled() -> bool:
     """Check if Nuitka build is enabled via ci/ci.yaml or BUILD_PROFILE env var."""
-    sys.path.insert(0, str(Path(__file__).parent.parent))
+    sys.path.insert(0, str(Path(__file__).parent.parent.parent / "common"))
     from ci_lib import get_build_config
 
     # Check ci/ci.yaml first
