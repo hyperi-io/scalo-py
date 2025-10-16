@@ -28,3 +28,4 @@ tests/ci/test_output.log
 
 # Migration utility (temporary)
 migrate_env.py
+docs/ai/

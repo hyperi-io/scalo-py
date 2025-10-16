@@ -1,0 +1,49 @@
+# CI Tool Dependencies (per-project lock)
+# This file pins CI tool versions for THIS PROJECT ONLY
+# Allows each project to control CI tool versions independently from hyperci
+
+[project]
+name = "ci-tools"
+version = "1.0.0"
+description = "CI tools for this project"
+requires-python = ">=3.9"
+
+# CI tool dependencies (installed in ci/.venv)
+# These are locked in ci-local/uv.lock for reproducibility
+dependencies = [
+    "setuptools>=70.0.0",
+    "wheel>=0.42.0",
+    "build>=1.0.0",
+    "pyyaml>=6.0",      # MUST BE FIRST - required for ci/ci.yaml config
+    "loguru>=0.7.0",    # RFC3339 logging
+    # Testing
+    "pytest>=8.0.0",
+    "pytest-cov>=4.0.0",  # Coverage reporting
+    # Code Quality
+    "ruff>=0.1.0",      # Linting (fast, modern)
+    "black>=24.0.0",    # Code formatting
+    "isort>=5.12.0",    # Import sorting
+    "mypy>=1.8.0",      # Type checking
+    # Security
+    "bandit[toml]>=1.7.0",  # Security linting
+    "pip-audit>=2.6.0",     # Dependency vulnerability scanning
+    # Documentation
+    "interrogate>=1.5.0",   # Docstring coverage
+    # Code Analysis
+    "vulture>=2.7.0",   # Dead code detection
+    "vermin>=1.6.0",    # Python version compatibility
+    # Publishing
+    "twine>=5.0.0",     # Package publishing to JFrog
+    # Versioning
+    "python-semantic-release>=9.0.0",
+    # Nuitka Support
+    "pycryptodomex>=3.20.0",  # Required for Nuitka traceback-encryption plugin
+]
+
+# Nuitka is NOT in dependencies - installed separately by 25-nuitka.py
+# This allows JFrog enforcement (nuitka-commercial vs nuitka OSS)
+
+# To add custom CI tools for this project:
+# 1. Add them to dependencies above
+# 2. Run: cd ci-local && uv lock
+# 3. Commit ci-local/uv.lock
