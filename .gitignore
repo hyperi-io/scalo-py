@@ -21,3 +21,10 @@ Thumbs.db
 .venv/
 .venv-ci/
 ci/.venv/
+# Test artifacts
+tests/ci/test_ci/
+tests/ci/test_output.log
+*.env.backup*
+
+# Migration utility (temporary)
+migrate_env.py

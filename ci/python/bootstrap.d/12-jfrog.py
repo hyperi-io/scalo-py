@@ -18,9 +18,15 @@ from pathlib import Path
 
 
 def test_jfrog_connectivity() -> bool:
-    """Test JFrog Artifactory connectivity."""
-    has_token = bool(os.environ.get("JF_TOKEN"))
-    has_userpass = bool(os.environ.get("JF_USER") and os.environ.get("JF_PASSWORD"))
+    """Test JFrog Artifactory connectivity using ARTIFACTORY_* environment variables."""
+    # Use only ARTIFACTORY_* environment variables (matching GitHub secrets)
+    username = os.environ.get("ARTIFACTORY_USERNAME")
+    password = os.environ.get("ARTIFACTORY_PASSWORD")
+    token = os.environ.get("ARTIFACTORY_TOKEN")
+    token_user = os.environ.get("ARTIFACTORY_TOKEN_USER", "artifactory@hypersec.io")
+
+    has_userpass = bool(username and password)
+    has_token = bool(token)
 
     if not (has_token or has_userpass):
         print("[INFO] No JFrog credentials - JFrog is optional")
@@ -30,11 +36,11 @@ def test_jfrog_connectivity() -> bool:
 
     # Build auth
     if has_token:
-        auth_user = os.environ.get("JF_TOKEN_USER", "artifactory@hypersec.io")
-        auth_pass = os.environ.get("JF_TOKEN")
+        auth_user = token_user
+        auth_pass = token
     else:
-        auth_user = os.environ.get("JF_USER")
-        auth_pass = os.environ.get("JF_PASSWORD")
+        auth_user = username
+        auth_pass = password
 
     # Test API ping
     try:
@@ -59,9 +65,15 @@ def test_jfrog_connectivity() -> bool:
 
 
 def configure_jfrog_pip() -> bool:
-    """Configure pip to use JFrog as PRIMARY index."""
-    has_token = bool(os.environ.get("JF_TOKEN"))
-    has_userpass = bool(os.environ.get("JF_USER") and os.environ.get("JF_PASSWORD"))
+    """Configure pip to use JFrog as PRIMARY index using ARTIFACTORY_* environment variables."""
+    # Use only ARTIFACTORY_* environment variables (matching GitHub secrets)
+    username = os.environ.get("ARTIFACTORY_USERNAME")
+    password = os.environ.get("ARTIFACTORY_PASSWORD")
+    token = os.environ.get("ARTIFACTORY_TOKEN")
+    token_user = os.environ.get("ARTIFACTORY_TOKEN_USER", "artifactory@hypersec.io")
+
+    has_userpass = bool(username and password)
+    has_token = bool(token)
 
     if not (has_token or has_userpass):
         print("[INFO] No JFrog credentials - skipping pip configuration")
@@ -70,22 +82,19 @@ def configure_jfrog_pip() -> bool:
     print("[INFO] Configuring pip to use JFrog as PRIMARY index...")
 
     # Build authenticated URL
-    jf_host = os.environ.get("JF_PYPI_HOST", "hypersec.jfrog.io/artifactory/api/pypi/hypersec-pypi-local/simple")
+    jf_host = os.environ.get("ARTIFACTORY_PYPI_HOST",
+                             "hypersec.jfrog.io/artifactory/api/pypi/hypersec-pypi-local/simple")
 
     if has_token:
-        jf_token_user = os.environ.get("JF_TOKEN_USER", "artifactory@hypersec.io")
-        jf_token = os.environ.get("JF_TOKEN")
-        user_encoded = urllib.parse.quote(jf_token_user, safe='')
-        token_encoded = urllib.parse.quote(jf_token, safe='')
+        user_encoded = urllib.parse.quote(token_user, safe='')
+        token_encoded = urllib.parse.quote(token, safe='')
         pip_index_url = f"https://{user_encoded}:{token_encoded}@{jf_host}"
-        print(f"[INFO] Using token auth (user: {jf_token_user})")
+        print(f"[INFO] Using token auth (user: {token_user})")
     else:
-        jf_user = os.environ.get("JF_USER")
-        jf_password = os.environ.get("JF_PASSWORD")
-        user_encoded = urllib.parse.quote(jf_user, safe='')
-        password_encoded = urllib.parse.quote(jf_password, safe='')
+        user_encoded = urllib.parse.quote(username, safe='')
+        password_encoded = urllib.parse.quote(password, safe='')
         pip_index_url = f"https://{user_encoded}:{password_encoded}@{jf_host}"
-        print(f"[INFO] Using username/password auth (user: {jf_user})")
+        print(f"[INFO] Using username/password auth (user: {username})")
 
     # Set environment variables
     os.environ["PIP_INDEX_URL"] = pip_index_url
