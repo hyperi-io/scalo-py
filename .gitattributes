@@ -210,6 +210,5 @@ tests/fixtures/* linguist-generated
 tests/data/* linguist-generated
 output/* linguist-generated
 
-# Project-specific configuration (not in ci/ subtree)
-# ci.yaml is at project root, separate from hyperci subtree
-ci.yaml merge=ours
+# Project-specific configuration (not in ci/ submodule)
+# ci.yaml is at project root, managed by this project (not by hyperci)
