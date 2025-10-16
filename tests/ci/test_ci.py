@@ -68,20 +68,11 @@ class TestCIPipeline:
         for d in dirs:
             (TEST_PROJECT_ROOT / d).mkdir(parents=True, exist_ok=True)
 
-        # Copy CI infrastructure files
+        # Copy CI infrastructure (entire ci/ submodule directory)
+        # ci/ is now a git submodule, so copy the whole thing
         files_to_copy = [
-            ("ci/bootstrap", "ci/bootstrap"),
-            ("ci/ci", "ci/ci"),
-            ("ci/ci.yaml", "ci/ci.yaml"),
-            ("ci/pyproject.toml", "ci/pyproject.toml"),  # CI tools configuration (build, pytest, etc.)
-            ("ci/python/bootstrap.py", "ci/python/bootstrap.py"),  # Essential bootstrap module
-            ("ci/python/ci_lib.py", "ci/python/ci_lib.py"),  # CI library
-            # Copy all bootstrap.d scripts
-            ("ci/python/bootstrap.d", "ci/python/bootstrap.d"),
-            ("ci/common/bootstrap.d", "ci/common/bootstrap.d"),
-            # Copy all ci.d scripts
-            ("ci/python/ci.d", "ci/python/ci.d"),
-            ("ci/common/ci.d", "ci/common/ci.d"),
+            ("ci", "ci"),  # Entire ci/ directory (submodule content)
+            ("ci.yaml", "ci.yaml"),  # Project-specific config (at root, not in ci/)
             # Copy source code
             ("src/hyperlib", "src/hyperlib"),
             # Project files
@@ -238,16 +229,17 @@ build/
         print("\n=== Testing Nuitka Build ===")
 
         # Check if Nuitka is enabled in ci.yaml
-        ci_yaml_path = TEST_PROJECT_ROOT / "ci/ci.yaml"
+        # ci.yaml is now at project root (not in ci/ submodule)
+        ci_yaml_path = TEST_PROJECT_ROOT / "ci.yaml"
         if not ci_yaml_path.exists():
-            pytest.skip("ci/ci.yaml not found")
+            pytest.skip("ci.yaml not found")
 
         import yaml
         with open(ci_yaml_path) as f:
             config = yaml.safe_load(f)
 
         if not config.get("nuitka", {}).get("enabled", False):
-            pytest.skip("Nuitka not enabled in ci/ci.yaml")
+            pytest.skip("Nuitka not enabled in ci.yaml")
 
         # Ensure bootstrap has been run
         if not (TEST_PROJECT_ROOT / "ci/.venv").exists():
@@ -804,11 +796,12 @@ print("SUCCESS: All tests passed!")
 
 
 def test_ci_yaml_config():
-    """Test that ci/ci.yaml configuration is valid."""
+    """Test that ci.yaml configuration is valid (at project root)."""
     import yaml
 
-    ci_yaml_path = REAL_PROJECT_ROOT / "ci/ci.yaml"
-    assert ci_yaml_path.exists(), "ci/ci.yaml not found"
+    # ci.yaml is now at project root (not in ci/ submodule)
+    ci_yaml_path = REAL_PROJECT_ROOT / "ci.yaml"
+    assert ci_yaml_path.exists(), "ci.yaml not found at project root"
 
     with open(ci_yaml_path) as f:
         config = yaml.safe_load(f)
