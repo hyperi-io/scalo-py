@@ -653,11 +653,19 @@ print("SUCCESS: All tests passed!")
             print(f"✅ Standard hyperlib from JFrog tested successfully")
 
     def test_nuitka_publish_and_install(self):
-        """Test publishing to JFrog with Nuitka (using ci.yaml config) and installing from JFrog."""
+        """
+        Test publishing to JFrog and installing from JFrog.
+
+        NOTE: This test is for validation only. In production, publishing
+        ONLY happens through GitHub Actions (.github/workflows/jfrog-publish.yml).
+        Never publish manually to maintain security and audit trail.
+        """
         print("\n" + "="*60)
-        print("NUITKA PUBLISH TO JFROG - END-TO-END TEST")
+        print("JFROG PUBLISH - END-TO-END TEST")
         print("="*60)
-        print("Using ci.yaml configuration (Nuitka enabled)")
+        print("⚠️  NOTE: Production publishing ONLY via GitHub Actions")
+        print("    This test is for CI pipeline validation only")
+        print("="*60)
 
         # 1. Bootstrap
         self.test_bootstrap()
