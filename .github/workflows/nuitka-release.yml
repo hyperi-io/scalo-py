@@ -1,14 +1,11 @@
 name: Nuitka Multi-Arch Release
 
-# Conditional triggers based on ci/ci.yaml configuration
+# Triggers: Workflow runs ONLY when needed, based on ci.yaml configuration
+# The "Read Configuration" job decides whether to actually build
 on:
   push:
     tags:
-      - 'v*'  # Only if nuitka.triggers.on_release_tags = true
-    branches:
-      - main  # Only if nuitka.triggers.on_push_to_main = true
-
-  pull_request:  # Only if nuitka.triggers.on_pull_requests = true
+      - 'v*'  # Trigger on version tags (respects ci.yaml nuitka.triggers.on_release_tags)
 
   workflow_dispatch:
     inputs:
