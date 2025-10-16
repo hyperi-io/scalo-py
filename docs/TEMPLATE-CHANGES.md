@@ -88,8 +88,8 @@ env:
 ```
 
 **Template Files to Update**:
-- `modules/hypersec-forge-python/.github/workflows-disabled/pypi-publish.yml`
-- Any other workflows referencing this secret
+- `modules/hypersec-forge-python/.github/workflows/jfrog-publish.yml`
+- Note: workflows-disabled pattern deprecated - workflows controlled via ci/ci.yaml
 
 **Alternative**: Document that users should create this secret, but hardcoding is simpler.
 
