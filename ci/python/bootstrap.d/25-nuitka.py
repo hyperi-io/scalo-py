@@ -170,8 +170,14 @@ def check_nuitka_installed() -> bool:
 
 def test_jfrog_availability() -> bool:
     """Test if JFrog credentials are configured and working."""
-    has_token = bool(os.environ.get("JF_TOKEN"))
-    has_userpass = bool(os.environ.get("JF_USER") and os.environ.get("JF_PASSWORD"))
+    # Use only ARTIFACTORY_* environment variables (matching GitHub secrets)
+    username = os.environ.get("ARTIFACTORY_USERNAME")
+    password = os.environ.get("ARTIFACTORY_PASSWORD")
+    token = os.environ.get("ARTIFACTORY_TOKEN")
+    token_user = os.environ.get("ARTIFACTORY_TOKEN_USER", "artifactory@hypersec.io")
+
+    has_userpass = bool(username and password)
+    has_token = bool(token)
 
     if not (has_token or has_userpass):
         logger.info("[INFO] No JFrog credentials found")
@@ -179,19 +185,16 @@ def test_jfrog_availability() -> bool:
 
     # Test connectivity
     import urllib.parse
-    jf_host = os.environ.get("JF_PYPI_HOST", "hypersec.jfrog.io/artifactory/api/pypi/hypersec-pypi-local/simple")
+    jf_host = os.environ.get("ARTIFACTORY_PYPI_HOST",
+                             "hypersec.jfrog.io/artifactory/api/pypi/hypersec-pypi-local/simple")
 
     if has_token:
-        jf_token_user = os.environ.get("JF_TOKEN_USER", "artifactory@hypersec.io")
-        jf_token = os.environ.get("JF_TOKEN")
-        user_encoded = urllib.parse.quote(jf_token_user, safe='')
-        token_encoded = urllib.parse.quote(jf_token, safe='')
+        user_encoded = urllib.parse.quote(token_user, safe='')
+        token_encoded = urllib.parse.quote(token, safe='')
         jfrog_url = f"https://{user_encoded}:{token_encoded}@{jf_host}"
     else:
-        jf_user = os.environ.get("JF_USER")
-        jf_password = os.environ.get("JF_PASSWORD")
-        user_encoded = urllib.parse.quote(jf_user, safe='')
-        password_encoded = urllib.parse.quote(jf_password, safe='')
+        user_encoded = urllib.parse.quote(username, safe='')
+        password_encoded = urllib.parse.quote(password, safe='')
         jfrog_url = f"https://{user_encoded}:{password_encoded}@{jf_host}"
 
     try:

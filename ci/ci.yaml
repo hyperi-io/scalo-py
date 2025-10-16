@@ -40,15 +40,31 @@ nuitka:
     linux_arm64: true        # BuildJet: $0.004/min, GitHub: N/A for private repos
     macos_arm64: false       # EXPENSIVE! (20x cost: $0.16/min ≈ $2/build)
 
-  # BuildJet configuration for ARM64 runners (private repos)
-  # BuildJet provides native ARM64 runners at 75% less cost than GitHub
+  # BuildJet configuration for Linux runners (50% cheaper than GitHub)
+  # BuildJet provides both x64 and ARM64 runners at half the cost of GitHub
   buildjet:
-    enabled: true            # Use BuildJet for ARM64 builds (default: true)
+    enabled: true            # Use BuildJet for ALL Linux builds (default: true)
     # When enabled:
-    #   - ARM64 builds use: buildjet-2vcpu-ubuntu-2204-arm ($0.004/min)
+    #   - Linux x64 builds use: buildjet-2vcpu-ubuntu-2204 ($0.004/min vs GitHub $0.008/min)
+    #   - Linux ARM64 builds use: buildjet-2vcpu-ubuntu-2204-arm ($0.004/min, GitHub N/A for private)
+    #   - Total savings: 50% for x64, enables ARM64 for private repos
     # When disabled:
-    #   - ARM64 builds fail for private repos (GitHub doesn't support ARM64 for private)
-    #   - Or you can use self-hosted runners if configured
+    #   - Linux x64 falls back to GitHub Actions ($0.008/min - 2x more expensive)
+    #   - Linux ARM64 fails for private repos (GitHub doesn't support it)
+
+  # Cirrus Runners configuration for macOS builds
+  # Cirrus provides M4 Pro macOS runners at 95%+ less cost than GitHub
+  # Setup: https://cirrus-runners.app/setup/
+  cirrus:
+    enabled: true            # Use Cirrus for macOS builds (default: true - enabled)
+    # When enabled:
+    #   - macOS ARM64 builds use: ghcr.io/cirruslabs/macos-runner:sonoma ($0.015/min typical)
+    #   - Requires Cirrus Runners app installed in GitHub organization
+    #   - Fixed cost: $150/month per runner (unlimited minutes)
+    #   - Effective cost: $0.015/min (8h/5d usage) or $0.0035/min (24/7 usage)
+    # When disabled:
+    #   - Falls back to GitHub macOS runners ($0.16/min - 10x more expensive!)
+    # More info: https://cirrus-runners.app/
 
   # Publishing to JFrog
   publish:
@@ -66,14 +82,19 @@ package:
 # Cost Optimization Notes
 # ============================================================================
 # Current settings cost estimate (if Nuitka enabled):
-#   - Linux x64 (GitHub): $0.056 per build
-#   - Linux ARM64 (BuildJet): +$0.028 per build (with buildjet.enabled: true)
-#   - Linux ARM64 (GitHub): Not available for private repos
-#   - macOS ARM64: +$1.12 per build (WARNING: 20x expensive!)
+#   - Linux x64 (BuildJet): $0.028 per build (buildjet.enabled: true - default)
+#   - Linux ARM64 (BuildJet): +$0.028 per build (buildjet.enabled: true - default)
+#   - macOS ARM64 (Cirrus): +$0.105 per build (cirrus.enabled: true - default)
+#   - TOTAL with defaults: ~$0.161 per release (all platforms)
 #
-# With BuildJet enabled (default):
-#   - Total per release: $0.084 (x64 + ARM64)
-#   - Monthly (10 releases): ~$0.84
+# Alternative costs if third-party runners disabled:
+#   - Linux x64 (GitHub): $0.056 per build (2x more expensive)
+#   - Linux ARM64 (GitHub): Not available for private repos
+#   - macOS ARM64 (GitHub): $1.12 per build (10x more expensive!)
+#
+# With defaults (BuildJet + Cirrus):
+#   - Total per release: $0.056 (x64 + ARM64) or $0.161 (all platforms)
+#   - Monthly (10 releases): ~$0.56 (Linux only) or ~$1.61 (all platforms)
 #
 # Recommended for development:
 #   - enabled: false (build locally when needed)

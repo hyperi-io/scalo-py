@@ -153,53 +153,78 @@ jobs:
 
           nuitka_config = config.get('nuitka', {})
           platforms = nuitka_config.get('platforms', {})
-          buildjet_enabled = nuitka_config.get('buildjet', {}).get('enabled', True)
+          buildjet_enabled = nuitka_config.get('buildjet', {}).get('enabled', True)  # Default: enabled
+          cirrus_enabled = nuitka_config.get('cirrus', {}).get('enabled', True)  # Default: enabled
           matrix = {'include': []}
 
+          # Linux x64
           if platforms.get('linux_x64', True):
-              matrix['include'].append({
-                  'runner': 'ubuntu-latest',
-                  'platform': 'linux',
-                  'arch': 'x64',
-                  'cost_per_min': 0.008,
-                  'cost_multiplier': '1x',
-                  'estimated_time': 7
-              })
+              if buildjet_enabled:
+                  print(f"✓ BuildJet enabled for Linux x64 (50% cheaper)")
+                  matrix['include'].append({
+                      'runner': 'buildjet-2vcpu-ubuntu-2204',  # BuildJet x64 runner
+                      'platform': 'linux',
+                      'arch': 'x64',
+                      'cost_per_min': 0.004,  # BuildJet pricing (50% cheaper)
+                      'cost_multiplier': '0.5x',
+                      'estimated_time': 7
+                  })
+              else:
+                  print(f"⚠️ BuildJet disabled - using GitHub Actions for x64 (2x more expensive)")
+                  matrix['include'].append({
+                      'runner': 'ubuntu-latest',  # GitHub x64 runner
+                      'platform': 'linux',
+                      'arch': 'x64',
+                      'cost_per_min': 0.008,  # GitHub pricing
+                      'cost_multiplier': '1x',
+                      'estimated_time': 7
+                  })
 
+          # Linux ARM64
           if platforms.get('linux_arm64', False):
               if buildjet_enabled:
-                  # Using BuildJet for ARM64 runners (already linked to hypersec-io org)
-                  # BuildJet provides native ARM64 at $0.004/min (75% cheaper than GitHub)
-                  print(f"✓ BuildJet enabled for ARM64 builds (buildjet.enabled = true)")
+                  print(f"✓ BuildJet enabled for Linux ARM64 (enables private repo ARM64)")
                   matrix['include'].append({
                       'runner': 'buildjet-2vcpu-ubuntu-2204-arm',  # BuildJet ARM64 runner
                       'platform': 'linux',
                       'arch': 'arm64',
                       'cost_per_min': 0.004,  # BuildJet pricing
-                      'cost_multiplier': '0.5x',  # Actually cheaper than GitHub x64!
+                      'cost_multiplier': '0.5x',
                       'estimated_time': 7
                   })
               else:
-                  # Fallback to GitHub Actions (will fail for private repos)
-                  print(f"⚠️ BuildJet disabled - using GitHub Actions for ARM64 (may fail for private repos)")
+                  print(f"⚠️ BuildJet disabled - using GitHub Actions for ARM64 (will fail for private repos)")
                   matrix['include'].append({
                       'runner': 'ubuntu-24.04-arm',  # GitHub ARM64 runner (only works for public repos)
                       'platform': 'linux',
                       'arch': 'arm64',
-                      'cost_per_min': 0.016,  # GitHub pricing for private repos
+                      'cost_per_min': 0.016,  # GitHub pricing for private repos (if available)
                       'cost_multiplier': '2x',
                       'estimated_time': 7
                   })
 
+          # macOS ARM64
           if platforms.get('macos_arm64', False):
-              matrix['include'].append({
-                  'runner': 'macos-latest',
-                  'platform': 'darwin',
-                  'arch': 'arm64',
-                  'cost_per_min': 0.16,
-                  'cost_multiplier': '20x',
-                  'estimated_time': 7
-              })
+              if cirrus_enabled:
+                  print(f"✓ Cirrus Runners enabled for macOS (95% cheaper)")
+                  matrix['include'].append({
+                      'runner': 'ghcr.io/cirruslabs/macos-runner:sonoma',  # Cirrus macOS runner
+                      'platform': 'darwin',
+                      'arch': 'arm64',
+                      'cost_per_min': 0.015,  # Cirrus effective pricing (8h/5d usage)
+                      'cost_multiplier': '0.1x',  # 10x cheaper than GitHub!
+                      'estimated_time': 7
+                  })
+              else:
+                  print(f"⚠️ Cirrus disabled - using GitHub Actions for macOS (EXPENSIVE: $0.16/min)")
+                  matrix['include'].append({
+                      'runner': 'macos-latest',  # GitHub macOS runner
+                      'platform': 'darwin',
+                      'arch': 'arm64',
+                      'cost_per_min': 0.16,  # GitHub pricing (20x more expensive than Linux)
+                      'cost_multiplier': '20x',
+                      'estimated_time': 7
+                  })
 
           matrix_json = json.dumps(matrix)
           with open(os.environ['GITHUB_OUTPUT'], 'a') as f:
