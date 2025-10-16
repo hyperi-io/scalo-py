@@ -41,9 +41,9 @@ jobs:
           # HyperSec JFrog Artifactory PyPI repository
           ARTIFACTORY_REPO_URL: https://hypersec.jfrog.io/artifactory/api/pypi/hypersec-pypi-local
         run: |
-          # Use --skip-existing to prevent conflicts when uploading multi-arch builds
-          # (e.g., if x64 wheel already exists, arm64 wheel can still be uploaded)
-          python -m twine upload --repository-url "$ARTIFACTORY_REPO_URL" --skip-existing dist/*
+          # JFrog will overwrite same version by default (no --skip-existing needed)
+          # Multi-arch builds have unique filenames so they won't conflict
+          python -m twine upload --repository-url "$ARTIFACTORY_REPO_URL" dist/*
 
       - name: Verify package uploaded to JFrog
         env:

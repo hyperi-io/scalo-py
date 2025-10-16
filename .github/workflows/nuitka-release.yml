@@ -449,9 +449,9 @@ jobs:
 
           for wheel in $WHEELS; do
             echo "Uploading: $(basename $wheel)"
-            # Use --skip-existing to prevent conflicts with multi-arch builds
-            # (allows x64 and arm64 wheels to be uploaded independently)
-            twine upload --skip-existing "$wheel"
+            # JFrog will overwrite same version by default
+            # Multi-arch wheels have unique filenames (x86_64 vs aarch64) so no conflicts
+            twine upload "$wheel"
             if [ $? -eq 0 ]; then
               echo "✓ Uploaded: $(basename $wheel)"
             else

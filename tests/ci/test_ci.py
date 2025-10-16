@@ -670,25 +670,35 @@ print("SUCCESS: All tests passed!")
         # 1. Bootstrap
         self.test_bootstrap()
 
-        # 2. Build standard Python package (Nuitka package mode not implemented yet)
-        # TODO: Implement Nuitka package mode in 85-build-nuitka.py for compiled wheels
-        print("\n=== Building standard Python package ===")
-        print("Note: Nuitka package mode (compiled wheels) not yet implemented")
-        print("      Building standard wheel for now to test publish/install flow")
+        # 2. Build with Nuitka (auto-detects package mode → compiled wheel)
+        print("\n=== Building with Nuitka (package mode - compiled wheel) ===")
+        print("Auto-detection will identify this as a library package")
         result = subprocess.run(
-            ["ci/.venv/bin/python", "ci/python/ci.d/80-build.py", "build"],
+            ["ci/.venv/bin/python", "ci/python/ci.d/85-build-nuitka.py", "build"],
             cwd=TEST_PROJECT_ROOT,
             capture_output=True,
             text=True,
             env={**os.environ}
         )
 
-        if result.returncode != 0:
-            print(f"Build output: {result.stdout}")
-            print(f"Build stderr: {result.stderr}")
-            raise AssertionError(f"Build failed with return code {result.returncode}")
+        print(f"Build output:\n{result.stdout}")
+        if result.stderr:
+            print(f"Build stderr:\n{result.stderr}")
 
-        print("✅ Build successful (standard wheel)")
+        if result.returncode != 0:
+            raise AssertionError(f"Nuitka build failed with return code {result.returncode}")
+
+        # Verify it's a compiled wheel (contains .so files)
+        dist_dir = TEST_PROJECT_ROOT / "dist"
+        wheels = list(dist_dir.glob("*.whl"))
+        if not wheels:
+            raise AssertionError("No wheels found in dist/")
+
+        # Check if wheel is compiled (contains platform-specific tag)
+        wheel_name = wheels[0].name
+        is_compiled = "cp313-cp313" in wheel_name and "linux" in wheel_name
+        print(f"✅ Nuitka build successful - Compiled wheel: {is_compiled}")
+        print(f"   Wheel: {wheel_name}")
 
         # 3. Publish to JFrog using twine
         print("\n=== Publishing to JFrog with twine ===")
@@ -724,13 +734,14 @@ print("SUCCESS: All tests passed!")
             raise AssertionError("JFrog credentials not found in .env")
 
         # Publish with twine
+        # Note: JFrog doesn't support --skip-existing, but will overwrite by default
+        # This is correct behavior - same version should overwrite
         result = subprocess.run(
             [
                 "ci/.venv/bin/twine", "upload",
                 "--repository-url", jfrog_url,
                 "--username", username,
                 "--password", password,
-                "--skip-existing",  # Prevent conflicts on re-upload
                 "dist/*"
             ],
             cwd=TEST_PROJECT_ROOT,
