@@ -77,8 +77,8 @@ CI is local-first. GitHub Actions are disabled by default and should be enabled 
 - **docs/CHARS-POLICY.md** - Character restrictions (ASCII logs, limited emoji)
 - **docs/CONTRIBUTING.md** - Development workflow and conventions
 - **docs/DEVELOPMENT.md** - Setup, bootstrap, and build instructions
-- **docs/ARTIFACTORY.md** - JFrog Artifactory setup and publishing
-- **docs/BOOTSTRAP-ANALYSIS.md** - Bootstrap implementation details
+- **ci/docs/JFROG.md** - JFrog Artifactory setup and publishing
+- **ci/docs/BOOTSTRAP-INTERNALS.md** - Bootstrap implementation details
 - **docs/TEMPLATE-CHANGES.md** - Template change tracking
 - **TODO.md** - Authoritative task list
 - **CHANGELOG.md** - Version history (auto-generated)

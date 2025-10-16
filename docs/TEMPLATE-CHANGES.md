@@ -102,7 +102,7 @@ env:
 **Issue**: No `/docs` directory created in generated projects.
 
 **Required Fix**: Template should create `docs/` directory with:
-- `docs/ARTIFACTORY.md` - JFrog configuration for this project
+- `ci/docs/JFROG.md` - JFrog configuration for this project
 - `docs/DEVELOPMENT.md` - Development setup and workflow
 - `docs/DEPLOYMENT.md` - Deployment instructions (for libraries)
 - `docs/API.md` - API documentation (for APIs/libraries)
@@ -371,7 +371,7 @@ When applying changes back to template, verify:
 
 ### ✅ Issue #4: Documentation structure
 **Status**: COMPLETED (Commit: d661b39)
-**Applied**: `template/docs/ARTIFACTORY.md.jinja`, `DEVELOPMENT.md.jinja`, `DEPLOYMENT.md.jinja`
+**Applied**: `template/ci/docs/JFROG.md.jinja`, `DEVELOPMENT.md.jinja`, `DEPLOYMENT.md.jinja`
 **Fix**: Created comprehensive documentation templates for generated projects
 **Verified**: Files created and placed in template/docs/
 
