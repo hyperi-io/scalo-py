@@ -456,9 +456,10 @@ else:
             print("⚠️  No ARTIFACTORY credentials - cannot check JFrog")
             return False
 
-        # Build auth for curl
+        # Build auth for curl (use username:token for token auth)
         if token:
-            auth = f"token:{token}"
+            auth_user = "artifactory@hypersec.io"
+            auth = f"{auth_user}:{token}"
         else:
             auth = f"{username}:{password}"
 
@@ -650,6 +651,108 @@ print("SUCCESS: All tests passed!")
             print(f"✅ Nuitka-compiled hyperlib from JFrog tested successfully")
         else:
             print(f"✅ Standard hyperlib from JFrog tested successfully")
+
+    def test_nuitka_publish_and_install(self):
+        """Test publishing to JFrog with Nuitka (using ci.yaml config) and installing from JFrog."""
+        print("\n" + "="*60)
+        print("NUITKA PUBLISH TO JFROG - END-TO-END TEST")
+        print("="*60)
+        print("Using ci.yaml configuration (Nuitka enabled)")
+
+        # 1. Bootstrap
+        self.test_bootstrap()
+
+        # 2. Build standard Python package (Nuitka package mode not implemented yet)
+        # TODO: Implement Nuitka package mode in 85-build-nuitka.py for compiled wheels
+        print("\n=== Building standard Python package ===")
+        print("Note: Nuitka package mode (compiled wheels) not yet implemented")
+        print("      Building standard wheel for now to test publish/install flow")
+        result = subprocess.run(
+            ["ci/.venv/bin/python", "ci/python/ci.d/80-build.py", "build"],
+            cwd=TEST_PROJECT_ROOT,
+            capture_output=True,
+            text=True,
+            env={**os.environ}
+        )
+
+        if result.returncode != 0:
+            print(f"Build output: {result.stdout}")
+            print(f"Build stderr: {result.stderr}")
+            raise AssertionError(f"Build failed with return code {result.returncode}")
+
+        print("✅ Build successful (standard wheel)")
+
+        # 3. Publish to JFrog using twine
+        print("\n=== Publishing to JFrog with twine ===")
+
+        # Get JFrog credentials from .env
+        env_file = TEST_PROJECT_ROOT / ".env"
+        if not env_file.exists():
+            env_file = REAL_PROJECT_ROOT / ".env"
+
+        jfrog_url = "https://hypersec.jfrog.io/artifactory/api/pypi/hypersec-pypi-local"
+        username = None
+        password = None
+        token = None
+
+        with open(env_file) as f:
+            for line in f:
+                line = line.strip()
+                if line.startswith("ARTIFACTORY_USERNAME="):
+                    username = line.split("=", 1)[1].strip()
+                elif line.startswith("ARTIFACTORY_PASSWORD="):
+                    password = line.split("=", 1)[1].strip()
+                elif line.startswith("ARTIFACTORY_TOKEN="):
+                    token = line.split("=", 1)[1].strip()
+
+        # Prefer token auth over username/password
+        if token:
+            username = "artifactory@hypersec.io"
+            password = token
+            print(f"Using token authentication (user: {username})")
+        elif username and password:
+            print(f"Using username/password authentication (user: {username})")
+        else:
+            raise AssertionError("JFrog credentials not found in .env")
+
+        # Publish with twine
+        result = subprocess.run(
+            [
+                "ci/.venv/bin/twine", "upload",
+                "--repository-url", jfrog_url,
+                "--username", username,
+                "--password", password,
+                "dist/*"
+            ],
+            cwd=TEST_PROJECT_ROOT,
+            capture_output=True,
+            text=True
+        )
+
+        print(f"Twine output:\n{result.stdout}")
+        if result.stderr:
+            print(f"Twine stderr:\n{result.stderr}")
+
+        if result.returncode != 0:
+            raise AssertionError(f"Twine upload failed with return code {result.returncode}")
+
+        print("✅ Published to JFrog successfully with twine")
+
+        # 4. Wait for package to appear in JFrog
+        package_found = self.wait_for_jfrog_publication(max_wait=120, check_interval=15)
+
+        if not package_found:
+            raise AssertionError("Package did not appear in JFrog after publishing")
+
+        print("✅ Package verified in JFrog")
+
+        # 5. Install from JFrog and test
+        print("\n=== Installing from JFrog and Testing ===")
+        self.test_jfrog_installation()
+
+        print("\n" + "="*60)
+        print("✅ NUITKA PUBLISH AND INSTALL TEST PASSED")
+        print("="*60)
 
     def test_full_pipeline(self):
         """Test the entire CI pipeline end-to-end."""
