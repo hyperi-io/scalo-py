@@ -178,7 +178,7 @@ exit 1
 def get_jfrog_index_url() -> str:
     """Get JFrog PyPI index URL with credentials from environment.
 
-    Precedence: JF_TOKEN (with JF_TOKEN_USER) > JF_USER/JF_PASSWORD
+    Precedence: ARTIFACTORY_TOKEN (with ARTIFACTORY_TOKEN_USER) > ARTIFACTORY_USERNAME/ARTIFACTORY_PASSWORD
 
     Configuration via environment variables:
     - JFROG_URL: Full JFrog PyPI URL (optional, has default)
@@ -190,18 +190,18 @@ def get_jfrog_index_url() -> str:
     )
 
     # Check for token first (preferred)
-    jf_token = os.environ.get("JF_TOKEN", "")
+    jf_token = os.environ.get("ARTIFACTORY_TOKEN", "")
     if jf_token:
         from urllib.parse import quote
         # Token auth requires specific username (artifactory@hypersec.io)
-        jf_token_user = os.environ.get("JF_TOKEN_USER", "artifactory@hypersec.io")
+        jf_token_user = os.environ.get("ARTIFACTORY_TOKEN_USER", "artifactory@hypersec.io")
         user_enc = quote(jf_token_user, safe='')
         token_enc = quote(jf_token, safe='')
         return f"https://{user_enc}:{token_enc}@hypersec.jfrog.io/artifactory/api/pypi/hypersec-pypi-local/simple"
 
     # Fallback to username/password
-    jf_user = os.environ.get("JF_USER", "")
-    jf_password = os.environ.get("JF_PASSWORD", "")
+    jf_user = os.environ.get("ARTIFACTORY_USERNAME", "")
+    jf_password = os.environ.get("ARTIFACTORY_PASSWORD", "")
 
     if jf_user and jf_password:
         # URL-encode credentials
