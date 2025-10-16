@@ -54,7 +54,7 @@ jobs:
       - name: Install PyYAML
         run: pip install pyyaml
 
-      - name: Read ci/ci.yaml and Check Triggers
+      - name: Read ci.yaml and Check Triggers
         id: check
         run: |
           python << 'EOF'
@@ -62,8 +62,8 @@ jobs:
           import os
           import sys
 
-          # Load ci/ci.yaml
-          with open('ci/ci.yaml', 'r') as f:
+          # Load ci.yaml from project root
+          with open('ci.yaml', 'r') as f:
               config = yaml.safe_load(f)
 
           nuitka = config.get('nuitka', {})
