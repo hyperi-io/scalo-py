@@ -10,9 +10,6 @@ on:
 
   pull_request:  # Only if nuitka.triggers.on_pull_requests = true
 
-  schedule:  # Only if nuitka.triggers.on_schedule = true
-    - cron: '0 2 * * 0'  # Default: Weekly Sunday 2am UTC (overridden by ci/ci.yaml)
-
   workflow_dispatch:
     inputs:
       force_build:
@@ -31,6 +28,7 @@ jobs:
     runs-on: ubuntu-latest
     outputs:
       should_run: ${{ steps.check.outputs.should_run }}
+      version_exists: ${{ steps.version_check.outputs.version_exists }}
       publish_jfrog: ${{ steps.check.outputs.publish_jfrog }}
       protection_level: ${{ steps.check.outputs.protection_level }}
       jfrog_repo: ${{ steps.check.outputs.jfrog_repo }}
@@ -88,11 +86,6 @@ jobs:
                   should_run = True
                   print("✓ Triggered by PR (nuitka.triggers.on_pull_requests = true)")
 
-              elif event_name == 'schedule' and triggers.get('on_schedule', False):
-                  should_run = True
-                  cron = triggers.get('schedule_cron', '0 2 * * 0')
-                  print(f"✓ Triggered by schedule (nuitka.triggers.on_schedule = true, cron: {cron})")
-
               elif event_name == 'workflow_dispatch':
                   should_run = True
                   print("✓ Triggered manually (workflow_dispatch)")
@@ -139,9 +132,88 @@ jobs:
           print(f"  buildjet_enabled: {buildjet_enabled_str}")
           EOF
 
+      - name: Version Check (Skip if version exists in JFrog)
+        id: version_check
+        if: steps.check.outputs.should_run == 'true'
+        env:
+          ARTIFACTORY_USERNAME: ${{ secrets.ARTIFACTORY_USERNAME }}
+          ARTIFACTORY_PASSWORD: ${{ secrets.ARTIFACTORY_PASSWORD }}
+        run: |
+          python << 'EOF'
+          import os
+          import sys
+          import json
+          import urllib.request
+          import base64
+          from pathlib import Path
+
+          # Get current version from VERSION file
+          version_file = Path('VERSION')
+          if version_file.exists():
+              current_version = version_file.read_text().strip()
+          else:
+              # Fallback to git tag
+              import subprocess
+              result = subprocess.run(['git', 'describe', '--tags', '--abbrev=0'],
+                                    capture_output=True, text=True)
+              current_version = result.stdout.strip().lstrip('v')
+
+          print(f"Current version: {current_version}")
+
+          # Query JFrog for existing versions
+          username = os.environ.get('ARTIFACTORY_USERNAME')
+          password = os.environ.get('ARTIFACTORY_PASSWORD')
+
+          if not username or not password:
+              print("⚠️  No JFrog credentials - cannot check version, proceeding with build")
+              sys.exit(0)
+
+          url = "https://hypersec.jfrog.io/artifactory/api/storage/hypersec-pypi-local/hyperlib"
+          auth_str = f"{username}:{password}"
+          auth_bytes = base64.b64encode(auth_str.encode()).decode()
+
+          try:
+              req = urllib.request.Request(url)
+              req.add_header("Authorization", f"Basic {auth_bytes}")
+
+              with urllib.request.urlopen(req) as response:
+                  data = json.loads(response.read())
+
+              # Get all versions from children
+              versions = []
+              if 'children' in data:
+                  for child in data['children']:
+                      version = child['uri'].strip('/')
+                      versions.append(version)
+
+              if current_version in versions:
+                  print(f"❌ Version {current_version} already exists in JFrog")
+                  print(f"   Found versions: {', '.join(sorted(versions)[:5])}...")
+                  print("")
+                  print("Skipping build - version already published")
+                  print("To publish, increment version with a new commit (feat:/fix:)")
+
+                  # Set should_run to false
+                  with open(os.environ['GITHUB_OUTPUT'], 'a') as f:
+                      f.write('version_exists=true\n')
+                  sys.exit(0)
+              else:
+                  print(f"✓ Version {current_version} is new")
+                  print(f"  JFrog has: {', '.join(sorted(versions)[-3:])}")
+                  print(f"  Publishing: {current_version}")
+                  with open(os.environ['GITHUB_OUTPUT'], 'a') as f:
+                      f.write('version_exists=false\n')
+
+          except Exception as e:
+              print(f"⚠️  Could not check JFrog versions: {e}")
+              print("   Proceeding with build anyway")
+              with open(os.environ['GITHUB_OUTPUT'], 'a') as f:
+                  f.write('version_exists=false\n')
+          EOF
+
       - name: Build Matrix
         id: matrix
-        if: steps.check.outputs.should_run == 'true'
+        if: steps.check.outputs.should_run == 'true' && steps.version_check.outputs.version_exists != 'true'
         run: |
           python << 'EOF'
           import yaml
@@ -206,14 +278,15 @@ jobs:
           # macOS ARM64
           if platforms.get('macos_arm64', False):
               if cirrus_enabled:
-                  print(f"✓ Cirrus Runners enabled for macOS (95% cheaper)")
+                  print(f"✓ Cirrus Runners enabled for macOS (95% cheaper than GitHub macOS)")
                   matrix['include'].append({
                       'runner': 'ghcr.io/cirruslabs/macos-runner:sonoma',  # Cirrus macOS runner
                       'platform': 'darwin',
                       'arch': 'arm64',
-                      'cost_per_min': 0.015,  # Cirrus effective pricing (8h/5d usage)
-                      'cost_multiplier': '0.1x',  # 10x cheaper than GitHub!
-                      'estimated_time': 7
+                      'cost_per_min': 0.015,  # Cirrus: $150/month fixed = ~$0.015/min effective (8h/5d)
+                      'cost_multiplier': '3.75x',  # vs BuildJet Linux ($0.004), still cheaper than GitHub
+                      'estimated_time': 7,
+                      'note': 'Cirrus: 95% cheaper than GitHub macOS, but 3.75x more than Linux'
                   })
               else:
                   print(f"⚠️ Cirrus disabled - using GitHub Actions for macOS (EXPENSIVE: $0.16/min)")
@@ -221,9 +294,10 @@ jobs:
                       'runner': 'macos-latest',  # GitHub macOS runner
                       'platform': 'darwin',
                       'arch': 'arm64',
-                      'cost_per_min': 0.16,  # GitHub pricing (20x more expensive than Linux)
-                      'cost_multiplier': '20x',
-                      'estimated_time': 7
+                      'cost_per_min': 0.16,  # GitHub: $0.16/min (10x more than Cirrus!)
+                      'cost_multiplier': '40x',  # vs BuildJet Linux ($0.004)
+                      'estimated_time': 7,
+                      'note': 'GitHub macOS: Most expensive option, use Cirrus instead'
                   })
 
           matrix_json = json.dumps(matrix)
@@ -268,7 +342,7 @@ jobs:
     name: Build (${{ matrix.platform }}-${{ matrix.arch }})
     runs-on: ${{ matrix.runner }}
     needs: config
-    if: needs.config.outputs.should_run == 'true'
+    if: needs.config.outputs.should_run == 'true' && needs.config.outputs.version_exists != 'true'
 
     strategy:
       fail-fast: false
@@ -280,20 +354,34 @@ jobs:
           echo "════════════════════════════════════════════════════════════════"
           echo "  Building: ${{ matrix.platform }}-${{ matrix.arch }}"
           echo "  Runner: ${{ matrix.runner }}"
+
+          # Detect runner provider
           if [[ "${{ matrix.runner }}" == buildjet-* ]]; then
-            echo "  Provider: BuildJet (third-party)"
+            echo "  Provider: BuildJet (50% cheaper than GitHub)"
+          elif [[ "${{ matrix.runner }}" == ghcr.io/cirruslabs/* ]]; then
+            echo "  Provider: Cirrus Runners (95% cheaper than GitHub macOS)"
+            echo "  Note: Still 3.75x more expensive than Linux BuildJet"
           else
             echo "  Provider: GitHub Actions"
           fi
+
           echo "  Protection: ${{ needs.config.outputs.protection_level }}"
-          echo "  Cost: \$${{ matrix.cost_per_min }}/min (${{ matrix.cost_multiplier }} vs Linux x64)"
+          echo "  Cost: \$${{ matrix.cost_per_min }}/min (${{ matrix.cost_multiplier }} vs BuildJet Linux)"
           echo "════════════════════════════════════════════════════════════════"
 
           if [ "${{ matrix.platform }}" = "darwin" ]; then
-            echo ""
-            echo "⚠️⚠️⚠️  WARNING: macOS BUILD COSTS ~\$2.00  ⚠️⚠️⚠️"
-            echo "This is 20x more expensive than Linux builds!"
-            echo ""
+            if [[ "${{ matrix.runner }}" == ghcr.io/cirruslabs/* ]]; then
+              echo ""
+              echo "💰 macOS Build with Cirrus: ~\$0.11 per build (7 min)"
+              echo "   95% cheaper than GitHub macOS (\$1.12/build)"
+              echo "   Still 3.75x more than Linux BuildJet (\$0.028/build)"
+              echo ""
+            else
+              echo ""
+              echo "⚠️⚠️⚠️  WARNING: GitHub macOS costs ~\$1.12 per build  ⚠️⚠️⚠️"
+              echo "   Use Cirrus Runners for 95% savings!"
+              echo ""
+            fi
           fi
 
       - name: Checkout
@@ -406,7 +494,7 @@ jobs:
     name: Publish to JFrog
     runs-on: ubuntu-latest
     needs: [config, build]
-    if: needs.config.outputs.publish_jfrog == 'true'
+    if: needs.config.outputs.publish_jfrog == 'true' && needs.config.outputs.version_exists != 'true'
 
     steps:
       - name: Checkout

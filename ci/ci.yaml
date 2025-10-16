@@ -21,8 +21,6 @@ nuitka:
     on_release_tags: true      # Build on version tags (v*)
     on_pull_requests: false    # Build on PRs (expensive!)
     on_push_to_main: false     # Build on every push to main
-    on_schedule: false         # Enable scheduled builds
-    schedule_cron: "0 2 * * 0" # Weekly on Sunday at 2am UTC (if on_schedule: true)
 
   # Protection level for compiled binaries
   # Options: none, minimal, data-hiding, traceback, recommended, opensource
