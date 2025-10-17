@@ -309,10 +309,10 @@ class TestRealCI:
 import sys
 from pathlib import Path
 sys.path.insert(0, str(Path.cwd() / 'ci/common'))
-from ci_config import force_release, force_publish, build_profile, push_enabled
+from ci_config import force_release, force_publish, build_type, push_enabled
 print(f'force_release: {force_release()}')
 print(f'force_publish: {force_publish()}')
-print(f'build_profile: {build_profile()}')
+print(f'build_type: {build_type()}')
 print(f'push_enabled: {push_enabled()}')
 """],
             capture_output=True,
@@ -334,18 +334,18 @@ print(f'push_enabled: {push_enabled()}')
 import sys
 from pathlib import Path
 sys.path.insert(0, str(Path.cwd() / 'ci/common'))
-from ci_config import force_release, build_profile
+from ci_config import force_release, build_type
 print(f'force_release: {force_release()}')
-print(f'build_profile: {build_profile()}')
+print(f'build_type: {build_type()}')
 """],
             capture_output=True,
             text=True,
-            env={**os.environ, "CI_FORCE_RELEASE": "1", "CI_BUILD_PROFILE": "nuitka"}
+            env={**os.environ, "CI_FORCE_RELEASE": "1", "CI_BUILD_TYPE": "nuitka"}
         )
 
         print(result.stdout)
         assert "force_release: True" in result.stdout, "CI_FORCE_RELEASE=1 not working"
-        assert "build_profile: nuitka" in result.stdout, "CI_BUILD_PROFILE not working"
+        assert "build_type: nuitka" in result.stdout, "CI_BUILD_TYPE not working"
 
         print("✅ ci_config module works with env vars")
 
