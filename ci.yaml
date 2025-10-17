@@ -70,6 +70,14 @@ nuitka:
     repository: "hypersec-nuitka-binaries"   # JFrog Generic repository name
 
 # ============================================================================
+# Publish Configuration
+# ============================================================================
+publish:
+  # End-to-end verification after publish
+  verify_enabled: false  # Verify GitHub Actions + JFrog publication (polls until complete)
+  verify_timeout: 600    # Maximum seconds to wait for verification (10 minutes)
+
+# ============================================================================
 # Python Package Build (Standard wheel/sdist)
 # ============================================================================
 package:

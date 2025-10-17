@@ -39,6 +39,9 @@ dependencies = [
     "python-semantic-release>=9.0.0",
     # Nuitka Support
     "pycryptodomex>=3.20.0",  # Required for Nuitka traceback-encryption plugin
+    # API Clients (for verification)
+    "PyGithub>=2.0.0",  # GitHub API client
+    "requests>=2.31.0",  # HTTP client (for JFrog API)
 ]
 
 # Nuitka is NOT in dependencies - installed separately by 25-nuitka.py
