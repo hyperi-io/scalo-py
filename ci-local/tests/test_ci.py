@@ -326,7 +326,7 @@ print(f'push_enabled: {push_enabled()}')
 
         assert result.returncode == 0, f"ci_config import failed: {result.stderr}"
         assert "force_release: False" in result.stdout, "Default force_release wrong"
-        assert "build_profile: package" in result.stdout, "Default build_profile wrong"
+        assert "build_type: package" in result.stdout, "Default build_type wrong"
 
         # Test with environment variable
         result = subprocess.run(
@@ -700,6 +700,27 @@ if __name__ == "__main__":
             test.test_jfrog_publish_script()
         except Exception as e:
             print(f"\n⚠️  Publish script test skipped: {e}")
+
+        # Optional: FULL publish verification (only if CI_VERIFY_PUBLISH=1)
+        if os.environ.get("CI_VERIFY_PUBLISH") == "1":
+            print("\n" + "="*70)
+            print("CI_VERIFY_PUBLISH=1 detected - running FULL verification test")
+            print("="*70)
+            try:
+                test.test_full_publish_with_verification()
+            except pytest.skip.Exception as e:
+                print(f"\n⚠️  Verification test skipped: {e}")
+            except Exception as e:
+                print(f"\n❌ Verification test failed: {e}")
+                import traceback
+                traceback.print_exc()
+                sys.exit(1)
+        else:
+            print("\n" + "="*70)
+            print("⚠️  Full publish verification NOT run (CI_VERIFY_PUBLISH not set)")
+            print("   To test complete flow with GitHub Actions + JFrog:")
+            print("   CI_VERIFY_PUBLISH=1 ci-local/.venv/bin/python ci-local/tests/test_ci.py")
+            print("="*70)
 
         # Quick config test
         test_ci_yaml_exists()
