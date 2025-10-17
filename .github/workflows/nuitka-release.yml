@@ -125,25 +125,19 @@ jobs:
           pattern: wheel-*
           merge-multiple: true
 
-      - name: Bootstrap CI
+      - name: Publish Nuitka Wheels to JFrog
         env:
           ARTIFACTORY_USERNAME: ${{ secrets.ARTIFACTORY_USERNAME }}
           ARTIFACTORY_PASSWORD: ${{ secrets.ARTIFACTORY_PASSWORD }}
         run: |
-          mkdir -p ci-local
-          cat > ci-local/.env << EOF
-          ARTIFACTORY_USERNAME=${ARTIFACTORY_USERNAME}
-          ARTIFACTORY_PASSWORD=${ARTIFACTORY_PASSWORD}
-          EOF
-          ci/bootstrap --install
-
-      - name: Publish to JFrog
-        env:
-          ARTIFACTORY_USERNAME: ${{ secrets.ARTIFACTORY_USERNAME }}
-          ARTIFACTORY_PASSWORD: ${{ secrets.ARTIFACTORY_PASSWORD }}
-        run: |
-          # Use EXACT SAME script as local publish
-          ci-local/.venv/bin/python ci/python/ci.d/81-publish.py publish
+          # Publish the downloaded Nuitka wheels directly (don't rebuild!)
+          # Use twine directly since wheels are already built
+          pip install twine
+          twine upload \
+            --repository-url https://hypersec.jfrog.io/artifactory/api/pypi/hypersec-pypi-local \
+            --username "${ARTIFACTORY_USERNAME}" \
+            --password "${ARTIFACTORY_PASSWORD}" \
+            dist/*
 
       - name: List Published Wheels
         run: |
