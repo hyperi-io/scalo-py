@@ -102,12 +102,13 @@ class TestRealCI:
 
         # Verify dynaconf was installed
         result = subprocess.run(
-            ["ci-local/.venv/bin/python", "-c", "import dynaconf; print(dynaconf.__version__)"],
+            ["ci-local/.venv/bin/python", "-c", "import dynaconf; print('installed')"],
             capture_output=True,
             text=True
         )
         assert result.returncode == 0, "dynaconf not installed in ci-local/.venv"
-        print(f"✓ dynaconf v{result.stdout.strip()} installed")
+        assert "installed" in result.stdout, "dynaconf import failed"
+        print(f"✓ dynaconf installed")
 
         # Verify uv was used (check for uv in ci-local/.venv)
         result = subprocess.run(
