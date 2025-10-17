@@ -594,7 +594,8 @@ print(f'build_type: {build_type()}')
             text=True,
             env={
                 **os.environ,
-                "CI_PUSH": "1",  # Push to GitHub and trigger workflows
+                "CI": "true",     # Simulate CI environment
+                "CI_PUSH": "1",   # Push to GitHub and trigger workflows
             },
             timeout=120
         )
