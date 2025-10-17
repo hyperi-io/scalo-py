@@ -71,8 +71,8 @@ jobs:
 
       - name: Build Nuitka Compiled Wheel
         env:
-          BUILD_PROFILE: nuitka
-          NUITKA_PROTECTION: ${{ github.event.inputs.protection_level || 'recommended' }}
+          CI_BUILD_TYPE: nuitka
+          CI_NUITKA_PROTECTION: ${{ github.event.inputs.protection_level || 'recommended' }}
         run: |
           # Use EXACT SAME script as local builds
           # This respects ci.yaml and uses tools from ci-local/uv.lock
