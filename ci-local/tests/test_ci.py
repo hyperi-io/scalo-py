@@ -529,14 +529,15 @@ print(f'build_type: {build_type()}')
         Test COMPLETE publish flow with GitHub Actions and JFrog verification.
 
         This test:
-        1. Creates a fix: commit (forces patch bump)
+        1. Optionally creates a fix: commit if CI_BUMP_PATCH=1 (forces patch bump)
         2. Runs semantic-release (creates version, tag, changelog)
         3. Pushes to GitHub (triggers workflows)
         4. Waits for GitHub Actions to complete
         5. Verifies packages in JFrog
         6. Reports success/failure
 
-        Set CI_VERIFY_PUBLISH=1 to enable this test.
+        Required: CI_VERIFY_PUBLISH=1
+        Optional: CI_BUMP_PATCH=1 (creates fix: commit first)
         """
         # Only run if verification is enabled
         if os.environ.get("CI_VERIFY_PUBLISH") != "1":
@@ -545,22 +546,36 @@ print(f'build_type: {build_type()}')
         print("\n" + "="*70)
         print("TEST: FULL PUBLISH WITH VERIFICATION")
         print("="*70)
-        print("⚠️  This will:")
-        print("  - Create a fix: commit (patch bump)")
-        print("  - Run semantic-release")
-        print("  - Push to GitHub")
-        print("  - Trigger GitHub Actions")
-        print("  - Wait for workflows to complete")
-        print("  - Verify packages in JFrog")
+
+        # Check if we should create a patch commit
+        should_bump = os.environ.get("CI_BUMP_PATCH") == "1"
+
+        if should_bump:
+            print("⚠️  CI_BUMP_PATCH=1 - This will:")
+            print("  - Create a fix: commit (patch bump)")
+            print("  - Run semantic-release")
+            print("  - Push to GitHub")
+            print("  - Trigger GitHub Actions")
+            print("  - Wait for workflows to complete")
+            print("  - Verify packages in JFrog")
+        else:
+            print("⚠️  CI_BUMP_PATCH not set - This will:")
+            print("  - Use existing commits for version")
+            print("  - Run semantic-release (may skip if no new commits)")
+            print("  - Verify last published version")
+            print("")
+            print("  To force patch bump: CI_BUMP_PATCH=1")
+
         print("="*70)
 
         # Ensure bootstrap ran
         if not (PROJECT_ROOT / "ci-local/.venv").exists():
             self.test_bootstrap_with_ci_local_venv()
 
-        # 1. Create patch commit
-        if not self.create_patch_commit():
-            pytest.skip("Cannot create git commit")
+        # 1. Optionally create patch commit
+        if should_bump:
+            if not self.create_patch_commit():
+                pytest.skip("Cannot create git commit")
 
         # 2. Run semantic-release with push
         print("\n" + "="*70)
