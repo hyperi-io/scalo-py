@@ -57,7 +57,8 @@ jobs:
                   matrix['include'].append({
                       'build_type': 'nuitka',
                       'runner': 'buildjet-2vcpu-ubuntu-2204',  # BuildJet x64
-                      'arch': 'x64'
+                      'arch': 'x64',
+                      'platform': 'linux'
                   })
 
               # Nuitka ARM64
@@ -65,8 +66,28 @@ jobs:
                   matrix['include'].append({
                       'build_type': 'nuitka',
                       'runner': 'buildjet-2vcpu-ubuntu-2204-arm',  # BuildJet ARM64
-                      'arch': 'arm64'
+                      'arch': 'arm64',
+                      'platform': 'linux'
                   })
+
+              # macOS ARM64 (expensive - opt-in only)
+              if platforms.get('macos_arm64', False):
+                  # Check if using Cirrus Runners (95% cheaper than GitHub)
+                  cirrus = nuitka.get('cirrus', {})
+                  if cirrus.get('enabled', True):
+                      matrix['include'].append({
+                          'build_type': 'nuitka',
+                          'runner': 'ghcr.io/cirruslabs/macos-runner:sonoma',  # Cirrus macOS
+                          'arch': 'arm64',
+                          'platform': 'macos'
+                      })
+                  else:
+                      matrix['include'].append({
+                          'build_type': 'nuitka',
+                          'runner': 'macos-latest',  # GitHub macOS (10x more expensive!)
+                          'arch': 'arm64',
+                          'platform': 'macos'
+                      })
 
           # Write to output
           with open(os.environ['GITHUB_OUTPUT'], 'a') as f:
@@ -98,11 +119,16 @@ jobs:
         with:
           python-version: '3.11'
 
-      - name: Install C compiler (for Nuitka)
-        if: matrix.build_type == 'nuitka'
+      - name: Install C compiler (Linux)
+        if: matrix.build_type == 'nuitka' && matrix.platform == 'linux'
         run: |
           sudo apt-get update
           sudo apt-get install -y gcc g++ python3-dev
+
+      - name: Install C compiler (macOS)
+        if: matrix.build_type == 'nuitka' && matrix.platform == 'macos'
+        run: |
+          xcode-select --install || true
 
       - name: Bootstrap CI
         env:
