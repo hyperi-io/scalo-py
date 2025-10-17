@@ -477,6 +477,147 @@ print(f'build_profile: {build_profile()}')
 
         print("✅ Scripts are unified for local and GitHub Actions")
 
+    def create_patch_commit(self) -> bool:
+        """
+        Create a fix: commit to force semantic-release patch bump (+0.0.1).
+
+        Returns True if commit was created, False if git not available.
+        """
+        print("\n" + "="*70)
+        print("Creating fix: commit for semantic-release patch bump")
+        print("="*70)
+
+        # Check if git repo
+        result = subprocess.run(
+            ["git", "rev-parse", "--git-dir"],
+            capture_output=True,
+            cwd=PROJECT_ROOT
+        )
+        if result.returncode != 0:
+            print("⚠️  Not a git repository - skipping commit")
+            return False
+
+        # Create a dummy file change for the commit
+        timestamp = time.strftime("%Y%m%d-%H%M%S")
+        test_file = PROJECT_ROOT / ".tmp" / f"test-{timestamp}.txt"
+        test_file.parent.mkdir(exist_ok=True)
+        test_file.write_text(f"Test commit for CI verification at {timestamp}\n")
+
+        # Git add and commit
+        subprocess.run(["git", "add", str(test_file)], cwd=PROJECT_ROOT, check=True)
+
+        commit_msg = f"fix: CI test patch bump {timestamp}\n\nThis commit forces semantic-release to bump patch version by +0.0.1 for testing."
+
+        result = subprocess.run(
+            ["git", "commit", "-m", commit_msg],
+            capture_output=True,
+            text=True,
+            cwd=PROJECT_ROOT
+        )
+
+        if result.returncode == 0:
+            print(f"✓ Created fix: commit")
+            print(f"  This will cause semantic-release to bump patch version")
+            return True
+        else:
+            print(f"⚠️  Failed to create commit: {result.stderr}")
+            return False
+
+    @pytest.mark.slow
+    @pytest.mark.integration
+    def test_full_publish_with_verification(self):
+        """
+        Test COMPLETE publish flow with GitHub Actions and JFrog verification.
+
+        This test:
+        1. Creates a fix: commit (forces patch bump)
+        2. Runs semantic-release (creates version, tag, changelog)
+        3. Pushes to GitHub (triggers workflows)
+        4. Waits for GitHub Actions to complete
+        5. Verifies packages in JFrog
+        6. Reports success/failure
+
+        Set CI_VERIFY_PUBLISH=1 to enable this test.
+        """
+        # Only run if verification is enabled
+        if os.environ.get("CI_VERIFY_PUBLISH") != "1":
+            pytest.skip("Verification not enabled (set CI_VERIFY_PUBLISH=1 to run)")
+
+        print("\n" + "="*70)
+        print("TEST: FULL PUBLISH WITH VERIFICATION")
+        print("="*70)
+        print("⚠️  This will:")
+        print("  - Create a fix: commit (patch bump)")
+        print("  - Run semantic-release")
+        print("  - Push to GitHub")
+        print("  - Trigger GitHub Actions")
+        print("  - Wait for workflows to complete")
+        print("  - Verify packages in JFrog")
+        print("="*70)
+
+        # Ensure bootstrap ran
+        if not (PROJECT_ROOT / "ci-local/.venv").exists():
+            self.test_bootstrap_with_ci_local_venv()
+
+        # 1. Create patch commit
+        if not self.create_patch_commit():
+            pytest.skip("Cannot create git commit")
+
+        # 2. Run semantic-release with push
+        print("\n" + "="*70)
+        print("Running semantic-release (will push to GitHub)")
+        print("="*70)
+
+        result = subprocess.run(
+            ["ci-local/.venv/bin/python", "ci/common/ci.d/90-semantic-release.py", "release"],
+            capture_output=True,
+            text=True,
+            env={**os.environ, "CI_FORCE_RELEASE": "1", "CI_PUSH": "1"},
+            timeout=120
+        )
+
+        print(result.stdout)
+        if result.returncode != 0:
+            print(f"STDERR: {result.stderr}")
+            pytest.fail(f"semantic-release failed: {result.stderr}")
+
+        # Extract version from output
+        import re
+        version_match = re.search(r'v?(\d+\.\d+\.\d+)', result.stdout)
+        if not version_match:
+            pytest.fail("Could not determine version from semantic-release output")
+
+        version = version_match.group(1)
+        print(f"\n✓ Version created: {version}")
+        print(f"✓ Tag pushed to GitHub")
+        print(f"✓ Workflows should be triggered")
+
+        # 3. Run verification
+        print("\n" + "="*70)
+        print("Running end-to-end verification")
+        print("="*70)
+
+        result = subprocess.run(
+            ["ci-local/.venv/bin/python", "ci/python/ci.d/82-verify-publish.py", "verify"],
+            capture_output=True,
+            text=True,
+            env={**os.environ, "CI_VERIFY_PUBLISH": "1"},
+            timeout=900  # 15 minutes for full verification
+        )
+
+        print(result.stdout)
+        if result.returncode != 0:
+            print(f"STDERR: {result.stderr}")
+            pytest.fail(f"Verification failed: {result.stderr}")
+
+        print("\n" + "="*70)
+        print("✅ FULL PUBLISH VERIFICATION PASSED")
+        print("="*70)
+        print(f"Version {version}:")
+        print("  ✓ Published to GitHub")
+        print("  ✓ GitHub Actions workflows completed")
+        print("  ✓ Packages in JFrog verified")
+
     @pytest.mark.slow
     def test_full_publish_flow_dry_run(self):
         """Test the full publish flow in dry-run mode."""
