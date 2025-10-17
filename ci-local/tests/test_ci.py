@@ -309,7 +309,7 @@ class TestRealCI:
 import sys
 from pathlib import Path
 sys.path.insert(0, str(Path.cwd() / 'ci/common'))
-from ci_config import force_release, force_publish, build_type, push_enabled
+from ci_lib import force_release, force_publish, build_type, push_enabled
 print(f'force_release: {force_release()}')
 print(f'force_publish: {force_publish()}')
 print(f'build_type: {build_type()}')
@@ -334,7 +334,7 @@ print(f'push_enabled: {push_enabled()}')
 import sys
 from pathlib import Path
 sys.path.insert(0, str(Path.cwd() / 'ci/common'))
-from ci_config import force_release, build_type
+from ci_lib import force_release, build_type
 print(f'force_release: {force_release()}')
 print(f'build_type: {build_type()}')
 """],
