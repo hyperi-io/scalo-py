@@ -7,7 +7,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "hyperlib"
-version = "2.0.0"
+version = "2.0.1"
 description = "Enterprise infrastructure for containerized Python applications - configuration, logging, timeouts, database, metrics, and application framework"
 readme = "README.md"
 authors = [
