@@ -497,14 +497,13 @@ print(f'build_type: {build_type()}')
             print("⚠️  Not a git repository - skipping commit")
             return False
 
-        # Create a dummy file change for the commit
+        # Create a dummy file change for the commit (in ci-local/ which is tracked)
         timestamp = time.strftime("%Y%m%d-%H%M%S")
-        test_file = PROJECT_ROOT / ".tmp" / f"test-{timestamp}.txt"
-        test_file.parent.mkdir(exist_ok=True)
+        test_file = PROJECT_ROOT / "ci-local" / f".test-{timestamp}"
         test_file.write_text(f"Test commit for CI verification at {timestamp}\n")
 
-        # Git add and commit
-        subprocess.run(["git", "add", str(test_file)], cwd=PROJECT_ROOT, check=True)
+        # Git add and commit (force add hidden file)
+        subprocess.run(["git", "add", "-f", str(test_file)], cwd=PROJECT_ROOT, check=True)
 
         commit_msg = f"fix: CI test patch bump {timestamp}\n\nThis commit forces semantic-release to bump patch version by +0.0.1 for testing."
 
