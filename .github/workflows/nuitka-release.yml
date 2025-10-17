@@ -65,7 +65,7 @@ jobs:
           ARTIFACTORY_PASSWORD=${ARTIFACTORY_PASSWORD}
           EOF
 
-          # Bootstrap sets up ci/.venv using ci-local/uv.lock
+          # Bootstrap sets up ci-local/.venv using ci-local/uv.lock
           # Installs all CI tools including Nuitka from JFrog
           ci/bootstrap --install
 
@@ -76,7 +76,9 @@ jobs:
         run: |
           # Use EXACT SAME script as local builds
           # This respects ci.yaml and uses tools from ci-local/uv.lock
-          ci/.venv/bin/python ci/python/ci.d/85-build-nuitka.py build
+          # 85-build-nuitka.py calls 80-build.py which builds the package,
+          # then Nuitka compiles it
+          ci-local/.venv/bin/python ci/python/ci.d/85-build-nuitka.py build
 
       - name: Verify Build
         run: |
@@ -141,7 +143,7 @@ jobs:
           ARTIFACTORY_PASSWORD: ${{ secrets.ARTIFACTORY_PASSWORD }}
         run: |
           # Use EXACT SAME script as local publish
-          ci/.venv/bin/python ci/python/ci.d/80-build.py publish
+          ci-local/.venv/bin/python ci/python/ci.d/81-publish.py publish
 
       - name: List Published Wheels
         run: |

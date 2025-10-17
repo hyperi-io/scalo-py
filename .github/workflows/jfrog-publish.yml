@@ -37,7 +37,7 @@ jobs:
           ARTIFACTORY_PASSWORD=${ARTIFACTORY_PASSWORD}
           EOF
 
-          # Bootstrap sets up ci/.venv using ci-local/uv.lock
+          # Bootstrap sets up ci-local/.venv using ci-local/uv.lock
           ci/bootstrap --install
 
       - name: Build and Publish to JFrog
@@ -45,7 +45,5 @@ jobs:
           ARTIFACTORY_USERNAME: ${{ secrets.ARTIFACTORY_USERNAME }}
           ARTIFACTORY_PASSWORD: ${{ secrets.ARTIFACTORY_PASSWORD }}
         run: |
-          # Use CI build script for everything (build + publish)
-          # This respects ci.yaml and uses tools from ci-local/uv.lock
-          ci/.venv/bin/python ci/python/ci.d/80-build.py build
-          ci/.venv/bin/python ci/python/ci.d/80-build.py publish
+          # Publish = build + publish (same script works locally with FORCE_PUBLISH=1)
+          ci-local/.venv/bin/python ci/python/ci.d/81-publish.py publish
