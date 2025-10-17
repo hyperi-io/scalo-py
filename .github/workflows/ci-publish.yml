@@ -1,0 +1,138 @@
+name: CI Publish
+
+# Triggers: MANUAL ONLY - triggered by 'ci/bootstrap publish' command
+# This workflow runs the EXACT SAME ci/ scripts as local builds
+on:
+  workflow_dispatch:
+
+jobs:
+  # Read ci.yaml to determine what to build
+  config:
+    name: Read Configuration
+    runs-on: ubuntu-latest
+    outputs:
+      matrix_json: ${{ steps.matrix.outputs.json }}
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          submodules: recursive
+          token: ${{ secrets.GH_PAT || github.token }}
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Build Matrix
+        id: matrix
+        run: |
+          pip install pyyaml
+          python << 'EOF'
+          import yaml
+          import json
+          import os
+
+          # Load ci.yaml
+          with open('ci.yaml') as f:
+              config = yaml.safe_load(f)
+
+          # Always build standard package
+          matrix = {'include': [
+              {
+                  'build_type': 'standard',
+                  'runner': 'ubuntu-latest',
+                  'arch': 'any'
+              }
+          ]}
+
+          # Add Nuitka builds if enabled
+          nuitka = config.get('nuitka', {})
+          if nuitka.get('enabled', False):
+              platforms = nuitka.get('platforms', {})
+
+              # Nuitka x64
+              if platforms.get('linux_x64', True):
+                  matrix['include'].append({
+                      'build_type': 'nuitka',
+                      'runner': 'buildjet-2vcpu-ubuntu-2204',  # BuildJet x64
+                      'arch': 'x64'
+                  })
+
+              # Nuitka ARM64
+              if platforms.get('linux_arm64', True):
+                  matrix['include'].append({
+                      'build_type': 'nuitka',
+                      'runner': 'buildjet-2vcpu-ubuntu-2204-arm',  # BuildJet ARM64
+                      'arch': 'arm64'
+                  })
+
+          # Write to output
+          with open(os.environ['GITHUB_OUTPUT'], 'a') as f:
+              f.write(f'json={json.dumps(matrix)}\n')
+
+          print(f"Matrix: {json.dumps(matrix, indent=2)}")
+          EOF
+
+  # Build and publish (matrix based on config)
+  publish:
+    name: Build and Publish (${{ matrix.build_type }}-${{ matrix.arch }})
+    runs-on: ${{ matrix.runner }}
+    needs: config
+
+    strategy:
+      fail-fast: false
+      matrix: ${{ fromJson(needs.config.outputs.matrix_json) }}
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          submodules: recursive
+          token: ${{ secrets.GH_PAT || github.token }}
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Install C compiler (for Nuitka)
+        if: matrix.build_type == 'nuitka'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y gcc g++ python3-dev
+
+      - name: Bootstrap CI
+        env:
+          ARTIFACTORY_USERNAME: ${{ secrets.ARTIFACTORY_USERNAME }}
+          ARTIFACTORY_PASSWORD: ${{ secrets.ARTIFACTORY_PASSWORD }}
+        run: |
+          # Create ci-local/.env with credentials
+          mkdir -p ci-local
+          cat > ci-local/.env << EOF
+          ARTIFACTORY_USERNAME=${ARTIFACTORY_USERNAME}
+          ARTIFACTORY_PASSWORD=${ARTIFACTORY_PASSWORD}
+          EOF
+
+          # Bootstrap sets up ci-local/.venv with all tools from ci-local/uv.lock
+          # Installs: pytest, ruff, build, twine, Nuitka (if nuitka.enabled)
+          ci/bootstrap --install
+
+      - name: Build and Publish
+        env:
+          ARTIFACTORY_USERNAME: ${{ secrets.ARTIFACTORY_USERNAME }}
+          ARTIFACTORY_PASSWORD: ${{ secrets.ARTIFACTORY_PASSWORD }}
+          CI_BUILD_TYPE: ${{ matrix.build_type }}
+          CI: "true"
+          GITHUB_ACTIONS: "true"
+        run: |
+          # Use EXACT SAME script as local builds
+          # 81-publish.py: build (standard or Nuitka based on CI_BUILD_TYPE) + publish to JFrog
+          ci-local/.venv/bin/python ci/python/ci.d/81-publish.py publish
+
+      - name: Verify Published
+        run: |
+          echo "✅ Published ${{ matrix.build_type }} package (${{ matrix.arch }})"
+          ls -lh dist/ || echo "dist/ cleaned after publish"
