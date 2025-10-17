@@ -543,8 +543,10 @@ if __name__ == "__main__":
         # Optional: Nuitka test (skip if Nuitka not available)
         try:
             test.test_local_build_nuitka()
+        except pytest.skip.Exception as e:
+            print(f"\n⚠️  Nuitka test skipped (expected): {e}")
         except Exception as e:
-            print(f"\n⚠️  Nuitka test skipped: {e}")
+            print(f"\n⚠️  Nuitka test error: {e}")
 
         # Optional: GitHub Actions trigger test
         try:
