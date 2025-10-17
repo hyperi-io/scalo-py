@@ -566,12 +566,17 @@ print(f'build_type: {build_type()}')
         print("\n" + "="*70)
         print("Running semantic-release (will push to GitHub)")
         print("="*70)
+        print("Using CI_FORCE_RELEASE=1 to bypass test requirement (safe in test context)")
 
         result = subprocess.run(
             ["ci-local/.venv/bin/python", "ci/common/ci.d/90-semantic-release.py", "release"],
             capture_output=True,
             text=True,
-            env={**os.environ, "CI_FORCE_RELEASE": "1", "CI_PUSH": "1"},
+            env={
+                **os.environ,
+                "CI_FORCE_RELEASE": "1",  # Bypass test requirement (safe for testing)
+                "CI_PUSH": "1",            # Actually push to GitHub
+            },
             timeout=120
         )
 
