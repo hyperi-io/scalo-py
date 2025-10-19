@@ -248,7 +248,8 @@ version_variables = [
     "src/hyperlib/__init__.py:__version__",
 ]
 # VERSION file is written by build_command before build
-build_command = "ci-local/.venv/bin/python -c \"import sys; open('VERSION', 'w').write(sys.argv[1] + '\\n')\" '{version}' && rm -rf dist build src/*.egg-info && ci-local/.venv/bin/python -m build"
+# Validation prevents {version} template corruption (check for literal string)
+build_command = "python3 -c \"import sys; v=sys.argv[1]; assert v and v[0].isdigit(), f'Invalid version: {v}'; open('VERSION','w').write(v+'\\n'); print(f'✓ VERSION: {v}')\" '{version}' && rm -rf dist build src/*.egg-info && ci-local/.venv/bin/python -m build"
 major_on_zero = true
 tag_format = "v{version}"
 commit_message = "chore(release): {version} [skip ci]"
