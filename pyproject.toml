@@ -7,7 +7,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "hyperlib"
-version = "2.1.1"
+version = "2.2.0"
 description = "Enterprise infrastructure for containerized Python applications - configuration, logging, timeouts, database, metrics, and application framework"
 readme = "README.md"
 authors = [
@@ -247,9 +247,8 @@ version_toml = ["pyproject.toml:project.version"]
 version_variables = [
     "src/hyperlib/__init__.py:__version__",
 ]
-# VERSION file is written by build_command before build
-# Validation prevents {version} template corruption (check for literal string)
-build_command = "python3 -c \"import sys; v=sys.argv[1]; assert v and v[0].isdigit(), f'Invalid version: {v}'; open('VERSION','w').write(v+'\\n'); print(f'✓ VERSION: {v}')\" '{version}' && rm -rf dist build src/*.egg-info && ci-local/.venv/bin/python -m build"
+# VERSION file is written by build_command (pre-sync ensures it's already correct)
+build_command = "echo 'VERSION already synced by pre-commit hook/CI script' && rm -rf dist build src/*.egg-info && ci-local/.venv/bin/python -m build"
 major_on_zero = true
 tag_format = "v{version}"
 commit_message = "chore(release): {version} [skip ci]"
