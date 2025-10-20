@@ -74,10 +74,13 @@ def deep_merge_json(target: Dict[str, Any], source: Dict[str, Any], overwrite: b
 
 def merge_json_file(target_file: Path, source_file: Path, overwrite: bool = True) -> bool:
     """
-    Merge a JSON file from source into target.
+    Merge a JSON file from source into target with template variable substitution.
+
+    Template variables (replaced before merge):
+    - {{PROJECT_ROOT}} → Absolute path to project root
 
     Args:
-        target_file: Target JSON file (in .ai/)
+        target_file: Target JSON file (in )
         source_file: Source JSON file (from ci/ or ci-local/)
         overwrite: If True, overwrite existing keys
 
@@ -87,10 +90,15 @@ def merge_json_file(target_file: Path, source_file: Path, overwrite: bool = True
     if not source_file.exists():
         return False
 
-    # Load source
+    # Load source with template substitution
     try:
-        with open(source_file) as f:
-            source_data = json.load(f)
+        source_content = source_file.read_text()
+
+        # Replace template variables
+        source_content = source_content.replace("{{PROJECT_ROOT}}", str(PROJECT_ROOT))
+
+        # Parse JSON after substitution
+        source_data = json.loads(source_content)
     except Exception as e:
         print(f"[WARN] Failed to load {source_file}: {e}")
         return False

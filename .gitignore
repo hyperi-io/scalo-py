@@ -21,6 +21,9 @@ Thumbs.db
 .venv/
 .venv-ci/
 ci/.venv/
+
+# / AI assistant data
+-memory
 # Test artifacts
 tests/ci/test_ci/
 tests/ci/test_output.log
