@@ -8,7 +8,7 @@
 # Test Validation (Required before build/publish)
 # ============================================================================
 tests:
-  required: true                # Tests must pass before build/publish
+  required: false               # Tests optional by default (new projects have no tests yet)
   checklist:
     - pytest_tests              # Run pytest test suite
     - ruff_lint                 # Lint with ruff
