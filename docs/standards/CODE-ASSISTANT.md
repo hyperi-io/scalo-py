@@ -38,7 +38,7 @@ This document provides critical guidance for AI code assistants working with Hyp
 ### NEVER:
 
 - ❌ Self-promote or use marketing language
-- ❌ Use as a git contributor in repos or commits
+- ❌ Use AI code assistant as a git contributor in repos or commits
 - ❌ Add git trailers: Co-Authored-By, Generated-with, etc.
 - ❌ Claim anything is finished or ready unless complete testing is performed
 - ❌ Claim anything relying on mock code is ready or finished
@@ -482,7 +482,7 @@ git clean -fdX  # Removes gitignored files including .tmp/
 - ❌ **NEVER run:** `pip install` targeting `ci/` directory
 
 **Enforcement:**
-- permissions include: `"deny": ["Write(ci/**)", "Edit(ci/**)"]`
+- AI code assistant permissions include: `"deny": ["Write(ci/**)", "Edit(ci/**)"]`
 - This prevents accidental modifications to READ-ONLY ci/ submodule
 
 **To contribute improvements to HyperCI:**
@@ -669,7 +669,7 @@ jf rt search "hypersec-pypi-local/package/1.0.0/*.whl" --count
 
 ---
 
-<!-- HYPERCI_STANDARD: ci/python/standards/CODE-ASSISTANT.md -->
+<!-- HYPERCI_STANDARD: ci/python/ai/standards/CODE-ASSISTANT.md -->
 # Code Assistant Standards (Python-Specific)
 
 **Auto-copied to `docs/standards/` by CI_MERGE**
@@ -824,6 +824,136 @@ config_value = os.getenv("CI_CONFIG_VALUE", "default")
 - Production configurability (YAML files)
 - Sensible defaults (fallback values)
 - No hardcoded secrets or environment-specific values
+
+---
+
+## Logging (Use hyperlib if available)
+
+**Projects should use the hyperlib logger module for console and log outputs if available.**
+
+**No print() or direct log coding.**
+
+### Check for hyperlib Logger
+
+```python
+# Check if hyperlib is available
+try:
+    from hyperlib import get_logger
+    logger = get_logger(__name__)
+    HYPERLIB_LOGGING = True
+except ImportError:
+    # Fallback to standard logging
+    import logging
+    logger = logging.getLogger(__name__)
+    HYPERLIB_LOGGING = False
+```
+
+**EXCEPTION: CI scripts should NOT use hyperlib logger**
+- CI scripts must be self-contained
+- Use print() or simple logging for CI scripts
+
+### Using hyperlib Logger
+
+**✅ RIGHT - Use hyperlib logger (when available):**
+```python
+from hyperlib import get_logger
+
+logger = get_logger(__name__)
+
+# Structured logging with context
+logger.info("Processing file", file_path=path, size=size)
+logger.error("Failed to process", error=str(e), file=path)
+logger.warning("Missing config", key="database.host")
+logger.debug("Cache hit", key=cache_key, ttl=ttl)
+```
+
+**❌ WRONG - Using print() in application code:**
+```python
+def process_file(path):
+    print(f"Processing {path}")  # Don't use print()!
+    # ... code ...
+    print("Done")  # Don't use print()!
+```
+
+**❌ WRONG - Direct logging without hyperlib:**
+```python
+import logging
+logging.basicConfig(level=logging.INFO)  # Don't configure directly!
+logger = logging.getLogger(__name__)
+logger.info("message")  # Miss structured logging benefits
+```
+
+### When hyperlib is NOT Available
+
+**Fall back to standard logging (but still structured):**
+
+```python
+import logging
+import json
+
+logger = logging.getLogger(__name__)
+
+# Add structured context manually
+def log_with_context(level, msg, **context):
+    log_msg = f"{msg} | {json.dumps(context)}"
+    getattr(logger, level)(log_msg)
+
+log_with_context("info", "Processing file", file_path=path, size=size)
+```
+
+### Logging in Different Contexts
+
+**Application code (src/*):**
+```python
+from hyperlib import get_logger
+logger = get_logger(__name__)  # Use hyperlib
+```
+
+**CI scripts (ci/ or ci-local/):**
+```python
+# CI scripts are self-contained, no hyperlib dependency
+print("[INFO] Running tests...")  # Simple print() is OK for CI
+print("[ERROR] Tests failed")     # Or basic logging
+```
+
+**Tests (tests/*):**
+```python
+# If testing application code:
+from hyperlib import get_logger  # OK, tests can use hyperlib
+
+# If testing in isolation:
+import logging  # Standard logging OK
+```
+
+### Benefits of hyperlib Logger
+
+**Why use hyperlib logger:**
+- ✅ Structured logging (key=value pairs)
+- ✅ RFC 3339 timestamps (ISO 8601 compliant)
+- ✅ Container-aware (Docker/K8s integration)
+- ✅ Solarized color scheme (if in terminal)
+- ✅ JSON output option (for log shippers)
+- ✅ Follows CHARS-POLICY.md automatically
+
+**What hyperlib logger provides:**
+- Automatic timestamp formatting
+- Structured context (extra fields as key=value)
+- Terminal detection (colors in terminal, plain in logs)
+- Log level configuration via ENV (MYAPP_LOG_LEVEL)
+
+### Examples
+
+**❌ AVOID:**
+```python
+print("Starting server on port 8080")  # Unstructured, no timestamp
+print(f"Error: {e}")  # No context, no log level
+```
+
+**✅ PREFER:**
+```python
+logger.info("Starting server", port=8080, host="0.0.0.0")
+logger.error("Server failed", error=str(e), port=8080)
+```
 
 ---
 
