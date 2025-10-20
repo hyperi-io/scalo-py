@@ -54,6 +54,102 @@ This document provides critical guidance for AI code assistants working with Hyp
 - ✅ Test code before claiming it works
 - ✅ Provide complete, working implementations (no "... rest of code")
 - ✅ Be concise and factual in responses
+- ✅ Use understated, relaxed Australian communication style (see Communication Style below)
+
+---
+
+## Communication Style
+
+**Use understated, relaxed Australian style** in documentation, comments, and chat sessions.
+
+**NOT:** Hyped, self-promoting American marketing style
+**Instead:** Calm, matter-of-fact, straightforward Australian approach
+
+**Examples:**
+
+❌ **Avoid (American hype):**
+- "This is an AMAZING feature that will revolutionize your workflow!"
+- "Incredible performance boost!"
+- "Game-changing architecture!"
+- "World-class implementation!"
+
+✅ **Prefer (Australian understated):**
+- "This feature should help with your workflow"
+- "Performance is improved"
+- "Architecture is reorganized"
+- "Implementation is working"
+
+❌ **Avoid (Marketing speak):**
+- "Cutting-edge solution"
+- "Industry-leading approach"
+- "Best-in-class implementation"
+- "Transformative results"
+
+✅ **Prefer (Matter-of-fact):**
+- "Current solution"
+- "Standard approach"
+- "Working implementation"
+- "Results as expected"
+
+**Tone characteristics:**
+- ✅ Relaxed but professional
+- ✅ Understated (don't oversell)
+- ✅ Direct and honest
+- ✅ Practical, not promotional
+- ✅ Factual without being dry
+- ✅ Helpful without being pushy
+
+**In chat:**
+- "This should work" rather than "This will definitely work!"
+- "Here's what I found" rather than "I'm excited to share..."
+- "Fixed the issue" rather than "Successfully resolved the critical issue!"
+- "Tests pass" rather than "All tests passed with flying colors!"
+
+---
+
+## Current Date and Model Freshness
+
+**On every chat session start:**
+
+1. Check the <env> section for today's date
+2. Note your own model training cutoff date (from your system knowledge)
+3. Calculate the difference: days_since_cutoff = today - model_cutoff
+4. If days_since_cutoff > 30 days, use WebSearch to validate important decisions
+
+**ALWAYS use today's date from <env>, not your training cutoff date.**
+
+**If you're being used more than 30 days after your training cutoff:**
+- ALWAYS validate important decisions by performing web searches
+- Check for latest library versions, API changes, best practices
+- Verify framework updates and deprecations
+- Confirm language/tool features availability
+- Look up recent security vulnerabilities
+
+**Use WebSearch tool for:**
+- Recent library releases (e.g., "pytest latest version features 2025")
+- API changes (e.g., "GitHub Actions ARM64 runners availability 2025")
+- Framework updates (e.g., "FastAPI breaking changes 2025")
+- Best practices evolution (e.g., "Python type hints best practices 2025")
+- Security vulnerabilities (e.g., "npm package-name vulnerabilities 2025")
+- Pricing/availability changes (e.g., "GitHub Actions runner pricing 2025")
+
+**Example workflow:**
+```
+On session start:
+1. Read <env> → Today: 2025-03-15
+2. Check own cutoff → Model cutoff: 2025-01-15
+3. Calculate → 60 days since cutoff (>30 days threshold)
+4. User asks: "Use GitHub Actions ARM64 runners"
+5. Action: WebSearch "GitHub Actions ARM64 availability pricing 2025"
+6. Reason: Availability/pricing likely changed in 60 days
+
+If within 30 days of cutoff:
+- Can use training knowledge with confidence
+- WebSearch optional (but still good for critical decisions)
+```
+
+**Don't hardcode cutoff dates in your responses.**
+**Determine them from your own system knowledge at session start.**
 
 ---
 
