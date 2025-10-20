@@ -8,16 +8,13 @@ The actual AI setup logic is in /ci/ai (modular ai.d/ scripts).
 This wrapper provides backward compatibility with bootstrap integration.
 
 Environment Variables:
-    CI_MERGE=<mode>      # Backward compat (legacy name)
-    CI_AI_MERGE_MODE=<mode>     # New standard name
-
-Both work - CI_AI_MERGE_MODE takes precedence.
+    CI_AI_MERGE_MODE=<mode>     # Merge mode: merge, no-overwrite, force, skip
 
 Usage:
     # Via bootstrap (automatic)
-    CI_MERGE=merge ./ci/bootstrap --install
+    CI_AI_MERGE_MODE=merge ./ci/bootstrap --install
 
-    # Direct (manual)
+    # Direct (manual - preferred)
     ./ci/ai setup --mode merge
 """
 
@@ -48,8 +45,8 @@ def main() -> int:
         return 0
 
     elif action == "install":
-        # Get merge mode (backward compat: CI_MERGE or CI_AI_MERGE_MODE)
-        merge_mode = os.getenv("CI_AI_MERGE_MODE") or os.getenv("CI_MERGE", "skip")
+        # Get merge mode from ENV
+        merge_mode = os.getenv("CI_AI_MERGE_MODE", "skip")
 
         if merge_mode == "skip":
             print("[INFO] CI_AI_MERGE_MODE=skip, skipping AI setup")
