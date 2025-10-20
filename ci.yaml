@@ -5,6 +5,19 @@
 # Changes to this file are version-controlled and affect all CI runs.
 
 # ============================================================================
+# Test Validation (Required before build/publish)
+# ============================================================================
+tests:
+  required: true                # Tests must pass before build/publish
+  checklist:
+    - pytest_tests              # Run pytest test suite
+    - ruff_lint                 # Lint with ruff
+    - black_format_check        # Check black formatting
+    - mypy_type_check           # Type checking (optional)
+  min_coverage: 80              # Minimum test coverage percentage
+  fail_fast: false              # Continue running all tests even if one fails
+
+# ============================================================================
 # Nuitka Build Configuration
 # ============================================================================
 nuitka:
