@@ -153,6 +153,99 @@ If within 30 days of cutoff:
 
 ---
 
+## Configuration Management (No Hardcoding)
+
+**No hardcoding of values as the default position.**
+
+All configuration values should ideally use the **HyperSec configuration cascade:**
+
+```
+CLI switch > ENV value (prefixed) > .env file > app-specific.yaml > default.yaml > hardcoded value
+(leftmost has precedence)
+```
+
+**Not all steps apply in all scenarios**, but follow this hierarchy when designing configuration.
+
+### Configuration Cascade Explained
+
+**1. CLI switch** (highest priority)
+```bash
+./app --port 8080 --debug
+```
+
+**2. Environment variable (prefixed)**
+```bash
+MYAPP_PORT=8080 MYAPP_DEBUG=true ./app
+```
+
+**3. .env file**
+```bash
+# .env
+MYAPP_PORT=8080
+MYAPP_DEBUG=true
+```
+
+**4. App-specific YAML** (project-specific config)
+```yaml
+# config/production.yaml
+port: 8080
+debug: false
+```
+
+**5. Default YAML** (shipped defaults)
+```yaml
+# config/default.yaml
+port: 3000
+debug: false
+```
+
+**6. Hardcoded value** (last resort, lowest priority)
+```python
+PORT = int(os.getenv("MYAPP_PORT", 3000))  # 3000 is hardcoded default
+```
+
+### When Writing Code
+
+**❌ WRONG - Hardcoded value:**
+```python
+def connect_database():
+    host = "localhost"  # Hardcoded!
+    port = 5432         # Hardcoded!
+    return connect(host, port)
+```
+
+**✅ RIGHT - Configuration cascade:**
+```python
+def connect_database():
+    # Cascade: ENV > config file > default
+    host = os.getenv("MYAPP_DB_HOST", config.get("database.host", "localhost"))
+    port = int(os.getenv("MYAPP_DB_PORT", config.get("database.port", 5432)))
+    return connect(host, port)
+```
+
+**✅ BETTER - Use configuration library:**
+```python
+from dynaconf import Dynaconf
+
+config = Dynaconf(
+    envvar_prefix="MYAPP",
+    settings_files=["config/default.yaml", "config/production.yaml"],
+)
+
+def connect_database():
+    return connect(config.database.host, config.database.port)
+```
+
+### Principles
+
+- ✅ **Make everything configurable** - Don't hardcode paths, URLs, timeouts
+- ✅ **Use environment variables** - Prefix with app name (MYAPP_*)
+- ✅ **Provide defaults** - But allow override at every level
+- ✅ **Document configuration** - Show cascade in README or docs
+- ❌ **Don't hardcode** - Especially not secrets, paths, URLs, timeouts
+
+---
+
 ## Verification Requirements
 
 **Before suggesting or modifying code, ALWAYS verify:**
