@@ -37,9 +37,6 @@ htmlcov/
 *~
 .DS_Store
 
-#
--memory/
-
 # Environment & Secrets
 .env
 .env.local
@@ -51,5 +48,8 @@ htmlcov/
 *.tmp
 
 # CI
-ci-local/.tmp/
+ci-local/logs/
 .test-*
+
+#
+-memory/
