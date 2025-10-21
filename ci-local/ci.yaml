@@ -129,6 +129,24 @@ package:
 #   - Cost: ~$0.84/month for 10 releases (with BuildJet)
 
 # ============================================================================
+# AI Assistant Configuration (/ci/ai tool)
+# ============================================================================
+ai:
+  merge_mode: skip  # Default: skip (opt-in model)
+  _tier: pro-max
+  check_requirements: true
+  mcp:
+    enabled: true
+    servers:
+      sequential_thinking:
+        enabled: true
+        package: "@modelcontextprotocol/server-sequential-thinking"
+      memory:
+        enabled: true
+        package: "mcp-knowledge-graph"
+        memory_path: "-memory"
+
+# ============================================================================
 # Environment Variable Overrides
 # ============================================================================
 # All settings can be overridden with environment variables using prefix:
@@ -138,5 +156,7 @@ package:
 #   HYPERLIB_CI_NUITKA_ENABLED=true
 #   HYPERLIB_CI_NUITKA_PROTECTION_LEVEL=none
 #   HYPERLIB_CI_NUITKA_PLATFORMS_MACOS_ARM64=true
+#   HYPERLIB_CI_AI_MERGE_MODE=merge
+#   HYPERLIB_CI_AI__TIER=pro
 #
 # Precedence: ENV > ci/ci.yaml > defaults
