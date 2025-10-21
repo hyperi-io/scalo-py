@@ -1,0 +1,27 @@
+# CI local working directory - gitignored items
+
+# Virtual environments
+.venv/
+*.egg-info/
+
+# Logs
+logs/
+*.log
+
+# Temporary files
+.tmp/
+*.pyc
+__pycache__/
+
+# Environment files (contains secrets)
+.env
+
+# Build artifacts
+dist/
+build/
+
+# Keep .d directories (project-specific CI extensions)
+!ai.d/
+!bootstrap.d/
+!gitci.d/
+!run.d/
