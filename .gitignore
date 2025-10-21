@@ -37,6 +37,9 @@ htmlcov/
 *~
 .DS_Store
 
+#
+-memory/
+
 # Environment & Secrets
 .env
 .env.local
