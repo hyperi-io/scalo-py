@@ -1,5 +1,0 @@
-# Virtual environment (CI tools installation)
-.venv
-
-# Environment file (contains secrets)
-.env

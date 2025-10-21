@@ -66,8 +66,7 @@ Runs between standard tests (20) and build (80).
 import sys
 from pathlib import Path
 
-# Import from ci_lib (from ci/ submodule)
-sys.path.insert(0, str(Path(__file__).parent.parent.parent.parent / "ci/common"))
+# Import from ci_lib (already in sys.path from module header)
 from ci_lib import logger
 
 def main():
