@@ -53,3 +53,173 @@ ci-local/logs/
 
 #
 -memory/
+
+
+# === ci/common gitignore patterns ===
+# Common gitignore patterns for all project types
+# Language-agnostic patterns
+
+# Operating System Files
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+Desktop.ini
+
+# IDE and Editor Files
+.project
+.classpath
+.settings/
+*.sublime-project
+*.sublime-workspace
+
+# Temporary Files
+*.temp
+*.bak
+tmp/
+
+# CI/Build Artifacts
+*.pyc
+*.pyo
+.mypy_cache/
+.ruff_cache/
+
+# Environment Files (CRITICAL - Contains Secrets)
+.env.*.local
+
+# Keys and Certificates (CRITICAL - Contains Secrets)
+*.key
+*.pem
+*.crt
+*.cert
+!.keys/.gitkeep
+.keys/*
+
+# Version Control
+.git/
+.gitattributes.local
+.gitignore.local
+# === End ci/common ===
+
+
+# === ci/python gitignore patterns ===
+# Python-specific gitignore patterns
+
+# Python Byte-compiled / Optimized / DLL files
+
+# Python Distribution / Packaging
+develop-eggs/
+downloads/
+eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+share/python-wheels/
+.installed.cfg
+*.egg
+MANIFEST
+
+# PyInstaller
+*.manifest
+*.spec
+
+# Installer logs
+pip-log.txt
+pip-delete-this-directory.txt
+
+# Unit test / Coverage reports
+.cache
+nosetests.xml
+coverage.xml
+*.cover
+*.py,cover
+.hypothesis/
+cover/
+
+# Translations
+*.mo
+*.pot
+
+# Django
+local_settings.py
+db.sqlite3
+db.sqlite3-journal
+
+# Flask
+instance/
+.webassets-cache
+
+# Scrapy
+.scrapy
+
+# Sphinx documentation
+docs/_build/
+
+# PyBuilder
+.pybuilder/
+target/
+
+# Jupyter Notebook
+.ipynb_checkpoints
+*.ipynb
+
+# IPython
+profile_default/
+ipython_config.py
+
+# pyenv
+.python-version
+
+# pipenv
+Pipfile.lock
+
+# poetry
+poetry.lock
+
+# pdm
+.pdm.toml
+
+# PEP 582
+__pypackages__/
+
+# Celery
+celerybeat-schedule
+celerybeat.pid
+
+# SageMath parsed files
+*.sage.py
+
+# Environments
+.venv
+env/
+env.bak/
+venv.bak/
+
+# Spyder project settings
+.spyderproject
+.spyproject
+
+# Rope project settings
+.ropeproject
+
+# mkdocs documentation
+/site
+
+# mypy
+.dmypy.json
+dmypy.json
+
+# Pyre type checker
+.pyre/
+
+# pytype static type analyzer
+.pytype/
+
+# Cython debug symbols
+cython_debug/
+# === End ci/python ===
