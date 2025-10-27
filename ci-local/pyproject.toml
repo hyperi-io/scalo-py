@@ -54,3 +54,10 @@ dependencies = [
 # 1. Add them to dependencies above
 # 2. Run: cd ci-local && uv lock
 # 3. Commit ci-local/uv.lock
+
+[tool.uv]
+# Enforce ci-local/.venv location (relative to this pyproject.toml)
+# This ensures 'uv sync' in ci-local/ directory always uses ci-local/.venv
+# Prevents confusion with project .venv (at parent directory)
+project-dir = "."
+venv = ".venv"
