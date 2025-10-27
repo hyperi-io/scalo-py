@@ -7,7 +7,7 @@
 name = "hyperlib-ci"
 version = "1.0.0"
 description = "CI tools for hyperlib"
-requires-python = ">=3.9"  # CI tools work with Python 3.9+
+requires-python = ">=3.11"  # CI tools require Python 3.11+
 
 # CI tool dependencies (installed in ci/.venv)
 dependencies = [

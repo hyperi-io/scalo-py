@@ -2,52 +2,6 @@
 # Project Configuration
 # ============================================================================
 
-tests:
-  required: false
-  checklist:
-  - pytest_tests
-  - ruff_lint
-  - black_format_check
-  - mypy_type_check
-  min_coverage: 80
-  fail_fast: false
-nuitka:
-  enabled: true
-  build_type: package
-  triggers:
-    on_release_tags: true
-    on_pull_requests: false
-    on_push_to_main: false
-  protection_level: recommended
-  platforms:
-    linux_x64: true
-    linux_arm64: true
-    macos_arm64: false
-  buildjet:
-    enabled: true
-  cirrus:
-    enabled: true
-  publish:
-    enabled: true
-    repository: hypersec-nuitka-binaries
-publish:
-  verify_enabled: false
-  verify_timeout: 600
-package: null
-ai:
-  merge_mode: skip
-  _tier: pro-max
-  check_requirements: true
-  mcp:
-    enabled: true
-    servers:
-      sequential_thinking:
-        enabled: true
-        package: '@modelcontextprotocol/server-sequential-thinking'
-      memory:
-        enabled: true
-        package: mcp-knowledge-graph
-        memory_path: -memory
 project:
   languages:
-  - python
+    - python
