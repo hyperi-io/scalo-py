@@ -1,20 +1,15 @@
-# CI Tool Dependencies (per-project lock)
-# This file pins CI tool versions for THIS PROJECT ONLY
-# Allows each project to control CI tool versions independently from hyperci
-#
-# CRITICAL: This pyproject.toml is for ci-local/.venv ONLY
-# CI scripts enforce ci-local/.venv usage at runtime (sys.prefix checks)
-# Installing these tools anywhere else (e.g., .venv) will NOT work
-# Bootstrap installs to: ci-local/.venv (via: cd ci-local && uv sync)
+# CI Tool Dependencies Template
+# This template is copied to ci-local/pyproject.toml during bootstrap
+# It defines CI tool dependencies installed in ci-local/.venv (NOT project .venv)
+# Each project can customize their copy in ci-local/pyproject.toml
 
 [project]
-name = "ci-tools"
+name = "hyperlib-ci"
 version = "1.0.0"
-description = "CI tools for this project"
-requires-python = ">=3.9"
+description = "CI tools for hyperlib"
+requires-python = ">=3.9"  # CI tools work with Python 3.9+
 
-# CI tool dependencies (installed in ci-local/.venv)
-# These are locked in ci-local/uv.lock for reproducibility
+# CI tool dependencies (installed in ci/.venv)
 dependencies = [
     "setuptools>=70.0.0",
     "wheel>=0.42.0",
@@ -48,9 +43,28 @@ dependencies = [
 ]
 
 # Nuitka is NOT in dependencies - installed separately by 25-nuitka.py
-# This allows JFrog enforcement (nuitka-commercial vs nuitka OSS)
+# This allows JFrog enforcement (nuitka-commercial vs nuitka OSS) and smart detection
 
-# To add custom CI tools for this project:
-# 1. Add them to dependencies above
-# 2. Run: cd ci-local && uv lock
-# 3. Commit ci-local/uv.lock
+# ============================================================================
+# Package Index Configuration (uv)
+# ============================================================================
+# Force Nuitka to ONLY use JFrog Artifactory (no fallback to public PyPI)
+# JFrog has Nuitka Commercial 2.7.16, public PyPI has OSS 2.8.1
+#
+# NOTE: uv index URLs require credentials to be set via environment variables:
+#   UV_INDEX_<NAME>_USERNAME and UV_INDEX_<NAME>_PASSWORD
+#   OR use keyring for credential storage
+#
+# For now, we cannot use tool.uv.sources reliably because:
+# 1. URL authentication is complex with uv
+# 2. JFrog credentials need to be injected at runtime
+#
+# Instead, bootstrap will use uv pip install with explicit --index-url flag
+
+# [[tool.uv.index]]
+# name = "jfrog"
+# url = "https://hypersec.jfrog.io/artifactory/api/pypi/hypersec-pypi-local/simple"
+# explicit = true
+#
+# [tool.uv.sources]
+# nuitka = { index = "jfrog" }
