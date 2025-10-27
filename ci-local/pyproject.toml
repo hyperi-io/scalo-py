@@ -1,6 +1,11 @@
 # CI Tool Dependencies (per-project lock)
 # This file pins CI tool versions for THIS PROJECT ONLY
 # Allows each project to control CI tool versions independently from hyperci
+#
+# CRITICAL: This pyproject.toml is for ci-local/.venv ONLY
+# CI scripts enforce ci-local/.venv usage at runtime (sys.prefix checks)
+# Installing these tools anywhere else (e.g., .venv) will NOT work
+# Bootstrap installs to: ci-local/.venv (via: cd ci-local && uv sync)
 
 [project]
 name = "ci-tools"
@@ -16,6 +21,7 @@ dependencies = [
     "build>=1.0.0",
     "pyyaml>=6.0",      # MUST BE FIRST - required for ci/ci.yaml config
     "loguru>=0.7.0",    # RFC3339 logging
+    "dynaconf>=3.2.0",  # Configuration management (required by ci_lib.py)
     "mergedeep>=1.3.4", # Deep merge for JSON/dict (replaces custom deep_merge_json)
     # Testing
     "pytest>=8.0.0",
