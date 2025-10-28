@@ -648,17 +648,9 @@ class TestHelmBasedDeployment(ContainerTestBase):
         test_name = request.node.name
         log_file = self.create_test_log_file(test_name)
 
-        # Pre-flight: Configure Minikube to use Artifactory (if credentials present)
-        configured, message = configure_minikube_registry()
-        if configured:
-            print(f"\n✓ {message}")
-        else:
-            print(f"\n⚠ {message}")
-
-        # Pre-flight: Check registry access
-        accessible, status = harness.check_container_registry_access()
-        if status.get("throttled"):
-            pytest.skip(f"Registry throttled: {status['message']}")
+        # Note: Images pre-pulled into Minikube during setup
+        # Using imagePullPolicy: IfNotPresent in templates
+        # No registry authentication needed for public images
 
         # Create namespace
         self.run_command(["kubectl", "create", "namespace", namespace])
@@ -1001,12 +993,9 @@ class TestHelmDeployment(ContainerTestBase):
         test_id = f"hyperlib-{uuid.uuid4().hex[:8]}"
         namespace = f"helm-test-{test_id}"
 
-        # Pre-flight: Configure Minikube to use Artifactory (if credentials present)
-        configured, message = configure_minikube_registry()
-        if configured:
-            print(f"\n✓ {message}")
-        else:
-            print(f"\n⚠ {message}")
+        # Note: Images pre-pulled into Minikube during setup
+        # Using imagePullPolicy: IfNotPresent in templates
+        # No registry authentication needed for public images
 
         # Create namespace
         self.run_command(["kubectl", "create", "namespace", namespace])
