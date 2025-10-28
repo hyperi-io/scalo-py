@@ -601,55 +601,75 @@ def check_registry_throttling(namespace: str) -> tuple[bool, str]:
         return False, f"Throttling check error: {e}"
 
 
-def check_docker_hub_rate_limit() -> tuple[bool, dict]:
+def check_container_registry_access() -> tuple[bool, dict]:
     """
-    Check Docker Hub rate limit status using token authentication.
+    Check container registry access (Artifactory).
 
-    Returns current rate limit and remaining pulls.
-    Requires Docker authentication (docker login) for accurate limits.
+    Tests if registry is accessible and authentication is working.
 
     Returns:
-        (authenticated: bool, limits: dict)
+        (accessible: bool, status: dict)
 
-    limits dict contains:
-        - limit: Total pulls allowed in window (e.g., 200 for authenticated)
-        - remaining: Pulls remaining in current window
-        - reset_time: When limit resets (Unix timestamp)
+    status dict contains:
+        - authenticated: bool
+        - message: str
+        - throttled: bool (if rate limiting detected)
 
     Example:
-        authenticated, limits = check_docker_hub_rate_limit()
-        if limits['remaining'] < 10:
-            print(f"WARNING: Only {limits['remaining']} pulls remaining")
+        accessible, status = check_container_registry_access()
+        if status.get('throttled'):
+            pytest.skip(f"Registry throttled: {status['message']}")
     """
+    artifactory_url = os.getenv("ARTIFACTORY_CONTAINER_URL")
+
+    if not artifactory_url:
+        return False, {
+            "authenticated": False,
+            "message": "ARTIFACTORY_CONTAINER_URL not configured"
+        }
+
     try:
-        # Pull a small manifest to check rate limits without actually pulling image
+        # Test registry access by pulling a small manifest
+        # Using busybox as it's tiny and commonly cached
         result = subprocess.run(
-            ["docker", "manifest", "inspect", "busybox:latest"],
+            ["docker", "manifest", "inspect", f"{artifactory_url}/hypersec-docker/library/busybox:latest"],
             capture_output=True,
             text=True,
             timeout=15,
         )
 
-        # Docker doesn't expose rate limit headers directly via CLI
-        # Best we can do is detect authentication status
         if result.returncode == 0:
             return True, {
                 "authenticated": True,
-                "message": "Docker Hub access working (authenticated users: 200 pulls/6hr)"
+                "message": f"Artifactory registry accessible: {artifactory_url}"
             }
         else:
-            # Check if error mentions rate limiting
+            # Check if error mentions throttling/rate limiting
             stderr_lower = result.stderr.lower()
-            if any(pattern in stderr_lower for pattern in ["rate limit", "toomanyrequests", "429"]):
+            throttle_patterns = ["rate limit", "toomanyrequests", "429", "quota", "throttl"]
+
+            if any(pattern in stderr_lower for pattern in throttle_patterns):
                 return False, {
                     "authenticated": False,
                     "throttled": True,
-                    "message": "Docker Hub rate limit exceeded"
+                    "message": f"Registry rate limit/throttling detected: {artifactory_url}"
                 }
 
-            return False, {"authenticated": False, "message": result.stderr.strip()}
+            return False, {
+                "authenticated": False,
+                "message": f"Registry access failed: {result.stderr.strip()}"
+            }
 
     except subprocess.TimeoutExpired:
-        return False, {"error": "Docker Hub check timed out"}
+        return False, {"error": "Registry check timed out after 15s"}
     except Exception as e:
         return False, {"error": str(e)}
+
+
+def check_docker_hub_rate_limit() -> tuple[bool, dict]:
+    """
+    Legacy function - use check_container_registry_access() instead.
+
+    Kept for backward compatibility with existing test code.
+    """
+    return check_container_registry_access()
