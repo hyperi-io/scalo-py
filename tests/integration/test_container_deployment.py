@@ -798,9 +798,12 @@ class TestHelmBasedDeployment(ContainerTestBase):
             # Create Service template
             (templates_dir / "service.yaml").write_text(self.load_fixture("test_container_deployment_24"))
 
-            # Create ConfigMap with application code
+            # Install Helm chart
+            release_name = f"metrics-{test_id}"
+
+            # Create ConfigMap with application code (must match template {{ .Release.Name }}-app)
             app_code = self.load_fixture("test_container_deployment_9")
-            configmap_name = f"{test_id}-app"
+            configmap_name = f"{release_name}-app"
             self.run_command(
                 [
                     "kubectl",
@@ -813,11 +816,10 @@ class TestHelmBasedDeployment(ContainerTestBase):
                 ]
             )
 
-            # Install Helm chart
-            release_name = f"metrics-{test_id}"
+            # Install Helm chart (no --wait for deployments we check separately)
             self.run_command(
-                ["helm", "install", release_name, str(chart_dir), "-n", namespace, "--wait", "--timeout", "90s"],
-                timeout=120,
+                ["helm", "install", release_name, str(chart_dir), "-n", namespace],
+                timeout=30,
             )
             helm_env["releases"].append(release_name)
 
@@ -934,11 +936,11 @@ class TestHelmBasedDeployment(ContainerTestBase):
             # Create Service template
             (templates_dir / "service.yaml").write_text(self.load_fixture("test_container_deployment_20"))
 
-            # Install Helm chart
+            # Install Helm chart (no --wait, we check deployment readiness separately)
             release_name = f"api-{test_id}"
             self.run_command(
-                ["helm", "install", release_name, str(chart_dir), "-n", namespace, "--wait", "--timeout", "90s"],
-                timeout=120,
+                ["helm", "install", release_name, str(chart_dir), "-n", namespace],
+                timeout=30,
             )
             helm_env["releases"].append(release_name)
 
