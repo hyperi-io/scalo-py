@@ -736,9 +736,12 @@ class TestHelmBasedDeployment(ContainerTestBase):
                 ["kubectl", "create", "configmap", configmap_name, f"--from-literal=app.py={app_code}", "-n", namespace]
             )
             try:
+                # Note: No --wait flag for pods with restartPolicy: Never
+                # Pods that complete go to "Succeeded" not "Ready", Helm --wait times out
+                # Instead, we wait_for_condition below for pod completion
                 self.run_command(
-                    ["helm", "install", release_name, str(chart_dir), "-n", namespace, "--wait", "--timeout", "120s"],
-                    timeout=150,
+                    ["helm", "install", release_name, str(chart_dir), "-n", namespace],
+                    timeout=30,
                 )
                 helm_env["releases"].append(release_name)
             except subprocess.CalledProcessError as e:
@@ -1073,10 +1076,11 @@ class TestHelmDeployment(ContainerTestBase):
             service_template.write_text(self.load_fixture("test_container_deployment_15"))
 
             # Install Helm chart
+            # Note: No --wait flag for deployments that we check separately below
             release_name = f"test-{test_id}"
             self.run_command(
-                ["helm", "install", release_name, str(chart_dir), "-n", namespace, "--wait", "--timeout", "120s"],
-                timeout=150,
+                ["helm", "install", release_name, str(chart_dir), "-n", namespace],
+                timeout=30,
             )
             helm_test_env["releases"].append(release_name)
 
