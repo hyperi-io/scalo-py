@@ -476,68 +476,44 @@ def smart_run_function(
 
 def container_registry_login() -> tuple[bool, str]:
     """
-    Authenticate with container registries using credentials from .env file.
+    Authenticate with Artifactory container registry from .env file.
 
-    Tries registries in order of precedence:
-    1. Docker Hub (if DOCKER_USERNAME + DOCKER_PASSWORD set) - EXPLICIT CHOICE
-    2. Artifactory (if ARTIFACTORY_CONTAINER_URL + credentials set) - CACHED FALLBACK
-    3. Direct (no authentication) - LAST RESORT
+    Uses JFrog Artifactory as Docker Hub caching proxy for faster pulls
+    and no rate limiting.
 
     Returns:
         (success: bool, message: str)
 
-    Example .env (Docker Hub - explicit):
-        DOCKER_USERNAME=myuser
-        DOCKER_PASSWORD=mytoken
-
-    Example .env (Artifactory - cached fallback):
+    Example .env:
         ARTIFACTORY_CONTAINER_URL=hypersec.jfrog.io
         ARTIFACTORY_USERNAME=your-email@hypersec.io
         ARTIFACTORY_PASSWORD=your-jfrog-password
     """
-    # 1. Try Docker Hub first if explicitly configured
-    docker_user = os.getenv("DOCKER_USERNAME")
-    docker_pass = os.getenv("DOCKER_PASSWORD")
-
-    if docker_user and docker_pass:
-        try:
-            result = subprocess.run(
-                ["docker", "login", "-u", docker_user, "--password-stdin"],
-                input=docker_pass,
-                capture_output=True,
-                text=True,
-                timeout=30,
-            )
-
-            if result.returncode == 0:
-                return True, f"Docker Hub authenticated as {docker_user}"
-            # Docker Hub login failed, try next registry
-        except Exception:
-            pass  # Try next registry
-
-    # 2. Try Artifactory cache (fallback - uses existing credentials)
     artifactory_url = os.getenv("ARTIFACTORY_CONTAINER_URL")
     artifactory_user = os.getenv("ARTIFACTORY_USERNAME")
     artifactory_pass = os.getenv("ARTIFACTORY_PASSWORD")
 
-    if artifactory_url and artifactory_user and artifactory_pass:
-        try:
-            result = subprocess.run(
-                ["docker", "login", artifactory_url, "-u", artifactory_user, "--password-stdin"],
-                input=artifactory_pass,
-                capture_output=True,
-                text=True,
-                timeout=30,
-            )
+    if not (artifactory_url and artifactory_user and artifactory_pass):
+        return False, "ARTIFACTORY_CONTAINER_URL or credentials not set in .env"
 
-            if result.returncode == 0:
-                return True, f"Artifactory container cache authenticated: {artifactory_url}"
-            # Artifactory login failed, continue to direct
-        except Exception:
-            pass  # Continue to direct
+    try:
+        result = subprocess.run(
+            ["docker", "login", artifactory_url, "-u", artifactory_user, "--password-stdin"],
+            input=artifactory_pass,
+            capture_output=True,
+            text=True,
+            timeout=30,
+        )
 
-    # 3. Direct (no authentication)
-    return False, "No container registry credentials configured (using direct/unauthenticated pulls)"
+        if result.returncode == 0:
+            return True, f"Artifactory container registry authenticated: {artifactory_url}"
+        else:
+            return False, f"Artifactory login failed: {result.stderr.strip()}"
+
+    except subprocess.TimeoutExpired:
+        return False, "Artifactory login timed out after 30s"
+    except Exception as e:
+        return False, f"Artifactory login error: {e}"
 
 
 def docker_login_from_env() -> tuple[bool, str]:
