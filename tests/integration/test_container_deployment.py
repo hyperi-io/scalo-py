@@ -731,8 +731,8 @@ class TestHelmBasedDeployment(ContainerTestBase):
             release_name = f"pod-{test_id}"
             try:
                 self.run_command(
-                    ["helm", "install", release_name, str(chart_dir), "-n", namespace, "--wait", "--timeout", "60s"],
-                    timeout=90,
+                    ["helm", "install", release_name, str(chart_dir), "-n", namespace, "--wait", "--timeout", "120s"],
+                    timeout=150,
                 )
                 helm_env["releases"].append(release_name)
             except subprocess.CalledProcessError as e:
@@ -1061,8 +1061,8 @@ class TestHelmDeployment(ContainerTestBase):
             # Install Helm chart
             release_name = f"test-{test_id}"
             self.run_command(
-                ["helm", "install", release_name, str(chart_dir), "-n", namespace, "--wait", "--timeout", "60s"],
-                timeout=90,
+                ["helm", "install", release_name, str(chart_dir), "-n", namespace, "--wait", "--timeout", "120s"],
+                timeout=150,
             )
             helm_test_env["releases"].append(release_name)
 
