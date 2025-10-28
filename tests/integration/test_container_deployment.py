@@ -632,6 +632,18 @@ class TestHelmBasedDeployment(ContainerTestBase):
         # Create namespace
         self.run_command(["kubectl", "create", "namespace", namespace])
 
+        # Create Docker Hub imagePullSecret in test namespace if credentials available
+        docker_username = os.getenv("DOCKER_USERNAME")
+        docker_password = os.getenv("DOCKER_PASSWORD")
+        if docker_username and docker_password:
+            self.run_command([
+                "kubectl", "create", "secret", "docker-registry", "dockerhub-secret",
+                "--docker-server=https://index.docker.io/v1/",
+                f"--docker-username={docker_username}",
+                f"--docker-password={docker_password}",
+                "-n", namespace
+            ], check=False)  # Don't fail if secret already exists
+
         env = {
             "test_id": test_id,
             "namespace": namespace,
@@ -953,6 +965,18 @@ class TestHelmDeployment(ContainerTestBase):
 
         # Create namespace
         self.run_command(["kubectl", "create", "namespace", namespace])
+
+        # Create Docker Hub imagePullSecret if credentials available
+        docker_username = os.getenv("DOCKER_USERNAME")
+        docker_password = os.getenv("DOCKER_PASSWORD")
+        if docker_username and docker_password:
+            self.run_command([
+                "kubectl", "create", "secret", "docker-registry", "dockerhub-secret",
+                "--docker-server=https://index.docker.io/v1/",
+                f"--docker-username={docker_username}",
+                f"--docker-password={docker_password}",
+                "-n", namespace
+            ], check=False)  # Don't fail if secret already exists
 
         env = {
             "test_id": test_id,
