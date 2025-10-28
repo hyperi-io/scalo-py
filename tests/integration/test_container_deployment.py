@@ -875,7 +875,7 @@ class TestHelmBasedDeployment(ContainerTestBase):
                     check=False,
                 )
 
-            # Check metrics endpoint
+            # Check metrics endpoint (using Python instead of wget - not installed in slim image)
             result = self.run_command(
                 [
                     "kubectl",
@@ -884,11 +884,9 @@ class TestHelmBasedDeployment(ContainerTestBase):
                     "-n",
                     namespace,
                     "--",
-                    "wget",
-                    "-q",
-                    "-O",
-                    "-",
-                    "http://localhost:8080/metrics",
+                    "python",
+                    "-c",
+                    "import urllib.request; print(urllib.request.urlopen('http://localhost:8080/metrics').read().decode())",
                 ]
             )
 
