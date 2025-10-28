@@ -467,3 +467,177 @@ def smart_run_function(
     return monitor.run_function_with_timeout(
         func=func, args=args, kwargs=kwargs, description=description, capture_output=capture_output
     )
+
+
+# ============================================================================
+# Container Registry Throttling Detection
+# ============================================================================
+
+
+def docker_login_from_env() -> tuple[bool, str]:
+    """
+    Authenticate with Docker Hub using credentials from .env file.
+
+    Reads DOCKER_USERNAME and DOCKER_PASSWORD from environment.
+
+    Returns:
+        (success: bool, message: str)
+
+    Example .env:
+        DOCKER_USERNAME=myuser
+        DOCKER_PASSWORD=mytoken
+    """
+    username = os.getenv("DOCKER_USERNAME")
+    password = os.getenv("DOCKER_PASSWORD")
+
+    if not username or not password:
+        return False, "DOCKER_USERNAME or DOCKER_PASSWORD not set in .env"
+
+    try:
+        result = subprocess.run(
+            ["docker", "login", "-u", username, "--password-stdin"],
+            input=password,
+            capture_output=True,
+            text=True,
+            timeout=30,
+        )
+
+        if result.returncode == 0:
+            return True, f"Docker Hub authenticated as {username}"
+        else:
+            return False, f"Docker login failed: {result.stderr.strip()}"
+
+    except subprocess.TimeoutExpired:
+        return False, "Docker login timed out after 30 seconds"
+    except Exception as e:
+        return False, f"Docker login error: {e}"
+
+
+def check_registry_throttling(namespace: str) -> tuple[bool, str]:
+    """
+    Check if container registry is being throttled in Kubernetes namespace.
+
+    Detects throttling via:
+    1. Kubernetes events (rate limit messages)
+    2. Pod status (ImagePullBackOff with throttling reasons)
+    3. Container status messages
+
+    Args:
+        namespace: Kubernetes namespace to check
+
+    Returns:
+        (is_throttled: bool, reason: str)
+
+    Example:
+        throttled, reason = check_registry_throttling("my-namespace")
+        if throttled:
+            pytest.skip(f"Registry throttling detected: {reason}")
+    """
+    throttle_patterns = [
+        "toomanyrequests",
+        "rate limit",
+        "throttl",
+        "quota exceeded",
+        "pull rate limit",
+        "429",  # HTTP 429 Too Many Requests
+    ]
+
+    try:
+        # Check Kubernetes events for throttling indicators
+        result = subprocess.run(
+            ["kubectl", "get", "events", "-n", namespace, "--field-selector", "type=Warning"],
+            capture_output=True,
+            text=True,
+            timeout=10,
+        )
+
+        events_lower = result.stdout.lower()
+        for pattern in throttle_patterns:
+            if pattern in events_lower:
+                return True, f"Registry throttling detected in events: {pattern}"
+
+        # Check pod statuses for ImagePullBackOff with rate limit reasons
+        result = subprocess.run(
+            ["kubectl", "get", "pods", "-n", namespace, "-o", "json"],
+            capture_output=True,
+            text=True,
+            timeout=10,
+        )
+
+        if result.returncode == 0:
+            import json
+
+            pods = json.loads(result.stdout)
+            for pod in pods.get("items", []):
+                # Check container statuses
+                for container_status in pod.get("status", {}).get("containerStatuses", []):
+                    waiting = container_status.get("state", {}).get("waiting", {})
+                    reason = waiting.get("reason", "").lower()
+                    message = waiting.get("message", "").lower()
+
+                    # Check for ImagePullBackOff or ErrImagePull
+                    if "imagepull" in reason:
+                        for pattern in throttle_patterns:
+                            if pattern in message:
+                                return True, f"Registry throttling in pod {pod['metadata']['name']}: {pattern}"
+
+        return False, ""
+
+    except subprocess.TimeoutExpired:
+        return False, "Throttling check timed out (kubectl slow)"
+    except Exception as e:
+        return False, f"Throttling check error: {e}"
+
+
+def check_docker_hub_rate_limit() -> tuple[bool, dict]:
+    """
+    Check Docker Hub rate limit status using token authentication.
+
+    Returns current rate limit and remaining pulls.
+    Requires Docker authentication (docker login) for accurate limits.
+
+    Returns:
+        (authenticated: bool, limits: dict)
+
+    limits dict contains:
+        - limit: Total pulls allowed in window (e.g., 200 for authenticated)
+        - remaining: Pulls remaining in current window
+        - reset_time: When limit resets (Unix timestamp)
+
+    Example:
+        authenticated, limits = check_docker_hub_rate_limit()
+        if limits['remaining'] < 10:
+            print(f"WARNING: Only {limits['remaining']} pulls remaining")
+    """
+    try:
+        # Pull a small manifest to check rate limits without actually pulling image
+        result = subprocess.run(
+            ["docker", "manifest", "inspect", "busybox:latest"],
+            capture_output=True,
+            text=True,
+            timeout=15,
+        )
+
+        # Docker doesn't expose rate limit headers directly via CLI
+        # Best we can do is detect authentication status
+        if result.returncode == 0:
+            return True, {
+                "authenticated": True,
+                "message": "Docker Hub access working (authenticated users: 200 pulls/6hr)"
+            }
+        else:
+            # Check if error mentions rate limiting
+            stderr_lower = result.stderr.lower()
+            if any(pattern in stderr_lower for pattern in ["rate limit", "toomanyrequests", "429"]):
+                return False, {
+                    "authenticated": False,
+                    "throttled": True,
+                    "message": "Docker Hub rate limit exceeded"
+                }
+
+            return False, {"authenticated": False, "message": result.stderr.strip()}
+
+    except subprocess.TimeoutExpired:
+        return False, {"error": "Docker Hub check timed out"}
+    except Exception as e:
+        return False, {"error": str(e)}

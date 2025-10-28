@@ -615,6 +615,20 @@ class TestHelmBasedDeployment(ContainerTestBase):
         test_name = request.node.name
         log_file = self.create_test_log_file(test_name)
 
+        # Pre-flight: Check for Docker Hub authentication
+        success, message = harness.docker_login_from_env()
+        if success:
+            print(f"\n✓ {message}")
+        else:
+            print(f"\n⚠ Docker not authenticated: {message}")
+            print("  Unauthenticated: 100 pulls/6hr, Authenticated: 200 pulls/6hr")
+            print("  Set DOCKER_USERNAME and DOCKER_PASSWORD in .env to avoid throttling")
+
+        # Pre-flight: Check Docker Hub rate limit status
+        authenticated, limits = harness.check_docker_hub_rate_limit()
+        if "throttled" in limits:
+            pytest.skip(f"Docker Hub rate limit exceeded: {limits['message']}")
+
         # Create namespace
         self.run_command(["kubectl", "create", "namespace", namespace])
 
@@ -678,11 +692,18 @@ class TestHelmBasedDeployment(ContainerTestBase):
 
             # Install Helm chart
             release_name = f"pod-{test_id}"
-            self.run_command(
-                ["helm", "install", release_name, str(chart_dir), "-n", namespace, "--wait", "--timeout", "60s"],
-                timeout=90,
-            )
-            helm_env["releases"].append(release_name)
+            try:
+                self.run_command(
+                    ["helm", "install", release_name, str(chart_dir), "-n", namespace, "--wait", "--timeout", "60s"],
+                    timeout=90,
+                )
+                helm_env["releases"].append(release_name)
+            except subprocess.CalledProcessError as e:
+                # Check if failure was due to registry throttling
+                throttled, reason = harness.check_registry_throttling(namespace)
+                if throttled:
+                    pytest.skip(f"Helm install failed due to registry throttling: {reason}")
+                raise  # Re-raise if not throttling
 
             # Wait for pod to complete
             def pod_completed():
