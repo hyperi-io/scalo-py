@@ -4,6 +4,8 @@ metadata:
   name: {pod_name}
   namespace: {namespace}
 spec:
+  imagePullSecrets:
+    - name: registry-secret
   containers:
   - name: test-container
     image: python:3.11-slim

@@ -6,6 +6,8 @@ metadata:
   labels:
     app: {{ .Release.Name }}
 spec:
+  imagePullSecrets:
+    - name: registry-secret
   restartPolicy: {{ .Values.restartPolicy }}
   containers:
   - name: app

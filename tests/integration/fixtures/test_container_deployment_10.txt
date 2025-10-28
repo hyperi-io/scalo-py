@@ -19,6 +19,8 @@ spec:
         prometheus.io/port: "8080"
         prometheus.io/path: "/metrics"
     spec:
+      imagePullSecrets:
+        - name: registry-secret
       containers:
       - name: metrics-app
         image: python:3.11-slim

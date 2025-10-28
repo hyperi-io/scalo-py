@@ -13,6 +13,8 @@ spec:
       labels:
         app: {app_label}
     spec:
+      imagePullSecrets:
+        - name: registry-secret
       containers:
       - name: api
         image: nginx:alpine
