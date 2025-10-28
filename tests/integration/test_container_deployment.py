@@ -68,23 +68,6 @@ def check_tools_and_warn():
 TOOLS_STATUS = check_tools_and_warn()
 
 
-# Register cleanup function for Minikube
-def cleanup_minikube():
-    """Stop Minikube if we started it for tests."""
-    if os.environ.get("_MINIKUBE_STARTED_BY_TEST") == "1":
-        print("Stopping Minikube (started by tests)...")
-        try:
-            subprocess.run(["minikube", "stop"], timeout=60, capture_output=True)
-            print("Minikube stopped")
-        except Exception as e:
-            print(f"Failed to stop Minikube: {e}")
-        finally:
-            del os.environ["_MINIKUBE_STARTED_BY_TEST"]
-
-
-import atexit
-
-atexit.register(cleanup_minikube)
 
 
 # Tool availability checks
@@ -98,7 +81,14 @@ def docker_available() -> bool:
 
 
 def minikube_available() -> bool:
-    """Check if Minikube is installed and can be started."""
+    """
+    Check if Minikube is installed and running.
+
+    Does NOT start Minikube - user must run 'minikube start' manually first.
+
+    Returns:
+        True if Minikube is running, False otherwise
+    """
     try:
         # Check if minikube is installed
         result = subprocess.run(["minikube", "version"], capture_output=True, text=True, timeout=5)
@@ -110,30 +100,16 @@ def minikube_available() -> bool:
         if result.returncode == 0:
             try:
                 status = json.loads(result.stdout)
-                return status.get("Host") == "Running"
+                is_running = status.get("Host") == "Running"
+                if not is_running:
+                    print("⚠ Minikube installed but not running - run 'minikube start' first")
+                return is_running
             except json.JSONDecodeError:
-                pass
+                return False
 
-        # Try to start minikube if it's not running
-        print("Minikube installed but not running, attempting to start...")
-        result = subprocess.run(
-            ["minikube", "start", "--driver=docker", "--memory=2048"],
-            capture_output=True,
-            text=True,
-            timeout=180,  # 3 minutes timeout for starting
-        )
+        return False
 
-        if result.returncode == 0:
-            print("Minikube started successfully for tests")
-            # Mark that we started it so we can stop it after tests
-            os.environ["_MINIKUBE_STARTED_BY_TEST"] = "1"
-            return True
-        else:
-            print(f"Failed to start Minikube: {result.stderr}")
-            return False
-
-    except (FileNotFoundError, subprocess.TimeoutExpired) as e:
-        print(f"Minikube check failed: {e}")
+    except (FileNotFoundError, subprocess.TimeoutExpired, Exception):
         return False
 
 
