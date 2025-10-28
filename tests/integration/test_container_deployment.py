@@ -82,9 +82,7 @@ def docker_available() -> bool:
 
 def minikube_available() -> bool:
     """
-    Check if Minikube is installed and running.
-
-    Does NOT start Minikube - user must run 'minikube start' manually first.
+    Check if Minikube is installed and running. Starts it if needed.
 
     Returns:
         True if Minikube is running, False otherwise
@@ -95,21 +93,33 @@ def minikube_available() -> bool:
         if result.returncode != 0:
             return False
 
-        # Check if minikube is running
-        result = subprocess.run(["minikube", "status", "--format=json"], capture_output=True, text=True, timeout=5)
+        # Check if minikube is running (text parsing - JSON flag is broken)
+        result = subprocess.run(["minikube", "status"], capture_output=True, text=True, timeout=5)
+
+        # Check for "host: Running" in output
+        if "host: Running" in result.stdout or "host:Running" in result.stdout:
+            return True
+
+        # Minikube not running - try to start it
+        print("Minikube not running, starting...")
+        result = subprocess.run(
+            ["minikube", "start", "--driver=docker", "--memory=2048"],
+            capture_output=True,
+            text=True,
+            timeout=120,
+        )
+
         if result.returncode == 0:
-            try:
-                status = json.loads(result.stdout)
-                is_running = status.get("Host") == "Running"
-                if not is_running:
-                    print("⚠ Minikube installed but not running - run 'minikube start' first")
-                return is_running
-            except json.JSONDecodeError:
-                return False
+            print("✓ Minikube started")
+            return True
+        else:
+            print(f"⚠ Failed to start Minikube: {result.stderr}")
+            return False
 
+    except subprocess.TimeoutExpired:
+        print("⚠ Minikube start timed out after 120s")
         return False
-
-    except (FileNotFoundError, subprocess.TimeoutExpired, Exception):
+    except (FileNotFoundError, Exception) as e:
         return False
 
 
