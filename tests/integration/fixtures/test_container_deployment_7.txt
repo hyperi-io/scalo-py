@@ -2,7 +2,8 @@ import os
 from pathlib import Path
 
 # Check environment detection
-k8s_token = Path("/var/run/secrets/kubernetes.io/serviceaccount/token")
+k8s_token_path = "/var/run/secrets/kubernetes.io/serviceaccount/token"
+k8s_token = Path(k8s_token_path)
 print(f"Kubernetes detected: {k8s_token.exists()}")
 
 # Check standard K8s environment variables
