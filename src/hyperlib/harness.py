@@ -623,10 +623,7 @@ def check_container_registry_access() -> tuple[bool, dict]:
     artifactory_url = os.getenv("ARTIFACTORY_CONTAINER_URL")
 
     if not artifactory_url:
-        return False, {
-            "authenticated": False,
-            "message": "ARTIFACTORY_CONTAINER_URL not configured"
-        }
+        return False, {"authenticated": False, "message": "ARTIFACTORY_CONTAINER_URL not configured"}
 
     try:
         # Test registry access by pulling a small manifest
@@ -639,10 +636,7 @@ def check_container_registry_access() -> tuple[bool, dict]:
         )
 
         if result.returncode == 0:
-            return True, {
-                "authenticated": True,
-                "message": f"Artifactory registry accessible: {artifactory_url}"
-            }
+            return True, {"authenticated": True, "message": f"Artifactory registry accessible: {artifactory_url}"}
         else:
             # Check if error mentions throttling/rate limiting
             stderr_lower = result.stderr.lower()
@@ -652,13 +646,10 @@ def check_container_registry_access() -> tuple[bool, dict]:
                 return False, {
                     "authenticated": False,
                     "throttled": True,
-                    "message": f"Registry rate limit/throttling detected: {artifactory_url}"
+                    "message": f"Registry rate limit/throttling detected: {artifactory_url}",
                 }
 
-            return False, {
-                "authenticated": False,
-                "message": f"Registry access failed: {result.stderr.strip()}"
-            }
+            return False, {"authenticated": False, "message": f"Registry access failed: {result.stderr.strip()}"}
 
     except subprocess.TimeoutExpired:
         return False, {"error": "Registry check timed out after 15s"}

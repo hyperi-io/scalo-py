@@ -68,8 +68,6 @@ def check_tools_and_warn():
 TOOLS_STATUS = check_tools_and_warn()
 
 
-
-
 # Tool availability checks
 def docker_available() -> bool:
     """Check if Docker is available and running."""
@@ -169,7 +167,7 @@ def configure_minikube_registry() -> tuple[bool, str]:
             input=artifactory_pass,
             capture_output=True,
             text=True,
-            timeout=30
+            timeout=30,
         )
 
         if result.returncode == 0:
@@ -661,13 +659,21 @@ class TestHelmBasedDeployment(ContainerTestBase):
         artifactory_password = os.getenv("ARTIFACTORY_PASSWORD")
 
         if artifactory_url and artifactory_username and artifactory_password:
-            self.run_command([
-                "kubectl", "create", "secret", "docker-registry", "registry-secret",
-                f"--docker-server={artifactory_url}",
-                f"--docker-username={artifactory_username}",
-                f"--docker-password={artifactory_password}",
-                "-n", namespace
-            ], check=False)
+            self.run_command(
+                [
+                    "kubectl",
+                    "create",
+                    "secret",
+                    "docker-registry",
+                    "registry-secret",
+                    f"--docker-server={artifactory_url}",
+                    f"--docker-username={artifactory_username}",
+                    f"--docker-password={artifactory_password}",
+                    "-n",
+                    namespace,
+                ],
+                check=False,
+            )
 
         env = {
             "test_id": test_id,
@@ -1006,13 +1012,21 @@ class TestHelmDeployment(ContainerTestBase):
         artifactory_password = os.getenv("ARTIFACTORY_PASSWORD")
 
         if artifactory_url and artifactory_username and artifactory_password:
-            self.run_command([
-                "kubectl", "create", "secret", "docker-registry", "registry-secret",
-                f"--docker-server={artifactory_url}",
-                f"--docker-username={artifactory_username}",
-                f"--docker-password={artifactory_password}",
-                "-n", namespace
-            ], check=False)
+            self.run_command(
+                [
+                    "kubectl",
+                    "create",
+                    "secret",
+                    "docker-registry",
+                    "registry-secret",
+                    f"--docker-server={artifactory_url}",
+                    f"--docker-username={artifactory_username}",
+                    f"--docker-password={artifactory_password}",
+                    "-n",
+                    namespace,
+                ],
+                check=False,
+            )
 
         env = {
             "test_id": test_id,
