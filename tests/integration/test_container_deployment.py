@@ -601,13 +601,18 @@ class TestDockerDeployment(ContainerTestBase):
             shutil.rmtree(temp_dir, ignore_errors=True)
 
 
-@pytest.mark.skipif(not (helm_available() and minikube_available()), reason="Helm or Minikube not available")
 class TestHelmBasedDeployment(ContainerTestBase):
     """Test hyperlib applications with Helm charts in Kubernetes (Minikube)."""
 
     @pytest.fixture
     def helm_env(self, request) -> Generator[dict, None, None]:
         """Fixture providing Helm test environment with cleanup."""
+        # Runtime check: Skip if Helm or Minikube unavailable (after trying to start)
+        if not helm_available():
+            pytest.skip("Helm not available")
+        if not minikube_available():
+            pytest.skip("Minikube not available or failed to start")
+
         test_id = f"hyperlib-{uuid.uuid4().hex[:8]}"
         namespace = f"helm-{test_id}"
 
@@ -616,13 +621,12 @@ class TestHelmBasedDeployment(ContainerTestBase):
         log_file = self.create_test_log_file(test_name)
 
         # Pre-flight: Check for Docker Hub authentication
-        success, message = harness.docker_login_from_env()
+        success, message = harness.container_registry_login()
         if success:
             print(f"\n✓ {message}")
         else:
-            print(f"\n⚠ Docker not authenticated: {message}")
-            print("  Unauthenticated: 100 pulls/6hr, Authenticated: 200 pulls/6hr")
-            print("  Set DOCKER_USERNAME and DOCKER_PASSWORD in .env to avoid throttling")
+            print(f"\n⚠ Registry not authenticated: {message}")
+            print("  Set Docker/Artifactory credentials in .env to avoid throttling")
 
         # Pre-flight: Check Docker Hub rate limit status
         authenticated, limits = harness.check_docker_hub_rate_limit()
@@ -968,13 +972,18 @@ class TestHelmBasedDeployment(ContainerTestBase):
             shutil.rmtree(chart_dir, ignore_errors=True)
 
 
-@pytest.mark.skipif(not (helm_available() and minikube_available()), reason="Helm or Minikube not available")
 class TestHelmDeployment(ContainerTestBase):
     """Test hyperlib applications with Helm charts."""
 
     @pytest.fixture
     def helm_test_env(self) -> Generator[dict, None, None]:
         """Fixture providing Helm test environment with cleanup."""
+        # Runtime check: Skip if Helm or Minikube unavailable (after trying to start)
+        if not helm_available():
+            pytest.skip("Helm not available")
+        if not minikube_available():
+            pytest.skip("Minikube not available or failed to start")
+
         test_id = f"hyperlib-{uuid.uuid4().hex[:8]}"
         namespace = f"helm-test-{test_id}"
 
