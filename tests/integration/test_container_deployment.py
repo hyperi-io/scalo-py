@@ -726,15 +726,15 @@ class TestHelmBasedDeployment(ContainerTestBase):
             pod_template = templates_dir / "pod.yaml"
             pod_template.write_text(self.load_fixture("test_container_deployment_27"))
 
-            # Create ConfigMap with application code
+            # Install Helm chart
+            release_name = f"pod-{test_id}"
+
+            # Create ConfigMap with application code (must match template {{ .Release.Name }}-app)
             app_code = self.load_fixture("test_container_deployment_7")
-            configmap_name = f"{test_id}-app"
+            configmap_name = f"{release_name}-app"
             self.run_command(
                 ["kubectl", "create", "configmap", configmap_name, f"--from-literal=app.py={app_code}", "-n", namespace]
             )
-
-            # Install Helm chart
-            release_name = f"pod-{test_id}"
             try:
                 self.run_command(
                     ["helm", "install", release_name, str(chart_dir), "-n", namespace, "--wait", "--timeout", "120s"],
