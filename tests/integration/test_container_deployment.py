@@ -632,17 +632,32 @@ class TestHelmBasedDeployment(ContainerTestBase):
         # Create namespace
         self.run_command(["kubectl", "create", "namespace", namespace])
 
-        # Create Docker Hub imagePullSecret in test namespace if credentials available
+        # Create container registry imagePullSecret in test namespace
+        # Precedence: Docker Hub (explicit) > Artifactory (cached fallback) > None
         docker_username = os.getenv("DOCKER_USERNAME")
         docker_password = os.getenv("DOCKER_PASSWORD")
+        artifactory_url = os.getenv("ARTIFACTORY_CONTAINER_URL")
+        artifactory_username = os.getenv("ARTIFACTORY_USERNAME")
+        artifactory_password = os.getenv("ARTIFACTORY_PASSWORD")
+
         if docker_username and docker_password:
+            # Docker Hub imagePullSecret (explicit choice)
             self.run_command([
-                "kubectl", "create", "secret", "docker-registry", "dockerhub-secret",
+                "kubectl", "create", "secret", "docker-registry", "registry-secret",
                 "--docker-server=https://index.docker.io/v1/",
                 f"--docker-username={docker_username}",
                 f"--docker-password={docker_password}",
                 "-n", namespace
-            ], check=False)  # Don't fail if secret already exists
+            ], check=False)
+        elif artifactory_url and artifactory_username and artifactory_password:
+            # Artifactory container cache imagePullSecret (cached fallback)
+            self.run_command([
+                "kubectl", "create", "secret", "docker-registry", "registry-secret",
+                f"--docker-server={artifactory_url}",
+                f"--docker-username={artifactory_username}",
+                f"--docker-password={artifactory_password}",
+                "-n", namespace
+            ], check=False)
 
         env = {
             "test_id": test_id,
@@ -966,17 +981,32 @@ class TestHelmDeployment(ContainerTestBase):
         # Create namespace
         self.run_command(["kubectl", "create", "namespace", namespace])
 
-        # Create Docker Hub imagePullSecret if credentials available
+        # Create container registry imagePullSecret in test namespace
+        # Precedence: Docker Hub (explicit) > Artifactory (cached fallback) > None
         docker_username = os.getenv("DOCKER_USERNAME")
         docker_password = os.getenv("DOCKER_PASSWORD")
+        artifactory_url = os.getenv("ARTIFACTORY_CONTAINER_URL")
+        artifactory_username = os.getenv("ARTIFACTORY_USERNAME")
+        artifactory_password = os.getenv("ARTIFACTORY_PASSWORD")
+
         if docker_username and docker_password:
+            # Docker Hub imagePullSecret (explicit choice)
             self.run_command([
-                "kubectl", "create", "secret", "docker-registry", "dockerhub-secret",
+                "kubectl", "create", "secret", "docker-registry", "registry-secret",
                 "--docker-server=https://index.docker.io/v1/",
                 f"--docker-username={docker_username}",
                 f"--docker-password={docker_password}",
                 "-n", namespace
-            ], check=False)  # Don't fail if secret already exists
+            ], check=False)
+        elif artifactory_url and artifactory_username and artifactory_password:
+            # Artifactory container cache imagePullSecret (cached fallback)
+            self.run_command([
+                "kubectl", "create", "secret", "docker-registry", "registry-secret",
+                f"--docker-server={artifactory_url}",
+                f"--docker-username={artifactory_username}",
+                f"--docker-password={artifactory_password}",
+                "-n", namespace
+            ], check=False)
 
         env = {
             "test_id": test_id,
