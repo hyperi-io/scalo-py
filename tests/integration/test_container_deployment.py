@@ -141,6 +141,48 @@ def helm_available() -> bool:
         return False
 
 
+def configure_minikube_registry() -> tuple[bool, str]:
+    """
+    Configure Minikube to use Artifactory as Docker Hub mirror/cache.
+
+    If ARTIFACTORY credentials present in .env:
+      - Configures Minikube's Docker daemon to use Artifactory
+      - Logs into Artifactory inside Minikube
+
+    If no credentials:
+      - Uses direct Docker Hub access (public images only)
+
+    Returns:
+        (configured: bool, message: str)
+    """
+    artifactory_url = os.getenv("ARTIFACTORY_CONTAINER_URL")
+    artifactory_user = os.getenv("ARTIFACTORY_USERNAME")
+    artifactory_pass = os.getenv("ARTIFACTORY_PASSWORD")
+
+    if not (artifactory_url and artifactory_user and artifactory_pass):
+        return False, "No Artifactory credentials - using direct Docker Hub (may hit rate limits)"
+
+    try:
+        # Login to Artifactory inside Minikube's Docker daemon
+        result = subprocess.run(
+            ["minikube", "ssh", f"docker login {artifactory_url} -u {artifactory_user} --password-stdin"],
+            input=artifactory_pass,
+            capture_output=True,
+            text=True,
+            timeout=30
+        )
+
+        if result.returncode == 0:
+            return True, f"Minikube configured to use Artifactory: {artifactory_url}"
+        else:
+            return False, f"Failed to configure Artifactory in Minikube: {result.stderr}"
+
+    except subprocess.TimeoutExpired:
+        return False, "Minikube Artifactory configuration timed out"
+    except Exception as e:
+        return False, f"Error configuring Minikube registry: {e}"
+
+
 class ContainerTestBase:
     """Base class for container tests with cleanup utilities."""
 
@@ -606,18 +648,17 @@ class TestHelmBasedDeployment(ContainerTestBase):
         test_name = request.node.name
         log_file = self.create_test_log_file(test_name)
 
-        # Pre-flight: Check for Docker Hub authentication
-        success, message = harness.container_registry_login()
-        if success:
+        # Pre-flight: Configure Minikube to use Artifactory (if credentials present)
+        configured, message = configure_minikube_registry()
+        if configured:
             print(f"\n✓ {message}")
         else:
-            print(f"\n⚠ Registry not authenticated: {message}")
-            print("  Set Docker/Artifactory credentials in .env to avoid throttling")
+            print(f"\n⚠ {message}")
 
-        # Pre-flight: Check Docker Hub rate limit status
-        authenticated, limits = harness.check_docker_hub_rate_limit()
-        if "throttled" in limits:
-            pytest.skip(f"Docker Hub rate limit exceeded: {limits['message']}")
+        # Pre-flight: Check registry access
+        accessible, status = harness.check_container_registry_access()
+        if status.get("throttled"):
+            pytest.skip(f"Registry throttled: {status['message']}")
 
         # Create namespace
         self.run_command(["kubectl", "create", "namespace", namespace])
@@ -959,6 +1000,13 @@ class TestHelmDeployment(ContainerTestBase):
 
         test_id = f"hyperlib-{uuid.uuid4().hex[:8]}"
         namespace = f"helm-test-{test_id}"
+
+        # Pre-flight: Configure Minikube to use Artifactory (if credentials present)
+        configured, message = configure_minikube_registry()
+        if configured:
+            print(f"\n✓ {message}")
+        else:
+            print(f"\n⚠ {message}")
 
         # Create namespace
         self.run_command(["kubectl", "create", "namespace", namespace])
