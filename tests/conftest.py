@@ -25,20 +25,11 @@ def cleanup_hung_processes():
     Uses HYPERLIB-specific labels to avoid killing other projects' processes.
     """
     # Kill processes with HYPERLIB test labels
-    hyperlib_patterns = [
-        "HYPERLIB_TEST_HELM",
-        "HYPERLIB_TEST_K8S",
-        "HYPERLIB_TEST_DOCKER",
-        "HYPERLIB_TEST_MINIKUBE"
-    ]
+    hyperlib_patterns = ["HYPERLIB_TEST_HELM", "HYPERLIB_TEST_K8S", "HYPERLIB_TEST_DOCKER", "HYPERLIB_TEST_MINIKUBE"]
 
     for pattern in hyperlib_patterns:
         try:
-            subprocess.run(
-                ["pkill", "-9", "-f", pattern],
-                capture_output=True,
-                timeout=5
-            )
+            subprocess.run(["pkill", "-9", "-f", pattern], capture_output=True, timeout=5)
         except (subprocess.TimeoutExpired, Exception):
             pass  # Best effort cleanup
 
@@ -51,11 +42,7 @@ def cleanup_hung_processes():
 
     for pattern in generic_patterns:
         try:
-            subprocess.run(
-                ["pkill", "-9", "-f", pattern],
-                capture_output=True,
-                timeout=5
-            )
+            subprocess.run(["pkill", "-9", "-f", pattern], capture_output=True, timeout=5)
         except (subprocess.TimeoutExpired, Exception):
             pass  # Best effort cleanup
 
