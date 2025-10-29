@@ -41,7 +41,7 @@ def detect_environment() -> Literal["kubernetes", "docker", "container", "bare_m
 
     # Container detection via cgroups
     try:
-        with open("/proc/1/cgroup", "r") as f:
+        with open("/proc/1/cgroup") as f:
             cgroup_content = f.read()
             if "docker" in cgroup_content or "containerd" in cgroup_content:
                 if os.getenv("HYPERLIB_DEBUG"):
@@ -76,15 +76,15 @@ class MountConfig:
     """
 
     # Core paths
-    config_dir: Optional[Path] = None
-    secrets_dir: Optional[Path] = None
-    data_dir: Optional[Path] = None
-    temp_dir: Optional[Path] = None
-    logs_dir: Optional[Path] = None
+    config_dir: Path | None = None
+    secrets_dir: Path | None = None
+    data_dir: Path | None = None
+    temp_dir: Path | None = None
+    logs_dir: Path | None = None
 
     # Additional commonly used paths
-    cache_dir: Optional[Path] = None
-    run_dir: Optional[Path] = None
+    cache_dir: Path | None = None
+    run_dir: Path | None = None
 
     def __post_init__(self):
         """Convert strings to Path objects and ensure directories exist"""
@@ -261,7 +261,7 @@ def get_default_mounts(environment: str, app_name: str, auto_detect: bool = True
                 run_dir=detected.get("run_dir"),  # Optional
             )
             if os.getenv("HYPERLIB_DEBUG"):
-                print(f"HELM K8s mount paths detected")
+                print("HELM K8s mount paths detected")
         else:
             # Generic K8s paths
             config = MountConfig(
@@ -274,7 +274,7 @@ def get_default_mounts(environment: str, app_name: str, auto_detect: bool = True
                 run_dir=detected.get("run_dir"),  # Optional
             )
             if os.getenv("HYPERLIB_DEBUG"):
-                print(f"K8s mount paths - using app namespace")
+                print("K8s mount paths - using app namespace")
 
     elif environment in ["docker", "container"]:
         # Docker convention - /app namespace with detected overrides
@@ -288,7 +288,7 @@ def get_default_mounts(environment: str, app_name: str, auto_detect: bool = True
             run_dir=detected.get("run_dir", Path(f"/run/{app_name}")),
         )
         if os.getenv("HYPERLIB_DEBUG"):
-            print(f"Docker mount paths - /app namespace")
+            print("Docker mount paths - /app namespace")
 
     else:  # bare_metal
         # Local development - user home directory
@@ -303,7 +303,7 @@ def get_default_mounts(environment: str, app_name: str, auto_detect: bool = True
             run_dir=Path(f"/run/user/{os.getuid()}/{app_name}") if hasattr(os, "getuid") else None,
         )
         if os.getenv("HYPERLIB_DEBUG"):
-            print(f"Local mount paths - user home directory")
+            print("Local mount paths - user home directory")
 
     return config
 
@@ -826,10 +826,7 @@ def init_config_directory(
         app_name = APP_NAME
 
     # Determine config directory
-    if config_dir is None:
-        config_dir = Path.home() / f".{app_name}"
-    else:
-        config_dir = Path(config_dir)
+    config_dir = Path.home() / f".{app_name}" if config_dir is None else Path(config_dir)
 
     # Create directory structure
     config_dir.mkdir(parents=True, exist_ok=True)

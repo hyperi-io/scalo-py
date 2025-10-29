@@ -103,7 +103,7 @@ def run(
             check=check,
             cwd=cwd,
         )
-    except subprocess.TimeoutExpired as e:
+    except subprocess.TimeoutExpired:
         if pytest_fail:
             import pytest
 

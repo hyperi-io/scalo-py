@@ -76,7 +76,7 @@ def strip_emojis(text: str) -> str:
         Text with emojis removed
     """
     result = text
-    for emoji in EMOJI_TO_TEXT.keys():
+    for emoji in EMOJI_TO_TEXT:
         result = result.replace(emoji, "")
     return result.strip()
 

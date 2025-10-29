@@ -230,7 +230,7 @@ class TestCharsPolicy:
             "TRACE": "",  # No emoji
         }
 
-        assert LOG_LEVEL_EMOJIS == approved_emojis
+        assert approved_emojis == LOG_LEVEL_EMOJIS
 
     def test_no_unicode_in_file_logs(self):
         """Test file logs contain only ASCII (CHARS-POLICY requirement)."""

@@ -16,8 +16,9 @@ import tempfile
 import time
 import uuid
 import warnings
+from collections.abc import Generator
 from pathlib import Path
-from typing import Generator, Tuple
+from typing import Tuple
 
 import pytest
 
@@ -35,7 +36,7 @@ def check_tools_and_warn():
         tools_status["docker"] = result.returncode == 0
     except (FileNotFoundError, subprocess.TimeoutExpired):
         tools_status["docker"] = False
-        warnings.warn("Docker not found - Docker tests will be skipped", UserWarning)
+        warnings.warn("Docker not found - Docker tests will be skipped", UserWarning, stacklevel=2)
 
     # Check Minikube
     try:
@@ -43,7 +44,7 @@ def check_tools_and_warn():
         tools_status["minikube"] = result.returncode == 0
     except (FileNotFoundError, subprocess.TimeoutExpired):
         tools_status["minikube"] = False
-        warnings.warn("Minikube not found - Kubernetes tests will be skipped", UserWarning)
+        warnings.warn("Minikube not found - Kubernetes tests will be skipped", UserWarning, stacklevel=2)
 
     # Check kubectl
     try:
@@ -51,7 +52,7 @@ def check_tools_and_warn():
         tools_status["kubectl"] = result.returncode == 0
     except (FileNotFoundError, subprocess.TimeoutExpired):
         tools_status["kubectl"] = False
-        warnings.warn("kubectl not found - Kubernetes tests will be skipped", UserWarning)
+        warnings.warn("kubectl not found - Kubernetes tests will be skipped", UserWarning, stacklevel=2)
 
     # Check Helm
     try:
@@ -59,7 +60,7 @@ def check_tools_and_warn():
         tools_status["helm"] = result.returncode == 0
     except (FileNotFoundError, subprocess.TimeoutExpired):
         tools_status["helm"] = False
-        warnings.warn("Helm not found - Helm tests will be skipped", UserWarning)
+        warnings.warn("Helm not found - Helm tests will be skipped", UserWarning, stacklevel=2)
 
     return tools_status
 
@@ -117,7 +118,7 @@ def minikube_available() -> bool:
     except subprocess.TimeoutExpired:
         print("⚠ Minikube start timed out after 120s")
         return False
-    except (FileNotFoundError, Exception) as e:
+    except (FileNotFoundError, Exception):
         return False
 
 
@@ -744,7 +745,7 @@ class TestHelmBasedDeployment(ContainerTestBase):
                     timeout=30,
                 )
                 helm_env["releases"].append(release_name)
-            except subprocess.CalledProcessError as e:
+            except subprocess.CalledProcessError:
                 # Check if failure was due to registry throttling
                 throttled, reason = harness.check_registry_throttling(namespace)
                 if throttled:
@@ -1134,7 +1135,7 @@ class TestHelmDeployment(ContainerTestBase):
         try:
             # Create Chart.yaml
             (chart_dir / "Chart.yaml").write_text(
-                f"""
+                """
 apiVersion: v2
 name: hyperlib-custom
 version: 0.1.0

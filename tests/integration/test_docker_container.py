@@ -287,10 +287,10 @@ class TestDockerContainer:
             results = json.loads(output)
 
             # Verify HELM paths exist and are writable
-            assert results["config"] == True
-            assert results["secrets"] == True
-            assert results["data"] == True
-            assert results["logs"] == True
+            assert results["config"]
+            assert results["secrets"]
+            assert results["data"]
+            assert results["logs"]
 
         finally:
             shutil.rmtree(temp_dir)

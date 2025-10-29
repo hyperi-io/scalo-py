@@ -14,8 +14,8 @@ from .config import get_mount_config
 
 
 def get_database_config(
-    db_type: str = "postgresql", env_prefix: Optional[str] = None, use_standard_vars: bool = True
-) -> Dict[str, Any]:
+    db_type: str = "postgresql", env_prefix: str | None = None, use_standard_vars: bool = True
+) -> dict[str, Any]:
     """
     Get database configuration from environment variables.
 
@@ -110,12 +110,12 @@ def get_database_config(
 
 def build_database_url(
     db_type: str = "postgresql",
-    host: Optional[str] = None,
-    port: Optional[int] = None,
-    user: Optional[str] = None,
-    password: Optional[str] = None,
-    database: Optional[str] = None,
-    env_prefix: Optional[str] = None,
+    host: str | None = None,
+    port: int | None = None,
+    user: str | None = None,
+    password: str | None = None,
+    database: str | None = None,
+    env_prefix: str | None = None,
     **kwargs,
 ) -> str:
     """
@@ -231,7 +231,7 @@ def build_database_url(
     return urlunparse(url_parts)
 
 
-def get_database_url_from_env(env_var: str = "DATABASE_URL", fallback_type: str = "postgresql") -> Optional[str]:
+def get_database_url_from_env(env_var: str = "DATABASE_URL", fallback_type: str = "postgresql") -> str | None:
     """
     Get database URL from environment variable or build from components.
 
@@ -260,7 +260,7 @@ def get_database_url_from_env(env_var: str = "DATABASE_URL", fallback_type: str 
     return None
 
 
-def parse_database_url(url: str) -> Dict[str, Any]:
+def parse_database_url(url: str) -> dict[str, Any]:
     """
     Parse a database URL into its components.
 
