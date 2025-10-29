@@ -1106,6 +1106,16 @@ class TestHelmDeployment(ContainerTestBase):
             )
             pod_name = result.stdout.strip()
 
+            # Wait for pod to be Ready before exec
+            def pod_ready():
+                result = self.run_command(
+                    ["kubectl", "get", "pod", pod_name, "-n", namespace, "-o", "jsonpath={.status.phase}"],
+                    check=False,
+                )
+                return result.stdout == "Running"
+
+            assert self.wait_for_condition(pod_ready, timeout=60), f"Pod {pod_name} never became Running"
+
             # Check environment in pod
             result = self.run_command(["kubectl", "exec", pod_name, "-n", namespace, "--", "env"])
 
