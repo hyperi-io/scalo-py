@@ -1,6 +1,7 @@
 """Pytest configuration and fixtures for hyperlib tests."""
 
 import os
+import subprocess
 import tempfile
 from pathlib import Path
 
@@ -15,6 +16,42 @@ if env_file.exists():
             if line and not line.startswith("#") and "=" in line:
                 key, value = line.split("=", 1)
                 os.environ[key] = value
+
+
+def cleanup_hung_processes():
+    """
+    Kill hung background processes from previous test runs.
+
+    Prevents system overload from accumulated kubectl/minikube/helm processes.
+    """
+    patterns = [
+        "minikube ssh",
+        "kubectl exec.*waiting",
+        "helm install.*waiting",
+        "docker pull.*waiting"
+    ]
+
+    for pattern in patterns:
+        try:
+            subprocess.run(
+                ["pkill", "-9", "-f", pattern],
+                capture_output=True,
+                timeout=5
+            )
+        except (subprocess.TimeoutExpired, Exception):
+            pass  # Best effort cleanup
+
+
+@pytest.fixture(scope="session", autouse=True)
+def session_cleanup():
+    """Session-level fixture to cleanup before and after all tests."""
+    # Cleanup before tests start
+    cleanup_hung_processes()
+
+    yield
+
+    # Cleanup after all tests complete
+    cleanup_hung_processes()
 
 
 @pytest.fixture
