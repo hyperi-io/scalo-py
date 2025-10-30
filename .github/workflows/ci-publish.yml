@@ -1,8 +1,11 @@
 name: CI Publish
 
-# Triggers: MANUAL ONLY - triggered by 'ci/bootstrap publish' command
+# Triggers: Version tag push (v*) or manual dispatch
 # This workflow runs the EXACT SAME ci/ scripts as local builds
 on:
+  push:
+    tags:
+      - 'v*'
   workflow_dispatch:
 
 jobs:
