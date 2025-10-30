@@ -174,3 +174,35 @@ class Application:
             )
 
         return OneshotApplication(name=name, task_func=task_func, mounts=mounts, **kwargs)
+
+    @staticmethod
+    def mcp(
+        name: str,
+        transport: str = "stdio",
+        capabilities: list[str] | None = None,
+        **kwargs,
+    ) -> "MCPApplication":
+        """
+        Create MCP (Model Context Protocol) server application.
+
+        Args:
+            name: Application name
+            transport: Communication transport ("stdio" or "http")
+            capabilities: MCP capabilities (default: tools, resources, prompts)
+            **kwargs: Additional configuration options
+
+        Returns:
+            MCPApplication instance
+
+        Example:
+            app = Application.mcp(name="my-server")
+
+            @app.tool(name="analyze", description="Analyze code")
+            def analyze(code: str) -> dict:
+                return {"result": "analysis"}
+
+            app.run()
+        """
+        from .mcp import MCPApplication
+
+        return MCPApplication(name=name, transport=transport, capabilities=capabilities, **kwargs)
