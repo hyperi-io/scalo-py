@@ -7,6 +7,7 @@ Provides consistent directory structure regardless of deployment mode:
 """
 
 import os
+import tempfile
 import platform
 from dataclasses import dataclass
 from pathlib import Path
@@ -216,7 +217,7 @@ class RuntimeEnvironment:
             # System daemon paths (traditional Unix)
             config_dir = Path("/etc") / self.app_name
             data_dir = Path("/var/lib") / self.app_name
-            temp_dir = Path("/tmp") / self.app_name  # nosec B108
+            temp_dir = Path(tempfile.gettempdir()) / self.app_name
             log_dir = Path("/var/log") / self.app_name
             cache_dir = Path("/var/cache") / self.app_name
             run_dir = Path("/run") / self.app_name
@@ -225,7 +226,7 @@ class RuntimeEnvironment:
             app_home = home / f".{self.app_name}"
             config_dir = app_home / "config"
             data_dir = app_home / "data"
-            temp_dir = Path("/tmp") / f"{self.app_name}-{os.getuid()}"  # nosec B108
+            temp_dir = Path(tempfile.gettempdir()) / f"{self.app_name}-{os.getuid()}"
             log_dir = app_home / "logs"
             cache_dir = app_home / "cache"
             run_dir = None  # Non-root doesn't typically use /run
