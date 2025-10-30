@@ -15,6 +15,7 @@ from .api import APIApplication
 from .base import Application
 from .cli import CLIApplication
 from .daemon import DaemonApplication
+from .mcp import MCPApplication
 from .oneshot import OneshotApplication
 
 __all__ = [
@@ -22,5 +23,6 @@ __all__ = [
     "APIApplication",
     "DaemonApplication",
     "CLIApplication",
+    "MCPApplication",
     "OneshotApplication",
 ]
