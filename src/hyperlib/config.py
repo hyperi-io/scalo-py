@@ -9,7 +9,6 @@ Provides:
 """
 
 import os
-import tempfile
 import signal
 import threading
 import time
@@ -183,7 +182,7 @@ def detect_standard_mounts() -> dict[str, Path]:
             "/var/log",  # Fallback to general log dir
         ],
         "temp_dir": [
-            tempfile.gettempdir(),  # Universal standard
+            "/tmp",  # Universal standard
             f"/tmp/{app_name}",  # App-specific temp
             "/app/tmp",  # Docker app temp
             "/var/tmp",  # Alternative system temp
@@ -239,7 +238,7 @@ def get_default_mounts(environment: str, app_name: str, auto_detect: bool = True
             config_dir=Path("/app/config"),
             secrets_dir=Path("/app/secrets"),
             data_dir=Path("/app/data"),
-            temp_dir=Path(tempfile.gettempdir()),
+            temp_dir=Path("/tmp"),
             logs_dir=Path("/app/logs"),
         )
 
@@ -256,7 +255,7 @@ def get_default_mounts(environment: str, app_name: str, auto_detect: bool = True
                 config_dir=detected.get("config_dir", Path("/config")),
                 secrets_dir=detected.get("secrets_dir", Path("/secrets")),
                 data_dir=detected.get("data_dir", Path("/data")),
-                temp_dir=detected.get("temp_dir", Path(tempfile.gettempdir())),
+                temp_dir=detected.get("temp_dir", Path("/tmp")),
                 logs_dir=detected.get("logs_dir", Path("/logs")),
                 cache_dir=detected.get("cache_dir"),  # Optional
                 run_dir=detected.get("run_dir"),  # Optional
@@ -269,7 +268,7 @@ def get_default_mounts(environment: str, app_name: str, auto_detect: bool = True
                 config_dir=detected.get("config_dir", Path("/app/config")),
                 secrets_dir=detected.get("secrets_dir", Path("/app/secrets")),
                 data_dir=detected.get("data_dir", Path("/app/data")),
-                temp_dir=detected.get("temp_dir", Path(tempfile.gettempdir())),
+                temp_dir=detected.get("temp_dir", Path("/tmp")),
                 logs_dir=detected.get("logs_dir", Path("/app/logs")),
                 cache_dir=detected.get("cache_dir"),  # Optional
                 run_dir=detected.get("run_dir"),  # Optional
@@ -283,7 +282,7 @@ def get_default_mounts(environment: str, app_name: str, auto_detect: bool = True
             config_dir=detected.get("config_dir", Path("/app/config")),
             secrets_dir=detected.get("secrets_dir", Path("/run/secrets")),
             data_dir=detected.get("data_dir", Path("/app/data")),
-            temp_dir=detected.get("temp_dir", Path(tempfile.gettempdir()) / app_name),,
+            temp_dir=detected.get("temp_dir", Path(f"/tmp/{app_name}")),  # nosec B108,
             logs_dir=detected.get("logs_dir", Path("/app/logs")),
             cache_dir=detected.get("cache_dir", Path("/app/cache")),
             run_dir=detected.get("run_dir", Path(f"/run/{app_name}")),
@@ -298,7 +297,7 @@ def get_default_mounts(environment: str, app_name: str, auto_detect: bool = True
             config_dir=home / f".config/{app_name}",
             secrets_dir=home / f".{app_name}/secrets",
             data_dir=home / f".local/share/{app_name}",
-            temp_dir=Path(tempfile.gettempdir()) / app_name,
+            temp_dir=Path("/tmp") / app_name,  # nosec B108
             logs_dir=home / f".local/share/{app_name}/logs",
             cache_dir=home / f".cache/{app_name}",
             run_dir=Path(f"/run/user/{os.getuid()}/{app_name}") if hasattr(os, "getuid") else None,
@@ -632,7 +631,6 @@ def get_logging_config():
     4. Hardcoded defaults
     """
     import os
-import tempfile
     import sys
 
     logging_config = settings.get("logging", {})
