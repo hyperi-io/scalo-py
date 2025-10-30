@@ -277,9 +277,9 @@ class MCPApplication:
         logger.info(f"Starting MCP server '{self.name}' over HTTP")
 
         try:
+            import uvicorn
             from fastapi import FastAPI
             from fastapi.responses import JSONResponse
-            import uvicorn
         except ImportError:
             logger.error("FastAPI not installed - HTTP transport requires: pip install fastapi uvicorn")
             raise
