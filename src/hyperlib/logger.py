@@ -133,11 +133,7 @@ def _is_interactive_console() -> bool:
     lc_all = os.getenv("LC_ALL", "")
     locale = lc_all or lang
 
-    if "UTF-8" in locale.upper() or "UTF8" in locale.upper():
-        return True  # Interactive + UTF-8 = emojis OK
-
-    # Default to False for safety (ASCII-only for non-interactive)
-    return False
+    return "UTF-8" in locale.upper() or "UTF8" in locale.upper()
 
 
 def _add_emoji_to_record(use_emojis: bool, convert_to_text: bool = False, allow_all: bool = False):

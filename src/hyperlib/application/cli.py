@@ -115,7 +115,7 @@ class CLIApplication:
                 return "unknown"
 
     @staticmethod
-    def env_override_callback(ctx, param, value):
+    def env_override_callback(ctx, param, value):  # noqa: ARG004
         """
         Click callback to override option with environment variable.
 
