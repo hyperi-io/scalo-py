@@ -172,9 +172,8 @@ def build_database_url(
 
     # Special case for SQLite
     if db_type.lower() == "sqlite":
-        if database and database != ":memory:":
+        if database and database != ":memory:" and not Path(database).is_absolute():
             # Use data directory for SQLite files if not absolute path
-            if not Path(database).is_absolute():
                 mount_config = get_mount_config()
                 database = str(mount_config.data_dir / database)
         return f"sqlite:///{database or ':memory:'}"

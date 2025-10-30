@@ -296,8 +296,7 @@ class TestLogLevelEnvironment:
         """Test LOG_LEVEL=DEBUG enables debug logging."""
         from hyperlib.logger import setup
 
-        with mock.patch.dict(os.environ, {"LOG_LEVEL": "DEBUG"}):
-            with mock.patch("hyperlib.logger.get_logging_config") as mock_config:
+        with mock.patch.dict(os.environ, {"LOG_LEVEL": "DEBUG"}), mock.patch("hyperlib.logger.get_logging_config") as mock_config:
                 mock_config.return_value = {
                     "console": True,
                     "level": "DEBUG",  # Config should pick up LOG_LEVEL
@@ -316,8 +315,7 @@ class TestLogLevelEnvironment:
         """Test LOG_LEVEL=ERROR filters out info/warning."""
         from hyperlib.logger import setup
 
-        with mock.patch.dict(os.environ, {"LOG_LEVEL": "ERROR"}):
-            with mock.patch("hyperlib.logger.get_logging_config") as mock_config:
+        with mock.patch.dict(os.environ, {"LOG_LEVEL": "ERROR"}), mock.patch("hyperlib.logger.get_logging_config") as mock_config:
                 mock_config.return_value = {
                     "console": True,
                     "level": "ERROR",  # Config should pick up LOG_LEVEL
@@ -336,8 +334,7 @@ class TestLogLevelEnvironment:
         """Test LOG_LEVEL env var takes priority over config file."""
         from hyperlib.config import get_logging_config
 
-        with mock.patch.dict(os.environ, {"LOG_LEVEL": "DEBUG"}):
-            with mock.patch("hyperlib.config.settings.get") as mock_settings:
+        with mock.patch.dict(os.environ, {"LOG_LEVEL": "DEBUG"}), mock.patch("hyperlib.config.settings.get") as mock_settings:
                 mock_settings.return_value = {"level": "ERROR"}  # Config says ERROR
                 config = get_logging_config()
                 assert config["level"] == "DEBUG"  # But env says DEBUG wins
