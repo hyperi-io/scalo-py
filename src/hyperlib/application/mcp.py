@@ -220,8 +220,7 @@ class MCPApplication:
 
             elif method == "prompts/list":
                 prompt_list = [
-                    {"name": prompt["name"], "description": prompt["description"]}
-                    for prompt in self.prompts.values()
+                    {"name": prompt["name"], "description": prompt["description"]} for prompt in self.prompts.values()
                 ]
                 return {"jsonrpc": "2.0", "id": request_id, "result": {"prompts": prompt_list}}
 
@@ -311,7 +310,9 @@ class MCPApplication:
         Uses hyperlib config cascade for configuration.
         """
         logger.info(f"MCP server '{self.name}' starting (transport={self.transport})")
-        logger.info(f"Registered: {len(self.tools)} tools, {len(self.resources)} resources, {len(self.prompts)} prompts")
+        logger.info(
+            f"Registered: {len(self.tools)} tools, {len(self.resources)} resources, {len(self.prompts)} prompts"
+        )
 
         try:
             if self.transport == "stdio":
