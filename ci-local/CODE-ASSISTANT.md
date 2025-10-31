@@ -5,7 +5,7 @@
 
 This file is auto-created by `./ci/ai install` and merges:
 - Common guidance from `ci/modules/common/templates/CODE-ASSISTANT.md`
-- Language-specific guidance (e.g., Python) from `ci/modules/python/templates/CODE-ASSISTANT.md`
+- Language-specific guidance (e.g., Python) from `ci/modules/{language}/templates/CODE-ASSISTANT.md`
 
 You can customize this file with project-specific guidelines below the auto-merged sections.
 

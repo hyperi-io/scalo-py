@@ -223,3 +223,22 @@ dmypy.json
 # Cython debug symbols
 cython_debug/
 # === End ci/python ===
+
+
+# === /projects/hyperlib/ci/modules/common/templates/.gitignore gitignore patterns ===
+# HyperCI Common .gitignore
+# Language-agnostic patterns for ALL projects
+
+# HyperCI environments
+
+# Environment variables and secrets
+# AI assistant files
+
+
+
+# Temporary files
+
+# IDE files
+
+# OS files
+# === End /projects/hyperlib/ci/modules/common/templates/.gitignore ===

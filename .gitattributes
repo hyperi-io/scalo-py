@@ -129,3 +129,35 @@ requirements*.txt text eol=lf
 *.pyc binary
 *.pyo binary
 # === End ci/python ===
+
+
+# === hyperci-common gitattributes patterns ===
+# Common gitattributes for all project types
+# Language-agnostic patterns
+
+# CRITICAL: Force LF line endings on all text files (Windows CRLF → LF)
+# This prevents Windows contributors from introducing CRLF line endings
+
+# Documents - treat as text with LF
+
+# Configuration files - treat as text with LF
+
+# Shell scripts - CRITICAL: Must be LF (not CRLF) to work on Unix
+*.zsh text eol=lf
+*.fish text eol=lf
+Makefile text eol=lf
+
+# Scripts - treat as text with LF
+
+# Images - binary, no diff
+
+# Fonts - binary
+
+# Archives - binary
+
+# Certificates and keys - binary, no diff
+
+# Lock files - don't generate diffs (too noisy)
+
+# Generated files - mark as generated
+# === End hyperci-common ===

@@ -10,9 +10,7 @@ tests:
   - mypy_type_check
   min_coverage: 80
   fail_fast: false
-  # Skip slow integration tests (Helm, Docker) for faster development cycles
-  # Override with: CI_PYTEST_ARGS="" to run all tests
-  pytest_args: "-m 'not integration'"
+  pytest_args: -m 'not integration'
 nuitka:
   enabled: true
   build_type: package
@@ -41,4 +39,12 @@ ai:
   _tier: pro-max
   check_requirements: true
   mcp:
-    enabled: false
+    enabled: true
+    servers:
+      sequential_thinking:
+        enabled: true
+        package: '@modelcontextprotocol/server-sequential-thinking'
+      memory:
+        enabled: true
+        package: mcp-knowledge-graph
+        memory_path: -memory

@@ -68,13 +68,40 @@ database = [
 ]
 enhanced = []
 dev = [
-    # Local development tools only (NOT used by CI)
-    # CI tools are installed via ci/bootstrap.d/20-python-tools.py
-    "pre-commit>=3.0.0",  # Local git hooks
-    "isort>=5.12.0",      # Local import sorting
+    # Development + CI tools (installed locally with "uv sync --all-extras")
+    # Build Tools
+    "setuptools>=70.0.0",
+    "wheel>=0.42.0",
+    "build>=1.0.0",
+    # Testing
+    "pytest>=8.0.0",
+    "pytest-cov>=4.0.0",
+    # Code Quality
+    "ruff>=0.1.0",
+    "black>=24.0.0",
+    "isort>=5.12.0",
+    "pyright>=1.1.0",
+    # Security
+    "bandit[toml]>=1.7.0",
+    "pip-audit>=2.6.0",
+    # Documentation
+    "interrogate>=1.5.0",
+    # Code Analysis
+    "vulture>=2.7.0",
+    "vermin>=1.6.0",
+    # Publishing
+    "twine>=5.0.0",
+    # Versioning
+    "python-semantic-release>=9.0.0",
+    # CI Infrastructure (required by ci_lib.py)
+    "mergedeep>=1.3.4",
+    # Nuitka Support
+    "pycryptodomex>=3.20.0",
+    # Local Development
+    "pre-commit>=3.0.0",
 ]
 docs = [
-    "sphinx>=8.0.0",
+    "sphinx>=7.0.0,<8.0.0",  # Compatible with myst-parser 3.x
     "sphinx-rtd-theme>=3.0.0",
     "myst-parser>=3.0.0",
     "sphinx-autobuild>=2024.0.0",
@@ -250,7 +277,7 @@ version_variables = [
     "src/hyperlib/__init__.py:__version__",
 ]
 # VERSION file is written by build_command (pre-sync ensures it's already correct)
-build_command = "echo 'VERSION already synced by pre-commit hook/CI script' && rm -rf dist build src/*.egg-info && ci-local/.venv/bin/python -m build"
+build_command = "echo 'VERSION already synced by pre-commit hook/CI script' && rm -rf dist build src/*.egg-info && .venv/bin/python -m build"
 major_on_zero = true
 tag_format = "v{version}"
 commit_message = "chore(release): {version} [skip ci]"
