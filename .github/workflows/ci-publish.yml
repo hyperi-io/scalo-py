@@ -154,13 +154,15 @@ jobs:
         env:
           ARTIFACTORY_USERNAME: ${{ secrets.ARTIFACTORY_USERNAME }}
           ARTIFACTORY_PASSWORD: ${{ secrets.ARTIFACTORY_PASSWORD }}
+          ARTIFACTORY_TOKEN_USER: ${{ secrets.ARTIFACTORY_TOKEN_USER }}
+          ARTIFACTORY_TOKEN: ${{ secrets.ARTIFACTORY_TOKEN }}
           CI_BUILD_TYPE: ${{ matrix.build_type }}
           CI: "true"
           GITHUB_ACTIONS: "true"
+          FORCE_PUBLISH: "1"
         run: |
-          # Use EXACT SAME script as local builds
-          # 81-publish.py: build (standard or Nuitka based on CI_BUILD_TYPE) + publish to JFrog
-          ci-local/.venv/bin/python ci/python/ci.d/81-publish.py publish
+          # Use modern CI structure - ALWAYS use ./ci/run
+          ./ci/run publish
 
       - name: Verify Published
         run: |
