@@ -38,8 +38,8 @@ jobs:
           import json
           import os
 
-          # Load ci.yaml
-          with open('ci.yaml') as f:
+          # Load ci-local/ci.yaml
+          with open('ci-local/ci.yaml') as f:
               config = yaml.safe_load(f)
 
           # Always build standard package
