@@ -7,7 +7,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "hyperlib"
-version = "2.3.5"
+version = "2.3.6"
 description = "Enterprise infrastructure for containerized Python applications - configuration, logging, timeouts, database, metrics, and application framework"
 readme = "README.md"
 authors = [
@@ -16,12 +16,14 @@ authors = [
 maintainers = [
     { name = "HyperSec Team", email = "dev@hypersec.io" },
 ]
-requires-python = ">=3.11"
+requires-python = ">=3.8"
 classifiers = [
     "Development Status :: 5 - Production/Stable",
     "Intended Audience :: Developers",
     "License :: Other/Proprietary License",
     "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.8",
+    "Programming Language :: Python :: 3.9",
     "Programming Language :: Python :: 3 :: Only",
     "Operating System :: OS Independent",
     "Topic :: Software Development :: Libraries :: Application Frameworks",
@@ -43,10 +45,10 @@ keywords = [
     "fastapi",
 ]
 dependencies = [
-    "dynaconf>=3.2.11",
+    "dynaconf>=3.2.12",
     "loguru>=0.7.3",
     "pyyaml>=6.0.3",
-    "psutil>=7.1.0",
+    "psutil>=7.1.2",
 ]
 
 [project.license]
