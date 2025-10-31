@@ -136,7 +136,7 @@ class DaemonApplication:
     def _setup_signal_handlers(self):
         """Setup graceful shutdown signal handlers."""
 
-        def signal_handler(signum, frame):
+        def signal_handler(signum, _frame):
             signal_name = signal.Signals(signum).name
             logger.info(f"Received {signal_name}, initiating graceful shutdown...")
             self.shutdown_event.set()

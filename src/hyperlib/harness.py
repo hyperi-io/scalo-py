@@ -16,7 +16,7 @@ Use cases:
 """
 
 import os
-import subprocess
+import subprocess  # nosec B404 - Subprocess is required for process execution harness
 import threading
 import time
 from collections.abc import Callable
@@ -102,7 +102,7 @@ def run(
             timeout=timeout,
             check=check,
             cwd=cwd,
-        )
+        )  # nosec B603 - Command list is caller-controlled
     except subprocess.TimeoutExpired:
         if pytest_fail:
             import pytest
@@ -210,7 +210,7 @@ class SmartTimeoutMonitor:
                 env=env,
                 bufsize=1,
                 universal_newlines=True,
-            )
+            )  # nosec B603,B607 - Command list is caller-controlled
 
             # Start monitoring thread
             monitor_thread = threading.Thread(target=self._monitor_activity, args=(activity_indicators,), daemon=True)
@@ -503,7 +503,7 @@ def container_registry_login() -> tuple[bool, str]:
             capture_output=True,
             text=True,
             timeout=30,
-        )
+        )  # nosec B603,B607 - Docker login with controlled inputs
 
         if result.returncode == 0:
             return True, f"Artifactory container registry authenticated: {artifactory_url}"
@@ -561,7 +561,7 @@ def check_registry_throttling(namespace: str) -> tuple[bool, str]:
             capture_output=True,
             text=True,
             timeout=10,
-        )
+        )  # nosec B603,B607 - kubectl with controlled namespace
 
         events_lower = result.stdout.lower()
         for pattern in throttle_patterns:
@@ -574,7 +574,7 @@ def check_registry_throttling(namespace: str) -> tuple[bool, str]:
             capture_output=True,
             text=True,
             timeout=10,
-        )
+        )  # nosec B603,B607 - kubectl with controlled namespace
 
         if result.returncode == 0:
             import json
@@ -633,7 +633,7 @@ def check_container_registry_access() -> tuple[bool, dict]:
             capture_output=True,
             text=True,
             timeout=15,
-        )
+        )  # nosec B603,B607 - Docker manifest with controlled URL
 
         if result.returncode == 0:
             return True, {"authenticated": True, "message": f"Artifactory registry accessible: {artifactory_url}"}

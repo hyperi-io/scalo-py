@@ -10,11 +10,12 @@ Provides:
 
 import os
 import signal
+import tempfile
 import threading
 import time
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Literal, Optional
+from typing import Literal
 
 from dynaconf import Dynaconf
 
@@ -134,7 +135,7 @@ def detect_helm_deployment() -> bool:
             labels = labels_file.read_text()
             if "app.kubernetes.io/managed-by=Helm" in labels:
                 return True
-    except:
+    except Exception:  # nosec B110 - Optional K8s label detection
         pass
 
     return False
@@ -185,7 +186,7 @@ def detect_standard_mounts() -> dict[str, Path]:
             tempfile.gettempdir(),  # Universal standard
             f"{tempfile.gettempdir()}/{app_name}",  # App-specific temp
             "/app/tmp",  # Docker app temp
-            "/var/tmp",  # Alternative system temp
+            "/var/tmp",  # Alternative system temp (checked, not created)  # nosec B108
             "/run/tmp",  # Runtime temp (tmpfs)
         ],
         # Additional commonly used paths in DevOps
@@ -371,7 +372,7 @@ def get_app_name() -> str:
             if main_module and main_module not in ("__main__", "pytest", "python"):
                 return main_module.replace("_", "-")
 
-    except Exception:
+    except Exception:  # nosec B110 - Optional app name detection
         pass
 
     # Priority 5: Default

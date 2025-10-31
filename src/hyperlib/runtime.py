@@ -8,6 +8,7 @@ Provides consistent directory structure regardless of deployment mode:
 
 import os
 import platform
+import tempfile
 from dataclasses import dataclass
 from pathlib import Path
 

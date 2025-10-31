@@ -299,8 +299,8 @@ class MCPApplication:
         for hook in self.shutdown_hooks:
             app.add_event_handler("shutdown", hook)
 
-        # Start HTTP server
-        uvicorn.run(app, host="0.0.0.0", port=8080, log_level="info")
+        # Start HTTP server - bind to all interfaces for containerized environments
+        uvicorn.run(app, host="0.0.0.0", port=8080, log_level="info")  # nosec B104 - Intentional for containers
 
     def run(self):
         """

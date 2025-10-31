@@ -5,7 +5,7 @@ FastAPI-based REST API service with container management
 
 from collections.abc import Callable
 from pathlib import Path
-from typing import Any, Optional
+from typing import Any
 
 from ..config import MountConfig, get_mount_config
 from ..logger import logger
@@ -275,6 +275,7 @@ class APIApplication:
         try:
             import uvicorn
 
-            uvicorn.run(self.fastapi, host="0.0.0.0", port=self.port, log_config=None)  # Use hyperlib logger
+            # Bind to all interfaces for containerized environments
+            uvicorn.run(self.fastapi, host="0.0.0.0", port=self.port, log_config=None)  # nosec B104
         except ImportError:
             raise ImportError("uvicorn is required to run the API. " "Install it with: pip install uvicorn[standard]")
