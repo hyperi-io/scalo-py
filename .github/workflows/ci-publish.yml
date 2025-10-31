@@ -161,8 +161,8 @@ jobs:
           GITHUB_ACTIONS: "true"
           FORCE_PUBLISH: "1"
         run: |
-          # Use modern CI structure - ALWAYS use ./ci/run
-          ./ci/run publish
+          # Use modern CI structure - run publish script directly (skip branch checks for detached HEAD)
+          ./ci/run --script 51-publish.py publish
 
       - name: Verify Published
         run: |
