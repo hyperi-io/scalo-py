@@ -277,6 +277,7 @@ class ContainerTestBase:
         return False
 
 
+@pytest.mark.integration
 @pytest.mark.skipif(not docker_available(), reason="Docker not available or not running")
 class TestDockerDeployment(ContainerTestBase):
     """Test hyperlib applications in Docker containers."""
@@ -627,6 +628,7 @@ class TestDockerDeployment(ContainerTestBase):
             shutil.rmtree(temp_dir, ignore_errors=True)
 
 
+@pytest.mark.integration
 class TestHelmBasedDeployment(ContainerTestBase):
     """Test hyperlib applications with Helm charts in Kubernetes (Minikube)."""
 
@@ -987,6 +989,7 @@ class TestHelmBasedDeployment(ContainerTestBase):
             shutil.rmtree(chart_dir, ignore_errors=True)
 
 
+@pytest.mark.integration
 class TestHelmDeployment(ContainerTestBase):
     """Test hyperlib applications with Helm charts."""
 

@@ -23,6 +23,7 @@ def docker_available():
         return False
 
 
+@pytest.mark.integration
 @pytest.mark.skipif(not docker_available(), reason="Docker not available")
 class TestDockerContainer:
     """Test hyperlib applications in Docker containers."""
