@@ -41,12 +41,4 @@ ai:
   _tier: pro-max
   check_requirements: true
   mcp:
-    enabled: true
-    servers:
-      sequential_thinking:
-        enabled: true
-        package: '@modelcontextprotocol/server-sequential-thinking'
-      memory:
-        enabled: true
-        package: mcp-knowledge-graph
-        memory_path: -memory
+    enabled: false
