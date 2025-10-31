@@ -18,7 +18,8 @@ These are already configured at: https://github.com/organizations/hypersec-io/se
 
 - **JFrog URL**: `https://hypersec.jfrog.io/artifactory/api/pypi/hypersec-pypi-local`
 - **Install URL**: `https://hypersec.jfrog.io/artifactory/api/pypi/hypersec-pypi-local/simple`
-- **Workflow**: `.github/workflows/hyperlib-jfrog-publish.yml` (at repository root)
+- **Workflow**: `.github/workflows/ci-publish.yml`
+- **Latest Published**: v2.3.6 (2025-10-31)
 
 ## Deployment Process
 
@@ -26,8 +27,18 @@ These are already configured at: https://github.com/organizations/hypersec-io/se
 
 Hyperlib is published via GitHub Actions workflow:
 
-1. **Navigate to Actions**:
-   - Go to: https://github.com/hypersec-io/hypersec-forge/actions
+1. **Create and push version tag**:
+   ```bash
+   # Make your changes
+   git add .
+   git commit -m "fix: your changes"
+
+   # Create release and push tag
+   FORCE_RELEASE=1 CI_PUSH=1 ./ci/run release
+   ```
+
+2. **Trigger workflow** (or wait for automatic trigger):
+   - Go to: https://github.com/hypersec-io/hyperlib/actions
    - Select workflow: "Hyperlib - JFrog Publish"
 
 2. **Trigger Manual Publish**:
