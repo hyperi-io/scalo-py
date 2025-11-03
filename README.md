@@ -66,7 +66,7 @@ metrics = create_metrics(namespace="myapp")
 ## Local CI (default)
 
 ```bash
-./ci/ci
+./ci/run check
 ```
 
 CI is local-first. GitHub Actions are disabled by default and should be enabled only for tasks requiring hosted secrets (e.g., publishing).
@@ -93,7 +93,7 @@ CI is local-first. GitHub Actions are disabled by default and should be enabled 
 ### CI Commands
 
 ```bash
-./ci/ci [action] [flags]
+./ci/run [action] [flags]
 
 Actions:
   check     - Run all CI checks (lint, test, type-check)
@@ -107,7 +107,7 @@ Actions:
 
 ```bash
 # Full release with automatic versioning and publishing
-FORCE_RELEASE=1 ./ci/ci publish
+./ci/run release --force
 ```
 
 This will:
