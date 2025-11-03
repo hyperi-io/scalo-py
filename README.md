@@ -52,9 +52,9 @@ app = Application()
 app.logger.info("Application started")
 
 # Or use components directly
-from hyperlib import get_logger, get_runtime_paths, create_metrics
+from hyperlib.logger import logger
+from hyperlib import get_runtime_paths, create_metrics
 
-logger = get_logger()
 logger.info("Application started")
 
 runtime = get_runtime_paths()
@@ -97,9 +97,9 @@ CI is local-first. GitHub Actions are disabled by default and should be enabled 
 
 Actions:
   check     - Run all CI checks (lint, test, type-check)
-  build     - Build wheel and sdist locally (for testing)
-  release   - Full semantic-release (version, tag, build)
-  publish   - Release + push to GitHub (triggers GitHub Actions to publish to JFrog)
+  test      - Run tests only
+  build     - Build wheel and sdist locally
+  release   - Create version, tag, commit, push (triggers GitHub Actions)
   clean     - Remove build artifacts
 ```
 
@@ -122,10 +122,10 @@ This will:
 
 ### Publishing Workflow
 
-**Publishing happens ONLY via GitHub Actions:**
+**Publishing happens via GitHub Actions:**
 
-1. Local: `./ci/ci publish` creates version, tag, and pushes
-2. GitHub Actions: Triggered by tag push, builds and publishes to JFrog
+1. Local: `./ci/run release` creates version, tag, and pushes
+2. GitHub Actions: Triggered by tag push (v*), builds and publishes to JFrog
 3. Uses GitHub Secrets: `ARTIFACTORY_USERNAME` and `ARTIFACTORY_PASSWORD`
 
 **Note:** `JF_USER`/`JF_PASSWORD` in `.env` are for bootstrap only (installing hyperlib during development), NOT for publishing.
