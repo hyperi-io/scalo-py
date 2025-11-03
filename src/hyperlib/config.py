@@ -1,11 +1,100 @@
 """
-HyperLib Config - Standard Dynaconf Interface with Container Auto-Detection
+HyperLib Config - Enterprise Configuration with Automatic Cascade
+===================================================================
 
-Provides:
-- Consistent configuration usage across ALL /src code
+Provides zero-configuration, automatic cascade for Python applications.
+Just import and use - no cascade implementation needed!
+
+Configuration Cascade (7 Layers, HyperSec Standard)
+====================================================
+
+ALL configuration automatically follows this priority (highest to lowest):
+
+    1. CLI args/switches  → --host=X --port=Y (runtime, apps/CLIs only)
+    2. ENV variables      → MYAPP_DATABASE_HOST=prod.db.com (deployment)
+    3. .env file          → Local secrets (gitignored, never commit)
+    4. settings.{env}.yaml → Environment-specific (settings.production.yaml)
+    5. settings.yaml      → Project base config (team defaults)
+    6. defaults.yaml      → Safe fallback defaults (local dev)
+    7. Hard-coded         → Last resort in code (fallback values)
+
+**Real-World Example - database.host:**
+
+    Priority    Source                      Value               When Used
+    --------    ------                      -----               ---------
+    1. CLI      --host prod.db.com          "prod.db.com"       CLI override
+    2. ENV      MYAPP_DATABASE_HOST=test    "test.db"           CI/staging
+    3. .env     MYAPP_DATABASE_HOST=local   "local.db"          Dev secrets
+    4. {env}    settings.production.yaml    "prod-rw.db.com"    Prod deploy
+    5. base     settings.yaml               "postgres.svc"      Team default
+    6. defaults defaults.yaml               "localhost"         Safe default
+    7. code     settings.get("db.host", "localhost")           Fallback
+
+**Zero Configuration Required - Automatic Cascade:**
+
+    # Just import and use - cascade is AUTOMATIC via Dynaconf!
+    from hyperlib.config import settings
+
+    # Direct attribute access (Pythonic)
+    host = settings.database.host         # Cascade automatic!
+    port = settings.database.port         # ENV > .env > files > defaults
+
+    # Dict-style with fallback
+    host = settings.get("database.host", "localhost")
+    timeout = settings.get("api.timeout", 30)
+
+**ENV Key Auto-Generation:**
+
+    Config Path              Auto-Generated ENV Key
+    -----------              ----------------------
+    database.host         → MYAPP_DATABASE_HOST
+    api.timeout           → MYAPP_API_TIMEOUT
+    cache.redis.enabled   → MYAPP_CACHE_REDIS_ENABLED
+
+    Prefix customizable via: HYPERLIB_ENV_PREFIX=MYAPP
+
+**Multi-File Support:**
+
+    Hyperlib auto-discovers and merges multiple config sources:
+
+    1. Built-in defaults (hyperlib internals)
+    2. ~/.{app}/defaults.yaml (user defaults)
+    3. /config/defaults.yaml (container defaults)
+    4. settings.yaml (project base)
+    5. settings.production.yaml (environment-specific)
+    6. Additional files via get_config() parameter
+
+    All files merged automatically with proper priority!
+
+Quick Start
+===========
+
+    # Install
+    pip install hyperlib
+
+    # Use in your app (cascade automatic!)
+    from hyperlib.config import settings
+
+    db_host = settings.database.host    # No cascade logic needed!
+    api_key = settings.api.key          # ENV > .env > yaml > defaults
+
+    # Or use helper functions
+    from hyperlib.config import get_database_config
+
+    db = get_database_config("postgresql")
+    # Returns: {host, port, user, password, database}
+    # All from ENV vars: POSTGRES_HOST, POSTGRES_PORT, etc.
+
+Container-Aware Features
+========================
+
+Beyond configuration, this module provides:
 - Auto-detection of container environments (K8s, Docker, bare metal)
 - Smart defaults for mount paths based on detected environment
 - Container deployment patterns (daemon, API, one-shot)
+- Standard path discovery (/config, /secrets, /data, /logs)
+
+See: get_mount_config(), detect_environment(), get_container_config()
 """
 
 import os
@@ -435,8 +524,113 @@ settings = Dynaconf(
 
 
 def get_settings():
-    """Get standard dynaconf settings object"""
+    """
+    Get standard dynaconf settings object with automatic cascade.
+
+    The cascade is AUTOMATIC - just access values:
+        settings.database.host    # ENV > .env > yaml > defaults
+        settings.get("api.timeout", 30)
+
+    Returns:
+        Dynaconf settings object with 7-layer cascade built-in
+    """
     return settings
+
+
+def get_config(
+    additional_files: list[str] = None,
+    env_prefix: str = None,
+    load_dotenv: bool = True,
+    merge_existing: bool = True
+):
+    """
+    Get configuration with optional additional file sources.
+
+    Creates a NEW Dynaconf instance with custom file sources while
+    preserving the automatic 7-layer cascade behavior.
+
+    **Use Cases:**
+
+        # Add plugin configs
+        config = get_config(additional_files=["plugins/auth.yaml", "plugins/cache.yaml"])
+
+        # Custom prefix for multi-tenant apps
+        config = get_config(env_prefix="TENANT1")
+
+        # Disable .env for security
+        config = get_config(load_dotenv=False)
+
+        # Fresh config (ignore default settings)
+        config = get_config(merge_existing=False)
+
+    **Automatic Cascade Still Works:**
+
+        config = get_config(additional_files=["custom.yaml"])
+        value = config.database.host  # Still cascades: ENV > .env > custom.yaml > ...
+
+    Args:
+        additional_files: Additional config file paths to merge (list of str)
+                         Files loaded in order, later files have higher priority
+                         Paths can be absolute or relative to config_dir
+        env_prefix: Environment variable prefix (default: APP or HYPERLIB_ENV_PREFIX)
+                   Example: "TENANT1" → TENANT1_DATABASE_HOST
+        load_dotenv: Load .env file (default: True)
+                    Set False for security-sensitive contexts
+        merge_existing: Merge with existing settings files (default: True)
+                       Set False to use only additional_files
+
+    Returns:
+        Dynaconf settings object with cascade built-in
+
+    Examples:
+        # Add monitoring config
+        config = get_config(additional_files=["monitoring.yaml"])
+        metrics_port = config.metrics.port  # Cascade automatic!
+
+        # Multi-tenant with custom prefix
+        tenant_config = get_config(
+            additional_files=["tenants/acme.yaml"],
+            env_prefix="ACME"
+        )
+        db = tenant_config.database.host  # ACME_DATABASE_HOST > acme.yaml > ...
+
+        # Plugin system
+        plugin_config = get_config(
+            additional_files=["plugins/auth.yaml", "plugins/cache.yaml"],
+            merge_existing=True  # Merge with main settings
+        )
+    """
+    # Use provided prefix or default
+    prefix = env_prefix or ENV_PREFIX
+
+    # Build file list
+    config_files = []
+
+    # Include existing settings files if merge_existing
+    if merge_existing and settings_files:
+        config_files.extend(settings_files)
+
+    # Add additional files (higher priority than existing)
+    if additional_files:
+        for file_path in additional_files:
+            path = Path(file_path)
+            # Make relative paths relative to config_dir
+            if not path.is_absolute() and config_dir:
+                path = config_dir / file_path
+            if path.exists():
+                config_files.append(str(path))
+            else:
+                if os.getenv("HYPERLIB_DEBUG"):
+                    print(f"[WARN] Config file not found: {path}")
+
+    # Create new Dynaconf instance
+    return Dynaconf(
+        envvar_prefix=prefix,
+        settings_files=config_files,
+        load_dotenv=load_dotenv,
+        environments=False,
+        merge_enabled=True,
+    )
 
 
 def setup():
@@ -881,13 +1075,17 @@ targets:
 
 # Export for direct access
 __all__ = [
-    "settings",
-    "get_settings",
-    "setup",
+    # Primary config objects (use these!)
+    "settings",           # Default settings object (automatic cascade)
+    "get_settings",       # Get default settings object
+    "get_config",         # Get config with additional files (NEW!)
+    "setup",              # Setup function (compatibility)
+    # Helper functions
     "get_api_config",
     "get_logging_config",
     "get_target_config",
     "init_config_directory",
+    # Constants
     "ENV_PREFIX",
     "APP_NAME",
     # Container-aware exports
