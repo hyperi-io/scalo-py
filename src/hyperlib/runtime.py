@@ -1,12 +1,84 @@
 """
-HyperLib Runtime Environment - Unified path management for container and local deployment
+HyperLib Runtime - Container-Aware Path Management
+===================================================
 
-Provides consistent directory structure regardless of deployment mode:
-- Container: {base}/config, {base}/data, {base}/tmp (base defaults to /app)
-- Local: ~/.config/appname, ~/.local/share/appname, /tmp/appname
+Automatic path detection for containers and local development.
+Works identically in K8s, Docker, and bare metal - zero configuration!
 
-Container base path can be customized via CONTAINER_BASE_PATH environment variable.
-Default: /app (can be changed to /mnt, /dfe, /opt/app, etc.)
+Quick Start
+===========
+
+    # Install
+    pip install hyperlib
+
+    # Use (automatic detection!)
+    from hyperlib import get_runtime_paths
+
+    runtime = get_runtime_paths()
+
+    # Works in ANY environment:
+    config_file = runtime.config_dir / "app.yaml"       # /config/app.yaml (K8s)
+                                                        # ~/.config/myapp/app.yaml (local)
+
+    data_file = runtime.data_dir / "state.db"           # /data/state.db (K8s)
+                                                        # ~/.local/share/myapp/state.db (local)
+
+    temp_file = runtime.temp_dir / "cache.tmp"          # /tmp/cache.tmp (all envs)
+
+**Automatic Environment Detection:**
+
+    Environment     Detection Method              Paths Used
+    -----------     ----------------              ----------
+    Kubernetes      /var/run/secrets/...token    /config, /data, /logs
+    Docker          /.dockerenv file             /app/config, /app/data
+    Container       /proc/1/cgroup               /app/* namespace
+    Bare Metal      Default                      ~/.config, ~/.local/share
+
+**Standard Path Semantics:**
+
+    Path           Purpose                 K8s Mount       Local Dev
+    ----           -------                 ---------       ---------
+    config_dir     READ-ONLY config        ConfigMap       ~/.config/{app}
+    secrets_dir    READ-ONLY secrets       Secret          ~/.{app}/secrets
+    data_dir       PERSISTENT data         PVC             ~/.local/share/{app}
+    temp_dir       EPHEMERAL temp          EmptyDir        /tmp/{app}
+    logs_dir       Application logs        stdout/file     ~/.local/share/{app}/logs
+
+**Container Base Path Customization:**
+
+    # Default: /app
+    CONTAINER_BASE_PATH=/mnt    # Use /mnt/config, /mnt/data, /mnt/tmp
+    CONTAINER_BASE_PATH=/opt    # Use /opt/config, /opt/data, /opt/tmp
+
+**Deployment Examples:**
+
+    # K8s HELM Chart
+    volumes:
+      - name: config
+        configMap: my-app-config
+        mountPath: /config              # → runtime.config_dir
+
+      - name: data
+        persistentVolumeClaim: my-pvc
+        mountPath: /data                # → runtime.data_dir
+
+    # Docker Compose
+    volumes:
+      - ./config:/app/config:ro         # → runtime.config_dir
+      - app-data:/app/data              # → runtime.data_dir
+
+    # Local Dev
+    # No volumes needed!
+    # Uses: ~/.config/myapp, ~/.local/share/myapp
+
+Zero Configuration Required
+============================
+
+✅ Auto-detects environment (K8s, Docker, local)
+✅ Auto-discovers standard mount paths
+✅ Consistent API across all environments
+✅ No deployment-specific code needed
+✅ Write once, deploy anywhere
 """
 
 import os

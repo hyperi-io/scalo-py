@@ -1,8 +1,130 @@
 """
-Database connection and URL construction utilities.
+HyperLib Database Utilities - Zero-Config Connection Builders
+===============================================================
 
-This module provides helpers for building database connection strings
-and managing database configurations across different deployment environments.
+Automatic database connection URL construction from ENV variables.
+Supports PostgreSQL, MySQL, MongoDB, Redis, ClickHouse - zero configuration!
+
+Quick Start
+===========
+
+    # Install
+    pip install hyperlib[database]
+
+    # PostgreSQL (automatic ENV detection!)
+    from hyperlib import build_database_url
+
+    # Reads: POSTGRES_HOST, POSTGRES_PORT, POSTGRES_USER, POSTGRES_PASSWORD, POSTGRES_DATABASE
+    db_url = build_database_url("postgresql")
+    # → postgresql://user:pass@host:5432/dbname
+
+    # Use with SQLAlchemy, asyncpg, psycopg2, etc.
+    from sqlalchemy import create_engine
+    engine = create_engine(db_url)
+
+Standard ENV Variables (Cloud-Native)
+======================================
+
+**PostgreSQL:**
+
+    POSTGRES_HOST=prod-db.svc.cluster.local
+    POSTGRES_PORT=5432
+    POSTGRES_USER=myapp
+    POSTGRES_PASSWORD=secret123
+    POSTGRES_DATABASE=production
+    POSTGRES_SSLMODE=require
+
+**MySQL:**
+
+    MYSQL_HOST=mysql.example.com
+    MYSQL_PORT=3306
+    MYSQL_USER=root
+    MYSQL_PASSWORD=secret
+    MYSQL_DATABASE=mydb
+
+**MongoDB:**
+
+    MONGO_HOST=mongo.svc.local
+    MONGO_PORT=27017
+    MONGO_USER=admin
+    MONGO_PASSWORD=secret
+    MONGO_DATABASE=app_db
+
+**Redis:**
+
+    REDIS_HOST=redis.svc.local
+    REDIS_PORT=6379
+    REDIS_PASSWORD=secret
+    REDIS_DB=0
+
+**ClickHouse:**
+
+    CLICKHOUSE_HOST=clickhouse.svc
+    CLICKHOUSE_PORT=9000
+    CLICKHOUSE_USER=default
+    CLICKHOUSE_PASSWORD=secret
+    CLICKHOUSE_DATABASE=analytics
+
+Usage Patterns
+==============
+
+    # Pattern 1: Auto-detect from ENV (most common)
+    from hyperlib.dbconn import build_database_url
+
+    postgres_url = build_database_url("postgresql")
+    mysql_url = build_database_url("mysql")
+
+    # Pattern 2: Get config dict
+    from hyperlib.dbconn import get_database_config
+
+    config = get_database_config("postgresql")
+    # Returns: {host: "...", port: 5432, user: "...", password: "...", database: "..."}
+
+    # Pattern 3: Custom ENV prefix (multi-database apps)
+    primary_url = build_database_url("postgresql", env_prefix="PRIMARY")
+    # Reads: PRIMARY_HOST, PRIMARY_PORT, etc.
+
+    cache_url = build_database_url("redis", env_prefix="CACHE")
+    # Reads: CACHE_HOST, CACHE_PORT, etc.
+
+Deployment
+==========
+
+**Kubernetes Secrets:**
+
+    apiVersion: v1
+    kind: Secret
+    metadata:
+      name: database
+    stringData:
+      POSTGRES_HOST: prod-db.svc.cluster.local
+      POSTGRES_USER: myapp
+      POSTGRES_PASSWORD: super-secret
+      POSTGRES_DATABASE: production
+
+**Docker Compose:**
+
+    environment:
+      POSTGRES_HOST: db
+      POSTGRES_USER: myapp
+      POSTGRES_PASSWORD: secret
+      POSTGRES_DATABASE: myapp_db
+
+**Local Dev (.env file):**
+
+    POSTGRES_HOST=localhost
+    POSTGRES_USER=dev
+    POSTGRES_PASSWORD=dev123
+    POSTGRES_DATABASE=myapp_dev
+
+Zero Configuration Required
+============================
+
+✅ Auto-reads standard ENV variables
+✅ Builds connection URLs automatically
+✅ Supports all major databases
+✅ Works in K8s, Docker, local
+✅ No hardcoded credentials
 """
 
 import os

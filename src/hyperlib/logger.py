@@ -1,7 +1,84 @@
 """
-HyperLib Logger - Standard Loguru Interface
-Enforces consistent logging usage across ALL /src code with RFC 3339 compliance
-Enforces CHARS-POLICY.md for terminal output and log files
+HyperLib Logger - Production-Ready Structured Logging
+======================================================
+
+Zero-configuration structured logging with automatic formatting.
+Just import and use - no setup needed!
+
+Quick Start
+===========
+
+    # Install
+    pip install hyperlib
+
+    # Use (zero configuration!)
+    from hyperlib import logger
+
+    logger.info("Application started")
+    logger.error("Failed to connect", database="prod-db", retry=3)
+    logger.success("✅ Deployment complete")
+
+    # Structured logging automatic:
+    # 2025-11-04T10:00:00.000+1100 | INFO | myapp:main:42 - Application started
+    # 2025-11-04T10:00:01.000+1100 | ERROR | myapp:main:45 - Failed to connect database=prod-db retry=3
+
+Configuration (via hyperlib.config cascade)
+============================================
+
+The logger automatically loads config from the 7-layer cascade:
+- ENV variables (LOG_LEVEL, LOG_FORMAT, etc.)
+- .env file
+- settings.yaml (logging: section)
+- Sensible defaults
+
+**Common ENV Variables (Standard K8s/Cloud-Native):**
+
+    LOG_LEVEL=DEBUG              # Log level (DEBUG, INFO, WARNING, ERROR, CRITICAL)
+    LOG_FORMAT=json              # Output format (json, text, console, logfmt)
+    LOG_OUTPUT=stdout            # Destination (stdout, stderr, file)
+    LOG_COLOR=false              # Disable colors (or use NO_COLOR=1)
+    LOG_TIMESTAMP_FORMAT=rfc3339 # Timestamp format (iso8601, rfc3339, unix, epoch)
+    LOG_CALLER=true              # Include source location
+    LOG_STACKTRACE_LEVEL=ERROR   # Minimum level for stack traces
+
+**Example settings.yaml:**
+
+    logging:
+      level: INFO                 # Default log level
+      format: console             # Human-readable for development
+      output: stderr              # Standard error stream
+      color: true                 # Enable colors (auto-disabled if not TTY)
+      timestamp_format: rfc3339   # RFC 3339 timestamps
+      caller: true                # Show file:line in logs
+      stacktrace_level: ERROR     # Stack traces for ERROR and above
+
+**Container Deployment:**
+
+    # Production K8s (JSON logs for aggregation)
+    LOG_FORMAT=json LOG_OUTPUT=stdout LOG_LEVEL=INFO
+
+    # Staging (human-readable)
+    LOG_FORMAT=console LOG_OUTPUT=stderr LOG_LEVEL=DEBUG
+
+Features
+========
+
+✅ **RFC 3339 Timestamps** - Standard across all environments
+✅ **Structured Logging** - Key-value pairs for searchability
+✅ **CHARS-POLICY.md Compliant** - ASCII logs, approved emojis only
+✅ **Container-Aware** - Auto-detects TTY, disables colors in K8s
+✅ **Zero Configuration** - Works out of the box
+✅ **Automatic Cascade** - ENV > .env > settings.yaml > defaults
+
+Technical Details
+=================
+
+Built on Loguru with:
+- RFC 3339 timestamp compliance
+- Solarized color palette (terminal)
+- Emoji support for log levels (✅ ❌ ⚠️ 💥)
+- Automatic emoji → text conversion for machine logs
+- Source location tracking (file:line:function)
 """
 
 import os

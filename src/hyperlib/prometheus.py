@@ -1,13 +1,115 @@
 """
-HyperLib Prometheus Metrics - Container and Process Monitoring
+HyperLib Prometheus Metrics - Production-Ready Observability
+==============================================================
 
-Provides standard metrics for containerized Python applications:
-- Process metrics (CPU, memory, threads)
-- Container metrics (cgroups limits, OOM detection)
-- HTTP metrics (requests, duration)
-- Custom application metrics
+Zero-configuration Prometheus metrics for Python applications.
+Auto-collects process, container, and application metrics!
 
-Automatically detects container environment and adjusts metric collection.
+Quick Start
+===========
+
+    # Install
+    pip install hyperlib[metrics]
+
+    # Create metrics (automatic collection!)
+    from hyperlib import create_metrics
+
+    metrics = create_metrics(namespace="myapp")
+
+    # Use metrics
+    metrics.http_requests.inc()                    # HTTP request counter
+    metrics.http_duration.observe(0.123)           # Request duration
+    metrics.active_connections.set(42)             # Current connections
+
+    # Expose endpoint (FastAPI example)
+    from fastapi import FastAPI, Response
+    from prometheus_client import generate_latest, CONTENT_TYPE_LATEST
+
+    app = FastAPI()
+
+    @app.get("/metrics")
+    def metrics_endpoint():
+        return Response(generate_latest(), media_type=CONTENT_TYPE_LATEST)
+
+Auto-Collected Metrics
+======================
+
+**Process Metrics (automatic):**
+- CPU usage (user, system, total)
+- Memory (RSS, VMS, available)
+- Thread count
+- File descriptors
+- Python version info
+
+**Container Metrics (K8s/Docker):**
+- Container memory limit (from cgroups)
+- Container memory usage
+- OOM kill detection
+- CPU throttling
+
+**Application Metrics (you create):**
+- HTTP requests/responses
+- Request duration/latency
+- Active connections
+- Queue sizes
+- Custom counters/gauges/histograms
+
+Standard Metric Patterns
+========================
+
+    # Counter (always increases)
+    metrics.http_requests.inc()                    # +1
+    metrics.http_requests.inc(5)                   # +5
+    metrics.http_requests.labels(method="POST", status="200").inc()
+
+    # Gauge (can go up/down)
+    metrics.active_connections.set(42)             # Set to 42
+    metrics.active_connections.inc()               # +1
+    metrics.active_connections.dec()               # -1
+
+    # Histogram (track distributions)
+    metrics.request_duration.observe(0.234)        # Record 234ms
+    metrics.payload_size.observe(1024)             # Record 1KB
+
+    # Info (metadata)
+    metrics.app_info.info({
+        "version": "1.2.3",
+        "environment": "production"
+    })
+
+Kubernetes Integration
+=======================
+
+**Prometheus Annotations (auto-discovery):**
+
+    apiVersion: v1
+    kind: Pod
+    metadata:
+      annotations:
+        prometheus.io/scrape: "true"
+        prometheus.io/port: "8000"
+        prometheus.io/path: "/metrics"
+
+**ServiceMonitor (Prometheus Operator):**
+
+    apiVersion: monitoring.coreos.com/v1
+    kind: ServiceMonitor
+    metadata:
+      name: myapp
+    spec:
+      endpoints:
+        - port: http
+          path: /metrics
+          interval: 30s
+
+Zero Configuration Required
+============================
+
+✅ Auto-collects process metrics (CPU, memory, threads)
+✅ Auto-detects container environment (K8s, Docker)
+✅ Auto-exposes standard metrics
+✅ Standard ENV variables (namespace, port, path)
+✅ Works with Prometheus, Grafana, CloudWatch
 """
 
 import os
