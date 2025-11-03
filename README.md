@@ -33,7 +33,7 @@ pip install hyperlib --extra-index-url "https://${JF_USER}:${JF_PASSWORD}@hypers
 git clone https://github.com/hypersec-io/hyperlib
 cd hyperlib
 
-# Bootstrap (3-phase: creates ci/.venv, installs hyperlib, runs bootstrap.d scripts)
+# Bootstrap (creates .venv, installs dependencies, runs git hooks)
 ./ci/bootstrap --install
 
 # Or set up manually
