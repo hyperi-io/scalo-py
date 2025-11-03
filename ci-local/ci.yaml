@@ -10,7 +10,6 @@ tests:
   - mypy_type_check
   min_coverage: 80
   fail_fast: false
-  pytest_args: -m 'not integration'
 nuitka:
   enabled: true
   build_type: package

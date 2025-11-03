@@ -1,84 +1,68 @@
 <!-- HYPERCI_STATE_MD: /projects/hyperlib/ci/modules/common/templates/CI-LOCAL.md -->
 # ci-local/ Directory Structure and Usage
 
-## Understanding the Two Environments
+## Understanding the Unified Environment
 
-Your project uses two completely separate Python environments that serve different purposes. It's important to understand which is which to avoid confusion.
+HyperCI uses a **unified virtual environment** approach: ONE `.venv` at project root contains both your runtime dependencies AND CI tools.
 
-### 1. Your Project Environment (What You're Building)
+### The Unified .venv Model
 
-This is the application or library you're actually developing.
+**Location:** `.venv/` at project root
+**Dependencies:** Defined in `pyproject.toml`, locked in `uv.lock`
 
-**Location:** Root of the repository
-**Virtual environment:** `.venv/` (at project root)
-**Dependencies:** Defined in `pyproject.toml` at root, locked in `uv.lock`
+**Contains EVERYTHING:**
+- Your application code (`src/` directory) - installed in editable mode
+- Runtime dependencies (dynaconf, loguru, pyyaml, requests, etc.)
+- CI/development tools (pytest, ruff, black, mypy, build, twine, etc.)
 
-**Contains:**
-- Your application code (`src/` directory)
-- Runtime dependencies your app needs (dynaconf, loguru, pyyaml, requests, etc.)
-- Development tools you use interactively (ipython, jupyter, etc.)
+**Structure in pyproject.toml:**
+```toml
+[project]
+dependencies = [
+    "dynaconf>=3.2.12",  # Runtime deps only
+    "loguru>=0.7.3",
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=8.0.0",     # CI tools
+    "ruff>=0.1.0",
+    "black>=24.0.0",
+    # ... all dev/CI tools
+]
+```
 
 **When you use it:**
-- Writing code in your IDE
-- Running your application manually
-- Debugging and testing features interactively
-- Any development work on your actual project
+- Local development (activate and code)
+- Running your application
+- CI operations (./ci/run check, ./ci/run build)
+- Testing (both manual and automated)
 
 **Example:**
 ```bash
-# Activate this environment for normal development
+# Activate for development
 source .venv/bin/activate
 
-# Your app's dependencies work here
-python -c "import dynaconf, loguru"  # ✅ Works - these are your project deps
+# Both runtime AND CI tools work
+python -c "import dynaconf, loguru"  # ✅ Runtime deps
+python -c "import pytest, ruff"      # ✅ CI tools
 
-# But CI tools aren't installed here
-python -c "import pytest, ruff"      # ❌ Fails - CI tools live elsewhere
+# Everything is in ONE place
+which pytest  # .venv/bin/pytest
+which python  # .venv/bin/python
 ```
-
-### 2. CI Environment (Testing & Build Automation)
-
-This is the separate infrastructure that tests, builds, and publishes your project.
-
-**Location:** `ci-local/` directory
-**Virtual environment:** `ci-local/.venv/`
-**Dependencies:** Defined in `ci-local/pyproject.toml`, locked in `ci-local/uv.lock`
-
-**Contains:**
-- Testing tools (pytest, coverage)
-- Linters and formatters (ruff, black, mypy)
-- Build tools (python-build, twine, semantic-release)
-- CI scripts from the `ci/` submodule
-
-**When you use it:**
-- You don't use it directly - CI scripts use it automatically
-- When you run `./ci/bootstrap --install` or `./ci/run check`
-- During automated testing and builds
-
-**Example:**
-```bash
-# You DON'T activate this manually - it's for automation only
-# CI scripts reference it explicitly like this:
-ci-local/.venv/bin/python ci/modules/python/run/run.d/20-python-test.py check
-
-# CI tools are installed here
-ci-local/.venv/bin/python -c "import pytest, ruff"       # ✅ Works
-
-# Your project dependencies might not be
-ci-local/.venv/bin/python -c "import dynaconf, loguru"   # ❌ Probably fails
-```
-
-**Important:** Don't install your project's dependencies in `ci-local/.venv/`. Keep the two environments completely separate.
 
 ### Quick Reference
 
-| What | Your Project | CI Automation |
-|------|--------------|---------------|
-| **What is it?** | The app/library you're building | Tools that test and build your app |
-| **Source code** | `src/`, `tests/` | `ci/`, `ci-local/` |
-| **Virtual env** | `.venv/` | `ci-local/.venv/` |
-| **Config file** | `pyproject.toml` | `ci-local/pyproject.toml` |
-| **Lock file** | `uv.lock` | `ci-local/uv.lock` |
+| What | Unified Environment |
+|------|---------------------|
+| **Virtual env** | `.venv/` at project root |
+| **Config file** | `pyproject.toml` (one file) |
+| **Lock file** | `uv.lock` (one file) |
+| **Runtime deps** | `[project] dependencies` |
+| **CI/Dev tools** | `[project.optional-dependencies] dev` |
+| **Installation** | `uv sync --all-extras` |
+| **Used by** | Developer AND CI scripts |
 | **Example packages** | dynaconf, loguru, requests | pytest, ruff, black, mypy |
 | **You activate it?** | Yes, for dev work | No, CI scripts handle it |
 | **IDE uses it?** | Yes, for autocomplete | No |
@@ -97,12 +81,12 @@ The `ci-local/` directory is the **project-writable** counterpart to the **READ-
 
 ```
 PROJECT_ROOT/
-├── .env                      # All CI env settings including JFrog credentials (gitignored, NEVER commit!)
+├── .venv/                    # Unified virtual environment (runtime + CI tools, gitignored)
+├── .env                      # All secrets (project + CI, gitignored, NEVER commit!)
+├── uv.lock                   # Locked dependencies (runtime + dev, committed)
+├── pyproject.toml            # Project config with [optional-dependencies] dev (committed)
 └── ci-local/
-    ├── .venv/                # CI tools virtual environment (gitignored, created by bootstrap)
     ├── ci.yaml               # Project CI configuration (committed, project-specific)
-    ├── pyproject.toml        # CI tool dependencies (committed)
-    ├── uv.lock               # Locked CI tool versions (committed)
     ├── logs/                 # CI logs (gitignored)
     │
     ├── common/               # Common (language-agnostic) extensions
@@ -119,17 +103,17 @@ PROJECT_ROOT/
 ### Committed Files (Version Controlled)
 
 **Always commit these:**
-- `ci.yaml` - Project CI configuration (languages, build settings, JFrog config)
-- `pyproject.toml` - CI tool dependencies
-- `uv.lock` - Locked CI tool versions (reproducible CI)
-- Custom scripts in `*/bootstrap.d/`, `*/ci.d/` (if you create any)
+- `pyproject.toml` - Project config (runtime deps + [optional-dependencies] dev for CI tools)
+- `uv.lock` - Locked dependencies (everything - runtime and dev)
+- `ci-local/ci.yaml` - CI configuration (languages, build settings, JFrog config)
+- Custom scripts in `ci-local/*/bootstrap.d/`, `ci-local/*/ci.d/` (if you create any)
 
 ### Gitignored Files (NEVER Commit)
 
 **Never commit these:**
+- `.venv/` - Virtual environment (created by bootstrap, contains everything)
 - `.env` - Secrets and credentials (JFrog, GitHub tokens, etc.)
-- `.venv/` - Virtual environment (created by bootstrap)
-- `logs/` - CI execution logs
+- `ci-local/logs/` - CI execution logs
 
 ## Configuration: ci.yaml
 
@@ -304,7 +288,7 @@ ARTIFACTORY_PASSWORD=your-password
 ## Directory Creation
 
 **Bootstrap creates these automatically:**
-- `ci-local/.venv/` - CI tools virtual environment
+- `.venv/` - CI tools virtual environment
 - `ci-local/logs/` - CI execution logs
 
 **You create these as needed:**
@@ -372,7 +356,7 @@ EOF
 chmod +x ci-local/python/ci.d/85-my-check.py
 
 # 4. Test it
-ci-local/.venv/bin/python ci-local/python/ci.d/85-my-check.py check
+.venv/bin/python ci-local/python/ci.d/85-my-check.py check
 
 # 5. Commit it
 git add ci-local/python/ci.d/85-my-check.py
@@ -392,7 +376,7 @@ git commit -m "chore: update CI config"
 
 ## Troubleshooting
 
-### "ci-local/.venv not found"
+### ".venv not found"
 
 **Solution:** Run bootstrap:
 ```bash
