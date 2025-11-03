@@ -16,7 +16,7 @@ authors = [
 maintainers = [
     { name = "HyperSec Team", email = "dev@hypersec.io" },
 ]
-requires-python = ">=3.11"
+requires-python = ">=3.8"
 classifiers = [
     "Development Status :: 5 - Production/Stable",
     "Intended Audience :: Developers",
@@ -48,7 +48,7 @@ dependencies = [
     "dynaconf>=3.2.12",
     "loguru>=0.7.3",
     "pyyaml>=6.0.3",
-    "psutil>=7.1.2",
+    "psutil>=7.1.3",
 ]
 
 [project.license]
@@ -141,8 +141,9 @@ pythonpath = [
     "src",
 ]
 markers = [
-    "e2e: end-to-end integration tests",
-    "integration: integration tests that test multiple components together",
+    "unit: fast unit tests (no external dependencies)",
+    "integration: integration tests (Docker required)",
+    "e2e: end-to-end tests (Minikube/K8s required)",
 ]
 filterwarnings = [
     "ignore::DeprecationWarning",
