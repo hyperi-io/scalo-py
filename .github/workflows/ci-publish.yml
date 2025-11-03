@@ -1,8 +1,15 @@
 name: CI Publish
 
+# Purpose: Build and publish packages to JFrog after a release tag is created
+#
+# This workflow PUBLISHES releases (builds + uploads artifacts).
+# It does NOT CREATE releases (versioning/tagging done by ./ci/run release).
+#
 # Triggers:
 # - Automatic: Version tag push (v*) from ./ci/run release
 # - Manual: workflow_dispatch for testing
+#
+# Workflow: ./ci/run release creates tag → this workflow builds & publishes
 on:
   push:
     tags:
