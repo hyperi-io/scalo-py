@@ -277,10 +277,7 @@ version_toml = ["pyproject.toml:project.version"]
 version_variables = [
     "src/hyperlib/__init__.py:__version__",
 ]
-version_pattern = [
-    "VERSION:^{version}$",
-]
-build_command = "rm -rf dist build src/*.egg-info && .venv/bin/python -m build"
+build_command = ".venv/bin/python write-version.py && git add VERSION && rm -rf dist build src/*.egg-info && .venv/bin/python -m build"
 major_on_zero = true
 tag_format = "v{version}"
 commit_message = "chore(release): {version} [skip ci]"
