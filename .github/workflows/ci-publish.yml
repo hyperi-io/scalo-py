@@ -42,18 +42,27 @@ jobs:
           with open('ci-local/ci.yaml') as f:
               config = yaml.safe_load(f)
 
-          # Always build standard package
-          matrix = {'include': [
-              {
+          # Initialize build matrix
+          matrix = {'include': []}
+
+          # Check Nuitka configuration
+          nuitka = config.get('nuitka', {})
+          nuitka_enabled = nuitka.get('enabled', False)
+          # publish_source controlled by config or CLI flag
+          publish_source = nuitka.get('publish_source', True)  # Default: true
+          if os.environ.get('CI_NUITKA_ONLY') == '1':
+              publish_source = False
+
+          # Add standard package (unless nuitka-only mode)
+          if not nuitka_enabled or publish_source:
+              matrix['include'].append({
                   'build_type': 'standard',
                   'runner': 'ubuntu-latest',
                   'arch': 'any'
-              }
-          ]}
+              })
 
           # Add Nuitka builds if enabled
-          nuitka = config.get('nuitka', {})
-          if nuitka.get('enabled', False):
+          if nuitka_enabled:
               platforms = nuitka.get('platforms', {})
 
               # Nuitka x64
