@@ -2,8 +2,11 @@
 HyperLib Runtime Environment - Unified path management for container and local deployment
 
 Provides consistent directory structure regardless of deployment mode:
-- Container: /app/config, /app/data, /app/tmp
+- Container: {base}/config, {base}/data, {base}/tmp (base defaults to /app)
 - Local: ~/.config/appname, ~/.local/share/appname, /tmp/appname
+
+Container base path can be customized via CONTAINER_BASE_PATH environment variable.
+Default: /app (can be changed to /mnt, /dfe, /opt/app, etc.)
 """
 
 import os
@@ -173,20 +176,43 @@ class RuntimeEnvironment:
         """
         Get container-standard paths.
 
+        Base path can be overridden with CONTAINER_BASE_PATH environment variable.
+        Default: /app
+
         Follows Kubernetes/Docker conventions:
-        - /app/config - ConfigMap (read-only configuration)
-        - /app/data   - PVC (persistent data)
-        - /app/tmp    - EmptyDir (ephemeral storage)
-        - /app/cache  - Cache data (can be EmptyDir or PVC)
-        - /run/{app}  - Runtime state (PID files, sockets)
+        - {base}/config - ConfigMap (read-only configuration)
+        - {base}/data   - PVC (persistent data)
+        - {base}/tmp    - EmptyDir (ephemeral storage)
+        - {base}/cache  - Cache data (can be EmptyDir or PVC)
+        - /run/{app}    - Runtime state (PID files, sockets)
         - stdout/stderr for logs (captured by container runtime)
+
+        Environment Variables:
+            CONTAINER_BASE_PATH: Override base path (default: /app)
+                Examples: /mnt, /dfe, /opt/app
+
+        Example:
+            >>> # Default: /app
+            >>> runtime = RuntimeEnvironment("myapp")
+            >>> paths = runtime.detect_runtime()
+            >>> paths.config_dir
+            Path('/app/config')
+
+            >>> # Custom base: /mnt
+            >>> os.environ["CONTAINER_BASE_PATH"] = "/mnt"
+            >>> paths = runtime.detect_runtime()
+            >>> paths.config_dir
+            Path('/mnt/config')
         """
+        # Get base path from environment or use /app default
+        base_path = Path(os.getenv("CONTAINER_BASE_PATH", "/app"))
+
         return RuntimePaths(
-            config_dir=Path("/app/config"),
-            data_dir=Path("/app/data"),
-            temp_dir=Path("/app/tmp"),
+            config_dir=base_path / "config",
+            data_dir=base_path / "data",
+            temp_dir=base_path / "tmp",
             log_dir=None,  # Container logs go to stdout
-            cache_dir=Path("/app/cache"),
+            cache_dir=base_path / "cache",
             run_dir=Path(f"/run/{self.app_name}"),
             is_container=True,
             detection_method=detection_method,
