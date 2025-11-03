@@ -26,10 +26,7 @@ def _venv_bin(venv_dir: Path, exe: str) -> Path:
 @pytest.mark.parametrize("license_id", ["hypersec-eula", "apache-2.0"])
 @pytest.mark.parametrize("enable_gha", [False, True])
 def test_template_deploy_flow(license_id: str, enable_gha: bool) -> None:
-    # Opt-in to heavy e2e by setting RUN_E2E=1
-    if os.environ.get("RUN_E2E") != "1":
-        pytest.skip("Set RUN_E2E=1 to run e2e deployment tests")
-
+    # Skip if copier not available
     if not _which("copier"):
         pytest.skip("copier CLI not found in PATH")
 
