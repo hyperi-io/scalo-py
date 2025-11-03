@@ -166,8 +166,8 @@ jobs:
           GITHUB_ACTIONS: "true"
           FORCE_PUBLISH: "1"
         run: |
-          # Use modern CI structure - run publish script directly (skip branch checks for detached HEAD)
-          ./ci/run --script 51-publish.py publish
+          # Call publish script directly (publish action removed from CLI)
+          .venv/bin/python ci/modules/python/run.d/51-publish.py publish
 
       - name: Verify Published
         run: |
