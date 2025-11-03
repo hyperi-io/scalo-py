@@ -8,6 +8,12 @@ on:
     tags:
       - 'v*'
   workflow_dispatch:
+    inputs:
+      overwrite:
+        description: 'Force overwrite if version exists in JFrog'
+        required: false
+        default: 'false'
+        type: boolean
 
 jobs:
   # Read ci.yaml to determine what to build
@@ -155,7 +161,30 @@ jobs:
           # Installs: pytest, ruff, build, twine, Nuitka (if nuitka.enabled)
           ci/bootstrap --install
 
+      - name: Check Version Exists
+        id: version_check
+        env:
+          ARTIFACTORY_USERNAME: ${{ secrets.ARTIFACTORY_USERNAME }}
+          ARTIFACTORY_PASSWORD: ${{ secrets.ARTIFACTORY_PASSWORD }}
+        run: |
+          # Get version from VERSION file
+          VERSION=$(cat VERSION)
+          echo "version=$VERSION" >> $GITHUB_OUTPUT
+
+          # Check if version exists in JFrog
+          PACKAGE_NAME=$(python -c "import tomllib; print(tomllib.load(open('pyproject.toml', 'rb'))['project']['name'])")
+          JFROG_URL="https://hypersec.jfrog.io/artifactory/api/pypi/hypersec-pypi-local/simple/${PACKAGE_NAME}/"
+
+          if curl -f -u "${ARTIFACTORY_USERNAME}:${ARTIFACTORY_PASSWORD}" "$JFROG_URL" 2>/dev/null | grep -q "${PACKAGE_NAME}-${VERSION}"; then
+            echo "exists=true" >> $GITHUB_OUTPUT
+            echo "⚠️  Version $VERSION already exists in JFrog"
+          else
+            echo "exists=false" >> $GITHUB_OUTPUT
+            echo "✅ Version $VERSION not found - will publish"
+          fi
+
       - name: Build and Publish
+        if: steps.version_check.outputs.exists == 'false' || github.event.inputs.overwrite == 'true'
         env:
           ARTIFACTORY_USERNAME: ${{ secrets.ARTIFACTORY_USERNAME }}
           ARTIFACTORY_PASSWORD: ${{ secrets.ARTIFACTORY_PASSWORD }}
@@ -168,6 +197,13 @@ jobs:
         run: |
           # Use modern CI structure - run publish script directly (skip branch checks for detached HEAD)
           ./ci/run --script 51-publish.py publish
+
+      - name: Skip Publish (Version Exists)
+        if: steps.version_check.outputs.exists == 'true' && github.event.inputs.overwrite != 'true'
+        run: |
+          echo "⚠️  SKIPPING PUBLISH"
+          echo "Version ${{ steps.version_check.outputs.version }} already exists in JFrog"
+          echo "Use workflow_dispatch with overwrite: true to force republish"
 
       - name: Verify Published
         run: |
