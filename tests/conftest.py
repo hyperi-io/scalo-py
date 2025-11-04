@@ -7,6 +7,9 @@ from pathlib import Path
 
 import pytest
 
+# Enable DEBUG logging for all tests
+os.environ["LOG_LEVEL"] = "DEBUG"
+
 # Load .env file for test credentials (Artifactory, database, etc.)
 env_file = Path(__file__).parent.parent / ".env"
 if env_file.exists():
