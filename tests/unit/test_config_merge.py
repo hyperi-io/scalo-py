@@ -361,7 +361,7 @@ class TestMergeFilesHighLevel:
 
 
 class TestErrorHandling:
-    """Test error handling for invalid data."""
+    """Test error handling for invalid data and I/O errors."""
 
     def test_invalid_json_in_source(self, tmp_path):
         """Test error for malformed JSON in source."""
@@ -373,6 +373,43 @@ class TestErrorHandling:
 
         with pytest.raises(ValueError, match="Invalid JSON"):
             merge_files(source, target)
+
+    def test_permission_error_on_source_read(self, tmp_path):
+        """Test PermissionError when cannot read source file."""
+        source = tmp_path / "source.json"
+        target = tmp_path / "target.json"
+
+        source.write_text('{"key": "value"}')
+        target.write_text('{}')
+
+        # Make source unreadable
+        source.chmod(0o000)
+
+        try:
+            with pytest.raises(PermissionError, match="Cannot read source file"):
+                merge_files(source, target)
+        finally:
+            # Restore permissions for cleanup
+            source.chmod(0o644)
+
+    def test_permission_error_on_target_write(self, tmp_path):
+        """Test PermissionError when cannot write to target."""
+        source = tmp_path / "source.json"
+        target_dir = tmp_path / "readonly"
+        target = target_dir / "target.json"
+
+        source.write_text('{"key": "value"}')
+        target_dir.mkdir()
+
+        # Make directory read-only
+        target_dir.chmod(0o555)
+
+        try:
+            with pytest.raises((PermissionError, OSError), match="Cannot write to|Cannot create"):
+                merge_files(source, target)
+        finally:
+            # Restore permissions for cleanup
+            target_dir.chmod(0o755)
 
     def test_invalid_json_in_target(self, tmp_path):
         """Test error for malformed JSON in target."""

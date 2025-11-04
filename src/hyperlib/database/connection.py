@@ -189,7 +189,16 @@ def get_database_config(
                 config["host"] = os.getenv(f"{prefix}_HOST") or os.getenv(f"{prefix}_SERVICE_HOST")
             if not config.get("port"):
                 port_val = os.getenv(f"{prefix}_PORT") or os.getenv(f"{prefix}_SERVICE_PORT")
-                config["port"] = int(port_val) if port_val else None
+                if port_val:
+                    try:
+                        port = int(port_val)
+                        if not (1 <= port <= 65535):
+                            raise ValueError(f"Port out of range (1-65535): {port}")
+                        config["port"] = port
+                    except ValueError as e:
+                        raise ValueError(f"Invalid port for {prefix}_PORT: '{port_val}' - {e}") from e
+                else:
+                    config["port"] = None
             if not config.get("user"):
                 config["user"] = os.getenv(f"{prefix}_USER") or os.getenv(f"{prefix}_USERNAME")
             if not config.get("password"):
@@ -197,13 +206,19 @@ def get_database_config(
             if not config.get("database"):
                 config["database"] = os.getenv(f"{prefix}_DATABASE") or os.getenv(f"{prefix}_DB")
 
-    # Override with specific prefix values
+    # Override with specific prefix values (with port validation)
+    try:
+        port_val = os.getenv(f"{env_prefix}_PORT", config.get("port") or default_ports.get(db_type.lower(), 5432))
+        port = int(port_val)
+        if not (1 <= port <= 65535):
+            raise ValueError(f"Port out of range (1-65535): {port}")
+    except ValueError as e:
+        raise ValueError(f"Invalid port for {env_prefix}_PORT: '{port_val}' - {e}") from e
+
     config.update(
         {
             "host": os.getenv(f"{env_prefix}_HOST", config.get("host", "localhost")),
-            "port": int(
-                os.getenv(f"{env_prefix}_PORT", config.get("port") or default_ports.get(db_type.lower(), 5432))
-            ),
+            "port": port,
             "user": os.getenv(f"{env_prefix}_USER", config.get("user")),
             "password": os.getenv(f"{env_prefix}_PASSWORD", config.get("password")),
             "database": os.getenv(f"{env_prefix}_DATABASE", config.get("database")),
@@ -224,7 +239,16 @@ def get_database_config(
         config["replicaSet"] = os.getenv(f"{env_prefix}_REPLICA_SET")
 
     elif db_type.lower() == "redis":
-        config["db"] = int(os.getenv(f"{env_prefix}_DB", "0"))
+        # Redis DB number validation
+        try:
+            db_val = os.getenv(f"{env_prefix}_DB", "0")
+            db_num = int(db_val)
+            if db_num < 0:
+                raise ValueError(f"Redis DB number cannot be negative: {db_num}")
+            config["db"] = db_num
+        except ValueError as e:
+            raise ValueError(f"Invalid Redis DB for {env_prefix}_DB: '{db_val}' - {e}") from e
+
         config["ssl"] = os.getenv(f"{env_prefix}_SSL", "false").lower() == "true"
 
     return config

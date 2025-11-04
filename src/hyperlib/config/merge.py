@@ -389,11 +389,14 @@ def merge_files(
             raise ValueError(f"Unknown strategy: {strategy}")
 
     except json.JSONDecodeError as e:
-        raise ValueError(f"Invalid JSON in {source}: {e}")
+        raise ValueError(f"Invalid JSON in {source}: {e}") from e
     except yaml.YAMLError as e:
-        raise ValueError(f"Invalid YAML in {source}: {e}")
+        raise ValueError(f"Invalid YAML in {source}: {e}") from e
+    except (PermissionError, OSError, UnicodeDecodeError, UnicodeEncodeError):
+        # Re-raise specific I/O exceptions without wrapping
+        raise
     except Exception as e:
-        raise ValueError(f"Merge failed: {e}")
+        raise ValueError(f"Merge failed: {e}") from e
 
     # Return or write
     if dry_run:

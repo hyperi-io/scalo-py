@@ -349,24 +349,20 @@ class RuntimeEnvironment:
             create_config: Create config_dir (normally read-only in containers)
         """
 
-        # Always create data and temp directories
-        paths.data_dir.mkdir(parents=True, exist_ok=True)
-        paths.temp_dir.mkdir(parents=True, exist_ok=True)
-
-        # Create log directory if specified
-        if paths.log_dir:
-            paths.log_dir.mkdir(parents=True, exist_ok=True)
-
-        # Create cache directory (use effective_cache_dir for fallback)
-        paths.effective_cache_dir.mkdir(parents=True, exist_ok=True)
-
-        # Create run directory if specified
-        if paths.run_dir:
+        # Create critical directories - fail fast if cannot create
+        for dir_type, path in [("data", paths.data_dir), ("temp", paths.temp_dir)]:
             try:
-                paths.run_dir.mkdir(parents=True, exist_ok=True)
-            except PermissionError:
-                # /run may require elevated permissions, skip silently
-                logger.debug(f"Could not create run directory: {paths.run_dir}")
+                path.mkdir(parents=True, exist_ok=True)
+            except (PermissionError, OSError) as e:
+                raise RuntimeError(f"Cannot create critical {dir_type} directory {path}: {e}") from e
+
+        # Create optional directories - log warning and continue on failure
+        for dir_type, path in [("log", paths.log_dir), ("cache", paths.effective_cache_dir), ("run", paths.run_dir)]:
+            if path:
+                try:
+                    path.mkdir(parents=True, exist_ok=True)
+                except (PermissionError, OSError) as e:
+                    logger.warning(f"Could not create {dir_type} directory {path}: {e}")
 
         # Only create config in local mode (containers mount ConfigMaps)
         if create_config or not paths.is_container:
