@@ -133,7 +133,7 @@ Zero Configuration Philosophy
 Requires Python 3.11+ for modern type hints and enterprise features
 """
 
-__version__ = "2.7.2"  # Managed by semantic-release
+__version__ = "2.7.3"  # Managed by semantic-release
 
 # Enforce Python 3.11+ requirement
 import sys
