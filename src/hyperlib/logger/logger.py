@@ -22,14 +22,32 @@ Quick Start
     # 2025-11-04T10:00:00.000+1100 | INFO | myapp:main:42 - Application started
     # 2025-11-04T10:00:01.000+1100 | ERROR | myapp:main:45 - Failed to connect database=prod-db retry=3
 
+Auto-Configuration (Smart Defaults)
+====================================
+
+**The logger configures itself automatically on import!**
+
+Zero configuration required - works out of the box:
+  from hyperlib.logger import logger
+  logger.info("message")  # Just works!
+
+**Smart Defaults:**
+- Output: stderr (standard for logs)
+- Level: INFO (production-appropriate)
+- Format: RFC 3339 timestamps + Solarized colors
+- Emojis: Auto-detect (yes for TTY, no for K8s/Docker)
+
+**Opt-Out:**
+  HYPERLIB_NO_LOGGER_CONFIG=1  # Skip auto-config, user configures manually
+
 Configuration (via hyperlib.config cascade)
 ============================================
 
-The logger automatically loads config from the 7-layer cascade:
+Override defaults via 7-layer cascade:
 - ENV variables (LOG_LEVEL, LOG_FORMAT, etc.)
 - .env file
 - settings.yaml (logging: section)
-- Sensible defaults
+- Auto-config defaults (if not opted out)
 
 **Common ENV Variables (Standard K8s/Cloud-Native):**
 
@@ -356,8 +374,15 @@ def setup(settings=None, color_scheme="solarized", use_emojis=None, allow_all_em
 # NOTE: get_logger() removed - just use 'from hyperlib.logger import logger' instead
 # Loguru's logger is a singleton and uses module context for naming automatically
 
-# Initialize with default setup (Solarized)
-setup()
+# ============================================================================
+# Smart Auto-Configuration (Zero-Config Pattern)
+# ============================================================================
+# Only auto-configure if user hasn't already configured logger
+# Opt-out: Set HYPERLIB_NO_LOGGER_CONFIG=1 to skip auto-config
+
+if not os.getenv("HYPERLIB_NO_LOGGER_CONFIG"):
+    # Initialize with smart defaults (auto-detects terminal, RFC 3339, emojis)
+    setup()
 
 
 # Standard logging functions for convenience
