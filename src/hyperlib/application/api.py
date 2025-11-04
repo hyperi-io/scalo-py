@@ -90,7 +90,7 @@ class APIApplication:
 
         self.mounts = mounts
 
-        logger.info(f"🚀 APIApplication '{name}' initialized (port={port})")
+        logger.info(f"APIApplication '{name}' initialized (port={port})")
 
     def _add_cors_middleware(self, origins: list[str]):
         """Add CORS middleware to FastAPI app."""

@@ -69,7 +69,7 @@ class MCPApplication:
         self.startup_hooks = []
         self.shutdown_hooks = []
 
-        logger.info(f"🔧 MCPApplication '{name}' initialized (transport={transport})")
+        logger.info(f"MCPApplication '{name}' initialized (transport={transport})")
         logger.debug(f"Capabilities: {', '.join(self.capabilities)}")
 
     def tool(self, name: str, description: str = "", schema: dict | None = None):

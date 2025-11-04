@@ -229,8 +229,8 @@ nox --no-venv -s tests  # Pass flag instead of setting option
 **Issue**: Bootstrap only creates `ci/.venv` for CI tools, not `.venv` for development work.
 
 **Current State**:
-- `ci/.venv` is created and populated with CI tools (nox, ruff, black, mypy, pytest, etc.) ✅
-- `.venv` must be created manually by developers ❌
+- `ci/.venv` is created and populated with CI tools (nox, ruff, black, mypy, pytest, etc.)
+- `.venv` must be created manually by developers
 - Poor first-time developer experience
 
 **Impact**:
@@ -299,14 +299,14 @@ def main():
 
 When applying changes back to template, verify:
 
-- [ ] Generate a new test project from template
-- [ ] Build package: `python -m build`
-- [ ] Run tests: `pytest tests/`
-- [ ] Verify `__version__` is accessible: `python -c "import pkg; print(pkg.__version__)"`
-- [ ] Run CI: `./ci/ci`
-- [ ] Test GitHub workflow (if applicable)
-- [ ] Check all documentation is generated
-- [ ] Verify no deprecation warnings during build
+- Generate a new test project from template
+- Build package: `python -m build`
+- Run tests: `pytest tests/`
+- Verify `__version__` is accessible: `python -c "import pkg; print(pkg.__version__)"`
+- Run CI: `./ci/ci`
+- Test GitHub workflow (if applicable)
+- Check all documentation is generated
+- Verify no deprecation warnings during build
 
 ---
 
@@ -351,55 +351,55 @@ When applying changes back to template, verify:
 
 <!-- Items successfully applied to forge-python template -->
 
-### ✅ Issue #1: Missing `__version__` in `__init__.py`
+### Issue #1: Missing `__version__` in `__init__.py` - COMPLETE
 **Status**: COMPLETED (Commit: 4aa1b83)
 **Applied**: `template/src/{{package_name}}/core.py`
 **Fix**: Changed from `__version__ = "{{version}}"` to use `importlib.metadata.version()` with fallback
 **Verified**: Manual verification in template file
 
-### ✅ Issue #2: Missing pytest markers configuration
+### Issue #2: Missing pytest markers configuration - COMPLETE
 **Status**: COMPLETED (Commit: 4aa1b83)
 **Applied**: `pyproject.toml.jinja`
 **Fix**: Verified markers already present in template
 **Verified**: Grep confirmed markers section exists
 
-### ✅ Issue #3: GitHub Workflow secrets configuration
+### Issue #3: GitHub Workflow secrets configuration - COMPLETE
 **Status**: COMPLETED (Commit: 4aa1b83)
 **Applied**: `.github/workflows-disabled/pypi-publish.yml`
 **Fix**: Changed from JFROG_USERNAME/PASSWORD to ARTIFACTORY_USERNAME/PASSWORD, hardcoded URL
 **Verified**: Manual verification in workflow file
 
-### ✅ Issue #4: Documentation structure
+### Issue #4: Documentation structure - COMPLETE
 **Status**: COMPLETED (Commit: d661b39)
 **Applied**: `template/ci/docs/JFROG.md.jinja`, `DEVELOPMENT.md.jinja`, `DEPLOYMENT.md.jinja`
 **Fix**: Created comprehensive documentation templates for generated projects
 **Verified**: Files created and placed in template/docs/
 
-### ✅ Issue #5: LICENSE file format (Setuptools deprecation)
+### Issue #5: LICENSE file format (Setuptools deprecation) - COMPLETE
 **Status**: COMPLETED (Commit: d661b39)
 **Applied**: `pyproject.toml.jinja`
 **Fix**: Updated to SPDX format - `license = "LicenseRef-HyperSec-EULA"` for EULA, `"Apache-2.0"` for Apache
 **Verified**: Template now uses modern license format
 
-### ✅ Issue #6: Bootstrap and CI configuration
+### Issue #6: Bootstrap and CI configuration - COMPLETE
 **Status**: COMPLETED (Commit: d661b39)
 **Applied**: `README.md.jinja`
 **Fix**: Added comprehensive CI/bootstrap instructions with .venv vs ci/.venv explanation
 **Verified**: README now includes complete development setup guide
 
-### ✅ Issue #7: Missing DEPLOYMENT.md for library projects
+### Issue #7: Missing DEPLOYMENT.md for library projects - COMPLETE
 **Status**: COMPLETED (Commit: d661b39)
 **Applied**: `template/docs/DEPLOYMENT.md.jinja`
 **Fix**: Created conditional documentation (only rendered when project_type == "library")
 **Verified**: Template includes version management, publishing, and release process docs
 
-### ✅ Issue #8: Noxfile configuration error
+### Issue #8: Noxfile configuration error - COMPLETE
 **Status**: COMPLETED (Commit: 4aa1b83)
 **Applied**: `noxfile.py`
 **Fix**: Removed `nox.options.no_venv` assignment, changed all sessions to check `HSF_IN_CI_VENV` env var
 **Verified**: Manual verification in noxfile.py
 
-### ✅ Issue #9: Bootstrap doesn't create developer .venv
+### Issue #9: Bootstrap doesn't create developer .venv - VERIFIED
 **Status**: VERIFIED - Already Implemented
 **Location**: `ci/bootstrap.d/20-python-dev-tools.py`
 **Result**: No changes needed - install_action() already creates .venv correctly

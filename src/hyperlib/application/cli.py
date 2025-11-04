@@ -86,7 +86,7 @@ class CLIApplication:
         except ImportError:
             raise ImportError("Click is required for CLI applications. " "Install it with: pip install click")
 
-        logger.info(f"🖥️  CLIApplication '{name}' initialized")
+        logger.info(f"CLIApplication '{name}' initialized")
 
     @staticmethod
     def _get_package_version(package_name: str) -> str:

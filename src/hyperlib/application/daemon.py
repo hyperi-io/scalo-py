@@ -83,7 +83,7 @@ class DaemonApplication:
         self.startup = self.on_startup
         self.shutdown = self.on_shutdown
 
-        logger.info(f"🔧 DaemonApplication '{name}' initialized")
+        logger.info(f"DaemonApplication '{name}' initialized")
 
     def scheduled(self, interval: int) -> Callable:
         """
