@@ -169,9 +169,29 @@ def detect_file_type(file_path: Path) -> str:
 
 
 def merge_json(source: Path, target: Path) -> dict:
-    """Deep merge JSON files with list concatenation."""
-    source_data = json.loads(source.read_text())
-    target_data = json.loads(target.read_text()) if target.exists() else {}
+    """
+    Deep merge JSON files with list concatenation.
+
+    Raises:
+        PermissionError: Cannot read source or target file
+        json.JSONDecodeError: Invalid JSON syntax
+        UnicodeDecodeError: File encoding issues
+    """
+    try:
+        source_data = json.loads(source.read_text(encoding="utf-8"))
+    except PermissionError as e:
+        raise PermissionError(f"Cannot read source file {source}: {e}") from e
+    except UnicodeDecodeError as e:
+        raise UnicodeDecodeError(e.encoding, e.object, e.start, e.end,
+                                f"Encoding error in {source}") from e
+
+    try:
+        target_data = json.loads(target.read_text(encoding="utf-8")) if target.exists() else {}
+    except PermissionError as e:
+        raise PermissionError(f"Cannot read target file {target}: {e}") from e
+    except UnicodeDecodeError as e:
+        raise UnicodeDecodeError(e.encoding, e.object, e.start, e.end,
+                                f"Encoding error in {target}") from e
 
     # Deep merge with additive strategy (concatenates lists)
     merged = deep_merge({}, target_data, source_data, strategy=Strategy.ADDITIVE)
@@ -179,9 +199,29 @@ def merge_json(source: Path, target: Path) -> dict:
 
 
 def merge_yaml(source: Path, target: Path) -> dict:
-    """Deep merge YAML files with list concatenation."""
-    source_data = yaml.safe_load(source.read_text()) or {}
-    target_data = yaml.safe_load(target.read_text()) if target.exists() else {}
+    """
+    Deep merge YAML files with list concatenation.
+
+    Raises:
+        PermissionError: Cannot read source or target file
+        yaml.YAMLError: Invalid YAML syntax
+        UnicodeDecodeError: File encoding issues
+    """
+    try:
+        source_data = yaml.safe_load(source.read_text(encoding="utf-8")) or {}
+    except PermissionError as e:
+        raise PermissionError(f"Cannot read source file {source}: {e}") from e
+    except UnicodeDecodeError as e:
+        raise UnicodeDecodeError(e.encoding, e.object, e.start, e.end,
+                                f"Encoding error in {source}") from e
+
+    try:
+        target_data = yaml.safe_load(target.read_text(encoding="utf-8")) if target.exists() else {}
+    except PermissionError as e:
+        raise PermissionError(f"Cannot read target file {target}: {e}") from e
+    except UnicodeDecodeError as e:
+        raise UnicodeDecodeError(e.encoding, e.object, e.start, e.end,
+                                f"Encoding error in {target}") from e
 
     # Deep merge with additive strategy (concatenates lists)
     merged = deep_merge({}, target_data, source_data, strategy=Strategy.ADDITIVE)
@@ -189,13 +229,30 @@ def merge_yaml(source: Path, target: Path) -> dict:
 
 
 def merge_toml(source: Path, target: Path) -> dict:
-    """Deep merge TOML files with array concatenation."""
-    with open(source, "rb") as f:
-        source_data = tomllib.load(f)
+    """
+    Deep merge TOML files with array concatenation.
+
+    Raises:
+        PermissionError: Cannot read source or target file
+        tomllib.TOMLDecodeError: Invalid TOML syntax
+        OSError: File I/O errors
+    """
+    try:
+        with open(source, "rb") as f:
+            source_data = tomllib.load(f)
+    except PermissionError as e:
+        raise PermissionError(f"Cannot read source file {source}: {e}") from e
+    except OSError as e:
+        raise OSError(f"Error reading {source}: {e}") from e
 
     if target.exists():
-        with open(target, "rb") as f:
-            target_data = tomllib.load(f)
+        try:
+            with open(target, "rb") as f:
+                target_data = tomllib.load(f)
+        except PermissionError as e:
+            raise PermissionError(f"Cannot read target file {target}: {e}") from e
+        except OSError as e:
+            raise OSError(f"Error reading {target}: {e}") from e
     else:
         target_data = {}
 
@@ -343,14 +400,25 @@ def merge_files(
         return content if content is not None else merged
 
     # Write merged content
-    target.parent.mkdir(parents=True, exist_ok=True)
+    try:
+        target.parent.mkdir(parents=True, exist_ok=True)
+    except (PermissionError, OSError) as e:
+        raise OSError(f"Cannot create target directory {target.parent}: {e}") from e
 
-    if source_type == "toml" and strategy == "deep":
-        # TOML requires binary write
-        with open(target, "wb") as f:
-            tomli_w.dump(merged, f)
-    else:
-        target.write_text(content)
+    try:
+        if source_type == "toml" and strategy == "deep":
+            # TOML requires binary write
+            with open(target, "wb") as f:
+                tomli_w.dump(merged, f)
+        else:
+            target.write_text(content, encoding="utf-8")
+    except PermissionError as e:
+        raise PermissionError(f"Cannot write to {target}: {e}") from e
+    except OSError as e:
+        raise OSError(f"Error writing {target}: {e}") from e
+    except UnicodeEncodeError as e:
+        raise UnicodeEncodeError(e.encoding, e.object, e.start, e.end,
+                                f"Cannot encode content to {target}") from e
 
     return None
 
