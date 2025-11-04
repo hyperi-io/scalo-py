@@ -1,3 +1,4 @@
 """HyperLib Database Module - Re-exports from connection.py for backward compatibility."""
 
-from .connection import *
+# Re-export everything from connection.py
+from .connection import *  # noqa: F403

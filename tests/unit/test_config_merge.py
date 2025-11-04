@@ -276,6 +276,7 @@ class TestMergeFilesHighLevel:
         merge_files(source, target)
 
         import tomllib
+
         with open(target, "rb") as f:
             result = tomllib.load(f)
 
@@ -380,7 +381,7 @@ class TestErrorHandling:
         target = tmp_path / "target.json"
 
         source.write_text('{"key": "value"}')
-        target.write_text('{}')
+        target.write_text("{}")
 
         # Make source unreadable
         source.chmod(0o000)

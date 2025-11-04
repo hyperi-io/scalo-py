@@ -89,7 +89,8 @@ from typing import Any, Literal
 
 import tomli_w
 import yaml
-from mergedeep import merge as deep_merge, Strategy
+from mergedeep import Strategy
+from mergedeep import merge as deep_merge
 
 # Strategy types
 MergeStrategy = Literal["deep", "append", "overwrite", "auto"]
@@ -182,16 +183,14 @@ def merge_json(source: Path, target: Path) -> dict:
     except PermissionError as e:
         raise PermissionError(f"Cannot read source file {source}: {e}") from e
     except UnicodeDecodeError as e:
-        raise UnicodeDecodeError(e.encoding, e.object, e.start, e.end,
-                                f"Encoding error in {source}") from e
+        raise UnicodeDecodeError(e.encoding, e.object, e.start, e.end, f"Encoding error in {source}") from e
 
     try:
         target_data = json.loads(target.read_text(encoding="utf-8")) if target.exists() else {}
     except PermissionError as e:
         raise PermissionError(f"Cannot read target file {target}: {e}") from e
     except UnicodeDecodeError as e:
-        raise UnicodeDecodeError(e.encoding, e.object, e.start, e.end,
-                                f"Encoding error in {target}") from e
+        raise UnicodeDecodeError(e.encoding, e.object, e.start, e.end, f"Encoding error in {target}") from e
 
     # Deep merge with additive strategy (concatenates lists)
     merged = deep_merge({}, target_data, source_data, strategy=Strategy.ADDITIVE)
@@ -212,16 +211,14 @@ def merge_yaml(source: Path, target: Path) -> dict:
     except PermissionError as e:
         raise PermissionError(f"Cannot read source file {source}: {e}") from e
     except UnicodeDecodeError as e:
-        raise UnicodeDecodeError(e.encoding, e.object, e.start, e.end,
-                                f"Encoding error in {source}") from e
+        raise UnicodeDecodeError(e.encoding, e.object, e.start, e.end, f"Encoding error in {source}") from e
 
     try:
         target_data = yaml.safe_load(target.read_text(encoding="utf-8")) if target.exists() else {}
     except PermissionError as e:
         raise PermissionError(f"Cannot read target file {target}: {e}") from e
     except UnicodeDecodeError as e:
-        raise UnicodeDecodeError(e.encoding, e.object, e.start, e.end,
-                                f"Encoding error in {target}") from e
+        raise UnicodeDecodeError(e.encoding, e.object, e.start, e.end, f"Encoding error in {target}") from e
 
     # Deep merge with additive strategy (concatenates lists)
     merged = deep_merge({}, target_data, source_data, strategy=Strategy.ADDITIVE)
@@ -370,6 +367,7 @@ def merge_files(
                 merged = merge_toml(source, target)
                 if dry_run:
                     import io
+
                     buf = io.BytesIO()
                     tomli_w.dump(merged, buf)
                     content = buf.getvalue().decode("utf-8")
@@ -420,8 +418,7 @@ def merge_files(
     except OSError as e:
         raise OSError(f"Error writing {target}: {e}") from e
     except UnicodeEncodeError as e:
-        raise UnicodeEncodeError(e.encoding, e.object, e.start, e.end,
-                                f"Cannot encode content to {target}") from e
+        raise UnicodeEncodeError(e.encoding, e.object, e.start, e.end, f"Cannot encode content to {target}") from e
 
     return None
 

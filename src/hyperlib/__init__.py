@@ -143,7 +143,7 @@ from . import config, database, harness, logger, metrics, runtime
 from .application import Application
 
 # Import commonly used objects and functions
-from .config import settings, get_environment, get_logging_config, get_mount_config
+from .config import get_environment, get_logging_config, get_mount_config, settings
 from .database import build_database_url, get_database_config, get_database_url_from_env
 from .metrics import create_metrics
 from .runtime import get_runtime_paths

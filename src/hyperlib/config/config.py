@@ -538,10 +538,7 @@ def get_settings():
 
 
 def get_config(
-    additional_files: list[str] = None,
-    env_prefix: str = None,
-    load_dotenv: bool = True,
-    merge_existing: bool = True
+    additional_files: list[str] = None, env_prefix: str = None, load_dotenv: bool = True, merge_existing: bool = True
 ):
     """
     Get configuration with optional additional file sources.
@@ -1076,10 +1073,10 @@ targets:
 # Export for direct access
 __all__ = [
     # Primary config objects (use these!)
-    "settings",           # Default settings object (automatic cascade)
-    "get_settings",       # Get default settings object
-    "get_config",         # Get config with additional files (NEW!)
-    "setup",              # Setup function (compatibility)
+    "settings",  # Default settings object (automatic cascade)
+    "get_settings",  # Get default settings object
+    "get_config",  # Get config with additional files (NEW!)
+    "setup",  # Setup function (compatibility)
     # Helper functions
     "get_api_config",
     "get_logging_config",

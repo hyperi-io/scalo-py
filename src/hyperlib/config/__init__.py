@@ -5,10 +5,10 @@ from .config import *  # noqa: F403
 
 # Re-export merge functionality
 from .merge import (  # noqa: F401
-    merge_files,
     detect_file_type,
-    merge_json,
-    merge_yaml,
-    merge_toml,
+    merge_files,
     merge_gitignore,
+    merge_json,
+    merge_toml,
+    merge_yaml,
 )
