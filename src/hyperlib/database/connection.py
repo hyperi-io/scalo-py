@@ -132,7 +132,7 @@ from pathlib import Path
 from typing import Any
 from urllib.parse import quote_plus, urlunparse
 
-from .config import get_mount_config
+from ..config import get_mount_config
 
 
 def get_database_config(

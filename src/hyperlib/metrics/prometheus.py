@@ -122,8 +122,8 @@ from typing import Any
 
 import psutil
 
-from .logger import logger
-from .runtime import RuntimeEnvironment
+from ..logger import logger
+from ..runtime import RuntimeEnvironment
 
 # Check if prometheus_client is available
 try:

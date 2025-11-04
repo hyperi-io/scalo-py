@@ -87,7 +87,7 @@ import tempfile
 from dataclasses import dataclass
 from pathlib import Path
 
-from .logger import logger
+from ..logger import logger
 
 
 @dataclass

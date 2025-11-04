@@ -45,11 +45,17 @@ Core Features
 
 **2. Structured Logging (RFC 3339)**
 
-    from hyperlib import logger
-
+    # Recommended: Import from submodule (gets logger object)
+    from hyperlib.logger import logger
     logger.info("User login", user_id=123, ip="192.168.1.1")
     logger.error("DB connection failed", database="prod", retry=3)
-    # Auto-formatted, timestamped, searchable
+
+    # Also works: Convenience functions
+    from hyperlib.logger import info, error, success
+    info("User logged in")
+
+    # Note: logger is Loguru's global singleton
+    # All imports reference the SAME logger instance
 
 **3. Runtime Paths (Container-Aware)**
 
@@ -132,23 +138,32 @@ __version__ = "2.6.2"
 # Enforce Python 3.11+ requirement
 import sys
 
-from . import config, dbconn, harness, logger, prometheus, runtime
+# Import modules (packages) - logger is a module for extensibility
+from . import config, database, harness, logger, metrics, runtime
 from .application import Application
-from .config import get_environment, get_logging_config, get_mount_config
-from .dbconn import build_database_url, get_database_config, get_database_url_from_env
 
-# Re-export commonly used functions for convenience
-from .prometheus import create_metrics
+# Import commonly used objects and functions
+from .config import settings, get_environment, get_logging_config, get_mount_config
+from .database import build_database_url, get_database_config, get_database_url_from_env
+from .metrics import create_metrics
 from .runtime import get_runtime_paths
+
+# Backward compatibility aliases
+dbconn = database  # Old name
+prometheus = metrics  # Old name
 
 __all__ = [
     "Application",  # Primary user-facing API
     "config",
-    "dbconn",
+    "database",
     "harness",
     "logger",
     "runtime",
+    "metrics",
+    # Backward compatibility
+    "dbconn",
     "prometheus",
+    # Functions
     "get_logging_config",
     "get_mount_config",
     "get_environment",

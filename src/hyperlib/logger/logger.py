@@ -86,7 +86,7 @@ import sys
 
 from loguru import logger as _logger
 
-from .config import get_logging_config
+from ..config import get_logging_config
 
 # Standard logger instance
 logger = _logger
