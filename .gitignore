@@ -46,6 +46,7 @@ htmlcov/
 .tmp/
 *.log
 *.tmp
+tests/logs/
 
 # CI
 ci-local/logs/
