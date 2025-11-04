@@ -288,7 +288,7 @@ version_variables = [
 build_command = ".venv/bin/python ci/modules/python/tools/write-version.py && git add VERSION && rm -rf dist build src/*.egg-info && .venv/bin/python -m build"
 major_on_zero = true
 tag_format = "v{version}"
-commit_message = "chore(release): {version} [skip ci]"
+commit_message = "chore(release): {version}"
 
 # Include VERSION file in release commit
 [tool.semantic_release.commit_author]
