@@ -49,6 +49,8 @@ dependencies = [
     "loguru>=0.7.3",
     "pyyaml>=6.0.3",
     "psutil>=7.1.3",
+    "mergedeep>=1.3.4",
+    "tomli-w>=1.0.0",
 ]
 
 [project.license]
