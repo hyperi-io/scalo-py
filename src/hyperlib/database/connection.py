@@ -168,6 +168,7 @@ def get_database_config(
         "redis": 6379,
         "mssql": 1433,
         "oracle": 1521,
+        "clickhouse": 9000,
     }
 
     # Try standard variable names first if enabled
@@ -312,6 +313,7 @@ def build_database_url(
         "redis": "redis",
         "mssql": "mssql+pyodbc",
         "sqlite": "sqlite",
+        "clickhouse": "clickhouse",
     }
 
     scheme = scheme_map.get(db_type.lower(), db_type.lower())
