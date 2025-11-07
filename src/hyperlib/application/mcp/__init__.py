@@ -12,8 +12,8 @@ from collections.abc import Callable
 from pathlib import Path
 from typing import Any
 
-from ..config import MountConfig, get_mount_config
-from ..logger import logger
+from ...config import MountConfig, get_mount_config
+from ...logger import logger
 
 
 class MCPApplication:

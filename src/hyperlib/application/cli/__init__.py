@@ -6,7 +6,7 @@ Command-line interface using Click framework
 import os
 from collections.abc import Callable
 
-from ..logger import logger
+from ...logger import logger
 
 
 class CLIApplication:
