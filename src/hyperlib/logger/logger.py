@@ -105,6 +105,7 @@ import sys
 from loguru import logger as _logger
 
 from ..config import get_logging_config
+from .filters import SensitiveDataFilter
 
 # Standard logger instance
 logger = _logger
@@ -231,20 +232,31 @@ def _is_interactive_console() -> bool:
     return "UTF-8" in locale.upper() or "UTF8" in locale.upper()
 
 
-def _add_emoji_to_record(use_emojis: bool, convert_to_text: bool = False, allow_all: bool = False):
+def _add_emoji_to_record(use_emojis: bool, convert_to_text: bool = False, allow_all: bool = False, mask_sensitive: bool = True):
     """Create a filter function that adds emojis or converts them to text.
 
     Args:
         use_emojis: Whether to add emojis to log records
         convert_to_text: Convert emojis to ASCII text (for machine-readable logs)
         allow_all: Allow all emojis without filtering (pass-through user emojis)
+        mask_sensitive: Apply sensitive data masking (default: True)
 
     Returns:
         Filter function for loguru
     """
+    # Create sensitive data filter instance if needed
+    sensitive_filter = SensitiveDataFilter() if mask_sensitive else None
 
     def filter_func(record):
         """Add emoji to record or convert emojis to text based on settings."""
+        # Apply sensitive data masking first (if enabled)
+        if sensitive_filter:
+            # Loguru's record["message"] is the formatted message
+            # We need to mask it before it gets formatted
+            if isinstance(record["message"], str):
+                record["message"] = sensitive_filter._mask_sensitive_string(record["message"])
+
+        # Then handle emojis
         if use_emojis:
             if allow_all:
                 # Allow all emojis - pass through unchanged, just add level emoji
@@ -299,7 +311,7 @@ def _get_log_format(is_file: bool, color_scheme: str = "solarized") -> str:
         )
 
 
-def setup(settings=None, color_scheme="solarized", use_emojis=None, allow_all_emojis=False):
+def setup(settings=None, color_scheme="solarized", use_emojis=None, allow_all_emojis=False, mask_sensitive=None):
     """Setup standard logging with RFC 3339 compliance and CHARS-POLICY.md enforcement
 
     Args:
@@ -312,6 +324,10 @@ def setup(settings=None, color_scheme="solarized", use_emojis=None, allow_all_em
         allow_all_emojis: Allow all emojis without filtering (off by default, requires use_emojis=True)
             When True, user-provided emojis in log messages pass through unchanged.
             When False, only CHARS-POLICY.md approved emojis are added by logger.
+        mask_sensitive: Mask sensitive data in logs (default: True)
+            - None (default): Read from config (logging.mask_sensitive_data)
+            - True: Enable masking of passwords, tokens, API keys, etc.
+            - False: Disable masking (NOT recommended for production)
     """
 
     # Remove default handler
@@ -329,6 +345,10 @@ def setup(settings=None, color_scheme="solarized", use_emojis=None, allow_all_em
     # If allow_all_emojis is True but use_emojis is False, warn and disable
     if allow_all_emojis and not use_emojis:
         allow_all_emojis = False  # Can't allow all if emojis disabled
+
+    # Sensitive data masking (default: enabled)
+    if mask_sensitive is None:
+        mask_sensitive = config.get("mask_sensitive_data", True)
 
     # Configure color scheme
     if color_scheme == "solarized":
@@ -350,7 +370,7 @@ def setup(settings=None, color_scheme="solarized", use_emojis=None, allow_all_em
             level=config.get("level", "INFO"),
             format=console_format,
             colorize=True,
-            filter=_add_emoji_to_record(use_emojis, allow_all=allow_all_emojis),
+            filter=_add_emoji_to_record(use_emojis, allow_all=allow_all_emojis, mask_sensitive=mask_sensitive),
         )
 
     # Add file handler if specified (ALWAYS ASCII-only per CHARS-POLICY.md)
@@ -364,7 +384,7 @@ def setup(settings=None, color_scheme="solarized", use_emojis=None, allow_all_em
             rotation="10 MB",
             retention="7 days",
             filter=_add_emoji_to_record(
-                False, convert_to_text=True, allow_all=False
+                False, convert_to_text=True, allow_all=False, mask_sensitive=mask_sensitive
             ),  # Convert emojis to text for machine-readable logs
         )
 
