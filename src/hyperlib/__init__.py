@@ -101,15 +101,22 @@ Deployment Patterns
 
     # Run with: uvicorn main:api --host 0.0.0.0 --port 8000
 
-**2. CLI Tool:**
+**2. CLI Tool (with Typer):**
 
     from hyperlib import Application
+    from hyperlib.cli import Typer, Argument, Option
 
     app = Application()
-    app.logger.info("CLI started")
+    cli = Typer(help="My CLI tool")
 
-    # Access config, paths, metrics
-    data_dir = app.runtime.data_dir
+    @cli.command()
+    def process(file: str = Argument(...)):
+        app.logger.info("Processing file", file=file)
+        # Access config, paths, metrics
+        data_dir = app.runtime.data_dir
+
+    if __name__ == "__main__":
+        cli()
 
 **3. Daemon/Background Worker:**
 
@@ -139,7 +146,7 @@ __version__ = "2.7.3"  # Managed by semantic-release
 import sys
 
 # Import modules (packages) - logger is a module for extensibility
-from . import config, database, harness, logger, metrics, runtime
+from . import cli, config, database, harness, logger, metrics, runtime
 from .application import Application
 
 # Import commonly used objects and functions
@@ -154,6 +161,7 @@ prometheus = metrics  # Old name
 
 __all__ = [
     "Application",  # Primary user-facing API
+    "cli",
     "config",
     "database",
     "harness",
