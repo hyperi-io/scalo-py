@@ -105,7 +105,7 @@ import sys
 from loguru import logger as _logger
 
 from ..config import get_logging_config
-from .filters import SensitiveDataFilter
+from .filters import get_sensitive_filter
 
 # Standard logger instance
 logger = _logger
@@ -232,7 +232,14 @@ def _is_interactive_console() -> bool:
     return "UTF-8" in locale.upper() or "UTF8" in locale.upper()
 
 
-def _add_emoji_to_record(use_emojis: bool, convert_to_text: bool = False, allow_all: bool = False, mask_sensitive: bool = True):
+def _add_emoji_to_record(
+    use_emojis: bool,
+    convert_to_text: bool = False,
+    allow_all: bool = False,
+    mask_sensitive: bool = True,
+    masking_level: str = "simple",
+    masking_preset: str = "standard"
+):
     """Create a filter function that adds emojis or converts them to text.
 
     Args:
@@ -240,12 +247,17 @@ def _add_emoji_to_record(use_emojis: bool, convert_to_text: bool = False, allow_
         convert_to_text: Convert emojis to ASCII text (for machine-readable logs)
         allow_all: Allow all emojis without filtering (pass-through user emojis)
         mask_sensitive: Apply sensitive data masking (default: True)
+        masking_level: Filter level - "simple" (regex) or "advanced" (Presidio + regex)
+        masking_preset: Presidio preset for advanced mode ("minimal", "standard", "compliance")
 
     Returns:
         Filter function for loguru
     """
     # Create sensitive data filter instance if needed
-    sensitive_filter = SensitiveDataFilter() if mask_sensitive else None
+    sensitive_filter = get_sensitive_filter(
+        level=masking_level,
+        preset=masking_preset
+    ) if mask_sensitive else None
 
     def filter_func(record):
         """Add emoji to record or convert emojis to text based on settings."""
@@ -311,7 +323,15 @@ def _get_log_format(is_file: bool, color_scheme: str = "solarized") -> str:
         )
 
 
-def setup(settings=None, color_scheme="solarized", use_emojis=None, allow_all_emojis=False, mask_sensitive=None):
+def setup(
+    settings=None,
+    color_scheme="solarized",
+    use_emojis=None,
+    allow_all_emojis=False,
+    mask_sensitive=None,
+    masking_level=None,
+    masking_preset=None
+):
     """Setup standard logging with RFC 3339 compliance and CHARS-POLICY.md enforcement
 
     Args:
@@ -328,6 +348,15 @@ def setup(settings=None, color_scheme="solarized", use_emojis=None, allow_all_em
             - None (default): Read from config (logging.mask_sensitive_data)
             - True: Enable masking of passwords, tokens, API keys, etc.
             - False: Disable masking (NOT recommended for production)
+        masking_level: Filter level for sensitive data masking
+            - None (default): Read from config (logging.masking_level)
+            - "simple": Fast regex-based filter (default)
+            - "advanced": ML-based Presidio + regex (requires: pip install hyperlib[presidio])
+        masking_preset: Presidio preset for advanced masking
+            - None (default): Read from config (logging.masking_preset)
+            - "minimal": Secrets only (passwords, API keys)
+            - "standard": Secrets + financial + contact (default)
+            - "compliance": Full PII for HIPAA/GDPR/PCI-DSS
     """
 
     # Remove default handler
@@ -350,6 +379,14 @@ def setup(settings=None, color_scheme="solarized", use_emojis=None, allow_all_em
     if mask_sensitive is None:
         mask_sensitive = config.get("mask_sensitive_data", True)
 
+    # Masking level (default: simple)
+    if masking_level is None:
+        masking_level = config.get("masking_level", "simple")
+
+    # Masking preset (default: standard)
+    if masking_preset is None:
+        masking_preset = config.get("masking_preset", "standard")
+
     # Configure color scheme
     if color_scheme == "solarized":
         # Solarized color scheme for log levels
@@ -370,7 +407,13 @@ def setup(settings=None, color_scheme="solarized", use_emojis=None, allow_all_em
             level=config.get("level", "INFO"),
             format=console_format,
             colorize=True,
-            filter=_add_emoji_to_record(use_emojis, allow_all=allow_all_emojis, mask_sensitive=mask_sensitive),
+            filter=_add_emoji_to_record(
+                use_emojis,
+                allow_all=allow_all_emojis,
+                mask_sensitive=mask_sensitive,
+                masking_level=masking_level,
+                masking_preset=masking_preset
+            ),
         )
 
     # Add file handler if specified (ALWAYS ASCII-only per CHARS-POLICY.md)
@@ -384,7 +427,12 @@ def setup(settings=None, color_scheme="solarized", use_emojis=None, allow_all_em
             rotation="10 MB",
             retention="7 days",
             filter=_add_emoji_to_record(
-                False, convert_to_text=True, allow_all=False, mask_sensitive=mask_sensitive
+                False,
+                convert_to_text=True,
+                allow_all=False,
+                mask_sensitive=mask_sensitive,
+                masking_level=masking_level,
+                masking_preset=masking_preset
             ),  # Convert emojis to text for machine-readable logs
         )
 

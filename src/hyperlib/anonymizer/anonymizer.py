@@ -11,6 +11,7 @@ from presidio_anonymizer import AnonymizerEngine
 from presidio_anonymizer.entities import OperatorConfig
 
 from .presets import get_preset, PRESETS
+from .custom_recognizers import get_custom_recognizers
 
 
 class AnonymizationStrategy(Enum):
@@ -87,6 +88,7 @@ class Anonymizer:
         replacements: Optional[Dict[str, str]] = None,
         language: str = "en",
         score_threshold: float = 0.5,
+        enable_custom_recognizers: bool = True,
     ):
         """
         Initialize anonymizer.
@@ -98,8 +100,17 @@ class Anonymizer:
             replacements: Custom replacement per entity type (overrides strategy)
             language: Language for analysis ("en", "es", "fr", "de", etc.)
             score_threshold: Confidence threshold (0.0-1.0, default 0.5)
+            enable_custom_recognizers: Enable custom recognizers for passwords, API keys (default: True)
         """
+        # Create analyzer engine
         self.analyzer = AnalyzerEngine()
+
+        # Add custom recognizers (passwords, API keys, secrets)
+        if enable_custom_recognizers:
+            custom_recognizers = get_custom_recognizers()
+            for recognizer in custom_recognizers:
+                self.analyzer.registry.add_recognizer(recognizer)
+
         self.anonymizer = AnonymizerEngine()
 
         # Determine entities to detect
@@ -108,6 +119,10 @@ class Anonymizer:
         else:
             preset_obj = get_preset(preset)
             self.entities = list(preset_obj.get_entities())
+
+            # Add custom entity types if enabled
+            if enable_custom_recognizers:
+                self.entities.extend(["PASSWORD", "API_KEY", "SECRET_KEY"])
 
         self.strategy = strategy
         self.replacements = replacements or {}

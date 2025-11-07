@@ -3,11 +3,18 @@ Logging filters for hyperlib logger.
 
 This module provides logging filters for common use cases like masking
 sensitive data in log records.
+
+**Two-tier approach:**
+- **Tier 1 (default):** Fast regex-based filter (SensitiveDataFilter)
+- **Tier 2 (opt-in):** ML-based Presidio filter (PresidioSensitiveDataFilter)
+
+Use `get_sensitive_filter()` to automatically select the best available filter.
 """
 
 import logging
 import re
-from typing import Any, Dict, Set, Tuple
+import warnings
+from typing import Any, Dict, Set, Tuple, Optional
 
 
 # Sensitive fields that should be masked in logs
@@ -262,3 +269,143 @@ class SensitiveDataFilter(logging.Filter):
                 masked_data[key] = value
 
         return masked_data
+
+
+class PresidioSensitiveDataFilter(SensitiveDataFilter):
+    """
+    Advanced ML-based filter using Microsoft Presidio.
+
+    This filter extends SensitiveDataFilter with Presidio's ML-based
+    entity recognition for more accurate PII detection (50+ entity types).
+
+    **Requires:** `pip install hyperlib[presidio]` or manually:
+    - presidio-analyzer
+    - presidio-anonymizer
+
+    **Detected entities:**
+    - All regex patterns from SensitiveDataFilter (Tier 1)
+    - Plus ML-based: CREDIT_CARD, US_SSN, EMAIL_ADDRESS, PHONE_NUMBER,
+      PERSON, IP_ADDRESS, LOCATION, DATE_TIME, and 40+ more
+
+    **Usage:**
+
+    ```python
+    from hyperlib.logger.filters import PresidioSensitiveDataFilter
+
+    # Create filter (falls back to regex if Presidio not installed)
+    filter = PresidioSensitiveDataFilter(preset="compliance")
+
+    # Or use automatic selection
+    from hyperlib.logger.filters import get_sensitive_filter
+    filter = get_sensitive_filter(level="advanced")
+    ```
+
+    **Performance:**
+    - Slower than regex (5-50ms per string vs <1ms)
+    - Use for compliance-critical logs (HIPAA, GDPR, PCI-DSS)
+    - Falls back to regex if Presidio not installed
+    """
+
+    def __init__(
+        self,
+        preset: str = "standard",
+        extra_fields: Set[str] | None = None,
+        score_threshold: float = 0.5
+    ):
+        """
+        Initialize Presidio-based filter.
+
+        Args:
+            preset: Entity preset ("minimal", "standard", "compliance")
+            extra_fields: Additional regex fields to mask
+            score_threshold: Presidio confidence threshold (0.0-1.0)
+        """
+        super().__init__(extra_fields=extra_fields)
+
+        try:
+            from hyperlib.anonymizer import Anonymizer, AnonymizationStrategy
+            self._anonymizer = Anonymizer(
+                preset=preset,
+                strategy=AnonymizationStrategy.REDACT,
+                score_threshold=score_threshold
+            )
+            self._presidio_available = True
+        except ImportError:
+            warnings.warn(
+                "Presidio not installed. Install with: pip install hyperlib[presidio]. "
+                "Falling back to regex-based filter.",
+                ImportWarning
+            )
+            self._presidio_available = False
+
+    def _mask_sensitive_string(self, text: str) -> str:
+        """
+        Mask sensitive data using Presidio + regex fallback.
+
+        Args:
+            text: String to mask
+
+        Returns:
+            String with sensitive data masked
+        """
+        if not isinstance(text, str) or not text:
+            return text
+
+        # Try Presidio first (if available)
+        if self._presidio_available:
+            try:
+                text = self._anonymizer.anonymize(text)
+            except Exception as e:
+                # Fall back to regex on any Presidio error
+                warnings.warn(
+                    f"Presidio error: {e}. Falling back to regex filter.",
+                    RuntimeWarning
+                )
+
+        # Always apply regex patterns (catches Presidio misses + field names)
+        return super()._mask_sensitive_string(text)
+
+
+def get_sensitive_filter(
+    level: str = "simple",
+    preset: str = "standard",
+    extra_fields: Set[str] | None = None,
+    score_threshold: float = 0.5
+) -> SensitiveDataFilter:
+    """
+    Get appropriate sensitive data filter based on configuration.
+
+    **Two-tier approach:**
+    - **level="simple"** (default) - Fast regex-based filter
+    - **level="advanced"** - ML-based Presidio filter (falls back to regex if not installed)
+
+    Args:
+        level: Filter level ("simple" or "advanced")
+        preset: Presidio preset for advanced mode ("minimal", "standard", "compliance")
+        extra_fields: Additional fields to mask
+        score_threshold: Presidio confidence threshold (advanced mode only)
+
+    Returns:
+        SensitiveDataFilter or PresidioSensitiveDataFilter instance
+
+    Example:
+        >>> from hyperlib.logger.filters import get_sensitive_filter
+        >>>
+        >>> # Simple (fast, regex-only)
+        >>> filter = get_sensitive_filter(level="simple")
+        >>>
+        >>> # Advanced (ML-based, compliance mode)
+        >>> filter = get_sensitive_filter(
+        ...     level="advanced",
+        ...     preset="compliance",
+        ...     score_threshold=0.7
+        ... )
+    """
+    if level == "advanced":
+        return PresidioSensitiveDataFilter(
+            preset=preset,
+            extra_fields=extra_fields,
+            score_threshold=score_threshold
+        )
+    else:
+        return SensitiveDataFilter(extra_fields=extra_fields)

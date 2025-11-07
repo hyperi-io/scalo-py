@@ -30,36 +30,34 @@ class EntityPreset:
 
 
 # Preset definitions
+#
+# NOTE: Presidio doesn't have built-in recognizers for PASSWORD, API_KEY, SECRET_KEY, etc.
+# These patterns are better handled by regex-based filtering (hyperlib.logger.filters)
+# Presidio presets focus on ML-detectable PII (SSN, credit cards, names, etc.)
 MINIMAL = EntityPreset(
     name="minimal",
-    description="Basic secrets only (passwords, API keys, tokens)",
+    description="Basic PII (crypto, email, phone) - use logger filters for passwords/API keys",
     entities=[
-        # Secrets/Credentials (most common)
-        "PASSWORD",
-        "API_KEY",
-        "SECRET_KEY",
+        # Presidio-supported entities only
         "CRYPTO",  # Crypto wallet addresses
+        "EMAIL_ADDRESS",
+        "PHONE_NUMBER",
     ],
 )
 
 STANDARD = EntityPreset(
     name="standard",
-    description="Common PII for most applications (secrets + financial + contact)",
+    description="Common PII for most applications (financial + contact + identifiers)",
     entities=[
-        # Secrets (from minimal)
-        "PASSWORD",
-        "API_KEY",
-        "SECRET_KEY",
+        # From minimal
         "CRYPTO",
+        "EMAIL_ADDRESS",
+        "PHONE_NUMBER",
         # Financial
         "CREDIT_CARD",
         "IBAN_CODE",
         # Personal identifiers
-        "EMAIL_ADDRESS",
-        "PHONE_NUMBER",
-        # US-specific
         "US_SSN",
-        # Generic person name (if available)
         "PERSON",
     ],
 )
@@ -68,17 +66,12 @@ COMPLIANCE = EntityPreset(
     name="compliance",
     description="Full PII for HIPAA, GDPR, PCI-DSS compliance",
     entities=[
-        # Secrets (from minimal)
-        "PASSWORD",
-        "API_KEY",
-        "SECRET_KEY",
+        # From standard
         "CRYPTO",
-        # Financial
-        "CREDIT_CARD",
-        "IBAN_CODE",
-        # Personal identifiers
         "EMAIL_ADDRESS",
         "PHONE_NUMBER",
+        "CREDIT_CARD",
+        "IBAN_CODE",
         "PERSON",
         # US identifiers
         "US_SSN",
@@ -92,7 +85,7 @@ COMPLIANCE = EntityPreset(
         "UK_NHS",
         # Network
         "IP_ADDRESS",
-        "MAC_ADDRESS",
+        # NOTE: MAC_ADDRESS not supported by Presidio
         # Dates (for HIPAA - dates of service, birth, etc.)
         "DATE_TIME",
         # Geographic (partial address detection)
