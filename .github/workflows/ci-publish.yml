@@ -1,191 +1,128 @@
 name: CI Publish
-
-# Purpose: Build and publish packages to JFrog after a release tag is created
-#
-# This workflow PUBLISHES releases (builds + uploads artifacts).
-# It does NOT CREATE releases (versioning/tagging done by ./ci/run release).
-#
-# Triggers:
-# - Automatic: Version tag push (v*) from ./ci/run release
-# - Manual: workflow_dispatch for testing
-#
-# Workflow: ./ci/run release creates tag → this workflow builds & publishes
-on:
+true:
   push:
     tags:
-      - 'v*'
-  workflow_dispatch:
-
+    - v*
+  workflow_dispatch: null
 jobs:
-  # Read ci.yaml to determine what to build
   config:
     name: Read Configuration
     runs-on: ubuntu-latest
     outputs:
       matrix_json: ${{ steps.matrix.outputs.json }}
-
     steps:
-      - name: Checkout
-        uses: actions/checkout@v4
-        with:
-          submodules: recursive
-          token: ${{ secrets.GH_PAT || github.token }}
-
-      - name: Set up Python
-        uses: actions/setup-python@v5
-        with:
-          python-version: '3.11'
-
-      - name: Build Matrix
-        id: matrix
-        run: |
-          pip install pyyaml
-          python << 'EOF'
-          import yaml
-          import json
-          import os
-
-          # Load ci-local/ci.yaml
-          with open('ci-local/ci.yaml') as f:
-              config = yaml.safe_load(f)
-
-          # Initialize build matrix
-          matrix = {'include': []}
-
-          # Check Nuitka configuration
-          nuitka = config.get('nuitka', {})
-          nuitka_enabled = nuitka.get('enabled', False)
-          # publish_source controlled by config or CLI flag
-          publish_source = nuitka.get('publish_source', True)  # Default: true
-          if os.environ.get('CI_NUITKA_ONLY') == '1':
-              publish_source = False
-
-          # Add standard package (unless nuitka-only mode)
-          if not nuitka_enabled or publish_source:
-              matrix['include'].append({
-                  'build_type': 'standard',
-                  'runner': 'ubuntu-latest',
-                  'arch': 'any'
-              })
-
-          # Add Nuitka builds if enabled
-          if nuitka_enabled:
-              platforms = nuitka.get('platforms', {})
-
-              # Nuitka x64
-              if platforms.get('linux_x64', True):
-                  matrix['include'].append({
-                      'build_type': 'nuitka',
-                      'runner': 'buildjet-2vcpu-ubuntu-2204',  # BuildJet x64
-                      'arch': 'x64',
-                      'platform': 'linux'
-                  })
-
-              # Nuitka ARM64
-              if platforms.get('linux_arm64', True):
-                  matrix['include'].append({
-                      'build_type': 'nuitka',
-                      'runner': 'buildjet-2vcpu-ubuntu-2204-arm',  # BuildJet ARM64
-                      'arch': 'arm64',
-                      'platform': 'linux'
-                  })
-
-              # macOS ARM64 (expensive - opt-in only)
-              if platforms.get('macos_arm64', False):
-                  # Check if using Cirrus Runners (95% cheaper than GitHub)
-                  cirrus = nuitka.get('cirrus', {})
-                  if cirrus.get('enabled', True):
-                      matrix['include'].append({
-                          'build_type': 'nuitka',
-                          'runner': 'ghcr.io/cirruslabs/macos-runner:sonoma',  # Cirrus macOS
-                          'arch': 'arm64',
-                          'platform': 'macos'
-                      })
-                  else:
-                      matrix['include'].append({
-                          'build_type': 'nuitka',
-                          'runner': 'macos-latest',  # GitHub macOS (10x more expensive!)
-                          'arch': 'arm64',
-                          'platform': 'macos'
-                      })
-
-          # Write to output
-          with open(os.environ['GITHUB_OUTPUT'], 'a') as f:
-              f.write(f'json={json.dumps(matrix)}\n')
-
-          print(f"Matrix: {json.dumps(matrix, indent=2)}")
-          EOF
-
-  # Build and publish (matrix based on config)
+    - name: Checkout
+      uses: actions/checkout@v4
+      with:
+        submodules: recursive
+        token: ${{ secrets.GH_PAT || github.token }}
+    - name: Set up Python
+      uses: actions/setup-python@v5
+      with:
+        python-version: '3.11'
+    - name: Build Matrix
+      id: matrix
+      run: "pip install pyyaml\npython << 'EOF'\nimport yaml\nimport json\nimport\
+        \ os\n\n# Load ci-local/ci.yaml\nwith open('ci-local/ci.yaml') as f:\n   \
+        \ config = yaml.safe_load(f)\n\n# Always build standard package\nmatrix =\
+        \ {'include': [\n    {\n        'build_type': 'standard',\n        'runner':\
+        \ 'ubuntu-latest',\n        'arch': 'any'\n    }\n]}\n\n# Add Nuitka builds\
+        \ if enabled\nnuitka = config.get('nuitka', {})\nif nuitka.get('enabled',\
+        \ False):\n    platforms = nuitka.get('platforms', {})\n\n    # Nuitka x64\n\
+        \    if platforms.get('linux_x64', True):\n        matrix['include'].append({\n\
+        \            'build_type': 'nuitka',\n            'runner': 'buildjet-2vcpu-ubuntu-2204',\
+        \  # BuildJet x64\n            'arch': 'x64',\n            'platform': 'linux'\n\
+        \        })\n\n    # Nuitka ARM64\n    if platforms.get('linux_arm64', True):\n\
+        \        matrix['include'].append({\n            'build_type': 'nuitka',\n\
+        \            'runner': 'buildjet-2vcpu-ubuntu-2204-arm',  # BuildJet ARM64\n\
+        \            'arch': 'arm64',\n            'platform': 'linux'\n        })\n\
+        \n    # macOS ARM64 (expensive - opt-in only)\n    if platforms.get('macos_arm64',\
+        \ False):\n        # Check if using Cirrus Runners (95% cheaper than GitHub)\n\
+        \        cirrus = nuitka.get('cirrus', {})\n        if cirrus.get('enabled',\
+        \ True):\n            matrix['include'].append({\n                'build_type':\
+        \ 'nuitka',\n                'runner': 'ghcr.io/cirruslabs/macos-runner:sonoma',\
+        \  # Cirrus macOS\n                'arch': 'arm64',\n                'platform':\
+        \ 'macos'\n            })\n        else:\n            matrix['include'].append({\n\
+        \                'build_type': 'nuitka',\n                'runner': 'macos-latest',\
+        \  # GitHub macOS (10x more expensive!)\n                'arch': 'arm64',\n\
+        \                'platform': 'macos'\n            })\n\n# Write to output\n\
+        with open(os.environ['GITHUB_OUTPUT'], 'a') as f:\n    f.write(f'json={json.dumps(matrix)}\\\
+        n')\n\nprint(f\"Matrix: {json.dumps(matrix, indent=2)}\")\nEOF\n"
   publish:
     name: Build and Publish (${{ matrix.build_type }}-${{ matrix.arch }})
     runs-on: ${{ matrix.runner }}
     needs: config
-
     strategy:
       fail-fast: false
       matrix: ${{ fromJson(needs.config.outputs.matrix_json) }}
-
     steps:
-      - name: Checkout
-        uses: actions/checkout@v4
-        with:
-          fetch-depth: 0
-          submodules: recursive
-          token: ${{ secrets.GH_PAT || github.token }}
+    - name: Checkout
+      uses: actions/checkout@v4
+      with:
+        fetch-depth: 0
+        submodules: recursive
+        token: ${{ secrets.GH_PAT || github.token }}
+    - name: Set up Python
+      uses: actions/setup-python@v5
+      with:
+        python-version: '3.11'
+    - name: Install uv
+      run: 'curl -LsSf https://astral.sh/uv/install.sh | sh
 
-      - name: Set up Python
-        uses: actions/setup-python@v5
-        with:
-          python-version: '3.11'
+        echo "$HOME/.local/bin" >> $GITHUB_PATH
 
-      - name: Install uv
-        run: |
-          curl -LsSf https://astral.sh/uv/install.sh | sh
-          echo "$HOME/.local/bin" >> $GITHUB_PATH
+        '
+    - name: Install C compiler (Linux)
+      if: matrix.build_type == 'nuitka' && matrix.platform == 'linux'
+      run: 'sudo apt-get update
 
-      - name: Install C compiler (Linux)
-        if: matrix.build_type == 'nuitka' && matrix.platform == 'linux'
-        run: |
-          sudo apt-get update
-          sudo apt-get install -y gcc g++ python3-dev
+        sudo apt-get install -y gcc g++ python3-dev
 
-      - name: Install C compiler (macOS)
-        if: matrix.build_type == 'nuitka' && matrix.platform == 'macos'
-        run: |
-          xcode-select --install || true
+        '
+    - name: Install C compiler (macOS)
+      if: matrix.build_type == 'nuitka' && matrix.platform == 'macos'
+      run: 'xcode-select --install || true
 
-      - name: Bootstrap CI
-        env:
-          ARTIFACTORY_USERNAME: ${{ secrets.ARTIFACTORY_USERNAME }}
-          ARTIFACTORY_PASSWORD: ${{ secrets.ARTIFACTORY_PASSWORD }}
-        run: |
-          # Create ci-local/.env with credentials
-          mkdir -p ci-local
-          cat > ci-local/.env << EOF
-          ARTIFACTORY_USERNAME=${ARTIFACTORY_USERNAME}
-          ARTIFACTORY_PASSWORD=${ARTIFACTORY_PASSWORD}
-          EOF
+        '
+    - name: Bootstrap CI
+      env:
+        ARTIFACTORY_USERNAME: ${{ secrets.ARTIFACTORY_USERNAME }}
+        ARTIFACTORY_PASSWORD: ${{ secrets.ARTIFACTORY_PASSWORD }}
+      run: '# Create ci-local/.env with credentials
 
-          # Bootstrap sets up ci-local/.venv with all tools from ci-local/uv.lock
-          # Installs: pytest, ruff, build, twine, Nuitka (if nuitka.enabled)
-          ci/bootstrap --install
+        mkdir -p ci-local
 
-      - name: Build and Publish
-        env:
-          ARTIFACTORY_USERNAME: ${{ secrets.ARTIFACTORY_USERNAME }}
-          ARTIFACTORY_PASSWORD: ${{ secrets.ARTIFACTORY_PASSWORD }}
-          ARTIFACTORY_TOKEN_USER: ${{ secrets.ARTIFACTORY_TOKEN_USER }}
-          ARTIFACTORY_TOKEN: ${{ secrets.ARTIFACTORY_TOKEN }}
-          CI_BUILD_TYPE: ${{ matrix.build_type }}
-          CI: "true"
-          GITHUB_ACTIONS: "true"
-          FORCE_PUBLISH: "1"
-        run: |
-          # Call publish script directly (publish action removed from CLI)
-          .venv/bin/python ci/modules/python/run.d/51-publish.py publish
+        cat > ci-local/.env << EOF
 
-      - name: Verify Published
-        run: |
-          echo "✅ Published ${{ matrix.build_type }} package (${{ matrix.arch }})"
-          ls -lh dist/ || echo "dist/ cleaned after publish"
+        ARTIFACTORY_USERNAME=${ARTIFACTORY_USERNAME}
+
+        ARTIFACTORY_PASSWORD=${ARTIFACTORY_PASSWORD}
+
+        EOF
+
+
+        # Bootstrap sets up ci-local/.venv with all tools from ci-local/uv.lock
+
+        # Installs: pytest, ruff, build, twine, Nuitka (if nuitka.enabled)
+
+        ci/bootstrap --install
+
+        '
+    - name: Build and Publish
+      env:
+        ARTIFACTORY_USERNAME: ${{ secrets.ARTIFACTORY_USERNAME }}
+        ARTIFACTORY_PASSWORD: ${{ secrets.ARTIFACTORY_PASSWORD }}
+        ARTIFACTORY_TOKEN_USER: ${{ secrets.ARTIFACTORY_TOKEN_USER }}
+        ARTIFACTORY_TOKEN: ${{ secrets.ARTIFACTORY_TOKEN }}
+        CI_BUILD_TYPE: ${{ matrix.build_type }}
+        CI: 'true'
+        GITHUB_ACTIONS: 'true'
+        FORCE_PUBLISH: '1'
+      run: '# Call publish script directly (publish action removed from CLI)
+
+        .venv/bin/python ci/modules/python/run.d/51-publish.py publish
+
+        '
+    - name: Verify Published
+      run: "echo \"\u2705 Published ${{ matrix.build_type }} package (${{ matrix.arch\
+        \ }})\"\nls -lh dist/ || echo \"dist/ cleaned after publish\"\n"
