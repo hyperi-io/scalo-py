@@ -31,6 +31,86 @@ pip install hyperlib[dev,cli]
 
 ---
 
+## HyperLib CLI Utilities
+
+HyperLib provides ready-to-use utilities to accelerate CLI development:
+
+### Output Formatting (`hyperlib.cli.output`)
+
+```python
+from hyperlib.cli.output import print_success, print_error, print_table, print_json
+
+# Status messages with colors
+print_success("Deployment completed!")
+print_error("Failed to connect to database")
+print_warning("This may take a while")
+print_info("Processing 100 records")
+
+# Formatted tables
+data = [
+    {"name": "Alice", "role": "Admin", "status": "active"},
+    {"name": "Bob", "role": "User", "status": "inactive"}
+]
+print_table(data, title="Users")
+
+# Syntax-highlighted JSON
+config = {"host": "localhost", "port": 8000}
+print_json(config)
+```
+
+### Reusable Options (`hyperlib.cli.options`)
+
+```python
+from hyperlib.cli import Typer
+from hyperlib.cli.options import VERBOSE_OPTION, CONFIG_OPTION, DRY_RUN_OPTION
+
+app = Typer()
+
+@app.command()
+def deploy(
+    verbose: bool = VERBOSE_OPTION,      # --verbose, -v
+    config: str = CONFIG_OPTION,         # --config, -c
+    dry_run: bool = DRY_RUN_OPTION,      # --dry-run
+):
+    """Deploy application with standard options."""
+    if verbose:
+        print("Verbose mode enabled")
+```
+
+**Available standard options:**
+- `VERBOSE_OPTION` - Verbose output (--verbose, -v)
+- `QUIET_OPTION` - Suppress output (--quiet, -q)
+- `DEBUG_OPTION` - Debug mode (--debug, -d)
+- `CONFIG_OPTION` - Config file (--config, -c)
+- `ENV_OPTION` - Environment selection (--env, -e)
+- `DRY_RUN_OPTION` - Dry run mode (--dry-run)
+- `FORCE_OPTION` - Force operation (--force, -f)
+- `YES_OPTION` - Auto-confirm (--yes, -y)
+- `OUTPUT_OPTION` - Output format (--output, -o)
+- `LOG_LEVEL_OPTION` - Log level (--log-level, -l)
+- `LOG_FILE_OPTION` - Log file (--log-file)
+
+### Version Handling (`hyperlib.cli.version`)
+
+```python
+from hyperlib.cli import Typer
+from hyperlib.cli.version import version_option
+
+app = Typer()
+
+@app.callback()
+def main(
+    version: bool = version_option("myapp", app_name="My Application")
+):
+    """My Application CLI"""
+    pass
+
+# Usage: myapp --version
+# Output: My Application version 1.2.3
+```
+
+---
+
 ## Basic Usage
 
 ### Simple Single-Command CLI
@@ -421,10 +501,77 @@ A: Typer is built on Click. You can drop down to Click for advanced features.
 
 ---
 
+## Complete Example: Production CLI App
+
+```python
+from pathlib import Path
+from hyperlib.cli import Typer
+from hyperlib.cli.options import VERBOSE_OPTION, CONFIG_OPTION, DRY_RUN_OPTION
+from hyperlib.cli.output import print_success, print_error, print_table
+from hyperlib.cli.version import version_option
+
+app = Typer(help="My Production Application")
+
+@app.callback()
+def main(
+    version: bool = version_option("myapp", app_name="MyApp")
+):
+    """MyApp - Production-ready CLI application"""
+    pass
+
+@app.command()
+def deploy(
+    environment: str,
+    verbose: bool = VERBOSE_OPTION,
+    config: Path = CONFIG_OPTION,
+    dry_run: bool = DRY_RUN_OPTION,
+):
+    """Deploy application to environment."""
+    try:
+        if dry_run:
+            print_warning("DRY RUN MODE - No changes will be made")
+
+        if verbose:
+            print_info(f"Deploying to {environment}")
+            if config:
+                print_info(f"Using config: {config}")
+
+        # Deployment logic here
+        result = {"service": "api", "status": "deployed", "instances": 3}
+
+        print_success(f"Deployment to {environment} completed!")
+        print_table([result], title="Deployment Summary")
+
+    except Exception as e:
+        print_error(f"Deployment failed: {e}")
+        raise
+
+if __name__ == "__main__":
+    app()
+```
+
+**Usage:**
+```bash
+# Show version
+myapp --version
+
+# Deploy with all options
+myapp deploy production --verbose --dry-run --config prod.yaml
+
+# Get help
+myapp --help
+myapp deploy --help
+```
+
+---
+
 ## Examples
 
 Complete examples are available in:
 - [hyperlib/cli/examples.py](../src/hyperlib/cli/examples.py)
+- [hyperlib/cli/output.py](../src/hyperlib/cli/output.py) - Output utilities
+- [hyperlib/cli/options.py](../src/hyperlib/cli/options.py) - Reusable options
+- [hyperlib/cli/version.py](../src/hyperlib/cli/version.py) - Version handling
 - [Typer documentation](https://typer.tiangolo.com/tutorial/)
 
 ---

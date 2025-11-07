@@ -9,13 +9,24 @@ Installation:
 
 Basic Usage:
     from hyperlib.cli import Typer, Option, Argument
+    from hyperlib.cli.output import print_success, print_table
+    from hyperlib.cli.options import VERBOSE_OPTION
+    from hyperlib.cli.version import version_option
 
     app = Typer(help="My application CLI")
 
+    @app.callback()
+    def main(version: bool = version_option("myapp")):
+        '''My application'''
+        pass
+
     @app.command()
-    def hello(name: str = Argument(..., help="Name to greet")):
-        '''Say hello'''
-        print(f"Hello, {name}!")
+    def deploy(
+        environment: str,
+        verbose: bool = VERBOSE_OPTION
+    ):
+        '''Deploy application'''
+        print_success(f"Deployed to {environment}")
 
     if __name__ == "__main__":
         app()
@@ -24,6 +35,9 @@ Features:
     - Type-hint driven argument/option parsing
     - Automatic help generation from docstrings
     - Rich terminal output (colors, tables, progress bars)
+    - Reusable CLI options (verbose, config, dry-run, etc.)
+    - Version handling utilities
+    - Beautiful output formatting helpers
     - Excellent IDE support (autocomplete, type checking)
     - Test-friendly (CliRunner for testing)
 
@@ -33,11 +47,30 @@ Standards:
     - Use docstrings for command descriptions
     - Prefer clarity over cleverness (see PYTHON-STANDARDS.md)
 
+Modules:
+    - hyperlib.cli.output - Output formatting utilities
+    - hyperlib.cli.options - Reusable CLI options
+    - hyperlib.cli.version - Version handling
+    - hyperlib.cli.examples - Complete usage examples
+
 Examples:
-    See hyperlib/cli/examples/ for complete examples.
+    See hyperlib/cli/examples.py and docs/CLI-STANDARDS.md for complete examples.
 """
 
-__all__ = ["Typer", "Option", "Argument", "Context", "Exit", "CliRunner", "HAS_TYPER"]
+__all__ = [
+    # Core Typer exports
+    "Typer",
+    "Option",
+    "Argument",
+    "Context",
+    "Exit",
+    "CliRunner",
+    "HAS_TYPER",
+    # Submodules (import explicitly)
+    "output",
+    "options",
+    "version",
+]
 
 # Attempt to import Typer
 try:
@@ -74,6 +107,8 @@ except ImportError:
     Exit = _TyperNotInstalled
     CliRunner = _TyperNotInstalled
 
+# Import submodules (always available, gracefully handle missing Typer)
+from . import output, options, version
 
 # Version info
 __version__ = "1.0.0"
