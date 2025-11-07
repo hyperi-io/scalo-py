@@ -1,38 +1,45 @@
 """
 HyperLib CLI Application
-Command-line interface using Click framework
+Command-line interface using Typer framework (mandatory standard)
 """
 
-import os
+import sys
 from collections.abc import Callable
+from typing import Any
 
 from ...logger import logger
 
 
 class CLIApplication:
     """
-    Command-line application using Click.
+    Command-line application using Typer (mandatory hyperlib standard).
 
     Provides:
-    - Click integration for CLI commands
-    - Subcommand support (groups)
-    - Automatic --help generation
-    - Option/argument parsing
+    - Typer integration for type-driven CLI commands
+    - Automatic help generation from docstrings and type hints
+    - Subcommand support
+    - Rich terminal output
+    - Excellent IDE support
 
     Example:
-        app = Application.cli(name="my-tool")
+        from hyperlib import Application
+
+        app = Application.cli(name="my-tool", version="1.0.0")
 
         @app.command()
-        def sync(source: str, dest: str):
+        def sync(source: str, dest: str, verbose: bool = False):
             '''Sync files from source to dest.'''
-            click.echo(f"Syncing {source} -> {dest}")
+            print(f"Syncing {source} -> {dest}")
+            if verbose:
+                print("Verbose mode enabled")
 
         @app.command()
-        @app.option('--verbose', is_flag=True)
-        def process(verbose: bool):
-            '''Process data with optional verbose output.'''
-            if verbose:
-                click.echo("Verbose mode enabled")
+        def process(
+            file: str,
+            format: str = "json"
+        ):
+            '''Process data file.'''
+            print(f"Processing {file} as {format}")
 
         app.run()
     """
@@ -44,6 +51,7 @@ class CLIApplication:
         add_verbose: bool = True,
         add_quiet: bool = True,
         add_version: bool = True,
+        help: str = None,
         **kwargs,
     ):
         """
@@ -53,40 +61,42 @@ class CLIApplication:
             name: Application name (used in --help output)
             version: Application version (for --version flag).
                     If None, attempts to detect from package metadata.
-            add_verbose: Add global --verbose/-v flag
-            add_quiet: Add global --quiet/-q flag
+            add_verbose: Add global --verbose/-v flag (deprecated, use command-level options)
+            add_quiet: Add global --quiet/-q flag (deprecated, use command-level options)
             add_version: Add global --version flag
-            **kwargs: Additional Click group options
+            help: Help text for the application
+            **kwargs: Additional Typer options
         """
         self.name = name
         self.version = version or self._get_package_version(name)
+        self.add_verbose = add_verbose
+        self.add_quiet = add_quiet
+        self.add_version = add_version
 
-        # Create Click group
+        # Create Typer app
         try:
-            import sys
+            from typer import Typer
 
-            import click
+            # Create Typer instance
+            typer_help = help or f"{name} - HyperLib CLI Application"
+            self.app = Typer(
+                name=name,
+                help=typer_help,
+                add_completion=kwargs.pop("add_completion", True),
+                **kwargs,
+            )
 
-            self.click = click
-            self.sys = sys
-
-            # Create context settings for passing state
-            ctx_settings = kwargs.pop("context_settings", {})
-            ctx_settings["obj"] = ctx_settings.get("obj", {})
-
-            self.group = click.Group(name=name, context_settings=ctx_settings, **kwargs)
-
-            # Add global options if requested
-            if add_verbose or add_quiet:
-                self._add_logging_options(add_verbose, add_quiet)
-
-            if add_version:
-                self._add_version_option()
+            # Store reference for convenience
+            self.typer = self.app
 
         except ImportError:
-            raise ImportError("Click is required for CLI applications. " "Install it with: pip install click")
+            raise ImportError(
+                "Typer is required for CLI applications (hyperlib mandatory standard). "
+                "Install with: pip install hyperlib[cli]\n"
+                "Documentation: https://typer.tiangolo.com/"
+            )
 
-        logger.info(f"CLIApplication '{name}' initialized")
+        logger.info(f"CLIApplication '{name}' initialized (Typer)")
 
     @staticmethod
     def _get_package_version(package_name: str) -> str:
@@ -114,223 +124,79 @@ class CLIApplication:
             except Exception:
                 return "unknown"
 
-    @staticmethod
-    def env_override_callback(ctx, param, value):  # noqa: ARG004
-        """
-        Click callback to override option with environment variable.
-
-        The environment variable name is derived from the parameter name
-        converted to uppercase (e.g., --target -> TARGET env var).
-
-        Example:
-            @app.command()
-            @app.option('--target', callback=app.env_override_callback)
-            def deploy(target):
-                # target will be from --target flag or TARGET env var
-                pass
-        """
-        env_name = param.name.upper()
-        env_value = os.getenv(env_name)
-        return env_value if env_value else value
-
-    def option_with_env(self, *param_decls, env_var: str = None, **kwargs) -> Callable:
-        """
-        Create option with automatic environment variable override.
-
-        Args:
-            param_decls: Option declarations (e.g., '--target', '-t')
-            env_var: Environment variable name (auto-derived if None)
-            **kwargs: Click option parameters
-
-        Example:
-            @app.command()
-            @app.option_with_env('--target', help='Deployment target')
-            def deploy(target):
-                # Reads from --target flag or TARGET env var
-                pass
-
-            @app.option_with_env('--host', env_var='APP_HOST')
-            def connect(host):
-                # Reads from --host flag or APP_HOST env var
-                pass
-        """
-        # Add env override callback
-        if "callback" not in kwargs:
-            if env_var:
-                # Custom env var name
-                def custom_env_callback(ctx, param, value):
-                    env_value = os.getenv(env_var)
-                    return env_value if env_value else value
-
-                kwargs["callback"] = custom_env_callback
-            else:
-                # Auto-derive from parameter name
-                kwargs["callback"] = self.env_override_callback
-
-        # Add help text about env var
-        if "help" in kwargs and env_var:
-            kwargs["help"] += f" [env: {env_var}]"
-        elif "help" in kwargs:
-            # Derive env var name from first long option
-            for decl in param_decls:
-                if decl.startswith("--"):
-                    auto_env = decl[2:].upper().replace("-", "_")
-                    kwargs["help"] += f" [env: {auto_env}]"
-                    break
-
-        return self.click.option(*param_decls, **kwargs)
-
-    def _add_logging_options(self, add_verbose: bool, add_quiet: bool):
-        """Add global verbose and quiet logging options."""
-        original_callback = self.group.callback
-
-        @self.click.pass_context
-        def logging_callback(ctx, verbose=None, quiet=None, **kwargs):
-            """Configure logging based on verbose/quiet flags."""
-            import sys
-
-            # Store in context
-            ctx.ensure_object(dict)
-            ctx.obj["verbose"] = verbose
-            ctx.obj["quiet"] = quiet
-
-            # Configure logging (safely handle test environments)
-            try:
-                if quiet:
-                    logger.remove()
-                    logger.add(sys.stderr, level="ERROR")
-                elif verbose:
-                    logger.remove()
-                    logger.add(sys.stderr, level="DEBUG")
-                    logger.debug(f"{self.name} v{self.version} - Verbose mode enabled")
-                else:
-                    logger.remove()
-                    logger.add(sys.stderr, level="INFO")
-            except (ValueError, OSError):
-                # Logging reconfiguration failed (e.g., in test environment)
-                # Continue without logging changes
-                pass
-
-            # Call original callback if it exists
-            if original_callback:
-                original_callback(ctx, **kwargs)
-
-        # Add options to callback
-        if add_verbose:
-            logging_callback = self.click.option("-v", "--verbose", is_flag=True, help="Enable verbose output")(
-                logging_callback
-            )
-
-        if add_quiet:
-            logging_callback = self.click.option("-q", "--quiet", is_flag=True, help="Suppress non-error output")(
-                logging_callback
-            )
-
-        # Set as group callback
-        self.group.callback = logging_callback
-
-    def _add_version_option(self):
-        """Add --version flag to CLI group."""
-        # Click's version_option decorator
-        self.group = self.click.version_option(version=self.version, prog_name=self.name)(self.group)
-
     def command(self, name: str | None = None, **kwargs) -> Callable:
         """
         Decorator to register CLI command.
 
         Args:
             name: Command name (defaults to function name)
-            **kwargs: Click command options
+            **kwargs: Typer command options
 
         Example:
             @app.command()
-            def sync(source: str, dest: str):
-                '''Sync files from source to destination.'''
-                click.echo(f"Syncing {source} -> {dest}")
+            def deploy(
+                environment: str,
+                region: str = "us-east-1",
+                verbose: bool = False
+            ):
+                '''Deploy application to environment.'''
+                print(f"Deploying to {environment} in {region}")
         """
-        return self.group.command(name=name, **kwargs)
+        return self.app.command(name=name, **kwargs)
 
-    def option(self, *param_decls, **kwargs) -> Callable:
+    def callback(self, **kwargs) -> Callable:
         """
-        Decorator to add option to command.
+        Decorator for main callback (runs before any command).
 
-        Args:
-            param_decls: Option declarations (e.g., '--verbose', '-v')
-            **kwargs: Click option parameters
+        Useful for global setup, version handling, etc.
 
         Example:
-            @app.option('--verbose', '-v', is_flag=True, help='Enable verbose output')
-            def mycommand(verbose: bool):
-                if verbose:
-                    click.echo("Verbose mode")
+            @app.callback()
+            def main(
+                verbose: bool = False,
+                version: bool = False
+            ):
+                '''My application'''
+                if version:
+                    print(f"Version: {app.version}")
+                    raise typer.Exit()
         """
-        return self.click.option(*param_decls, **kwargs)
+        return self.app.callback(**kwargs)
 
-    def argument(self, *param_decls, **kwargs) -> Callable:
+    def add_typer(self, typer_instance, *, name: str = None, **kwargs):
         """
-        Decorator to add argument to command.
+        Add a sub-application (for command groups).
 
         Args:
-            param_decls: Argument declarations
-            **kwargs: Click argument parameters
-
-        Example:
-            @app.argument('filename')
-            def process(filename: str):
-                click.echo(f"Processing {filename}")
-        """
-        return self.click.argument(*param_decls, **kwargs)
-
-    def group_command(self, name: str | None = None, **kwargs) -> Callable:
-        """
-        Decorator to create command group (for subcommands).
-
-        Args:
+            typer_instance: Typer instance to add
             name: Group name
-            **kwargs: Click group options
+            **kwargs: Additional options
 
         Example:
-            @app.group_command()
-            def database():
-                '''Database management commands.'''
-                pass
+            # Main app
+            app = Application.cli(name="myapp")
 
-            @database.command()
+            # Sub-app for database commands
+            db_app = Typer(help="Database commands")
+
+            @db_app.command()
             def migrate():
-                '''Run database migrations.'''
-                click.echo("Running migrations...")
+                '''Run migrations'''
+                print("Running migrations...")
+
+            @db_app.command()
+            def backup():
+                '''Backup database'''
+                print("Backing up...")
+
+            # Add to main app
+            app.add_typer(db_app, name="db")
+
+            # Usage: myapp db migrate
         """
+        self.app.add_typer(typer_instance, name=name, **kwargs)
 
-        def decorator(func: Callable) -> Callable:
-            subgroup = self.click.Group(name=name or func.__name__, help=func.__doc__, **kwargs)
-
-            # Add subgroup to main group
-            self.group.add_command(subgroup, name=name or func.__name__)
-
-            # Return subgroup so user can add commands to it
-            return subgroup
-
-        return decorator
-
-    def add_command(self, func: Callable, name: str | None = None, **kwargs):
-        """
-        Programmatically add command to CLI.
-
-        Args:
-            func: Command function
-            name: Command name (defaults to function name)
-            **kwargs: Click command options
-
-        Example:
-            def my_command():
-                click.echo("Hello")
-
-            app.add_command(my_command, name="hello")
-        """
-        cmd = self.click.command(name=name, **kwargs)(func)
-        self.group.add_command(cmd, name=name or func.__name__)
-
-    def run(self, args=None):
+    def run(self, args: list[str] | None = None):
         """
         Run the CLI application.
 
@@ -342,4 +208,55 @@ class CLIApplication:
                 app.run()
         """
         logger.info(f"Running CLI '{self.name}'")
-        self.group(args=args)
+
+        # Add version callback if requested
+        if self.add_version:
+            self._add_version_callback()
+
+        # Run the Typer app
+        try:
+            if args is not None:
+                # Use provided args
+                self.app(args)
+            else:
+                # Use sys.argv (Typer default)
+                self.app()
+        except SystemExit as e:
+            # Let SystemExit pass through (normal for CLI apps)
+            raise
+        except Exception as e:
+            logger.error(f"CLI error: {e}")
+            raise
+
+    def _add_version_callback(self):
+        """Add --version option to the main callback."""
+        from typer import Exit, Option
+
+        # Check if there's already a callback
+        if self.app.registered_callback:
+            # Callback exists, we can't easily modify it
+            # User should add version handling in their callback
+            logger.debug("Callback already registered, skipping auto-version")
+            return
+
+        # Add a simple version callback
+        @self.app.callback(invoke_without_command=True)
+        def version_callback(
+            version: bool = Option(
+                False,
+                "--version",
+                "-V",
+                help=f"Show version and exit",
+                is_flag=True,
+            )
+        ):
+            """Main callback with version support."""
+            if version:
+                print(f"{self.name} version {self.version}")
+                raise Exit()
+
+    # Convenience property to access Typer directly
+    @property
+    def typer_app(self):
+        """Get the underlying Typer instance."""
+        return self.app
