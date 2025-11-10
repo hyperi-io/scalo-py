@@ -1,0 +1,35 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: example-api
+  labels:
+    app: example-api
+spec:
+  type: ClusterIP
+  selector:
+    app: example-api
+  ports:
+  - name: http
+    port: 80
+    targetPort: 8000
+    protocol: TCP
+  - name: metrics
+    port: 9090
+    targetPort: 9090
+    protocol: TCP
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: example-api-health
+  labels:
+    app: example-api
+spec:
+  type: ClusterIP
+  selector:
+    app: example-api
+  ports:
+  - name: health
+    port: 8080
+    targetPort: 8080
+    protocol: TCP
