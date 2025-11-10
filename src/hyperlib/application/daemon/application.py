@@ -12,6 +12,7 @@ from typing import Any, NamedTuple, Optional
 from ...logger import logger
 from ..mixins import (
     CLIExecutableMixin,
+    HealthCheckMixin,
     MetricsMixin,
     ProfileMixin,
     SignalHandlerMixin,
@@ -29,6 +30,7 @@ class DaemonApplication(
     CLIExecutableMixin,
     SignalHandlerMixin,
     ProfileMixin,
+    HealthCheckMixin,
     MetricsMixin,
 ):
     """
@@ -103,70 +105,10 @@ class DaemonApplication(
         self.scheduled_tasks: list[ScheduledTask] = []
         self.task_threads: list[threading.Thread] = []
 
-        # Add health HTTP server if enabled in profile
-        if self.profile.get("health_check"):
-            self._start_health_server()
-
         # Add start command to CLI
         self._add_start_command()
 
         logger.info(f"DaemonApplication '{name}' initialized (profile={profile})")
-
-    def _start_health_server(self) -> None:
-        """Start health check HTTP server in separate thread."""
-        import http.server
-        import socketserver
-
-        port = self.profile.get("health_check_port", 8080)
-
-        class HealthHandler(http.server.BaseHTTPRequestHandler):
-            def __init__(self, daemon_app, *args, **kwargs):
-                self.daemon_app = daemon_app
-                super().__init__(*args, **kwargs)
-
-            def do_GET(self):
-                if self.path == "/health":
-                    # Liveness - always healthy if running
-                    self.send_response(200)
-                    self.send_header("Content-Type", "application/json")
-                    self.end_headers()
-                    self.wfile.write(b'{"status": "healthy", "service": "' + self.daemon_app.name.encode() + b'"}')
-                elif self.path == "/ready":
-                    # Readiness - check if not shutting down
-                    if self.daemon_app.is_shutting_down():
-                        self.send_response(503)
-                    else:
-                        self.send_response(200)
-                    self.send_header("Content-Type", "application/json")
-                    self.end_headers()
-                    self.wfile.write(b'{"status": "ready", "service": "' + self.daemon_app.name.encode() + b'"}')
-                else:
-                    self.send_response(404)
-                    self.end_headers()
-
-            def log_message(self, format, *args):
-                # Suppress HTTP server logs
-                pass
-
-        def create_handler(*args, **kwargs):
-            return HealthHandler(self, *args, **kwargs)
-
-        def run_server():
-            # Enable address reuse to avoid "Address already in use" errors
-            socketserver.TCPServer.allow_reuse_address = True
-            try:
-                with socketserver.TCPServer(("0.0.0.0", port), create_handler) as httpd:  # nosec B104
-                    logger.info(f"Health server listening on port {port}")
-                    httpd.serve_forever()
-            except OSError as e:
-                if "Address already in use" in str(e):
-                    logger.warning(f"Health server port {port} already in use, skipping health endpoint")
-                else:
-                    raise
-
-        health_thread = threading.Thread(target=run_server, daemon=True, name=f"{self.name}_health_server")
-        health_thread.start()
-        logger.debug(f"Health HTTP server started on port {port}")
 
     def _add_start_command(self) -> None:
         """Add 'start' command to CLI."""

@@ -14,6 +14,7 @@ from typing import Any, Optional
 from ...logger import logger
 from ..mixins import (
     CLIExecutableMixin,
+    HealthCheckMixin,
     MetricsMixin,
     ProfileMixin,
     SignalHandlerMixin,
@@ -24,6 +25,7 @@ class MCPApplication(
     CLIExecutableMixin,
     SignalHandlerMixin,
     ProfileMixin,
+    HealthCheckMixin,
     MetricsMixin,
 ):
     """
