@@ -1,5 +1,5 @@
 name: CI Publish
-true:
+on:
   push:
     tags:
     - v*
