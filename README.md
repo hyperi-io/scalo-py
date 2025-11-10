@@ -1,5 +1,12 @@
 # Hyperlib
 
+<!-- BADGES:START -->
+[![Build Status](https://github.com/hypersec-io/hyperlib/workflows/CI%20Publish/badge.svg)](https://github.com/hypersec-io/hyperlib/actions)
+[![Python Version](https://img.shields.io/badge/python-3.11%2B-blue)](https://www.python.org/)
+[![License](https://img.shields.io/badge/license-Proprietary-red)](LICENSE)
+[![Latest Release](https://img.shields.io/github/v/release/hypersec-io/hyperlib)](https://github.com/hypersec-io/hyperlib/releases)
+<!-- BADGES:END -->
+
 **Enterprise Python Infrastructure for HyperSec Projects**
 
 Hyperlib is a production-ready Python library providing container-native application patterns, metrics, logging, and infrastructure utilities for all HyperSec Python projects.
