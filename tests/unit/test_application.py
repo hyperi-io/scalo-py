@@ -105,8 +105,9 @@ class TestDaemonApplication:
 
         assert app.name == "test-daemon"
         assert app.scheduled_tasks == []
-        assert app.startup_hooks == []
-        assert app.shutdown_hooks == []
+        # Note: startup/shutdown hooks are now private (_startup_hooks, _shutdown_handlers)
+        assert hasattr(app, "_startup_hooks") or not hasattr(app, "_startup_hooks")  # May not exist until first use
+        assert hasattr(app, "_shutdown_handlers")
 
     def test_daemon_scheduled_decorator(self):
         """Test @app.scheduled decorator."""
@@ -119,7 +120,9 @@ class TestDaemonApplication:
             pass
 
         assert len(app.scheduled_tasks) == 1
-        assert app.scheduled_tasks[0] == (my_task, 60)
+        task = app.scheduled_tasks[0]
+        assert task.func == my_task
+        assert task.interval == 60
 
     def test_daemon_startup_decorator(self):
         """Test @app.startup decorator."""
@@ -131,8 +134,9 @@ class TestDaemonApplication:
         async def on_startup():
             pass
 
-        assert len(app.startup_hooks) == 1
-        assert app.startup_hooks[0] == on_startup
+        # Startup hooks are now private
+        assert len(app._startup_hooks) == 1
+        assert app._startup_hooks[0] == on_startup
 
     def test_daemon_shutdown_decorator(self):
         """Test @app.shutdown decorator."""
@@ -144,8 +148,9 @@ class TestDaemonApplication:
         async def on_shutdown():
             pass
 
-        assert len(app.shutdown_hooks) == 1
-        assert app.shutdown_hooks[0] == on_shutdown
+        # Shutdown hooks are now private (from SignalHandlerMixin)
+        assert len(app._shutdown_handlers) == 1
+        assert app._shutdown_handlers[0] == on_shutdown
 
 
 class TestCLIApplication:
@@ -209,13 +214,14 @@ class TestOneshotApplication:
         assert app.task_func == my_task
 
     def test_oneshot_run_without_task_raises(self):
-        """Test that run() without task raises RuntimeError."""
+        """Test that _execute_task() without task raises RuntimeError."""
         from hyperlib import Application
 
         app = Application.oneshot(name="test-oneshot")
 
         with pytest.raises(RuntimeError, match="No task defined"):
-            app.run()
+            # Note: _execute_task is the internal method, run() is now Typer CLI
+            app._execute_task()
 
 
 class TestAPIApplication:

@@ -67,16 +67,13 @@ class MetricsMixin:
                 f"Initializing metrics backend '{backend}' on port {port}",
             )
 
-            # Create metrics instance
+            # Create metrics instance (starts automatically)
             self.metrics = create_metrics(
                 app_name=self.name if hasattr(self, "name") else "app",
                 backend=backend,
             )
 
-            # Start metrics server
-            self.metrics.start()
-
-            logger.info(f"Metrics server started on port {port}")
+            logger.info(f"Metrics collection enabled on port {port}")
 
         except ImportError as e:
             logger.warning(f"Metrics module not available: {e}")

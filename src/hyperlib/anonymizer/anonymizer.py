@@ -90,18 +90,7 @@ class Anonymizer:
         score_threshold: float = 0.5,
         enable_custom_recognizers: bool = True,
     ):
-        """
-        Initialize anonymizer.
-
-        Args:
-            preset: Preset entity group ("minimal", "standard", "compliance")
-            entities: Override with custom entity list (ignores preset if provided)
-            strategy: How to anonymize (REPLACE, REDACT, MASK, HASH)
-            replacements: Custom replacement per entity type (overrides strategy)
-            language: Language for analysis ("en", "es", "fr", "de", etc.)
-            score_threshold: Confidence threshold (0.0-1.0, default 0.5)
-            enable_custom_recognizers: Enable custom recognizers for passwords, API keys (default: True)
-        """
+        """Initialize anonymizer (see class docstring for usage)."""
         # Create analyzer engine
         self.analyzer = AnalyzerEngine()
 

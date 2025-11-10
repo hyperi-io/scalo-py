@@ -243,45 +243,48 @@ class MetricsManager:
             return NoOpMetric()
         return self._backend.histogram(name, description, labels, buckets)
 
-    def get_metrics(self) -> bytes:
+    @property
+    def metrics(self) -> bytes:
         """
-        Get metrics in backend's native format.
-
-        Returns:
-            Metrics as bytes (ready for HTTP response)
+        Get metrics in backend's native format (bytes for HTTP response).
 
         Example:
             >>> from fastapi import Response
             >>> @app.get("/metrics")
             >>> def metrics_endpoint():
             >>>     return Response(
-            >>>         content=metrics.get_metrics(),
-            >>>         media_type=metrics.get_content_type()
+            >>>         content=metrics.metrics,
+            >>>         media_type=metrics.content_type
             >>>     )
         """
         if not self.enabled:
             return b"# Metrics not available\n"
         return self._backend.get_metrics()
 
-    def get_metrics_text(self) -> str:
-        """
-        Get metrics as text string.
+    @property
+    def metrics_text(self) -> str:
+        """Get metrics as text string (decoded from bytes)."""
+        return self.metrics.decode("utf-8")
 
-        Returns:
-            Metrics as string
-        """
-        return self.get_metrics().decode("utf-8")
-
-    def get_content_type(self) -> str:
-        """
-        Get HTTP content type for metrics endpoint.
-
-        Returns:
-            Content-Type string
-        """
+    @property
+    def content_type(self) -> str:
+        """HTTP content type for metrics endpoint."""
         if not self.enabled:
             return "text/plain"
         return self._backend.get_content_type()
+
+    # Backward compatibility - keep old method names
+    def get_metrics(self) -> bytes:
+        """Deprecated: Use .metrics property instead."""
+        return self.metrics
+
+    def get_metrics_text(self) -> str:
+        """Deprecated: Use .metrics_text property instead."""
+        return self.metrics_text
+
+    def get_content_type(self) -> str:
+        """Deprecated: Use .content_type property instead."""
+        return self.content_type
 
     def start_auto_update(self) -> None:
         """Start background metric updates (Prometheus only)."""

@@ -1,7 +1,7 @@
 """
-MCP Server Application
+MCP Server Application with container-native patterns
 
-Provides a factory for creating MCP (Model Context Protocol) servers.
+Provides MCP (Model Context Protocol) servers with profile-based configuration.
 Supports stdio and HTTP transports with tool/resource/prompt registration.
 """
 
@@ -9,70 +9,109 @@ import asyncio
 import json
 import sys
 from collections.abc import Callable
-from pathlib import Path
-from typing import Any
+from typing import Any, Optional
 
-from ...config import MountConfig, get_mount_config
 from ...logger import logger
+from ..mixins import (
+    CLIExecutableMixin,
+    MetricsMixin,
+    ProfileMixin,
+    SignalHandlerMixin,
+)
 
 
-class MCPApplication:
+class MCPApplication(
+    CLIExecutableMixin,
+    SignalHandlerMixin,
+    ProfileMixin,
+    MetricsMixin,
+):
     """
-    MCP Server application with tool/resource/prompt registration.
+    MCP Server application with container-native patterns.
 
-    Supports MCP protocol over stdio or HTTP transport.
-    Pre-wired with hyperlib logger and config cascade.
+    Provides container-native patterns out of the box:
+    - Profile-based configuration (dev/docker/prod)
+    - Graceful shutdown (SIGTERM/SIGINT)
+    - Automatic MCP metrics (request count, duration)
+    - Typer CLI commands (serve, validate, version, config)
 
-    Example:
-        app = Application.mcp(name="my-server", transport="stdio")
+    Example (simple):
+        app = Application.mcp(name="my-server", version="1.0.0", profile="prod")
 
         @app.tool(name="analyze", description="Analyze code")
         def analyze(code: str) -> dict:
             return {"result": "analysis"}
 
-        @app.resource(uri="file://")
-        def list_files() -> list:
-            return ["file1.txt", "file2.txt"]
+        if __name__ == "__main__":
+            app.run()  # Runs Typer CLI
 
-        app.run()
+    Example (production):
+        # Container CMD: python -m my_mcp serve --profile prod
+        # Automatically gets: metrics, graceful shutdown
+
+    Supports MCP protocol over stdio or HTTP transport.
     """
 
     def __init__(
         self,
         name: str,
+        version: str = "1.0.0",
+        profile: str = "dev",
         transport: str = "stdio",
-        capabilities: list[str] | None = None,
-        mounts: MountConfig | None = None,
-        **kwargs,
+        capabilities: Optional[list[str]] = None,
+        profile_overrides: Optional[dict[str, Any]] = None,
+        **kwargs: Any,
     ):
         """
         Initialize MCP server application.
 
         Args:
             name: Application name
+            version: Application version
+            profile: Environment profile ("dev", "docker", "prod")
             transport: Communication transport ("stdio" or "http")
             capabilities: MCP capabilities to advertise
-            mounts: Container mount configuration
+            profile_overrides: Override profile settings
             **kwargs: Additional configuration
         """
-        self.name = name
+        # Initialize mixins (MRO: CLI -> Signal -> Profile -> Metrics)
+        super().__init__(
+            name=name,
+            version=version,
+            profile=profile,
+            profile_overrides=profile_overrides,
+            description=f"{name} - HyperLib MCP Server",
+        )
+
         self.transport = transport
         self.capabilities = capabilities or ["tools", "resources", "prompts"]
-        self.mounts = mounts or get_mount_config()
 
         # MCP protocol handlers
-        self.tools = {}
-        self.resources = {}
-        self.prompts = {}
+        self.tools: dict[str, dict[str, Any]] = {}
+        self.resources: dict[str, dict[str, Any]] = {}
+        self.prompts: dict[str, dict[str, Any]] = {}
 
-        # Lifecycle hooks
-        self.startup_hooks = []
-        self.shutdown_hooks = []
+        # Add serve command to CLI
+        self._add_serve_command()
 
-        logger.info(f"MCPApplication '{name}' initialized (transport={transport})")
+        logger.info(
+            f"MCPApplication '{name}' initialized (transport={transport}, profile={profile})"
+        )
         logger.debug(f"Capabilities: {', '.join(self.capabilities)}")
 
-    def tool(self, name: str, description: str = "", schema: dict | None = None):
+    def _add_serve_command(self) -> None:
+        """Add 'serve' command to CLI."""
+        import typer
+
+        @self.cli.command()
+        def serve():
+            """Start the MCP server."""
+            logger.info(
+                f"Starting MCP server '{self.name}' (transport={self.transport}, profile={self.profile_name})"
+            )
+            self._run_server()
+
+    def tool(self, name: str, description: str = "", schema: Optional[dict] = None):
         """
         Decorator to register an MCP tool.
 
@@ -108,9 +147,9 @@ class MCPApplication:
             description: Resource description
 
         Example:
-            @app.resource(uri="file://", description="File system access")
-            def list_files(path: str) -> list:
-                return os.listdir(path)
+            @app.resource(uri="file://")
+            def list_files() -> list:
+                return ["file1.txt", "file2.txt"]
         """
 
         def decorator(func: Callable) -> Callable:
@@ -126,16 +165,16 @@ class MCPApplication:
 
     def prompt(self, name: str, description: str = ""):
         """
-        Decorator to register an MCP prompt template.
+        Decorator to register an MCP prompt.
 
         Args:
             name: Prompt name
             description: Prompt description
 
         Example:
-            @app.prompt(name="analyze", description="Code analysis prompt")
-            def analyze_prompt(context: str) -> str:
-                return f"Analyze this code: {context}"
+            @app.prompt(name="system", description="System prompt")
+            def system_prompt() -> str:
+                return "You are a helpful assistant"
         """
 
         def decorator(func: Callable) -> Callable:
@@ -149,180 +188,116 @@ class MCPApplication:
 
         return decorator
 
-    def on_startup(self, func: Callable) -> Callable:
-        """Decorator to register startup hook."""
-        self.startup_hooks.append(func)
-        logger.debug(f"Registered startup hook: {func.__name__}")
-        return func
-
-    def on_shutdown(self, func: Callable) -> Callable:
-        """Decorator to register shutdown hook."""
-        self.shutdown_hooks.append(func)
-        logger.debug(f"Registered shutdown hook: {func.__name__}")
-        return func
-
-    async def handle_request(self, request: dict) -> dict:
+    def _run_server(self) -> None:
         """
-        Handle incoming MCP request.
+        Run the MCP server.
 
-        Implements JSON-RPC 2.0 protocol for MCP.
+        Supports stdio and HTTP transports.
         """
-        method = request.get("method")
-        params = request.get("params", {})
-        request_id = request.get("id")
+        if self.transport == "stdio":
+            self._run_stdio_server()
+        elif self.transport == "http":
+            self._run_http_server()
+        else:
+            raise ValueError(f"Unknown transport: {self.transport}")
 
-        try:
-            # Handle MCP protocol methods
-            if method == "initialize":
-                return {
-                    "jsonrpc": "2.0",
-                    "id": request_id,
-                    "result": {
-                        "protocolVersion": "2024-11-05",
-                        "capabilities": {cap: {} for cap in self.capabilities},
-                        "serverInfo": {"name": self.name, "version": "0.1.0"},
-                    },
-                }
-
-            elif method == "tools/list":
-                tool_list = [
-                    {
-                        "name": tool["name"],
-                        "description": tool["description"],
-                        "inputSchema": tool["schema"],
-                    }
-                    for tool in self.tools.values()
-                ]
-                return {"jsonrpc": "2.0", "id": request_id, "result": {"tools": tool_list}}
-
-            elif method == "tools/call":
-                tool_name = params.get("name")
-                arguments = params.get("arguments", {})
-
-                if tool_name not in self.tools:
-                    raise ValueError(f"Tool not found: {tool_name}")
-
-                tool = self.tools[tool_name]
-                result = tool["handler"](**arguments)
-
-                return {
-                    "jsonrpc": "2.0",
-                    "id": request_id,
-                    "result": {"content": [{"type": "text", "text": str(result)}]},
-                }
-
-            elif method == "resources/list":
-                resource_list = [
-                    {"uri": res["uri"], "name": res["uri"], "description": res["description"]}
-                    for res in self.resources.values()
-                ]
-                return {"jsonrpc": "2.0", "id": request_id, "result": {"resources": resource_list}}
-
-            elif method == "prompts/list":
-                prompt_list = [
-                    {"name": prompt["name"], "description": prompt["description"]} for prompt in self.prompts.values()
-                ]
-                return {"jsonrpc": "2.0", "id": request_id, "result": {"prompts": prompt_list}}
-
-            else:
-                raise ValueError(f"Unknown method: {method}")
-
-        except Exception as e:
-            logger.error(f"Error handling request: {e}")
-            return {
-                "jsonrpc": "2.0",
-                "id": request_id,
-                "error": {"code": -32603, "message": str(e)},
-            }
-
-    async def run_stdio(self):
+    def _run_stdio_server(self) -> None:
         """Run MCP server over stdio transport."""
-        logger.info(f"Starting MCP server '{self.name}' on stdio")
+        logger.info("MCP server running on stdio")
+        logger.info(f"Registered {len(self.tools)} tools, {len(self.resources)} resources, {len(self.prompts)} prompts")
 
-        # Run startup hooks
-        for hook in self.startup_hooks:
-            if asyncio.iscoroutinefunction(hook):
-                await hook()
-            else:
-                hook()
-
-        try:
-            # Read JSON-RPC requests from stdin, write responses to stdout
-            while True:
+        while not self.is_shutting_down():
+            try:
+                # Read request from stdin
                 line = sys.stdin.readline()
                 if not line:
                     break
 
-                try:
-                    request = json.loads(line)
-                    response = await self.handle_request(request)
-                    print(json.dumps(response), flush=True)
-                except json.JSONDecodeError as e:
-                    logger.error(f"Invalid JSON: {e}")
-                    continue
+                request = json.loads(line)
+                self.track_counter(
+                    "mcp_requests_total",
+                    labels={"method": request.get("method", "unknown"), "transport": "stdio"},
+                )
 
-        finally:
-            # Run shutdown hooks
-            for hook in self.shutdown_hooks:
-                if asyncio.iscoroutinefunction(hook):
-                    await hook()
+                # Handle request
+                response = self._handle_request(request)
+
+                # Write response to stdout
+                sys.stdout.write(json.dumps(response) + "\n")
+                sys.stdout.flush()
+
+            except KeyboardInterrupt:
+                logger.info("Interrupted")
+                break
+            except Exception as e:
+                logger.error(f"Error handling request: {e}", exc_info=True)
+
+        logger.info("MCP stdio server stopped")
+
+    def _run_http_server(self) -> None:
+        """Run MCP server over HTTP transport."""
+        # HTTP server implementation (placeholder for now)
+        logger.warning("HTTP transport not fully implemented yet")
+        logger.info("Use stdio transport for production")
+
+        # Wait for shutdown signal
+        self.wait_for_shutdown()
+
+    def _handle_request(self, request: dict) -> dict:
+        """Handle MCP protocol request."""
+        method = request.get("method")
+
+        # Track request duration
+        import time
+        start_time = time.time()
+
+        try:
+            if method == "tools/list":
+                tools_list = []
+                for t in self.tools.values():
+                    tools_list.append({"name": t["name"], "description": t["description"]})
+                result = {"tools": tools_list}
+            elif method == "tools/call":
+                tool_name = request.get("params", {}).get("name")
+                args = request.get("params", {}).get("arguments", {})
+                if tool_name in self.tools:
+                    result = self.tools[tool_name]["handler"](**args)
                 else:
-                    hook()
-
-            logger.info(f"MCP server '{self.name}' stopped")
-
-    def run_http(self):
-        """Run MCP server over HTTP transport (using FastAPI)."""
-        logger.info(f"Starting MCP server '{self.name}' over HTTP")
-
-        try:
-            import uvicorn
-            from fastapi import FastAPI
-            from fastapi.responses import JSONResponse
-        except ImportError:
-            logger.error("FastAPI not installed - HTTP transport requires: pip install fastapi uvicorn")
-            raise
-
-        app = FastAPI(title=self.name)
-
-        @app.post("/mcp")
-        async def mcp_endpoint(request: dict):
-            """Handle MCP requests over HTTP."""
-            response = await self.handle_request(request)
-            return JSONResponse(content=response)
-
-        # Run startup hooks
-        for hook in self.startup_hooks:
-            app.add_event_handler("startup", hook)
-
-        # Run shutdown hooks
-        for hook in self.shutdown_hooks:
-            app.add_event_handler("shutdown", hook)
-
-        # Start HTTP server - bind to all interfaces for containerized environments
-        uvicorn.run(app, host="0.0.0.0", port=8080, log_level="info")  # nosec B104 - Intentional for containers
-
-    def run(self):
-        """
-        Start MCP server with configured transport.
-
-        Uses hyperlib logger for all logging.
-        Uses hyperlib config cascade for configuration.
-        """
-        logger.info(f"MCP server '{self.name}' starting (transport={self.transport})")
-        logger.info(
-            f"Registered: {len(self.tools)} tools, {len(self.resources)} resources, {len(self.prompts)} prompts"
-        )
-
-        try:
-            if self.transport == "stdio":
-                asyncio.run(self.run_stdio())
-            elif self.transport == "http":
-                self.run_http()
+                    return {"error": f"Tool not found: {tool_name}"}
+            elif method == "resources/list":
+                result = {"resources": [{"uri": r["uri"], "description": r["description"]} for r in self.resources.values()]}
+            elif method == "prompts/list":
+                result = {"prompts": [{"name": p["name"], "description": p["description"]} for p in self.prompts.values()]}
             else:
-                raise ValueError(f"Unknown transport: {self.transport}")
-        except KeyboardInterrupt:
-            logger.info(f"MCP server '{self.name}' interrupted")
+                return {"error": f"Unknown method: {method}"}
+
+            # Track success
+            duration = time.time() - start_time
+            self.track_histogram(
+                "mcp_request_duration_seconds",
+                duration,
+                labels={"method": method, "status": "success"},
+            )
+
+            return {"id": request.get("id"), "result": result}
+
         except Exception as e:
-            logger.error(f"MCP server error: {e}")
-            raise
+            logger.error(f"Error handling {method}: {e}", exc_info=True)
+
+            # Track error
+            duration = time.time() - start_time
+            self.track_histogram(
+                "mcp_request_duration_seconds",
+                duration,
+                labels={"method": method, "status": "error"},
+            )
+
+            return {"id": request.get("id"), "error": str(e)}
+
+    def on_startup(self, func: Callable) -> Callable:
+        """Register startup hook."""
+        if not hasattr(self, "_startup_hooks"):
+            self._startup_hooks = []
+        self._startup_hooks.append(func)
+        logger.debug(f"Registered startup hook: {func.__name__}")
+        return func
