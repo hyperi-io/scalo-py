@@ -72,7 +72,7 @@ class TestContainerMetrics:
         """Test ContainerMetrics initialization outside container."""
         from hyperlib.metrics.prometheus import ContainerMetrics
 
-        with mock.patch("hyperlib.prometheus.RuntimeEnvironment") as mock_runtime:
+        with mock.patch("hyperlib.metrics.prometheus.RuntimeEnvironment") as mock_runtime:
             # Mock non-container environment
             mock_instance = mock_runtime.return_value
             mock_instance._is_container.return_value = (False, "none")
@@ -86,7 +86,7 @@ class TestContainerMetrics:
         """Test ContainerMetrics initialization in container."""
         from hyperlib.metrics.prometheus import ContainerMetrics
 
-        with mock.patch("hyperlib.prometheus.RuntimeEnvironment") as mock_runtime:
+        with mock.patch("hyperlib.metrics.prometheus.RuntimeEnvironment") as mock_runtime:
             # Mock container environment
             mock_instance = mock_runtime.return_value
             mock_instance._is_container.return_value = (True, "kubernetes")
@@ -102,7 +102,7 @@ class TestContainerMetrics:
         """Test reading memory limit from cgroups."""
         from hyperlib.metrics.prometheus import ContainerMetrics
 
-        with mock.patch("hyperlib.prometheus.RuntimeEnvironment") as mock_runtime:
+        with mock.patch("hyperlib.runtime.RuntimeEnvironment") as mock_runtime:
             mock_instance = mock_runtime.return_value
             mock_instance._is_container.return_value = (True, "docker")
 
@@ -119,7 +119,7 @@ class TestContainerMetrics:
         """Test reading unlimited memory from cgroups."""
         from hyperlib.metrics.prometheus import ContainerMetrics
 
-        with mock.patch("hyperlib.prometheus.RuntimeEnvironment") as mock_runtime:
+        with mock.patch("hyperlib.runtime.RuntimeEnvironment") as mock_runtime:
             mock_instance = mock_runtime.return_value
             mock_instance._is_container.return_value = (True, "docker")
 
@@ -129,7 +129,7 @@ class TestContainerMetrics:
             mock_open = mock.mock_open(read_data="max")
             with (
                 mock.patch("builtins.open", mock_open),
-                mock.patch("hyperlib.prometheus.psutil.virtual_memory") as mock_vm,
+                mock.patch("psutil.virtual_memory") as mock_vm,
             ):
                 mock_vm.return_value.total = 16 * 1024 * 1024 * 1024  # 16GB
                 limit = metrics._read_cgroup_memory_limit()
@@ -141,7 +141,7 @@ class TestContainerMetrics:
         """Test reading CPU quota from cgroups."""
         from hyperlib.metrics.prometheus import ContainerMetrics
 
-        with mock.patch("hyperlib.prometheus.RuntimeEnvironment") as mock_runtime:
+        with mock.patch("hyperlib.runtime.RuntimeEnvironment") as mock_runtime:
             mock_instance = mock_runtime.return_value
             mock_instance._is_container.return_value = (True, "docker")
 
@@ -354,11 +354,11 @@ class TestWithoutPrometheusClient:
 
     def test_prometheus_not_available(self):
         """Test that module handles missing prometheus_client."""
-        import hyperlib.prometheus
+        from hyperlib.metrics import prometheus
 
         # If prometheus_client is not available, PROMETHEUS_AVAILABLE should be False
         if not PROMETHEUS_AVAILABLE:
-            assert hyperlib.prometheus.PROMETHEUS_AVAILABLE is False
+            assert prometheus.PROMETHEUS_AVAILABLE is False
 
 
 @pytest.mark.skipif(not PROMETHEUS_AVAILABLE, reason="prometheus_client not installed")
