@@ -53,7 +53,6 @@ ci-local/logs/
 .test-*
 
 #
--memory/
 
 
 # === ci/common gitignore patterns ===
