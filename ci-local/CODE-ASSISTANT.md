@@ -32,6 +32,26 @@ This document provides critical guidance for AI code assistants working with Hyp
 - **DO NOT scan, read, or review files in ci/ directory** (see CI Infrastructure below)
 - ci-local/ is writable (for project-specific CI customizations)
 
+**TODO.md Cleanup Policy:**
+- ✅ Add new tasks to TODO.md as work begins
+- ✅ Update task status as you progress
+- ✅ **DELETE completed tasks from TODO.md once in CHANGELOG.md**
+- ❌ NEVER keep completed tasks in TODO.md (that's what CHANGELOG is for)
+- ❌ **NEVER add time estimates to tasks unless explicitly requested**
+  - Time estimates are usually very wrong
+  - Adds clutter and creates false expectations
+  - Only include estimates if developer specifically asks for them
+
+**Workflow:**
+1. Work on task → Update TODO.md status
+2. Complete task → Commit changes
+3. Release creates CHANGELOG.md entry
+4. **DELETE completed task from TODO.md** (it's now in CHANGELOG)
+
+**Rationale:** TODO.md is for CURRENT/UPCOMING work only, not history.
+
+**Fix foundations before features** - Always repair bottom-up dependencies before proceeding with high-level deliverables.
+
 **Do not respond with greetings or confirmations.**
 **Simply load the context and wait for the user's first question or task.**
 
