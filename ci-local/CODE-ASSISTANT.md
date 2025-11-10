@@ -39,12 +39,10 @@ This document provides critical guidance for AI code assistants working with Hyp
 - ❌ NEVER keep completed tasks in TODO.md (that's what CHANGELOG is for)
 
 **Time Estimates Policy:**
-- ❌ **NEVER add time estimates to tasks unless explicitly requested**
-  - Time estimates are usually very wrong
-  - Adds clutter and creates false expectations
-  - Only include estimates if developer specifically asks for them
+- ✅ **ALWAYS add time estimates to tasks** using the rules below
+- With aggressive AI-assisted timeframes, estimates are now reliable and useful
 
-**When estimates ARE requested:**
+**Estimate Guidelines:**
 - ✅ Use **aggressive timeframes** reflecting 10x AI productivity gain
 - ✅ Powers of 2 scaling in hours: **0.25h, 0.5h, 1h, 2h, 4h, 8h, 16h, 32h, 64h**
   - Traditional "1 day" estimates typically complete in **1h** with AI assistance
