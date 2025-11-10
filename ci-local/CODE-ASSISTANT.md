@@ -41,6 +41,11 @@ This document provides critical guidance for AI code assistants working with Hyp
   - Time estimates are usually very wrong
   - Adds clutter and creates false expectations
   - Only include estimates if developer specifically asks for them
+  - **When estimates ARE requested:** Use aggressive timeframes aligned with Linear.app
+    - Linear point values = hours (powers of 2): 1pt=1h, 2pt=2h, 4pt=4h, 8pt=8h (1 day)
+    - Traditional "1 day" estimates typically complete in <1 hour with AI assistance
+    - Account for 10x productivity gain from AI code assistants
+    - Linear estimates: No estimate, 0, 1, 2, 4, 8, 16, 32, 64 points
 
 **Workflow:**
 1. Work on task → Update TODO.md status
