@@ -37,17 +37,10 @@ ai:
   merge_mode: skip
   _tier: pro-max
   check_requirements: true
-  mcp:
-    enabled: true
-    servers:
-      sequential_thinking:
-        enabled: true
-        package: '@modelcontextprotocol/server-sequential-thinking'
-      memory:
-        enabled: true
-        package: mcp-knowledge-graph
-        memory_path: -memory
 python:
   source_root: src/hyperlib
+security:
+  ignore_vulns:
+  - PYSEC-2022-42969  # Disputed ReDoS in py lib (dep of interrogate), no fix available
 ci:
   version: latest

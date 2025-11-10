@@ -20,6 +20,7 @@ from ..mixins import (
 
 class ScheduledTask(NamedTuple):
     """Scheduled task with interval."""
+
     func: Callable
     interval: int  # seconds
 
@@ -77,7 +78,7 @@ class DaemonApplication(
         name: str,
         version: str = "1.0.0",
         profile: str = "dev",
-        profile_overrides: Optional[dict[str, Any]] = None,
+        profile_overrides: dict[str, Any] | None = None,
         **kwargs: Any,
     ):
         """
@@ -109,9 +110,7 @@ class DaemonApplication(
         # Add start command to CLI
         self._add_start_command()
 
-        logger.info(
-            f"DaemonApplication '{name}' initialized (profile={profile})"
-        )
+        logger.info(f"DaemonApplication '{name}' initialized (profile={profile})")
 
     def _start_health_server(self) -> None:
         """Start health check HTTP server in separate thread."""
@@ -131,9 +130,7 @@ class DaemonApplication(
                     self.send_response(200)
                     self.send_header("Content-Type", "application/json")
                     self.end_headers()
-                    self.wfile.write(
-                        b'{"status": "healthy", "service": "' + self.daemon_app.name.encode() + b'"}'
-                    )
+                    self.wfile.write(b'{"status": "healthy", "service": "' + self.daemon_app.name.encode() + b'"}')
                 elif self.path == "/ready":
                     # Readiness - check if not shutting down
                     if self.daemon_app.is_shutting_down():
@@ -142,9 +139,7 @@ class DaemonApplication(
                         self.send_response(200)
                     self.send_header("Content-Type", "application/json")
                     self.end_headers()
-                    self.wfile.write(
-                        b'{"status": "ready", "service": "' + self.daemon_app.name.encode() + b'"}'
-                    )
+                    self.wfile.write(b'{"status": "ready", "service": "' + self.daemon_app.name.encode() + b'"}')
                 else:
                     self.send_response(404)
                     self.end_headers()
@@ -160,7 +155,7 @@ class DaemonApplication(
             # Enable address reuse to avoid "Address already in use" errors
             socketserver.TCPServer.allow_reuse_address = True
             try:
-                with socketserver.TCPServer(("0.0.0.0", port), create_handler) as httpd:
+                with socketserver.TCPServer(("0.0.0.0", port), create_handler) as httpd:  # nosec B104
                     logger.info(f"Health server listening on port {port}")
                     httpd.serve_forever()
             except OSError as e:
@@ -180,9 +175,7 @@ class DaemonApplication(
         @self.cli.command()
         def start():
             """Start the daemon service."""
-            logger.info(
-                f"Starting daemon '{self.name}' (profile={self.profile_name})"
-            )
+            logger.info(f"Starting daemon '{self.name}' (profile={self.profile_name})")
             self._run_daemon()
 
     def task(self, interval: int) -> Callable:

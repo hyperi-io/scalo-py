@@ -35,9 +35,7 @@ class TestProfileMixin:
         class TestApp(ProfileMixin):
             pass
 
-        app = TestApp(
-            profile="dev", profile_overrides={"metrics": True, "metrics_port": 9091}
-        )
+        app = TestApp(profile="dev", profile_overrides={"metrics": True, "metrics_port": 9091})
         assert app.profile["metrics"] is True
         assert app.profile["metrics_port"] == 9091
 
@@ -326,7 +324,5 @@ class TestMixinComposition:
         assert app_dev.profile["graceful_shutdown"] is True
 
         # Custom override - graceful shutdown disabled
-        app_no_shutdown = TestApp(
-            profile="dev", profile_overrides={"graceful_shutdown": False}
-        )
+        app_no_shutdown = TestApp(profile="dev", profile_overrides={"graceful_shutdown": False})
         assert app_no_shutdown.profile["graceful_shutdown"] is False

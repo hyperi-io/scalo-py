@@ -14,11 +14,10 @@ Use `get_sensitive_filter()` to automatically select the best available filter.
 import logging
 import re
 import warnings
-from typing import Any, Dict, Set, Tuple, Optional
-
+from typing import Any, Dict, Optional, Set, Tuple
 
 # Sensitive fields that should be masked in logs
-SENSITIVE_FIELDS: Set[str] = {
+SENSITIVE_FIELDS: set[str] = {
     # Passwords
     "password",
     "passwd",
@@ -79,9 +78,9 @@ class SensitiveDataFilter(logging.Filter):
     """
 
     # Class-level set for global custom fields
-    _custom_fields: Set[str] = set()
+    _custom_fields: set[str] = set()
 
-    def __init__(self, extra_fields: Set[str] | None = None):
+    def __init__(self, extra_fields: set[str] | None = None):
         """
         Initialize the sensitive data filter.
 
@@ -92,7 +91,7 @@ class SensitiveDataFilter(logging.Filter):
         self._instance_fields = extra_fields or set()
 
     @classmethod
-    def add_sensitive_fields(cls, fields: Set[str]) -> None:
+    def add_sensitive_fields(cls, fields: set[str]) -> None:
         """
         Add custom sensitive fields to mask globally.
 
@@ -101,7 +100,7 @@ class SensitiveDataFilter(logging.Filter):
         """
         cls._custom_fields.update(f.lower() for f in fields)
 
-    def _get_all_sensitive_fields(self) -> Set[str]:
+    def _get_all_sensitive_fields(self) -> set[str]:
         """Get combined set of all sensitive fields."""
         return SENSITIVE_FIELDS | self._custom_fields | self._instance_fields
 
@@ -126,9 +125,7 @@ class SensitiveDataFilter(logging.Filter):
             if isinstance(record.args, dict):
                 record.args = self._mask_sensitive_dict(record.args)
             elif isinstance(record.args, (tuple, list)):
-                record.args = tuple(
-                    self._mask_value(arg) for arg in record.args
-                )
+                record.args = tuple(self._mask_value(arg) for arg in record.args)
 
         return True
 
@@ -205,7 +202,7 @@ class SensitiveDataFilter(logging.Filter):
 
         return masked
 
-    def _mask_sensitive_dict(self, data: Dict[str, Any]) -> Dict[str, Any]:
+    def _mask_sensitive_dict(self, data: dict[str, Any]) -> dict[str, Any]:
         """
         Recursively mask sensitive fields in a dictionary.
 
@@ -252,12 +249,7 @@ class PresidioSensitiveDataFilter(SensitiveDataFilter):
     Note: Slower than regex (5-50ms vs <1ms). Use for compliance-critical logs.
     """
 
-    def __init__(
-        self,
-        preset: str = "standard",
-        extra_fields: Set[str] | None = None,
-        score_threshold: float = 0.5
-    ):
+    def __init__(self, preset: str = "standard", extra_fields: set[str] | None = None, score_threshold: float = 0.5):
         """
         Initialize Presidio-based filter.
 
@@ -269,18 +261,18 @@ class PresidioSensitiveDataFilter(SensitiveDataFilter):
         super().__init__(extra_fields=extra_fields)
 
         try:
-            from hyperlib.anonymizer import Anonymizer, AnonymizationStrategy
+            from hyperlib.anonymizer import AnonymizationStrategy, Anonymizer
+
             self._anonymizer = Anonymizer(
-                preset=preset,
-                strategy=AnonymizationStrategy.REDACT,
-                score_threshold=score_threshold
+                preset=preset, strategy=AnonymizationStrategy.REDACT, score_threshold=score_threshold
             )
             self._presidio_available = True
         except ImportError:
             warnings.warn(
                 "Presidio not installed. Install with: pip install hyperlib[presidio]. "
                 "Falling back to regex-based filter.",
-                ImportWarning
+                ImportWarning,
+                stacklevel=2,
             )
             self._presidio_available = False
 
@@ -303,20 +295,14 @@ class PresidioSensitiveDataFilter(SensitiveDataFilter):
                 text = self._anonymizer.anonymize(text)
             except Exception as e:
                 # Fall back to regex on any Presidio error
-                warnings.warn(
-                    f"Presidio error: {e}. Falling back to regex filter.",
-                    RuntimeWarning
-                )
+                warnings.warn(f"Presidio error: {e}. Falling back to regex filter.", RuntimeWarning, stacklevel=2)
 
         # Always apply regex patterns (catches Presidio misses + field names)
         return super()._mask_sensitive_string(text)
 
 
 def get_sensitive_filter(
-    level: str = "simple",
-    preset: str = "standard",
-    extra_fields: Set[str] | None = None,
-    score_threshold: float = 0.5
+    level: str = "simple", preset: str = "standard", extra_fields: set[str] | None = None, score_threshold: float = 0.5
 ) -> SensitiveDataFilter:
     """
     Get appropriate sensitive data filter based on configuration.
@@ -348,10 +334,6 @@ def get_sensitive_filter(
         ... )
     """
     if level == "advanced":
-        return PresidioSensitiveDataFilter(
-            preset=preset,
-            extra_fields=extra_fields,
-            score_threshold=score_threshold
-        )
+        return PresidioSensitiveDataFilter(preset=preset, extra_fields=extra_fields, score_threshold=score_threshold)
     else:
         return SensitiveDataFilter(extra_fields=extra_fields)

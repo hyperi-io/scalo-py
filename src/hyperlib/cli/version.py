@@ -69,7 +69,7 @@ def get_version(package_name: str, fallback: str = "unknown") -> str:
         return fallback
 
 
-def print_version(package_name: str, app_name: Optional[str] = None, python_version: bool = False):
+def print_version(package_name: str, app_name: str | None = None, python_version: bool = False):
     """
     Print version information and exit.
 
@@ -100,7 +100,7 @@ def print_version(package_name: str, app_name: Optional[str] = None, python_vers
 
 def version_option(
     package_name: str,
-    app_name: Optional[str] = None,
+    app_name: str | None = None,
     python_version: bool = False,
     param_decls: tuple[str, ...] = ("--version", "-V"),
 ):

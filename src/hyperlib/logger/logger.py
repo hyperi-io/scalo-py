@@ -160,7 +160,7 @@ def _add_emoji_to_record(
     allow_all: bool = False,
     mask_sensitive: bool = True,
     masking_level: str = "simple",
-    masking_preset: str = "standard"
+    masking_preset: str = "standard",
 ):
     """Create a filter function that adds emojis or converts them to text.
 
@@ -176,19 +176,15 @@ def _add_emoji_to_record(
         Filter function for loguru
     """
     # Create sensitive data filter instance if needed
-    sensitive_filter = get_sensitive_filter(
-        level=masking_level,
-        preset=masking_preset
-    ) if mask_sensitive else None
+    sensitive_filter = get_sensitive_filter(level=masking_level, preset=masking_preset) if mask_sensitive else None
 
     def filter_func(record):
         """Add emoji to record or convert emojis to text based on settings."""
         # Apply sensitive data masking first (if enabled)
-        if sensitive_filter:
+        if sensitive_filter and isinstance(record["message"], str):
             # Loguru's record["message"] is the formatted message
             # We need to mask it before it gets formatted
-            if isinstance(record["message"], str):
-                record["message"] = sensitive_filter._mask_sensitive_string(record["message"])
+            record["message"] = sensitive_filter._mask_sensitive_string(record["message"])
 
         # Then handle emojis
         if use_emojis:
@@ -252,7 +248,7 @@ def setup(
     allow_all_emojis=False,
     mask_sensitive=None,
     masking_level=None,
-    masking_preset=None
+    masking_preset=None,
 ):
     """Setup standard logging with RFC 3339 compliance and CHARS-POLICY.md enforcement
 
@@ -334,7 +330,7 @@ def setup(
                 allow_all=allow_all_emojis,
                 mask_sensitive=mask_sensitive,
                 masking_level=masking_level,
-                masking_preset=masking_preset
+                masking_preset=masking_preset,
             ),
         )
 
@@ -354,7 +350,7 @@ def setup(
                 allow_all=False,
                 mask_sensitive=mask_sensitive,
                 masking_level=masking_level,
-                masking_preset=masking_preset
+                masking_preset=masking_preset,
             ),  # Convert emojis to text for machine-readable logs
         )
 

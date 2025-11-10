@@ -9,11 +9,11 @@ Mixins provide reusable functionality through composition:
 - MetricsMixin: Auto-instrumentation
 """
 
-from .profile import ProfileMixin
-from .signals import SignalHandlerMixin
 from .cli import CLIExecutableMixin
 from .health import HealthCheckMixin
 from .metrics import MetricsMixin
+from .profile import ProfileMixin
+from .signals import SignalHandlerMixin
 
 __all__ = [
     "ProfileMixin",

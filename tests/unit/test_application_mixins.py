@@ -8,12 +8,14 @@ import pytest
 # Check for optional dependencies
 try:
     import typer
+
     TYPER_AVAILABLE = True
 except ImportError:
     TYPER_AVAILABLE = False
 
 try:
     import fastapi
+
     FASTAPI_AVAILABLE = True
 except ImportError:
     FASTAPI_AVAILABLE = False
@@ -53,11 +55,7 @@ class TestAPIApplicationMixins:
         """Test APIApplication applies profile overrides."""
         from hyperlib import Application
 
-        app = Application.api(
-            name="test-api",
-            profile="dev",
-            profile_overrides={"metrics": True}
-        )
+        app = Application.api(name="test-api", profile="dev", profile_overrides={"metrics": True})
 
         assert app.profile.get("metrics") is True
 
@@ -131,9 +129,7 @@ class TestDaemonApplicationMixins:
         from hyperlib import Application
 
         app = Application.daemon(
-            name="test-daemon",
-            profile="dev",
-            profile_overrides={"health_check": True, "health_check_port": 8888}
+            name="test-daemon", profile="dev", profile_overrides={"health_check": True, "health_check_port": 8888}
         )
 
         assert app.profile.get("health_check") is True
@@ -218,11 +214,7 @@ class TestMCPApplicationMixins:
         """Test MCPApplication applies profile overrides."""
         from hyperlib import Application
 
-        app = Application.mcp(
-            name="test-mcp",
-            profile="dev",
-            profile_overrides={"metrics": True}
-        )
+        app = Application.mcp(name="test-mcp", profile="dev", profile_overrides={"metrics": True})
 
         assert app.profile.get("metrics") is True
 
@@ -302,9 +294,7 @@ class TestOneshotApplicationMixins:
         from hyperlib import Application
 
         app = Application.oneshot(
-            name="test-oneshot",
-            profile="dev",
-            profile_overrides={"metrics": True}  # Optional metrics
+            name="test-oneshot", profile="dev", profile_overrides={"metrics": True}  # Optional metrics
         )
 
         assert app.profile.get("metrics") is True
@@ -344,10 +334,7 @@ class TestOneshotApplicationMixins:
         """Test OneshotApplication checks for metrics via hasattr."""
         from hyperlib import Application
 
-        app = Application.oneshot(
-            name="test-oneshot",
-            profile_overrides={"metrics": True}
-        )
+        app = Application.oneshot(name="test-oneshot", profile_overrides={"metrics": True})
 
         # OneshotApplication doesn't inherit MetricsMixin, but code checks hasattr
         # This test verifies that oneshot jobs work with or without metrics
@@ -388,10 +375,7 @@ class TestCLIApplicationMixins:
         from hyperlib import Application
 
         app = Application.cli(
-            name="test-cli",
-            version="1.0.0",
-            profile="dev",
-            profile_overrides={"logging": {"level": "DEBUG"}}
+            name="test-cli", version="1.0.0", profile="dev", profile_overrides={"logging": {"level": "DEBUG"}}
         )
 
         assert app.profile.get("logging", {}).get("level") == "DEBUG"
@@ -476,12 +460,7 @@ class TestProfileSystem:
         from hyperlib import Application
 
         app = Application.daemon(
-            name="test",
-            profile="prod",
-            profile_overrides={
-                "metrics_port": 9999,
-                "logging": {"level": "WARNING"}
-            }
+            name="test", profile="prod", profile_overrides={"metrics_port": 9999, "logging": {"level": "WARNING"}}
         )
 
         # Check override applied

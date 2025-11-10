@@ -66,8 +66,8 @@ class APIApplication(
         profile: str = "dev",
         port: int = 8000,
         enable_cors: bool = False,
-        cors_origins: Optional[list[str]] = None,
-        profile_overrides: Optional[dict[str, Any]] = None,
+        cors_origins: list[str] | None = None,
+        profile_overrides: dict[str, Any] | None = None,
         **kwargs: Any,
     ):
         """
@@ -106,8 +106,7 @@ class APIApplication(
             )
         except ImportError:
             raise ImportError(
-                "FastAPI is required for API applications. "
-                "Install it with: pip install fastapi uvicorn[standard]"
+                "FastAPI is required for API applications. " "Install it with: pip install fastapi uvicorn[standard]"
             )
 
         # Add CORS middleware if enabled
@@ -125,9 +124,7 @@ class APIApplication(
         # Add serve command to CLI
         self._add_serve_command()
 
-        logger.info(
-            f"APIApplication '{name}' initialized (port={port}, profile={profile})"
-        )
+        logger.info(f"APIApplication '{name}' initialized (port={port}, profile={profile})")
 
     def _add_cors_middleware(self, origins: list[str]) -> None:
         """Add CORS middleware to FastAPI app."""
@@ -172,8 +169,9 @@ class APIApplication(
 
     def _add_metrics_middleware(self) -> None:
         """Add metrics collection middleware for HTTP requests."""
-        from fastapi import Request, Response
         import time
+
+        from fastapi import Request, Response
 
         @self.fastapi.middleware("http")
         async def metrics_middleware(request: Request, call_next):
@@ -211,16 +209,12 @@ class APIApplication(
 
         @self.cli.command()
         def serve(
-            host: str = typer.Option("0.0.0.0", help="Host to bind to"),
+            host: str = typer.Option("0.0.0.0", help="Host to bind to"),  # nosec B104 - containerized app
             port: int = typer.Option(self.port, help="Port to bind to"),
-            reload: bool = typer.Option(
-                self.profile.get("reload", False), help="Enable auto-reload"
-            ),
+            reload: bool = typer.Option(self.profile.get("reload", False), help="Enable auto-reload"),
         ):
             """Start the API server."""
-            logger.info(
-                f"Starting API server '{self.name}' on {host}:{port} (profile={self.profile_name})"
-            )
+            logger.info(f"Starting API server '{self.name}' on {host}:{port} (profile={self.profile_name})")
 
             try:
                 import uvicorn
@@ -278,7 +272,7 @@ class APIApplication(
         self,
         path: str,
         endpoint: Callable,
-        methods: Optional[list[str]] = None,
+        methods: list[str] | None = None,
         **kwargs: Any,
     ) -> None:
         """

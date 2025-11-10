@@ -28,7 +28,7 @@ class ProfileMixin:
     def __init__(
         self,
         profile: str = "dev",
-        profile_overrides: Optional[Dict[str, Any]] = None,
+        profile_overrides: dict[str, Any] | None = None,
         **kwargs: Any,
     ):
         """

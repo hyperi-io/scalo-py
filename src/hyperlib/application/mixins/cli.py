@@ -40,7 +40,7 @@ class CLIExecutableMixin:
         self,
         name: str,
         version: str,
-        description: Optional[str] = None,
+        description: str | None = None,
         **kwargs: Any,
     ):
         """
@@ -79,9 +79,7 @@ class CLIExecutableMixin:
             typer.echo(f"{self.name} v{self.version}")
 
         @self.cli.command()
-        def config(
-            format: str = typer.Option("json", help="Output format (json or yaml)")
-        ) -> None:
+        def config(format: str = typer.Option("json", help="Output format (json or yaml)")) -> None:
             """Show active configuration (from profile + overrides)."""
             if not hasattr(self, "profile"):
                 typer.echo("Error: Profile not loaded", err=True)

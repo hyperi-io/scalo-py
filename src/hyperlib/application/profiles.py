@@ -8,7 +8,7 @@ Profiles enable the same application code to run in different environments
 from typing import Any, Dict, Optional
 
 # Profile definitions for different deployment environments
-PROFILES: Dict[str, Dict[str, Any]] = {
+PROFILES: dict[str, dict[str, Any]] = {
     "dev": {
         # Local development profile
         "logging": {
@@ -57,7 +57,7 @@ PROFILES: Dict[str, Dict[str, Any]] = {
 }
 
 
-def load_profile(name: str, overrides: Optional[Dict[str, Any]] = None) -> Dict[str, Any]:
+def load_profile(name: str, overrides: dict[str, Any] | None = None) -> dict[str, Any]:
     """
     Load a profile by name with optional overrides.
 
@@ -104,7 +104,7 @@ def _deep_copy(obj: Any) -> Any:
         return obj
 
 
-def _deep_merge(base: Dict[str, Any], updates: Dict[str, Any]) -> Dict[str, Any]:
+def _deep_merge(base: dict[str, Any], updates: dict[str, Any]) -> dict[str, Any]:
     """
     Deep merge two dicts, with updates taking precedence.
 

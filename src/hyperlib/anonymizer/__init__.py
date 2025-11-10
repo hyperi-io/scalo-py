@@ -43,15 +43,15 @@ See: https://microsoft.github.io/presidio/ for Presidio documentation
 """
 
 try:
-    from .anonymizer import Anonymizer, AnonymizationStrategy
+    from .anonymizer import AnonymizationStrategy, Anonymizer
+    from .convenience import (
+        anonymize_config_file,
+        anonymize_dict,
+        anonymize_text,
+        scan_for_pii,
+    )
     from .presets import PRESETS, EntityPreset
     from .streaming import StreamingAnonymizer
-    from .convenience import (
-        anonymize_text,
-        anonymize_dict,
-        scan_for_pii,
-        anonymize_config_file,
-    )
 
     __all__ = [
         "Anonymizer",
@@ -65,7 +65,7 @@ try:
         "anonymize_config_file",
     ]
 
-except ImportError as e:
+except ImportError:
     # Presidio not installed - provide helpful error message
     import warnings
 
@@ -73,46 +73,35 @@ except ImportError as e:
         "Presidio not installed. Install with: pip install presidio-analyzer presidio-anonymizer\n"
         "Or: pip install hyperlib[presidio]",
         ImportWarning,
+        stacklevel=2,
     )
 
     # Stub implementations that raise helpful errors
     class Anonymizer:
         def __init__(self, *args, **kwargs):
-            raise ImportError(
-                "Presidio not installed. Install with: pip install presidio-analyzer presidio-anonymizer"
-            )
+            raise ImportError("Presidio not installed. Install with: pip install presidio-analyzer presidio-anonymizer")
 
     class AnonymizationStrategy:
         pass
 
     class StreamingAnonymizer:
         def __init__(self, *args, **kwargs):
-            raise ImportError(
-                "Presidio not installed. Install with: pip install presidio-analyzer presidio-anonymizer"
-            )
+            raise ImportError("Presidio not installed. Install with: pip install presidio-analyzer presidio-anonymizer")
 
     PRESETS = {}
     EntityPreset = None
 
     def anonymize_text(*args, **kwargs):
-        raise ImportError(
-            "Presidio not installed. Install with: pip install presidio-analyzer presidio-anonymizer"
-        )
+        raise ImportError("Presidio not installed. Install with: pip install presidio-analyzer presidio-anonymizer")
 
     def anonymize_dict(*args, **kwargs):
-        raise ImportError(
-            "Presidio not installed. Install with: pip install presidio-analyzer presidio-anonymizer"
-        )
+        raise ImportError("Presidio not installed. Install with: pip install presidio-analyzer presidio-anonymizer")
 
     def scan_for_pii(*args, **kwargs):
-        raise ImportError(
-            "Presidio not installed. Install with: pip install presidio-analyzer presidio-anonymizer"
-        )
+        raise ImportError("Presidio not installed. Install with: pip install presidio-analyzer presidio-anonymizer")
 
     def anonymize_config_file(*args, **kwargs):
-        raise ImportError(
-            "Presidio not installed. Install with: pip install presidio-analyzer presidio-anonymizer"
-        )
+        raise ImportError("Presidio not installed. Install with: pip install presidio-analyzer presidio-anonymizer")
 
     __all__ = [
         "Anonymizer",

@@ -58,8 +58,8 @@ class MCPApplication(
         version: str = "1.0.0",
         profile: str = "dev",
         transport: str = "stdio",
-        capabilities: Optional[list[str]] = None,
-        profile_overrides: Optional[dict[str, Any]] = None,
+        capabilities: list[str] | None = None,
+        profile_overrides: dict[str, Any] | None = None,
         **kwargs: Any,
     ):
         """
@@ -94,9 +94,7 @@ class MCPApplication(
         # Add serve command to CLI
         self._add_serve_command()
 
-        logger.info(
-            f"MCPApplication '{name}' initialized (transport={transport}, profile={profile})"
-        )
+        logger.info(f"MCPApplication '{name}' initialized (transport={transport}, profile={profile})")
         logger.debug(f"Capabilities: {', '.join(self.capabilities)}")
 
     def _add_serve_command(self) -> None:
@@ -106,12 +104,10 @@ class MCPApplication(
         @self.cli.command()
         def serve():
             """Start the MCP server."""
-            logger.info(
-                f"Starting MCP server '{self.name}' (transport={self.transport}, profile={self.profile_name})"
-            )
+            logger.info(f"Starting MCP server '{self.name}' (transport={self.transport}, profile={self.profile_name})")
             self._run_server()
 
-    def tool(self, name: str, description: str = "", schema: Optional[dict] = None):
+    def tool(self, name: str, description: str = "", schema: dict | None = None):
         """
         Decorator to register an MCP tool.
 
@@ -249,6 +245,7 @@ class MCPApplication(
 
         # Track request duration
         import time
+
         start_time = time.time()
 
         try:
@@ -265,9 +262,13 @@ class MCPApplication(
                 else:
                     return {"error": f"Tool not found: {tool_name}"}
             elif method == "resources/list":
-                result = {"resources": [{"uri": r["uri"], "description": r["description"]} for r in self.resources.values()]}
+                result = {
+                    "resources": [{"uri": r["uri"], "description": r["description"]} for r in self.resources.values()]
+                }
             elif method == "prompts/list":
-                result = {"prompts": [{"name": p["name"], "description": p["description"]} for p in self.prompts.values()]}
+                result = {
+                    "prompts": [{"name": p["name"], "description": p["description"]} for p in self.prompts.values()]
+                }
             else:
                 return {"error": f"Unknown method: {method}"}
 

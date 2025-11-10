@@ -24,7 +24,7 @@ class PrometheusBackend(MetricsBackend):
         app_name: str,
         enable_auto_update: bool = True,
         update_interval: int = 5,
-        config: Optional[Dict[str, Any]] = None,
+        config: dict[str, Any] | None = None,
     ):
         """
         Initialize Prometheus backend.
@@ -52,15 +52,11 @@ class PrometheusBackend(MetricsBackend):
             self.container = self._metrics.container
             self.http = self._metrics.http
 
-    def counter(
-        self, name: str, description: str, labels: Optional[List[str]] = None
-    ) -> Any:
+    def counter(self, name: str, description: str, labels: list[str] | None = None) -> Any:
         """Create or get a Prometheus Counter."""
         return self._metrics.counter(name, description, labels)
 
-    def gauge(
-        self, name: str, description: str, labels: Optional[List[str]] = None
-    ) -> Any:
+    def gauge(self, name: str, description: str, labels: list[str] | None = None) -> Any:
         """Create or get a Prometheus Gauge."""
         return self._metrics.gauge(name, description, labels)
 
@@ -68,8 +64,8 @@ class PrometheusBackend(MetricsBackend):
         self,
         name: str,
         description: str,
-        labels: Optional[List[str]] = None,
-        buckets: Optional[Tuple[float, ...]] = None,
+        labels: list[str] | None = None,
+        buckets: tuple[float, ...] | None = None,
     ) -> Any:
         """Create or get a Prometheus Histogram."""
         return self._metrics.histogram(name, description, labels, buckets)

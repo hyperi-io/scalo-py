@@ -215,7 +215,7 @@ class TestCLIE2E:
 
     def test_cli_command_works(self):
         """Test that @app.command decorator works."""
-        from click.testing import CliRunner
+        from typer.testing import CliRunner
 
         from hyperlib import Application
 
@@ -224,19 +224,17 @@ class TestCLIE2E:
         @app.command()
         def hello():
             """Say hello."""
-            import click
-
-            click.echo("Hello World")
+            print("Hello World")
 
         runner = CliRunner()
-        result = runner.invoke(app.group, ["hello"])
+        result = runner.invoke(app.cli, ["hello"])
 
         assert result.exit_code == 0
-        assert "Hello World" in result.output
+        assert "Hello World" in result.stdout
 
     def test_cli_without_logging_flags(self):
         """Test CLI without verbose/quiet flags (avoid logging issues in tests)."""
-        from click.testing import CliRunner
+        from typer.testing import CliRunner
 
         from hyperlib import Application
 
@@ -251,28 +249,26 @@ class TestCLIE2E:
         @app.command()
         def process():
             """Process something."""
-            import click
-
-            click.echo("Processing")
+            print("Processing")
 
         runner = CliRunner()
-        result = runner.invoke(app.group, ["process"])
+        result = runner.invoke(app.cli, ["process"])
         assert result.exit_code == 0
-        assert "Processing" in result.output
+        assert "Processing" in result.stdout
 
     def test_cli_version_flag_works(self):
         """Test built-in --version flag."""
-        from click.testing import CliRunner
+        from typer.testing import CliRunner
 
         from hyperlib import Application
 
         app = Application.cli(name="test-cli", version="2.5.3")
 
         runner = CliRunner()
-        result = runner.invoke(app.group, ["--version"])
+        result = runner.invoke(app.cli, ["--version"])
 
         assert result.exit_code == 0
-        assert "2.5.3" in result.output
+        assert "2.5.3" in result.stdout
 
 
 class TestDaemonE2E:

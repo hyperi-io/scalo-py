@@ -266,10 +266,7 @@ def merge_gitignore(source: Path, target: Path) -> list[str]:
     """
     source_lines = source.read_text().splitlines()
 
-    if target.exists():
-        target_lines = target.read_text().splitlines()
-    else:
-        target_lines = []
+    target_lines = target.read_text().splitlines() if target.exists() else []
 
     # Deduplicate while preserving order
     seen = set(target_lines)

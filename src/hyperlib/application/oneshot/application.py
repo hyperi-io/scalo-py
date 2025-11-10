@@ -65,8 +65,8 @@ class OneshotApplication(
         name: str,
         version: str = "1.0.0",
         profile: str = "dev",
-        task_func: Optional[Callable] = None,
-        profile_overrides: Optional[dict[str, Any]] = None,
+        task_func: Callable | None = None,
+        profile_overrides: dict[str, Any] | None = None,
         **kwargs: Any,
     ):
         """
@@ -91,7 +91,7 @@ class OneshotApplication(
         )
 
         self.task_func = task_func
-        self.decorated_task: Optional[Callable] = None
+        self.decorated_task: Callable | None = None
 
         # Add run command to CLI
         self._add_run_command()
@@ -105,14 +105,12 @@ class OneshotApplication(
         @self.cli.command()
         def run():
             """Execute the one-shot task."""
-            logger.info(
-                f"Starting one-shot task '{self.name}' (profile={self.profile_name})"
-            )
+            logger.info(f"Starting one-shot task '{self.name}' (profile={self.profile_name})")
             result = self._execute_task()
 
             # Exit with success code
             if result is not None:
-                typer.echo(f"Task completed successfully")
+                typer.echo("Task completed successfully")
             raise typer.Exit(0)
 
     def task(self, func: Callable) -> Callable:
@@ -144,9 +142,7 @@ class OneshotApplication(
         task = self.decorated_task or self.task_func
 
         if not task:
-            raise RuntimeError(
-                "No task defined. Use @app.task decorator or pass task_func to constructor"
-            )
+            raise RuntimeError("No task defined. Use @app.task decorator or pass task_func to constructor")
 
         logger.info(f"Executing task: {task.__name__}")
 

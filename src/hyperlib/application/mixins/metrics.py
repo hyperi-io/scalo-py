@@ -82,9 +82,7 @@ class MetricsMixin:
             logger.error(f"Failed to setup metrics: {e}", exc_info=True)
             logger.warning("Metrics collection disabled")
 
-    def track_counter(
-        self, name: str, value: int = 1, labels: Optional[Dict[str, str]] = None
-    ) -> None:
+    def track_counter(self, name: str, value: int = 1, labels: dict[str, str] | None = None) -> None:
         """
         Track a counter metric.
 
@@ -105,9 +103,7 @@ class MetricsMixin:
             except Exception as e:
                 logger.debug(f"Failed to track counter '{name}': {e}")
 
-    def track_gauge(
-        self, name: str, value: float, labels: Optional[Dict[str, str]] = None
-    ) -> None:
+    def track_gauge(self, name: str, value: float, labels: dict[str, str] | None = None) -> None:
         """
         Track a gauge metric.
 
@@ -128,9 +124,7 @@ class MetricsMixin:
             except Exception as e:
                 logger.debug(f"Failed to track gauge '{name}': {e}")
 
-    def track_histogram(
-        self, name: str, value: float, labels: Optional[Dict[str, str]] = None
-    ) -> None:
+    def track_histogram(self, name: str, value: float, labels: dict[str, str] | None = None) -> None:
         """
         Track a histogram metric.
 

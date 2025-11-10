@@ -63,7 +63,7 @@ class CLIApplication(
         add_quiet: bool = True,
         add_version: bool = True,
         help: str = None,
-        profile_overrides: Optional[dict[str, Any]] = None,
+        profile_overrides: dict[str, Any] | None = None,
         **kwargs,
     ):
         """
@@ -216,7 +216,7 @@ class CLIApplication(
             else:
                 # Use sys.argv (Typer default)
                 self.app()
-        except SystemExit as e:
+        except SystemExit:
             # Let SystemExit pass through (normal for CLI apps)
             raise
         except Exception as e:
@@ -241,7 +241,7 @@ class CLIApplication(
                 False,
                 "--version",
                 "-V",
-                help=f"Show version and exit",
+                help="Show version and exit",
                 is_flag=True,
             )
         ):

@@ -100,7 +100,7 @@ class OpenTelemetryBackend(MetricsBackend):
         "transport": "rpc.transport",
     }
 
-    def __init__(self, app_name: str, config: Optional[Dict[str, Any]] = None):
+    def __init__(self, app_name: str, config: dict[str, Any] | None = None):
         """
         Initialize OpenTelemetry backend.
 
@@ -111,9 +111,7 @@ class OpenTelemetryBackend(MetricsBackend):
         super().__init__(app_name, config)
 
         if not OTEL_AVAILABLE:
-            logger.error(
-                "OpenTelemetry not installed. Install with: pip install hyperlib[opentelemetry]"
-            )
+            logger.error("OpenTelemetry not installed. Install with: pip install hyperlib[opentelemetry]")
             self.enabled = False
             return
 
@@ -121,7 +119,7 @@ class OpenTelemetryBackend(MetricsBackend):
         otel_config = config.get("opentelemetry", {}) if config else {}
         exporter_type = otel_config.get("exporter", "otlp")
         endpoint = otel_config.get("endpoint", "http://localhost:4318")
-        protocol = otel_config.get("protocol", "grpc")
+        otel_config.get("protocol", "grpc")
         export_interval = otel_config.get("export_interval_millis", 60000)
         self.auto_convert_names = otel_config.get("auto_convert_names", True)
 
@@ -162,12 +160,10 @@ class OpenTelemetryBackend(MetricsBackend):
             self._meter = metrics.get_meter(app_name)
 
             # Cache for created metrics
-            self._metrics_cache: Dict[str, Any] = {}
+            self._metrics_cache: dict[str, Any] = {}
 
             self.enabled = True
-            logger.info(
-                f"OpenTelemetry metrics initialized: exporter={exporter_type}, endpoint={endpoint}"
-            )
+            logger.info(f"OpenTelemetry metrics initialized: exporter={exporter_type}, endpoint={endpoint}")
 
         except Exception as e:
             logger.error(f"Failed to initialize OpenTelemetry backend: {e}")
@@ -198,7 +194,7 @@ class OpenTelemetryBackend(MetricsBackend):
         logger.debug(f"No OTEL mapping for '{prometheus_name}', using original name")
         return prometheus_name
 
-    def _convert_labels(self, labels: Dict[str, Any]) -> Dict[str, Any]:
+    def _convert_labels(self, labels: dict[str, Any]) -> dict[str, Any]:
         """
         Convert Prometheus label names to OTEL attribute names.
 
@@ -218,9 +214,7 @@ class OpenTelemetryBackend(MetricsBackend):
 
         return converted
 
-    def counter(
-        self, name: str, description: str, labels: Optional[List[str]] = None
-    ) -> Any:
+    def counter(self, name: str, description: str, labels: list[str] | None = None) -> Any:
         """
         Create or get an OpenTelemetry Counter.
 
@@ -257,9 +251,7 @@ class OpenTelemetryBackend(MetricsBackend):
         self._metrics_cache[cache_key] = counter
         return counter
 
-    def gauge(
-        self, name: str, description: str, labels: Optional[List[str]] = None
-    ) -> Any:
+    def gauge(self, name: str, description: str, labels: list[str] | None = None) -> Any:
         """
         Create or get an OpenTelemetry Gauge (UpDownCounter).
 
@@ -297,8 +289,8 @@ class OpenTelemetryBackend(MetricsBackend):
         self,
         name: str,
         description: str,
-        labels: Optional[List[str]] = None,
-        buckets: Optional[Tuple[float, ...]] = None,
+        labels: list[str] | None = None,
+        buckets: tuple[float, ...] | None = None,
     ) -> Any:
         """
         Create or get an OpenTelemetry Histogram.

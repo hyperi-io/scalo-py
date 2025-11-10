@@ -5,8 +5,8 @@ Presets define which PII entity types to detect and anonymize based on
 different security and compliance requirements.
 """
 
-from typing import List, Set
 from dataclasses import dataclass
+from typing import List, Set
 
 
 @dataclass
@@ -21,10 +21,10 @@ class EntityPreset:
     """
 
     name: str
-    entities: List[str]
+    entities: list[str]
     description: str
 
-    def get_entities(self) -> Set[str]:
+    def get_entities(self) -> set[str]:
         """Get entity set (for deduplication)."""
         return set(self.entities)
 
@@ -122,6 +122,6 @@ def get_preset(name: str) -> EntityPreset:
     return preset
 
 
-def list_presets() -> List[str]:
+def list_presets() -> list[str]:
     """List available preset names."""
     return list(PRESETS.keys())

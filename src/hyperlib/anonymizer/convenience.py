@@ -6,7 +6,7 @@ import json
 from pathlib import Path
 from typing import Any, Dict, List
 
-from .anonymizer import Anonymizer, AnonymizationStrategy
+from .anonymizer import AnonymizationStrategy, Anonymizer
 from .streaming import StreamingAnonymizer
 
 
@@ -36,10 +36,10 @@ def anonymize_text(
 
 
 def anonymize_dict(
-    data: Dict[str, Any],
+    data: dict[str, Any],
     preset: str = "standard",
     strategy: AnonymizationStrategy = AnonymizationStrategy.REPLACE,
-) -> Dict[str, Any]:
+) -> dict[str, Any]:
     """
     Quick dictionary anonymization.
 
@@ -61,9 +61,7 @@ def anonymize_dict(
     return anonymizer.anonymize_dict(data)
 
 
-def scan_for_pii(
-    text: str, preset: str = "standard", min_score: float = 0.5
-) -> List[Dict[str, Any]]:
+def scan_for_pii(text: str, preset: str = "standard", min_score: float = 0.5) -> list[dict[str, Any]]:
     """
     Quick PII scan (detection without anonymization).
 
@@ -91,7 +89,7 @@ def anonymize_config_file(
     preset: str = "compliance",
     strategy: AnonymizationStrategy = AnonymizationStrategy.REPLACE,
     scan_only: bool = False,
-) -> List[Dict[str, Any]]:
+) -> list[dict[str, Any]]:
     """
     Anonymize a configuration file (YAML, JSON, .env).
 
@@ -146,9 +144,7 @@ def anonymize_config_file(
     return detected_pii
 
 
-def scan_file_for_secrets(
-    file_path: str, min_score: float = 0.7
-) -> List[Dict[str, Any]]:
+def scan_file_for_secrets(file_path: str, min_score: float = 0.7) -> list[dict[str, Any]]:
     """
     Scan a file for secrets (passwords, API keys, tokens).
 

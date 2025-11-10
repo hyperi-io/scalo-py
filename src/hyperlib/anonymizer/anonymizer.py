@@ -10,8 +10,8 @@ from presidio_analyzer import AnalyzerEngine
 from presidio_anonymizer import AnonymizerEngine
 from presidio_anonymizer.entities import OperatorConfig
 
-from .presets import get_preset, PRESETS
 from .custom_recognizers import get_custom_recognizers
+from .presets import PRESETS, get_preset
 
 
 class AnonymizationStrategy(Enum):
@@ -83,9 +83,9 @@ class Anonymizer:
     def __init__(
         self,
         preset: str = "standard",
-        entities: Optional[List[str]] = None,
+        entities: list[str] | None = None,
         strategy: AnonymizationStrategy = AnonymizationStrategy.REPLACE,
-        replacements: Optional[Dict[str, str]] = None,
+        replacements: dict[str, str] | None = None,
         language: str = "en",
         score_threshold: float = 0.5,
         enable_custom_recognizers: bool = True,
@@ -151,13 +151,11 @@ class Anonymizer:
         operators = self._build_operators(results)
 
         # Anonymize
-        anonymized = self.anonymizer.anonymize(
-            text=text, analyzer_results=results, operators=operators
-        )
+        anonymized = self.anonymizer.anonymize(text=text, analyzer_results=results, operators=operators)
 
         return anonymized.text
 
-    def anonymize_dict(self, data: Dict[str, Any]) -> Dict[str, Any]:
+    def anonymize_dict(self, data: dict[str, Any]) -> dict[str, Any]:
         """
         Recursively anonymize PII in dictionary.
 
@@ -191,7 +189,7 @@ class Anonymizer:
             # (This can happen with aggressive masking)
             return data
 
-    def scan(self, text: str) -> List[Dict[str, Any]]:
+    def scan(self, text: str) -> list[dict[str, Any]]:
         """
         Scan for PII without anonymizing.
 
@@ -238,7 +236,7 @@ class Anonymizer:
             for r in results
         ]
 
-    def _build_operators(self, results) -> Dict[str, OperatorConfig]:
+    def _build_operators(self, results) -> dict[str, OperatorConfig]:
         """
         Build Presidio operators based on strategy and custom replacements.
 
@@ -256,13 +254,9 @@ class Anonymizer:
         for entity_type in entity_types:
             # Check for custom replacement first
             if entity_type in self.replacements:
-                operators[entity_type] = OperatorConfig(
-                    "replace", {"new_value": self.replacements[entity_type]}
-                )
+                operators[entity_type] = OperatorConfig("replace", {"new_value": self.replacements[entity_type]})
             elif self.strategy == AnonymizationStrategy.REPLACE:
-                operators[entity_type] = OperatorConfig(
-                    "replace", {"new_value": f"<{entity_type}>"}
-                )
+                operators[entity_type] = OperatorConfig("replace", {"new_value": f"<{entity_type}>"})
             elif self.strategy == AnonymizationStrategy.REDACT:
                 operators[entity_type] = OperatorConfig("redact", {})
             elif self.strategy == AnonymizationStrategy.MASK:
@@ -275,9 +269,7 @@ class Anonymizer:
                     },
                 )
             elif self.strategy == AnonymizationStrategy.HASH:
-                operators[entity_type] = OperatorConfig(
-                    "hash", {"hash_type": "sha256"}
-                )
+                operators[entity_type] = OperatorConfig("hash", {"hash_type": "sha256"})
             elif self.strategy == AnonymizationStrategy.ENCRYPT:
                 # TODO: Implement encryption strategy
                 # Requires key management

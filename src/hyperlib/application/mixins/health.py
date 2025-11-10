@@ -60,9 +60,7 @@ class HealthCheckMixin:
         - Add /health endpoint (liveness - always 200 if running)
         - Add /ready endpoint (readiness - checks dependencies)
         """
-        logger.info(
-            f"Health checks enabled on port {self.profile.get('health_check_port', 8080)}"
-        )
+        logger.info(f"Health checks enabled on port {self.profile.get('health_check_port', 8080)}")
         # Full implementation in Phase 3
 
     def health_check(self, func):

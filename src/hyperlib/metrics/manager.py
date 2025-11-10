@@ -44,10 +44,10 @@ class MetricsManager:
     def __init__(
         self,
         app_name: str,
-        backend: Optional[str] = None,
+        backend: str | None = None,
         enable_auto_update: bool = True,
         update_interval: int = 5,
-        backend_config: Optional[Dict[str, Any]] = None,
+        backend_config: dict[str, Any] | None = None,
     ):
         """
         Initialize metrics manager.
@@ -73,9 +73,7 @@ class MetricsManager:
 
         self._requested_backend = backend  # Store original request
         self._actual_backend = backend  # Will be updated if fallback occurs
-        self._backend = self._create_backend(
-            backend, app_name, enable_auto_update, update_interval
-        )
+        self._backend = self._create_backend(backend, app_name, enable_auto_update, update_interval)
 
         # Expose backend-specific attributes (for backward compatibility)
         if hasattr(self._backend, "process"):
@@ -121,13 +119,10 @@ class MetricsManager:
                 from .opentelemetry_backend import OpenTelemetryBackend
 
                 self._actual_backend = "opentelemetry"
-                return OpenTelemetryBackend(
-                    app_name=app_name, config=self.backend_config
-                )
+                return OpenTelemetryBackend(app_name=app_name, config=self.backend_config)
             except ImportError:
                 logger.error(
-                    "OpenTelemetry backend not available. "
-                    "Install with: pip install hyperlib[opentelemetry]"
+                    "OpenTelemetry backend not available. " "Install with: pip install hyperlib[opentelemetry]"
                 )
                 logger.warning("Falling back to Prometheus backend")
                 from .prometheus_backend import PrometheusBackend
@@ -140,9 +135,7 @@ class MetricsManager:
                     config=self.backend_config,
                 )
         else:
-            logger.error(
-                f"Unknown metrics backend: {backend}. Supported: prometheus, opentelemetry"
-            )
+            logger.error(f"Unknown metrics backend: {backend}. Supported: prometheus, opentelemetry")
             logger.warning("Falling back to Prometheus backend")
             from .prometheus_backend import PrometheusBackend
 
@@ -164,9 +157,7 @@ class MetricsManager:
         """Check if metrics backend is enabled."""
         return self._backend.enabled
 
-    def counter(
-        self, name: str, description: str, labels: Optional[List[str]] = None
-    ) -> Any:
+    def counter(self, name: str, description: str, labels: list[str] | None = None) -> Any:
         """
         Create or get a Counter metric.
 
@@ -188,9 +179,7 @@ class MetricsManager:
             return NoOpMetric()
         return self._backend.counter(name, description, labels)
 
-    def gauge(
-        self, name: str, description: str, labels: Optional[List[str]] = None
-    ) -> Any:
+    def gauge(self, name: str, description: str, labels: list[str] | None = None) -> Any:
         """
         Create or get a Gauge metric.
 
@@ -218,8 +207,8 @@ class MetricsManager:
         self,
         name: str,
         description: str,
-        labels: Optional[List[str]] = None,
-        buckets: Optional[Tuple[float, ...]] = None,
+        labels: list[str] | None = None,
+        buckets: tuple[float, ...] | None = None,
     ) -> Any:
         """
         Create or get a Histogram metric.
@@ -304,10 +293,10 @@ class MetricsManager:
 
 def create_metrics(
     app_name: str = "app",
-    backend: Optional[str] = None,
+    backend: str | None = None,
     enable_auto_update: bool = True,
     update_interval: int = 5,
-    backend_config: Optional[Dict[str, Any]] = None,
+    backend_config: dict[str, Any] | None = None,
 ) -> MetricsManager:
     """
     Create metrics manager with sensible defaults.

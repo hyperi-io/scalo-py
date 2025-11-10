@@ -8,7 +8,8 @@ preventing orphaned processes and ensuring cleanup runs properly.
 import signal
 import sys
 import threading
-from typing import Any, Callable, List, Optional
+from collections.abc import Callable
+from typing import Any, List, Optional
 
 from hyperlib.logger import logger
 
@@ -39,7 +40,7 @@ class SignalHandlerMixin:
         Args:
             **kwargs: Additional args passed to next mixin in chain
         """
-        self._shutdown_handlers: List[Callable[[], None]] = []
+        self._shutdown_handlers: list[Callable[[], None]] = []
         self._shutdown_event = threading.Event()
         self._shutting_down = False
 
@@ -133,9 +134,7 @@ class SignalHandlerMixin:
         handler_thread.join(timeout=timeout)
 
         if handler_thread.is_alive():
-            logger.warning(
-                f"Shutdown handlers did not complete within {timeout}s, forcing exit"
-            )
+            logger.warning(f"Shutdown handlers did not complete within {timeout}s, forcing exit")
             # Handlers are still running but we've exceeded timeout
             # They will be terminated when process exits
 
@@ -162,7 +161,7 @@ class SignalHandlerMixin:
         logger.debug(f"Registered shutdown handler: {func.__name__}")
         return func
 
-    def wait_for_shutdown(self, timeout: Optional[float] = None) -> bool:
+    def wait_for_shutdown(self, timeout: float | None = None) -> bool:
         """
         Wait for shutdown signal.
 
