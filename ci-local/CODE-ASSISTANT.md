@@ -13,25 +13,102 @@ This document provides critical guidance for AI code assistants working with Hyp
 
 1. ✅ Read STATE.md (project context and CI documentation)
 2. ✅ Read TODO.md (current tasks and priorities)
-3. ✅ Read language-specific standards:
+3. ✅ Read ci-local/CODE-ASSISTANT-STARTUP.md (developer's custom startup commands, if exists)
+4. ✅ Read language-specific standards:
    - Python projects: Read ci/docs/standards/PYTHON-STANDARDS.md
    - TypeScript projects: Read ci/docs/standards/TYPESCRIPT-STANDARDS.md (if exists)
    - All projects: Read docs/standards/GIT-WORKFLOW.md, CHARS-POLICY.md
-4. ✅ Review project structure for context:
+5. ✅ Review project structure for context:
    - Check `pyproject.toml` or equivalent for project metadata
    - Scan `src/` or equivalent for main code structure
    - Note key directories (tests/, docs/, **NOT ci/**)
    - Identify project type (package/library vs application)
-5. ✅ Be ready to assist with tasks from TODO.md
+6. ✅ Be ready to assist with tasks from TODO.md
 
 **Important:**
 - STATE.md includes auto-appended CI documentation from HyperCI
 - TODO.md follows todo-md standard (update it as work progresses)
+- **CODE-ASSISTANT-STARTUP.md** is optional developer-specific startup commands (created in ci-local/)
 - **DO NOT scan, read, or review files in ci/ directory** (see CI Infrastructure below)
 - ci-local/ is writable (for project-specific CI customizations)
 
 **Do not respond with greetings or confirmations.**
 **Simply load the context and wait for the user's first question or task.**
+
+---
+
+## Slash Commands (Session Management)
+
+**🔥 CRITICAL: Use these commands for ALL sessions**
+
+provides two slash commands for session management:
+
+### `/start` - Session Initialization
+
+**Run this EVERY time you start a new session.**
+
+**What it does:**
+- Reads STATE.md (project state and history)
+- Reads TODO.md (current tasks)
+- Reads CODE-ASSISTANT.md (this file) and CODE-ASSISTANT-STARTUP.md (developer custom commands)
+- Reads ALL standards files in ci/docs/standards/ (using Glob wildcards)
+- Lists detail files for RAG awareness (read on-demand only)
+- Checks git status and recent commits
+- Verifies Python version and virtual environments
+- Greets developer by first name (from git config)
+
+**Why use it:**
+- ✅ Ensures you have complete project context before starting work
+- ✅ Automatically discovers new standards files (no hardcoded list)
+- ✅ Prevents wasting time on wrong priorities (reads TODO.md)
+- ✅ Consistent session initialization across all sessions
+
+**Usage:**
+```
+/start
+```
+
+**Note:** This command replaces manual documentation reading. Don't skip it.
+
+### `/save` - Session Progress Checkpoint
+
+**Run this to checkpoint progress during or at end of session.**
+
+**What it does:**
+- Updates STATE.md with current session progress
+- Rationalizes STATE.md (removes redundant/outdated content)
+- Updates TODO.md (marks completed tasks, adds new ones)
+- Fixes markdown linting errors
+- Creates clean checkpoint for next session
+
+**When to use:**
+- ✅ After completing a major task or milestone
+- ✅ Before natural break points (lunch, end of day)
+- ✅ After 30-40 exchanges (to prevent context compression)
+- ✅ When conversation gets long and responses start getting truncated
+- ✅ Anytime you want to preserve progress
+
+**Why use it:**
+- ✅ Preserves session history without duplication
+- ✅ Keeps STATE.md clean and maintainable
+- ✅ Better than losing context to compression
+- ✅ Can run multiple times per session (safe to use frequently)
+
+**Usage:**
+```
+/save
+```
+
+**Proactive session management:**
+- Monitor conversation length - suggest `/save` after 30-40 exchanges
+- Watch for truncation - if responses get truncated, immediately suggest `/save`
+- Better to save early than lose information
+
+**⚠️ Only:**
+These slash commands are specific to and will not work in:
+-Web UI (.ai)
+-Desktop App
+- Other AI assistants or IDEs
 
 ---
 
