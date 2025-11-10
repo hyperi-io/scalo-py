@@ -126,3 +126,13 @@ jobs:
     - name: Verify Published
       run: "echo \"\u2705 Published ${{ matrix.build_type }} package (${{ matrix.arch\
         \ }})\"\nls -lh dist/ || echo \"dist/ cleaned after publish\"\n"
+    - name: Create GitHub Release
+      if: matrix.build_type == 'standard'
+      uses: softprops/action-gh-release@v2
+      with:
+        tag_name: ${{ github.ref_name }}
+        generate_release_notes: true
+        draft: false
+        prerelease: false
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
