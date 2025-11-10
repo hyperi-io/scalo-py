@@ -98,10 +98,7 @@ See: get_mount_config(), detect_environment(), get_container_config()
 """
 
 import os
-import signal
 import tempfile
-import threading
-import time
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Literal

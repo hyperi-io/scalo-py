@@ -6,7 +6,6 @@ different security and compliance requirements.
 """
 
 from dataclasses import dataclass
-from typing import List, Set
 
 
 @dataclass

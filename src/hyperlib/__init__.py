@@ -142,15 +142,12 @@ Requires Python 3.11+ for modern type hints and enterprise features
 
 __version__ = "2.8.2"  # Managed by semantic-release
 
-# Enforce Python 3.11+ requirement
-import sys
-
 # Import modules (packages) - logger is a module for extensibility
 from . import cli, config, database, harness, logger, metrics, runtime
 from .application import Application
 
 # Import commonly used objects and functions
-from .config import get_environment, get_logging_config, get_mount_config, settings
+from .config import get_environment, get_logging_config, get_mount_config
 from .database import build_database_url, get_database_config, get_database_url_from_env
 from .metrics import create_metrics
 from .runtime import get_runtime_paths

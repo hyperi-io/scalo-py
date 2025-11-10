@@ -5,7 +5,6 @@ These examples demonstrate best practices for CLI development.
 """
 
 from pathlib import Path
-from typing import Optional
 
 from hyperlib.cli import Argument, Option, Typer
 

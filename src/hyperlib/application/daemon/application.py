@@ -7,7 +7,7 @@ import asyncio
 import threading
 import time
 from collections.abc import Callable
-from typing import Any, NamedTuple, Optional
+from typing import Any, NamedTuple
 
 from ...logger import logger
 from ..mixins import (
@@ -112,7 +112,6 @@ class DaemonApplication(
 
     def _add_start_command(self) -> None:
         """Add 'start' command to CLI."""
-        import typer
 
         @self.cli.command()
         def start():

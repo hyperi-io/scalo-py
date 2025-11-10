@@ -5,7 +5,7 @@ Single-execution task with container-native patterns
 
 import time
 from collections.abc import Callable
-from typing import Any, Optional
+from typing import Any
 
 from ...logger import logger
 from ..mixins import (

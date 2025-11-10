@@ -4,8 +4,7 @@ OpenTelemetry metrics backend.
 Provides OpenTelemetry implementation of MetricsBackend interface.
 """
 
-import warnings
-from typing import Any, Dict, List, Optional, Tuple
+from typing import Any
 
 from ..logger import logger
 from .base import MetricsBackend, NoOpMetric

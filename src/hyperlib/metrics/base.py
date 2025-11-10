@@ -6,7 +6,7 @@ enabling backend-agnostic instrumentation.
 """
 
 from abc import ABC, abstractmethod
-from typing import Any, Dict, List, Optional, Tuple
+from typing import Any
 
 
 class MetricsBackend(ABC):

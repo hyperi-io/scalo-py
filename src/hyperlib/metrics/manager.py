@@ -4,8 +4,7 @@ Unified metrics manager with backend abstraction.
 Provides backend-agnostic API for application metrics.
 """
 
-import warnings
-from typing import Any, Dict, List, Optional, Tuple
+from typing import Any
 
 from ..config import get_config
 from ..logger import logger

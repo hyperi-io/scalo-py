@@ -13,7 +13,7 @@ Uses chunked processing and caching to minimize overhead.
 
 import json
 from collections.abc import Iterator
-from typing import TYPE_CHECKING, Any, Dict, List, Optional
+from typing import TYPE_CHECKING, Any
 
 from .anonymizer import AnonymizationStrategy, Anonymizer
 
@@ -309,7 +309,7 @@ class StreamingAnonymizer:
             >>> anonymized = anonymizer.anonymize_pandas(df, columns=["email", "phone"])
         """
         try:
-            import pandas as pd
+            import pandas as pd  # noqa: F401
         except ImportError:
             raise ImportError("Pandas not installed. Install with: pip install pandas")
 

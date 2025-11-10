@@ -2,12 +2,10 @@
 Convenience functions for quick anonymization tasks.
 """
 
-import json
 from pathlib import Path
-from typing import Any, Dict, List
+from typing import Any
 
 from .anonymizer import AnonymizationStrategy, Anonymizer
-from .streaming import StreamingAnonymizer
 
 
 def anonymize_text(

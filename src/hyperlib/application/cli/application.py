@@ -3,9 +3,8 @@ HyperLib CLI Application
 Command-line interface using Typer framework (mandatory standard)
 """
 
-import sys
 from collections.abc import Callable
-from typing import Any, Optional
+from typing import Any
 
 from ...logger import logger
 from ..mixins import ProfileMixin, SignalHandlerMixin

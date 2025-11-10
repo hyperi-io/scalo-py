@@ -5,7 +5,7 @@ Profiles enable the same application code to run in different environments
 (dev, docker, prod) with appropriate settings for each context.
 """
 
-from typing import Any, Dict, Optional
+from typing import Any
 
 # Profile definitions for different deployment environments
 PROFILES: dict[str, dict[str, Any]] = {

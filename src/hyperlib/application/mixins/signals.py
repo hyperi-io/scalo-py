@@ -9,7 +9,7 @@ import signal
 import sys
 import threading
 from collections.abc import Callable
-from typing import Any, List, Optional
+from typing import Any
 
 from hyperlib.logger import logger
 

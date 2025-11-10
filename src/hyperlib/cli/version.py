@@ -30,7 +30,6 @@ Features:
 
 import sys
 from importlib.metadata import PackageNotFoundError, version
-from typing import Optional
 
 try:
     from typer import Exit, Option

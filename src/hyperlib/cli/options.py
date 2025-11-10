@@ -26,7 +26,6 @@ Features:
 """
 
 from pathlib import Path
-from typing import Optional
 
 try:
     from typer import Option

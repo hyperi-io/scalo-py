@@ -5,11 +5,10 @@ Provides MCP (Model Context Protocol) servers with profile-based configuration.
 Supports stdio and HTTP transports with tool/resource/prompt registration.
 """
 
-import asyncio
 import json
 import sys
 from collections.abc import Callable
-from typing import Any, Optional
+from typing import Any
 
 from ...logger import logger
 from ..mixins import (
@@ -101,7 +100,6 @@ class MCPApplication(
 
     def _add_serve_command(self) -> None:
         """Add 'serve' command to CLI."""
-        import typer
 
         @self.cli.command()
         def serve():

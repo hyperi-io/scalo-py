@@ -4,14 +4,14 @@ Core Anonymizer class with Presidio integration.
 
 import json
 from enum import Enum
-from typing import Any, Dict, List, Optional, Set
+from typing import Any
 
 from presidio_analyzer import AnalyzerEngine
 from presidio_anonymizer import AnonymizerEngine
 from presidio_anonymizer.entities import OperatorConfig
 
 from .custom_recognizers import get_custom_recognizers
-from .presets import PRESETS, get_preset
+from .presets import get_preset
 
 
 class AnonymizationStrategy(Enum):

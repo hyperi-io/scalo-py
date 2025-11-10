@@ -11,7 +11,6 @@ Adds detection for:
 These patterns complement Presidio's built-in PII recognizers.
 """
 
-from typing import List, Optional
 
 from presidio_analyzer import Pattern, PatternRecognizer
 

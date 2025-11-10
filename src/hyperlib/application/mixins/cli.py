@@ -6,11 +6,10 @@ that all application types inherit, enabling CLI-first execution in containers.
 """
 
 import json
-from typing import Any, Optional
+from typing import Any
 
 import typer
 
-from hyperlib.logger import logger
 
 
 class CLIExecutableMixin:

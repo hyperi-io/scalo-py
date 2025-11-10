@@ -26,7 +26,7 @@ Features:
 
 import json
 import sys
-from typing import Any, Optional
+from typing import Any
 
 __all__ = [
     "console",
@@ -44,7 +44,7 @@ __all__ = [
 try:
     from rich.console import Console
     from rich.json import JSON
-    from rich.panel import Panel
+    from rich.panel import Panel  # noqa: F401
     from rich.table import Table
 
     HAS_RICH = True

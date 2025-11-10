@@ -4,7 +4,7 @@ FastAPI-based REST API service with container-native patterns
 """
 
 from collections.abc import Callable
-from typing import Any, Optional
+from typing import Any
 
 from ...logger import logger
 from ..mixins import (

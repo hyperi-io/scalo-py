@@ -5,7 +5,7 @@ Wraps existing PrometheusMetrics implementation to conform to
 MetricsBackend interface.
 """
 
-from typing import Any, Dict, List, Optional, Tuple
+from typing import Any
 
 from .base import MetricsBackend
 from .prometheus import PrometheusMetrics

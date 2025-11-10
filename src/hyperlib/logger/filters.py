@@ -14,7 +14,7 @@ Use `get_sensitive_filter()` to automatically select the best available filter.
 import logging
 import re
 import warnings
-from typing import Any, Dict, Optional, Set, Tuple
+from typing import Any
 
 # Sensitive fields that should be masked in logs
 SENSITIVE_FIELDS: set[str] = {
