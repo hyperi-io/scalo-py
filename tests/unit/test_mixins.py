@@ -11,6 +11,7 @@ import typer.testing
 
 from hyperlib.application.mixins import (
     CLIExecutableMixin,
+    HealthCheckMixin,
     ProfileMixin,
     SignalHandlerMixin,
 )
@@ -326,3 +327,175 @@ class TestMixinComposition:
         # Custom override - graceful shutdown disabled
         app_no_shutdown = TestApp(profile="dev", profile_overrides={"graceful_shutdown": False})
         assert app_no_shutdown.profile["graceful_shutdown"] is False
+
+
+class TestHealthCheckMixin:
+    """Test HealthCheckMixin (Phase 3)."""
+
+    def test_health_check_disabled_in_dev_profile(self):
+        """Test health checks are disabled in dev profile by default."""
+
+        class TestApp(HealthCheckMixin, ProfileMixin):
+            def __init__(self, **kwargs):
+                self.name = "test-app"
+                super().__init__(**kwargs)
+
+        app = TestApp(profile="dev")
+        assert app._health_server is None
+        assert app._health_server_thread is None
+
+    def test_health_check_enabled_in_prod_profile(self):
+        """Test health checks are enabled in prod profile."""
+
+        class TestApp(HealthCheckMixin, ProfileMixin):
+            def __init__(self, **kwargs):
+                self.name = "test-app"
+                super().__init__(**kwargs)
+
+        # Use a random high port to avoid conflicts
+        app = TestApp(profile="prod", profile_overrides={"health_check_port": 9876})
+        assert app._health_server is not None
+        assert app._health_server_thread is not None
+        assert app._health_server_thread.is_alive()
+
+        # Cleanup
+        app._stop_health_server()
+
+    def test_health_check_decorator(self):
+        """Test health check decorator registers handlers."""
+
+        class TestApp(HealthCheckMixin, ProfileMixin):
+            def __init__(self, **kwargs):
+                self.name = "test-app"
+                super().__init__(**kwargs)
+
+        app = TestApp(profile="dev")
+
+        @app.health_check
+        def check_database():
+            return True
+
+        @app.health_check
+        def check_redis():
+            return True
+
+        assert len(app._health_check_handlers) == 2
+        assert app._health_check_handlers[0]() is True
+        assert app._health_check_handlers[1]() is True
+
+    def test_health_endpoint_liveness(self):
+        """Test /health endpoint returns 200."""
+        import urllib.request
+
+        class TestApp(HealthCheckMixin, ProfileMixin):
+            def __init__(self, **kwargs):
+                self.name = "test-app"
+                super().__init__(**kwargs)
+
+        app = TestApp(profile="prod", profile_overrides={"health_check_port": 9877})
+        time.sleep(0.1)  # Let server start
+
+        try:
+            response = urllib.request.urlopen("http://localhost:9877/health", timeout=2)
+            assert response.status == 200
+            data = response.read().decode()
+            assert "healthy" in data
+            assert "test-app" in data
+        finally:
+            app._stop_health_server()
+
+    def test_health_endpoint_readiness_all_passing(self):
+        """Test /ready endpoint returns 200 when all checks pass."""
+        import urllib.request
+
+        class TestApp(HealthCheckMixin, ProfileMixin):
+            def __init__(self, **kwargs):
+                self.name = "test-app"
+                super().__init__(**kwargs)
+
+        app = TestApp(profile="prod", profile_overrides={"health_check_port": 9878})
+
+        @app.health_check
+        def check_always_healthy():
+            return True
+
+        time.sleep(0.1)  # Let server start
+
+        try:
+            response = urllib.request.urlopen("http://localhost:9878/ready", timeout=2)
+            assert response.status == 200
+            data = response.read().decode()
+            assert "ready" in data
+        finally:
+            app._stop_health_server()
+
+    def test_health_endpoint_readiness_failing_check(self):
+        """Test /ready endpoint returns 503 when a check fails."""
+        import urllib.error
+        import urllib.request
+
+        class TestApp(HealthCheckMixin, ProfileMixin):
+            def __init__(self, **kwargs):
+                self.name = "test-app"
+                super().__init__(**kwargs)
+
+        app = TestApp(profile="prod", profile_overrides={"health_check_port": 9879})
+
+        @app.health_check
+        def check_failing():
+            return False
+
+        time.sleep(0.1)  # Let server start
+
+        try:
+            with pytest.raises(urllib.error.HTTPError) as exc_info:
+                urllib.request.urlopen("http://localhost:9879/ready", timeout=2)
+            assert exc_info.value.code == 503
+        finally:
+            app._stop_health_server()
+
+    def test_health_endpoint_readiness_exception(self):
+        """Test /ready endpoint returns 503 when a check raises exception."""
+        import urllib.error
+        import urllib.request
+
+        class TestApp(HealthCheckMixin, ProfileMixin):
+            def __init__(self, **kwargs):
+                self.name = "test-app"
+                super().__init__(**kwargs)
+
+        app = TestApp(profile="prod", profile_overrides={"health_check_port": 9880})
+
+        @app.health_check
+        def check_exception():
+            raise RuntimeError("Database connection failed")
+
+        time.sleep(0.1)  # Let server start
+
+        try:
+            with pytest.raises(urllib.error.HTTPError) as exc_info:
+                urllib.request.urlopen("http://localhost:9880/ready", timeout=2)
+            assert exc_info.value.code == 503
+        finally:
+            app._stop_health_server()
+
+    def test_health_check_shutdown(self):
+        """Test health server shuts down cleanly."""
+
+        class TestApp(HealthCheckMixin, SignalHandlerMixin, ProfileMixin):
+            def __init__(self, **kwargs):
+                self.name = "test-app"
+                super().__init__(**kwargs)
+
+        app = TestApp(profile="prod", profile_overrides={"health_check_port": 9881})
+        assert app._health_server is not None
+        assert app._health_server_thread.is_alive()
+
+        # Trigger shutdown (should call _stop_health_server via on_shutdown)
+        app._shutdown_requested = True
+        app._handle_shutdown()
+
+        # Give it a moment to shut down
+        time.sleep(0.2)
+
+        assert app._health_server is None
