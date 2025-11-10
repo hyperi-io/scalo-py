@@ -37,16 +37,30 @@ This document provides critical guidance for AI code assistants working with Hyp
 - ✅ Update task status as you progress
 - ✅ **DELETE completed tasks from TODO.md once in CHANGELOG.md**
 - ❌ NEVER keep completed tasks in TODO.md (that's what CHANGELOG is for)
+
+**Time Estimates Policy:**
 - ❌ **NEVER add time estimates to tasks unless explicitly requested**
   - Time estimates are usually very wrong
   - Adds clutter and creates false expectations
   - Only include estimates if developer specifically asks for them
-  - **When estimates ARE requested:** Use aggressive timeframes aligned with Linear.app
-    - Linear point values = hours (powers of 2): 1pt=1h, 2pt=2h, 4pt=4h, 8pt=8h (1 day)
-    - Traditional "1 day" estimates typically complete in <1 hour with AI assistance
-    - Account for 10x productivity gain from AI code assistants
-    - Linear estimates: No estimate, 0, 1, 2, 4, 8, 16, 32, 64 points
-    - **Exception:** Decimals allowed for sub-hour tasks (e.g., 0.25 = 15min, 0.5 = 30min)
+
+**When estimates ARE requested:**
+- ✅ Use **aggressive timeframes** reflecting 10x AI productivity gain
+- ✅ Powers of 2 scaling in hours: **0.25h, 0.5h, 1h, 2h, 4h, 8h, 16h, 32h, 64h**
+  - Traditional "1 day" estimates typically complete in **1h** with AI assistance
+  - Traditional "1 week" estimates typically complete in **1 day (8h)** with AI assistance
+- ✅ Format: **1h**, **2h**, **4h** (not "1 hour", not "1 point", not "1pt")
+- ✅ Sub-hour decimals allowed: **0.25h** (15min), **0.5h** (30min)
+- ✅ Range format: **4-8h** when uncertainty exists
+
+**Examples:**
+```markdown
+- Documentation update - **1h**
+- API endpoint implementation - **2h**
+- Complete feature with tests - **4h**
+- Quick typo fix - **0.25h**
+- Complex refactor - **8-16h**
+```
 
 **Workflow:**
 1. Work on task → Update TODO.md status
