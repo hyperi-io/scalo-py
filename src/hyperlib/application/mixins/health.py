@@ -129,9 +129,8 @@ class HealthCheckMixin:
             self._setup_health_checks()
 
         # Register shutdown handler AFTER setup
-        if self._health_server:
-            if hasattr(self, "on_shutdown"):
-                self.on_shutdown(self._stop_health_server)
+        if self._health_server and hasattr(self, "on_shutdown"):
+            self.on_shutdown(self._stop_health_server)
 
     def _should_setup_health_checks(self) -> bool:
         """Check if health checks should be enabled based on profile."""
