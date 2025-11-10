@@ -64,13 +64,13 @@ class SignalHandlerMixin:
         signal.signal(signal.SIGINT, self._handle_shutdown_signal)
         logger.debug("Signal handlers registered (SIGTERM, SIGINT)")
 
-    def _handle_shutdown_signal(self, signum: int, frame: Any) -> None:
+    def _handle_shutdown_signal(self, signum: int, frame: Any) -> None:  # noqa: ARG002
         """
         Handle shutdown signal (SIGTERM or SIGINT).
 
         Args:
             signum: Signal number
-            frame: Current stack frame
+            frame: Current stack frame (unused but required by signal handler signature)
         """
         if self._shutting_down:
             logger.warning("Already shutting down, ignoring signal")

@@ -125,7 +125,7 @@ from ..runtime import RuntimeEnvironment
 
 # Check if prometheus_client is available
 try:
-    from prometheus_client import (
+    from prometheus_client import (  # type: ignore[import-not-found]
         CONTENT_TYPE_LATEST,
         CollectorRegistry,
         Counter,
