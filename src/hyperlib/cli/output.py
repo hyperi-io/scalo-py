@@ -43,9 +43,9 @@ __all__ = [
 # Try to import Rich
 try:
     from rich.console import Console
-    from rich.table import Table
     from rich.json import JSON
     from rich.panel import Panel
+    from rich.table import Table
 
     HAS_RICH = True
     console = Console()
@@ -129,8 +129,8 @@ def print_info(message: str, **kwargs):
 
 def print_table(
     data: list[dict] | list[list],
-    title: Optional[str] = None,
-    headers: Optional[list[str]] = None,
+    title: str | None = None,
+    headers: list[str] | None = None,
     **kwargs,
 ):
     """
@@ -231,7 +231,7 @@ def print_json(data: Any, pretty: bool = True, **kwargs):
             print(json.dumps(data, indent=2 if pretty else None), **kwargs)
 
 
-def print_dict(data: dict, title: Optional[str] = None, **kwargs):
+def print_dict(data: dict, title: str | None = None, **kwargs):
     """
     Print dictionary as formatted key-value pairs.
 

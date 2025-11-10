@@ -162,14 +162,14 @@ else:
 
 # Helper function for custom Path options
 def path_option(
-    default: Optional[Path] = None,
+    default: Path | None = None,
     *param_decls: str,
     help: str = "Path to file or directory",
     exists: bool = False,
     file_okay: bool = True,
     dir_okay: bool = True,
     **kwargs,
-) -> Optional[Path]:
+) -> Path | None:
     """
     Create a Path-typed option with validation.
 

@@ -1,0 +1,294 @@
+# HyperLib Documentation
+
+Production-ready infrastructure for Python applications.
+
+## Application Types
+
+HyperLib provides 5 application types with container-native patterns:
+
+- **[API](APP-API.md)** - FastAPI applications with auto-metrics and health checks
+- **[Daemon](APP-DAEMON.md)** - Long-running background services with scheduled tasks
+- **[CLI](APP-CLI.md)** - Command-line tools using Typer (mandatory standard)
+- **[Oneshot](APP-ONESHOT.md)** - Single-run jobs for k8s Jobs/CronJobs
+- **[MCP](APP-MCP.md)** - Model Context Protocol servers for AI tool integration
+
+## Core Features
+
+- **[Logging](LOGGING.md)** - Structured logging with auto-configuration and sensitive data masking
+- **[Metrics](METRICS.md)** - Prometheus and OpenTelemetry metrics with automatic collection
+- **[Configuration](CONFIG.md)** - 7-layer configuration cascade (ENV → .env → config files → defaults)
+- **[Anonymizer](ANONYMIZER.md)** - PII detection and anonymization using Microsoft Presidio
+
+## Standards
+
+- **[CLI Standards](CLI-STANDARDS.md)** - Typer framework standards (mandatory)
+- **[Testing](TESTING.md)** - Testing patterns and best practices
+
+## Quick Start
+
+```bash
+pip install hyperlib
+```
+
+### API Application
+
+```python
+from hyperlib import Application
+
+app = Application.api(name="my-api", profile="prod")
+
+@app.get("/")
+def root():
+    return {"status": "ok"}
+
+if __name__ == "__main__":
+    app.run()  # python -m myapp serve --profile prod
+```
+
+### Daemon Application
+
+```python
+from hyperlib import Application
+
+app = Application.daemon(name="worker", profile="prod")
+
+@app.task(interval=60)
+def process_queue():
+    # Runs every 60 seconds
+    pass
+
+if __name__ == "__main__":
+    app.run()  # python -m worker start --profile prod
+```
+
+### CLI Application
+
+```python
+from hyperlib import Application
+
+app = Application.cli(name="my-tool", version="1.0.0")
+
+@app.command()
+def sync(source: str, dest: str):
+    """Sync files."""
+    print(f"Syncing {source} -> {dest}")
+
+app.run()  # my-tool sync /src /dest
+```
+
+## Profiles
+
+All applications support 3 profiles:
+
+- **dev** - Local development (debug logging, no metrics)
+- **docker** - CI/CD containers (JSON logs, health checks, metrics)
+- **prod** - Kubernetes (optimized, health checks, metrics, JSON logs)
+
+Configure via:
+- CLI flag: `--profile prod`
+- ENV var: `HYPERLIB_PROFILE=prod`
+- Code: `Application.api(profile="prod")`
+
+## Container Deployment
+
+All applications are container-ready:
+
+```dockerfile
+FROM python:3.11-slim
+WORKDIR /app
+COPY . .
+RUN pip install -r requirements.txt
+CMD ["python", "-m", "myapp", "serve", "--profile", "prod"]
+```
+
+```yaml
+# kubernetes deployment
+spec:
+  containers:
+  - name: myapp
+    image: myapp:1.0.0
+    command: ["python", "-m", "myapp", "serve", "--profile", "prod"]
+    ports:
+    - containerPort: 8000
+    livenessProbe:
+      httpGet:
+        path: /health
+        port: 8000
+    readinessProbe:
+      httpGet:
+        path: /ready
+        port: 8000
+```
+
+## Architecture
+
+### Application Inheritance
+
+```
+APIApplication(CLIExecutableMixin, SignalHandlerMixin, ProfileMixin, HealthCheckMixin, MetricsMixin)
+DaemonApplication(CLIExecutableMixin, SignalHandlerMixin, ProfileMixin, MetricsMixin)
+MCPApplication(CLIExecutableMixin, SignalHandlerMixin, ProfileMixin, MetricsMixin)
+OneshotApplication(CLIExecutableMixin, SignalHandlerMixin, ProfileMixin)
+CLIApplication(SignalHandlerMixin, ProfileMixin)
+```
+
+### Mixins
+
+- **ProfileMixin** - Profile-based configuration (dev/docker/prod)
+- **SignalHandlerMixin** - Graceful shutdown (SIGTERM/SIGINT)
+- **CLIExecutableMixin** - Typer CLI integration
+- **HealthCheckMixin** - Health and readiness endpoints
+- **MetricsMixin** - Metrics tracking (Prometheus/OTEL)
+
+## Use Cases
+
+### Microservices
+
+```python
+# FastAPI service with auto-metrics
+app = Application.api(name="user-service", profile="prod")
+
+@app.get("/users/{user_id}")
+async def get_user(user_id: int):
+    return {"id": user_id}
+```
+
+### Background Workers
+
+```python
+# Daemon with scheduled tasks
+app = Application.daemon(name="email-worker", profile="prod")
+
+@app.task(interval=60)
+def send_pending_emails():
+    emails = get_pending_emails()
+    for email in emails:
+        send_email(email)
+```
+
+### Data Pipelines
+
+```python
+# Oneshot job for ETL
+app = Application.oneshot(name="daily-etl", profile="prod")
+
+@app.task
+def run_etl():
+    extract_data()
+    transform_data()
+    load_data()
+```
+
+### CLI Tools
+
+```python
+# Command-line tool
+app = Application.cli(name="data-tool", version="1.0.0")
+
+@app.command()
+def extract(source: str, output: str):
+    """Extract data from source."""
+    data = load_data(source)
+    save_data(output, data)
+```
+
+### AI Tool Integration
+
+```python
+# MCP server for/Continue
+app = Application.mcp(name="db-tools", version="1.0.0")
+
+@app.tool(name="query", description="Query database")
+def query_db(sql: str) -> list:
+    return execute_query(sql)
+```
+
+## Integration Examples
+
+### Logging
+
+```python
+from hyperlib import logger
+
+logger.info("Application started")
+logger.error("Failed to connect", database="prod-db", retry=3)
+```
+
+### Metrics
+
+```python
+from hyperlib.metrics import create_metrics
+
+metrics = create_metrics("myapp")
+metrics.counter("requests", "Total requests").inc()
+metrics.gauge("queue_size", "Queue size").set(42)
+```
+
+### Configuration
+
+```python
+from hyperlib.config import get_config
+
+config = get_config()
+db_url = config["database"]["url"]
+```
+
+### Anonymization
+
+```python
+from hyperlib.anonymizer import anonymize_text
+
+text = "My SSN is 123-45-6789"
+clean = anonymize_text(text, preset="compliance")
+# "My SSN is <US_SSN>"
+```
+
+## Migration Guide
+
+### From Flask/Django
+
+Replace with FastAPI-based Application.api():
+
+```python
+# Before (Flask)
+app = Flask(__name__)
+
+@app.route("/users")
+def get_users():
+    return {"users": []}
+
+# After (HyperLib)
+app = Application.api(name="my-api")
+
+@app.get("/users")
+def get_users():
+    return {"users": []}
+```
+
+### From Click
+
+Replace with Typer-based Application.cli():
+
+```python
+# Before (Click)
+@click.command()
+@click.option("--source")
+def sync(source):
+    pass
+
+# After (HyperLib)
+app = Application.cli(name="my-tool")
+
+@app.command()
+def sync(source: str):
+    pass
+```
+
+## Repository
+
+- **GitHub**: https://github.com/hypersec-io/hyperlib
+- **Issues**: https://github.com/hypersec-io/hyperlib/issues
+
+## License
+
+See LICENSE file in repository.

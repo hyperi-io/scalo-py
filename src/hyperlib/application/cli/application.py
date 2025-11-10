@@ -5,23 +5,29 @@ Command-line interface using Typer framework (mandatory standard)
 
 import sys
 from collections.abc import Callable
-from typing import Any
+from typing import Any, Optional
 
 from ...logger import logger
+from ..mixins import ProfileMixin, SignalHandlerMixin
 
 
-class CLIApplication:
+class CLIApplication(
+    SignalHandlerMixin,
+    ProfileMixin,
+):
     """
     Command-line application using Typer (mandatory hyperlib standard).
 
-    Provides:
+    Provides container-native patterns out of the box:
+    - Profile-based configuration (dev/docker/prod)
+    - Graceful shutdown (SIGTERM/SIGINT)
     - Typer integration for type-driven CLI commands
     - Automatic help generation from docstrings and type hints
     - Subcommand support
     - Rich terminal output
     - Excellent IDE support
 
-    Example:
+    Example (simple):
         from hyperlib import Application
 
         app = Application.cli(name="my-tool", version="1.0.0")
@@ -42,16 +48,22 @@ class CLIApplication:
             print(f"Processing {file} as {format}")
 
         app.run()
+
+    Example (production):
+        # Container CMD: python -m my_cli process --file data.json --format json
+        # Automatically gets: graceful shutdown, profile-based logging
     """
 
     def __init__(
         self,
         name: str,
-        version: str = None,
+        version: str = "1.0.0",
+        profile: str = "dev",
         add_verbose: bool = True,
         add_quiet: bool = True,
         add_version: bool = True,
         help: str = None,
+        profile_overrides: dict[str, Any] | None = None,
         **kwargs,
     ):
         """
@@ -59,16 +71,25 @@ class CLIApplication:
 
         Args:
             name: Application name (used in --help output)
-            version: Application version (for --version flag).
-                    If None, attempts to detect from package metadata.
+            version: Application version (for --version flag)
+            profile: Environment profile ("dev", "docker", "prod")
             add_verbose: Add global --verbose/-v flag (deprecated, use command-level options)
             add_quiet: Add global --quiet/-q flag (deprecated, use command-level options)
             add_version: Add global --version flag
             help: Help text for the application
+            profile_overrides: Override profile settings
             **kwargs: Additional Typer options
         """
+        # Store name and version (consumed here, not passed to mixins)
         self.name = name
-        self.version = version or self._get_package_version(name)
+        self.version = version
+
+        # Initialize mixins (MRO: Signal -> Profile)
+        super().__init__(
+            profile=profile,
+            profile_overrides=profile_overrides,
+        )
+
         self.add_verbose = add_verbose
         self.add_quiet = add_quiet
         self.add_version = add_version
@@ -96,33 +117,7 @@ class CLIApplication:
                 "Documentation: https://typer.tiangolo.com/"
             )
 
-        logger.info(f"CLIApplication '{name}' initialized (Typer)")
-
-    @staticmethod
-    def _get_package_version(package_name: str) -> str:
-        """
-        Get version from package metadata.
-
-        Args:
-            package_name: Package name to look up
-
-        Returns:
-            Version string or "unknown" if not found
-        """
-        try:
-            from importlib.metadata import PackageNotFoundError, version
-
-            return version(package_name)
-        except PackageNotFoundError:
-            return "unknown"
-        except ImportError:
-            # Python < 3.8 fallback
-            try:
-                import pkg_resources
-
-                return pkg_resources.get_distribution(package_name).version
-            except Exception:
-                return "unknown"
+        logger.info(f"CLIApplication '{name}' initialized (profile={profile})")
 
     def command(self, name: str | None = None, **kwargs) -> Callable:
         """
@@ -221,7 +216,7 @@ class CLIApplication:
             else:
                 # Use sys.argv (Typer default)
                 self.app()
-        except SystemExit as e:
+        except SystemExit:
             # Let SystemExit pass through (normal for CLI apps)
             raise
         except Exception as e:
@@ -246,7 +241,7 @@ class CLIApplication:
                 False,
                 "--version",
                 "-V",
-                help=f"Show version and exit",
+                help="Show version and exit",
                 is_flag=True,
             )
         ):

@@ -35,7 +35,7 @@ data_app = Typer(help="Data processing CLI")
 @data_app.command()
 def validate(
     file: Path = Argument(..., help="Data file to validate"),
-    schema: Optional[Path] = Option(None, help="JSON schema file"),
+    schema: Path | None = Option(None, help="JSON schema file"),
     strict: bool = Option(False, help="Strict validation mode"),
 ):
     """Validate data file against schema."""

@@ -3,7 +3,8 @@ Tests for hyperlib logger filters (sensitive data masking).
 """
 
 import pytest
-from hyperlib.logger.filters import SensitiveDataFilter, SENSITIVE_FIELDS, MASK_VALUE
+
+from hyperlib.logger.filters import MASK_VALUE, SENSITIVE_FIELDS, SensitiveDataFilter
 
 
 class TestSensitiveDataFilter:
@@ -173,7 +174,7 @@ class TestSensitiveDataFilter:
             ('"authorization":"Bearer abc"', f'"authorization":"{MASK_VALUE}"'),
         ]
 
-        for input_text, expected in cases:
+        for input_text, _expected in cases:
             result = filter_inst._mask_sensitive_string(input_text)
             assert "Bearer" not in result or MASK_VALUE in result, f"Failed for: {input_text}"
 
@@ -335,7 +336,7 @@ class TestSensitiveDataFilter:
             ("token=&username=admin", f"token={MASK_VALUE}&username=admin"),
         ]
 
-        for input_text, expected in cases:
+        for input_text, _expected in cases:
             result = filter_inst._mask_sensitive_string(input_text)
             assert MASK_VALUE in result, f"Failed for: {input_text}"
 
@@ -358,9 +359,9 @@ class TestSensitiveDataFilter:
         filter_inst = SensitiveDataFilter()
 
         input_text = (
-            'Connecting to postgresql://user:secret@localhost/db '
+            "Connecting to postgresql://user:secret@localhost/db "
             'with {"api_key":"sk-123","token":"jwt-abc"} '
-            'and params password=test&username=admin'
+            "and params password=test&username=admin"
         )
 
         result = filter_inst._mask_sensitive_string(input_text)

@@ -15,11 +15,11 @@ presidio = pytest.importorskip("presidio_analyzer", reason="Presidio not install
 pytest.importorskip("presidio_anonymizer", reason="Presidio not installed")
 
 from hyperlib.anonymizer import (
-    Anonymizer,
     AnonymizationStrategy,
+    Anonymizer,
     StreamingAnonymizer,
-    anonymize_text,
     anonymize_dict,
+    anonymize_text,
     scan_for_pii,
 )
 
@@ -45,7 +45,7 @@ class TestAnonymizerBasics:
         # Use realistic SSNs that Presidio will detect (not in reserved/test ranges)
         test_cases = [
             "219-09-9999",  # Standard format (high score)
-            "573092476",    # No hyphens (lower score, needs lower threshold)
+            "573092476",  # No hyphens (lower score, needs lower threshold)
             "653-44-4789",  # Another valid range
         ]
 
@@ -61,7 +61,7 @@ class TestAnonymizerBasics:
         test_cards = [
             "4532015112830366",  # VISA
             "5425233430109903",  # MasterCard
-            "374245455400126",   # AmEx
+            "374245455400126",  # AmEx
         ]
 
         for card in test_cards:
@@ -93,10 +93,7 @@ class TestAnonymizationStrategies:
 
     def test_replace_strategy(self):
         """Test REPLACE strategy (default)."""
-        anonymizer = Anonymizer(
-            preset="standard",
-            strategy=AnonymizationStrategy.REPLACE
-        )
+        anonymizer = Anonymizer(preset="standard", strategy=AnonymizationStrategy.REPLACE)
         text = "My SSN is 219-09-9999"
         result = anonymizer.anonymize(text)
 
@@ -104,10 +101,7 @@ class TestAnonymizationStrategies:
 
     def test_redact_strategy(self):
         """Test REDACT strategy (uniform masking)."""
-        anonymizer = Anonymizer(
-            preset="standard",
-            strategy=AnonymizationStrategy.REDACT
-        )
+        anonymizer = Anonymizer(preset="standard", strategy=AnonymizationStrategy.REDACT)
         text = "My SSN is 219-09-9999"
         result = anonymizer.anonymize(text)
 
@@ -116,10 +110,7 @@ class TestAnonymizationStrategies:
 
     def test_mask_strategy(self):
         """Test MASK strategy (partial masking)."""
-        anonymizer = Anonymizer(
-            preset="standard",
-            strategy=AnonymizationStrategy.MASK
-        )
+        anonymizer = Anonymizer(preset="standard", strategy=AnonymizationStrategy.MASK)
         text = "My SSN is 219-09-9999"
         result = anonymizer.anonymize(text)
 
@@ -128,10 +119,7 @@ class TestAnonymizationStrategies:
 
     def test_hash_strategy(self):
         """Test HASH strategy (SHA256)."""
-        anonymizer = Anonymizer(
-            preset="standard",
-            strategy=AnonymizationStrategy.HASH
-        )
+        anonymizer = Anonymizer(preset="standard", strategy=AnonymizationStrategy.HASH)
         text = "My SSN is 219-09-9999"
         result = anonymizer.anonymize(text)
 
@@ -186,15 +174,9 @@ class TestComplexScenarios:
             "user": {
                 "name": "John Doe",
                 "ssn": "219-09-9999",
-                "contact": {
-                    "email": "john@example.com",
-                    "phone": "(555) 123-4567"
-                }
+                "contact": {"email": "john@example.com", "phone": "(555) 123-4567"},
             },
-            "metadata": {
-                "timestamp": "2025-01-01T00:00:00Z",
-                "ip": "192.168.1.1"
-            }
+            "metadata": {"timestamp": "2025-01-01T00:00:00Z", "ip": "192.168.1.1"},
         }
 
         result = anonymizer.anonymize_dict(data)
@@ -252,7 +234,7 @@ class TestPresets:
 
         # Should detect password patterns
         text1 = "password=secret123"
-        result1 = anonymizer.anonymize(text1)
+        anonymizer.anonymize(text1)
         # Minimal may not detect "password=" pattern, but should detect API keys
 
         # Should NOT detect SSN (not in minimal preset)
@@ -276,11 +258,7 @@ class TestPresets:
         """Test compliance preset detects all PII types."""
         anonymizer = Anonymizer(preset="compliance")
 
-        text = (
-            "Name: John Doe, SSN: 219-09-9999, "
-            "IP: 192.168.1.1, Location: New York, "
-            "Date: 2025-01-01"
-        )
+        text = "Name: John Doe, SSN: 219-09-9999, " "IP: 192.168.1.1, Location: New York, " "Date: 2025-01-01"
         result = anonymizer.anonymize(text)
 
         # Should detect most of these
@@ -328,11 +306,7 @@ class TestStreamingAnonymizer:
 
     def test_streaming_with_cache(self):
         """Test streaming anonymizer with LRU caching."""
-        anonymizer = StreamingAnonymizer(
-            preset="standard",
-            cache_results=True,
-            cache_size=100
-        )
+        anonymizer = StreamingAnonymizer(preset="standard", cache_results=True, cache_size=100)
 
         # Process same data multiple times (should hit cache)
         text = "My SSN is 219-09-9999"
@@ -495,7 +469,7 @@ users:
         """Test JSON API response with PII."""
         anonymizer = Anonymizer(preset="compliance", score_threshold=0.3)
 
-        json_content = '''{
+        json_content = """{
   "status": "success",
   "data": {
     "users": [
@@ -526,7 +500,7 @@ users:
       }
     ]
   }
-}'''
+}"""
 
         result = anonymizer.anonymize(json_content)
 
@@ -641,10 +615,7 @@ class TestEdgeCases:
 
     def test_custom_entity_list(self):
         """Test anonymizer with custom entity list."""
-        anonymizer = Anonymizer(
-            entities=["US_SSN", "CREDIT_CARD"],
-            strategy=AnonymizationStrategy.REPLACE
-        )
+        anonymizer = Anonymizer(entities=["US_SSN", "CREDIT_CARD"], strategy=AnonymizationStrategy.REPLACE)
 
         text = "SSN: 219-09-9999, Email: john@example.com"
         result = anonymizer.anonymize(text)
@@ -659,11 +630,7 @@ class TestEdgeCases:
     def test_custom_replacements(self):
         """Test custom replacement values."""
         anonymizer = Anonymizer(
-            preset="standard",
-            replacements={
-                "US_SSN": "[SSN REDACTED]",
-                "EMAIL_ADDRESS": "[EMAIL REDACTED]"
-            }
+            preset="standard", replacements={"US_SSN": "[SSN REDACTED]", "EMAIL_ADDRESS": "[EMAIL REDACTED]"}
         )
 
         text = "SSN: 219-09-9999, Email: john@example.com"

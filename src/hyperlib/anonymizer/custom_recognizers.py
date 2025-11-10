@@ -12,6 +12,7 @@ These patterns complement Presidio's built-in PII recognizers.
 """
 
 from typing import List, Optional
+
 from presidio_analyzer import Pattern, PatternRecognizer
 
 
@@ -35,7 +36,7 @@ class PasswordRecognizer(PatternRecognizer):
         # Database URLs (://user:password@host)
         Pattern(
             name="password_dburl",
-            regex=r'://[^:/@]+:([^@\s]{4,})@',
+            regex=r"://[^:/@]+:([^@\s]{4,})@",
             score=0.7,
         ),
         # JSON format
@@ -50,10 +51,7 @@ class PasswordRecognizer(PatternRecognizer):
 
     def __init__(self):
         super().__init__(
-            supported_entity="PASSWORD",
-            patterns=self.PATTERNS,
-            context=self.CONTEXT,
-            supported_language="en"
+            supported_entity="PASSWORD", patterns=self.PATTERNS, context=self.CONTEXT, supported_language="en"
         )
 
 
@@ -84,7 +82,7 @@ class ApiKeyRecognizer(PatternRecognizer):
         # AWS Access Key ID (AKIA followed by 16 alphanumeric)
         Pattern(
             name="aws_access_key",
-            regex=r'\b(AKIA[0-9A-Z]{16})\b',
+            regex=r"\b(AKIA[0-9A-Z]{16})\b",
             score=0.95,
         ),
         # AWS Secret Key (40 alphanumeric with context)
@@ -96,18 +94,18 @@ class ApiKeyRecognizer(PatternRecognizer):
         # Stripe API keys (live and test)
         Pattern(
             name="stripe_key",
-            regex=r'\b(sk_(?:live|test)_[0-9a-zA-Z]{24,})\b',
+            regex=r"\b(sk_(?:live|test)_[0-9a-zA-Z]{24,})\b",
             score=0.95,
         ),
         # GitHub Personal Access Token (classic and fine-grained)
         Pattern(
             name="github_token_pat",
-            regex=r'\b(github_pat_[a-zA-Z0-9]{22}_[a-zA-Z0-9]{59})\b',
+            regex=r"\b(github_pat_[a-zA-Z0-9]{22}_[a-zA-Z0-9]{59})\b",
             score=0.95,
         ),
         Pattern(
             name="github_token_ghp",
-            regex=r'\b(ghp_[a-zA-Z0-9]{36,})\b',
+            regex=r"\b(ghp_[a-zA-Z0-9]{36,})\b",
             score=0.95,
         ),
         # Generic GitHub token pattern
@@ -119,30 +117,30 @@ class ApiKeyRecognizer(PatternRecognizer):
         # OpenAI API keys (updated patterns for 2025)
         Pattern(
             name="openai_key_sk",
-            regex=r'\b(sk-[a-zA-Z0-9]{48})\b',
+            regex=r"\b(sk-[a-zA-Z0-9]{48})\b",
             score=0.95,
         ),
         Pattern(
             name="openai_key_proj",
-            regex=r'\b(sk-proj-[a-zA-Z0-9]{48,})\b',
+            regex=r"\b(sk-proj-[a-zA-Z0-9]{48,})\b",
             score=0.95,
         ),
         # Slack tokens (multiple formats)
         Pattern(
             name="slack_token",
-            regex=r'\b(xox[p|b|o|a]-[0-9]{12}-[0-9]{12}-[0-9]{12}-[a-z0-9]{32})\b',
+            regex=r"\b(xox[p|b|o|a]-[0-9]{12}-[0-9]{12}-[0-9]{12}-[a-z0-9]{32})\b",
             score=0.95,
         ),
         # Bearer tokens
         Pattern(
             name="bearer_token",
-            regex=r'\bbearer\s+([a-zA-Z0-9_\-\.]{20,})',
+            regex=r"\bbearer\s+([a-zA-Z0-9_\-\.]{20,})",
             score=0.7,
         ),
         # JWT tokens (header.payload.signature format)
         Pattern(
             name="jwt_token",
-            regex=r'\b(eyJ[a-zA-Z0-9_-]*\.eyJ[a-zA-Z0-9_-]*\.[a-zA-Z0-9_-]+)\b',
+            regex=r"\b(eyJ[a-zA-Z0-9_-]*\.eyJ[a-zA-Z0-9_-]*\.[a-zA-Z0-9_-]+)\b",
             score=0.85,
         ),
         # Generic secret/token patterns
@@ -154,32 +152,44 @@ class ApiKeyRecognizer(PatternRecognizer):
         # SendGrid API key
         Pattern(
             name="sendgrid_key",
-            regex=r'\b(SG\.[a-zA-Z0-9_\-\.]{22,}\.[a-zA-Z0-9_\-\.]{43,})\b',
+            regex=r"\b(SG\.[a-zA-Z0-9_\-\.]{22,}\.[a-zA-Z0-9_\-\.]{43,})\b",
             score=0.95,
         ),
         # Mailchimp API key
         Pattern(
             name="mailchimp_key",
-            regex=r'\b([a-f0-9]{32}-us[0-9]{1,2})\b',
+            regex=r"\b([a-f0-9]{32}-us[0-9]{1,2})\b",
             score=0.9,
         ),
         # Twilio API key
         Pattern(
             name="twilio_key",
-            regex=r'\b(SK[a-z0-9]{32})\b',
+            regex=r"\b(SK[a-z0-9]{32})\b",
             score=0.9,
         ),
     ]
 
-    CONTEXT = ["api", "key", "token", "secret", "auth", "bearer", "aws", "stripe",
-               "github", "openai", "slack", "jwt", "sendgrid", "mailchimp", "twilio"]
+    CONTEXT = [
+        "api",
+        "key",
+        "token",
+        "secret",
+        "auth",
+        "bearer",
+        "aws",
+        "stripe",
+        "github",
+        "openai",
+        "slack",
+        "jwt",
+        "sendgrid",
+        "mailchimp",
+        "twilio",
+    ]
 
     def __init__(self):
         super().__init__(
-            supported_entity="API_KEY",
-            patterns=self.PATTERNS,
-            context=self.CONTEXT,
-            supported_language="en"
+            supported_entity="API_KEY", patterns=self.PATTERNS, context=self.CONTEXT, supported_language="en"
         )
 
 
@@ -203,7 +213,7 @@ class SecretKeyRecognizer(PatternRecognizer):
         # Private key headers (BEGIN ... PRIVATE KEY)
         Pattern(
             name="private_key_header",
-            regex=r'-----BEGIN (?:RSA |EC |OPENSSH )?PRIVATE KEY-----',
+            regex=r"-----BEGIN (?:RSA |EC |OPENSSH )?PRIVATE KEY-----",
             score=0.95,
         ),
         # Base64-encoded secrets (long strings in quotes)
@@ -218,14 +228,11 @@ class SecretKeyRecognizer(PatternRecognizer):
 
     def __init__(self):
         super().__init__(
-            supported_entity="SECRET_KEY",
-            patterns=self.PATTERNS,
-            context=self.CONTEXT,
-            supported_language="en"
+            supported_entity="SECRET_KEY", patterns=self.PATTERNS, context=self.CONTEXT, supported_language="en"
         )
 
 
-def get_custom_recognizers() -> List[PatternRecognizer]:
+def get_custom_recognizers() -> list[PatternRecognizer]:
     """
     Get list of all custom recognizers.
 

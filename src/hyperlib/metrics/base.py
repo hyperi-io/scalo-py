@@ -17,7 +17,7 @@ class MetricsBackend(ABC):
     of underlying implementation.
     """
 
-    def __init__(self, app_name: str, config: Optional[Dict[str, Any]] = None):
+    def __init__(self, app_name: str, config: dict[str, Any] | None = None):
         """
         Initialize metrics backend.
 
@@ -30,12 +30,7 @@ class MetricsBackend(ABC):
         self.enabled = True
 
     @abstractmethod
-    def counter(
-        self,
-        name: str,
-        description: str,
-        labels: Optional[List[str]] = None
-    ) -> Any:
+    def counter(self, name: str, description: str, labels: list[str] | None = None) -> Any:
         """
         Create or get a Counter metric.
 
@@ -52,12 +47,7 @@ class MetricsBackend(ABC):
         pass
 
     @abstractmethod
-    def gauge(
-        self,
-        name: str,
-        description: str,
-        labels: Optional[List[str]] = None
-    ) -> Any:
+    def gauge(self, name: str, description: str, labels: list[str] | None = None) -> Any:
         """
         Create or get a Gauge metric.
 
@@ -78,8 +68,8 @@ class MetricsBackend(ABC):
         self,
         name: str,
         description: str,
-        labels: Optional[List[str]] = None,
-        buckets: Optional[Tuple[float, ...]] = None
+        labels: list[str] | None = None,
+        buckets: tuple[float, ...] | None = None,
     ) -> Any:
         """
         Create or get a Histogram metric.

@@ -1,6 +1,9 @@
 """Tests for hyperlib.database module."""
+
 import os
+
 import pytest
+
 from hyperlib.database import build_database_url, get_database_config
 
 
@@ -53,7 +56,7 @@ class TestClickHouseSupport:
 
         url = build_database_url("clickhouse")
         # Password should be URL-encoded
-        assert "clickhouse://user:p%40ss%3Aword%21@ch.example.com:9000/db" == url
+        assert url == "clickhouse://user:p%40ss%3Aword%21@ch.example.com:9000/db"
 
     def test_clickhouse_config_from_env(self, monkeypatch):
         """Test ClickHouse configuration from environment variables."""

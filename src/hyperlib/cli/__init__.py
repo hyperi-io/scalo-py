@@ -108,7 +108,7 @@ except ImportError:
     CliRunner = _TyperNotInstalled
 
 # Import submodules (always available, gracefully handle missing Typer)
-from . import output, options, version
+from . import options, output, version
 
 # Version info
 __version__ = "1.0.0"

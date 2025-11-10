@@ -1,70 +1,99 @@
 """
 HyperLib API Application
-FastAPI-based REST API service with container management
+FastAPI-based REST API service with container-native patterns
 """
 
 from collections.abc import Callable
-from pathlib import Path
-from typing import Any
+from typing import Any, Optional
 
-from ...config import MountConfig, get_mount_config
 from ...logger import logger
+from ..mixins import (
+    CLIExecutableMixin,
+    HealthCheckMixin,
+    MetricsMixin,
+    ProfileMixin,
+    SignalHandlerMixin,
+)
 
 
-class APIApplication:
+class APIApplication(
+    CLIExecutableMixin,
+    SignalHandlerMixin,
+    ProfileMixin,
+    HealthCheckMixin,
+    MetricsMixin,
+):
     """
     REST API service application using FastAPI.
 
-    Provides:
-    - FastAPI integration with automatic container management
-    - Prometheus metrics on separate port
-    - Graceful shutdown handling
-    - Resource monitoring (memory, CPU)
+    Provides container-native patterns out of the box:
+    - Profile-based configuration (dev/docker/prod)
+    - Graceful shutdown (SIGTERM/SIGINT)
+    - Health endpoints (/health, /ready) for k8s probes
+    - Automatic HTTP metrics (Prometheus/OTEL)
+    - Typer CLI commands (serve, health-check, validate, version, config)
 
-    Example:
-        app = Application.api(name="my-service", port=8000)
+    Example (simple):
+        app = Application.api(name="my-api", version="1.0.0", profile="prod")
 
         @app.route("/")
         def root():
             return {"message": "Hello"}
 
+        if __name__ == "__main__":
+            app.run()  # Runs Typer CLI
+
+    Example (production):
+        # Container CMD: python -m my_api serve --profile prod
+        # Automatically gets: health checks, metrics, graceful shutdown
+
+    Example (custom routes):
+        app = Application.api(name="my-api", version="1.0.0")
+
         @app.route("/users/{user_id}")
         def get_user(user_id: int):
             return {"user_id": user_id}
 
-        app.run()
+        @app.post("/users")
+        def create_user(name: str):
+            return {"id": 123, "name": name}
     """
 
     def __init__(
         self,
         name: str,
+        version: str = "1.0.0",
+        profile: str = "dev",
         port: int = 8000,
-        metrics_port: int = 8080,
-        mounts: MountConfig | None = None,
         enable_cors: bool = False,
         cors_origins: list[str] | None = None,
-        version: str = "1.0.0",
-        **kwargs,
+        profile_overrides: dict[str, Any] | None = None,
+        **kwargs: Any,
     ):
         """
         Initialize API application.
 
         Args:
             name: Application name
-            port: API server port
-            metrics_port: Prometheus metrics port
-            mounts: Container mount configuration
+            version: Application version
+            profile: Environment profile ("dev", "docker", "prod")
+            port: API server port (default: 8000)
             enable_cors: Enable CORS middleware
             cors_origins: List of allowed origins (default: ["*"])
-            version: Application version
+            profile_overrides: Override profile settings
             **kwargs: Additional configuration options
         """
-        self.name = name
+        # Initialize mixins (MRO: CLI -> Signal -> Profile -> Health -> Metrics)
+        super().__init__(
+            name=name,
+            version=version,
+            profile=profile,
+            profile_overrides=profile_overrides,
+            description=f"{name} - HyperLib API Service",
+        )
+
         self.port = port
-        self.metrics_port = metrics_port
-        self.version = version
         self.startup_handlers: list[Callable] = []
-        self.shutdown_handlers: list[Callable] = []
 
         # Create FastAPI app
         try:
@@ -84,15 +113,20 @@ class APIApplication:
         if enable_cors:
             self._add_cors_middleware(cors_origins or ["*"])
 
-        # Get or use mount config
-        if mounts is None:
-            mounts = get_mount_config()
+        # Add health endpoints if enabled in profile
+        if self.profile.get("health_check"):
+            self._add_health_endpoints()
 
-        self.mounts = mounts
+        # Add metrics middleware if enabled in profile
+        if self.profile.get("metrics"):
+            self._add_metrics_middleware()
 
-        logger.info(f"APIApplication '{name}' initialized (port={port})")
+        # Add serve command to CLI
+        self._add_serve_command()
 
-    def _add_cors_middleware(self, origins: list[str]):
+        logger.info(f"APIApplication '{name}' initialized (port={port}, profile={profile})")
+
+    def _add_cors_middleware(self, origins: list[str]) -> None:
         """Add CORS middleware to FastAPI app."""
         try:
             from fastapi.middleware.cors import CORSMiddleware
@@ -108,9 +142,104 @@ class APIApplication:
         except ImportError:
             logger.warning("CORSMiddleware not available, skipping CORS setup")
 
-    def route(self, path: str, **kwargs) -> Callable:
+    def _add_health_endpoints(self) -> None:
+        """Add /health and /ready endpoints for k8s probes."""
+
+        @self.fastapi.get("/health")
+        async def health():
+            """Liveness probe - returns 200 if application is running."""
+            return {"status": "healthy", "service": self.name}
+
+        @self.fastapi.get("/ready")
+        async def ready():
+            """Readiness probe - checks dependencies."""
+            # Run health check handlers if any registered
+            if hasattr(self, "_health_check_handlers") and self._health_check_handlers:
+                for handler in self._health_check_handlers:
+                    try:
+                        if not handler():
+                            return {"status": "not ready", "service": self.name}
+                    except Exception as e:
+                        logger.error(f"Health check failed: {e}")
+                        return {"status": "not ready", "error": str(e)}
+
+            return {"status": "ready", "service": self.name}
+
+        logger.debug("Health endpoints added: /health, /ready")
+
+    def _add_metrics_middleware(self) -> None:
+        """Add metrics collection middleware for HTTP requests."""
+        import time
+
+        from fastapi import Request, Response
+
+        @self.fastapi.middleware("http")
+        async def metrics_middleware(request: Request, call_next):
+            """Track HTTP request metrics."""
+            start_time = time.time()
+
+            # Track request
+            self.track_counter(
+                "http_requests_total",
+                labels={"method": request.method, "endpoint": request.url.path},
+            )
+
+            # Process request
+            response: Response = await call_next(request)
+
+            # Track duration
+            duration = time.time() - start_time
+            self.track_histogram(
+                "http_request_duration_seconds",
+                duration,
+                labels={
+                    "method": request.method,
+                    "endpoint": request.url.path,
+                    "status": str(response.status_code),
+                },
+            )
+
+            return response
+
+        logger.debug("Metrics middleware added")
+
+    def _add_serve_command(self) -> None:
+        """Add 'serve' command to CLI."""
+        import typer
+
+        @self.cli.command()
+        def serve(
+            host: str = typer.Option("0.0.0.0", help="Host to bind to"),  # nosec B104 - containerized app
+            port: int = typer.Option(self.port, help="Port to bind to"),
+            reload: bool = typer.Option(self.profile.get("reload", False), help="Enable auto-reload"),
+        ):
+            """Start the API server."""
+            logger.info(f"Starting API server '{self.name}' on {host}:{port} (profile={self.profile_name})")
+
+            try:
+                import uvicorn
+
+                uvicorn.run(
+                    self.fastapi,
+                    host=host,
+                    port=port,
+                    reload=reload,
+                    log_config=None,  # Use hyperlib logger
+                )
+            except ImportError:
+                typer.echo(
+                    "Error: uvicorn is required. Install with: pip install uvicorn[standard]",
+                    err=True,
+                )
+                raise typer.Exit(1)
+
+    def get(self, path: str, **kwargs: Any) -> Callable:
+        """Decorator to add GET route to API."""
+        return self.fastapi.get(path, **kwargs)
+
+    def route(self, path: str, **kwargs: Any) -> Callable:
         """
-        Decorator to add GET route to API.
+        Alias for get() for backward compatibility.
 
         Args:
             path: URL path (e.g., "/users/{user_id}")
@@ -121,25 +250,31 @@ class APIApplication:
             def get_user(user_id: int):
                 return {"user_id": user_id}
         """
-        return self.fastapi.get(path, **kwargs)
+        return self.get(path, **kwargs)
 
-    def post(self, path: str, **kwargs) -> Callable:
+    def post(self, path: str, **kwargs: Any) -> Callable:
         """Decorator to add POST route."""
         return self.fastapi.post(path, **kwargs)
 
-    def put(self, path: str, **kwargs) -> Callable:
+    def put(self, path: str, **kwargs: Any) -> Callable:
         """Decorator to add PUT route."""
         return self.fastapi.put(path, **kwargs)
 
-    def delete(self, path: str, **kwargs) -> Callable:
+    def delete(self, path: str, **kwargs: Any) -> Callable:
         """Decorator to add DELETE route."""
         return self.fastapi.delete(path, **kwargs)
 
-    def patch(self, path: str, **kwargs) -> Callable:
+    def patch(self, path: str, **kwargs: Any) -> Callable:
         """Decorator to add PATCH route."""
         return self.fastapi.patch(path, **kwargs)
 
-    def add_route(self, path: str, endpoint: Callable, methods: list[str] = None, **kwargs):
+    def add_route(
+        self,
+        path: str,
+        endpoint: Callable,
+        methods: list[str] | None = None,
+        **kwargs: Any,
+    ) -> None:
         """
         Programmatically add route to API.
 
@@ -169,21 +304,6 @@ class APIApplication:
         logger.debug(f"Registered startup handler: {func.__name__}")
         return func
 
-    def on_shutdown(self, func: Callable) -> Callable:
-        """
-        Decorator to register shutdown event handler.
-
-        Example:
-            @app.on_shutdown
-            async def shutdown():
-                logger.info("API shutting down...")
-                # Close database connections, etc.
-        """
-        self.shutdown_handlers.append(func)
-        self.fastapi.add_event_handler("shutdown", func)
-        logger.debug(f"Registered shutdown handler: {func.__name__}")
-        return func
-
     def exception_handler(self, exc_class: type[Exception]) -> Callable:
         """
         Decorator to register exception handler.
@@ -207,7 +327,7 @@ class APIApplication:
 
         return decorator
 
-    def include_router(self, router, *, prefix: str = "", **kwargs):
+    def include_router(self, router: Any, *, prefix: str = "", **kwargs: Any) -> None:
         """
         Include an APIRouter for modular API organization.
 
@@ -225,17 +345,13 @@ class APIApplication:
             def login():
                 return {"token": "..."}
 
-            @auth_router.post("/logout")
-            def logout():
-                return {"status": "logged out"}
-
             app = Application.api(name="my-api")
             app.include_router(auth_router, prefix="/auth", tags=["Authentication"])
         """
         self.fastapi.include_router(router, prefix=prefix, **kwargs)
         logger.debug(f"Included router with prefix: {prefix}")
 
-    def add_middleware(self, middleware_class, **options):
+    def add_middleware(self, middleware_class: Any, **options: Any) -> None:
         """
         Add custom middleware to the API.
 
@@ -260,22 +376,3 @@ class APIApplication:
         """
         self.fastapi.add_middleware(middleware_class, **options)
         logger.debug(f"Added middleware: {middleware_class.__name__}")
-
-    def run(self):
-        """
-        Start the API service.
-
-        Starts:
-        - FastAPI server on api_port
-        - Health/ready endpoints
-        """
-        logger.info(f"Starting API service '{self.name}' on port {self.port}")
-
-        # Run FastAPI directly with uvicorn
-        try:
-            import uvicorn
-
-            # Bind to all interfaces for containerized environments
-            uvicorn.run(self.fastapi, host="0.0.0.0", port=self.port, log_config=None)  # nosec B104
-        except ImportError:
-            raise ImportError("uvicorn is required to run the API. " "Install it with: pip install uvicorn[standard]")

@@ -1,102 +1,24 @@
 """
-HyperLib Logger - Production-Ready Structured Logging
-======================================================
+Structured logging with auto-configuration on import.
 
-Zero-configuration structured logging with automatic formatting.
-Just import and use - no setup needed!
+Auto-configured with production defaults:
+- RFC 3339 timestamps
+- Solarized colors (terminal) / ASCII-only (containers)
+- Sensitive data masking
+- stderr output, INFO level
 
-Quick Start
-===========
-
-    # Install
-    pip install hyperlib
-
-    # Use (zero configuration!)
+Usage:
     from hyperlib import logger
+    logger.info("started")
+    logger.error("failed", database="prod", retry=3)
 
-    logger.info("Application started")
-    logger.error("Failed to connect", database="prod-db", retry=3)
-    logger.success("✅ Deployment complete")
+ENV overrides:
+    LOG_LEVEL=DEBUG
+    LOG_FORMAT=json
+    LOG_OUTPUT=stdout
+    HYPERLIB_NO_LOGGER_CONFIG=1  # Disable auto-config
 
-    # Structured logging automatic:
-    # 2025-11-04T10:00:00.000+1100 | INFO | myapp:main:42 - Application started
-    # 2025-11-04T10:00:01.000+1100 | ERROR | myapp:main:45 - Failed to connect database=prod-db retry=3
-
-Auto-Configuration (Smart Defaults)
-====================================
-
-**The logger configures itself automatically on import!**
-
-Zero configuration required - works out of the box:
-  from hyperlib.logger import logger
-  logger.info("message")  # Just works!
-
-**Smart Defaults:**
-- Output: stderr (standard for logs)
-- Level: INFO (production-appropriate)
-- Format: RFC 3339 timestamps + Solarized colors
-- Emojis: Auto-detect (yes for TTY, no for K8s/Docker)
-
-**Opt-Out:**
-  HYPERLIB_NO_LOGGER_CONFIG=1  # Skip auto-config, user configures manually
-
-Configuration (via hyperlib.config cascade)
-============================================
-
-Override defaults via 7-layer cascade:
-- ENV variables (LOG_LEVEL, LOG_FORMAT, etc.)
-- .env file
-- settings.yaml (logging: section)
-- Auto-config defaults (if not opted out)
-
-**Common ENV Variables (Standard K8s/Cloud-Native):**
-
-    LOG_LEVEL=DEBUG              # Log level (DEBUG, INFO, WARNING, ERROR, CRITICAL)
-    LOG_FORMAT=json              # Output format (json, text, console, logfmt)
-    LOG_OUTPUT=stdout            # Destination (stdout, stderr, file)
-    LOG_COLOR=false              # Disable colors (or use NO_COLOR=1)
-    LOG_TIMESTAMP_FORMAT=rfc3339 # Timestamp format (iso8601, rfc3339, unix, epoch)
-    LOG_CALLER=true              # Include source location
-    LOG_STACKTRACE_LEVEL=ERROR   # Minimum level for stack traces
-
-**Example settings.yaml:**
-
-    logging:
-      level: INFO                 # Default log level
-      format: console             # Human-readable for development
-      output: stderr              # Standard error stream
-      color: true                 # Enable colors (auto-disabled if not TTY)
-      timestamp_format: rfc3339   # RFC 3339 timestamps
-      caller: true                # Show file:line in logs
-      stacktrace_level: ERROR     # Stack traces for ERROR and above
-
-**Container Deployment:**
-
-    # Production K8s (JSON logs for aggregation)
-    LOG_FORMAT=json LOG_OUTPUT=stdout LOG_LEVEL=INFO
-
-    # Staging (human-readable)
-    LOG_FORMAT=console LOG_OUTPUT=stderr LOG_LEVEL=DEBUG
-
-Features
-========
-
-✅ **RFC 3339 Timestamps** - Standard across all environments
-✅ **Structured Logging** - Key-value pairs for searchability
-✅ **CHARS-POLICY.md Compliant** - ASCII logs, approved emojis only
-✅ **Container-Aware** - Auto-detects TTY, disables colors in K8s
-✅ **Zero Configuration** - Works out of the box
-✅ **Automatic Cascade** - ENV > .env > settings.yaml > defaults
-
-Technical Details
-=================
-
-Built on Loguru with:
-- RFC 3339 timestamp compliance
-- Solarized color palette (terminal)
-- Emoji support for log levels (✅ ❌ ⚠️ 💥)
-- Automatic emoji → text conversion for machine logs
-- Source location tracking (file:line:function)
+See docs/LOGGING.md for examples and configuration details.
 """
 
 import os
@@ -238,7 +160,7 @@ def _add_emoji_to_record(
     allow_all: bool = False,
     mask_sensitive: bool = True,
     masking_level: str = "simple",
-    masking_preset: str = "standard"
+    masking_preset: str = "standard",
 ):
     """Create a filter function that adds emojis or converts them to text.
 
@@ -254,19 +176,15 @@ def _add_emoji_to_record(
         Filter function for loguru
     """
     # Create sensitive data filter instance if needed
-    sensitive_filter = get_sensitive_filter(
-        level=masking_level,
-        preset=masking_preset
-    ) if mask_sensitive else None
+    sensitive_filter = get_sensitive_filter(level=masking_level, preset=masking_preset) if mask_sensitive else None
 
     def filter_func(record):
         """Add emoji to record or convert emojis to text based on settings."""
         # Apply sensitive data masking first (if enabled)
-        if sensitive_filter:
+        if sensitive_filter and isinstance(record["message"], str):
             # Loguru's record["message"] is the formatted message
             # We need to mask it before it gets formatted
-            if isinstance(record["message"], str):
-                record["message"] = sensitive_filter._mask_sensitive_string(record["message"])
+            record["message"] = sensitive_filter._mask_sensitive_string(record["message"])
 
         # Then handle emojis
         if use_emojis:
@@ -330,7 +248,7 @@ def setup(
     allow_all_emojis=False,
     mask_sensitive=None,
     masking_level=None,
-    masking_preset=None
+    masking_preset=None,
 ):
     """Setup standard logging with RFC 3339 compliance and CHARS-POLICY.md enforcement
 
@@ -412,7 +330,7 @@ def setup(
                 allow_all=allow_all_emojis,
                 mask_sensitive=mask_sensitive,
                 masking_level=masking_level,
-                masking_preset=masking_preset
+                masking_preset=masking_preset,
             ),
         )
 
@@ -432,7 +350,7 @@ def setup(
                 allow_all=False,
                 mask_sensitive=mask_sensitive,
                 masking_level=masking_level,
-                masking_preset=masking_preset
+                masking_preset=masking_preset,
             ),  # Convert emojis to text for machine-readable logs
         )
 

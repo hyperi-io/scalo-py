@@ -12,99 +12,41 @@ Uses chunked processing and caching to minimize overhead.
 """
 
 import json
-from typing import Any, Dict, Iterator, List, Optional, TYPE_CHECKING
+from collections.abc import Iterator
+from typing import TYPE_CHECKING, Any, Dict, List, Optional
 
-from .anonymizer import Anonymizer, AnonymizationStrategy
+from .anonymizer import AnonymizationStrategy, Anonymizer
 
 # Optional imports for data frame support
 if TYPE_CHECKING:
-    import polars as pl
     import pandas as pd
+    import polars as pl
 
 
 class StreamingAnonymizer:
     """
-    Streaming anonymizer for efficient large-data processing.
+    Efficient anonymizer for large datasets (millions of rows, GB+ files).
 
-    **Use Cases:**
-    - Large database result sets (millions of rows)
-    - Data processing frameworks (Polars, Pandas)
-    - Message queues (Kafka, RabbitMQ)
-    - Large files (GB+ size)
-    - Real-time data pipelines
+    Optimized for:
+    - ClickHouse/PostgreSQL queries (millions of rows)
+    - Polars lazy evaluation (GB+ CSV/Parquet)
+    - Kafka/RabbitMQ streams
+    - Large log files (JSONL, CSV)
 
-    **Optimizations:**
-    - Chunked processing (process data in chunks, not all at once)
-    - Result caching (same PII value always maps to same anonymized value)
-    - Lazy evaluation (only processes when iterator is consumed)
-    - Memory efficient (doesn't load entire dataset into memory)
+    Features:
+    - LRU caching (same PII → same anonymized value)
+    - Lazy evaluation (only processes when consumed)
+    - Memory efficient (doesn't load entire dataset)
 
-    **Example: ClickHouse Query (Large Result Set)**
-
-    ```python
-    from hyperlib.anonymizer import StreamingAnonymizer
-    from clickhouse_driver import Client
-
-    client = Client('localhost')
-    anonymizer = StreamingAnonymizer(preset="compliance", cache_size=10000)
-
-    # Stream millions of rows efficiently
-    query = "SELECT user_id, email, phone, ssn FROM users"
-    for row in client.execute_iter(query):
-        record = dict(zip(["user_id", "email", "phone", "ssn"], row))
-        anonymized = anonymizer.anonymize_dict(record)
-        target_db.insert(anonymized)
-    ```
-
-    **Example: Polars DataFrame (Lazy Evaluation)**
-
-    ```python
-    from hyperlib.anonymizer import StreamingAnonymizer
-    import polars as pl
-
-    anonymizer = StreamingAnonymizer(preset="standard")
-
-    # Process large DataFrame efficiently (lazy + streaming)
-    df = pl.scan_csv("large_dataset.csv")  # Lazy scan
-    anonymized_df = anonymizer.anonymize_polars(df)
-    anonymized_df.sink_csv("anonymized.csv")  # Stream to output
-    ```
-
-    **Example: Kafka/Message Queue**
-
-    ```python
-    from hyperlib.anonymizer import StreamingAnonymizer
-
-    anonymizer = StreamingAnonymizer(preset="compliance", cache_size=10000)
-
-    # Process messages
-    for message in kafka_consumer:
-        data = json.loads(message.value)
-        anonymized = anonymizer.anonymize_dict(data)
-        kafka_producer.send("anonymized-topic", anonymized)
-    ```
-
-    **Example: Large Log File**
-
-    ```python
-    from hyperlib.anonymizer import StreamingAnonymizer
-
-    anonymizer = StreamingAnonymizer(preset="standard")
-
-    # Process file line-by-line (memory efficient)
-    with open("large_log.txt") as f:
-        for line in f:
-            anonymized_line = anonymizer.anonymize(line)
-            output_file.write(anonymized_line)
-    ```
+    See docs/ANONYMIZER.md for examples.
     """
 
     def __init__(
         self,
         preset: str = "standard",
-        entities: Optional[List[str]] = None,
+        entities: list[str] | None = None,
         strategy: AnonymizationStrategy = AnonymizationStrategy.REPLACE,
-        replacements: Optional[Dict[str, str]] = None,
+        replacements: dict[str, str] | None = None,
         language: str = "en",
         cache_results: bool = True,
         cache_size: int = 10000,
@@ -133,7 +75,7 @@ class StreamingAnonymizer:
         self.cache_size = cache_size
 
         # LRU cache for anonymized values (same input → same output)
-        self._cache: Dict[str, str] = {}
+        self._cache: dict[str, str] = {}
         self._cache_hits = 0
         self._cache_misses = 0
 
@@ -168,7 +110,7 @@ class StreamingAnonymizer:
 
         return result
 
-    def anonymize_dict(self, data: Dict[str, Any]) -> Dict[str, Any]:
+    def anonymize_dict(self, data: dict[str, Any]) -> dict[str, Any]:
         """
         Anonymize dictionary (field-by-field for better caching).
 
@@ -189,10 +131,7 @@ class StreamingAnonymizer:
     def _anonymize_dict_recursive(self, data: Any) -> Any:
         """Recursively anonymize dictionary fields."""
         if isinstance(data, dict):
-            return {
-                key: self._anonymize_dict_recursive(value)
-                for key, value in data.items()
-            }
+            return {key: self._anonymize_dict_recursive(value) for key, value in data.items()}
         elif isinstance(data, list):
             return [self._anonymize_dict_recursive(item) for item in data]
         elif isinstance(data, str):
@@ -200,9 +139,7 @@ class StreamingAnonymizer:
         else:
             return data
 
-    def stream_anonymize_lines(
-        self, lines: Iterator[str]
-    ) -> Iterator[str]:
+    def stream_anonymize_lines(self, lines: Iterator[str]) -> Iterator[str]:
         """
         Stream-process lines of text.
 
@@ -220,9 +157,7 @@ class StreamingAnonymizer:
         for line in lines:
             yield self.anonymize(line)
 
-    def stream_anonymize_json_lines(
-        self, lines: Iterator[str]
-    ) -> Iterator[str]:
+    def stream_anonymize_json_lines(self, lines: Iterator[str]) -> Iterator[str]:
         """
         Stream-process JSON lines (JSONL format).
 
@@ -246,9 +181,7 @@ class StreamingAnonymizer:
                 # Pass through invalid JSON unchanged
                 yield line
 
-    def stream_anonymize_dicts(
-        self, records: Iterator[Dict[str, Any]]
-    ) -> Iterator[Dict[str, Any]]:
+    def stream_anonymize_dicts(self, records: Iterator[dict[str, Any]]) -> Iterator[dict[str, Any]]:
         """
         Stream-process dictionaries.
 
@@ -266,7 +199,7 @@ class StreamingAnonymizer:
         for record in records:
             yield self.anonymize_dict(record)
 
-    def get_cache_stats(self) -> Dict[str, int]:
+    def get_cache_stats(self) -> dict[str, int]:
         """
         Get cache performance statistics.
 
@@ -296,7 +229,9 @@ class StreamingAnonymizer:
 
     # DataFrame support methods
 
-    def anonymize_polars(self, df: "pl.LazyFrame | pl.DataFrame", columns: Optional[List[str]] = None) -> "pl.LazyFrame | pl.DataFrame":
+    def anonymize_polars(
+        self, df: "pl.LazyFrame | pl.DataFrame", columns: list[str] | None = None
+    ) -> "pl.LazyFrame | pl.DataFrame":
         """
         Anonymize Polars DataFrame efficiently.
 
@@ -337,21 +272,23 @@ class StreamingAnonymizer:
         # Determine columns to anonymize
         if columns is None:
             # Anonymize all string columns
-            columns = [col for col, dtype in zip(lf.columns, lf.dtypes) if dtype == pl.Utf8]
+            columns = []
+            for col, dtype in zip(lf.columns, lf.dtypes, strict=False):
+                if dtype == pl.Utf8:
+                    columns.append(col)
 
         # Apply anonymization to each column
         for col in columns:
             lf = lf.with_columns(
-                pl.col(col).map_elements(
-                    lambda x: self.anonymize(x) if isinstance(x, str) else x,
-                    return_dtype=pl.Utf8
-                )
+                pl.col(col).map_elements(lambda x: self.anonymize(x) if isinstance(x, str) else x, return_dtype=pl.Utf8)
             )
 
         # Return same type as input
         return lf if is_lazy else lf.collect()
 
-    def anonymize_pandas(self, df: "pd.DataFrame", columns: Optional[List[str]] = None, inplace: bool = False) -> "pd.DataFrame":
+    def anonymize_pandas(
+        self, df: "pd.DataFrame", columns: list[str] | None = None, inplace: bool = False
+    ) -> "pd.DataFrame":
         """
         Anonymize Pandas DataFrame.
 

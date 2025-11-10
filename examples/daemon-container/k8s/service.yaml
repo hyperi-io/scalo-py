@@ -1,0 +1,31 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: example-daemon-health
+  labels:
+    app: example-daemon
+spec:
+  type: ClusterIP
+  selector:
+    app: example-daemon
+  ports:
+  - name: health
+    port: 8080
+    targetPort: 8080
+    protocol: TCP
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: example-daemon-metrics
+  labels:
+    app: example-daemon
+spec:
+  type: ClusterIP
+  selector:
+    app: example-daemon
+  ports:
+  - name: metrics
+    port: 9090
+    targetPort: 9090
+    protocol: TCP
