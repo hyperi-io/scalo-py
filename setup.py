@@ -20,12 +20,17 @@ with open(pyproject_path, 'rb') as f:
 
 project = pyproject['project']
 
+# Read README.md if it exists, otherwise use description
+readme_path = Path('README.md')
+long_description = readme_path.read_text() if readme_path.exists() else project['description']
+long_description_content_type = 'text/markdown' if readme_path.exists() else 'text/plain'
+
 setup(
     name=project['name'],
     version=project['version'],
     description=project['description'],
-    long_description=Path('README.md').read_text(),
-    long_description_content_type='text/markdown',
+    long_description=long_description,
+    long_description_content_type=long_description_content_type,
     author='HyperSec Team',
     author_email='dev@hypersec.io',
     url='https://github.com/hypersec-io/hyperlib',
