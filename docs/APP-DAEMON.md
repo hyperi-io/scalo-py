@@ -67,7 +67,31 @@ def cleanup():
 Enabled automatically in docker/prod profiles:
 
 - **GET /health**: Liveness probe (always returns 200 if running)
-- **GET /ready**: Readiness probe (503 during shutdown)
+- **GET /ready**: Readiness probe (checks dependencies, 503 if any fail)
+
+### Custom Dependency Checks
+
+Register custom health checks for databases, caches, external services:
+
+```python
+@app.health_check
+def check_database():
+    try:
+        db.ping()
+        return True
+    except Exception:
+        return False
+
+@app.health_check
+def check_redis():
+    try:
+        redis.ping()
+        return True
+    except Exception:
+        return False
+```
+
+The `/ready` endpoint will return 503 if any check returns `False` or raises an exception.
 
 Configure port:
 ```python
