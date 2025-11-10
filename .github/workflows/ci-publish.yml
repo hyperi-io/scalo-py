@@ -105,7 +105,7 @@ jobs:
 
         # Installs: pytest, ruff, build, twine, Nuitka (if nuitka.enabled)
 
-        ci/bootstrap install
+        ci/bootstrap install --language python
 
         '
     - name: Build and Publish
