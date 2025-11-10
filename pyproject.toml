@@ -222,14 +222,14 @@ ignore = [
     "F821",
     "E501",
     "B008",
-    "B017",  # pytest.raises(Exception) is acceptable for generic error testing
-    "B007",  # Loop variables not used in body (common in test cases)
-    "B028",  # warnings.warn stacklevel (not always needed)
+    "B017",
+    "B007",
+    "B028",
     "C901",
-    "E741",  # Ambiguous variable names (l, I, O) - acceptable in comprehensions
-    "F601",  # Duplicate dict keys (handled by type checker)
-    "UP035",  # typing.Dict -> dict (can be enabled when ready to modernize all type hints)
-    "SIM108",  # Ternary operator suggestions (readability preference)
+    "E741",
+    "F601",
+    "UP035",
+    "SIM108",
     "W191",
 ]
 fixable = [

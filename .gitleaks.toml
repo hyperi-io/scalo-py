@@ -1,0 +1,51 @@
+# Gitleaks Configuration - HyperCI Default
+# https://github.com/gitleaks/gitleaks
+#
+# This is the default config provided by HyperCI.
+# To customize, copy to project root: cp ci/modules/common/templates/.gitleaks.toml .gitleaks.toml
+
+title = "HyperCI Gitleaks Config"
+
+[extend]
+# Use default gitleaks rules (AWS keys, Stripe, GitHub tokens, etc.)
+useDefault = true
+
+# Custom rules for HyperSec-specific secrets
+[[rules]]
+id = "hypersec-api-key"
+description = "HyperSec API Key"
+regex = '''hs_[0-9a-zA-Z]{40}'''
+tags = ["key", "API", "hypersec"]
+
+[[rules]]
+id = "jfrog-api-key"
+description = "JFrog API Key or Token"
+regex = '''(jfrog|artifactory).{0,20}[=:]\s*['""]?[A-Za-z0-9+/=]{40,}['""]?'''
+tags = ["key", "API", "jfrog"]
+
+# Allowlist - Ignore false positives
+[allowlist]
+description = "Allowlisted files and patterns"
+
+# Ignore test files with dummy/example secrets
+paths = [
+    '''tests/fixtures/.*''',
+    '''tests/unit/test_.*\.py''',
+    '''tests/integration/test_.*\.py''',
+    '''tests/e2e/test_.*\.py''',
+    '''.tmp/.*''',
+    '''ci-local/.*''',
+]
+
+# Ignore example/placeholder secrets
+regexes = [
+    '''sk_test_[0-9a-zA-Z]+''',           # Stripe test keys
+    '''pk_test_[0-9a-zA-Z]+''',           # Stripe test keys
+    '''example\.com''',                    # Example domains
+    '''<API_KEY>''',                       # Placeholder
+    '''<SECRET>''',                        # Placeholder
+    '''your[_-]api[_-]key[_-]here''',     # Placeholder
+    '''replace[_-]with[_-]your''',        # Placeholder
+    '''AKIA00000000EXAMPLE''',            # AWS example key
+    '''wJalrXUtnFEMI/K7MDENG/bPxRfiCYEXAMPLEKEY''',  # AWS example secret
+]
