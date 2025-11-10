@@ -11,7 +11,6 @@ from typing import Any
 import typer
 
 
-
 class CLIExecutableMixin:
     """
     Mixin to add Typer CLI capabilities to applications.
