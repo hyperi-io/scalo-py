@@ -46,6 +46,7 @@ This document provides critical guidance for AI code assistants working with Hyp
     - Traditional "1 day" estimates typically complete in <1 hour with AI assistance
     - Account for 10x productivity gain from AI code assistants
     - Linear estimates: No estimate, 0, 1, 2, 4, 8, 16, 32, 64 points
+    - **Exception:** Decimals allowed for sub-hour tasks (e.g., 0.25 = 15min, 0.5 = 30min)
 
 **Workflow:**
 1. Work on task → Update TODO.md status
