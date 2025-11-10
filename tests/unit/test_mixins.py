@@ -493,7 +493,9 @@ class TestHealthCheckMixin:
 
         # Trigger shutdown (should call _stop_health_server via on_shutdown)
         app._shutdown_requested = True
-        app._handle_shutdown()
+        # Execute shutdown handlers
+        for handler in app._shutdown_handlers:
+            handler()
 
         # Give it a moment to shut down
         time.sleep(0.2)

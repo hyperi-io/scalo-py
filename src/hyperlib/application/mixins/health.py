@@ -121,14 +121,14 @@ class HealthCheckMixin:
         self._health_server: HTTPServer | None = None
         self._health_server_thread: threading.Thread | None = None
 
-        # Setup health check endpoints if enabled in profile
+        # Call next mixin in MRO chain FIRST (so ProfileMixin is initialized)
+        super().__init__(**kwargs)
+
+        # Setup health check endpoints if enabled in profile (AFTER ProfileMixin)
         if self._should_setup_health_checks():
             self._setup_health_checks()
 
-        # Call next mixin in MRO chain (must happen AFTER setup)
-        super().__init__(**kwargs)
-
-        # Register shutdown handler AFTER super().__init__ so on_shutdown exists
+        # Register shutdown handler AFTER setup
         if self._health_server:
             if hasattr(self, "on_shutdown"):
                 self.on_shutdown(self._stop_health_server)
