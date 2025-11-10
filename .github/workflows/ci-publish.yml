@@ -1,9 +1,9 @@
 name: CI Publish
-true:
+on:
   push:
     tags:
     - v*
-  workflow_dispatch: null
+  workflow_dispatch:
 jobs:
   config:
     name: Read Configuration
@@ -105,7 +105,7 @@ jobs:
 
         # Installs: pytest, ruff, build, twine, Nuitka (if nuitka.enabled)
 
-        ci/bootstrap --install
+        ci/bootstrap install
 
         '
     - name: Build and Publish
@@ -124,8 +124,9 @@ jobs:
 
         '
     - name: Verify Published
-      run: "echo \"\u2705 Published ${{ matrix.build_type }} package (${{ matrix.arch\
-        \ }})\"\nls -lh dist/ || echo \"dist/ cleaned after publish\"\n"
+      run: |
+        echo "✅ Published ${{ matrix.build_type }} package (${{ matrix.arch }})"
+        ls -lh dist/ || echo "dist/ cleaned after publish"
     - name: Create GitHub Release
       if: matrix.build_type == 'standard'
       uses: softprops/action-gh-release@v2
