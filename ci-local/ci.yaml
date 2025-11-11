@@ -35,7 +35,7 @@ publish:
 package: null
 ai:
   merge_mode: skip
-  _tier: pro-max
+  context_tokens: 1m
   check_requirements: true
 python:
   source_root: src/hyperlib
