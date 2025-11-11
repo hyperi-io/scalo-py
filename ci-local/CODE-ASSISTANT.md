@@ -1014,6 +1014,33 @@ command 2>&1
 
 ---
 
+## Tool Preferences
+
+When performing file operations, prefer these modern utilities if available:
+
+- **fd** over find: `fd -e py` instead of `find . -name "*.py"`
+- **rg** over grep: `rg "pattern"` instead of `grep -r "pattern"`
+- **jq** for JSON: Always use jq for JSON parsing
+- **yq** for YAML: Always use yq for YAML parsing
+- **parallel** for batch operations: Use GNU parallel for running multiple commands
+- **bat** over cat: `bat file.py` for syntax-highlighted output
+
+Check for tool availability with `command -v <tool>` before using.
+
+Example patterns to prefer:
+
+```bash
+# Prefer this:
+fd -e py . | rg "import logger" --files-with-matches
+
+# Over this:
+for f in $(find . -name "*.py"); do
+  grep -l "import logger" "$f"
+done
+```
+
+---
+
 <!-- HYPERCI_CI_GUIDANCE_END -->
 
 **End of CI-specific guidance. Resume normal project work focus.**
