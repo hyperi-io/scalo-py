@@ -1094,6 +1094,19 @@ class TestHelmDeployment(ContainerTestBase):
             releases = json.loads(result.stdout)
             assert any(r["name"] == release_name for r in releases)
 
+            # Wait for pod to be created before querying
+            def pod_exists():
+                result = self.run_command(
+                    ["kubectl", "get", "pods", "-n", namespace, "-l", f"app={release_name}", "-o", "json"],
+                    check=False,
+                )
+                if result.returncode != 0:
+                    return False
+                pods = json.loads(result.stdout)
+                return len(pods.get("items", [])) > 0
+
+            assert self.wait_for_condition(pod_exists, timeout=60), f"Pod for release {release_name} never created"
+
             # Check that HELM environment variables are set
             result = self.run_command(
                 [
