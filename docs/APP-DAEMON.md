@@ -24,7 +24,7 @@ Container CMD: `python -m my_worker start --profile prod`
 
 - **Scheduled tasks**: Run functions at intervals
 - **Graceful shutdown**: Handles SIGTERM/SIGINT correctly (fixes orphaning bug)
-- **Health HTTP server**: `/health` and `/ready` endpoints for k8s probes
+- **Health HTTP server**: `/health/live` and `/health/ready` endpoints for k8s probes (port 8080)
 - **Automatic metrics**: Task execution counters, duration histograms
 - **Typer CLI**: Commands for start, status, stop, version, config
 
@@ -64,10 +64,10 @@ def cleanup():
 
 ## Health Checks
 
-Enabled automatically in docker/prod profiles:
+Enabled automatically in docker/prod profiles (port 8080):
 
-- **GET /health**: Liveness probe (always returns 200 if running)
-- **GET /ready**: Readiness probe (checks dependencies, 503 if any fail)
+- **GET /health/live**: Liveness probe (always returns 200 if running)
+- **GET /health/ready**: Readiness probe (checks dependencies, 503 if any fail)
 
 ### Custom Dependency Checks
 
@@ -91,7 +91,7 @@ def check_redis():
         return False
 ```
 
-The `/ready` endpoint will return 503 if any check returns `False` or raises an exception.
+The `/health/ready` endpoint will return 503 if any check returns `False` or raises an exception.
 
 Configure port:
 ```python
@@ -153,14 +153,26 @@ CMD ["python", "-m", "my_worker", "start", "--profile", "prod"]
 
 Kubernetes manifest:
 ```yaml
-livenessProbe:
-  httpGet:
-    path: /health
-    port: 8080
-readinessProbe:
-  httpGet:
-    path: /ready
-    port: 8080
+spec:
+  containers:
+  - name: worker
+    ports:
+    - containerPort: 8080
+      name: health
+    - containerPort: 9090
+      name: metrics
+    livenessProbe:
+      httpGet:
+        path: /health/live
+        port: 8080
+      initialDelaySeconds: 10
+      periodSeconds: 10
+    readinessProbe:
+      httpGet:
+        path: /health/ready
+        port: 8080
+      initialDelaySeconds: 5
+      periodSeconds: 5
 ```
 
 ## Thread Safety

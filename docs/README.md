@@ -53,7 +53,7 @@ from hyperlib import Application
 app = Application.daemon(name="worker", profile="prod")
 
 @app.task(interval=60)
-def process_queue():
+async def process_queue():
     # Runs every 60 seconds
     pass
 
@@ -241,10 +241,10 @@ async def get_user(user_id: int):
 app = Application.daemon(name="email-worker", profile="prod")
 
 @app.task(interval=60)
-def send_pending_emails():
-    emails = get_pending_emails()
+async def send_pending_emails():
+    emails = await get_pending_emails()
     for email in emails:
-        send_email(email)
+        await send_email(email)
 ```
 
 ### Data Pipelines
