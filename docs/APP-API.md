@@ -27,7 +27,7 @@ Container CMD: `python -m my_api serve --profile prod`
 
 - **FastAPI integration**: Full FastAPI features
 - **Auto-metrics**: Request/response tracking (Prometheus/OTEL)
-- **Health endpoints**: `/health/live` and `/health/ready` for k8s probes (port 8080)
+- **Health endpoints**: `/health` and `/ready` for k8s probes
 - **Graceful shutdown**: Handles SIGTERM correctly
 - **Typer CLI**: Commands for serve, health-check, version, config
 - **CORS support**: Optional middleware
@@ -125,10 +125,10 @@ process_resident_memory_bytes
 
 ## Health Endpoints
 
-Auto-configured in docker/prod profiles (port 8080):
+Auto-configured in docker/prod profiles:
 
-- **GET /health/live**: Liveness probe (always 200 if running)
-- **GET /health/ready**: Readiness probe (checks dependencies, 503 if any fail)
+- **GET /health**: Liveness probe (always 200 if running)
+- **GET /ready**: Readiness probe (checks dependencies, 503 if any fail)
 
 ### Custom Dependency Checks
 
@@ -152,7 +152,7 @@ def check_redis():
         return False
 ```
 
-The `/health/ready` endpoint will return 503 if any check returns `False` or raises an exception.
+The `/ready` endpoint will return 503 if any check returns `False` or raises an exception.
 
 ## Production Example
 
@@ -215,23 +215,14 @@ spec:
   - name: api
     ports:
     - containerPort: 8000
-      name: http
-    - containerPort: 8080
-      name: health
-    - containerPort: 9090
-      name: metrics
     livenessProbe:
       httpGet:
-        path: /health/live
-        port: 8080
-      initialDelaySeconds: 10
-      periodSeconds: 10
+        path: /health
+        port: 8000
     readinessProbe:
       httpGet:
-        path: /health/ready
-        port: 8080
-      initialDelaySeconds: 5
-      periodSeconds: 5
+        path: /ready
+        port: 8000
 ```
 
 ## Configuration

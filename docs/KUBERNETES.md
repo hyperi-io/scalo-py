@@ -64,7 +64,7 @@ spec:
           value: "prod"
         livenessProbe:
           httpGet:
-            path: /health/live
+            path: /health
             port: 8080
           initialDelaySeconds: 30
           periodSeconds: 10
@@ -72,7 +72,7 @@ spec:
           failureThreshold: 3
         readinessProbe:
           httpGet:
-            path: /health/ready
+            path: /ready
             port: 8080
           initialDelaySeconds: 5
           periodSeconds: 5
@@ -80,7 +80,7 @@ spec:
           failureThreshold: 2
         startupProbe:
           httpGet:
-            path: /health/live
+            path: /health
             port: 8080
           initialDelaySeconds: 0
           periodSeconds: 5
@@ -114,7 +114,7 @@ Checks if the application is running:
 ```yaml
 livenessProbe:
   httpGet:
-    path: /health/live
+    path: /health
     port: 8080
   initialDelaySeconds: 30   # Wait 30s after container start
   periodSeconds: 10         # Check every 10s
@@ -129,7 +129,7 @@ Checks if the application can serve traffic:
 ```yaml
 readinessProbe:
   httpGet:
-    path: /health/ready
+    path: /ready
     port: 8080
   initialDelaySeconds: 5    # Start checking after 5s
   periodSeconds: 5          # Check every 5s
@@ -137,7 +137,7 @@ readinessProbe:
   failureThreshold: 2       # Remove from load balancer after 2 failures
 ```
 
-**Note**: `/health/ready` returns 503 if any custom health check fails:
+**Note**: `/ready` returns 503 if any custom health check fails:
 
 ```python
 @app.health_check
@@ -152,7 +152,7 @@ Protects slow-starting containers:
 ```yaml
 startupProbe:
   httpGet:
-    path: /health/live
+    path: /health
     port: 8080
   initialDelaySeconds: 0
   periodSeconds: 5
@@ -490,12 +490,12 @@ spec:
         {{- if .Values.healthCheck.enabled }}
         livenessProbe:
           httpGet:
-            path: /health/live
+            path: /health
             port: health
           {{- toYaml .Values.healthCheck.livenessProbe | nindent 10 }}
         readinessProbe:
           httpGet:
-            path: /health/ready
+            path: /ready
             port: health
           {{- toYaml .Values.healthCheck.readinessProbe | nindent 10 }}
         {{- end }}
@@ -707,7 +707,7 @@ kubectl logs -f deployment/my-app
 kubectl describe pod my-app-xxx
 
 # Test health endpoint
-kubectl exec -it my-app-xxx -- curl http://localhost:8080/health/ready
+kubectl exec -it my-app-xxx -- curl http://localhost:8080/ready
 ```
 
 ### Health Checks Failing
