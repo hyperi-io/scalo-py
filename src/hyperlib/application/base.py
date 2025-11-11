@@ -91,7 +91,7 @@ class Application:
         Example:
             app = Application.daemon(name="my-worker")
 
-            @app.scheduled(interval=60)
+            @app.task(interval=60)
             async def process_queue():
                 # Background task every 60 seconds
                 pass

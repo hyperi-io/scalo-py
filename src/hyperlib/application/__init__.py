@@ -5,10 +5,10 @@ Factory-based application builder for all deployment types
 Provides:
 - Application.api() - REST API services (FastAPI)
 - Application.daemon() - Long-running background services
-- Application.cli() - Command-line applications (Click)
+- Application.cli() - Command-line applications (Typer)
 - Application.oneshot() - Single-execution tasks
 
-Pattern: Composition over inheritance (like Flask, FastAPI, Click)
+Pattern: Composition over inheritance (like Flask, FastAPI, Typer)
 """
 
 from .api import APIApplication
