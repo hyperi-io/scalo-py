@@ -56,7 +56,7 @@ EXPOSE 8000 8080 9090
 
 # Health check
 HEALTHCHECK --interval=30s --timeout=3s --start-period=40s \
-    CMD curl -f http://localhost:8080/health || exit 1
+    CMD curl -f http://localhost:8080/health/live || exit 1
 
 # Run application
 CMD ["python", "-m", "my_app", "serve", "--profile", "prod"]
@@ -72,7 +72,7 @@ docker build -t my-app:1.0.0 .
 docker run -p 8000:8000 -p 8080:8080 -p 9090:9090 my-app:1.0.0
 
 # Test health endpoint
-curl http://localhost:8080/health
+curl http://localhost:8080/health/live
 # {"status":"healthy","service":"my-app"}
 
 # Test metrics
@@ -123,7 +123,7 @@ EXPOSE 8000 8080 9090
 
 # Health check
 HEALTHCHECK --interval=30s --timeout=3s --start-period=40s \
-    CMD curl -f http://localhost:8080/health || exit 1
+    CMD curl -f http://localhost:8080/health/live || exit 1
 
 # Run
 ENV PATH="/app/.venv/bin:$PATH"
@@ -171,7 +171,7 @@ HEALTHCHECK --interval=30s \
             --timeout=3s \
             --start-period=40s \
             --retries=3 \
-    CMD curl -f http://localhost:8080/health || exit 1
+    CMD curl -f http://localhost:8080/health/live || exit 1
 ```
 
 ### Custom Dependency Checks
@@ -197,8 +197,8 @@ def check_redis():
 ```
 
 Health check endpoints:
-- `/health` - Liveness (always 200 if running)
-- `/ready` - Readiness (503 if dependencies fail)
+- `/health/live` - Liveness (always 200 if running)
+- `/health/ready` - Readiness (503 if dependencies fail)
 
 ## Environment Variables
 
@@ -306,7 +306,7 @@ services:
     depends_on:
       - db
     healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:8080/health"]
+      test: ["CMD", "curl", "-f", "http://localhost:8080/health/live"]
       interval: 30s
       timeout: 3s
       retries: 3
@@ -429,7 +429,7 @@ COPY --from=builder /build/.venv /app/.venv
 Always include health checks for orchestration:
 
 ```dockerfile
-HEALTHCHECK CMD curl -f http://localhost:8080/health || exit 1
+HEALTHCHECK CMD curl -f http://localhost:8080/health/live || exit 1
 ```
 
 ### 5. Graceful Shutdown
@@ -470,10 +470,10 @@ docker logs my-app
 
 ```bash
 # Inside container
-curl http://localhost:8080/health
+curl http://localhost:8080/health/live
 
 # From host
-docker exec -it my-app curl http://localhost:8080/health
+docker exec -it my-app curl http://localhost:8080/health/live
 ```
 
 ### Metrics Not Available

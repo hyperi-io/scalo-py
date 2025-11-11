@@ -79,10 +79,10 @@ app = Application.api(name="api", profile="prod")
 **Features:**
 - JSON structured logging for log aggregation
 - INFO level logs
-- Health check endpoints for k8s probes
-  - `/health` - Liveness probe
-  - `/ready` - Readiness probe (with dependency checks)
-- Metrics for Prometheus scraping
+- Health check endpoints for k8s probes (port 8080)
+  - `/health/live` - Liveness probe
+  - `/health/ready` - Readiness probe (with dependency checks)
+- Metrics for Prometheus scraping (port 9090)
 - Graceful shutdown (waits for in-flight requests)
 - Kubernetes-specific timing:
   - `readiness_initial_delay`: 5s
@@ -262,7 +262,7 @@ app = Application.api(name="my-api", profile="staging")
 
 ### Health checks not working
 
-**Problem**: `/health` returns 404
+**Problem**: `/health/live` returns 404
 
 **Solution**: Check profile enables health checks:
 ```python
