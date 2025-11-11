@@ -85,46 +85,127 @@ All applications support 3 profiles:
 - **prod** - Kubernetes (optimized, health checks, metrics, JSON logs)
 
 Configure via:
+
 - CLI flag: `--profile prod`
 - ENV var: `HYPERLIB_PROFILE=prod`
 - Code: `Application.api(profile="prod")`
 
 ## Container Deployment
 
-All applications are container-ready:
+All applications are container-ready with built-in health checks and metrics.
+
+**Complete guides:**
+
+- **[Docker Deployment](CONTAINER_DEPLOYMENT.md)** - Docker Compose and standalone deployments
+- **[Kubernetes](KUBERNETES.md)** - Production k8s with HELM + ArgoCD + KEDA
+- **[Profiles](PROFILES.md)** - Environment configuration (dev/docker/prod)
+
+### Quick Examples
+
+**Multi-stage Dockerfile:**
 
 ```dockerfile
-FROM python:3.11-slim
+# Build stage
+FROM python:3.12-slim AS builder
+WORKDIR /build
+COPY pyproject.toml uv.lock ./
+RUN pip install uv && uv sync --frozen --no-dev
+COPY src/ ./src/
+
+# Runtime stage
+FROM python:3.12-slim
 WORKDIR /app
-COPY . .
-RUN pip install -r requirements.txt
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    curl netcat-openbsd iputils-ping && \
+    rm -rf /var/lib/apt/lists/*
+COPY --from=builder /build/.venv /app/.venv
+COPY --from=builder /build/src /app/src
+ENV PATH="/app/.venv/bin:$PATH"
+USER nobody
 CMD ["python", "-m", "myapp", "serve", "--profile", "prod"]
 ```
 
+**Kubernetes Deployment:**
+
 ```yaml
-# kubernetes deployment
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: myapp
 spec:
-  containers:
-  - name: myapp
-    image: myapp:1.0.0
-    command: ["python", "-m", "myapp", "serve", "--profile", "prod"]
-    ports:
-    - containerPort: 8000
-    livenessProbe:
-      httpGet:
-        path: /health
-        port: 8000
-    readinessProbe:
-      httpGet:
-        path: /ready
-        port: 8000
+  replicas: 3
+  selector:
+    matchLabels:
+      app: myapp
+  template:
+    metadata:
+      labels:
+        app: myapp
+    spec:
+      containers:
+      - name: myapp
+        image: myapp:1.0.0
+        ports:
+        - containerPort: 8000
+          name: http
+        - containerPort: 8080
+          name: health
+        - containerPort: 9090
+          name: metrics
+        env:
+        - name: HYPERLIB_PROFILE
+          value: "prod"
+        livenessProbe:
+          httpGet:
+            path: /health/live
+            port: 8080
+          initialDelaySeconds: 10
+          periodSeconds: 10
+        readinessProbe:
+          httpGet:
+            path: /health/ready
+            port: 8080
+          initialDelaySeconds: 5
+          periodSeconds: 5
+        resources:
+          requests:
+            cpu: 100m
+            memory: 128Mi
+          limits:
+            cpu: 1000m
+            memory: 512Mi
 ```
+
+**KEDA Autoscaling:**
+
+```yaml
+apiVersion: keda.sh/v1alpha1
+kind: ScaledObject
+metadata:
+  name: myapp-scaler
+spec:
+  scaleTargetRef:
+    name: myapp
+  minReplicaCount: 2
+  maxReplicaCount: 10
+  triggers:
+  - type: prometheus
+    metadata:
+      serverAddress: http://prometheus:9090
+      query: rate(http_requests_total{app="myapp"}[1m])
+      threshold: "100"
+```
+
+**Working Examples:**
+
+- [examples/api-container/](../examples/api-container/) - Complete FastAPI REST API with k8s deployment
+- [examples/daemon-container/](../examples/daemon-container/) - Background worker with KEDA scaling
 
 ## Architecture
 
 ### Application Inheritance
 
-```
+```text
 APIApplication(CLIExecutableMixin, SignalHandlerMixin, ProfileMixin, HealthCheckMixin, MetricsMixin)
 DaemonApplication(CLIExecutableMixin, SignalHandlerMixin, ProfileMixin, MetricsMixin)
 MCPApplication(CLIExecutableMixin, SignalHandlerMixin, ProfileMixin, MetricsMixin)
@@ -286,8 +367,8 @@ def sync(source: str):
 
 ## Repository
 
-- **GitHub**: https://github.com/hypersec-io/hyperlib
-- **Issues**: https://github.com/hypersec-io/hyperlib/issues
+- **GitHub**: <https://github.com/hypersec-io/hyperlib>
+- **Issues**: <https://github.com/hypersec-io/hyperlib/issues>
 
 ## License
 
