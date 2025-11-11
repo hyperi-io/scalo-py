@@ -6,6 +6,9 @@
 
 title = "HyperCI Gitleaks Config"
 
+# Minimum version requirement (ensures consistent behavior)
+minVersion = "v8.25.0"
+
 [extend]
 # Use default gitleaks rules (AWS keys, Stripe, GitHub tokens, etc.)
 useDefault = true
@@ -35,17 +38,45 @@ paths = [
     '''tests/e2e/test_.*\.py''',
     '''.tmp/.*''',
     '''ci-local/.*''',
+    # Binary files
+    '''\.(png|jpg|jpeg|gif|ico|svg|woff|woff2|ttf|eot|otf)$''',
+    # Dependency lock files
+    '''(package-lock\.json|yarn\.lock|pnpm-lock\.yaml|uv\.lock|poetry\.lock|Pipfile\.lock|Gemfile\.lock|composer\.lock|go\.sum)$''',
+    # Vendor/dependency directories
+    '''(node_modules|vendor|venv|\.venv)/.*''',
 ]
 
 # Ignore example/placeholder secrets
 regexes = [
+    # Test keys (legitimate test credentials)
     '''sk_test_[0-9a-zA-Z]+''',           # Stripe test keys
     '''pk_test_[0-9a-zA-Z]+''',           # Stripe test keys
-    '''example\.com''',                    # Example domains
-    '''<API_KEY>''',                       # Placeholder
-    '''<SECRET>''',                        # Placeholder
-    '''your[_-]api[_-]key[_-]here''',     # Placeholder
-    '''replace[_-]with[_-]your''',        # Placeholder
+
+    # Example domains
+    '''example\.com''',
+    '''localhost''',
+    '''127\.0\.0\.1''',
+
+    # Template syntax
+    '''\{\{[^}]+\}\}''',                   # {{variable}}
+    '''\$\{[^}]+\}''',                     # ${ENV_VAR}
+    '''\$[A-Z_]+''',                       # $ENV_VAR
+
+    # Placeholder patterns
+    '''<API_KEY>''',                       # <API_KEY>
+    '''<SECRET>''',                        # <SECRET>
+    '''<TOKEN>''',                         # <TOKEN>
+    '''your[_-]api[_-]key[_-]here''',     # your-api-key-here
+    '''replace[_-]with[_-]your''',        # replace-with-your
+    '''INSERT[_-].*[_-]HERE''',           # INSERT_TOKEN_HERE
+
+    # AWS documentation examples
     '''AKIA00000000EXAMPLE''',            # AWS example key
     '''wJalrXUtnFEMI/K7MDENG/bPxRfiCYEXAMPLEKEY''',  # AWS example secret
+
+    # Obvious test/dummy patterns
+    '''(aaaa+|bbbb+|xxxx+|0000+|1111+)''', # aaaaa, xxxxx, etc.
+    '''test[_-]?(key|token|secret|password)''',  # test_key, testpassword
+    '''dummy[_-]?(key|token|secret|password)''', # dummy_key
+    '''fake[_-]?(key|token|secret|password)''',  # fake_key
 ]
