@@ -13,14 +13,23 @@ Hyperlib is a production-ready Python library providing container-native applica
 
 ## Features
 
-- **Application Framework**: API (FastAPI), Daemon, CLI (Typer), MCP, and Oneshot application types
-- **Profile-Based Configuration**: `dev`, `docker`, and `prod` profiles with automatic environment detection
-- **Health Checks**: Kubernetes-ready liveness/readiness probes with custom dependency checks
-- **Metrics**: Prometheus and OpenTelemetry backends with automatic collection
+### Core Infrastructure (Production-Ready ✅)
+
 - **Logging**: Structured JSON logging with sensitive data masking
 - **PII Anonymization**: ML-based anonymization with Presidio integration
 - **Database Utilities**: ClickHouse, PostgreSQL, MySQL, Redis connection helpers
+- **Configuration**: Multi-layer cascade with environment variable support
+- **Runtime**: Application metadata and environment detection
+
+### Application Framework (Work in Progress ⚠️)
+
+- **Application Types**: API (FastAPI), Daemon, CLI (Typer), MCP, and Oneshot
+- **Profile-Based Configuration**: `dev`, `docker`, and `prod` profiles with automatic environment detection
+- **Health Checks**: Kubernetes-ready liveness/readiness probes with custom dependency checks
+- **Metrics**: Prometheus and OpenTelemetry backends with automatic collection
 - **HELM Charts**: Production-ready Kubernetes deployments with KEDA autoscaling
+
+**Note**: While the base hyperlib modules (logging, config, runtime, database, metrics) are stable and production-ready, the Application framework is still under active development. Use with caution in production environments.
 
 ## Installation
 
