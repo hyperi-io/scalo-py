@@ -33,7 +33,7 @@ setup(
     long_description_content_type=long_description_content_type,
     author='HyperSec Team',
     author_email='dev@hypersec.io',
-    url='https://github.com/hypersec-io/hyperlib',
+    url='https://github.com/hypersec-io/hs-lib',
     packages=['hs_lib'],
     package_dir={'': 'src'},
     python_requires=project['requires-python'],
