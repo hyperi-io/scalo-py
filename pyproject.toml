@@ -340,14 +340,9 @@ patch_tags = [
     "perf",
 ]
 
-[[tool.uv.index]]
-name = "jfrog"
-# Virtual repository includes both hypersec-pypi-local (private) and pypi-remote (public PyPI cache)
-url = "https://hypersec.jfrog.io/artifactory/api/pypi/hypersec-pypi/simple"
-default = true
-
-[tool.uv.sources.nuitka]
-index = "jfrog"
+# NOTE: uv index configuration removed - using PIP_INDEX_URL env vars instead
+# Bootstrap sets PIP_INDEX_URL (for pip) and UV_INDEX_URL (for uv) from .pip/pip.conf
+# This approach works for both pip and uv without complex credential injection
 
 [tool.mypy]
 python_version = "3.11"
