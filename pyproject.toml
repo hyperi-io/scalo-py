@@ -110,6 +110,7 @@ dev = [
     "interrogate",
     "vulture",
     "tiktoken",
+    "pyright",
 ]
 docs = [
     "sphinx>=7.0.0,<8.0.0",
@@ -341,8 +342,16 @@ patch_tags = [
 
 [[tool.uv.index]]
 name = "jfrog"
-url = "https://hypersec.jfrog.io/artifactory/api/pypi/hypersec-pypi-local/simple"
+# Virtual repository includes both hypersec-pypi-local (private) and pypi-remote (public PyPI cache)
+url = "https://hypersec.jfrog.io/artifactory/api/pypi/hypersec-pypi/simple"
 explicit = true
 
 [tool.uv.sources.nuitka]
 index = "jfrog"
+
+[tool.mypy]
+python_version = "3.11"
+warn_return_any = false
+warn_unused_configs = true
+disallow_untyped_defs = false
+ignore_missing_imports = true
