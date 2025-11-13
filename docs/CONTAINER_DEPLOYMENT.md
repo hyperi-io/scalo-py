@@ -8,7 +8,7 @@ Production-ready container deployment for Hyperlib applications.
 
 ```python
 # src/my_app/__init__.py
-from hyperlib import Application
+from hs_lib import Application
 
 app = Application.api(
     name="my-app",

@@ -9,7 +9,7 @@ Background worker with container-native patterns:
 """
 
 import time
-from hyperlib import Application, logger
+from hs_lib import Application, logger
 
 # Create application with prod profile (container-native patterns)
 app = Application.daemon(

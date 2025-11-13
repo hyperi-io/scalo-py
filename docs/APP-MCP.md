@@ -5,7 +5,7 @@ Model Context Protocol servers for AI tool integration.
 ## Quick Start
 
 ```python
-from hyperlib import Application
+from hs_lib import Application
 
 app = Application.mcp(name="my-tools", version="1.0.0")
 
@@ -108,7 +108,7 @@ async def fetch_api_data(endpoint: str) -> dict:
 ## Production Example
 
 ```python
-from hyperlib import Application, logger
+from hs_lib import Application, logger
 import sqlite3
 
 app = Application.mcp(

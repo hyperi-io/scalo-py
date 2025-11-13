@@ -1,4 +1,4 @@
-"""Unit tests for hyperlib.runtime module."""
+"""Unit tests for hs_lib.runtime module."""
 
 import os
 import platform
@@ -7,7 +7,7 @@ from unittest import mock
 
 import pytest
 
-from hyperlib.runtime import RuntimeEnvironment, RuntimePaths, get_runtime_paths
+from hs_lib.runtime import RuntimeEnvironment, RuntimePaths, get_runtime_paths
 
 
 class TestRuntimeEnvironment:
@@ -409,8 +409,8 @@ class TestConvenienceFunction:
     def test_get_runtime_paths_local(self, tmp_path):
         """Test convenience function in local mode."""
         with (
-            mock.patch("hyperlib.runtime.RuntimeEnvironment.detect_runtime") as mock_detect,
-            mock.patch("hyperlib.runtime.RuntimeEnvironment.ensure_directories"),
+            mock.patch("hs_lib.runtime.RuntimeEnvironment.detect_runtime") as mock_detect,
+            mock.patch("hs_lib.runtime.RuntimeEnvironment.ensure_directories"),
         ):
             mock_paths = RuntimePaths(
                 config_dir=tmp_path / "config",
@@ -431,8 +431,8 @@ class TestConvenienceFunction:
     def test_get_runtime_paths_container(self):
         """Test convenience function in container mode."""
         with (
-            mock.patch("hyperlib.runtime.RuntimeEnvironment.detect_runtime") as mock_detect,
-            mock.patch("hyperlib.runtime.RuntimeEnvironment.ensure_directories"),
+            mock.patch("hs_lib.runtime.RuntimeEnvironment.detect_runtime") as mock_detect,
+            mock.patch("hs_lib.runtime.RuntimeEnvironment.ensure_directories"),
         ):
             mock_paths = RuntimePaths(
                 config_dir=Path("/app/config"),
@@ -452,8 +452,8 @@ class TestConvenienceFunction:
     def test_get_runtime_paths_no_ensure(self):
         """Test convenience function without directory creation."""
         with (
-            mock.patch("hyperlib.runtime.RuntimeEnvironment.detect_runtime") as mock_detect,
-            mock.patch("hyperlib.runtime.RuntimeEnvironment.ensure_directories") as mock_ensure,
+            mock.patch("hs_lib.runtime.RuntimeEnvironment.detect_runtime") as mock_detect,
+            mock.patch("hs_lib.runtime.RuntimeEnvironment.ensure_directories") as mock_ensure,
         ):
             mock_paths = RuntimePaths(
                 config_dir=Path("/app/config"),

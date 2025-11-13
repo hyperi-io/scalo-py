@@ -16,7 +16,7 @@ Simple FastAPI application with container-native patterns.
 
 ```bash
 # Install dependencies
-pip install hyperlib[api]
+pip install hs-lib[api]
 
 # Run locally
 python src/example_api.py

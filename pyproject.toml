@@ -6,7 +6,7 @@ requires = [
 build-backend = "setuptools.build_meta"
 
 [project]
-name = "hyperlib"
+name = "hs-lib"
 version = "2.8.8"
 description = "Enterprise infrastructure for containerized Python applications - configuration, logging, timeouts, database, metrics, and application framework"
 readme = "README.md"
@@ -134,12 +134,12 @@ where = [
     "src",
 ]
 include = [
-    "hyperlib*",
+    "hs_lib*",
 ]
 namespaces = false
 
 [tool.setuptools.package-data]
-hyperlib = [
+hs_lib = [
     "py.typed",
 ]
 
@@ -173,7 +173,7 @@ filterwarnings = [
 
 [tool.coverage.run]
 source = [
-    "src/hyperlib",
+    "src/hs_lib",
 ]
 omit = [
     "*/tests/*",
@@ -295,7 +295,7 @@ version_toml = [
     "pyproject.toml:project.version",
 ]
 version_variables = [
-    "src/hyperlib/__init__.py:__version__",
+    "src/hs_lib/__init__.py:__version__",
 ]
 build_command = ".venv/bin/python ci/modules/python/tools/write-version.py && git add VERSION && rm -rf dist build src/*.egg-info && .venv/bin/python -m build"
 major_on_zero = true

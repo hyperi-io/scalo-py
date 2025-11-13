@@ -106,7 +106,7 @@ pytest tests/unit/test_application.py::TestApplicationFactory::test_api_factory 
 
 ```python
 # tests/unit/test_mymodule.py
-from hyperlib import Application
+from hs_lib import Application
 
 def test_api_factory():
     """Test API factory creates APIApplication."""
@@ -120,7 +120,7 @@ def test_api_factory():
 ```python
 # tests/e2e/test_myfeature.py
 import pytest
-from hyperlib import Application
+from hs_lib import Application
 from fastapi.testclient import TestClient
 
 @pytest.mark.skipif(not FASTAPI_AVAILABLE, reason="FastAPI not installed")

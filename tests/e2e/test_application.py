@@ -28,7 +28,7 @@ class TestAPIE2E:
 
     def test_api_route_decorator_works(self):
         """Test that @app.route actually creates routes."""
-        from hyperlib import Application
+        from hs_lib import Application
 
         app = Application.api(name="test-api", port=8000)
 
@@ -44,7 +44,7 @@ class TestAPIE2E:
 
     def test_api_basic_route(self):
         """Test basic API routing works."""
-        from hyperlib import Application
+        from hs_lib import Application
 
         app = Application.api(name="test-api")
 
@@ -60,7 +60,7 @@ class TestAPIE2E:
 
     def test_api_startup_shutdown_called(self):
         """Test startup and shutdown decorators are called."""
-        from hyperlib import Application
+        from hs_lib import Application
 
         app = Application.api(name="test-api")
 
@@ -87,7 +87,7 @@ class TestAPIE2E:
         """Test exception handler decorator."""
         from fastapi.responses import JSONResponse
 
-        from hyperlib import Application
+        from hs_lib import Application
 
         app = Application.api(name="test-api")
 
@@ -113,7 +113,7 @@ class TestAPIE2E:
         """Test include_router for modular API organization."""
         from fastapi import APIRouter
 
-        from hyperlib import Application
+        from hs_lib import Application
 
         app = Application.api(name="test-api")
 
@@ -146,7 +146,7 @@ class TestAPIE2E:
         """Test add_middleware for custom middleware."""
         from starlette.middleware.base import BaseHTTPMiddleware
 
-        from hyperlib import Application
+        from hs_lib import Application
 
         app = Application.api(name="test-api")
 
@@ -175,7 +175,7 @@ class TestAPIE2E:
         """Test multiple routers with different prefixes."""
         from fastapi import APIRouter
 
-        from hyperlib import Application
+        from hs_lib import Application
 
         app = Application.api(name="test-api")
 
@@ -217,7 +217,7 @@ class TestCLIE2E:
         """Test that @app.command decorator works."""
         from typer.testing import CliRunner
 
-        from hyperlib import Application
+        from hs_lib import Application
 
         app = Application.cli(name="test-cli")
 
@@ -237,7 +237,7 @@ class TestCLIE2E:
         """Test CLI without verbose/quiet flags (avoid logging issues in tests)."""
         from typer.testing import CliRunner
 
-        from hyperlib import Application
+        from hs_lib import Application
 
         # Create app without verbose/quiet to avoid logging conflicts
         app = Application.cli(
@@ -263,7 +263,7 @@ class TestCLIE2E:
         """Test built-in --version flag."""
         from typer.testing import CliRunner
 
-        from hyperlib import Application
+        from hs_lib import Application
 
         app = Application.cli(name="test-cli", version="2.5.3")
 
@@ -285,7 +285,7 @@ class TestDaemonE2E:
 
     def test_daemon_scheduled_decorator_works(self):
         """Test that @app.scheduled decorator registers tasks."""
-        from hyperlib import Application
+        from hs_lib import Application
 
         app = Application.daemon(name="test-daemon")
 
@@ -302,7 +302,7 @@ class TestDaemonE2E:
 
     def test_daemon_startup_shutdown_hooks(self):
         """Test startup/shutdown hooks registration."""
-        from hyperlib import Application
+        from hs_lib import Application
 
         app = Application.daemon(name="test-daemon")
 
@@ -323,7 +323,7 @@ class TestOneshotE2E:
 
     def test_oneshot_task_decorator_works(self):
         """Test that @app.task decorator works."""
-        from hyperlib import Application
+        from hs_lib import Application
 
         app = Application.oneshot(name="test-oneshot")
 
@@ -335,7 +335,7 @@ class TestOneshotE2E:
 
     def test_oneshot_run_without_decorator_raises(self):
         """Test that _execute_task() without task raises RuntimeError."""
-        from hyperlib import Application
+        from hs_lib import Application
 
         app = Application.oneshot(name="test-oneshot")
 

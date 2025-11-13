@@ -14,7 +14,7 @@ import pytest
 presidio = pytest.importorskip("presidio_analyzer", reason="Presidio not installed")
 pytest.importorskip("presidio_anonymizer", reason="Presidio not installed")
 
-from hyperlib.anonymizer import (
+from hs_lib.anonymizer import (
     AnonymizationStrategy,
     Anonymizer,
     StreamingAnonymizer,

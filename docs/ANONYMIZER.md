@@ -5,7 +5,7 @@ PII detection and anonymization using Microsoft Presidio.
 ## Quick Start
 
 ```python
-from hyperlib.anonymizer import anonymize_text, scan_for_pii
+from hs_lib.anonymizer import anonymize_text, scan_for_pii
 
 # Anonymize text
 text = "John's email is john@example.com and SSN is 123-45-6789"
@@ -21,7 +21,7 @@ for entity in results:
 ## Installation
 
 ```bash
-pip install hyperlib[presidio]
+pip install hs-lib[presidio]
 ```
 
 ## Presets
@@ -41,7 +41,7 @@ pip install hyperlib[presidio]
 ## Basic Usage
 
 ```python
-from hyperlib.anonymizer import Anonymizer, AnonymizationStrategy
+from hs_lib.anonymizer import Anonymizer, AnonymizationStrategy
 
 # Create anonymizer
 anonymizer = Anonymizer(
@@ -74,7 +74,7 @@ Efficient processing for large datasets (millions of rows, GB+ files).
 ### ClickHouse Query (Large Result Set)
 
 ```python
-from hyperlib.anonymizer import StreamingAnonymizer
+from hs_lib.anonymizer import StreamingAnonymizer
 from clickhouse_driver import Client
 
 client = Client('localhost')
@@ -91,7 +91,7 @@ for row in client.execute_iter(query):
 ### Polars DataFrame (Lazy Evaluation)
 
 ```python
-from hyperlib.anonymizer import StreamingAnonymizer
+from hs_lib.anonymizer import StreamingAnonymizer
 import polars as pl
 
 anonymizer = StreamingAnonymizer(preset="standard")
@@ -105,7 +105,7 @@ anonymized_df.sink_csv("anonymized.csv")  # Stream to output
 ### Kafka/Message Queue
 
 ```python
-from hyperlib.anonymizer import StreamingAnonymizer
+from hs_lib.anonymizer import StreamingAnonymizer
 
 anonymizer = StreamingAnonymizer(preset="compliance", cache_size=10000)
 
@@ -119,7 +119,7 @@ for message in kafka_consumer:
 ### Large Log File
 
 ```python
-from hyperlib.anonymizer import StreamingAnonymizer
+from hs_lib.anonymizer import StreamingAnonymizer
 
 anonymizer = StreamingAnonymizer(preset="standard")
 
@@ -134,7 +134,7 @@ with open("large_log.txt") as f:
 
 ```python
 import pandas as pd
-from hyperlib.anonymizer import StreamingAnonymizer
+from hs_lib.anonymizer import StreamingAnonymizer
 
 anonymizer = StreamingAnonymizer(preset="standard")
 df = pd.read_csv("data.csv")
@@ -156,7 +156,7 @@ print(f"Hits: {stats['hits']}, Misses: {stats['misses']}")
 ## Config File Scanning
 
 ```python
-from hyperlib.anonymizer import scan_file_for_secrets
+from hs_lib.anonymizer import scan_file_for_secrets
 
 # Scan for secrets in config files
 results = scan_file_for_secrets(".env")
@@ -169,7 +169,7 @@ if results:
 ## Custom Entities
 
 ```python
-from hyperlib.anonymizer import Anonymizer
+from hs_lib.anonymizer import Anonymizer
 
 # Use specific entities only
 anonymizer = Anonymizer(
@@ -181,7 +181,7 @@ anonymizer = Anonymizer(
 ## Custom Replacements
 
 ```python
-from hyperlib.anonymizer import Anonymizer
+from hs_lib.anonymizer import Anonymizer
 
 # Custom replacement per entity type
 anonymizer = Anonymizer(

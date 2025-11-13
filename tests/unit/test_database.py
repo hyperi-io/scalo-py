@@ -4,7 +4,7 @@ import os
 
 import pytest
 
-from hyperlib.database import build_database_url, get_database_config
+from hs_lib.database import build_database_url, get_database_config
 
 
 class TestClickHouseSupport:

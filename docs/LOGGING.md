@@ -5,7 +5,7 @@ Auto-configured structured logging with sensible defaults.
 ## Quick Start
 
 ```python
-from hyperlib import logger
+from hs_lib import logger
 
 logger.info("Application started")
 logger.error("Failed to connect", database="prod-db", retry=3)
@@ -102,7 +102,7 @@ export HYPERLIB_LOGGING__MASK_SENSITIVE_DATA=false
 ### Custom Sensitive Fields
 
 ```python
-from hyperlib.logger.filters import SensitiveDataFilter
+from hs_lib.logger.filters import SensitiveDataFilter
 
 SensitiveDataFilter.add_sensitive_fields({"employee_id", "ssn"})
 ```
@@ -112,11 +112,11 @@ SensitiveDataFilter.add_sensitive_fields({"employee_id", "ssn"})
 For compliance-critical logs (HIPAA, GDPR, PCI-DSS):
 
 ```bash
-pip install hyperlib[presidio]
+pip install hs-lib[presidio]
 ```
 
 ```python
-from hyperlib.logger import configure_logger
+from hs_lib.logger import configure_logger
 
 configure_logger(masking_level="advanced")  # Uses Presidio
 ```

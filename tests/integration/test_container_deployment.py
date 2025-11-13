@@ -21,7 +21,7 @@ from pathlib import Path
 
 import pytest
 
-from hyperlib import harness
+from hs_lib import harness
 
 
 # Check and warn about missing tools at module import time
@@ -340,7 +340,7 @@ class TestDockerDeployment(ContainerTestBase):
             hyperlib_src = Path(__file__).parent.parent.parent / "src" / "hyperlib"
             shutil.copytree(hyperlib_src, temp_dir / "hyperlib")
 
-            # Copy pyproject.toml from hyperlib root
+            # Copy pyproject.toml from hs_lib root
             hyperlib_pyproject = Path(__file__).parent.parent.parent / "pyproject.toml"
             shutil.copy(hyperlib_pyproject, temp_dir / "pyproject.toml")
 

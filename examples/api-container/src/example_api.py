@@ -8,7 +8,7 @@ Simple FastAPI REST API with container-native patterns:
 - Graceful shutdown
 """
 
-from hyperlib import Application, logger
+from hs_lib import Application, logger
 
 # Create application with prod profile (container-native patterns)
 app = Application.api(

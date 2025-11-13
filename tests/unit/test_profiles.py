@@ -4,7 +4,7 @@ Tests for application profile system.
 
 import pytest
 
-from hyperlib.application.profiles import PROFILES, _deep_copy, _deep_merge, load_profile
+from hs_lib.application.profiles import PROFILES, _deep_copy, _deep_merge, load_profile
 
 
 class TestProfiles:

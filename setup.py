@@ -34,7 +34,7 @@ setup(
     author='HyperSec Team',
     author_email='dev@hypersec.io',
     url='https://github.com/hypersec-io/hyperlib',
-    packages=['hyperlib'],
+    packages=['hs_lib'],
     package_dir={'': 'src'},
     python_requires=project['requires-python'],
     install_requires=project['dependencies'],

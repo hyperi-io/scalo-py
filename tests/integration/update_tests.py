@@ -12,17 +12,17 @@ content = test_file.read_text()
 replacements = [
     # Prometheus metrics app
     (
-        r'app_file\.write_text\(""".*?from hyperlib import Application, create_metrics.*?app\.run\(\)\n"""\)',
+        r'app_file\.write_text\(""".*?from hs_lib import Application, create_metrics.*?app\.run\(\)\n"""\)',
         'app_file.write_text(self.load_fixture("test_container_deployment_code_2"))',
     ),
     # Daemon app
     (
-        r'app_file\.write_text\(""".*?from hyperlib import Application, get_mount_config.*?app\.run\(\)\n"""\)',
+        r'app_file\.write_text\(""".*?from hs_lib import Application, get_mount_config.*?app\.run\(\)\n"""\)',
         'app_file.write_text(self.load_fixture("test_container_deployment_code_3"))',
     ),
     # Database compose app
     (
-        r'app_file\.write_text\(""".*?from hyperlib import get_database_config, build_database_url.*?print\(f"Database: \{db_config\[\'database\'\]\}"\)\n"""\)',
+        r'app_file\.write_text\(""".*?from hs_lib import get_database_config, build_database_url.*?print\(f"Database: \{db_config\[\'database\'\]\}"\)\n"""\)',
         'app_file.write_text(self.load_fixture("test_container_deployment_code_5"))',
     ),
     # K8s pod app

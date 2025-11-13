@@ -27,13 +27,13 @@ HyperLib provides 5 application types with container-native patterns:
 ## Quick Start
 
 ```bash
-pip install hyperlib
+pip install hs-lib
 ```
 
 ### API Application
 
 ```python
-from hyperlib import Application
+from hs_lib import Application
 
 app = Application.api(name="my-api", profile="prod")
 
@@ -48,7 +48,7 @@ if __name__ == "__main__":
 ### Daemon Application
 
 ```python
-from hyperlib import Application
+from hs_lib import Application
 
 app = Application.daemon(name="worker", profile="prod")
 
@@ -64,7 +64,7 @@ if __name__ == "__main__":
 ### CLI Application
 
 ```python
-from hyperlib import Application
+from hs_lib import Application
 
 app = Application.cli(name="my-tool", version="1.0.0")
 
@@ -289,7 +289,7 @@ def query_db(sql: str) -> list:
 ### Logging
 
 ```python
-from hyperlib import logger
+from hs_lib import logger
 
 logger.info("Application started")
 logger.error("Failed to connect", database="prod-db", retry=3)
@@ -298,7 +298,7 @@ logger.error("Failed to connect", database="prod-db", retry=3)
 ### Metrics
 
 ```python
-from hyperlib.metrics import create_metrics
+from hs_lib.metrics import create_metrics
 
 metrics = create_metrics("myapp")
 metrics.counter("requests", "Total requests").inc()
@@ -308,7 +308,7 @@ metrics.gauge("queue_size", "Queue size").set(42)
 ### Configuration
 
 ```python
-from hyperlib.config import get_config
+from hs_lib.config import get_config
 
 config = get_config()
 db_url = config["database"]["url"]
@@ -317,7 +317,7 @@ db_url = config["database"]["url"]
 ### Anonymization
 
 ```python
-from hyperlib.anonymizer import anonymize_text
+from hs_lib.anonymizer import anonymize_text
 
 text = "My SSN is 123-45-6789"
 clean = anonymize_text(text, preset="compliance")

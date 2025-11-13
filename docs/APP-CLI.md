@@ -5,7 +5,7 @@ Command-line tools using Typer framework (mandatory hyperlib standard).
 ## Quick Start
 
 ```python
-from hyperlib import Application
+from hs_lib import Application
 
 app = Application.cli(name="my-tool", version="1.0.0")
 
@@ -105,7 +105,7 @@ app = Application.cli(
 ## Example: Data Processing Tool
 
 ```python
-from hyperlib import Application, logger
+from hs_lib import Application, logger
 from pathlib import Path
 
 app = Application.cli(

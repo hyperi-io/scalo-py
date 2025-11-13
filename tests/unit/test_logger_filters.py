@@ -4,7 +4,7 @@ Tests for hyperlib logger filters (sensitive data masking).
 
 import pytest
 
-from hyperlib.logger.filters import MASK_VALUE, SENSITIVE_FIELDS, SensitiveDataFilter
+from hs_lib.logger.filters import MASK_VALUE, SENSITIVE_FIELDS, SensitiveDataFilter
 
 
 class TestSensitiveDataFilter:

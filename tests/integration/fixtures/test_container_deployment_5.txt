@@ -1,7 +1,7 @@
 import os
 
 # hyperlib is installed as a package
-from hyperlib import get_database_config, build_database_url
+from hs_lib import get_database_config, build_database_url
 
 # Get database configuration
 db_config = get_database_config("postgresql")

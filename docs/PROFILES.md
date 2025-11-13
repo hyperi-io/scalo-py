@@ -245,7 +245,7 @@ containers:
 Define custom profiles for special environments:
 
 ```python
-from hyperlib.application.profiles import PROFILES
+from hs_lib.application.profiles import PROFILES
 
 # Add staging profile (between docker and prod)
 PROFILES["staging"] = {

@@ -23,10 +23,10 @@
 
 ```bash
 # Install hyperlib with CLI support
-pip install hyperlib[cli]
+pip install hs-lib[cli]
 
 # For development (includes all dependencies)
-pip install hyperlib[dev,cli]
+pip install hs-lib[dev,cli]
 ```
 
 ---
@@ -38,7 +38,7 @@ HyperLib provides ready-to-use utilities to accelerate CLI development:
 ### Output Formatting (`hyperlib.cli.output`)
 
 ```python
-from hyperlib.cli.output import print_success, print_error, print_table, print_json
+from hs_lib.cli.output import print_success, print_error, print_table, print_json
 
 # Status messages with colors
 print_success("Deployment completed!")
@@ -61,8 +61,8 @@ print_json(config)
 ### Reusable Options (`hyperlib.cli.options`)
 
 ```python
-from hyperlib.cli import Typer
-from hyperlib.cli.options import VERBOSE_OPTION, CONFIG_OPTION, DRY_RUN_OPTION
+from hs_lib.cli import Typer
+from hs_lib.cli.options import VERBOSE_OPTION, CONFIG_OPTION, DRY_RUN_OPTION
 
 app = Typer()
 
@@ -93,8 +93,8 @@ def deploy(
 ### Version Handling (`hyperlib.cli.version`)
 
 ```python
-from hyperlib.cli import Typer
-from hyperlib.cli.version import version_option
+from hs_lib.cli import Typer
+from hs_lib.cli.version import version_option
 
 app = Typer()
 
@@ -117,7 +117,7 @@ def main(
 
 ```python
 # my_tool.py
-from hyperlib.cli import Typer, Argument, Option
+from hs_lib.cli import Typer, Argument, Option
 
 app = Typer(help="My awesome CLI tool")
 
@@ -151,7 +151,7 @@ python my_tool.py --help
 ```python
 # data_tool.py
 from pathlib import Path
-from hyperlib.cli import Typer, Argument, Option
+from hs_lib.cli import Typer, Argument, Option
 
 app = Typer(help="Data processing toolkit")
 
@@ -382,8 +382,8 @@ def test_help():
 ### Using hyperlib.config
 
 ```python
-from hyperlib.cli import Typer, Option
-from hyperlib.config import get_config
+from hs_lib.cli import Typer, Option
+from hs_lib.config import get_config
 
 app = Typer()
 
@@ -398,8 +398,8 @@ def deploy(env: str = Option(...)):
 ### Using hyperlib.logger
 
 ```python
-from hyperlib.cli import Typer
-from hyperlib.logger import get_logger
+from hs_lib.cli import Typer
+from hs_lib.logger import get_logger
 
 app = Typer()
 logger = get_logger(__name__)
@@ -419,7 +419,7 @@ def process():
 Typer includes Rich for beautiful terminal output:
 
 ```python
-from hyperlib.cli import Typer
+from hs_lib.cli import Typer
 from rich.console import Console
 from rich.table import Table
 
@@ -505,10 +505,10 @@ A: Typer is built on Click. You can drop down to Click for advanced features.
 
 ```python
 from pathlib import Path
-from hyperlib.cli import Typer
-from hyperlib.cli.options import VERBOSE_OPTION, CONFIG_OPTION, DRY_RUN_OPTION
-from hyperlib.cli.output import print_success, print_error, print_table
-from hyperlib.cli.version import version_option
+from hs_lib.cli import Typer
+from hs_lib.cli.options import VERBOSE_OPTION, CONFIG_OPTION, DRY_RUN_OPTION
+from hs_lib.cli.output import print_success, print_error, print_table
+from hs_lib.cli.version import version_option
 
 app = Typer(help="My Production Application")
 

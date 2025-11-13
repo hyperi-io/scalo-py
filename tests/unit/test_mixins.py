@@ -9,7 +9,7 @@ import time
 import pytest
 import typer.testing
 
-from hyperlib.application.mixins import (
+from hs_lib.application.mixins import (
     CLIExecutableMixin,
     HealthCheckMixin,
     ProfileMixin,

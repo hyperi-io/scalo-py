@@ -16,7 +16,7 @@ Hardcoding paths like `/app/config` breaks local development. Using `~/.config` 
 HyperLib provides automatic environment detection and unified path resolution:
 
 ```python
-from hyperlib import get_runtime_paths
+from hs_lib import get_runtime_paths
 
 # Automatic detection
 paths = get_runtime_paths("my-app")
@@ -179,7 +179,7 @@ if os.getpid() == 1:
 Convenience function for common usage:
 
 ```python
-from hyperlib import get_runtime_paths
+from hs_lib import get_runtime_paths
 
 paths = get_runtime_paths("my-app", ensure_dirs=True)
 ```
@@ -195,7 +195,7 @@ paths = get_runtime_paths("my-app", ensure_dirs=True)
 Advanced usage with custom detection:
 
 ```python
-from hyperlib.runtime import RuntimeEnvironment
+from hs_lib.runtime import RuntimeEnvironment
 
 # Auto-detect
 runtime = RuntimeEnvironment("my-app")
@@ -235,7 +235,7 @@ class RuntimePaths:
 hyperlib.application already integrates RuntimePaths:
 
 ```python
-from hyperlib import Application
+from hs_lib import Application
 
 # API application
 app = Application.api(name="my-service", port=8000)
@@ -251,7 +251,7 @@ app = Application.api(name="my-service", port=8000)
 For custom applications:
 
 ```python
-from hyperlib import get_runtime_paths, Application
+from hs_lib import get_runtime_paths, Application
 
 paths = get_runtime_paths("my-app")
 
@@ -380,7 +380,7 @@ python -m my_app.main
 ### Unit Tests
 
 ```python
-from hyperlib.runtime import RuntimeEnvironment
+from hs_lib.runtime import RuntimeEnvironment
 
 def test_local_paths():
     runtime = RuntimeEnvironment("test-app", force_mode="local")
@@ -435,7 +435,7 @@ CONFIG_DIR = Path.home() / ".my-app/config"  # Won't work for root daemon
 ### After (Unified Runtime)
 
 ```python
-from hyperlib import get_runtime_paths
+from hs_lib import get_runtime_paths
 
 # ✅ Works everywhere
 paths = get_runtime_paths("my-app")

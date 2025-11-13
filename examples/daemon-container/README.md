@@ -16,7 +16,7 @@ Background task worker with container-native patterns.
 
 ```bash
 # Install dependencies
-pip install hyperlib[daemon]
+pip install hs-lib[daemon]
 
 # Run locally
 python src/example_daemon.py
@@ -74,7 +74,7 @@ daemon-container/
 The daemon runs background tasks on a schedule:
 
 ```python
-from hyperlib import Application, logger
+from hs_lib import Application, logger
 
 app = Application.daemon(
     name="example-daemon",

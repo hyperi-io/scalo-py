@@ -17,7 +17,7 @@ Hyperlib provides intelligent, container-aware configuration management that aut
 ## Quick Start
 
 ```python
-from hyperlib import config
+from hs_lib import config
 
 # Auto-detects environment and configures paths
 print(f"Environment: {config.get_environment()}")  # kubernetes, docker, or bare_metal
@@ -97,7 +97,7 @@ Hyperlib checks for existing directories in this order:
 ### Accessing Mount Paths
 
 ```python
-from hyperlib.config import get_mount_config
+from hs_lib.config import get_mount_config
 
 mounts = get_mount_config()
 print(f"Config: {mounts.config_dir}")
@@ -114,7 +114,7 @@ print(f"Temp: {mounts.temp_dir}")
 Hyperlib automatically detects common environment variables:
 
 ```python
-from hyperlib.config import get_standard_env_vars
+from hs_lib.config import get_standard_env_vars
 
 env_vars = get_standard_env_vars()
 # Returns detected variables from:
@@ -130,7 +130,7 @@ env_vars = get_standard_env_vars()
 Helper for database environment variables:
 
 ```python
-from hyperlib.config import get_database_config
+from hs_lib.config import get_database_config
 
 # Auto-detects POSTGRES_* environment variables
 postgres_config = get_database_config("postgresql")
@@ -159,7 +159,7 @@ export HYPERLIB_ENV_PREFIX=MYAPP
 Hyperlib uses Dynaconf for configuration management:
 
 ```python
-from hyperlib.config import settings
+from hs_lib.config import settings
 
 # Access configuration values
 api_key = settings.API_KEY
@@ -242,8 +242,8 @@ spec:
 ### Python Application
 
 ```python
-from hyperlib.config import get_mount_config, get_environment
-from hyperlib.logger import get_logger
+from hs_lib.config import get_mount_config, get_environment
+from hs_lib.logger import get_logger
 
 logger = get_logger("my-service")
 
@@ -293,7 +293,7 @@ secrets:
 ### Python Application
 
 ```python
-from hyperlib.config import get_database_config, get_mount_config
+from hs_lib.config import get_database_config, get_mount_config
 
 # Auto-detects Docker environment
 mounts = get_mount_config()
@@ -337,7 +337,7 @@ class Config:
 
 ```python
 # 5 lines with hyperlib
-from hyperlib.config import get_mount_config, get_database_config
+from hs_lib.config import get_mount_config, get_database_config
 
 mounts = get_mount_config()  # Auto-detects paths
 db_config = get_database_config("postgresql")  # Auto-detects env vars
@@ -358,7 +358,7 @@ TEMP_DIR = "/tmp"
 #### After
 
 ```python
-from hyperlib.config import get_mount_config
+from hs_lib.config import get_mount_config
 
 mounts = get_mount_config()
 LOG_DIR = mounts.logs_dir  # /app/logs in Docker, ~/.local/share/app/logs locally
@@ -371,7 +371,7 @@ TEMP_DIR = mounts.temp_dir
 ### Custom Mount Detection
 
 ```python
-from hyperlib.config import detect_standard_mounts
+from hs_lib.config import detect_standard_mounts
 
 # Returns dict of detected mount points
 detected = detect_standard_mounts()
@@ -381,7 +381,7 @@ detected = detect_standard_mounts()
 ### HELM Detection
 
 ```python
-from hyperlib.config import detect_helm_deployment
+from hs_lib.config import detect_helm_deployment
 
 if detect_helm_deployment():
     print("Running in HELM-deployed pod")
@@ -391,7 +391,7 @@ if detect_helm_deployment():
 ### Complete Container Information
 
 ```python
-from hyperlib.config import get_container_config
+from hs_lib.config import get_container_config
 
 info = get_container_config()
 # Returns:
@@ -407,7 +407,7 @@ info = get_container_config()
 ### Multi-Environment Configuration
 
 ```python
-from hyperlib.config import get_target_config
+from hs_lib.config import get_target_config
 
 # Load environment-specific config
 config = get_target_config("production")

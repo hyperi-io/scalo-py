@@ -15,7 +15,7 @@ from pathlib import Path
 import pytest
 import yaml
 
-from hyperlib.config.merge import (
+from hs_lib.config.merge import (
     detect_file_type,
     merge_files,
     merge_gitignore,

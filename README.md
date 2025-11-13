@@ -42,17 +42,17 @@ If your project uses HyperCI, `./ci/bootstrap install` automatically configures 
 ./ci/bootstrap install
 
 # Install hyperlib (no --index-url needed - works for both uv and pip)
-uv pip install hyperlib
+uv pip install hs-lib
 
 # Or use standard pip
-pip install hyperlib
+pip install hs-lib
 
 # Or add to pyproject.toml with uv
-uv add hyperlib
+uv add hs-lib
 
 # With optional dependencies
-uv add hyperlib[presidio]       # PII anonymization
-uv add hyperlib[opentelemetry]  # OpenTelemetry metrics
+uv add hs-lib[presidio]       # PII anonymization
+uv add hs-lib[opentelemetry]  # OpenTelemetry metrics
 ```
 
 ### Without HyperCI (Manual Configuration)
@@ -65,18 +65,18 @@ export ARTIFACTORY_USERNAME="your-email@hypersec.io"
 export ARTIFACTORY_PASSWORD="your-jfrog-password"
 
 # Using uv (recommended)
-uv pip install hyperlib \
+uv pip install hs-lib \
   --index-url https://${ARTIFACTORY_USERNAME}:${ARTIFACTORY_PASSWORD}@hypersec.jfrog.io/artifactory/api/pypi/hypersec-pypi/simple
 
 # Or using pip
-pip install hyperlib \
+pip install hs-lib \
   --index-url https://${ARTIFACTORY_USERNAME}:${ARTIFACTORY_PASSWORD}@hypersec.jfrog.io/artifactory/api/pypi/hypersec-pypi/simple
 
 # With optional dependencies
-uv pip install hyperlib[presidio,opentelemetry] \
+uv pip install hs-lib[presidio,opentelemetry] \
   --index-url https://${ARTIFACTORY_USERNAME}:${ARTIFACTORY_PASSWORD}@hypersec.jfrog.io/artifactory/api/pypi/hypersec-pypi/simple
 
-pip install hyperlib[presidio,opentelemetry] \
+pip install hs-lib[presidio,opentelemetry] \
   --index-url https://${ARTIFACTORY_USERNAME}:${ARTIFACTORY_PASSWORD}@hypersec.jfrog.io/artifactory/api/pypi/hypersec-pypi/simple
 ```
 
@@ -85,7 +85,7 @@ pip install hyperlib[presidio,opentelemetry] \
 ### API Application (FastAPI)
 
 ```python
-from hyperlib import Application
+from hs_lib import Application
 
 app = Application.api(name="my-api", version="1.0.0", profile="prod")
 
@@ -104,7 +104,7 @@ app.run()
 ### Daemon Application
 
 ```python
-from hyperlib import Application
+from hs_lib import Application
 
 app = Application.daemon(name="my-worker", profile="prod")
 
@@ -123,7 +123,7 @@ app.run()
 ### CLI Application (Typer)
 
 ```python
-from hyperlib import Application
+from hs_lib import Application
 
 app = Application.cli(name="my-tool", version="1.0.0")
 

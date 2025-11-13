@@ -38,7 +38,7 @@ ai:
   context_tokens: 1m
   check_requirements: true
 python:
-  source_root: src/hyperlib
+  source_root: src/hs_lib
 security:
   ignore_vulns:
   - PYSEC-2022-42969

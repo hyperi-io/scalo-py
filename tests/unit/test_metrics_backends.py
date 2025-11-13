@@ -6,7 +6,7 @@ Tests both Prometheus and OpenTelemetry backends with unified API.
 
 import pytest
 
-from hyperlib.metrics import MetricsManager, create_metrics
+from hs_lib.metrics import MetricsManager, create_metrics
 
 
 class TestPrometheusBackend:
@@ -75,7 +75,7 @@ class TestPrometheusBackend:
 
     def test_backward_compatibility_prometheus_metrics(self):
         """Test backward compatibility with PrometheusMetrics."""
-        from hyperlib.metrics import PrometheusMetrics
+        from hs_lib.metrics import PrometheusMetrics
 
         # Old API should still work
         metrics = PrometheusMetrics("test-app", enable_auto_update=False)

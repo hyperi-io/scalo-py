@@ -1,6 +1,6 @@
 import sys
 sys.path.insert(0, '/app/hyperlib/src')
-from hyperlib.config import detect_environment, get_mount_config
+from hs_lib.config import detect_environment, get_mount_config
 
 env = detect_environment()
 mounts = get_mount_config()

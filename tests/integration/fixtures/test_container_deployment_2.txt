@@ -2,8 +2,8 @@ import sys
 import os
 sys.path.insert(0, '/app')
 
-from hyperlib import Application, create_metrics
-from hyperlib.prometheus import PrometheusMetrics
+from hs_lib import Application, create_metrics
+from hs_lib.prometheus import PrometheusMetrics
 import time
 
 # Create API application
