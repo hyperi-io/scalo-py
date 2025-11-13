@@ -265,12 +265,11 @@ ensure_newline_before_comments = true
 [tool.pyright]
 pythonVersion = "3.11"
 typeCheckingMode = "basic"
-check_untyped_defs = false
-strict_optional = false
-ignore_missing_imports = true
-overrides = [
-    { module = "tests.*", ignore_errors = true },
-    { module = "ci.*", ignore_errors = true },
+reportMissingImports = false
+reportMissingTypeStubs = false
+exclude = [
+    "tests",
+    "ci",
 ]
 
 [tool.bandit]
