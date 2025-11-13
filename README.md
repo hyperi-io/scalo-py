@@ -34,12 +34,12 @@ Hyperlib is a production-ready Python library providing container-native applica
 ## Installation
 
 ```bash
-# From JFrog (HyperSec private registry)
-pip install hyperlib --index-url https://hypersec.jfrog.io/artifactory/api/pypi/hypersec-pypi-local/simple
+# From JFrog (HyperSec private registry + public PyPI cache)
+pip install hyperlib --index-url https://hypersec.jfrog.io/artifactory/api/pypi/hypersec-pypi/simple
 
 # With optional dependencies
-pip install hyperlib[presidio]  # PII anonymization
-pip install hyperlib[opentelemetry]  # OpenTelemetry metrics
+pip install hyperlib[presidio] --index-url https://hypersec.jfrog.io/artifactory/api/pypi/hypersec-pypi/simple
+pip install hyperlib[opentelemetry] --index-url https://hypersec.jfrog.io/artifactory/api/pypi/hypersec-pypi/simple
 ```
 
 ## Quick Start
