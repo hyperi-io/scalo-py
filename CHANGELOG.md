@@ -1,3 +1,76 @@
+# [3.0.0](https://github.com/hypersec-io/hs-lib/compare/v2.8.8...v3.0.0) (2025-11-13)
+
+
+## BREAKING CHANGES
+
+### Package Renamed: hyperlib → hs-lib
+
+The package has been renamed to avoid collision with existing PyPI packages and ensure rename-safety:
+
+- **PyPI package name**: `hyperlib` → `hs-lib`
+- **Python import name**: `hyperlib` → `hs_lib`
+- **GitHub repositories**:
+  - `hypersec-io/hyperlib` → `hypersec-io/hs-lib`
+  - `hypersec-io/hyperci` → `hypersec-io/hs-ci`
+
+### Migration Required
+
+**Update your code:**
+
+```python
+# OLD
+from hyperlib import Application, logger
+import hyperlib
+
+# NEW
+from hs_lib import Application, logger
+import hs_lib
+```
+
+**Update dependencies:**
+
+```toml
+# pyproject.toml
+dependencies = [
+    "hs-lib>=3.0.0",  # was: hyperlib>=2.8.8
+]
+```
+
+```bash
+# Install commands
+pip install hs-lib       # was: pip install hyperlib
+uv add hs-lib            # was: uv add hyperlib
+```
+
+**Update git remotes (if using submodules):**
+
+```bash
+# .gitmodules
+[submodule "ci"]
+    url = https://github.com/hypersec-io/hs-ci.git  # was: hyperci
+```
+
+### Rationale
+
+- **Collision avoidance**: Existing "hyperlib" package on public PyPI
+- **Rename-safe**: HS = HyperSec, HyperStack, HyperSolutions (future-proof)
+- **Short and memorable**: 1-2 syllables, easy to type
+
+### What's Unchanged
+
+- All functionality remains identical
+- API is 100% compatible (only import paths changed)
+- Version numbering continues from 2.8.8
+- All features, tests, and documentation preserved
+
+### Bug Fixes
+
+* rename package from hyperlib to hs-lib for PyPI collision avoidance ([bc4dacd](https://github.com/hypersec-io/hs-lib/commit/bc4dacd))
+* update repository URLs after renaming to hs-lib and hs-ci ([9fd2e75](https://github.com/hypersec-io/hs-lib/commit/9fd2e75))
+* update ci submodule URL to renamed hs-ci repository ([9fd2e75](https://github.com/hypersec-io/hs-lib/commit/9fd2e75))
+
+---
+
 # [1.6.0](https://github.com/hypersec-io/hyperlib/compare/v1.5.5...v1.6.0) (2025-10-10)
 
 
