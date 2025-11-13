@@ -33,13 +33,41 @@ Hyperlib is a production-ready Python library providing container-native applica
 
 ## Installation
 
+### With HyperCI (Recommended)
+
+If your project uses HyperCI, `./ci/bootstrap install` automatically configures PyPI access:
+
 ```bash
-# From JFrog (HyperSec private registry + public PyPI cache)
-pip install hyperlib --index-url https://hypersec.jfrog.io/artifactory/api/pypi/hypersec-pypi/simple
+# Setup project (configures .pip/pip.conf automatically)
+./ci/bootstrap install
+
+# Install hyperlib (no --index-url needed)
+uv pip install hyperlib
+
+# Or add to pyproject.toml
+uv add hyperlib
 
 # With optional dependencies
-pip install hyperlib[presidio] --index-url https://hypersec.jfrog.io/artifactory/api/pypi/hypersec-pypi/simple
-pip install hyperlib[opentelemetry] --index-url https://hypersec.jfrog.io/artifactory/api/pypi/hypersec-pypi/simple
+uv add hyperlib[presidio]       # PII anonymization
+uv add hyperlib[opentelemetry]  # OpenTelemetry metrics
+```
+
+### Without HyperCI (Manual Configuration)
+
+If not using HyperCI, specify the index URL manually:
+
+```bash
+# Set credentials
+export ARTIFACTORY_USERNAME="your-email@hypersec.io"
+export ARTIFACTORY_PASSWORD="your-jfrog-password"
+
+# Install with explicit index URL
+uv pip install hyperlib \
+  --index-url https://${ARTIFACTORY_USERNAME}:${ARTIFACTORY_PASSWORD}@hypersec.jfrog.io/artifactory/api/pypi/hypersec-pypi/simple
+
+# Or use pip
+pip install hyperlib \
+  --index-url https://${ARTIFACTORY_USERNAME}:${ARTIFACTORY_PASSWORD}@hypersec.jfrog.io/artifactory/api/pypi/hypersec-pypi/simple
 ```
 
 ## Quick Start
