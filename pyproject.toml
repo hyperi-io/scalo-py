@@ -344,7 +344,7 @@ patch_tags = [
 name = "jfrog"
 # Virtual repository includes both hypersec-pypi-local (private) and pypi-remote (public PyPI cache)
 url = "https://hypersec.jfrog.io/artifactory/api/pypi/hypersec-pypi/simple"
-explicit = true
+default = true
 
 [tool.uv.sources.nuitka]
 index = "jfrog"

@@ -41,10 +41,13 @@ If your project uses HyperCI, `./ci/bootstrap install` automatically configures 
 # Setup project (configures .pip/pip.conf automatically)
 ./ci/bootstrap install
 
-# Install hyperlib (no --index-url needed)
+# Install hyperlib (no --index-url needed - works for both uv and pip)
 uv pip install hyperlib
 
-# Or add to pyproject.toml
+# Or use standard pip
+pip install hyperlib
+
+# Or add to pyproject.toml with uv
 uv add hyperlib
 
 # With optional dependencies
@@ -61,12 +64,19 @@ If not using HyperCI, specify the index URL manually:
 export ARTIFACTORY_USERNAME="your-email@hypersec.io"
 export ARTIFACTORY_PASSWORD="your-jfrog-password"
 
-# Install with explicit index URL
+# Using uv (recommended)
 uv pip install hyperlib \
   --index-url https://${ARTIFACTORY_USERNAME}:${ARTIFACTORY_PASSWORD}@hypersec.jfrog.io/artifactory/api/pypi/hypersec-pypi/simple
 
-# Or use pip
+# Or using pip
 pip install hyperlib \
+  --index-url https://${ARTIFACTORY_USERNAME}:${ARTIFACTORY_PASSWORD}@hypersec.jfrog.io/artifactory/api/pypi/hypersec-pypi/simple
+
+# With optional dependencies
+uv pip install hyperlib[presidio,opentelemetry] \
+  --index-url https://${ARTIFACTORY_USERNAME}:${ARTIFACTORY_PASSWORD}@hypersec.jfrog.io/artifactory/api/pypi/hypersec-pypi/simple
+
+pip install hyperlib[presidio,opentelemetry] \
   --index-url https://${ARTIFACTORY_USERNAME}:${ARTIFACTORY_PASSWORD}@hypersec.jfrog.io/artifactory/api/pypi/hypersec-pypi/simple
 ```
 
