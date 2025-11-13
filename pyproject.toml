@@ -340,10 +340,6 @@ patch_tags = [
     "perf",
 ]
 
-# NOTE: uv index configuration removed - using PIP_INDEX_URL env vars instead
-# Bootstrap sets PIP_INDEX_URL (for pip) and UV_INDEX_URL (for uv) from .pip/pip.conf
-# This approach works for both pip and uv without complex credential injection
-
 [tool.mypy]
 python_version = "3.11"
 warn_return_any = false
