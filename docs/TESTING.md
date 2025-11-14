@@ -5,7 +5,7 @@
 ### Prerequisites
 
 **Required Tools:**
-- Python 3.11+
+- Python 3.12+
 - Docker (for container deployment tests)
 - Minikube (for Kubernetes/Helm tests)
 - Helm (for Helm deployment tests)
