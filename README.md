@@ -1,4 +1,4 @@
-# Hyperlib
+# hs-lib (Hyperlib)
 
 <!-- BADGES:START -->
 [![Build Status](https://github.com/hypersec-io/hyperlib/workflows/CI%20Publish/badge.svg)](https://github.com/hypersec-io/hyperlib/actions)
@@ -9,7 +9,7 @@
 
 **Enterprise Python Infrastructure for HyperSec Projects**
 
-Hyperlib is a production-ready Python library providing container-native application patterns, metrics, logging, and infrastructure utilities for all HyperSec Python projects.
+hs-lib (formerly Hyperlib) is a production-ready Python library providing container-native application patterns, metrics, logging, and infrastructure utilities for all HyperSec Python projects.
 
 ## Features
 
@@ -21,7 +21,7 @@ Hyperlib is a production-ready Python library providing container-native applica
 - **Configuration**: Multi-layer cascade with environment variable support
 - **Runtime**: Application metadata and environment detection
 
-### Application Framework (Work in Progress ⚠️)
+### Application Framework (⚠️ **WORK IN PROGRESS - WILL BE REPLACED** ⚠️)
 
 - **Application Types**: API (FastAPI), Daemon, CLI (Typer), MCP, and Oneshot
 - **Profile-Based Configuration**: `dev`, `docker`, and `prod` profiles with automatic environment detection
@@ -29,7 +29,9 @@ Hyperlib is a production-ready Python library providing container-native applica
 - **Metrics**: Prometheus and OpenTelemetry backends with automatic collection
 - **HELM Charts**: Production-ready Kubernetes deployments with KEDA autoscaling
 
-**Note**: While the base hyperlib modules (logging, config, runtime, database, metrics) are stable and production-ready, the Application framework is still under active development. Use with caution in production environments.
+**⚠️ IMPORTANT WARNING**: The Application framework (Application.api(), Application.daemon(), etc.) is experimental and **WILL BE SIGNIFICANTLY REFACTORED OR REPLACED**. Developers working on this module should expect to replace the current implementation.
+
+**Production-ready components**: The base hs-lib modules (logging, config, runtime, database, metrics) are stable. Use those directly instead of the Application framework for production code.
 
 ## Installation
 
