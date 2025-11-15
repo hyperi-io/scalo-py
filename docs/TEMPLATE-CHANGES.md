@@ -2,9 +2,9 @@
 
 ## Overview
 
-This document tracks all issues, fixes, and improvements discovered while developing [hyperlib] that need to be backported to the `hypersec-forge-python` template.
+This document tracks all issues, fixes, and improvements discovered while developing [hs-lib] that need to be backported to the `hypersec-forge-python` template.
 
-As [hyperlib] serves as the real-world test case for the template, this ensures all learnings flow back to improve the template for future projects.
+As [hs-lib] serves as the real-world test case for the template, this ensures all learnings flow back to improve the template for future projects.
 
 ---
 
@@ -314,7 +314,7 @@ When applying changes back to template, verify:
 
 1. **Create feature branch** in forge repository:
    ```bash
-   git checkout -b feat/no-ref/apply-hyperlib-learnings
+   git checkout -b feat/no-ref/apply-hs-lib-learnings
    ```
 
 2. **Apply each change** to template files in the forge repository
@@ -340,7 +340,7 @@ When applying changes back to template, verify:
 
    - Ensures generated packages export __version__ attribute
    - Required for package distribution and version verification
-   - Discovered during hyperlib development"
+   - Discovered during hs-lib development"
    ```
 
 6. **Push and create PR** for review
@@ -454,7 +454,7 @@ For library projects, include:
 - This document should be updated continuously as we discover issues
 - Each entry should include: issue, current state, fix, affected files, priority
 - Mark items as completed when applied to template and verified
-- Use this as reference when updating template after hyperlib stabilizes
+- Use this as reference when updating template after hs-lib stabilizes
 
 ## Related Documentation
 

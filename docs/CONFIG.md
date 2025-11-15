@@ -336,7 +336,7 @@ class Config:
 #### After (Hyperlib)
 
 ```python
-# 5 lines with hyperlib
+# 5 lines with hs-lib
 from hs_lib.config import get_mount_config, get_database_config
 
 mounts = get_mount_config()  # Auto-detects paths

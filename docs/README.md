@@ -367,8 +367,8 @@ def sync(source: str):
 
 ## Repository
 
-- **GitHub**: <https://github.com/hypersec-io/hyperlib>
-- **Issues**: <https://github.com/hypersec-io/hyperlib/issues>
+- **GitHub**: <https://github.com/hypersec-io/hs-lib>
+- **Issues**: <https://github.com/hypersec-io/hs-lib/issues>
 
 ## License
 

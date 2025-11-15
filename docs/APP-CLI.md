@@ -1,6 +1,6 @@
 # CLI Applications
 
-Command-line tools using Typer framework (mandatory hyperlib standard).
+Command-line tools using Typer framework (mandatory hs-lib standard).
 
 ## Quick Start
 
@@ -184,7 +184,7 @@ assert result.exit_code == 0
 
 ## Why Typer (Not Click)?
 
-Typer is the **mandatory standard** for hyperlib CLI apps:
+Typer is the **mandatory standard** for hs-lib CLI apps:
 
 - Better type hints (uses Python 3.10+ syntax)
 - Automatic validation

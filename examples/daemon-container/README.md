@@ -176,6 +176,6 @@ spec:
 
 ## See Also
 
-- [Hyperlib Documentation](https://github.com/hypersec-io/hyperlib/tree/main/docs)
+- [Hyperlib Documentation](https://github.com/hypersec-io/hs-lib/tree/main/docs)
 - [Container Deployment Guide](../../docs/CONTAINER_DEPLOYMENT.md)
 - [Kubernetes Guide](../../docs/KUBERNETES.md)

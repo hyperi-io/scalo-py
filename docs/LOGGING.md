@@ -136,4 +136,4 @@ Built on Loguru with:
 
 ## API Reference
 
-See module docstring: `help(hyperlib.logger)`
+See module docstring: `help(hs-lib.logger)`

@@ -1,1 +1,1 @@
-hyperlib>=2.7.0
+hs-lib>=2.7.0

@@ -136,7 +136,7 @@ if paths.log_dir:
     log_file = paths.log_dir / "app.log"
 else:
     # Container mode - use stdout
-    # (hyperlib logger handles this automatically)
+    # (hs-lib logger handles this automatically)
 ```
 
 ## Container Detection
@@ -232,7 +232,7 @@ class RuntimePaths:
 
 ### Application Factory Pattern
 
-hyperlib.application already integrates RuntimePaths:
+hs-lib.application already integrates RuntimePaths:
 
 ```python
 from hs_lib import Application

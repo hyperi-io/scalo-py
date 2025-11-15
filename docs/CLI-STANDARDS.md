@@ -22,7 +22,7 @@
 ## Installation
 
 ```bash
-# Install hyperlib with CLI support
+# Install hs-lib with CLI support
 pip install hs-lib[cli]
 
 # For development (includes all dependencies)
@@ -35,7 +35,7 @@ pip install hs-lib[dev,cli]
 
 HyperLib provides ready-to-use utilities to accelerate CLI development:
 
-### Output Formatting (`hyperlib.cli.output`)
+### Output Formatting (`hs-lib.cli.output`)
 
 ```python
 from hs_lib.cli.output import print_success, print_error, print_table, print_json
@@ -58,7 +58,7 @@ config = {"host": "localhost", "port": 8000}
 print_json(config)
 ```
 
-### Reusable Options (`hyperlib.cli.options`)
+### Reusable Options (`hs-lib.cli.options`)
 
 ```python
 from hs_lib.cli import Typer
@@ -90,7 +90,7 @@ def deploy(
 - `LOG_LEVEL_OPTION` - Log level (--log-level, -l)
 - `LOG_FILE_OPTION` - Log file (--log-file)
 
-### Version Handling (`hyperlib.cli.version`)
+### Version Handling (`hs-lib.cli.version`)
 
 ```python
 from hs_lib.cli import Typer
@@ -379,7 +379,7 @@ def test_help():
 
 ## Integration with HyperLib
 
-### Using hyperlib.config
+### Using hs-lib.config
 
 ```python
 from hs_lib.cli import Typer, Option
@@ -389,13 +389,13 @@ app = Typer()
 
 @app.command()
 def deploy(env: str = Option(...)):
-    """Deploy using hyperlib config."""
+    """Deploy using hs-lib config."""
     config = get_config()
     app_name = config.get("app_name")
     print(f"Deploying {app_name} to {env}")
 ```
 
-### Using hyperlib.logger
+### Using hs-lib.logger
 
 ```python
 from hs_lib.cli import Typer
@@ -568,10 +568,10 @@ myapp deploy --help
 ## Examples
 
 Complete examples are available in:
-- [hyperlib/cli/examples.py](../src/hyperlib/cli/examples.py)
-- [hyperlib/cli/output.py](../src/hyperlib/cli/output.py) - Output utilities
-- [hyperlib/cli/options.py](../src/hyperlib/cli/options.py) - Reusable options
-- [hyperlib/cli/version.py](../src/hyperlib/cli/version.py) - Version handling
+- [hs-lib/cli/examples.py](../src/hs-lib/cli/examples.py)
+- [hs-lib/cli/output.py](../src/hs-lib/cli/output.py) - Output utilities
+- [hs-lib/cli/options.py](../src/hs-lib/cli/options.py) - Reusable options
+- [hs-lib/cli/version.py](../src/hs-lib/cli/version.py) - Version handling
 - [Typer documentation](https://typer.tiangolo.com/tutorial/)
 
 ---
