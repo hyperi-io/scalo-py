@@ -4,7 +4,6 @@
 [![Build Status](https://github.com/hypersec-io/hs-lib/workflows/CI%20Publish/badge.svg)](https://github.com/hypersec-io/hs-lib/actions)
 [![Python Version](https://img.shields.io/badge/python-3.12%2B-blue)](https://www.python.org/)
 [![License](https://img.shields.io/badge/license-Proprietary-red)](LICENSE)
-[![Version](https://img.shields.io/badge/version-2--9--1-green)](https://github.com/hypersec-io/hs-lib/releases/tag/v2.9.1)
 <!-- BADGES:END -->
 
 **Enterprise Python Infrastructure for HyperSec Projects**
