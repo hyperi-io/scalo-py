@@ -158,6 +158,9 @@ class SignalHandlerMixin:
                 print("Database closed")
         """
         self._shutdown_handlers.append(func)
+        # Register with FastAPI if available (for API applications)
+        if hasattr(self, "fastapi"):
+            self.fastapi.add_event_handler("shutdown", func)
         logger.debug(f"Registered shutdown handler: {func.__name__}")
         return func
 
