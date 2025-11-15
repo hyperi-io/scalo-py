@@ -243,3 +243,22 @@ cython_debug/
 
 # OS files
 # === End /projects/hyperlib/ci/modules/common/templates/.gitignore ===
+
+
+# === /projects/hs-lib/ci/modules/common/templates/.gitignore gitignore patterns ===
+# HyperCI Common .gitignore
+# Language-agnostic patterns for ALL projects
+
+# Virtual environment (unified - contains both project and CI tools)
+
+# Environment variables and secrets
+
+# AI assistant files
+
+
+# Temporary files
+
+# IDE files
+
+# OS files
+# === End /projects/hs-lib/ci/modules/common/templates/.gitignore ===

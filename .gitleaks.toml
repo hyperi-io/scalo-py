@@ -38,6 +38,7 @@ paths = [
     '''tests/e2e/test_.*\.py''',
     '''.tmp/.*''',
     '''ci-local/.*''',
+    '''\.pip/pip\.conf''',  # JFrog Identity Token (designed to be committed)
     # Binary files
     '''\.(png|jpg|jpeg|gif|ico|svg|woff|woff2|ttf|eot|otf)$''',
     # Dependency lock files

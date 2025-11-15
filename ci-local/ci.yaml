@@ -33,10 +33,6 @@ publish:
   verify_enabled: false
   verify_timeout: 600
 package: null
-ai:
-  merge_mode: skip
-  context_tokens: 1m
-  check_requirements: true
 python:
   source_root: src/hs_lib
 security:
