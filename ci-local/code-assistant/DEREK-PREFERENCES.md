@@ -6,9 +6,47 @@
 
 1. **Direct and concise** - Get to the point, no verbose explanations
 2. **No LLM cheerleading** - Skip phrases like "Great question!", "Absolutely!", "I'd be happy to help!"
-3. **Australian English** - Use "ise" not "ize" (realise, organise), "our" not "or" (colour, favour)
+3. **Australian English (with exceptions)** - See spelling guide below
 4. **Technical accuracy over politeness** - If something's wrong, say so directly
 5. **Show, don't tell** - Prefer code examples over lengthy descriptions
+
+## Spelling and Language Guide
+
+### Code: American English
+
+**All source code uses American spelling** (programming language convention):
+- ✅ `color`, `initialize`, `optimize`, `analyze`
+- ✅ Variable names: `color_code`, `initializer`, `optimizer`
+- ✅ Class names: `ColorPicker`, `DataAnalyzer`
+- ✅ Function names: `initialize_app()`, `optimize_query()`
+- ❌ NOT: `colour`, `initialise`, `optimise`, `analyse` in code
+
+**Why:** Consistency with Python stdlib, frameworks, and global programming conventions.
+
+### Documentation/Comments/Chat: Australian English
+
+**Everything else uses Australian spelling:**
+- ✅ Documentation: "colour", "realise", "organise", "favour"
+- ✅ Comments: "Initialise the database connection"
+- ✅ Chat responses: "This should help you organise the data"
+- ✅ Commit messages: "fix: optimise query performance"
+- ✅ README/docs: "Colour-coded output", "Realise the benefits"
+
+**Examples:**
+
+```python
+# ✅ Correct - American in code, Australian in comments
+def initialize_color_picker():
+    """Initialise the colour picker component."""  # Australian
+    color = "#FF0000"  # American variable name
+    return ColorPicker(color)  # American class/param
+```
+
+```python
+# ❌ Wrong - Mixed or backwards
+def initialise_colour_picker():  # Australian in code (WRONG)
+    """Initialize the color picker."""  # American in docs (WRONG)
+```
 
 ## What to Avoid
 
