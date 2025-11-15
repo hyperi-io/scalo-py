@@ -1,5 +1,5 @@
 """
-HyperLib Daemon Application
+hs-lib Daemon Application
 Long-running background service with scheduled tasks and worker pools
 """
 

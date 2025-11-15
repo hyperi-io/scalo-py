@@ -1,5 +1,5 @@
 """
-HyperLib Oneshot Application
+hs-lib Oneshot Application
 Single-execution task with container-native patterns
 """
 
@@ -87,7 +87,7 @@ class OneshotApplication(
             version=version,
             profile=profile,
             profile_overrides=profile_overrides,
-            description=f"{name} - HyperLib Oneshot Job",
+            description=f"{name} - hs-lib Oneshot Job",
         )
 
         self.task_func = task_func

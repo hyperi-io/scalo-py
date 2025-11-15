@@ -1,5 +1,5 @@
 """
-HyperLib API Application
+hs-lib API Application
 FastAPI-based REST API service with container management
 """
 

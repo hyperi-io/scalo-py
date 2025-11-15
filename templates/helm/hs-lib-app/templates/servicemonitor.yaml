@@ -2,16 +2,16 @@
 apiVersion: monitoring.coreos.com/v1
 kind: ServiceMonitor
 metadata:
-  name: {{ include "hyperlib-app.fullname" . }}
+  name: {{ include "hs-lib-app.fullname" . }}
   labels:
-    {{- include "hyperlib-app.labels" . | nindent 4 }}
+    {{- include "hs-lib-app.labels" . | nindent 4 }}
     {{- with .Values.prometheus.serviceMonitor.labels }}
     {{- toYaml . | nindent 4 }}
     {{- end }}
 spec:
   selector:
     matchLabels:
-      {{- include "hyperlib-app.selectorLabels" . | nindent 6 }}
+      {{- include "hs-lib-app.selectorLabels" . | nindent 6 }}
   endpoints:
   - port: metrics
     path: /metrics

@@ -1,6 +1,6 @@
-# Hyperlib Test Suite
+# hs-lib Test Suite
 
-Test organization for hyperlib following standard testing patterns.
+Test organization for hs-lib following standard testing patterns.
 
 ## Directory Structure
 
@@ -80,7 +80,7 @@ pytest tests/unit/ -v
 
 **With coverage:**
 ```bash
-pytest tests/ --cov=hyperlib --cov-report=html
+pytest tests/ --cov=hs_lib --cov-report=html
 ```
 
 **Specific test file:**
@@ -149,4 +149,4 @@ Tests run automatically via CI scripts:
 Individual test commands used by CI:
 - `pytest tests/unit/ -v` - Fast unit tests
 - `pytest tests/e2e/ -v -k "not deploy"` - E2E without deployment
-- `pytest tests/ --cov=hyperlib` - Full suite with coverage
+- `pytest tests/ --cov=hs_lib` - Full suite with coverage

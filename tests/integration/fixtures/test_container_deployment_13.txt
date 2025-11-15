@@ -10,7 +10,7 @@ service:
   port: 80
 
 env:
-  APP_NAME: hyperlib-helm-app
+  APP_NAME: hs-lib-helm-app
   LOG_LEVEL: INFO
 
 postgresql:

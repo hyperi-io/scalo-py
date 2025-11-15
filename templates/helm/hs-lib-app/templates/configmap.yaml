@@ -2,9 +2,9 @@
 apiVersion: v1
 kind: ConfigMap
 metadata:
-  name: {{ include "hyperlib-app.fullname" . }}-config
+  name: {{ include "hs-lib-app.fullname" . }}-config
   labels:
-    {{- include "hyperlib-app.labels" . | nindent 4 }}
+    {{- include "hs-lib-app.labels" . | nindent 4 }}
 data:
   {{- toYaml .Values.configMap.data | nindent 2 }}
 {{- end }}

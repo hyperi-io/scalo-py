@@ -1,10 +1,10 @@
-# Gitleaks Configuration - HyperCI Default
+# Gitleaks Configuration - HS-CI Default
 # https://github.com/gitleaks/gitleaks
 #
-# This is the default config provided by HyperCI.
+# This is the default config provided by HS-CI.
 # To customize, copy to project root: cp ci/modules/common/templates/.gitleaks.toml .gitleaks.toml
 
-title = "HyperCI Gitleaks Config"
+title = "HS-CI Gitleaks Config"
 
 # Minimum version requirement (ensures consistent behavior)
 minVersion = "v8.25.0"

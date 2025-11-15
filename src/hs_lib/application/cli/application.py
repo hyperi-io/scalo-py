@@ -1,5 +1,5 @@
 """
-HyperLib CLI Application
+hs-lib CLI Application
 Command-line interface using Typer framework (mandatory standard)
 """
 
@@ -15,7 +15,7 @@ class CLIApplication(
     ProfileMixin,
 ):
     """
-    Command-line application using Typer (mandatory hyperlib standard).
+    Command-line application using Typer (mandatory hs-lib standard).
 
     Provides container-native patterns out of the box:
     - Profile-based configuration (dev/docker/prod)
@@ -98,7 +98,7 @@ class CLIApplication(
             from typer import Typer
 
             # Create Typer instance
-            typer_help = help or f"{name} - HyperLib CLI Application"
+            typer_help = help or f"{name} - hs-lib CLI Application"
             self.app = Typer(
                 name=name,
                 help=typer_help,
@@ -111,8 +111,8 @@ class CLIApplication(
 
         except ImportError:
             raise ImportError(
-                "Typer is required for CLI applications (hyperlib mandatory standard). "
-                "Install with: pip install hyperlib[cli]\n"
+                "Typer is required for CLI applications (hs-lib mandatory standard). "
+                "Install with: pip install hs-lib[cli]\n"
                 "Documentation: https://typer.tiangolo.com/"
             )
 

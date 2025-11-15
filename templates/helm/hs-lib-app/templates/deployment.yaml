@@ -1,9 +1,9 @@
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: {{ include "hyperlib-app.fullname" . }}
+  name: {{ include "hs-lib-app.fullname" . }}
   labels:
-    {{- include "hyperlib-app.labels" . | nindent 4 }}
+    {{- include "hs-lib-app.labels" . | nindent 4 }}
 spec:
   {{- if not .Values.autoscaling.enabled }}
   {{- if not .Values.keda.enabled }}
@@ -12,7 +12,7 @@ spec:
   {{- end }}
   selector:
     matchLabels:
-      {{- include "hyperlib-app.selectorLabels" . | nindent 6 }}
+      {{- include "hs-lib-app.selectorLabels" . | nindent 6 }}
   strategy:
     type: RollingUpdate
     rollingUpdate:
@@ -23,20 +23,20 @@ spec:
       annotations:
         {{- toYaml .Values.podAnnotations | nindent 8 }}
       labels:
-        {{- include "hyperlib-app.selectorLabels" . | nindent 8 }}
+        {{- include "hs-lib-app.selectorLabels" . | nindent 8 }}
     spec:
       {{- with .Values.imagePullSecrets }}
       imagePullSecrets:
         {{- toYaml . | nindent 8 }}
       {{- end }}
-      serviceAccountName: {{ include "hyperlib-app.serviceAccountName" . }}
+      serviceAccountName: {{ include "hs-lib-app.serviceAccountName" . }}
       securityContext:
         {{- toYaml .Values.podSecurityContext | nindent 8 }}
       containers:
       - name: {{ .Chart.Name }}
         securityContext:
           {{- toYaml .Values.securityContext | nindent 10 }}
-        image: {{ include "hyperlib-app.image" . }}
+        image: {{ include "hs-lib-app.image" . }}
         imagePullPolicy: {{ .Values.image.pullPolicy }}
         ports:
         {{- if and (eq .Values.app.type "api") .Values.service.http.enabled }}
@@ -55,7 +55,7 @@ spec:
           protocol: TCP
         {{- end }}
         env:
-        - name: HYPERLIB_PROFILE
+        - name: HS_LIB_PROFILE
           value: {{ .Values.app.profile | quote }}
         {{- with .Values.env }}
         {{- toYaml . | nindent 8 }}

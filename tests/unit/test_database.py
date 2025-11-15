@@ -1,4 +1,4 @@
-"""Tests for hyperlib.database module."""
+"""Tests for hs_lib.database module."""
 
 import os
 

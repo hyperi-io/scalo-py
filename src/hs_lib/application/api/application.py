@@ -1,5 +1,5 @@
 """
-HyperLib API Application
+hs-lib API Application
 FastAPI-based REST API service with container-native patterns
 """
 
@@ -89,7 +89,7 @@ class APIApplication(
             version=version,
             profile=profile,
             profile_overrides=profile_overrides,
-            description=f"{name} - HyperLib API Service",
+            description=f"{name} - hs-lib API Service",
         )
 
         self.port = port
@@ -101,7 +101,7 @@ class APIApplication(
 
             self.fastapi = FastAPI(
                 title=name,
-                description=f"{name} - HyperLib API Service",
+                description=f"{name} - hs-lib API Service",
                 version=version,
             )
         except ImportError:
@@ -224,7 +224,7 @@ class APIApplication(
                     host=host,
                     port=port,
                     reload=reload,
-                    log_config=None,  # Use hyperlib logger
+                    log_config=None,  # Use hs_lib logger
                 )
             except ImportError:
                 typer.echo(

@@ -1,15 +1,15 @@
 apiVersion: v2
-name: hyperlib-app
-description: HELM chart for Hyperlib applications (API, Daemon, MCP)
+name: hs-lib-app
+description: HELM chart for hs-lib applications (API, Daemon, MCP)
 type: application
 version: 1.0.0
 appVersion: "1.0.0"
 keywords:
-  - hyperlib
+  - hs-lib
   - python
   - api
   - daemon
   - kubernetes
 maintainers:
   - name: HyperSec
-    url: https://github.com/hypersec-io/hyperlib
+    url: https://github.com/hypersec-io/hs-lib

@@ -1,12 +1,12 @@
 {{- if .Values.ingress.enabled -}}
-{{- $fullName := include "hyperlib-app.fullname" . -}}
+{{- $fullName := include "hs-lib-app.fullname" . -}}
 {{- $httpPort := .Values.service.http.port -}}
 apiVersion: networking.k8s.io/v1
 kind: Ingress
 metadata:
   name: {{ $fullName }}
   labels:
-    {{- include "hyperlib-app.labels" . | nindent 4 }}
+    {{- include "hs-lib-app.labels" . | nindent 4 }}
   {{- with .Values.ingress.annotations }}
   annotations:
     {{- toYaml . | nindent 4 }}

@@ -52,15 +52,15 @@ def get_version(package_name: str, fallback: str = "unknown") -> str:
     Get package version from metadata.
 
     Args:
-        package_name: Name of the package (e.g., "hyperlib", "myapp")
+        package_name: Name of the package (e.g., "hs_lib", "myapp")
         fallback: Fallback version if not found
 
     Returns:
         Version string (e.g., "1.2.3") or fallback
 
     Example:
-        version = get_version("hyperlib")
-        print(f"HyperLib version: {version}")
+        version = get_version("hs_lib")
+        print(f"hs-lib version: {version}")
     """
     try:
         return version(package_name)
@@ -78,8 +78,8 @@ def print_version(package_name: str, app_name: str | None = None, python_version
         python_version: Include Python version in output
 
     Example:
-        print_version("hyperlib", app_name="HyperLib CLI")
-        # Output: HyperLib CLI version 2.7.3
+        print_version("hs_lib", app_name="hs-lib CLI")
+        # Output: hs-lib CLI version 2.7.3
     """
     if app_name is None:
         app_name = package_name
@@ -135,7 +135,7 @@ def version_option(
         # Output: My Application version 1.2.3
     """
     if not HAS_TYPER:
-        raise ImportError("Typer not installed. Install with: pip install hyperlib[cli]")
+        raise ImportError("Typer not installed. Install with: pip install hs-lib[cli]")
 
     def version_callback(value: bool):
         if value:
@@ -150,5 +150,5 @@ def version_option(
     )
 
 
-# Pre-configured version option for hyperlib itself
-HYPERLIB_VERSION_OPTION = version_option("hyperlib", app_name="HyperLib", python_version=True) if HAS_TYPER else None
+# Pre-configured version option for hs-lib itself
+HS_LIB_VERSION_OPTION = version_option("hs_lib", app_name="hs-lib", python_version=True) if HAS_TYPER else None

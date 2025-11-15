@@ -1,5 +1,5 @@
 """
-HyperLib Prometheus Metrics - Production-Ready Observability
+hs-lib Prometheus Metrics - Production-Ready Observability
 ==============================================================
 
 Zero-configuration Prometheus metrics for Python applications.
@@ -9,7 +9,7 @@ Quick Start
 ===========
 
     # Install
-    pip install hyperlib[metrics]
+    pip install hs-lib[metrics]
 
     # Create metrics (automatic collection!)
     from hs_lib import create_metrics

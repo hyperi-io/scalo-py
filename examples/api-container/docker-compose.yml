@@ -12,7 +12,7 @@ services:
       - "8080:8080"  # Health checks
       - "9090:9090"  # Metrics
     environment:
-      - HYPERLIB_PROFILE=docker
+      - HS_LIB_PROFILE=docker
       - LOG_LEVEL=INFO
       - DATABASE_HOST=postgres
       - REDIS_HOST=redis

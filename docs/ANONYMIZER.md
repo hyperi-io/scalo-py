@@ -1,4 +1,4 @@
-# HyperLib Anonymizer
+# hs-lib Anonymizer
 
 PII detection and anonymization using Microsoft Presidio.
 

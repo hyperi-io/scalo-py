@@ -36,7 +36,7 @@ class Anonymizer:
     """
     Opinionated anonymizer with Presidio.
 
-    Provides hyperlib-style ergonomics for common PII anonymization use cases.
+    Provides hs-lib-style ergonomics for common PII anonymization use cases.
 
     **Quick Start:**
 

@@ -16,7 +16,7 @@ ENV overrides:
     LOG_LEVEL=DEBUG
     LOG_FORMAT=json
     LOG_OUTPUT=stdout
-    HYPERLIB_NO_LOGGER_CONFIG=1  # Disable auto-config
+    HS_LIB_NO_LOGGER_CONFIG=1  # Disable auto-config
 
 See docs/LOGGING.md for examples and configuration details.
 """
@@ -269,7 +269,7 @@ def setup(
         masking_level: Filter level for sensitive data masking
             - None (default): Read from config (logging.masking_level)
             - "simple": Fast regex-based filter (default)
-            - "advanced": ML-based Presidio + regex (requires: pip install hyperlib[presidio])
+            - "advanced": ML-based Presidio + regex (requires: pip install hs-lib[presidio])
         masking_preset: Presidio preset for advanced masking
             - None (default): Read from config (logging.masking_preset)
             - "minimal": Secrets only (passwords, API keys)
@@ -364,9 +364,9 @@ def setup(
 # Smart Auto-Configuration (Zero-Config Pattern)
 # ============================================================================
 # Only auto-configure if user hasn't already configured logger
-# Opt-out: Set HYPERLIB_NO_LOGGER_CONFIG=1 to skip auto-config
+# Opt-out: Set HS_LIB_NO_LOGGER_CONFIG=1 to skip auto-config
 
-if not os.getenv("HYPERLIB_NO_LOGGER_CONFIG"):
+if not os.getenv("HS_LIB_NO_LOGGER_CONFIG"):
     # Initialize with smart defaults (auto-detects terminal, RFC 3339, emojis)
     setup()
 

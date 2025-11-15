@@ -1,5 +1,5 @@
 """
-Example CLI applications using Typer with hyperlib.
+Example CLI applications using Typer with hs-lib.
 
 These examples demonstrate best practices for CLI development.
 """
@@ -99,7 +99,7 @@ def status():
 
 
 # Example 4: CLI with environment config integration
-config_app = Typer(help="CLI with hyperlib config integration")
+config_app = Typer(help="CLI with hs-lib config integration")
 
 
 @config_app.command()
@@ -108,7 +108,7 @@ def deploy(
     force: bool = Option(False, help="Skip safety checks"),
 ):
     """Deploy application to environment."""
-    # Integration with hyperlib.config
+    # Integration with hs_lib.config
     try:
         from hs_lib.config import get_config
 

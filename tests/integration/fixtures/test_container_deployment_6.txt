@@ -8,7 +8,7 @@ RUN pip install --no-cache-dir uv
 COPY pyproject.toml /app/
 COPY src /app/src
 
-# Install hyperlib with database extras
+# Install hs-lib with database extras
 RUN uv pip install --system -e '.[database]'
 
 COPY app.py /app/

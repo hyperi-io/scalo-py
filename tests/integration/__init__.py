@@ -1,1 +1,1 @@
-"""Integration tests for hyperlib components."""
+"""Integration tests for hs_lib components."""

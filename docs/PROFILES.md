@@ -4,7 +4,7 @@ Profile-based configuration for different deployment environments.
 
 ## Overview
 
-Hyperlib applications support three deployment profiles:
+hs-lib applications support three deployment profiles:
 
 - **dev**: Local development
 - **docker**: CI/CD and integration testing
@@ -120,11 +120,11 @@ Override profile at runtime:
 
 ```bash
 # Override in container
-HYPERLIB_PROFILE=prod python -m my_app serve
+HS_LIB_PROFILE=prod python -m my_app serve
 
 # Override in k8s manifest
 env:
-  - name: HYPERLIB_PROFILE
+  - name: HS_LIB_PROFILE
     value: "prod"
 ```
 
@@ -153,7 +153,7 @@ app = Application.api(
 ### Environment Variable
 
 ```bash
-export HYPERLIB_PROFILE=docker
+export HS_LIB_PROFILE=docker
 python -m my_app serve  # Uses docker profile
 ```
 

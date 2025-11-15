@@ -1,5 +1,5 @@
 """
-Hyperlib Anonymizer - Opinionated PII detection and anonymization.
+hs-lib Anonymizer - Opinionated PII detection and anonymization.
 
 This module provides a simple, opinionated API for anonymizing sensitive data
 using Microsoft Presidio as the underlying engine. It offers:
@@ -11,7 +11,7 @@ using Microsoft Presidio as the underlying engine. It offers:
 - **Multi-format:** Text, JSON, dicts, config files
 
 Installation:
-    pip install hyperlib[presidio]
+    pip install hs-lib[presidio]
 
 Quick Start:
     from hs_lib.anonymizer import anonymize_text
@@ -71,7 +71,7 @@ except ImportError:
 
     warnings.warn(
         "Presidio not installed. Install with: pip install presidio-analyzer presidio-anonymizer\n"
-        "Or: pip install hyperlib[presidio]",
+        "Or: pip install hs-lib[presidio]",
         ImportWarning,
         stacklevel=2,
     )

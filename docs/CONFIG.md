@@ -1,8 +1,8 @@
-# Hyperlib Configuration Guide
+# hs-lib Configuration Guide
 
 ## Overview
 
-Hyperlib provides intelligent, container-aware configuration management that automatically detects and adapts to your deployment environment (Kubernetes/HELM, Docker, or bare metal). It follows industry-standard conventions while remaining flexible and override-friendly.
+hs-lib provides intelligent, container-aware configuration management that automatically detects and adapts to your deployment environment (Kubernetes/HELM, Docker, or bare metal). It follows industry-standard conventions while remaining flexible and override-friendly.
 
 ## Key Features
 
@@ -30,7 +30,7 @@ db_config = config.get_database_config("postgresql")  # Database config
 
 ## Environment Detection
 
-Hyperlib automatically detects your runtime environment:
+hs-lib automatically detects your runtime environment:
 
 | Environment | Detection Method |
 |------------|------------------|
@@ -43,17 +43,17 @@ Hyperlib automatically detects your runtime environment:
 
 ```bash
 # Disable auto-detection
-export HYPERLIB_AUTO_DETECT=false
+export HS_LIB_AUTO_DETECT=false
 
 # Enable debug output
-export HYPERLIB_DEBUG=1
+export HS_LIB_DEBUG=1
 ```
 
 ## Mount Paths
 
 ### Standard Mount Points
 
-Hyperlib detects and uses standard mount points based on your environment:
+hs-lib detects and uses standard mount points based on your environment:
 
 #### HELM Deployments (Kubernetes)
 
@@ -87,7 +87,7 @@ Hyperlib detects and uses standard mount points based on your environment:
 
 ### Auto-Detection Priority
 
-Hyperlib checks for existing directories in this order:
+hs-lib checks for existing directories in this order:
 
 1. **HELM standard paths** (`/config`, `/secrets`, `/data`)
 2. **Docker standard paths** (`/app/config`, `/run/secrets`)
@@ -111,7 +111,7 @@ print(f"Temp: {mounts.temp_dir}")
 
 ### Standard Variables Detection
 
-Hyperlib automatically detects common environment variables:
+hs-lib automatically detects common environment variables:
 
 ```python
 from hs_lib.config import get_standard_env_vars
@@ -145,10 +145,10 @@ clickhouse_config = get_database_config("clickhouse", env_prefix="CH")
 
 ```python
 # Set custom app name (default: "app")
-export HYPERLIB_APP_NAME=my-service
+export HS_LIB_APP_NAME=my-service
 
 # Set custom env prefix (default: "APP")
-export HYPERLIB_ENV_PREFIX=MYAPP
+export HS_LIB_ENV_PREFIX=MYAPP
 # Now looks for MYAPP_* environment variables
 ```
 
@@ -156,7 +156,7 @@ export HYPERLIB_ENV_PREFIX=MYAPP
 
 ### Dynaconf Integration
 
-Hyperlib uses Dynaconf for configuration management:
+hs-lib uses Dynaconf for configuration management:
 
 ```python
 from hs_lib.config import settings
@@ -176,7 +176,7 @@ database_url = settings.get("DATABASE_URL", "postgresql://localhost/db")
 
 ### YAML Configuration
 
-Hyperlib supports environment variable substitution in YAML:
+hs-lib supports environment variable substitution in YAML:
 
 ```yaml
 # config.yaml
@@ -333,7 +333,7 @@ class Config:
         # ... dozens more lines
 ```
 
-#### After (Hyperlib)
+#### After (hs-lib)
 
 ```python
 # 5 lines with hs-lib
@@ -427,7 +427,7 @@ config = get_target_config("production")
 ### Debug Mode
 
 ```bash
-export HYPERLIB_DEBUG=1
+export HS_LIB_DEBUG=1
 python app.py
 
 # Output:
@@ -441,21 +441,21 @@ python app.py
 
 | Issue | Solution |
 |-------|----------|
-| Wrong environment detected | Set `HYPERLIB_AUTO_DETECT=false` and configure manually |
+| Wrong environment detected | Set `HS_LIB_AUTO_DETECT=false` and configure manually |
 | Mount paths not found | Check directory exists and has correct permissions |
 | Database config not working | Verify environment variables are set with correct prefix |
 | HELM not detected | Ensure HELM_RELEASE_NAME is set or standard paths exist |
 
 ## Environment Variable Reference
 
-### Hyperlib Control Variables
+### hs-lib Control Variables
 
 | Variable | Purpose | Default |
 |----------|---------|---------|
-| `HYPERLIB_AUTO_DETECT` | Enable auto-detection | `true` |
-| `HYPERLIB_DEBUG` | Enable debug output | `false` |
-| `HYPERLIB_APP_NAME` | Application name | `app` |
-| `HYPERLIB_ENV_PREFIX` | Env var prefix | `APP` |
+| `HS_LIB_AUTO_DETECT` | Enable auto-detection | `true` |
+| `HS_LIB_DEBUG` | Enable debug output | `false` |
+| `HS_LIB_APP_NAME` | Application name | `app` |
+| `HS_LIB_ENV_PREFIX` | Env var prefix | `APP` |
 
 ### Standard Container Variables
 

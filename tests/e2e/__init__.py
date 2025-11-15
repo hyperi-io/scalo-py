@@ -1,1 +1,1 @@
-"""End-to-end tests for hyperlib applications."""
+"""End-to-end tests for hs_lib applications."""

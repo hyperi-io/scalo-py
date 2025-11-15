@@ -1,7 +1,7 @@
 import os
 import json
 
-# Simulate what hyperlib would detect
+# Simulate what hs-lib would detect
 mounts = {
     "config_dir": "/app/config" if os.path.exists("/app/config") else "/config",
     "data_dir": "/app/data" if os.path.exists("/app/data") else "/data",

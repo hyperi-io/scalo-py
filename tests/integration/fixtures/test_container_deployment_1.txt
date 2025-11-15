@@ -1,7 +1,7 @@
 import sys
 import os
 
-# hyperlib is installed as a package now, no need to modify path
+# hs-lib is installed as a package now, no need to modify path
 from hs_lib import Application, get_mount_config, get_database_config
 
 # Create API application

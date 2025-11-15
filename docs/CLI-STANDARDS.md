@@ -1,6 +1,6 @@
-# CLI Development Standards for HyperLib
+# CLI Development Standards for hs-lib
 
-**Mandatory standard for all HyperLib CLI applications**
+**Mandatory standard for all hs-lib CLI applications**
 
 ---
 
@@ -31,9 +31,9 @@ pip install hs-lib[dev,cli]
 
 ---
 
-## HyperLib CLI Utilities
+## hs-lib CLI Utilities
 
-HyperLib provides ready-to-use utilities to accelerate CLI development:
+hs-lib provides ready-to-use utilities to accelerate CLI development:
 
 ### Output Formatting (`hs-lib.cli.output`)
 
@@ -377,7 +377,7 @@ def test_help():
 
 ---
 
-## Integration with HyperLib
+## Integration with hs-lib
 
 ### Using hs-lib.config
 
@@ -599,4 +599,4 @@ Complete examples are available in:
 
 **Last Updated:** 2025-11-07
 **Version:** 1.0.0
-**Status:** Mandatory for all HyperLib CLI applications
+**Status:** Mandatory for all hs-lib CLI applications

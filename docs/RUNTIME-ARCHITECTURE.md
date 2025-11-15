@@ -1,4 +1,4 @@
-# HyperLib Runtime Architecture
+# hs-lib Runtime Architecture
 
 Unified deployment model supporting both **containerized** and **local** environments.
 
@@ -13,7 +13,7 @@ Hardcoding paths like `/app/config` breaks local development. Using `~/.config` 
 
 ## Solution: Unified Runtime Environment
 
-HyperLib provides automatic environment detection and unified path resolution:
+hs-lib provides automatic environment detection and unified path resolution:
 
 ```python
 from hs_lib import get_runtime_paths
@@ -141,7 +141,7 @@ else:
 
 ## Container Detection
 
-HyperLib automatically detects container environments using multiple methods:
+hs-lib automatically detects container environments using multiple methods:
 
 ### Method 1: Docker (/.dockerenv)
 

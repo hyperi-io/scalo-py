@@ -1,4 +1,4 @@
-"""Tests for hyperlib.logger module.
+"""Tests for hs_lib.logger module.
 
 Following No Mocks Policy: Tests use real logger, no mocks of internal implementation.
 """

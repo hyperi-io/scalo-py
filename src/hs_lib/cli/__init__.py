@@ -1,11 +1,11 @@
 """
-HyperLib CLI utilities - Typer-based command-line interface framework.
+hs-lib CLI utilities - Typer-based command-line interface framework.
 
-This module provides CLI utilities and standards for hyperlib applications.
+This module provides CLI utilities and standards for hs-lib applications.
 Typer is the mandatory standard for all CLI applications.
 
 Installation:
-    pip install hyperlib[cli]
+    pip install hs-lib[cli]
 
 Basic Usage:
     from hs_lib.cli import Typer, Option, Argument
@@ -48,13 +48,13 @@ Standards:
     - Prefer clarity over cleverness (see PYTHON-STANDARDS.md)
 
 Modules:
-    - hyperlib.cli.output - Output formatting utilities
-    - hyperlib.cli.options - Reusable CLI options
-    - hyperlib.cli.version - Version handling
-    - hyperlib.cli.examples - Complete usage examples
+    - hs_lib.cli.output - Output formatting utilities
+    - hs_lib.cli.options - Reusable CLI options
+    - hs_lib.cli.version - Version handling
+    - hs_lib.cli.examples - Complete usage examples
 
 Examples:
-    See hyperlib/cli/examples.py and docs/CLI-STANDARDS.md for complete examples.
+    See hs_lib/cli/examples.py and docs/CLI-STANDARDS.md for complete examples.
 """
 
 __all__ = [
@@ -88,14 +88,14 @@ except ImportError:
         def __init__(self, *args, **kwargs):
             raise ImportError(
                 "Typer is not installed. "
-                "Install with: pip install hyperlib[cli]\n"
+                "Install with: pip install hs-lib[cli]\n"
                 "Documentation: https://typer.tiangolo.com/"
             )
 
         def __call__(self, *args, **kwargs):
             raise ImportError(
                 "Typer is not installed. "
-                "Install with: pip install hyperlib[cli]\n"
+                "Install with: pip install hs-lib[cli]\n"
                 "Documentation: https://typer.tiangolo.com/"
             )
 

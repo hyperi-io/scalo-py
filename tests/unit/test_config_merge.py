@@ -1,5 +1,5 @@
 """
-Unit tests for hyperlib.config.merge module.
+Unit tests for hs_lib.config.merge module.
 
 Tests config file merging with:
 - Valid data for all supported file types

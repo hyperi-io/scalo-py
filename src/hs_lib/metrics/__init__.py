@@ -1,5 +1,5 @@
 """
-HyperLib Metrics Module - Backend-Agnostic Metrics Instrumentation.
+hs-lib Metrics Module - Backend-Agnostic Metrics Instrumentation.
 
 Provides unified API for metrics collection with pluggable backends:
 - Prometheus (default)

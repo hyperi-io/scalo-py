@@ -1,4 +1,4 @@
-# hs-lib (Hyperlib)
+# hs-lib
 
 <!-- BADGES:START -->
 [![Build Status](https://github.com/hypersec-io/hs-lib/workflows/CI%20Publish/badge.svg)](https://github.com/hypersec-io/hs-lib/actions)
@@ -8,7 +8,7 @@
 
 **Enterprise Python Infrastructure for HyperSec Projects**
 
-hs-lib (formerly Hyperlib) is a production-ready Python library providing container-native application patterns, metrics, logging, and infrastructure utilities for all HyperSec Python projects.
+hs-lib is a production-ready Python library providing container-native application patterns, metrics, logging, and infrastructure utilities for all HyperSec Python projects.
 
 ## Features
 
@@ -34,15 +34,15 @@ hs-lib (formerly Hyperlib) is a production-ready Python library providing contai
 
 ## Installation
 
-### With HyperCI (Recommended)
+### With HS-CI (Recommended)
 
-If your project uses HyperCI, `./ci/bootstrap install` automatically configures PyPI access:
+If your project uses HS-CI, `./ci/bootstrap install` automatically configures PyPI access:
 
 ```bash
 # Setup project (configures .pip/pip.conf automatically)
 ./ci/bootstrap install
 
-# Install hyperlib (no --index-url needed - works for both uv and pip)
+# Install hs-lib (no --index-url needed - works for both uv and pip)
 uv pip install hs-lib
 
 # Or use standard pip
@@ -56,9 +56,9 @@ uv add hs-lib[presidio]       # PII anonymization
 uv add hs-lib[opentelemetry]  # OpenTelemetry metrics
 ```
 
-### Without HyperCI (Manual Configuration)
+### Without HS-CI (Manual Configuration)
 
-If not using HyperCI, specify the index URL manually:
+If not using HS-CI, specify the index URL manually:
 
 ```bash
 # Set credentials
@@ -143,7 +143,7 @@ app.run()
 - **`prod`**: Production mode (JSON logs, health checks, metrics on port 9090)
 
 Profiles are auto-detected from:
-1. Environment variable: `HYPERLIB_PROFILE` or `APP_PROFILE`
+1. Environment variable: `HS_LIB_PROFILE` or `APP_PROFILE`
 2. Kubernetes detection (sets `prod`)
 3. Docker detection (sets `docker`)
 4. Default: `dev`
@@ -163,7 +163,7 @@ docker run -p 8000:8000 -p 8080:8080 -e PROFILE=docker my-app:latest
 ### Kubernetes (HELM)
 
 ```bash
-helm install my-app ./templates/helm/hyperlib-app \
+helm install my-app ./templates/helm/hs-lib-app \
   --set app.type=api \
   --set image.repository=my-app \
   --set image.tag=1.0.0 \
@@ -201,4 +201,4 @@ Proprietary - HyperSec Internal Use Only
 
 ## Support
 
-Internal support: #hyperlib on Slack
+Internal support: #hs-lib on Slack

@@ -1,5 +1,5 @@
 """
-HyperLib Application Framework
+hs-lib Application Framework
 Factory-based application builder for all deployment types
 
 Provides:

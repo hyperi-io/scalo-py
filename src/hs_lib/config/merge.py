@@ -1,5 +1,5 @@
 """
-HyperLib Config Merge - Intelligent Multi-Format File Merging
+hs-lib Config Merge - Intelligent Multi-Format File Merging
 ===============================================================
 
 Auto-detect and merge configuration files across multiple formats.
@@ -9,7 +9,7 @@ Quick Start
 ===========
 
     # Install
-    pip install hyperlib
+    pip install hs-lib
 
     # Auto-detect and merge
     from hs_lib.config import merge_files

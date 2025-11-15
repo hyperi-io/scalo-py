@@ -1,10 +1,10 @@
-# Hyperlib App HELM Chart
+# hs-lib App HELM Chart
 
-Production-ready HELM chart for Hyperlib applications (API, Daemon, MCP).
+Production-ready HELM chart for hs-lib applications (API, Daemon, MCP).
 
 ## Features
 
-- Support for all Hyperlib application types (API, Daemon, MCP)
+- Support for all hs-lib application types (API, Daemon, MCP)
 - Profile-based configuration (dev/docker/prod)
 - Health checks with custom dependency checks
 - Prometheus metrics with ServiceMonitor
@@ -19,7 +19,7 @@ Production-ready HELM chart for Hyperlib applications (API, Daemon, MCP).
 ### Basic Install
 
 ```bash
-helm install my-app ./templates/helm/hyperlib-app \
+helm install my-app ./templates/helm/hs-lib-app \
   --set app.name=my-app \
   --set app.type=api \
   --set image.repository=my-app \
@@ -29,7 +29,7 @@ helm install my-app ./templates/helm/hyperlib-app \
 ### API Application
 
 ```bash
-helm install my-api ./templates/helm/hyperlib-app \
+helm install my-api ./templates/helm/hs-lib-app \
   --set app.type=api \
   --set image.repository=my-api \
   --set image.tag=1.0.0 \
@@ -40,7 +40,7 @@ helm install my-api ./templates/helm/hyperlib-app \
 ### Daemon Application
 
 ```bash
-helm install my-daemon ./templates/helm/hyperlib-app \
+helm install my-daemon ./templates/helm/hs-lib-app \
   --set app.type=daemon \
   --set image.repository=my-daemon \
   --set image.tag=1.0.0 \
@@ -51,7 +51,7 @@ helm install my-daemon ./templates/helm/hyperlib-app \
 ### With Custom Values
 
 ```bash
-helm install my-app ./templates/helm/hyperlib-app -f values-prod.yaml
+helm install my-app ./templates/helm/hs-lib-app -f values-prod.yaml
 ```
 
 ## Configuration
@@ -245,10 +245,10 @@ See complete examples:
 
 ```bash
 # Dry run
-helm upgrade my-app ./templates/helm/hyperlib-app --dry-run --debug
+helm upgrade my-app ./templates/helm/hs-lib-app --dry-run --debug
 
 # Apply upgrade
-helm upgrade my-app ./templates/helm/hyperlib-app
+helm upgrade my-app ./templates/helm/hs-lib-app
 
 # Rollback if needed
 helm rollback my-app
@@ -262,6 +262,6 @@ helm uninstall my-app
 
 ## See Also
 
-- [Hyperlib Documentation](https://github.com/hypersec-io/hyperlib/tree/main/docs)
+- [hs-lib Documentation](https://github.com/hypersec-io/hs-lib/tree/main/docs)
 - [Kubernetes Guide](../../../docs/KUBERNETES.md)
 - [Profiles Guide](../../../docs/PROFILES.md)

@@ -31,7 +31,7 @@ class EntityPreset:
 # Preset definitions
 #
 # NOTE: Presidio doesn't have built-in recognizers for PASSWORD, API_KEY, SECRET_KEY, etc.
-# These patterns are better handled by regex-based filtering (hyperlib.logger.filters)
+# These patterns are better handled by regex-based filtering (hs_lib.logger.filters)
 # Presidio presets focus on ML-detectable PII (SSN, credit cards, names, etc.)
 MINIMAL = EntityPreset(
     name="minimal",

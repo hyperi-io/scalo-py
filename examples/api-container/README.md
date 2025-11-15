@@ -91,7 +91,7 @@ api-container/
 
 ```bash
 # Profile selection
-HYPERLIB_PROFILE=prod
+HS_LIB_PROFILE=prod
 
 # Application config
 API_PORT=8000
@@ -128,6 +128,6 @@ process_resident_memory_bytes
 
 ## See Also
 
-- [Hyperlib Documentation](https://github.com/hypersec-io/hs-lib/tree/main/docs)
+- [hs-lib Documentation](https://github.com/hypersec-io/hs-lib/tree/main/docs)
 - [Container Deployment Guide](../../docs/CONTAINER_DEPLOYMENT.md)
 - [Kubernetes Guide](../../docs/KUBERNETES.md)

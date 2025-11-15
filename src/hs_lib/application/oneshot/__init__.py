@@ -1,5 +1,5 @@
 """
-HyperLib Oneshot Application
+hs-lib Oneshot Application
 Single-execution task with monitoring
 """
 

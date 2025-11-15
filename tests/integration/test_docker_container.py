@@ -1,5 +1,5 @@
 """
-Docker container tests for hyperlib applications
+Docker container tests for hs_lib applications
 Tests containerized deployments with actual Docker containers
 """
 
@@ -26,7 +26,7 @@ def docker_available():
 @pytest.mark.integration
 @pytest.mark.skipif(not docker_available(), reason="Docker not available")
 class TestDockerContainer:
-    """Test hyperlib applications in Docker containers."""
+    """Test hs_lib applications in Docker containers."""
 
     @staticmethod
     def load_fixture(fixture_name: str) -> str:
@@ -53,7 +53,7 @@ class TestDockerContainer:
             subprocess.run(["docker", "rmi", "-f", image], capture_output=True)
 
     def test_docker_environment_detection(self, docker_cleanup):
-        """Test that hyperlib detects Docker environment correctly."""
+        """Test that hs_lib detects Docker environment correctly."""
         # Create a test Dockerfile
         temp_dir = Path(tempfile.mkdtemp())
 
@@ -67,7 +67,7 @@ class TestDockerContainer:
             dockerfile.write_text(self.load_fixture("test_docker_container_2"))
 
             # Build Docker image
-            image_name = "hyperlib-test:docker-env"
+            image_name = "hs-lib-test:docker-env"
             result = subprocess.run(
                 ["docker", "build", "-t", image_name, "--build-arg", f"host={Path.cwd()}", "."],
                 cwd=temp_dir,
@@ -85,7 +85,7 @@ class TestDockerContainer:
             docker_cleanup["images"].append(image_name)
 
             # Run container
-            container_name = "hyperlib-docker-test"
+            container_name = "hs-lib-docker-test"
             result = subprocess.run(
                 ["docker", "run", "--name", container_name, "--rm", image_name], capture_output=True, text=True
             )
@@ -111,7 +111,7 @@ class TestDockerContainer:
             dockerfile.write_text(self.load_fixture("test_docker_container_5"))
 
             # Build image
-            image_name = "hyperlib-test:mounts"
+            image_name = "hs-lib-test:mounts"
             subprocess.run(["docker", "build", "-t", image_name, "."], cwd=temp_dir, capture_output=True)
             docker_cleanup["images"].append(image_name)
 
@@ -152,7 +152,7 @@ class TestDockerContainer:
             dockerfile.write_text(self.load_fixture("test_docker_container_7"))
 
             # Build image
-            image_name = "hyperlib-test:env"
+            image_name = "hs-lib-test:env"
             subprocess.run(["docker", "build", "-t", image_name, "."], cwd=temp_dir, capture_output=True)
             docker_cleanup["images"].append(image_name)
 
@@ -197,14 +197,14 @@ class TestDockerContainer:
             dockerfile.write_text(self.load_fixture("test_docker_container_9"))
 
             # Build API image
-            api_image = "hyperlib-test:api"
+            api_image = "hs-lib-test:api"
             subprocess.run(
                 ["docker", "build", "-f", "Dockerfile.api", "-t", api_image, "."], cwd=temp_dir, capture_output=True
             )
             docker_cleanup["images"].append(api_image)
 
             # Create a network for containers
-            network_name = "hyperlib-test-network"
+            network_name = "hs-lib-test-network"
             subprocess.run(["docker", "network", "create", network_name], capture_output=True)
 
             try:
@@ -256,7 +256,7 @@ class TestDockerContainer:
             dockerfile.write_text(self.load_fixture("test_docker_container_11"))
 
             # Build image
-            image_name = "hyperlib-test:helm"
+            image_name = "hs-lib-test:helm"
             subprocess.run(["docker", "build", "-t", image_name, "."], cwd=temp_dir, capture_output=True)
             docker_cleanup["images"].append(image_name)
 
@@ -310,7 +310,7 @@ class TestDockerContainer:
             dockerfile.write_text(self.load_fixture("test_docker_container_13"))
 
             # Build image
-            image_name = "hyperlib-test:resources"
+            image_name = "hs-lib-test:resources"
             subprocess.run(["docker", "build", "-t", image_name, "."], cwd=temp_dir, capture_output=True)
             docker_cleanup["images"].append(image_name)
 

@@ -1,4 +1,4 @@
-"""HyperLib Config Module - Re-exports from config.py for backward compatibility."""
+"""hs-lib Config Module - Re-exports from config.py for backward compatibility."""
 
 # Re-export everything from config.py
 from .config import *  # noqa: F403

@@ -458,5 +458,5 @@ For library projects, include:
 
 ## Related Documentation
 
-- [Hyperlib Deployment Guide](../DEPLOYMENT.md)
-- [Hyperlib Artifactory Configuration](ARTIFACTORY.md)
+- [hs-lib Deployment Guide](../DEPLOYMENT.md)
+- [hs-lib Artifactory Configuration](ARTIFACTORY.md)

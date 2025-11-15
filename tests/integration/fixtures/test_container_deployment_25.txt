@@ -10,4 +10,4 @@ service:
   port: 8080
 
 env:
-  APP_NAME: hyperlib-metrics-app
+  APP_NAME: hs-lib-metrics-app

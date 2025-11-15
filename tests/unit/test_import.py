@@ -1,9 +1,9 @@
 """
-Basic import tests for hyperlib.
+Basic import tests for hs_lib.
 """
 
 
-def test_hyperlib_import():
+def test_hs_lib_import():
     """Test that hs_lib can be imported."""
     import hs_lib
 

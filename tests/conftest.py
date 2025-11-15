@@ -1,4 +1,4 @@
-"""Pytest configuration and fixtures for hyperlib tests."""
+"""Pytest configuration and fixtures for hs-lib tests."""
 
 import os
 import subprocess
@@ -25,12 +25,12 @@ def cleanup_hung_processes():
     """
     Kill hung background processes from previous test runs.
 
-    Uses HYPERLIB-specific labels to avoid killing other projects' processes.
+    Uses HS_LIB-specific labels to avoid killing other projects' processes.
     """
-    # Kill processes with HYPERLIB test labels
-    hyperlib_patterns = ["HYPERLIB_TEST_HELM", "HYPERLIB_TEST_K8S", "HYPERLIB_TEST_DOCKER", "HYPERLIB_TEST_MINIKUBE"]
+    # Kill processes with HS_LIB test labels
+    hs_lib_patterns = ["HS_LIB_TEST_HELM", "HS_LIB_TEST_K8S", "HS_LIB_TEST_DOCKER", "HS_LIB_TEST_MINIKUBE"]
 
-    for pattern in hyperlib_patterns:
+    for pattern in hs_lib_patterns:
         try:
             subprocess.run(["pkill", "-9", "-f", pattern], capture_output=True, timeout=5)
         except (subprocess.TimeoutExpired, Exception):
@@ -39,8 +39,8 @@ def cleanup_hung_processes():
     # Also kill generic hung Kubernetes commands (broad cleanup)
     generic_patterns = [
         "minikube ssh.*docker login",
-        "kubectl.*helm-hyperlib",  # Hyperlib-specific namespace
-        "helm install.*hyperlib",  # Hyperlib-specific releases
+        "kubectl.*helm-hs-lib",  # hs-lib-specific namespace
+        "helm install.*hs-lib",  # hs-lib-specific releases
     ]
 
     for pattern in generic_patterns:

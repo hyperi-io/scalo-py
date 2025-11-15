@@ -193,7 +193,7 @@ def path_option(
         )
     """
     if not HAS_TYPER:
-        raise ImportError("Typer not installed. Install with: pip install hyperlib[cli]")
+        raise ImportError("Typer not installed. Install with: pip install hs-lib[cli]")
 
     return Option(
         default,
@@ -244,7 +244,7 @@ def enum_option(  # noqa: ARG001
         )
     """
     if not HAS_TYPER:
-        raise ImportError("Typer not installed. Install with: pip install hyperlib[cli]")
+        raise ImportError("Typer not installed. Install with: pip install hs-lib[cli]")
 
     return Option(
         default,

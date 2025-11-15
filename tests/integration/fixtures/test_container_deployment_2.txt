@@ -10,7 +10,7 @@ import time
 app = Application.api(name="metrics-test-api", port=8000, metrics_port=8080)
 
 # Create custom metrics
-metrics = create_metrics(app_name="hyperlib_test")
+metrics = create_metrics(app_name="hs-lib_test")
 
 # Add a counter metric
 request_counter = metrics.counter(

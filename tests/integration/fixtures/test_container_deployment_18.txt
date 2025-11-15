@@ -1,4 +1,4 @@
 apiVersion: v2
-name: hyperlib-api-test
+name: hs-lib-api-test
 version: 0.1.0
-description: Helm chart for hyperlib API deployment test
+description: Helm chart for hs-lib API deployment test

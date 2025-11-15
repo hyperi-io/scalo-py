@@ -1,10 +1,10 @@
-# HyperLib Documentation
+# hs-lib Documentation
 
 Production-ready infrastructure for Python applications.
 
 ## Application Types
 
-HyperLib provides 5 application types with container-native patterns:
+hs-lib provides 5 application types with container-native patterns:
 
 - **[API](APP-API.md)** - FastAPI applications with auto-metrics and health checks
 - **[Daemon](APP-DAEMON.md)** - Long-running background services with scheduled tasks
@@ -87,7 +87,7 @@ All applications support 3 profiles:
 Configure via:
 
 - CLI flag: `--profile prod`
-- ENV var: `HYPERLIB_PROFILE=prod`
+- ENV var: `HS_LIB_PROFILE=prod`
 - Code: `Application.api(profile="prod")`
 
 ## Container Deployment
@@ -153,7 +153,7 @@ spec:
         - containerPort: 9090
           name: metrics
         env:
-        - name: HYPERLIB_PROFILE
+        - name: HS_LIB_PROFILE
           value: "prod"
         livenessProbe:
           httpGet:
@@ -338,7 +338,7 @@ app = Flask(__name__)
 def get_users():
     return {"users": []}
 
-# After (HyperLib)
+# After (hs-lib)
 app = Application.api(name="my-api")
 
 @app.get("/users")
@@ -357,7 +357,7 @@ Replace with Typer-based Application.cli():
 def sync(source):
     pass
 
-# After (HyperLib)
+# After (hs-lib)
 app = Application.cli(name="my-tool")
 
 @app.command()

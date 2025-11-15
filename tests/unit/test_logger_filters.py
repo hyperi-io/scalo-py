@@ -1,5 +1,5 @@
 """
-Tests for hyperlib logger filters (sensitive data masking).
+Tests for hs_lib logger filters (sensitive data masking).
 """
 
 import pytest

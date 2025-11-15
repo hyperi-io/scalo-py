@@ -1,4 +1,4 @@
-"""Tests for hyperlib.application.cli module (Typer-based)."""
+"""Tests for hs_lib.application.cli module (Typer-based)."""
 
 import pytest
 

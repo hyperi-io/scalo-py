@@ -1,1 +1,1 @@
-"""Unit tests for hyperlib components."""
+"""Unit tests for hs_lib components."""

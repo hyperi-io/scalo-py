@@ -10,7 +10,7 @@ service:
   port: 8000
 
 env:
-  APP_NAME: hyperlib-api
+  APP_NAME: hs-lib-api
   POSTGRES_HOST: postgres.{{ .Release.Namespace }}.svc.cluster.local
   POSTGRES_USER: apiuser
   POSTGRES_DATABASE: apidb

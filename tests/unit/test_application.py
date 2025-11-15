@@ -1,5 +1,5 @@
 """
-Tests for hyperlib.application module
+Tests for hs_lib.application module
 Factory pattern for API, Daemon, CLI, and Oneshot applications
 """
 

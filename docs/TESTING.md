@@ -1,4 +1,4 @@
-# Hyperlib Testing Guide
+# hs-lib Testing Guide
 
 ## Test Requirements
 

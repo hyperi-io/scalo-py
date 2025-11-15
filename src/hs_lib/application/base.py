@@ -1,5 +1,5 @@
 """
-HyperLib Application Factory
+hs-lib Application Factory
 Main entry point for creating applications
 """
 

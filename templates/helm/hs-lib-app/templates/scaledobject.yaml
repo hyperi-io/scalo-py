@@ -2,12 +2,12 @@
 apiVersion: keda.sh/v1alpha1
 kind: ScaledObject
 metadata:
-  name: {{ include "hyperlib-app.fullname" . }}
+  name: {{ include "hs-lib-app.fullname" . }}
   labels:
-    {{- include "hyperlib-app.labels" . | nindent 4 }}
+    {{- include "hs-lib-app.labels" . | nindent 4 }}
 spec:
   scaleTargetRef:
-    name: {{ include "hyperlib-app.fullname" . }}
+    name: {{ include "hs-lib-app.fullname" . }}
   minReplicaCount: {{ .Values.keda.minReplicaCount }}
   maxReplicaCount: {{ .Values.keda.maxReplicaCount }}
   pollingInterval: {{ .Values.keda.pollingInterval }}

@@ -1,5 +1,5 @@
 """
-HyperLib Process Execution Harness - Intelligent Subprocess Monitoring and Testing
+hs-lib Process Execution Harness - Intelligent Subprocess Monitoring and Testing
 
 Provides smart process execution with:
 - Activity-based monitoring (detects hangs early via output patterns)

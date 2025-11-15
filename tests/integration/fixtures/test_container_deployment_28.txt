@@ -6,4 +6,4 @@ image:
 restartPolicy: Never
 
 env:
-  APP_NAME: hyperlib-pod-app
+  APP_NAME: hs-lib-pod-app

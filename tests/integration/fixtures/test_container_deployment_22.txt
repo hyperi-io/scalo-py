@@ -1,4 +1,4 @@
 apiVersion: v2
-name: hyperlib-metrics-test
+name: hs-lib-metrics-test
 version: 0.1.0
-description: Helm chart for hyperlib Prometheus metrics test
+description: Helm chart for hs-lib Prometheus metrics test

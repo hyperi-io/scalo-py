@@ -1,5 +1,5 @@
 """
-End-to-end tests for hyperlib.application
+End-to-end tests for hs_lib.application
 Tests actual decorator and runtime behavior
 """
 

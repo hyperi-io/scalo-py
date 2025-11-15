@@ -75,7 +75,7 @@ class HealthCheckHandler(BaseHTTPRequestHandler):
         self.wfile.write(json_dumps(response).encode())
 
     def log_message(self, format: str, *args: Any) -> None:  # noqa: ARG002
-        """Suppress default HTTP server logging (use hyperlib logger instead)."""
+        """Suppress default HTTP server logging (use hs_lib logger instead)."""
         pass
 
 

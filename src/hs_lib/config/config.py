@@ -1,5 +1,5 @@
 """
-HyperLib Config - Enterprise Configuration with Automatic Cascade
+hs-lib Config - Enterprise Configuration with Automatic Cascade
 ===================================================================
 
 Provides zero-configuration, automatic cascade for Python applications.
@@ -51,13 +51,13 @@ ALL configuration automatically follows this priority (highest to lowest):
     api.timeout           → MYAPP_API_TIMEOUT
     cache.redis.enabled   → MYAPP_CACHE_REDIS_ENABLED
 
-    Prefix customizable via: HYPERLIB_ENV_PREFIX=MYAPP
+    Prefix customizable via: HS_LIB_ENV_PREFIX=MYAPP
 
 **Multi-File Support:**
 
-    Hyperlib auto-discovers and merges multiple config sources:
+    hs-lib auto-discovers and merges multiple config sources:
 
-    1. Built-in defaults (hyperlib internals)
+    1. Built-in defaults (hs-lib internals)
     2. ~/.{app}/defaults.yaml (user defaults)
     3. /config/defaults.yaml (container defaults)
     4. settings.yaml (project base)
@@ -70,7 +70,7 @@ Quick Start
 ===========
 
     # Install
-    pip install hyperlib
+    pip install hs-lib
 
     # Use in your app (cascade automatic!)
     from hs_lib.config import settings
@@ -116,13 +116,13 @@ def detect_environment() -> Literal["kubernetes", "docker", "container", "bare_m
     """
     # K8s detection - check for service account token
     if os.path.exists("/var/run/secrets/kubernetes.io/serviceaccount/token"):
-        if os.getenv("HYPERLIB_DEBUG"):
+        if os.getenv("HS_LIB_DEBUG"):
             print("Environment detected: Kubernetes")
         return "kubernetes"
 
     # Docker detection - check for .dockerenv file
     if os.path.exists("/.dockerenv"):
-        if os.getenv("HYPERLIB_DEBUG"):
+        if os.getenv("HS_LIB_DEBUG"):
             print("Environment detected: Docker")
         return "docker"
 
@@ -131,14 +131,14 @@ def detect_environment() -> Literal["kubernetes", "docker", "container", "bare_m
         with open("/proc/1/cgroup") as f:
             cgroup_content = f.read()
             if "docker" in cgroup_content or "containerd" in cgroup_content:
-                if os.getenv("HYPERLIB_DEBUG"):
+                if os.getenv("HS_LIB_DEBUG"):
                     print("Environment detected: Container (via cgroups)")
                 return "container"
     except (FileNotFoundError, PermissionError):
         pass
 
     # Default to bare metal
-    if os.getenv("HYPERLIB_DEBUG"):
+    if os.getenv("HS_LIB_DEBUG"):
         print("Environment detected: Bare metal")
     return "bare_metal"
 
@@ -192,7 +192,7 @@ class MountConfig:
                 try:
                     path.mkdir(parents=True, exist_ok=True)
                 except (PermissionError, OSError) as e:
-                    if os.getenv("HYPERLIB_DEBUG"):
+                    if os.getenv("HS_LIB_DEBUG"):
                         print(f"Could not create {field}: {e}")
 
 
@@ -294,7 +294,7 @@ def detect_standard_mounts() -> dict[str, Path]:
             path = Path(path_str)
             if path.exists():
                 detected[mount_type] = path
-                if os.getenv("HYPERLIB_DEBUG"):
+                if os.getenv("HS_LIB_DEBUG"):
                     print(f"Detected {mount_type}: {path}")
                 break
 
@@ -347,7 +347,7 @@ def get_default_mounts(environment: str, app_name: str, auto_detect: bool = True
                 cache_dir=detected.get("cache_dir"),  # Optional
                 run_dir=detected.get("run_dir"),  # Optional
             )
-            if os.getenv("HYPERLIB_DEBUG"):
+            if os.getenv("HS_LIB_DEBUG"):
                 print("HELM K8s mount paths detected")
         else:
             # Generic K8s paths
@@ -360,7 +360,7 @@ def get_default_mounts(environment: str, app_name: str, auto_detect: bool = True
                 cache_dir=detected.get("cache_dir"),  # Optional
                 run_dir=detected.get("run_dir"),  # Optional
             )
-            if os.getenv("HYPERLIB_DEBUG"):
+            if os.getenv("HS_LIB_DEBUG"):
                 print("K8s mount paths - using app namespace")
 
     elif environment in ["docker", "container"]:
@@ -374,7 +374,7 @@ def get_default_mounts(environment: str, app_name: str, auto_detect: bool = True
             cache_dir=detected.get("cache_dir", Path("/app/cache")),
             run_dir=detected.get("run_dir", Path(f"/run/{app_name}")),
         )
-        if os.getenv("HYPERLIB_DEBUG"):
+        if os.getenv("HS_LIB_DEBUG"):
             print("Docker mount paths - /app namespace")
 
     else:  # bare_metal
@@ -389,21 +389,21 @@ def get_default_mounts(environment: str, app_name: str, auto_detect: bool = True
             cache_dir=home / f".cache/{app_name}",
             run_dir=Path(f"/run/user/{os.getuid()}/{app_name}") if hasattr(os, "getuid") else None,
         )
-        if os.getenv("HYPERLIB_DEBUG"):
+        if os.getenv("HS_LIB_DEBUG"):
             print("Local mount paths - user home directory")
 
     return config
 
 
 # Configurable environment variable prefix and app name
-# Set HYPERLIB_ENV_PREFIX to override (e.g., HYPERLIB_ENV_PREFIX=MYAPP)
+# Set HS_LIB_ENV_PREFIX to override (e.g., HS_LIB_ENV_PREFIX=MYAPP)
 # Default: APP (e.g., APP_LOG_LEVEL, APP_DATABASE_URL)
-ENV_PREFIX = os.getenv("HYPERLIB_ENV_PREFIX", "APP")
+ENV_PREFIX = os.getenv("HS_LIB_ENV_PREFIX", "APP")
 
 
 # Determine app name with proper priority:
 # 1. K8s/Docker standard APP_NAME environment variable
-# 2. HYPERLIB_APP_NAME override
+# 2. HS_LIB_APP_NAME override
 # 3. Python package name (if detectable)
 # 4. Default to "app"
 def get_app_name() -> str:
@@ -411,8 +411,8 @@ def get_app_name() -> str:
 
     Priority order:
     1. APP_NAME environment variable (K8s/Docker standard)
-    2. HYPERLIB_APP_NAME override
-    3. Root application package name (not hyperlib)
+    2. HS_LIB_APP_NAME override
+    3. Root application package name (not hs_lib)
     4. Main module name from sys.argv[0]
     5. Default to "app"
     """
@@ -421,8 +421,8 @@ def get_app_name() -> str:
     if app_name:
         return app_name
 
-    # Priority 2: Hyperlib override
-    app_name = os.getenv("HYPERLIB_APP_NAME")
+    # Priority 2: hs-lib override
+    app_name = os.getenv("HS_LIB_APP_NAME")
     if app_name:
         return app_name
 
@@ -434,8 +434,8 @@ def get_app_name() -> str:
         # Get all installed packages
         for dist in importlib.metadata.distributions():
             name = dist.metadata.get("Name", "").lower()
-            # Skip common libraries and hyperlib itself
-            if name and name not in ("hyperlib", "pip", "setuptools", "wheel"):
+            # Skip common libraries and hs_lib itself
+            if name and name not in ("hs_lib", "pip", "setuptools", "wheel"):
                 # Check if this package is in the current Python path
                 try:
                     module = __import__(name.replace("-", "_"))
@@ -468,7 +468,7 @@ def get_app_name() -> str:
 APP_NAME = get_app_name()
 
 # Auto-detection settings (can be disabled via env var)
-AUTO_DETECT = os.getenv("HYPERLIB_AUTO_DETECT", "true").lower() in ("true", "1", "yes")
+AUTO_DETECT = os.getenv("HS_LIB_AUTO_DETECT", "true").lower() in ("true", "1", "yes")
 DETECTED_ENV = detect_environment() if AUTO_DETECT else "bare_metal"
 
 # Get mount configuration based on environment
@@ -481,7 +481,7 @@ if DETECTED_ENV in ["kubernetes", "docker", "container"]:
 else:
     # Development environment - use local paths
     current_file = Path(__file__)
-    if "/src/hyperlib/" in str(current_file):
+    if "/src/hs_lib/" in str(current_file):
         # Development: use project root
         project_root = current_file.parent.parent.parent
         config_dir = project_root / "config"
@@ -497,7 +497,7 @@ if config_dir and config_dir.exists():
         config_file = config_dir / filename
         if config_file.exists():
             settings_files.append(str(config_file))
-            if os.getenv("HYPERLIB_DEBUG"):
+            if os.getenv("HS_LIB_DEBUG"):
                 print(f"Config file found: {config_file}")
 
     # Check for app-specific config
@@ -507,7 +507,7 @@ if config_dir and config_dir.exists():
             app_config_file = app_config_dir / filename
             if app_config_file.exists():
                 settings_files.append(str(app_config_file))
-                if os.getenv("HYPERLIB_DEBUG"):
+                if os.getenv("HS_LIB_DEBUG"):
                     print(f"App config file found: {app_config_file}")
 
 # Initialize Dynaconf with discovered settings
@@ -566,7 +566,7 @@ def get_config(
         additional_files: Additional config file paths to merge (list of str)
                          Files loaded in order, later files have higher priority
                          Paths can be absolute or relative to config_dir
-        env_prefix: Environment variable prefix (default: APP or HYPERLIB_ENV_PREFIX)
+        env_prefix: Environment variable prefix (default: APP or HS_LIB_ENV_PREFIX)
                    Example: "TENANT1" → TENANT1_DATABASE_HOST
         load_dotenv: Load .env file (default: True)
                     Set False for security-sensitive contexts
@@ -614,7 +614,7 @@ def get_config(
             if path.exists():
                 config_files.append(str(path))
             else:
-                if os.getenv("HYPERLIB_DEBUG"):
+                if os.getenv("HS_LIB_DEBUG"):
                     print(f"[WARN] Config file not found: {path}")
 
     # Create new Dynaconf instance
@@ -811,7 +811,7 @@ def get_logging_config():
 
     Environment Variable Prefix:
     - Default: APP_ (e.g., APP_LOGGING__LEVEL)
-    - Configurable via: HYPERLIB_ENV_PREFIX (e.g., HYPERLIB_ENV_PREFIX=MYAPP)
+    - Configurable via: HS_LIB_ENV_PREFIX (e.g., HS_LIB_ENV_PREFIX=MYAPP)
 
     Priority order (CLI → ENV → .env → config → default → hardcoded):
     1. Standard environment variables (LOG_*)
@@ -1026,7 +1026,7 @@ def init_config_directory(
         targets_file = config_dir / "targets.yaml"
         if not targets_file.exists():
             targets_template = f"""# Multi-environment configuration for {app_name}
-# Reference: https://docs.hyperlib.io/config/targets
+# Reference: https://docs.hs-lib.io/config/targets
 
 default_target: development
 

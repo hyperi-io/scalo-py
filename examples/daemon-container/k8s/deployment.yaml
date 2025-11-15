@@ -37,7 +37,7 @@ spec:
           containerPort: 9090
           protocol: TCP
         env:
-        - name: HYPERLIB_PROFILE
+        - name: HS_LIB_PROFILE
           value: "prod"
         - name: LOG_LEVEL
           value: "INFO"

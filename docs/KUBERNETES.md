@@ -60,7 +60,7 @@ spec:
         - containerPort: 9090
           name: metrics
         env:
-        - name: HYPERLIB_PROFILE
+        - name: HS_LIB_PROFILE
           value: "prod"
         livenessProbe:
           httpGet:

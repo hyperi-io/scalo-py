@@ -81,7 +81,7 @@ class MCPApplication(
             version=version,
             profile=profile,
             profile_overrides=profile_overrides,
-            description=f"{name} - HyperLib MCP Server",
+            description=f"{name} - hs-lib MCP Server",
         )
 
         self.transport = transport

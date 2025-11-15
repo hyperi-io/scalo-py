@@ -1,7 +1,7 @@
 """
 MetricsMixin: Auto-instrumentation for application metrics.
 
-This mixin integrates with hyperlib.metrics to provide automatic metrics
+This mixin integrates with hs_lib.metrics to provide automatic metrics
 collection based on application type (API, Daemon, MCP, Oneshot).
 """
 
@@ -16,7 +16,7 @@ class MetricsMixin:
     Mixin to add metrics collection to applications.
 
     Automatically starts metrics server and provides helper methods for
-    tracking application-specific metrics. Uses existing hyperlib.metrics module.
+    tracking application-specific metrics. Uses existing hs_lib.metrics module.
 
     Example:
         class MyAPI(MetricsMixin, ProfileMixin):
@@ -51,7 +51,7 @@ class MetricsMixin:
 
     def _setup_metrics(self) -> None:
         """
-        Setup metrics collection using hyperlib.metrics.
+        Setup metrics collection using hs_lib.metrics.
 
         Creates metrics backend (Prometheus or OpenTelemetry) and starts
         metrics server on configured port.

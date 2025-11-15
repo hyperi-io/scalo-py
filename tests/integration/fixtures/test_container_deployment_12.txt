@@ -1,6 +1,6 @@
 apiVersion: v2
-name: hyperlib-test
-description: A Helm chart for testing hyperlib
+name: hs-lib-test
+description: A Helm chart for testing hs-lib
 type: application
 version: 0.1.0
 appVersion: "1.0"

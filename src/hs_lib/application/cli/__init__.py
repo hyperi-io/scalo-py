@@ -1,5 +1,5 @@
 """
-HyperLib CLI Application
+hs-lib CLI Application
 Command-line interface using Click framework
 """
 

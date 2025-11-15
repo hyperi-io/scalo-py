@@ -1,5 +1,5 @@
 """
-HyperLib Database Utilities - Zero-Config Connection Builders
+hs-lib Database Utilities - Zero-Config Connection Builders
 ===============================================================
 
 Automatic database connection URL construction from ENV variables.
@@ -9,7 +9,7 @@ Quick Start
 ===========
 
     # Install
-    pip install hyperlib[database]
+    pip install hs-lib[database]
 
     # PostgreSQL (automatic ENV detection!)
     from hs_lib import build_database_url

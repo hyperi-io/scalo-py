@@ -110,7 +110,7 @@ class OpenTelemetryBackend(MetricsBackend):
         super().__init__(app_name, config)
 
         if not OTEL_AVAILABLE:
-            logger.error("OpenTelemetry not installed. Install with: pip install hyperlib[opentelemetry]")
+            logger.error("OpenTelemetry not installed. Install with: pip install hs-lib[opentelemetry]")
             self.enabled = False
             return
 

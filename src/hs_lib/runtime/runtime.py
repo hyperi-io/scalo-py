@@ -1,5 +1,5 @@
 """
-HyperLib Runtime - Container-Aware Path Management
+hs-lib Runtime - Container-Aware Path Management
 ===================================================
 
 Automatic path detection for containers and local development.
@@ -9,7 +9,7 @@ Quick Start
 ===========
 
     # Install
-    pip install hyperlib
+    pip install hs-lib
 
     # Use (automatic detection!)
     from hs_lib import get_runtime_paths

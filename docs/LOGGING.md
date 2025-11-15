@@ -1,4 +1,4 @@
-# HyperLib Logging
+# hs-lib Logging
 
 Auto-configured structured logging with sensible defaults.
 
@@ -29,7 +29,7 @@ Logger configures itself on import with production-ready defaults:
 
 Opt-out of auto-config:
 ```bash
-export HYPERLIB_NO_LOGGER_CONFIG=1  # Configure manually
+export HS_LIB_NO_LOGGER_CONFIG=1  # Configure manually
 ```
 
 ## Configuration
@@ -90,7 +90,7 @@ Automatically masks passwords, tokens, API keys, secrets in logs.
 
 Enabled by default. Disable (not recommended):
 ```bash
-export HYPERLIB_LOGGING__MASK_SENSITIVE_DATA=false
+export HS_LIB_LOGGING__MASK_SENSITIVE_DATA=false
 ```
 
 ### Supported Formats

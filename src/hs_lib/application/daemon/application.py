@@ -1,5 +1,5 @@
 """
-HyperLib Daemon Application
+hs-lib Daemon Application
 Long-running background service with container-native patterns
 """
 
@@ -99,7 +99,7 @@ class DaemonApplication(
             version=version,
             profile=profile,
             profile_overrides=profile_overrides,
-            description=f"{name} - HyperLib Daemon Service",
+            description=f"{name} - hs-lib Daemon Service",
         )
 
         self.scheduled_tasks: list[ScheduledTask] = []

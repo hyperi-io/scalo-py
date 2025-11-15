@@ -1,6 +1,6 @@
 # Container Deployment Guide
 
-Production-ready container deployment for Hyperlib applications.
+Production-ready container deployment for hs-lib applications.
 
 ## Quick Start
 
@@ -205,15 +205,15 @@ Health check endpoints:
 ### Application Config
 
 ```dockerfile
-ENV HYPERLIB_PROFILE=prod \
-    HYPERLIB_LOGGING__LEVEL=INFO \
+ENV HS_LIB_PROFILE=prod \
+    HS_LIB_LOGGING__LEVEL=INFO \
     DATABASE_URL=postgresql://localhost/mydb
 ```
 
 ### Runtime Override
 
 ```bash
-docker run -e HYPERLIB_PROFILE=docker \
+docker run -e HS_LIB_PROFILE=docker \
            -e DATABASE_URL=postgresql://db:5432/mydb \
            my-app:1.0.0
 ```
@@ -301,7 +301,7 @@ services:
       - "8080:8080"
       - "9090:9090"
     environment:
-      - HYPERLIB_PROFILE=docker
+      - HS_LIB_PROFILE=docker
       - DATABASE_URL=postgresql://db:5432/mydb
     depends_on:
       - db
@@ -334,7 +334,7 @@ services:
     ports:
       - "8000:8000"
     environment:
-      - HYPERLIB_PROFILE=prod
+      - HS_LIB_PROFILE=prod
     secrets:
       - db_password
     deploy:
@@ -434,7 +434,7 @@ HEALTHCHECK CMD curl -f http://localhost:8080/health || exit 1
 
 ### 5. Graceful Shutdown
 
-Handle SIGTERM properly (Hyperlib does this automatically):
+Handle SIGTERM properly (hs-lib does this automatically):
 
 ```python
 # Automatic with SignalHandlerMixin
@@ -482,7 +482,7 @@ docker exec -it my-app curl http://localhost:8080/health
 
 ```bash
 # Should be "prod" or "docker", not "dev"
-docker exec -it my-app env | grep HYPERLIB_PROFILE
+docker exec -it my-app env | grep HS_LIB_PROFILE
 ```
 
 ### Port Already in Use

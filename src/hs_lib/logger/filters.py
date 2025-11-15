@@ -1,5 +1,5 @@
 """
-Logging filters for hyperlib logger.
+Logging filters for hs-lib logger.
 
 This module provides logging filters for common use cases like masking
 sensitive data in log records.
@@ -74,7 +74,7 @@ class SensitiveDataFilter(logging.Filter):
         SensitiveDataFilter.add_sensitive_fields({"employee_id", "ssn"})
 
     Disable (not recommended):
-        export HYPERLIB_LOGGING__MASK_SENSITIVE_DATA=false
+        export HS_LIB_LOGGING__MASK_SENSITIVE_DATA=false
     """
 
     # Class-level set for global custom fields
@@ -244,7 +244,7 @@ class PresidioSensitiveDataFilter(SensitiveDataFilter):
     Extends SensitiveDataFilter with better accuracy for PII detection.
     Falls back to regex if Presidio not installed.
 
-    Requires: pip install hyperlib[presidio]
+    Requires: pip install hs-lib[presidio]
 
     Note: Slower than regex (5-50ms vs <1ms). Use for compliance-critical logs.
     """
@@ -269,7 +269,7 @@ class PresidioSensitiveDataFilter(SensitiveDataFilter):
             self._presidio_available = True
         except ImportError:
             warnings.warn(
-                "Presidio not installed. Install with: pip install hyperlib[presidio]. "
+                "Presidio not installed. Install with: pip install hs-lib[presidio]. "
                 "Falling back to regex-based filter.",
                 ImportWarning,
                 stacklevel=2,
