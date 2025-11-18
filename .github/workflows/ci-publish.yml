@@ -152,11 +152,12 @@ jobs:
           CI_PYTHON_VERSION=3.12
           ENVEOF
 
-          # Verify Python 3.12 available
-          python3.12 --version
+          # Verify Python 3.12 is in PATH (from setup-python step)
+          which python
+          python --version  # Should show 3.12.x
 
-          # Bootstrap with explicit Python 3.12
-          ci/bootstrap install --language python --python-version 3.12
+          # Bootstrap (will use python from PATH = 3.12)
+          ci/bootstrap install --language python
 
       - name: Build and Publish
         env:
