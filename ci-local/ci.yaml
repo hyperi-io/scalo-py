@@ -1,10 +1,14 @@
 project:
   languages:
     - python
+linters:
+  required: true      # Lint before building
+  fail_fast: true     # Stop on first linter failure
+
 tests:
-  required: false
+  required: true      # Tests required before build
   min_coverage: 80
-  fail_fast: false
+  fail_fast: false    # Run all tests even if one fails
 nuitka:
   enabled: false # Uses python.build_type when enabled
   triggers:
