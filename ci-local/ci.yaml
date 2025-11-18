@@ -11,8 +11,7 @@ tests:
   min_coverage: 80
   fail_fast: false
 nuitka:
-  enabled: false
-  build_type: package
+  enabled: false  # Uses python.build_type when enabled
   triggers:
     on_release_tags: true
     on_pull_requests: false
@@ -37,6 +36,7 @@ publish:
 package: null
 python:
   source_root: src/hs_lib
+  build_type: package  # package (library) or app (binary)
 security:
   ignore_vulns:
   - PYSEC-2022-42969
