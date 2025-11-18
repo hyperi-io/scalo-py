@@ -42,11 +42,11 @@ jobs:
           with open('ci-local/ci.yaml') as f:
               config = yaml.safe_load(f)
 
-          # Always build standard package
+          # Always build standard package (use BuildJet for faster builds)
           matrix = {'include': [
               {
                   'build_type': 'standard',
-                  'runner': 'ubuntu-latest',
+                  'runner': 'buildjet-2vcpu-ubuntu-2204',  # BuildJet (faster, cheaper)
                   'arch': 'any'
               }
           ]}
