@@ -143,20 +143,18 @@ jobs:
         env:
           ARTIFACTORY_USERNAME: ${{ secrets.ARTIFACTORY_USERNAME }}
           ARTIFACTORY_PASSWORD: ${{ secrets.ARTIFACTORY_PASSWORD }}
-          CI_PYTHON_VERSION: "3.12"  # Override Python version for CI
         run: |
           # Create .env with credentials (project root only)
           cat > .env << ENVEOF
           ARTIFACTORY_USERNAME=${ARTIFACTORY_USERNAME}
           ARTIFACTORY_PASSWORD=${ARTIFACTORY_PASSWORD}
-          CI_PYTHON_VERSION=3.12
           ENVEOF
 
-          # Verify Python 3.12 is in PATH (from setup-python step)
-          which python
-          python --version  # Should show 3.12.x
+          # Ensure Python 3.12 from setup-python is used (prepend to PATH)
+          export PATH="$(dirname $(which python)):$PATH"
+          python --version  # Verify 3.12.x
 
-          # Bootstrap (will use python from PATH = 3.12)
+          # Bootstrap (will use Python 3.12 from PATH)
           ci/bootstrap install --language python
 
       - name: Build and Publish
