@@ -176,7 +176,7 @@ run_bootstrap() {
         echo -e "${YELLOW}[INFO]${NC} Skipping bootstrap (--skip-bootstrap specified)"
         echo ""
         echo -e "${BLUE}[INFO]${NC} To bootstrap manually, run:"
-        echo "       ./ci/bootstrap --install"
+        echo "       ./ci/bootstrap install"
         return 0
     fi
 
@@ -185,9 +185,9 @@ run_bootstrap() {
 
     # Run bootstrap
     if [[ -x ci/bootstrap ]]; then
-        ./ci/bootstrap --install
+        ./ci/bootstrap install
     else
-        python3 ci/bootstrap --install
+        python3 ci/bootstrap install
     fi
 
     echo ""
