@@ -144,14 +144,13 @@ jobs:
           ARTIFACTORY_USERNAME: ${{ secrets.ARTIFACTORY_USERNAME }}
           ARTIFACTORY_PASSWORD: ${{ secrets.ARTIFACTORY_PASSWORD }}
         run: |
-          # Create ci-local/.env with credentials
-          mkdir -p ci-local
-          cat > ci-local/.env << ENVEOF
+          # Create .env with credentials (project root only)
+          cat > .env << ENVEOF
           ARTIFACTORY_USERNAME=${ARTIFACTORY_USERNAME}
           ARTIFACTORY_PASSWORD=${ARTIFACTORY_PASSWORD}
           ENVEOF
 
-          # Bootstrap sets up ci-local/.venv with all tools from ci-local/uv.lock
+          # Bootstrap sets up .venv with all tools
           # Installs: pytest, ruff, build, twine, Nuitka (if nuitka.enabled)
           ci/bootstrap install --language python
 
