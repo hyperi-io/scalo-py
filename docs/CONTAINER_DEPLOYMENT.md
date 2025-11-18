@@ -27,7 +27,7 @@ if __name__ == "__main__":
 ### 2. Create Dockerfile
 
 ```dockerfile
-FROM python:3.11-slim
+FROM python:3.12-slim
 
 # Install system dependencies (Derek's policy: include debug utils)
 RUN apt-get update && apt-get install -y \
@@ -85,7 +85,7 @@ Optimize image size with build/runtime stages:
 
 ```dockerfile
 # Build stage
-FROM python:3.11 as builder
+FROM python:3.12 as builder
 
 WORKDIR /build
 
@@ -98,7 +98,7 @@ COPY src/ ./src/
 RUN uv sync --locked --no-dev
 
 # Runtime stage
-FROM python:3.11-slim
+FROM python:3.12-slim
 
 # Install runtime utilities (2-5% size increase, acceptable for debuggability)
 RUN apt-get update && apt-get install -y \
@@ -417,10 +417,10 @@ RUN apt-get install -y curl netcat-openbsd iputils-ping
 Separate build and runtime stages to minimize final image size:
 
 ```dockerfile
-FROM python:3.11 as builder
+FROM python:3.12 as builder
 # ... build here ...
 
-FROM python:3.11-slim
+FROM python:3.12-slim
 COPY --from=builder /build/.venv /app/.venv
 ```
 

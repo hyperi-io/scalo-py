@@ -190,7 +190,7 @@ exclude_lines = [
 ]
 
 [tool.ruff]
-target-version = "py311"
+target-version = "py312"
 line-length = 120
 indent-width = 4
 
@@ -243,7 +243,7 @@ line-ending = "auto"
 [tool.black]
 line-length = 120
 target-version = [
-    "py311",
+    "py312",
 ]
 include = "\\.pyi?$"
 extend-exclude = "/(\n  # directories\n  \\.eggs\n  | \\.git\n  | \\.hg\n  | \\.mypy_cache\n  | \\.tox\n  | \\.venv\n  | build\n  | dist\n)/\n"
@@ -258,7 +258,7 @@ use_parentheses = true
 ensure_newline_before_comments = true
 
 [tool.pyright]
-pythonVersion = "3.11"
+pythonVersion = "3.12"
 typeCheckingMode = "basic"
 reportMissingImports = false
 reportMissingTypeStubs = false
@@ -280,7 +280,7 @@ skips = [
 
 [tool.vermin]
 targets = [
-    "3.11",
+    "3.12",
 ]
 no_tips = true
 
@@ -335,7 +335,7 @@ patch_tags = [
 ]
 
 [tool.mypy]
-python_version = "3.11"
+python_version = "3.12"
 warn_return_any = false
 warn_unused_configs = true
 disallow_untyped_defs = false
