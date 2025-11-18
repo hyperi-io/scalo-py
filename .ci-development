@@ -1,0 +1,6 @@
+# CI Development Project Marker
+#
+# This file marks hs-lib as the hs-ci development host project.
+# Presence of this file enables read-write access to ci/ submodule.
+#
+# Created: 2025-11-18
