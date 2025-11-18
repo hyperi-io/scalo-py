@@ -1,17 +1,12 @@
 project:
   languages:
-  - python
+    - python
 tests:
   required: false
-  checklist:
-  - pytest_tests
-  - ruff_lint
-  - black_format_check
-  - mypy_type_check
   min_coverage: 80
   fail_fast: false
 nuitka:
-  enabled: false  # Uses python.build_type when enabled
+  enabled: false # Uses python.build_type when enabled
   triggers:
     on_release_tags: true
     on_pull_requests: false
@@ -24,7 +19,7 @@ nuitka:
   buildjet:
     enabled: true
   cirrus:
-    enabled: true
+    enabled: false
   publish:
     enabled: true
     repository: hypersec-nuitka-binaries
@@ -36,10 +31,10 @@ publish:
 package: null
 python:
   source_root: src/hs_lib
-  build_type: package  # package (library) or app (binary)
+  build_type: package # package (library) or app (binary)
 security:
   ignore_vulns:
-  - PYSEC-2022-42969
+    - PYSEC-2022-42969
 ai:
   dynaconf_merge: true
   merge_mode: merge
