@@ -6,19 +6,6 @@ python:
   build_type: package
 nuitka:
   enabled: false
-  triggers:
-    on_release_tags: true
-    on_pull_requests: false
-    on_push_to_main: false
-  protection_level: recommended
-  platforms:
-    linux_x64: true
-    linux_arm64: true
-    macos_arm64: false
-  buildjet:
-    enabled: true
-  cirrus:
-    enabled: false
 security:
   ignore_vulns:
     - PYSEC-2022-42969
