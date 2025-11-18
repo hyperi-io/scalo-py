@@ -143,20 +143,20 @@ jobs:
         env:
           ARTIFACTORY_USERNAME: ${{ secrets.ARTIFACTORY_USERNAME }}
           ARTIFACTORY_PASSWORD: ${{ secrets.ARTIFACTORY_PASSWORD }}
-          UV_PYTHON: "3.12"  # Force uv to use Python 3.12
+          CI_PYTHON_VERSION: "3.12"  # Override Python version for CI
         run: |
           # Create .env with credentials (project root only)
           cat > .env << ENVEOF
           ARTIFACTORY_USERNAME=${ARTIFACTORY_USERNAME}
           ARTIFACTORY_PASSWORD=${ARTIFACTORY_PASSWORD}
+          CI_PYTHON_VERSION=3.12
           ENVEOF
 
-          # Ensure using Python 3.12 (from setup-python step)
-          python --version  # Verify 3.12 is in PATH
+          # Verify Python 3.12 available
+          python3.12 --version
 
-          # Bootstrap sets up .venv with Python 3.12
-          # Installs: pytest, ruff, build, twine, Nuitka (if nuitka.enabled)
-          ci/bootstrap install --language python
+          # Bootstrap with explicit Python 3.12
+          ci/bootstrap install --language python --python-version 3.12
 
       - name: Build and Publish
         env:
