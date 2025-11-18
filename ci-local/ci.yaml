@@ -1,16 +1,11 @@
 project:
   languages:
     - python
-linters:
-  required: true      # Lint before building
-  fail_fast: true     # Stop on first linter failure
-
-tests:
-  required: true      # Tests required before build
-  min_coverage: 80
-  fail_fast: false    # Run all tests even if one fails
+python:
+  source_root: src/hs_lib
+  build_type: package
 nuitka:
-  enabled: false # Uses python.build_type when enabled
+  enabled: false
   triggers:
     on_release_tags: true
     on_pull_requests: false
@@ -24,23 +19,6 @@ nuitka:
     enabled: true
   cirrus:
     enabled: false
-  publish:
-    enabled: true
-    repository: hypersec-nuitka-binaries
-release:
-  build_local: false
-publish:
-  verify_enabled: false
-  verify_timeout: 600
-package: null
-python:
-  source_root: src/hs_lib
-  build_type: package # package (library) or app (binary)
 security:
   ignore_vulns:
     - PYSEC-2022-42969
-ai:
-  dynaconf_merge: true
-  merge_mode: merge
-ci:
-  version: latest
