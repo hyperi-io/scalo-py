@@ -690,7 +690,7 @@ wheels = [
 
 [[package]]
 name = "hs-lib"
-version = "2.9.1"
+version = "2.9.0"
 source = { editable = "." }
 dependencies = [
     { name = "dynaconf" },

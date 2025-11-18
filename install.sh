@@ -38,6 +38,7 @@ HYPERCI_REPO="https://github.com/hypersec-io/hyperci.git"
 HYPERCI_BRANCH="main"
 HYPERCI_VERSION=""
 SKIP_BOOTSTRAP=false
+BOOTSTRAP_ARGS=()
 
 # Parse arguments
 while [[ $# -gt 0 ]]; do
@@ -57,19 +58,24 @@ while [[ $# -gt 0 ]]; do
         --help)
             echo "HyperCI Installation Script"
             echo ""
-            echo "Usage: $0 [OPTIONS]"
+            echo "Usage: $0 [OPTIONS] [BOOTSTRAP_OPTIONS]"
             echo ""
             echo "Options:"
             echo "  --pin VERSION        Pin to specific semver tag (e.g., --pin v1.2.3)"
             echo "  --branch BRANCH      Track specific branch (default: main)"
             echo "  --skip-bootstrap     Add submodule but skip initial bootstrap"
             echo "  --help               Show this help message"
+            echo ""
+            echo "Bootstrap Options (passed through):"
+            echo "  --language LANG      Project language (python, core)"
+            echo "  --python-version VER Python version (e.g., 3.13)"
+            echo "  --ai                 Run AI setup"
             exit 0
             ;;
         *)
-            echo -e "${RED}[ERR]${NC} Unknown option: $1"
-            echo "Use --help for usage information"
-            exit 1
+            # Pass unknown arguments to bootstrap
+            BOOTSTRAP_ARGS+=("$1")
+            shift
             ;;
     esac
 done
@@ -183,11 +189,11 @@ run_bootstrap() {
     echo -e "${BLUE}[INFO]${NC} Running initial bootstrap..."
     echo ""
 
-    # Run bootstrap
+    # Run bootstrap (pass through any additional arguments)
     if [[ -x ci/bootstrap ]]; then
-        ./ci/bootstrap install
+        ./ci/bootstrap install "${BOOTSTRAP_ARGS[@]}"
     else
-        python3 ci/bootstrap install
+        python3 ci/bootstrap install "${BOOTSTRAP_ARGS[@]}"
     fi
 
     echo ""
