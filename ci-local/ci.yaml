@@ -4,8 +4,6 @@ project:
 python:
   source_root: src/hs_lib
   build_type: package
-nuitka:
-  enabled: false
 security:
   ignore_vulns:
     - PYSEC-2022-42969
