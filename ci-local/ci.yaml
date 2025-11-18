@@ -29,6 +29,10 @@ nuitka:
   publish:
     enabled: true
     repository: hypersec-nuitka-binaries
+release:
+  build_local: false  # Default: BuildJet builds in cloud
+                      # Set to true for local builds before push
+                      # Override: CI_BUILD_LOCAL=1 or --local-build flag
 publish:
   verify_enabled: false
   verify_timeout: 600
