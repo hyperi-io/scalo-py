@@ -270,13 +270,11 @@ reportMissingImports = false
 reportMissingTypeStubs = false
 exclude = [
     "tests",
-    "ci",
 ]
 
 [tool.bandit]
 exclude_dirs = [
     "tests",
-    "ci",
     ".venv",
 ]
 skips = [
@@ -297,7 +295,7 @@ version_toml = [
 version_variables = [
     "src/hs_lib/__init__.py:__version__",
 ]
-build_command = ".venv/bin/python ci/modules/python/tools/write-version.py && git add VERSION && rm -rf dist build src/*.egg-info && .venv/bin/python ci/modules/python/tools/conditional-build.py"
+build_command = "rm -rf dist build src/*.egg-info && python -m build"
 major_on_zero = true
 tag_format = "v{version}"
 commit_message = "chore(release): {version}"
