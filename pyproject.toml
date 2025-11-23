@@ -344,3 +344,26 @@ warn_return_any = false
 warn_unused_configs = true
 disallow_untyped_defs = false
 ignore_missing_imports = true
+
+# HyperCI Configuration
+[tool.hyperci]
+language = "python"  # Auto-detected, but explicit for clarity
+
+[tool.hyperci.quality]
+enabled = true
+level = "standard"
+
+[tool.hyperci.build]
+enabled = true
+strategies = ["native"]  # Add "nuitka" if needed
+
+[tool.hyperci.publish]
+enabled = true
+targets = ["jfrog-pypi"]
+
+# Nuitka configuration (if enabled)
+[tool.hyperci.nuitka]
+enabled = false  # Set to true to enable Nuitka builds
+mode = "package"  # or "app" for standalone binaries
+protection = "recommended"  # Options: "none", "recommended", "data-hiding"
+platforms = ["linux-x64", "linux-arm64"]
