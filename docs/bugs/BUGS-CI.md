@@ -45,7 +45,44 @@ Add explicit Python setup step before build_and_publish:
 
 ---
 
-### BUG-CI-002: Workflow references obsolete ci structure paths
+### BUG-CI-002: build_and_publish.sh assumes twine is installed
+
+**Status:** IDENTIFIED
+**Severity:** HIGH
+**Affects:** ci/scripts/build_and_publish.sh line 55
+
+**Description:**
+The script runs `twine check dist/*` but twine is not installed in the venv, causing "command not found" error (exit 127).
+
+**Current behavior:**
+```bash
+./ci/scripts/build_and_publish.sh
+# ...builds successfully...
+# Running twine check
+# ./ci/scripts/build_and_publish.sh: line 55: twine: command not found
+# exit code 127
+```
+
+**Expected behavior:**
+build_and_publish.sh should either:
+1. Check if twine is available and install if missing, OR
+2. Skip twine check if not available (uv publish validates anyway)
+
+**Workaround for .github/workflows/ci-publish.yml:**
+```yaml
+- name: Setup Python Environment
+  run: |
+    uv venv
+    source .venv/bin/activate
+    uv sync --frozen
+    uv pip install twine  # Workaround for BUG-CI-002
+```
+
+**Fix location:** ci/scripts/build_and_publish.sh (add twine check/install or make it optional)
+
+---
+
+### BUG-CI-003: Workflow template references obsolete ci structure paths
 
 **Status:** FIXED (in hs-lib, but template needs update)
 **Severity:** HIGH
