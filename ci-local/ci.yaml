@@ -1,9 +1,0 @@
-project:
-  languages:
-    - python
-python:
-  source_root: src/hs_lib
-  build_type: package
-security:
-  ignore_vulns:
-    - PYSEC-2022-42969
