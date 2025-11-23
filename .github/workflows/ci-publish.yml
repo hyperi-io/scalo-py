@@ -155,21 +155,22 @@ jobs:
           python --version  # Verify 3.12.x
 
           # Bootstrap (will use Python 3.12 from PATH)
-          ci/bootstrap install --language python
+          ./ci/scripts/bootstrap
 
       - name: Build and Publish
         env:
           ARTIFACTORY_USERNAME: ${{ secrets.ARTIFACTORY_USERNAME }}
           ARTIFACTORY_PASSWORD: ${{ secrets.ARTIFACTORY_PASSWORD }}
-          ARTIFACTORY_TOKEN_USER: ${{ secrets.ARTIFACTORY_TOKEN_USER }}
-          ARTIFACTORY_TOKEN: ${{ secrets.ARTIFACTORY_TOKEN }}
-          CI_BUILD_TYPE: ${{ matrix.build_type }}
           CI: "true"
           GITHUB_ACTIONS: "true"
-          FORCE_PUBLISH: "1"
         run: |
-          # Call publish script directly (publish action removed from CLI)
-          .venv/bin/python ci/modules/python/run.d/51-publish.py publish
+          # Use new ci structure scripts
+          if [ "${{ matrix.build_type }}" = "standard" ]; then
+            ./ci/scripts/build_and_publish.sh
+          elif [ "${{ matrix.build_type }}" = "nuitka" ]; then
+            ./ci/scripts/build_nuitka.sh
+            ./ci/scripts/publish_binary.sh
+          fi
 
       - name: Verify Published
         run: |
