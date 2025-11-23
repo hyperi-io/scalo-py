@@ -157,6 +157,13 @@ jobs:
           # Bootstrap (will use Python 3.12 from PATH)
           ./ci/scripts/bootstrap
 
+      - name: Setup Python Environment
+        run: |
+          # Create venv and install dependencies (bootstrap doesn't do this - BUG-CI-001)
+          uv venv
+          source .venv/bin/activate
+          uv sync --frozen
+
       - name: Build and Publish
         env:
           ARTIFACTORY_USERNAME: ${{ secrets.ARTIFACTORY_USERNAME }}
