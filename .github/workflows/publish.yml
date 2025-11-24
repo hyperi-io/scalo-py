@@ -86,7 +86,6 @@ jobs:
           artifactory-npm-publish-url: ${{ vars.ARTIFACTORY_NPM_PUBLISH_URL }}
 
       - name: Link to Linear
-        if: secrets.LINEAR_API_KEY != ''
         uses: ./ci/actions/integrations/linear
         with:
           scripts-path: ${{ steps.ci-path.outputs.scripts }}
