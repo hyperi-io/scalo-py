@@ -8,13 +8,13 @@ on:
 jobs:
   build:
     name: Build
-    uses: hypersec-io/ci/.github/workflows/_reusable/build.yml@main
+    uses: hypersec-io/ci/workflows/build.yml@main
     secrets: inherit
 
   publish:
     name: Publish to JFrog
     needs: build
-    uses: hypersec-io/ci/.github/workflows/_reusable/publish.yml@main
+    uses: hypersec-io/ci/workflows/publish.yml@main
     with:
       artifact-name: dist-python
     secrets: inherit
