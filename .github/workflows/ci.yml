@@ -9,11 +9,11 @@ on:
 jobs:
   quality:
     name: Quality Checks
-    uses: hypersec-io/ci/workflows/quality.yml@main
+    uses: ./ci/workflows/quality.yml@main
     secrets: inherit
 
   build:
     name: Build
     needs: quality
-    uses: hypersec-io/ci/workflows/build.yml@main
+    uses: ./ci/workflows/build.yml@main
     secrets: inherit
