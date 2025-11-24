@@ -9,11 +9,11 @@ on:
 jobs:
   quality:
     name: Quality Checks
-    uses: ./ci/workflows/quality.yml@main
+    uses: ./ci/workflows/quality.yml
     secrets: inherit
 
   build:
     name: Build
     needs: quality
-    uses: ./ci/workflows/build.yml@main
+    uses: ./ci/workflows/build.yml
     secrets: inherit
