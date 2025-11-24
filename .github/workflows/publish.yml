@@ -21,8 +21,10 @@ jobs:
 
     steps:
       - name: Checkout
-        uses: ./ci/actions/setup/checkout
+        uses: actions/checkout@v4
         with:
+          fetch-depth: 0
+          submodules: recursive
           token: ${{ secrets.GH_RELEASE_TOKEN || github.token }}
 
       - name: Detect CI path
