@@ -162,9 +162,6 @@ markers = [
     "unit: fast unit tests (no external dependencies)",
     "integration: integration tests (Docker required)",
     "e2e: end-to-end tests (Minikube/K8s required)",
-    "unit: unit tests",
-    "integration: integration tests",
-    "e2e: end-to-end tests",
 ]
 filterwarnings = [
     "ignore::DeprecationWarning",
