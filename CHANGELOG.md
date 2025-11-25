@@ -1,3 +1,10 @@
+## [2.10.6](https://github.com/hypersec-io/hs-lib/compare/v2.10.5...v2.10.6) (2025-11-25)
+
+
+### Bug Fixes
+
+* sync version to v2.10.5 and update semantic-release config ([cc5aa84](https://github.com/hypersec-io/hs-lib/commit/cc5aa844f19798df27dd7adb58204accd80be9fa))
+
 ## [2.10.5](https://github.com/hypersec-io/hs-lib/compare/v2.10.4...v2.10.5) (2025-11-25)
 
 

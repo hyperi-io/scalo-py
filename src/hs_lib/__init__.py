@@ -140,7 +140,7 @@ Zero Configuration Philosophy
 Requires Python 3.12+ for modern type hints and enterprise features
 """
 
-__version__ = "2.10.5"  # Managed by semantic-release
+__version__ = "2.10.6"  # Managed by semantic-release
 
 # Import modules (packages) - logger is a module for extensibility
 from . import cli, config, database, harness, logger, metrics, runtime
