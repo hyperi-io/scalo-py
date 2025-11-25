@@ -1,3 +1,10 @@
+## [2.10.5](https://github.com/hypersec-io/hs-lib/compare/v2.10.4...v2.10.5) (2025-11-25)
+
+
+### Bug Fixes
+
+* remove duplicate pytest markers in pyproject.toml ([121952e](https://github.com/hypersec-io/hs-lib/commit/121952e7e7786181931f26ae8ac199812cba8cc9))
+
 ## [2.10.4](https://github.com/hypersec-io/hs-lib/compare/v2.10.3...v2.10.4) (2025-11-25)
 
 
