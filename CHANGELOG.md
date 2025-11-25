@@ -1,3 +1,10 @@
+## [2.10.4](https://github.com/hypersec-io/hs-lib/compare/v2.10.3...v2.10.4) (2025-11-25)
+
+
+### Bug Fixes
+
+* update ci submodule with improved commit-msg hook ([52829a0](https://github.com/hypersec-io/hs-lib/commit/52829a03494c9e645a5d07ed7632be4013cfaf94))
+
 ## [2.10.3](https://github.com/hypersec-io/hs-lib/compare/v2.10.2...v2.10.3) (2025-11-25)
 
 
