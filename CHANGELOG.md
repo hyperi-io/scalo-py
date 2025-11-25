@@ -1,3 +1,10 @@
+## [2.10.3](https://github.com/hypersec-io/hs-lib/compare/v2.10.2...v2.10.3) (2025-11-25)
+
+
+### Bug Fixes
+
+* update CI submodule and add test job to workflow (DFE-540) ([380a56b](https://github.com/hypersec-io/hs-lib/commit/380a56be6749dcb2011818fc26adb57db001e5d1))
+
 ## [2.10.2](https://github.com/hypersec-io/hs-lib/compare/v2.10.1...v2.10.2) (2025-11-25)
 
 
