@@ -17,12 +17,12 @@
     ["@semantic-release/changelog", {
       "changelogFile": "CHANGELOG.md"
     }],
-    ["@semantic-release/git", {
-      "assets": ["CHANGELOG.md", "VERSION"],
-      "message": "chore: version ${nextRelease.version}\n\n${nextRelease.notes}"
-    }],
     ["@semantic-release/exec", {
-      "prepareCmd": "echo ${nextRelease.version} > VERSION"
+      "prepareCmd": "echo ${nextRelease.version} > VERSION && sed -i 's/^version = \".*\"/version = \"${nextRelease.version}\"/' pyproject.toml && sed -i 's/^__version__ = \".*\"/__version__ = \"${nextRelease.version}\"/' src/hs_lib/__init__.py"
+    }],
+    ["@semantic-release/git", {
+      "assets": ["CHANGELOG.md", "VERSION", "pyproject.toml", "src/hs_lib/__init__.py"],
+      "message": "chore: version ${nextRelease.version}\n\n${nextRelease.notes}"
     }],
     "@semantic-release/github"
   ]
