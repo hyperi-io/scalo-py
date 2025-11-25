@@ -1,3 +1,40 @@
+## [2.10.2](https://github.com/hypersec-io/hs-lib/compare/v2.10.1...v2.10.2) (2025-11-25)
+
+
+### Bug Fixes
+
+* add Python venv setup step to workflow (workaround BUG-CI-001) ([2d4423a](https://github.com/hypersec-io/hs-lib/commit/2d4423a05a5c64178d18396219cc4e8cf8209b44))
+* clean ci.yaml and set fail_fast: true as default ([455d90b](https://github.com/hypersec-io/hs-lib/commit/455d90b54478d1d5277bd3f45336c0cfb7e7881d))
+* create .env in project root (not ci-local/) ([8176984](https://github.com/hypersec-io/hs-lib/commit/817698436d05a311d5a63da8d0c3b6be685b25be))
+* explicitly specify Python 3.12 for bootstrap ([646be96](https://github.com/hypersec-io/hs-lib/commit/646be96f6ed604a6299660986f3d4ef931989a7f))
+* force uv to use Python 3.12 via UV_PYTHON env var ([200ed61](https://github.com/hypersec-io/hs-lib/commit/200ed6129b8a1d9718866add18f0a9e916af8c8a))
+* install twine in workflow (workaround BUG-CI-002) ([e153fdd](https://github.com/hypersec-io/hs-lib/commit/e153fdddf2ea7832a3dbed79acfc6bd38aea93b0))
+* merge DFE-524 branch (ci workflow paths) ([b2c039f](https://github.com/hypersec-io/hs-lib/commit/b2c039f02b6f7ebcb889eb6c2129c59f42059c6d))
+* migrate to HyperCI modular architecture (DFE-523) ([132b8d0](https://github.com/hypersec-io/hs-lib/commit/132b8d0d1ca78481b2fd870968b652c1ba2fe6e3))
+* migrate to separate ci and ai submodules ([ffd9b25](https://github.com/hypersec-io/hs-lib/commit/ffd9b25b63d17912e13a8f54317e4b4fab5f5f5e))
+* minimal ci.yaml (remove all defaults including nuitka.enabled) ([e3273d9](https://github.com/hypersec-io/hs-lib/commit/e3273d9e235a10994d08f19f8d7cf0fce5f9e867))
+* move build_type to python section (applies to all builds) ([ba05c2f](https://github.com/hypersec-io/hs-lib/commit/ba05c2fbacee231da09e6ec21a791c5aeb993e3a))
+* prepend Python 3.12 to PATH for bootstrap ([1f71b81](https://github.com/hypersec-io/hs-lib/commit/1f71b815f4a1d6e230d58878498894c92ec7f28b))
+* re-enable BuildJet after GitHub App reinstall ([d1f159f](https://github.com/hypersec-io/hs-lib/commit/d1f159f23b8434690babf2c6749fa08dc632cc12))
+* remove [@main](https://github.com/main) refs from local workflow paths ([32b93d4](https://github.com/hypersec-io/hs-lib/commit/32b93d4a12a35c4fe0a2dd5b5c88c8752dd4823b))
+* remove non-existent --python-version flag from workflow ([5d40934](https://github.com/hypersec-io/hs-lib/commit/5d40934b720d961271567317a97a9eaf63e40ea2))
+* rename release.yml to publish.yml for consistency ([dc52bc2](https://github.com/hypersec-io/hs-lib/commit/dc52bc29e041bd5b8ac3465d0d9e094ca66323e4))
+* revert to ubuntu-latest (BuildJet access issue) ([25be898](https://github.com/hypersec-io/hs-lib/commit/25be898da75a6e7ce9f92f50a64ee84dfdd7cb2e))
+* trigger semantic-release for e2e testing (DFE-524) ([ff83b58](https://github.com/hypersec-io/hs-lib/commit/ff83b58c4906d01c7404260bf403a6e9f94810fc))
+* update CI and regenerate publish workflow (DFE-539) ([6658871](https://github.com/hypersec-io/hs-lib/commit/6658871337222a78b7e323dc5d8f805cb59ae80f))
+* update ci submodule (fix pyproject.toml merge bug) ([826878d](https://github.com/hypersec-io/hs-lib/commit/826878d7bf13940756cac8037dd90b09bdab5ea3))
+* update ci submodule (reusable workflows added) ([e5d47c5](https://github.com/hypersec-io/hs-lib/commit/e5d47c5d81da87e53bd23df8102a11413585bda9))
+* update ci submodule (reusable workflows in .github/workflows) ([3dad6ef](https://github.com/hypersec-io/hs-lib/commit/3dad6ef0b98a3f9cab4b43d929b35f864cfc284d))
+* update ci submodule to feat/DFE-523 dev branch ([daa4820](https://github.com/hypersec-io/hs-lib/commit/daa48205958a8d64895fb58aa4a989669c8f6fe9))
+* update CI submodule to latest with uv 0.9.11 support (DFE-524) ([ecc7eb2](https://github.com/hypersec-io/hs-lib/commit/ecc7eb2742a00462855648b5416de64b3998c6c4))
+* update ci submodule to main (DFE-523 merged) ([1da83fe](https://github.com/hypersec-io/hs-lib/commit/1da83feedb59028ce09c7638a4d54832e1c31243))
+* update ci-publish workflow for new ci structure ([6f7801a](https://github.com/hypersec-io/hs-lib/commit/6f7801a23d15ce404678a16f252e2aa9e7e9ce16))
+* update to new workflow paths (DFE-523) ([0490701](https://github.com/hypersec-io/hs-lib/commit/0490701563db1cde2e9433f3888da1ad0487e459))
+* update workflows with checkout fix (DFE-539) ([7d711e5](https://github.com/hypersec-io/hs-lib/commit/7d711e507cf237d317f017325a2a687ccba71e0c))
+* use local ci/workflows path (DFE-523) ([ce9daa1](https://github.com/hypersec-io/hs-lib/commit/ce9daa155418c2af9595eee63b558e348874d2cb))
+* use Python 3.12 in workflow (hs-lib requires 3.12+) ([d6b01fd](https://github.com/hypersec-io/hs-lib/commit/d6b01fdd427774e81f868c0d80c595467473a9ab))
+* use remote ci repository paths for reusable workflows ([d0462cd](https://github.com/hypersec-io/hs-lib/commit/d0462cddca99152962c16ae8682fd94fb7a058a4))
+
 # [3.0.0](https://github.com/hypersec-io/hs-lib/compare/v2.8.8...v3.0.0) (2025-11-13)
 
 
