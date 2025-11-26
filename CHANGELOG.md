@@ -1,3 +1,10 @@
+## [2.10.8](https://github.com/hypersec-io/hs-lib/compare/v2.10.7...v2.10.8) (2025-11-26)
+
+
+### Bug Fixes
+
+* update STATE.md for new CI architecture (hs-ci v1.19.x) ([4c3fff7](https://github.com/hypersec-io/hs-lib/commit/4c3fff7eaa5661b638ca189d10a99128f178ae91))
+
 ## [2.10.7](https://github.com/hypersec-io/hs-lib/compare/v2.10.6...v2.10.7) (2025-11-26)
 
 
