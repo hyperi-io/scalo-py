@@ -258,7 +258,7 @@ class TestPresets:
         """Test compliance preset detects all PII types."""
         anonymizer = Anonymizer(preset="compliance")
 
-        text = "Name: John Doe, SSN: 219-09-9999, " "IP: 192.168.1.1, Location: New York, " "Date: 2025-01-01"
+        text = "Name: John Doe, SSN: 219-09-9999, IP: 192.168.1.1, Location: New York, Date: 2025-01-01"
         result = anonymizer.anonymize(text)
 
         # Should detect most of these

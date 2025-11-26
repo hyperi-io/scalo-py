@@ -209,10 +209,10 @@ class ContainerTestBase:
 
         # Write header to new log
         with log_file.open("w") as f:
-            f.write(f"{'='*80}\n")
+            f.write(f"{'=' * 80}\n")
             f.write(f"Test: {test_name}\n")
             f.write(f"Started: {time.strftime('%Y-%m-%d %H:%M:%S')}\n")
-            f.write(f"{'='*80}\n\n")
+            f.write(f"{'=' * 80}\n\n")
 
         return log_file
 

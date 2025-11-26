@@ -119,12 +119,12 @@ def run(
     # Log to file if specified
     if log_file:
         with log_file.open("a") as f:
-            f.write(f"\n{'='*80}\n")
+            f.write(f"\n{'=' * 80}\n")
             if log_label:
                 f.write(f"{log_label}\n")
             else:
                 f.write(f"Command: {' '.join(cmd)}\n")
-            f.write(f"{'='*80}\n\n")
+            f.write(f"{'=' * 80}\n\n")
 
             if result.stdout:
                 f.write("STDOUT:\n")
@@ -154,7 +154,6 @@ class SmartTimeoutMonitor:
         total_timeout: int = 1800,  # 30 minutes total = generous backup
         activity_check_interval: int = 5,
     ):  # Check every 5 seconds
-
         self.activity_timeout = activity_timeout
         self.total_timeout = total_timeout
         self.activity_check_interval = activity_check_interval
@@ -370,7 +369,6 @@ class FunctionTimeoutMonitor:
     """
 
     def __init__(self, activity_timeout: int = 120, total_timeout: int = 600, progress_check_interval: int = 5):
-
         self.activity_timeout = activity_timeout
         self.total_timeout = total_timeout
         self.progress_check_interval = progress_check_interval

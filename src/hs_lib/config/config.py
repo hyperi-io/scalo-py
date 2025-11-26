@@ -943,7 +943,7 @@ def get_target_config(target: str = None, targets_file: str = None) -> dict:
 
     if not targets_path.exists():
         raise FileNotFoundError(
-            f"Targets configuration file not found: {targets_path}\n" f"Create it with your environment configurations."
+            f"Targets configuration file not found: {targets_path}\nCreate it with your environment configurations."
         )
 
     # Load targets file
@@ -964,7 +964,7 @@ def get_target_config(target: str = None, targets_file: str = None) -> dict:
     targets = targets_data.get("targets", {})
     if target not in targets:
         available = ", ".join(targets.keys())
-        raise ValueError(f"Target '{target}' not found in configuration.\n" f"Available targets: {available}")
+        raise ValueError(f"Target '{target}' not found in configuration.\nAvailable targets: {available}")
 
     target_config = targets[target].copy()
     target_config["target_name"] = target

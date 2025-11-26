@@ -294,7 +294,9 @@ class TestOneshotApplicationMixins:
         from hs_lib import Application
 
         app = Application.oneshot(
-            name="test-oneshot", profile="dev", profile_overrides={"metrics": True}  # Optional metrics
+            name="test-oneshot",
+            profile="dev",
+            profile_overrides={"metrics": True},  # Optional metrics
         )
 
         assert app.profile.get("metrics") is True

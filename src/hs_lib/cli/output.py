@@ -173,7 +173,7 @@ def print_table(
         else:
             # List of lists - use provided headers or generic
             if not headers:
-                headers = [f"Column {i+1}" for i in range(len(data[0]))]
+                headers = [f"Column {i + 1}" for i in range(len(data[0]))]
 
             for header in headers:
                 table.add_column(header, style="cyan")

@@ -242,7 +242,7 @@ class CLIApplication(
                 "-V",
                 help="Show version and exit",
                 is_flag=True,
-            )
+            ),
         ):
             """Main callback with version support."""
             if version:

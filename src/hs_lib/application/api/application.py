@@ -106,7 +106,7 @@ class APIApplication(
             )
         except ImportError:
             raise ImportError(
-                "FastAPI is required for API applications. " "Install it with: pip install fastapi uvicorn[standard]"
+                "FastAPI is required for API applications. Install it with: pip install fastapi uvicorn[standard]"
             )
 
         # Add CORS middleware if enabled
