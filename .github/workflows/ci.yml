@@ -21,12 +21,20 @@ jobs:
     runs-on: ${{ vars.GH_RUNNER_DEFAULT || 'ubuntu-latest' }}
 
     steps:
+      - name: Generate GitHub App Token
+        id: app-token
+        uses: actions/create-github-app-token@v1
+        with:
+          app-id: ${{ secrets.GH_APP_ID }}
+          private-key: ${{ secrets.GH_APP_PRIVATE_KEY }}
+          owner: ${{ github.repository_owner }}
+
       - name: Checkout
         uses: actions/checkout@v4
         with:
           fetch-depth: 0
           submodules: recursive
-          token: ${{ secrets.GH_RELEASE_TOKEN || github.token }}
+          token: ${{ steps.app-token.outputs.token }}
 
       - name: Detect CI path
         id: ci-path
@@ -51,12 +59,20 @@ jobs:
     runs-on: ${{ vars.GH_RUNNER_DEFAULT || 'ubuntu-latest' }}
 
     steps:
+      - name: Generate GitHub App Token
+        id: app-token
+        uses: actions/create-github-app-token@v1
+        with:
+          app-id: ${{ secrets.GH_APP_ID }}
+          private-key: ${{ secrets.GH_APP_PRIVATE_KEY }}
+          owner: ${{ github.repository_owner }}
+
       - name: Checkout
         uses: actions/checkout@v4
         with:
           fetch-depth: 0
           submodules: recursive
-          token: ${{ secrets.GH_RELEASE_TOKEN || github.token }}
+          token: ${{ steps.app-token.outputs.token }}
 
       - name: Detect CI path
         id: ci-path
@@ -81,12 +97,20 @@ jobs:
     runs-on: ${{ vars.GH_RUNNER_DEFAULT || 'ubuntu-latest' }}
 
     steps:
+      - name: Generate GitHub App Token
+        id: app-token
+        uses: actions/create-github-app-token@v1
+        with:
+          app-id: ${{ secrets.GH_APP_ID }}
+          private-key: ${{ secrets.GH_APP_PRIVATE_KEY }}
+          owner: ${{ github.repository_owner }}
+
       - name: Checkout
         uses: actions/checkout@v4
         with:
           fetch-depth: 0
           submodules: recursive
-          token: ${{ secrets.GH_RELEASE_TOKEN || github.token }}
+          token: ${{ steps.app-token.outputs.token }}
 
       - name: Detect CI path
         id: ci-path
@@ -102,6 +126,10 @@ jobs:
 
       - name: Setup Nuitka dependencies
         uses: ./ci/actions/setup/nuitka-deps
+        with:
+          artifactory-pypi-url: ${{ vars.ARTIFACTORY_PYPI_URL }}
+          artifactory-username: ${{ secrets.ARTIFACTORY_CI_USERNAME }}
+          artifactory-password: ${{ secrets.ARTIFACTORY_CI_TOKEN }}
 
       - name: Build package
         uses: ./ci/actions/build/python/native

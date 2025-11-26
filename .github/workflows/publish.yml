@@ -15,17 +15,116 @@ on:
   workflow_dispatch:
 
 jobs:
-  publish:
-    name: Publish to JFrog
+  # ==========================================================================
+  # Detect build configuration (native + Nuitka if enabled)
+  # ==========================================================================
+  detect:
+    name: Detect Build Config
     runs-on: ${{ vars.GH_RUNNER_DEFAULT || 'ubuntu-latest' }}
+    outputs:
+      nuitka_enabled: ${{ steps.config.outputs.nuitka_enabled }}
+      nuitka_platforms: ${{ steps.config.outputs.nuitka_platforms }}
+      build_type: ${{ steps.config.outputs.build_type }}
+      protection_profile: ${{ steps.config.outputs.protection_profile }}
+      publish_binaries: ${{ steps.config.outputs.publish_binaries }}
+      binaries_repo: ${{ steps.config.outputs.binaries_repo }}
 
     steps:
+      - name: Generate GitHub App Token
+        id: app-token
+        uses: actions/create-github-app-token@v1
+        with:
+          app-id: ${{ secrets.GH_APP_ID }}
+          private-key: ${{ secrets.GH_APP_PRIVATE_KEY }}
+          owner: ${{ github.repository_owner }}
+
       - name: Checkout
         uses: actions/checkout@v4
         with:
           fetch-depth: 0
           submodules: recursive
-          token: ${{ secrets.GH_RELEASE_TOKEN || github.token }}
+          token: ${{ steps.app-token.outputs.token }}
+
+      - name: Detect CI path
+        id: ci-path
+        uses: ./ci/actions/setup/detect-ci-path
+
+      - name: Setup uv
+        uses: astral-sh/setup-uv@v4
+        with:
+          enable-cache: false
+
+      - name: Read build configuration
+        id: config
+        run: |
+          # Use uv to run Python 3.12 with pyyaml for config loading
+          CONFIG=$(uv run --python 3.12 --with pyyaml ${{ steps.ci-path.outputs.scripts }}/core/load-config.py)
+
+          # Check if Nuitka is enabled
+          NUITKA_ENABLED=$(echo "$CONFIG" | jq -r '.build.python.nuitka.enabled // false')
+          echo "nuitka_enabled=${NUITKA_ENABLED}" >> $GITHUB_OUTPUT
+
+          # Get Nuitka platforms as JSON array for matrix
+          if [[ "$NUITKA_ENABLED" == "true" ]]; then
+            PLATFORMS=$(echo "$CONFIG" | jq -c '.build.python.nuitka.platforms // ["linux-x64"]')
+            echo "nuitka_platforms=${PLATFORMS}" >> $GITHUB_OUTPUT
+
+            # Detect build type (app = CLI binary, package = compiled wheel)
+            # If project has [project.scripts], it's an app
+            if grep -q "\[project.scripts\]" pyproject.toml 2>/dev/null; then
+              echo "build_type=app" >> $GITHUB_OUTPUT
+            else
+              echo "build_type=package" >> $GITHUB_OUTPUT
+            fi
+          else
+            echo "nuitka_platforms=[]" >> $GITHUB_OUTPUT
+            echo "build_type=package" >> $GITHUB_OUTPUT
+          fi
+
+          # Get binary publish destination (artifactory, github, both)
+          # Can be overridden by HYPERCI_PUBLISH_BINARIES env var
+          PUBLISH_BINARIES="${HYPERCI_PUBLISH_BINARIES:-$(echo "$CONFIG" | jq -r '.publish.binaries // "both"')}"
+          echo "publish_binaries=${PUBLISH_BINARIES}" >> $GITHUB_OUTPUT
+
+          # Get JFrog binary repository name
+          # Priority: HYPERCI_BINARIES_REPO env > config file > default
+          BINARIES_REPO="${HYPERCI_BINARIES_REPO:-$(echo "$CONFIG" | jq -r '.publish.binaries_repo // "hypersec-binaries"')}"
+          echo "binaries_repo=${BINARIES_REPO}" >> $GITHUB_OUTPUT
+
+          # Get Nuitka protection profile (none, data-hiding, recommended, anti-debugger, maximum)
+          PROTECTION_PROFILE=$(echo "$CONFIG" | jq -r '.build.python.nuitka.protection_profile // "recommended"')
+          echo "protection_profile=${PROTECTION_PROFILE}" >> $GITHUB_OUTPUT
+
+          echo "=== Build Configuration ==="
+          echo "Nuitka enabled: ${NUITKA_ENABLED}"
+          echo "Nuitka platforms: $(echo "$CONFIG" | jq -r '.build.python.nuitka.platforms // []')"
+          echo "Protection profile: ${PROTECTION_PROFILE}"
+          echo "Publish binaries: ${PUBLISH_BINARIES}"
+          echo "Binaries repo: ${BINARIES_REPO}"
+
+  # ==========================================================================
+  # Build native Python wheel (always runs)
+  # ==========================================================================
+  build-native:
+    name: Build Native Wheel
+    needs: detect
+    runs-on: ${{ vars.GH_RUNNER_DEFAULT || 'ubuntu-latest' }}
+
+    steps:
+      - name: Generate GitHub App Token
+        id: app-token
+        uses: actions/create-github-app-token@v1
+        with:
+          app-id: ${{ secrets.GH_APP_ID }}
+          private-key: ${{ secrets.GH_APP_PRIVATE_KEY }}
+          owner: ${{ github.repository_owner }}
+
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          submodules: recursive
+          token: ${{ steps.app-token.outputs.token }}
 
       - name: Detect CI path
         id: ci-path
@@ -39,18 +138,217 @@ jobs:
           artifactory-username: ${{ secrets.ARTIFACTORY_CI_USERNAME }}
           artifactory-password: ${{ secrets.ARTIFACTORY_CI_TOKEN }}
 
-      - name: Build package
+      - name: Build native package
         uses: ./ci/actions/build/python/native
         with:
           scripts-path: ${{ steps.ci-path.outputs.scripts }}
 
-      - name: Publish package
+      - name: Upload native artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: dist-native
+          path: dist/
+          retention-days: 1
+
+  # ==========================================================================
+  # Build Nuitka compiled binaries (only if enabled in config)
+  # Uses Docker for isolation and reproducibility
+  # ==========================================================================
+  build-nuitka:
+    name: Build Nuitka (${{ matrix.platform }})
+    needs: detect
+    if: needs.detect.outputs.nuitka_enabled == 'true'
+    # Select runner based on platform: macOS, ARM64 Linux, or default (x64 Linux)
+    runs-on: ${{ contains(matrix.platform, 'macos') && (vars.GH_RUNNER_MACOS || 'macos-latest') || contains(matrix.platform, 'arm64') && (vars.GH_RUNNER_ARM64 || 'ubuntu-24.04-arm') || (vars.GH_RUNNER_DEFAULT || 'ubuntu-latest') }}
+    strategy:
+      fail-fast: false
+      matrix:
+        platform: ${{ fromJson(needs.detect.outputs.nuitka_platforms) }}
+
+    steps:
+      - name: Generate GitHub App Token
+        id: app-token
+        uses: actions/create-github-app-token@v1
+        with:
+          app-id: ${{ secrets.GH_APP_ID }}
+          private-key: ${{ secrets.GH_APP_PRIVATE_KEY }}
+          owner: ${{ github.repository_owner }}
+
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          submodules: recursive
+          token: ${{ steps.app-token.outputs.token }}
+
+      - name: Detect CI path
+        id: ci-path
+        uses: ./ci/actions/setup/detect-ci-path
+
+      - name: Build with Nuitka (Docker)
+        uses: ./ci/actions/build/python/nuitka-docker
+        with:
+          scripts-path: ${{ steps.ci-path.outputs.scripts }}
+          platform: ${{ matrix.platform }}
+          build-type: ${{ needs.detect.outputs.build_type }}
+          protection-profile: ${{ needs.detect.outputs.protection_profile }}
+          artifactory-username: ${{ secrets.ARTIFACTORY_CI_USERNAME }}
+          artifactory-password: ${{ secrets.ARTIFACTORY_CI_TOKEN }}
+
+      - name: Upload Nuitka artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: dist-nuitka-${{ matrix.platform }}
+          path: |
+            dist/
+            dist-bin/
+          retention-days: 1
+
+  # ==========================================================================
+  # Publish all artifacts to JFrog
+  # ==========================================================================
+  publish:
+    name: Publish to JFrog
+    needs: [detect, build-native, build-nuitka]
+    if: always() && needs.build-native.result == 'success'
+    runs-on: ${{ vars.GH_RUNNER_DEFAULT || 'ubuntu-latest' }}
+
+    steps:
+      - name: Generate GitHub App Token
+        id: app-token
+        uses: actions/create-github-app-token@v1
+        with:
+          app-id: ${{ secrets.GH_APP_ID }}
+          private-key: ${{ secrets.GH_APP_PRIVATE_KEY }}
+          owner: ${{ github.repository_owner }}
+
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          submodules: recursive
+          token: ${{ steps.app-token.outputs.token }}
+
+      - name: Detect CI path
+        id: ci-path
+        uses: ./ci/actions/setup/detect-ci-path
+
+      - name: Setup Python
+        uses: ./ci/actions/setup/python
+        with:
+          scripts-path: ${{ steps.ci-path.outputs.scripts }}
+          artifactory-pypi-url: ${{ vars.ARTIFACTORY_PYPI_URL }}
+          artifactory-username: ${{ secrets.ARTIFACTORY_CI_USERNAME }}
+          artifactory-password: ${{ secrets.ARTIFACTORY_CI_TOKEN }}
+
+      - name: Download native artifacts
+        uses: actions/download-artifact@v4
+        with:
+          name: dist-native
+          path: dist/
+
+      - name: Download Nuitka artifacts
+        if: needs.detect.outputs.nuitka_enabled == 'true' && needs.build-nuitka.result == 'success'
+        uses: actions/download-artifact@v4
+        with:
+          pattern: dist-nuitka-*
+          path: nuitka-artifacts/
+          merge-multiple: false
+
+      - name: Merge Nuitka artifacts into dist
+        if: needs.detect.outputs.nuitka_enabled == 'true' && needs.build-nuitka.result == 'success'
+        run: |
+          echo "=== Merging Nuitka artifacts ==="
+          mkdir -p dist-bin
+          for dir in nuitka-artifacts/dist-nuitka-*/; do
+            if [[ -d "${dir}dist" ]]; then
+              cp -v "${dir}dist/"* dist/ 2>/dev/null || true
+            fi
+            if [[ -d "${dir}dist-bin" ]]; then
+              cp -v "${dir}dist-bin/"* dist-bin/ 2>/dev/null || true
+            fi
+          done
+          echo "=== All artifacts ==="
+          ls -lh dist/
+          ls -lh dist-bin/ 2>/dev/null || echo "(no binaries)"
+
+      - name: Publish packages to JFrog PyPI
         uses: ./ci/actions/publish/python
         with:
           scripts-path: ${{ steps.ci-path.outputs.scripts }}
           artifactory-username: ${{ secrets.ARTIFACTORY_CI_USERNAME }}
           artifactory-password: ${{ secrets.ARTIFACTORY_CI_TOKEN }}
           artifactory-pypi-publish-url: ${{ vars.ARTIFACTORY_PYPI_PUBLISH_URL }}
+
+      - name: Setup JFrog CLI
+        if: |
+          needs.detect.outputs.build_type == 'app' &&
+          needs.detect.outputs.nuitka_enabled == 'true' &&
+          needs.build-nuitka.result == 'success' &&
+          (needs.detect.outputs.publish_binaries == 'artifactory' || needs.detect.outputs.publish_binaries == 'both')
+        uses: jfrog/setup-jfrog-cli@v4
+        with:
+          # Disable job summary to avoid 403 on artifactory-build-info repo
+          disable-job-summary: true
+        env:
+          # Note: ARTIFACTORY_URL org var may not have https:// prefix - we add it if needed
+          JF_URL: https://${{ vars.ARTIFACTORY_URL || 'hypersec.jfrog.io' }}
+          JF_USER: ${{ secrets.ARTIFACTORY_CI_USERNAME }}
+          JF_PASSWORD: ${{ secrets.ARTIFACTORY_CI_TOKEN }}
+
+      - name: Publish binaries to JFrog Generic
+        if: |
+          needs.detect.outputs.build_type == 'app' &&
+          needs.detect.outputs.nuitka_enabled == 'true' &&
+          needs.build-nuitka.result == 'success' &&
+          (needs.detect.outputs.publish_binaries == 'artifactory' || needs.detect.outputs.publish_binaries == 'both')
+        env:
+          # Use ARTIFACTORY_BINARY_URL if set, otherwise fall back to config
+          ARTIFACTORY_BINARY_URL: ${{ vars.ARTIFACTORY_BINARY_URL }}
+          BINARIES_REPO_CONFIG: ${{ needs.detect.outputs.binaries_repo }}
+        run: |
+          # Get package name and version from pyproject.toml
+          PACKAGE_NAME=$(grep -E "^name\s*=" pyproject.toml | head -1 | sed 's/.*=\s*"\([^"]*\)".*/\1/' | tr '-' '_')
+          VERSION=$(grep -E "^version\s*=" pyproject.toml | head -1 | sed 's/.*=\s*"\([^"]*\)".*/\1/')
+
+          # Determine binary repository name
+          # If ARTIFACTORY_BINARY_URL is set, extract repo name from URL
+          # e.g., https://hypersec.jfrog.io/artifactory/hypersec-binaries -> hypersec-binaries
+          if [[ -n "${ARTIFACTORY_BINARY_URL}" ]]; then
+            BINARIES_REPO=$(basename "${ARTIFACTORY_BINARY_URL}")
+          else
+            BINARIES_REPO="${BINARIES_REPO_CONFIG}"
+          fi
+
+          echo "=== Publishing binaries to JFrog Generic ==="
+          echo "Repository: ${BINARIES_REPO}"
+          echo "Package: ${PACKAGE_NAME}"
+          echo "Version: ${VERSION}"
+
+          # Upload each binary tarball (JFrog CLI configured by setup-jfrog-cli action)
+          for tarball in dist-bin/*.tar.gz; do
+            if [[ -f "$tarball" ]]; then
+              FILENAME=$(basename "$tarball")
+              echo "Uploading: ${FILENAME}"
+              jf rt upload "$tarball" "${BINARIES_REPO}/${PACKAGE_NAME}/${VERSION}/${FILENAME}"
+            fi
+          done
+
+          echo "=== Binaries published to JFrog ==="
+          jf rt search "${BINARIES_REPO}/${PACKAGE_NAME}/${VERSION}/*"
+
+      - name: Upload binaries to GitHub Release
+        if: |
+          needs.detect.outputs.build_type == 'app' &&
+          needs.detect.outputs.nuitka_enabled == 'true' &&
+          needs.build-nuitka.result == 'success' &&
+          github.event_name == 'release' &&
+          (needs.detect.outputs.publish_binaries == 'github' || needs.detect.outputs.publish_binaries == 'both')
+        uses: softprops/action-gh-release@v2
+        with:
+          files: dist-bin/*.tar.gz
+        env:
+          GITHUB_TOKEN: ${{ steps.app-token.outputs.token }}
 
       - name: Link to Linear
         uses: ./ci/actions/integrations/linear

@@ -4,9 +4,8 @@
 #
 # Configuration precedence (highest wins):
 #   1. Environment variables (HYPERCI_*)
-#   2. pyproject.toml [tool.hyperci] (Python projects only)
-#   3. This file (.hypersec-ci.yaml)
-#   4. ci/defaults.yaml (CI defaults)
+#   2. This file (.hypersec-ci.yaml)
+#   3. ci/defaults.yaml (CI defaults)
 
 # Project language (auto-detected if not specified)
 # Values: python, typescript, golang, none
@@ -15,38 +14,46 @@ language: python
 # Quality checks
 quality:
   enabled: true
+  # python:
+  #   ruff: true           # Linting and formatting
+  #   mypy: false          # Type checking (optional)
+  #   bandit: false        # Security scanning (optional)
 
 # Testing
 test:
   enabled: true
   coverage: true
-  # min_coverage: 80     # Fail if coverage below this percentage
+  # min_coverage: 80       # Fail if coverage below this percentage
+  # python:
+  #   runner: pytest       # Test runner
+  #   args:
+  #     - "-v"
+  #     - "--tb=short"
+  #   coverage_format: xml # xml, html, or term
 
 # Building
 build:
   enabled: true
   strategies:
-    - native             # Standard wheel build
-    # - nuitka           # Compiled binary (requires nuitka-commercial)
+    - native               # Standard wheel build
+    # - nuitka             # Compiled binary (requires nuitka-commercial)
+
+  # Nuitka compiled builds (commercial)
+  # python:
+  #   nuitka:
+  #     enabled: false
+  #     platforms:
+  #       - linux-x64
+  #       - linux-arm64
+  #     build_native: true
+  #     protection_profile: recommended  # recommended, maximum
 
 # Publishing (on release)
 publish:
   enabled: true
+  # binaries: both         # Binary publish destination: artifactory, github, both
+  # binaries_repo: hypersec-binaries  # JFrog Generic repo for binaries
 
 # Python-specific settings
-# These can also be set in pyproject.toml [tool.hyperci] (takes precedence)
 python:
-  source_dir: src        # Auto-detected if not specified
-  # test:
-  #   runner: pytest     # Test runner
-  #   args:
-  #     - "-v"
-  #     - "--tb=short"
-  # nuitka:              # Commercial compiled builds (optional)
-  #   enabled: false
-  #   platforms:
-  #     - linux-x64
-  #     - linux-arm64
-  #   build_native: true
-  #   protection_profile: recommended  # recommended, maximum
-
+  source_dir: src          # Auto-detected if not specified
