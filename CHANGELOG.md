@@ -1,3 +1,10 @@
+## [2.10.7](https://github.com/hypersec-io/hs-lib/compare/v2.10.6...v2.10.7) (2025-11-26)
+
+
+### Bug Fixes
+
+* format code with ruff ([9eff58d](https://github.com/hypersec-io/hs-lib/commit/9eff58d85d5b987258c99d93d5c78d2242d950c0))
+
 ## [2.10.6](https://github.com/hypersec-io/hs-lib/compare/v2.10.5...v2.10.6) (2025-11-25)
 
 
