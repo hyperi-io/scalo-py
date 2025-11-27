@@ -1,3 +1,10 @@
+## [2.10.9](https://github.com/hypersec-io/hs-lib/compare/v2.10.8...v2.10.9) (2025-11-27)
+
+
+### Bug Fixes
+
+* update CI to hs-ci v1.31.0 with thin workflows ([e82ae7a](https://github.com/hypersec-io/hs-lib/commit/e82ae7af3b56e8787521ca49b3f1b0277b496436))
+
 ## [2.10.8](https://github.com/hypersec-io/hs-lib/compare/v2.10.7...v2.10.8) (2025-11-26)
 
 
