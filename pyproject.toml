@@ -366,14 +366,16 @@ protection = "recommended"  # Options: "none", "recommended", "data-hiding"
 platforms = ["linux-x64", "linux-arm64"]
 
 # UV package manager configuration
+# Auth via env vars: UV_INDEX_HYPERSEC_JFROG_USERNAME, UV_INDEX_HYPERSEC_JFROG_PASSWORD
 [tool.uv]
-# Use unsafe-best-match to allow mixing JFrog + PyPI packages
 index-strategy = "unsafe-best-match"
 
 [[tool.uv.index]]
-name = "jfrog"
+name = "hypersec-jfrog"
 url = "https://hypersec.jfrog.io/artifactory/api/pypi/hypersec-pypi/simple"
+explicit = true
 
 [[tool.uv.index]]
 name = "pypi"
 url = "https://pypi.org/simple"
+default = true

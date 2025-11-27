@@ -137,6 +137,7 @@ pip-delete-this-directory.txt
 .cache
 nosetests.xml
 coverage.xml
+test-results/
 *.cover
 *.py,cover
 .hypothesis/

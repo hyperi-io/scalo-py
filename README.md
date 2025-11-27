@@ -6,13 +6,13 @@
 [![License](https://img.shields.io/badge/license-Proprietary-red)](LICENSE)
 <!-- BADGES:END -->
 
-**Enterprise Python Infrastructure for HyperSec Projects**
+Enterprise Python infrastructure for HyperSec projects.
 
-hs-lib is a production-ready Python library providing container-native application patterns, metrics, logging, and infrastructure utilities for all HyperSec Python projects.
+hs-lib provides container-native application patterns, metrics, logging, and infrastructure utilities for all HyperSec Python projects.
 
 ## Features
 
-### Core Infrastructure (Production-Ready ✅)
+### Core Infrastructure (Stable)
 
 - **Logging**: Structured JSON logging with sensitive data masking
 - **PII Anonymization**: ML-based anonymization with Presidio integration
@@ -20,66 +20,81 @@ hs-lib is a production-ready Python library providing container-native applicati
 - **Configuration**: Multi-layer cascade with environment variable support
 - **Runtime**: Application metadata and environment detection
 
-### Application Framework (⚠️ **WORK IN PROGRESS - WILL BE REPLACED** ⚠️)
+### Application Framework (Experimental)
 
 - **Application Types**: API (FastAPI), Daemon, CLI (Typer), MCP, and Oneshot
-- **Profile-Based Configuration**: `dev`, `docker`, and `prod` profiles with automatic environment detection
-- **Health Checks**: Kubernetes-ready liveness/readiness probes with custom dependency checks
-- **Metrics**: Prometheus and OpenTelemetry backends with automatic collection
-- **HELM Charts**: Production-ready Kubernetes deployments with KEDA autoscaling
+- **Profile-Based Configuration**: `dev`, `docker`, and `prod` profiles
+- **Health Checks**: Kubernetes-ready liveness/readiness probes
+- **Metrics**: Prometheus and OpenTelemetry backends
 
-**⚠️ IMPORTANT WARNING**: The Application framework (Application.api(), Application.daemon(), etc.) is experimental and **WILL BE SIGNIFICANTLY REFACTORED OR REPLACED**. Developers working on this module should expect to replace the current implementation.
-
-**Production-ready components**: The base hs-lib modules (logging, config, runtime, database, metrics) are stable. Use those directly instead of the Application framework for production code.
+> **Note:** The Application framework is experimental and may change. Use the stable core modules (logging, config, runtime, database, metrics) directly for production code.
 
 ## Installation
 
-### With HS-CI (Recommended)
+> **Package naming:** `hs-lib` on PyPI, `hs_lib` for Python imports.
 
-If your project uses HS-CI, `./ci/bootstrap install` automatically configures PyPI access:
+### pyproject.toml Configuration (Recommended)
 
-```bash
-# Setup project (configures .pip/pip.conf automatically)
-./ci/bootstrap install
+For projects using uv with both JFrog (hs-lib) and PyPI packages, add this to your `pyproject.toml`:
 
-# Install hs-lib (no --index-url needed - works for both uv and pip)
-uv pip install hs-lib
+```toml
+[tool.uv]
+index-strategy = "unsafe-best-match"
 
-# Or use standard pip
-pip install hs-lib
+[[tool.uv.index]]
+name = "hypersec-jfrog"
+url = "https://hypersec.jfrog.io/artifactory/api/pypi/hypersec-pypi/simple"
+explicit = true
 
-# Or add to pyproject.toml with uv
-uv add hs-lib
+[[tool.uv.index]]
+name = "pypi"
+url = "https://pypi.org/simple"
+default = true
 
-# With optional dependencies
-uv add hs-lib[presidio]       # PII anonymization
-uv add hs-lib[opentelemetry]  # OpenTelemetry metrics
+[tool.uv.sources]
+hs-lib = { index = "hypersec-jfrog" }
 ```
 
-### Without HS-CI (Manual Configuration)
+**Key settings:**
 
-If not using HS-CI, specify the index URL manually:
+- `index-strategy = "unsafe-best-match"` - Allows mixing packages from JFrog and PyPI
+- `explicit = true` on JFrog - Only use JFrog for explicitly mapped packages
+- `default = true` on PyPI - Use PyPI for everything else
+- `[tool.uv.sources]` - Explicitly route `hs-lib` to JFrog
+
+Then set credentials via environment variables and install:
 
 ```bash
-# Set credentials
-export ARTIFACTORY_USERNAME="your-email@hypersec.io"
-export ARTIFACTORY_PASSWORD="your-jfrog-password"
+# uv looks for UV_INDEX_{NAME}_USERNAME and UV_INDEX_{NAME}_PASSWORD
+# where {NAME} is the uppercase index name with non-alphanumeric chars replaced by underscores
+export UV_INDEX_HYPERSEC_JFROG_USERNAME="your-email@hypersec.io"
+export UV_INDEX_HYPERSEC_JFROG_PASSWORD="your-jfrog-api-key"
 
-# Using uv (recommended)
+uv sync
+```
+
+### Command-Line Installation
+
+```bash
+# Set credentials (same env vars work for CLI)
+export UV_INDEX_HYPERSEC_JFROG_USERNAME="your-email@hypersec.io"
+export UV_INDEX_HYPERSEC_JFROG_PASSWORD="your-jfrog-api-key"
+
+# Using uv with extra-index-url
 uv pip install hs-lib \
-  --index-url https://${ARTIFACTORY_USERNAME}:${ARTIFACTORY_PASSWORD}@hypersec.jfrog.io/artifactory/api/pypi/hypersec-pypi/simple
-
-# Or using pip
-pip install hs-lib \
-  --index-url https://${ARTIFACTORY_USERNAME}:${ARTIFACTORY_PASSWORD}@hypersec.jfrog.io/artifactory/api/pypi/hypersec-pypi/simple
+  --extra-index-url https://hypersec.jfrog.io/artifactory/api/pypi/hypersec-pypi/simple
 
 # With optional dependencies
 uv pip install hs-lib[presidio,opentelemetry] \
-  --index-url https://${ARTIFACTORY_USERNAME}:${ARTIFACTORY_PASSWORD}@hypersec.jfrog.io/artifactory/api/pypi/hypersec-pypi/simple
-
-pip install hs-lib[presidio,opentelemetry] \
-  --index-url https://${ARTIFACTORY_USERNAME}:${ARTIFACTORY_PASSWORD}@hypersec.jfrog.io/artifactory/api/pypi/hypersec-pypi/simple
+  --extra-index-url https://hypersec.jfrog.io/artifactory/api/pypi/hypersec-pypi/simple
 ```
+
+### Optional Dependencies
+
+- `hs-lib[presidio]` - PII anonymization
+- `hs-lib[opentelemetry]` - OpenTelemetry metrics
+- `hs-lib[api]` - FastAPI support
+- `hs-lib[metrics]` - Prometheus metrics
 
 ## Quick Start
 
@@ -143,6 +158,7 @@ app.run()
 - **`prod`**: Production mode (JSON logs, health checks, metrics on port 9090)
 
 Profiles are auto-detected from:
+
 1. Environment variable: `HS_LIB_PROFILE` or `APP_PROFILE`
 2. Kubernetes detection (sets `prod`)
 3. Docker detection (sets `docker`)
@@ -182,23 +198,17 @@ helm install my-app ./templates/helm/hs-lib-app \
 ## Development
 
 ```bash
-# Install uv
-curl -LsSf https://astral.sh/uv/install.sh | sh
+# Quality checks
+ruff check src/ tests/
+ruff format src/ tests/
 
-# Setup
-./ci/bootstrap --install
-
-# Test
-./ci/run check
+# Tests
+pytest tests/
 
 # Build
-./ci/run build
+uv build
 ```
 
 ## License
 
 Proprietary - HyperSec Internal Use Only
-
-## Support
-
-Internal support: #hs-lib on Slack

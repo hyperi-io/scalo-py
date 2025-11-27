@@ -1,6 +1,6 @@
 # Project:      hs-lib
 # File:         .github/workflows/ci.yml
-# Purpose:      Python CI pipeline - Quality, Test, Build
+# Purpose:      Python CI pipeline - Quality, Test
 # License:      LicenseRef-HyperSec-EULA
 # Copyright:    (c) 2025 HyperSec Pty Ltd
 #
@@ -12,131 +12,55 @@ name: CI
 on:
   push:
     branches: ["**"]
+    paths-ignore: ['**.md', 'docs/**', 'LICENSE*', '.gitignore']
   pull_request:
+    paths-ignore: ['**.md', 'docs/**', 'LICENSE*', '.gitignore']
   workflow_dispatch:
 
 jobs:
   quality:
-    name: Quality Checks
+    name: Quality
     runs-on: ${{ vars.GH_RUNNER_DEFAULT || 'ubuntu-latest' }}
-
     steps:
-      - name: Generate GitHub App Token
-        id: app-token
+      - name: Generate token
+        id: token
         uses: actions/create-github-app-token@v1
         with:
           app-id: ${{ secrets.GH_APP_ID }}
           private-key: ${{ secrets.GH_APP_PRIVATE_KEY }}
           owner: ${{ github.repository_owner }}
-
-      - name: Checkout
-        uses: actions/checkout@v4
+      - uses: actions/checkout@v4
         with:
           fetch-depth: 0
           submodules: recursive
-          token: ${{ steps.app-token.outputs.token }}
-
-      - name: Detect CI path
-        id: ci-path
-        uses: ./ci/actions/setup/detect-ci-path
-
-      - name: Setup Python
-        uses: ./ci/actions/setup/python
+          token: ${{ steps.token.outputs.token }}
+      - uses: ./ci/actions/jobs/quality
         with:
-          scripts-path: ${{ steps.ci-path.outputs.scripts }}
-          artifactory-pypi-url: ${{ vars.ARTIFACTORY_PYPI_URL }}
+          language: python
+          artifactory-url: ${{ vars.ARTIFACTORY_PYPI_URL }}
           artifactory-username: ${{ secrets.ARTIFACTORY_CI_USERNAME }}
           artifactory-password: ${{ secrets.ARTIFACTORY_CI_TOKEN }}
-
-      - name: Run quality checks
-        uses: ./ci/actions/quality/python
-        with:
-          scripts-path: ${{ steps.ci-path.outputs.scripts }}
 
   test:
     name: Test
     needs: quality
     runs-on: ${{ vars.GH_RUNNER_DEFAULT || 'ubuntu-latest' }}
-
     steps:
-      - name: Generate GitHub App Token
-        id: app-token
+      - name: Generate token
+        id: token
         uses: actions/create-github-app-token@v1
         with:
           app-id: ${{ secrets.GH_APP_ID }}
           private-key: ${{ secrets.GH_APP_PRIVATE_KEY }}
           owner: ${{ github.repository_owner }}
-
-      - name: Checkout
-        uses: actions/checkout@v4
+      - uses: actions/checkout@v4
         with:
           fetch-depth: 0
           submodules: recursive
-          token: ${{ steps.app-token.outputs.token }}
-
-      - name: Detect CI path
-        id: ci-path
-        uses: ./ci/actions/setup/detect-ci-path
-
-      - name: Setup Python
-        uses: ./ci/actions/setup/python
+          token: ${{ steps.token.outputs.token }}
+      - uses: ./ci/actions/jobs/test
         with:
-          scripts-path: ${{ steps.ci-path.outputs.scripts }}
-          artifactory-pypi-url: ${{ vars.ARTIFACTORY_PYPI_URL }}
+          language: python
+          artifactory-url: ${{ vars.ARTIFACTORY_PYPI_URL }}
           artifactory-username: ${{ secrets.ARTIFACTORY_CI_USERNAME }}
           artifactory-password: ${{ secrets.ARTIFACTORY_CI_TOKEN }}
-
-      - name: Run tests
-        uses: ./ci/actions/test/python
-        with:
-          scripts-path: ${{ steps.ci-path.outputs.scripts }}
-
-  build:
-    name: Build
-    needs: test
-    runs-on: ${{ vars.GH_RUNNER_DEFAULT || 'ubuntu-latest' }}
-
-    steps:
-      - name: Generate GitHub App Token
-        id: app-token
-        uses: actions/create-github-app-token@v1
-        with:
-          app-id: ${{ secrets.GH_APP_ID }}
-          private-key: ${{ secrets.GH_APP_PRIVATE_KEY }}
-          owner: ${{ github.repository_owner }}
-
-      - name: Checkout
-        uses: actions/checkout@v4
-        with:
-          fetch-depth: 0
-          submodules: recursive
-          token: ${{ steps.app-token.outputs.token }}
-
-      - name: Detect CI path
-        id: ci-path
-        uses: ./ci/actions/setup/detect-ci-path
-
-      - name: Setup Python
-        uses: ./ci/actions/setup/python
-        with:
-          scripts-path: ${{ steps.ci-path.outputs.scripts }}
-          artifactory-pypi-url: ${{ vars.ARTIFACTORY_PYPI_URL }}
-          artifactory-username: ${{ secrets.ARTIFACTORY_CI_USERNAME }}
-          artifactory-password: ${{ secrets.ARTIFACTORY_CI_TOKEN }}
-
-      - name: Setup Nuitka dependencies
-        uses: ./ci/actions/setup/nuitka-deps
-        with:
-          artifactory-pypi-url: ${{ vars.ARTIFACTORY_PYPI_URL }}
-          artifactory-username: ${{ secrets.ARTIFACTORY_CI_USERNAME }}
-          artifactory-password: ${{ secrets.ARTIFACTORY_CI_TOKEN }}
-
-      - name: Build package
-        uses: ./ci/actions/build/python/native
-        with:
-          scripts-path: ${{ steps.ci-path.outputs.scripts }}
-
-      - name: Upload artifacts
-        uses: ./ci/actions/artifacts/upload
-        with:
-          name: build-artifacts-python

@@ -49,16 +49,17 @@ jobs:
         id: ci-path
         uses: ./ci/actions/setup/detect-ci-path
 
-      - name: Setup uv
-        uses: astral-sh/setup-uv@v4
+      - name: Setup Python
+        uses: actions/setup-python@v5
         with:
-          enable-cache: false
+          python-version: '3.12'
 
       - name: Read build configuration
         id: config
         run: |
-          # Use uv to run Python 3.12 with pyyaml for config loading
-          CONFIG=$(uv run --python 3.12 --with pyyaml ${{ steps.ci-path.outputs.scripts }}/core/load-config.py)
+          # Install pyyaml via pip (avoids UV index config issues with private registries)
+          pip install --quiet pyyaml
+          CONFIG=$(python ${{ steps.ci-path.outputs.scripts }}/core/load-config.py)
 
           # Check if Nuitka is enabled
           NUITKA_ENABLED=$(echo "$CONFIG" | jq -r '.build.python.nuitka.enabled // false')
@@ -92,7 +93,7 @@ jobs:
           echo "binaries_repo=${BINARIES_REPO}" >> $GITHUB_OUTPUT
 
           # Get Nuitka protection profile (none, data-hiding, recommended, anti-debugger, maximum)
-          PROTECTION_PROFILE=$(echo "$CONFIG" | jq -r '.build.python.nuitka.protection_profile // "recommended"')
+          PROTECTION_PROFILE=$(echo "$CONFIG" | jq -r '.build.python.nuitka.protection_profile // "maximum"')
           echo "protection_profile=${PROTECTION_PROFILE}" >> $GITHUB_OUTPUT
 
           echo "=== Build Configuration ==="
@@ -142,6 +143,8 @@ jobs:
         uses: ./ci/actions/build/python/native
         with:
           scripts-path: ${{ steps.ci-path.outputs.scripts }}
+          artifactory-username: ${{ secrets.ARTIFACTORY_CI_USERNAME }}
+          artifactory-password: ${{ secrets.ARTIFACTORY_CI_TOKEN }}
 
       - name: Upload native artifacts
         uses: actions/upload-artifact@v4
@@ -280,22 +283,6 @@ jobs:
           artifactory-password: ${{ secrets.ARTIFACTORY_CI_TOKEN }}
           artifactory-pypi-publish-url: ${{ vars.ARTIFACTORY_PYPI_PUBLISH_URL }}
 
-      - name: Setup JFrog CLI
-        if: |
-          needs.detect.outputs.build_type == 'app' &&
-          needs.detect.outputs.nuitka_enabled == 'true' &&
-          needs.build-nuitka.result == 'success' &&
-          (needs.detect.outputs.publish_binaries == 'artifactory' || needs.detect.outputs.publish_binaries == 'both')
-        uses: jfrog/setup-jfrog-cli@v4
-        with:
-          # Disable job summary to avoid 403 on artifactory-build-info repo
-          disable-job-summary: true
-        env:
-          # Note: ARTIFACTORY_URL org var may not have https:// prefix - we add it if needed
-          JF_URL: https://${{ vars.ARTIFACTORY_URL || 'hypersec.jfrog.io' }}
-          JF_USER: ${{ secrets.ARTIFACTORY_CI_USERNAME }}
-          JF_PASSWORD: ${{ secrets.ARTIFACTORY_CI_TOKEN }}
-
       - name: Publish binaries to JFrog Generic
         if: |
           needs.detect.outputs.build_type == 'app' &&
@@ -303,7 +290,9 @@ jobs:
           needs.build-nuitka.result == 'success' &&
           (needs.detect.outputs.publish_binaries == 'artifactory' || needs.detect.outputs.publish_binaries == 'both')
         env:
-          # Use ARTIFACTORY_BINARY_URL if set, otherwise fall back to config
+          ARTIFACTORY_URL: ${{ vars.ARTIFACTORY_URL || 'hypersec.jfrog.io' }}
+          ARTIFACTORY_USERNAME: ${{ secrets.ARTIFACTORY_CI_USERNAME }}
+          ARTIFACTORY_PASSWORD: ${{ secrets.ARTIFACTORY_CI_TOKEN }}
           ARTIFACTORY_BINARY_URL: ${{ vars.ARTIFACTORY_BINARY_URL }}
           BINARIES_REPO_CONFIG: ${{ needs.detect.outputs.binaries_repo }}
         run: |
@@ -311,31 +300,45 @@ jobs:
           PACKAGE_NAME=$(grep -E "^name\s*=" pyproject.toml | head -1 | sed 's/.*=\s*"\([^"]*\)".*/\1/' | tr '-' '_')
           VERSION=$(grep -E "^version\s*=" pyproject.toml | head -1 | sed 's/.*=\s*"\([^"]*\)".*/\1/')
 
-          # Determine binary repository name
-          # If ARTIFACTORY_BINARY_URL is set, extract repo name from URL
-          # e.g., https://hypersec.jfrog.io/artifactory/hypersec-binaries -> hypersec-binaries
+          # Determine binary repository URL
           if [[ -n "${ARTIFACTORY_BINARY_URL}" ]]; then
-            BINARIES_REPO=$(basename "${ARTIFACTORY_BINARY_URL}")
+            # Use full URL if provided
+            BASE_URL="${ARTIFACTORY_BINARY_URL}"
           else
-            BINARIES_REPO="${BINARIES_REPO_CONFIG}"
+            # Construct URL from ARTIFACTORY_URL and repo name
+            BASE_URL="https://${ARTIFACTORY_URL}/artifactory/${BINARIES_REPO_CONFIG}"
           fi
 
           echo "=== Publishing binaries to JFrog Generic ==="
-          echo "Repository: ${BINARIES_REPO}"
+          echo "URL: ${BASE_URL}"
           echo "Package: ${PACKAGE_NAME}"
           echo "Version: ${VERSION}"
 
-          # Upload each binary tarball (JFrog CLI configured by setup-jfrog-cli action)
+          # Upload each binary tarball using curl (no JFrog CLI needed)
           for tarball in dist-bin/*.tar.gz; do
             if [[ -f "$tarball" ]]; then
               FILENAME=$(basename "$tarball")
+              UPLOAD_URL="${BASE_URL}/${PACKAGE_NAME}/${VERSION}/${FILENAME}"
               echo "Uploading: ${FILENAME}"
-              jf rt upload "$tarball" "${BINARIES_REPO}/${PACKAGE_NAME}/${VERSION}/${FILENAME}"
+
+              # Use curl with basic auth - much faster than JFrog CLI
+              HTTP_CODE=$(curl -sS -w "%{http_code}" -o /tmp/upload_response.txt \
+                -u "${ARTIFACTORY_USERNAME}:${ARTIFACTORY_PASSWORD}" \
+                -T "$tarball" \
+                -H "X-Checksum-Deploy: true" \
+                "${UPLOAD_URL}")
+
+              if [[ "$HTTP_CODE" -ge 200 && "$HTTP_CODE" -lt 300 ]]; then
+                echo "  ✓ Uploaded successfully (HTTP ${HTTP_CODE})"
+              else
+                echo "  ✗ Upload failed (HTTP ${HTTP_CODE})"
+                cat /tmp/upload_response.txt
+                exit 1
+              fi
             fi
           done
 
           echo "=== Binaries published to JFrog ==="
-          jf rt search "${BINARIES_REPO}/${PACKAGE_NAME}/${VERSION}/*"
 
       - name: Upload binaries to GitHub Release
         if: |
