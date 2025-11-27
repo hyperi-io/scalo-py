@@ -1,82 +1,29 @@
-# Gitleaks Configuration - HS-CI Default
-# https://github.com/gitleaks/gitleaks
-#
-# This is the default config provided by HS-CI.
-# To customize, copy to project root: cp ci/modules/common/templates/.gitleaks.toml .gitleaks.toml
-
-title = "HS-CI Gitleaks Config"
-
-# Minimum version requirement (ensures consistent behavior)
-minVersion = "v8.25.0"
+# Project:      hs-lib
+# File:         .gitleaks.toml
+# Purpose:      Gitleaks configuration - allowlist historical false positives
+# License:      LicenseRef-HyperSec-EULA
+# Copyright:    (c) 2025 HyperSec Pty Ltd
 
 [extend]
-# Use default gitleaks rules (AWS keys, Stripe, GitHub tokens, etc.)
+# Use the default gitleaks config as base
 useDefault = true
 
-# Custom rules for HyperSec-specific secrets
-[[rules]]
-id = "hypersec-api-key"
-description = "HyperSec API Key"
-regex = '''hs_[0-9a-zA-Z]{40}'''
-tags = ["key", "API", "hypersec"]
-
-[[rules]]
-id = "jfrog-api-key"
-description = "JFrog API Key or Token"
-regex = '''(jfrog|artifactory).{0,20}[=:]\s*['""]?[A-Za-z0-9+/=]{40,}['""]?'''
-tags = ["key", "API", "jfrog"]
-
-# Allowlist - Ignore false positives
+# Allowlist for historical commits containing secrets in deleted/backup files
+# These tokens have been rotated and the files are no longer in use
 [allowlist]
-description = "Allowlisted files and patterns"
+description = "hs-lib historical false positives"
 
-# Ignore test files with dummy/example secrets
-paths = [
-    '''tests/fixtures/.*''',
-    '''tests/unit/test_.*\.py''',
-    '''tests/integration/test_.*\.py''',
-    '''tests/e2e/test_.*\.py''',
-    '''.tmp/.*''',
-    '''ci-local/.*''',
-    # Binary files
-    '''\.(png|jpg|jpeg|gif|ico|svg|woff|woff2|ttf|eot|otf)$''',
-    # Dependency lock files
-    '''(package-lock\.json|yarn\.lock|pnpm-lock\.yaml|uv\.lock|poetry\.lock|Pipfile\.lock|Gemfile\.lock|composer\.lock|go\.sum)$''',
-    # Vendor/dependency directories
-    '''(node_modules|vendor|venv|\.venv)/.*''',
+# Commits containing old backup files with now-rotated credentials
+commits = [
+    "12e97bf5520ca190c8e1f5988f2efef39b7e9258",  # backup/pip.backup/pip.conf
+    "60ee2f9e6202c97833c8073b3ca8ad0e6eb7ab7e",  # .env.backup
+    "15effabd30fc02393326a0ef16d931c3acbe8092",  # .pip/pip.conf
+    "10641cc259be3ea0eec63736d7494dbe5a553b7a",  # .pip/pip.conf
 ]
 
-# Ignore example/placeholder secrets
-regexes = [
-    # Test keys (legitimate test credentials)
-    '''sk_test_[0-9a-zA-Z]+''',           # Stripe test keys
-    '''pk_test_[0-9a-zA-Z]+''',           # Stripe test keys
-
-    # Example domains
-    '''example\.com''',
-    '''localhost''',
-    '''127\.0\.0\.1''',
-
-    # Template syntax
-    '''\{\{[^}]+\}\}''',                   # {{variable}}
-    '''\$\{[^}]+\}''',                     # ${ENV_VAR}
-    '''\$[A-Z_]+''',                       # $ENV_VAR
-
-    # Placeholder patterns
-    '''<API_KEY>''',                       # <API_KEY>
-    '''<SECRET>''',                        # <SECRET>
-    '''<TOKEN>''',                         # <TOKEN>
-    '''your[_-]api[_-]key[_-]here''',     # your-api-key-here
-    '''replace[_-]with[_-]your''',        # replace-with-your
-    '''INSERT[_-].*[_-]HERE''',           # INSERT_TOKEN_HERE
-
-    # AWS documentation examples
-    '''AKIA00000000EXAMPLE''',            # AWS example key
-    '''wJalrXUtnFEMI/K7MDENG/bPxRfiCYEXAMPLEKEY''',  # AWS example secret
-
-    # Obvious test/dummy patterns
-    '''(aaaa+|bbbb+|xxxx+|0000+|1111+)''', # aaaaa, xxxxx, etc.
-    '''test[_-]?(key|token|secret|password)''',  # test_key, testpassword
-    '''dummy[_-]?(key|token|secret|password)''', # dummy_key
-    '''fake[_-]?(key|token|secret|password)''',  # fake_key
+# Paths to ignore (backup files no longer in use)
+paths = [
+    '''backup/.*''',
+    '''\.env\.backup''',
+    '''\.pip/pip\.conf''',
 ]
