@@ -132,6 +132,8 @@ jobs:
           artifactory-username: ${{ secrets.ARTIFACTORY_CI_USERNAME }}
           artifactory-password: ${{ secrets.ARTIFACTORY_CI_TOKEN }}
           artifactory-publish-url: ${{ vars.ARTIFACTORY_PYPI_PUBLISH_URL }}
+          artifactory-base-url: ${{ vars.ARTIFACTORY_URL || 'hypersec.jfrog.io' }}
+          artifactory-binary-url: ${{ vars.ARTIFACTORY_BINARY_URL }}
           nuitka-enabled: ${{ needs.detect.outputs.nuitka_enabled }}
           nuitka-build-result: ${{ needs.build-nuitka.result }}
           build-type: ${{ needs.detect.outputs.build_type }}
