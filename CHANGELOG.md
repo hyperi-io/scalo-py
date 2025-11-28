@@ -1,3 +1,10 @@
+## [2.10.11](https://github.com/hypersec-io/hs-lib/compare/v2.10.10...v2.10.11) (2025-11-28)
+
+
+### Bug Fixes
+
+* allowlist test fixture fake secrets in gitleaks ([b5c74c6](https://github.com/hypersec-io/hs-lib/commit/b5c74c6e903eac5b5fe5e902cc4a524475758722))
+
 ## [2.10.10](https://github.com/hypersec-io/hs-lib/compare/v2.10.9...v2.10.10) (2025-11-28)
 
 
