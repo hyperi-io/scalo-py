@@ -21,9 +21,18 @@ commits = [
     "10641cc259be3ea0eec63736d7494dbe5a553b7a",  # .pip/pip.conf
 ]
 
-# Paths to ignore (backup files no longer in use)
+# Paths to ignore (backup files no longer in use, test fixtures with fake secrets)
 paths = [
     '''backup/.*''',
     '''\.env\.backup''',
     '''\.pip/pip\.conf''',
+    '''tests/.*test_anonymizer\.py''',  # Contains fake API keys for testing PII anonymization
+]
+
+# Regex patterns that are test fixtures (fake secrets for testing)
+regexes = [
+    '''sk-proj-abc123def456ghi789''',
+    '''secret_abc123def456''',
+    '''sk_live_51Hqx2ABCDEFGabcdefg''',
+    '''jwt_secret_xyz789''',
 ]
