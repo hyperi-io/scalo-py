@@ -26,7 +26,8 @@ paths = [
     '''backup/.*''',
     '''\.env\.backup''',
     '''\.pip/pip\.conf''',
-    '''tests/.*test_anonymizer\.py''',  # Contains fake API keys for testing PII anonymization
+    '''tests/unit/test_anonymizer\.py''',      # Fake API keys for PII anonymization tests
+    '''tests/unit/test_logger_filters\.py''',  # Fake API keys for log masking tests
 ]
 
 # Regex patterns that are test fixtures (fake secrets for testing)
@@ -35,4 +36,6 @@ regexes = [
     '''secret_abc123def456''',
     '''sk_live_51Hqx2ABCDEFGabcdefg''',
     '''jwt_secret_xyz789''',
+    '''sk-1234567890''',
+    '''sk-123_ABC-xyz''',
 ]
