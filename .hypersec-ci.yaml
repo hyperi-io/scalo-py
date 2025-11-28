@@ -9,9 +9,9 @@
 build:
   type: package
 
-# Uncomment to disable publishing (e.g., internal libraries)
-# publish:
-#   enabled: false
+# Publishing (set by attach.sh --no-publish)
+publish:
+  enabled: true
 
 # Uncomment for Nuitka compiled builds
 # build:
