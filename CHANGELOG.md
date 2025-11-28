@@ -1,3 +1,10 @@
+## [2.10.12](https://github.com/hypersec-io/hs-lib/compare/v2.10.11...v2.10.12) (2025-11-28)
+
+
+### Bug Fixes
+
+* allowlist test_logger_filters.py fake secrets ([342d3c8](https://github.com/hypersec-io/hs-lib/commit/342d3c8fee2dbf78e5fa341e2128e7ef3af85d40))
+
 ## [2.10.11](https://github.com/hypersec-io/hs-lib/compare/v2.10.10...v2.10.11) (2025-11-28)
 
 
