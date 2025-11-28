@@ -1,3 +1,10 @@
+## [2.10.10](https://github.com/hypersec-io/hs-lib/compare/v2.10.9...v2.10.10) (2025-11-28)
+
+
+### Bug Fixes
+
+* add gitleaks allowlist for historical backup files ([4ace591](https://github.com/hypersec-io/hs-lib/commit/4ace59115ddfb3dfe27cf9cbeddcf78b4d946577))
+
 ## [2.10.9](https://github.com/hypersec-io/hs-lib/compare/v2.10.8...v2.10.9) (2025-11-27)
 
 
