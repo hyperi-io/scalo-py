@@ -1,3 +1,10 @@
+## [2.10.13](https://github.com/hypersec-io/hs-lib/compare/v2.10.12...v2.10.13) (2025-11-28)
+
+
+### Bug Fixes
+
+* update CI with thin publish.yml workflow ([c7b8732](https://github.com/hypersec-io/hs-lib/commit/c7b873293080947819d8172d681bc5e7588f1213))
+
 ## [2.10.12](https://github.com/hypersec-io/hs-lib/compare/v2.10.11...v2.10.12) (2025-11-28)
 
 
