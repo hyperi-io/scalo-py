@@ -1,3 +1,10 @@
+## [2.10.14](https://github.com/hypersec-io/hs-lib/compare/v2.10.13...v2.10.14) (2025-11-28)
+
+
+### Bug Fixes
+
+* update CI to hs-ci v1.33.1 ([50049d4](https://github.com/hypersec-io/hs-lib/commit/50049d4929fed6ba8a1edbad4804797c5b2e93d5))
+
 ## [2.10.13](https://github.com/hypersec-io/hs-lib/compare/v2.10.12...v2.10.13) (2025-11-28)
 
 

@@ -7,7 +7,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "hs-lib"
-version = "2.10.13"
+version = "2.10.14"
 description = "Enterprise infrastructure for containerized Python applications - configuration, logging, timeouts, database, metrics, and application framework"
 readme = "README.md"
 authors = [
