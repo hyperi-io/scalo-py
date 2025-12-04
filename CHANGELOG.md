@@ -1,3 +1,10 @@
+## [2.10.16](https://github.com/hypersec-io/hs-lib/compare/v2.10.15...v2.10.16) (2025-12-04)
+
+
+### Bug Fixes
+
+* remediate security scanning alerts ([fca155c](https://github.com/hypersec-io/hs-lib/commit/fca155c1c001885f8e71ee22c7d984f282d7992b))
+
 ## [2.10.15](https://github.com/hypersec-io/hs-lib/compare/v2.10.14...v2.10.15) (2025-11-28)
 
 
