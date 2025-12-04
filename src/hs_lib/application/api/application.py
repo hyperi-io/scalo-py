@@ -161,7 +161,7 @@ class APIApplication(
                             return {"status": "not ready", "service": self.name}
                     except Exception as e:
                         logger.error(f"Health check failed: {e}")
-                        return {"status": "not ready", "error": str(e)}
+                        return {"status": "not ready", "error": "health check failed"}
 
             return {"status": "ready", "service": self.name}
 

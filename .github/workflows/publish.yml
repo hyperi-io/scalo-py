@@ -14,6 +14,9 @@ on:
     types: [published]
   workflow_dispatch:
 
+permissions:
+  contents: read
+
 jobs:
   detect:
     name: Detect Config

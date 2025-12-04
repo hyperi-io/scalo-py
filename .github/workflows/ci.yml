@@ -17,6 +17,9 @@ on:
     paths-ignore: ['**.md', 'docs/**', 'LICENSE*', '.gitignore']
   workflow_dispatch:
 
+permissions:
+  contents: read
+
 jobs:
   quality:
     name: Quality
