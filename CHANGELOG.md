@@ -1,3 +1,10 @@
+## [2.13.5](https://github.com/hypersec-io/hs-pylib/compare/v2.13.4...v2.13.5) (2025-12-29)
+
+
+### Bug Fixes
+
+* add faker to dev dependencies for integration tests ([ae3d339](https://github.com/hypersec-io/hs-pylib/commit/ae3d339f3163b746d6eacbd240edc893b79d26e2))
+
 ## [2.13.4](https://github.com/hypersec-io/hs-pylib/compare/v2.13.3...v2.13.4) (2025-12-29)
 
 
