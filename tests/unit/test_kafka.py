@@ -13,7 +13,6 @@ TDD approach: Write failing tests first, then implement to make them pass.
 
 import pytest
 
-
 # =============================================================================
 # Phase 1: Types and Config (Foundation)
 # =============================================================================
@@ -355,6 +354,7 @@ class TestTopicTypes:
 # Phase 2: KafkaClient (Admin Operations)
 # =============================================================================
 
+from datetime import UTC
 from unittest.mock import MagicMock, Mock, patch
 
 
@@ -379,7 +379,7 @@ class TestKafkaClientInit:
         """Client should accept bootstrap.servers as string."""
         from hs_pylib.kafka.client import KafkaClient
 
-        client = KafkaClient("localhost:9092")
+        KafkaClient("localhost:9092")
 
         mock_admin_client.assert_called_once()
         call_config = mock_admin_client.call_args[0][0]
@@ -393,7 +393,7 @@ class TestKafkaClientInit:
             "bootstrap.servers": "kafka1:9092,kafka2:9092",
             "client.id": "my-admin",
         }
-        client = KafkaClient(config)
+        KafkaClient(config)
 
         call_config = mock_admin_client.call_args[0][0]
         assert call_config["bootstrap.servers"] == "kafka1:9092,kafka2:9092"
@@ -404,7 +404,7 @@ class TestKafkaClientInit:
         from hs_pylib.kafka.client import KafkaClient
         from hs_pylib.kafka.config import ADMIN_DEFAULTS
 
-        client = KafkaClient("localhost:9092")
+        KafkaClient("localhost:9092")
 
         call_config = mock_admin_client.call_args[0][0]
         # Should have admin defaults applied
@@ -414,7 +414,7 @@ class TestKafkaClientInit:
         """Client should support verify_ssl=False."""
         from hs_pylib.kafka.client import KafkaClient
 
-        client = KafkaClient("localhost:9092", verify_ssl=False)
+        KafkaClient("localhost:9092", verify_ssl=False)
 
         call_config = mock_admin_client.call_args[0][0]
         assert call_config["enable.ssl.certificate.verification"] == "false"
@@ -828,7 +828,7 @@ class TestKafkaConsumerInit:
         """Consumer should require group.id."""
         from hs_pylib.kafka.consumer import KafkaConsumer
 
-        consumer = KafkaConsumer("localhost:9092", "my-group")
+        KafkaConsumer("localhost:9092", "my-group")
 
         mock_consumer.assert_called_once()
         call_config = mock_consumer.call_args[0][0]
@@ -843,7 +843,7 @@ class TestKafkaConsumerInit:
             "bootstrap.servers": "kafka1:9092,kafka2:9092",
             "client.id": "my-consumer",
         }
-        consumer = KafkaConsumer(config, "my-group")
+        KafkaConsumer(config, "my-group")
 
         call_config = mock_consumer.call_args[0][0]
         assert call_config["bootstrap.servers"] == "kafka1:9092,kafka2:9092"
@@ -855,7 +855,7 @@ class TestKafkaConsumerInit:
         from hs_pylib.kafka.config import CONSUMER_DEFAULTS
         from hs_pylib.kafka.consumer import KafkaConsumer
 
-        consumer = KafkaConsumer("localhost:9092", "my-group")
+        KafkaConsumer("localhost:9092", "my-group")
 
         call_config = mock_consumer.call_args[0][0]
         assert call_config["auto.offset.reset"] == CONSUMER_DEFAULTS["auto.offset.reset"]
@@ -865,7 +865,7 @@ class TestKafkaConsumerInit:
         """Consumer should support verify_ssl=False."""
         from hs_pylib.kafka.consumer import KafkaConsumer
 
-        consumer = KafkaConsumer("localhost:9092", "my-group", verify_ssl=False)
+        KafkaConsumer("localhost:9092", "my-group", verify_ssl=False)
 
         call_config = mock_consumer.call_args[0][0]
         assert call_config["enable.ssl.certificate.verification"] == "false"
@@ -1218,7 +1218,7 @@ class TestKafkaProducerInit:
         """Producer should accept bootstrap.servers string."""
         from hs_pylib.kafka.producer import KafkaProducer
 
-        producer = KafkaProducer("localhost:9092")
+        KafkaProducer("localhost:9092")
 
         mock_producer.assert_called_once()
         call_config = mock_producer.call_args[0][0]
@@ -1232,7 +1232,7 @@ class TestKafkaProducerInit:
             "bootstrap.servers": "kafka1:9092,kafka2:9092",
             "client.id": "my-producer",
         }
-        producer = KafkaProducer(config)
+        KafkaProducer(config)
 
         call_config = mock_producer.call_args[0][0]
         assert call_config["bootstrap.servers"] == "kafka1:9092,kafka2:9092"
@@ -1243,7 +1243,7 @@ class TestKafkaProducerInit:
         from hs_pylib.kafka.config import PRODUCER_DEFAULTS
         from hs_pylib.kafka.producer import KafkaProducer
 
-        producer = KafkaProducer("localhost:9092")
+        KafkaProducer("localhost:9092")
 
         call_config = mock_producer.call_args[0][0]
         assert call_config["acks"] == PRODUCER_DEFAULTS["acks"]
@@ -1254,7 +1254,7 @@ class TestKafkaProducerInit:
         """Producer should support verify_ssl=False."""
         from hs_pylib.kafka.producer import KafkaProducer
 
-        producer = KafkaProducer("localhost:9092", verify_ssl=False)
+        KafkaProducer("localhost:9092", verify_ssl=False)
 
         call_config = mock_producer.call_args[0][0]
         assert call_config["enable.ssl.certificate.verification"] == "false"
@@ -2414,7 +2414,7 @@ class TestKafkaMetricsCallback:
 
     def test_create_stats_callback(self):
         """Should create stats callback function."""
-        from hs_pylib.kafka.metrics import create_stats_callback, KafkaMetricsCollector
+        from hs_pylib.kafka.metrics import KafkaMetricsCollector, create_stats_callback
 
         collector = KafkaMetricsCollector()
         callback = create_stats_callback(collector)
@@ -2423,7 +2423,7 @@ class TestKafkaMetricsCallback:
 
     def test_stats_callback_updates_collector(self):
         """Stats callback should update collector with new stats."""
-        from hs_pylib.kafka.metrics import create_stats_callback, KafkaMetricsCollector
+        from hs_pylib.kafka.metrics import KafkaMetricsCollector, create_stats_callback
 
         collector = KafkaMetricsCollector()
         callback = create_stats_callback(collector)
@@ -2703,7 +2703,7 @@ class TestKafkaAdmin:
         """KafkaAdmin should initialize with config."""
         from hs_pylib.kafka.admin import KafkaAdmin
 
-        admin = KafkaAdmin("localhost:9092")
+        KafkaAdmin("localhost:9092")
         mock_admin_client_for_admin.assert_called_once()
 
     def test_admin_context_manager(self, mock_admin_client_for_admin):
@@ -2715,8 +2715,9 @@ class TestKafkaAdmin:
 
     def test_admin_increase_partitions(self, mock_admin_client_for_admin):
         """Should increase partition count for a topic."""
-        from hs_pylib.kafka.admin import KafkaAdmin
         from concurrent.futures import Future
+
+        from hs_pylib.kafka.admin import KafkaAdmin
 
         mock_future = Future()
         mock_future.set_result(None)
@@ -2731,8 +2732,9 @@ class TestKafkaAdmin:
 
     def test_admin_set_retention(self, mock_admin_client_for_admin):
         """Should set retention.ms for a topic."""
-        from hs_pylib.kafka.admin import KafkaAdmin
         from concurrent.futures import Future
+
+        from hs_pylib.kafka.admin import KafkaAdmin
 
         mock_future = Future()
         mock_future.set_result(None)
@@ -2747,8 +2749,9 @@ class TestKafkaAdmin:
 
     def test_admin_set_retention_ms(self, mock_admin_client_for_admin):
         """Should set retention.ms directly."""
-        from hs_pylib.kafka.admin import KafkaAdmin
         from concurrent.futures import Future
+
+        from hs_pylib.kafka.admin import KafkaAdmin
 
         mock_future = Future()
         mock_future.set_result(None)
@@ -2763,9 +2766,9 @@ class TestKafkaAdmin:
 
     def test_admin_get_topic_config(self, mock_admin_client_for_admin):
         """Should get topic configuration."""
-        from hs_pylib.kafka.admin import KafkaAdmin
         from concurrent.futures import Future
-        from unittest.mock import MagicMock
+
+        from hs_pylib.kafka.admin import KafkaAdmin
 
         # Mock config result as dict[str, ConfigEntry]
         # The real API returns a dict where values are ConfigEntry objects
@@ -2790,8 +2793,9 @@ class TestKafkaAdmin:
 
     def test_admin_set_cleanup_policy(self, mock_admin_client_for_admin):
         """Should set cleanup.policy for a topic."""
-        from hs_pylib.kafka.admin import KafkaAdmin
         from concurrent.futures import Future
+
+        from hs_pylib.kafka.admin import KafkaAdmin
 
         mock_future = Future()
         mock_future.set_result(None)
@@ -2806,8 +2810,9 @@ class TestKafkaAdmin:
 
     def test_admin_alter_config(self, mock_admin_client_for_admin):
         """Should alter arbitrary topic config."""
-        from hs_pylib.kafka.admin import KafkaAdmin
         from concurrent.futures import Future
+
+        from hs_pylib.kafka.admin import KafkaAdmin
 
         mock_future = Future()
         mock_future.set_result(None)
@@ -2845,15 +2850,19 @@ class TestKafkaAdminOffsetReset:
         # Import the module first to allow patching
         import hs_pylib.kafka.admin  # noqa: F401
 
-        with patch("hs_pylib.kafka.admin.AdminClient") as mock_admin:
-            with patch("hs_pylib.kafka.admin.Consumer") as mock_consumer:
-                yield mock_admin, mock_consumer
+        with (
+            patch("hs_pylib.kafka.admin.AdminClient") as mock_admin,
+            patch("hs_pylib.kafka.admin.Consumer") as mock_consumer,
+        ):
+            yield mock_admin, mock_consumer
 
     def test_reset_offsets_to_timestamp(self, mock_admin_for_offset):
         """Should reset consumer group offsets to a specific timestamp."""
-        from hs_pylib.kafka.admin import KafkaAdmin
         from concurrent.futures import Future
+
         from confluent_kafka import TopicPartition
+
+        from hs_pylib.kafka.admin import KafkaAdmin
 
         mock_admin, mock_consumer = mock_admin_for_offset
 
@@ -2893,10 +2902,12 @@ class TestKafkaAdminOffsetReset:
 
     def test_reset_offsets_to_datetime(self, mock_admin_for_offset):
         """Should reset offsets using datetime object."""
-        from hs_pylib.kafka.admin import KafkaAdmin
-        from datetime import datetime, timezone
         from concurrent.futures import Future
+        from datetime import datetime, timezone
+
         from confluent_kafka import TopicPartition
+
+        from hs_pylib.kafka.admin import KafkaAdmin
 
         mock_admin, mock_consumer = mock_admin_for_offset
 
@@ -2920,7 +2931,7 @@ class TestKafkaAdminOffsetReset:
         }
 
         admin = KafkaAdmin("localhost:9092")
-        target_time = datetime(2024, 1, 1, 12, 0, 0, tzinfo=timezone.utc)
+        target_time = datetime(2024, 1, 1, 12, 0, 0, tzinfo=UTC)
         admin.reset_offsets_to_time(
             group_id="test-group",
             topic="test-topic",
@@ -2931,9 +2942,11 @@ class TestKafkaAdminOffsetReset:
 
     def test_reset_offsets_to_earliest(self, mock_admin_for_offset):
         """Should reset offsets to earliest (beginning)."""
-        from hs_pylib.kafka.admin import KafkaAdmin
         from concurrent.futures import Future
-        from confluent_kafka import TopicPartition, OFFSET_BEGINNING
+
+        from confluent_kafka import OFFSET_BEGINNING, TopicPartition
+
+        from hs_pylib.kafka.admin import KafkaAdmin
 
         mock_admin, mock_consumer = mock_admin_for_offset
 
@@ -2967,8 +2980,9 @@ class TestKafkaAdminOffsetReset:
 
     def test_reset_offsets_to_latest(self, mock_admin_for_offset):
         """Should reset offsets to latest (end)."""
-        from hs_pylib.kafka.admin import KafkaAdmin
         from concurrent.futures import Future
+
+        from hs_pylib.kafka.admin import KafkaAdmin
 
         mock_admin, mock_consumer = mock_admin_for_offset
 
@@ -3055,7 +3069,7 @@ class TestKafkaConsumerHealth:
 
     def test_health_check_no_partitions(self, mock_collector):
         """Should detect no partitions assigned."""
-        from hs_pylib.kafka.health import KafkaConsumerHealth, HealthIssue
+        from hs_pylib.kafka.health import HealthIssue, KafkaConsumerHealth
 
         mock_collector.get_cgrp_metrics.return_value = {
             "state": "up",
@@ -3070,7 +3084,7 @@ class TestKafkaConsumerHealth:
 
     def test_health_check_high_lag(self, mock_collector):
         """Should detect high consumer lag."""
-        from hs_pylib.kafka.health import KafkaConsumerHealth, HealthIssue
+        from hs_pylib.kafka.health import HealthIssue, KafkaConsumerHealth
 
         mock_collector.get_cgrp_metrics.return_value = {
             "state": "up",
@@ -3088,8 +3102,9 @@ class TestKafkaConsumerHealth:
 
     def test_health_check_frequent_rebalances(self, mock_collector):
         """Should detect frequent rebalances."""
-        from hs_pylib.kafka.health import KafkaConsumerHealth, HealthIssue
         import time
+
+        from hs_pylib.kafka.health import HealthIssue, KafkaConsumerHealth
 
         mock_collector.get_cgrp_metrics.return_value = {
             "state": "up",
@@ -3114,7 +3129,7 @@ class TestKafkaConsumerHealth:
 
     def test_health_check_insufficient_partitions(self, mock_collector):
         """Should detect insufficient partitions for consumer count."""
-        from hs_pylib.kafka.health import KafkaConsumerHealth, HealthIssue
+        from hs_pylib.kafka.health import HealthIssue, KafkaConsumerHealth
 
         mock_collector.get_cgrp_metrics.return_value = {
             "state": "up",
