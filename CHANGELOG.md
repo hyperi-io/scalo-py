@@ -1,3 +1,10 @@
+## [2.13.4](https://github.com/hypersec-io/hs-pylib/compare/v2.13.3...v2.13.4) (2025-12-29)
+
+
+### Bug Fixes
+
+* upgrade filelock and urllib3 to fix vulnerabilities ([7c99214](https://github.com/hypersec-io/hs-pylib/commit/7c9921459c2801daf8f5aa9fc77c8e60c5ff09e1))
+
 ## [2.13.3](https://github.com/hypersec-io/hs-pylib/compare/v2.13.2...v2.13.3) (2025-12-29)
 
 
