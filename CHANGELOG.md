@@ -1,3 +1,28 @@
+# [2.13.0](https://github.com/hypersec-io/hs-pylib/compare/v2.12.5...v2.13.0) (2025-12-29)
+
+
+### Features
+
+* rename hs-lib to hs-pylib for multi-language consistency ([89df2f9](https://github.com/hypersec-io/hs-pylib/commit/89df2f9f061e70d4820863a64752c3375816c65f))
+
+
+### BREAKING CHANGES
+
+* Package renamed from hs-lib to hs-pylib
+
+Changes:
+- Rename package: hs-lib → hs-pylib (matches hs-golib, hs-rustlib)
+- Rename imports: hs_lib → hs_pylib
+- Update version: 2.12.4 → 2.13.0
+- Require Python 3.12+ (drop 3.11 support)
+- Kafka: remove idempotence, use at-least-once (acks=all + retries)
+- GitHub repository renamed: hypersec-io/hs-lib → hypersec-io/hs-pylib
+
+Migration:
+1. Update pyproject.toml: hs-lib → hs-pylib
+2. Update imports: from hs_lib → from hs_pylib
+3. Run: uv lock --upgrade-package hs-pylib
+
 ## [2.12.4](https://github.com/hypersec-io/hs-pylib/compare/v2.12.3...v2.12.4) (2025-12-16)
 
 
