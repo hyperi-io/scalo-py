@@ -1,3 +1,10 @@
+## [2.13.2](https://github.com/hypersec-io/hs-pylib/compare/v2.13.1...v2.13.2) (2025-12-29)
+
+
+### Bug Fixes
+
+* resolve ruff linting errors in kafka tests ([0bd3f5e](https://github.com/hypersec-io/hs-pylib/commit/0bd3f5ebc41ad8adb552119328bdf305c0fea459))
+
 ## [2.13.1](https://github.com/hypersec-io/hs-pylib/compare/v2.13.0...v2.13.1) (2025-12-29)
 
 
