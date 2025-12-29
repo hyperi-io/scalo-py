@@ -1,4 +1,4 @@
-"""Unit tests for hs_lib.prometheus module."""
+"""Unit tests for hs_pylib.prometheus module."""
 
 import time
 from unittest import mock
@@ -20,7 +20,7 @@ class TestProcessMetrics:
 
     def test_init(self):
         """Test ProcessMetrics initialization."""
-        from hs_lib.metrics.prometheus import ProcessMetrics
+        from hs_pylib.metrics.prometheus import ProcessMetrics
 
         metrics = ProcessMetrics(app_name="test-app")
 
@@ -30,7 +30,7 @@ class TestProcessMetrics:
 
     def test_update(self):
         """Test metric updates."""
-        from hs_lib.metrics.prometheus import ProcessMetrics
+        from hs_pylib.metrics.prometheus import ProcessMetrics
 
         metrics = ProcessMetrics(app_name="test-app")
         metrics.update()
@@ -42,7 +42,7 @@ class TestProcessMetrics:
 
     def test_uptime_tracking(self):
         """Test uptime metric increases over time."""
-        from hs_lib.metrics.prometheus import ProcessMetrics
+        from hs_pylib.metrics.prometheus import ProcessMetrics
 
         metrics = ProcessMetrics(app_name="test-app")
 
@@ -70,9 +70,9 @@ class TestContainerMetrics:
 
     def test_init_not_container(self):
         """Test ContainerMetrics initialization outside container."""
-        from hs_lib.metrics.prometheus import ContainerMetrics
+        from hs_pylib.metrics.prometheus import ContainerMetrics
 
-        with mock.patch("hs_lib.metrics.prometheus.RuntimeEnvironment") as mock_runtime:
+        with mock.patch("hs_pylib.metrics.prometheus.RuntimeEnvironment") as mock_runtime:
             # Mock non-container environment
             mock_instance = mock_runtime.return_value
             mock_instance._is_container.return_value = (False, "none")
@@ -84,9 +84,9 @@ class TestContainerMetrics:
 
     def test_init_in_container(self):
         """Test ContainerMetrics initialization in container."""
-        from hs_lib.metrics.prometheus import ContainerMetrics
+        from hs_pylib.metrics.prometheus import ContainerMetrics
 
-        with mock.patch("hs_lib.metrics.prometheus.RuntimeEnvironment") as mock_runtime:
+        with mock.patch("hs_pylib.metrics.prometheus.RuntimeEnvironment") as mock_runtime:
             # Mock container environment
             mock_instance = mock_runtime.return_value
             mock_instance._is_container.return_value = (True, "kubernetes")
@@ -100,9 +100,9 @@ class TestContainerMetrics:
 
     def test_read_cgroup_memory_limit(self):
         """Test reading memory limit from cgroups."""
-        from hs_lib.metrics.prometheus import ContainerMetrics
+        from hs_pylib.metrics.prometheus import ContainerMetrics
 
-        with mock.patch("hs_lib.runtime.RuntimeEnvironment") as mock_runtime:
+        with mock.patch("hs_pylib.runtime.RuntimeEnvironment") as mock_runtime:
             mock_instance = mock_runtime.return_value
             mock_instance._is_container.return_value = (True, "docker")
 
@@ -117,9 +117,9 @@ class TestContainerMetrics:
 
     def test_read_cgroup_memory_unlimited(self):
         """Test reading unlimited memory from cgroups."""
-        from hs_lib.metrics.prometheus import ContainerMetrics
+        from hs_pylib.metrics.prometheus import ContainerMetrics
 
-        with mock.patch("hs_lib.runtime.RuntimeEnvironment") as mock_runtime:
+        with mock.patch("hs_pylib.runtime.RuntimeEnvironment") as mock_runtime:
             mock_instance = mock_runtime.return_value
             mock_instance._is_container.return_value = (True, "docker")
 
@@ -139,9 +139,9 @@ class TestContainerMetrics:
 
     def test_read_cgroup_cpu_quota(self):
         """Test reading CPU quota from cgroups."""
-        from hs_lib.metrics.prometheus import ContainerMetrics
+        from hs_pylib.metrics.prometheus import ContainerMetrics
 
-        with mock.patch("hs_lib.runtime.RuntimeEnvironment") as mock_runtime:
+        with mock.patch("hs_pylib.runtime.RuntimeEnvironment") as mock_runtime:
             mock_instance = mock_runtime.return_value
             mock_instance._is_container.return_value = (True, "docker")
 
@@ -161,7 +161,7 @@ class TestHTTPMetrics:
 
     def test_init(self):
         """Test HTTPMetrics initialization."""
-        from hs_lib.metrics.prometheus import HTTPMetrics
+        from hs_pylib.metrics.prometheus import HTTPMetrics
 
         metrics = HTTPMetrics(app_name="test-app")
 
@@ -171,7 +171,7 @@ class TestHTTPMetrics:
 
     def test_track_request(self):
         """Test tracking HTTP request."""
-        from hs_lib.metrics.prometheus import HTTPMetrics
+        from hs_pylib.metrics.prometheus import HTTPMetrics
 
         metrics = HTTPMetrics(app_name="test-app")
 
@@ -194,7 +194,7 @@ class TestHTTPMetrics:
 
     def test_track_request_size(self):
         """Test tracking request size."""
-        from hs_lib.metrics.prometheus import HTTPMetrics
+        from hs_pylib.metrics.prometheus import HTTPMetrics
 
         metrics = HTTPMetrics(app_name="test-app")
 
@@ -206,7 +206,7 @@ class TestHTTPMetrics:
 
     def test_track_response_size(self):
         """Test tracking response size."""
-        from hs_lib.metrics.prometheus import HTTPMetrics
+        from hs_pylib.metrics.prometheus import HTTPMetrics
 
         metrics = HTTPMetrics(app_name="test-app")
 
@@ -223,7 +223,7 @@ class TestPrometheusMetrics:
 
     def test_init(self):
         """Test PrometheusMetrics initialization."""
-        from hs_lib.metrics.prometheus import PrometheusMetrics
+        from hs_pylib.metrics.prometheus import PrometheusMetrics
 
         metrics = PrometheusMetrics(app_name="test-app", enable_auto_update=False)
 
@@ -236,7 +236,7 @@ class TestPrometheusMetrics:
 
     def test_update(self):
         """Test manual metric update."""
-        from hs_lib.metrics.prometheus import PrometheusMetrics
+        from hs_pylib.metrics.prometheus import PrometheusMetrics
 
         metrics = PrometheusMetrics(app_name="test-app", enable_auto_update=False)
 
@@ -245,7 +245,7 @@ class TestPrometheusMetrics:
 
     def test_get_metrics(self):
         """Test metrics output generation."""
-        from hs_lib.metrics.prometheus import PrometheusMetrics
+        from hs_pylib.metrics.prometheus import PrometheusMetrics
 
         metrics = PrometheusMetrics(app_name="test-app", enable_auto_update=False)
         metrics.update()
@@ -259,7 +259,7 @@ class TestPrometheusMetrics:
 
     def test_get_metrics_text(self):
         """Test metrics text output."""
-        from hs_lib.metrics.prometheus import PrometheusMetrics
+        from hs_pylib.metrics.prometheus import PrometheusMetrics
 
         metrics = PrometheusMetrics(app_name="test-app", enable_auto_update=False)
         metrics.update()
@@ -272,7 +272,7 @@ class TestPrometheusMetrics:
 
     def test_auto_update(self):
         """Test automatic metric updates."""
-        from hs_lib.metrics.prometheus import PrometheusMetrics
+        from hs_pylib.metrics.prometheus import PrometheusMetrics
 
         metrics = PrometheusMetrics(
             app_name="test-app",
@@ -293,7 +293,7 @@ class TestPrometheusMetrics:
 
     def test_stop_auto_update(self):
         """Test stopping automatic updates."""
-        from hs_lib.metrics.prometheus import PrometheusMetrics
+        from hs_pylib.metrics.prometheus import PrometheusMetrics
 
         metrics = PrometheusMetrics(
             app_name="test-app",
@@ -311,7 +311,7 @@ class TestPrometheusMetrics:
 
     def test_get_content_type(self):
         """Test content type for HTTP responses."""
-        from hs_lib.metrics.prometheus import PrometheusMetrics
+        from hs_pylib.metrics.prometheus import PrometheusMetrics
 
         metrics = PrometheusMetrics(app_name="test-app", enable_auto_update=False)
 
@@ -326,7 +326,7 @@ class TestConvenienceFunction:
 
     def test_create_metrics(self):
         """Test create_metrics function."""
-        from hs_lib.metrics.prometheus import create_metrics
+        from hs_pylib.metrics.prometheus import create_metrics
 
         metrics = create_metrics("test-app", enable_auto_update=False)
 
@@ -335,7 +335,7 @@ class TestConvenienceFunction:
 
     def test_create_metrics_with_auto_update(self):
         """Test create_metrics with auto-update."""
-        from hs_lib.metrics.prometheus import create_metrics
+        from hs_pylib.metrics.prometheus import create_metrics
 
         metrics = create_metrics(
             "test-app",
@@ -354,7 +354,7 @@ class TestWithoutPrometheusClient:
 
     def test_prometheus_not_available(self):
         """Test that module handles missing prometheus_client."""
-        from hs_lib.metrics import prometheus
+        from hs_pylib.metrics import prometheus
 
         # If prometheus_client is not available, PROMETHEUS_AVAILABLE should be False
         if not PROMETHEUS_AVAILABLE:
@@ -367,7 +367,7 @@ class TestCustomMetrics:
 
     def test_counter(self):
         """Test creating and using custom counter."""
-        from hs_lib.metrics.prometheus import PrometheusMetrics
+        from hs_pylib.metrics.prometheus import PrometheusMetrics
 
         metrics = PrometheusMetrics(app_name="test", enable_auto_update=False)
 
@@ -390,7 +390,7 @@ class TestCustomMetrics:
 
     def test_gauge(self):
         """Test creating and using custom gauge."""
-        from hs_lib.metrics.prometheus import PrometheusMetrics
+        from hs_pylib.metrics.prometheus import PrometheusMetrics
 
         metrics = PrometheusMetrics(app_name="test", enable_auto_update=False)
 
@@ -407,7 +407,7 @@ class TestCustomMetrics:
 
     def test_histogram(self):
         """Test creating and using custom histogram."""
-        from hs_lib.metrics.prometheus import PrometheusMetrics
+        from hs_pylib.metrics.prometheus import PrometheusMetrics
 
         metrics = PrometheusMetrics(app_name="test", enable_auto_update=False)
 
@@ -427,7 +427,7 @@ class TestCustomMetrics:
 
     def test_histogram_custom_buckets(self):
         """Test histogram with custom buckets."""
-        from hs_lib.metrics.prometheus import PrometheusMetrics
+        from hs_pylib.metrics.prometheus import PrometheusMetrics
 
         metrics = PrometheusMetrics(app_name="test", enable_auto_update=False)
 
@@ -445,7 +445,7 @@ class TestCustomMetrics:
 
     def test_summary(self):
         """Test creating and using custom summary."""
-        from hs_lib.metrics.prometheus import PrometheusMetrics
+        from hs_pylib.metrics.prometheus import PrometheusMetrics
 
         metrics = PrometheusMetrics(app_name="test", enable_auto_update=False)
 
@@ -464,7 +464,7 @@ class TestCustomMetrics:
 
     def test_info(self):
         """Test creating and using custom info."""
-        from hs_lib.metrics.prometheus import PrometheusMetrics
+        from hs_pylib.metrics.prometheus import PrometheusMetrics
 
         metrics = PrometheusMetrics(app_name="test", enable_auto_update=False)
 
@@ -487,7 +487,7 @@ class TestCustomMetrics:
 
     def test_get_custom_metric(self):
         """Test retrieving custom metric by name."""
-        from hs_lib.metrics.prometheus import PrometheusMetrics
+        from hs_pylib.metrics.prometheus import PrometheusMetrics
 
         metrics = PrometheusMetrics(app_name="test", enable_auto_update=False)
 
@@ -501,7 +501,7 @@ class TestCustomMetrics:
 
     def test_metric_reuse(self):
         """Test that creating same metric twice returns same instance."""
-        from hs_lib.metrics.prometheus import PrometheusMetrics
+        from hs_pylib.metrics.prometheus import PrometheusMetrics
 
         metrics = PrometheusMetrics(app_name="test", enable_auto_update=False)
 
@@ -521,7 +521,7 @@ class TestIntegration:
 
     def test_full_workflow(self):
         """Test complete metrics workflow."""
-        from hs_lib.metrics.prometheus import create_metrics
+        from hs_pylib.metrics.prometheus import create_metrics
 
         # Create metrics manager
         metrics = create_metrics("integration-test", enable_auto_update=False)
@@ -547,7 +547,7 @@ class TestIntegration:
 
     def test_full_workflow_with_custom_metrics(self):
         """Test workflow including custom metrics."""
-        from hs_lib.metrics.prometheus import create_metrics
+        from hs_pylib.metrics.prometheus import create_metrics
 
         metrics = create_metrics("integration-test", enable_auto_update=False)
 
@@ -575,7 +575,7 @@ class TestIntegration:
 
     def test_shared_registry(self):
         """Test that all metrics use same registry."""
-        from hs_lib.metrics.prometheus import HTTPMetrics, ProcessMetrics
+        from hs_pylib.metrics.prometheus import HTTPMetrics, ProcessMetrics
 
         registry = CollectorRegistry()
 

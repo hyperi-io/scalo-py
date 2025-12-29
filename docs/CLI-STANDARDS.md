@@ -1,6 +1,6 @@
-# CLI Development Standards for hs-lib
+# CLI Development Standards for hs-pylib
 
-**Mandatory standard for all hs-lib CLI applications**
+**Mandatory standard for all hs-pylib CLI applications**
 
 ---
 
@@ -22,23 +22,23 @@
 ## Installation
 
 ```bash
-# Install hs-lib with CLI support
-pip install hs-lib[cli]
+# Install hs-pylib with CLI support
+pip install hs-pylib[cli]
 
 # For development (includes all dependencies)
-pip install hs-lib[dev,cli]
+pip install hs-pylib[dev,cli]
 ```
 
 ---
 
-## hs-lib CLI Utilities
+## hs-pylib CLI Utilities
 
-hs-lib provides ready-to-use utilities to accelerate CLI development:
+hs-pylib provides ready-to-use utilities to accelerate CLI development:
 
-### Output Formatting (`hs-lib.cli.output`)
+### Output Formatting (`hs-pylib.cli.output`)
 
 ```python
-from hs_lib.cli.output import print_success, print_error, print_table, print_json
+from hs_pylib.cli.output import print_success, print_error, print_table, print_json
 
 # Status messages with colors
 print_success("Deployment completed!")
@@ -58,11 +58,11 @@ config = {"host": "localhost", "port": 8000}
 print_json(config)
 ```
 
-### Reusable Options (`hs-lib.cli.options`)
+### Reusable Options (`hs-pylib.cli.options`)
 
 ```python
-from hs_lib.cli import Typer
-from hs_lib.cli.options import VERBOSE_OPTION, CONFIG_OPTION, DRY_RUN_OPTION
+from hs_pylib.cli import Typer
+from hs_pylib.cli.options import VERBOSE_OPTION, CONFIG_OPTION, DRY_RUN_OPTION
 
 app = Typer()
 
@@ -90,11 +90,11 @@ def deploy(
 - `LOG_LEVEL_OPTION` - Log level (--log-level, -l)
 - `LOG_FILE_OPTION` - Log file (--log-file)
 
-### Version Handling (`hs-lib.cli.version`)
+### Version Handling (`hs-pylib.cli.version`)
 
 ```python
-from hs_lib.cli import Typer
-from hs_lib.cli.version import version_option
+from hs_pylib.cli import Typer
+from hs_pylib.cli.version import version_option
 
 app = Typer()
 
@@ -117,7 +117,7 @@ def main(
 
 ```python
 # my_tool.py
-from hs_lib.cli import Typer, Argument, Option
+from hs_pylib.cli import Typer, Argument, Option
 
 app = Typer(help="My awesome CLI tool")
 
@@ -151,7 +151,7 @@ python my_tool.py --help
 ```python
 # data_tool.py
 from pathlib import Path
-from hs_lib.cli import Typer, Argument, Option
+from hs_pylib.cli import Typer, Argument, Option
 
 app = Typer(help="Data processing toolkit")
 
@@ -377,29 +377,29 @@ def test_help():
 
 ---
 
-## Integration with hs-lib
+## Integration with hs-pylib
 
-### Using hs-lib.config
+### Using hs-pylib.config
 
 ```python
-from hs_lib.cli import Typer, Option
-from hs_lib.config import get_config
+from hs_pylib.cli import Typer, Option
+from hs_pylib.config import get_config
 
 app = Typer()
 
 @app.command()
 def deploy(env: str = Option(...)):
-    """Deploy using hs-lib config."""
+    """Deploy using hs-pylib config."""
     config = get_config()
     app_name = config.get("app_name")
     print(f"Deploying {app_name} to {env}")
 ```
 
-### Using hs-lib.logger
+### Using hs-pylib.logger
 
 ```python
-from hs_lib.cli import Typer
-from hs_lib.logger import get_logger
+from hs_pylib.cli import Typer
+from hs_pylib.logger import get_logger
 
 app = Typer()
 logger = get_logger(__name__)
@@ -419,7 +419,7 @@ def process():
 Typer includes Rich for beautiful terminal output:
 
 ```python
-from hs_lib.cli import Typer
+from hs_pylib.cli import Typer
 from rich.console import Console
 from rich.table import Table
 
@@ -505,10 +505,10 @@ A: Typer is built on Click. You can drop down to Click for advanced features.
 
 ```python
 from pathlib import Path
-from hs_lib.cli import Typer
-from hs_lib.cli.options import VERBOSE_OPTION, CONFIG_OPTION, DRY_RUN_OPTION
-from hs_lib.cli.output import print_success, print_error, print_table
-from hs_lib.cli.version import version_option
+from hs_pylib.cli import Typer
+from hs_pylib.cli.options import VERBOSE_OPTION, CONFIG_OPTION, DRY_RUN_OPTION
+from hs_pylib.cli.output import print_success, print_error, print_table
+from hs_pylib.cli.version import version_option
 
 app = Typer(help="My Production Application")
 
@@ -568,10 +568,10 @@ myapp deploy --help
 ## Examples
 
 Complete examples are available in:
-- [hs-lib/cli/examples.py](../src/hs-lib/cli/examples.py)
-- [hs-lib/cli/output.py](../src/hs-lib/cli/output.py) - Output utilities
-- [hs-lib/cli/options.py](../src/hs-lib/cli/options.py) - Reusable options
-- [hs-lib/cli/version.py](../src/hs-lib/cli/version.py) - Version handling
+- [hs-pylib/cli/examples.py](../src/hs-pylib/cli/examples.py)
+- [hs-pylib/cli/output.py](../src/hs-pylib/cli/output.py) - Output utilities
+- [hs-pylib/cli/options.py](../src/hs-pylib/cli/options.py) - Reusable options
+- [hs-pylib/cli/version.py](../src/hs-pylib/cli/version.py) - Version handling
 - [Typer documentation](https://typer.tiangolo.com/tutorial/)
 
 ---
@@ -599,4 +599,4 @@ Complete examples are available in:
 
 **Last Updated:** 2025-11-07
 **Version:** 1.0.0
-**Status:** Mandatory for all hs-lib CLI applications
+**Status:** Mandatory for all hs-pylib CLI applications

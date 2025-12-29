@@ -16,7 +16,7 @@ Background task worker with container-native patterns.
 
 ```bash
 # Install dependencies
-pip install hs-lib[daemon]
+pip install hs-pylib[daemon]
 
 # Run locally
 python src/example_daemon.py
@@ -74,7 +74,7 @@ daemon-container/
 The daemon runs background tasks on a schedule:
 
 ```python
-from hs_lib import Application, logger
+from hs_pylib import Application, logger
 
 app = Application.daemon(
     name="example-daemon",
@@ -176,6 +176,6 @@ spec:
 
 ## See Also
 
-- [hs-lib Documentation](https://github.com/hypersec-io/hs-lib/tree/main/docs)
+- [hs-pylib Documentation](https://github.com/hypersec-io/hs-pylib/tree/main/docs)
 - [Container Deployment Guide](../../docs/CONTAINER_DEPLOYMENT.md)
 - [Kubernetes Guide](../../docs/KUBERNETES.md)

@@ -1,4 +1,4 @@
 apiVersion: v2
-name: hs-lib-metrics-test
+name: hs-pylib-metrics-test
 version: 0.1.0
-description: Helm chart for hs-lib Prometheus metrics test
+description: Helm chart for hs-pylib Prometheus metrics test

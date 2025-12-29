@@ -1,11 +1,11 @@
 # CLI Applications
 
-Command-line tools using Typer framework (mandatory hs-lib standard).
+Command-line tools using Typer framework (mandatory hs-pylib standard).
 
 ## Quick Start
 
 ```python
-from hs_lib import Application
+from hs_pylib import Application
 
 app = Application.cli(name="my-tool", version="1.0.0")
 
@@ -105,7 +105,7 @@ app = Application.cli(
 ## Example: Data Processing Tool
 
 ```python
-from hs_lib import Application, logger
+from hs_pylib import Application, logger
 from pathlib import Path
 
 app = Application.cli(
@@ -184,7 +184,7 @@ assert result.exit_code == 0
 
 ## Why Typer (Not Click)?
 
-Typer is the **mandatory standard** for hs-lib CLI apps:
+Typer is the **mandatory standard** for hs-pylib CLI apps:
 
 - Better type hints (uses Python 3.10+ syntax)
 - Automatic validation

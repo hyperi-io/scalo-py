@@ -8,7 +8,7 @@
 
 ## Overview
 
-The new ci repository structure (hypersec-io/ci) has several issues that need to be fixed before it can fully replace the old hs-ci infrastructure. These bugs were discovered during hs-lib v2.10.1 publish testing.
+The new ci repository structure (hypersec-io/ci) has several issues that need to be fixed before it can fully replace the old hs-ci infrastructure. These bugs were discovered during hs-pylib v2.10.1 publish testing.
 
 ---
 
@@ -129,7 +129,7 @@ After implementing fixes on feat/DFE-523-modular-multi-language-ci:
 - [ ] Test build_and_publish.sh works without manual venv setup
 - [ ] Test build_and_publish.sh handles missing twine gracefully
 - [ ] Test ci-publish.yml workflow end-to-end
-- [ ] Test with hs-lib (package build type)
+- [ ] Test with hs-pylib (package build type)
 - [ ] Test with test-cli-build (app build type, Nuitka)
 - [ ] Verify published packages in JFrog PyPI
 
@@ -139,11 +139,11 @@ After implementing fixes on feat/DFE-523-modular-multi-language-ci:
 
 Once fixes are merged to feat/DFE-523-modular-multi-language-ci:
 
-### For hs-lib:
+### For hs-pylib:
 
 ```bash
 # Update ci submodule to dev branch
-cd /projects/hs-lib
+cd /projects/hs-pylib
 git -C ci checkout feat/DFE-523-modular-multi-language-ci
 git -C ci pull origin feat/DFE-523-modular-multi-language-ci
 git add ci
@@ -164,9 +164,9 @@ git commit -m "fix: update ci submodule to dev branch (DFE-523 fixes)"
 
 ---
 
-## Current Workarounds (hs-lib only)
+## Current Workarounds (hs-pylib only)
 
-Until fixes are merged, hs-lib uses these workarounds in `.github/workflows/ci-publish.yml`:
+Until fixes are merged, hs-pylib uses these workarounds in `.github/workflows/ci-publish.yml`:
 
 1. **Manual venv creation:**
    ```yaml

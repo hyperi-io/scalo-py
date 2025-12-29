@@ -5,11 +5,11 @@ WORKDIR /app
 # Install uv
 RUN pip install --no-cache-dir uv
 
-# Copy pyproject.toml and hs-lib source first
+# Copy pyproject.toml and hs-pylib source first
 COPY pyproject.toml /app/
-COPY hs-lib /app/src/hs-lib
+COPY hs-pylib /app/src/hs-pylib
 
-# Install hs-lib and its dependencies with API extras
+# Install hs-pylib and its dependencies with API extras
 RUN cd /app && uv pip install --system -e '.[api,metrics,database]'
 
 # Copy application

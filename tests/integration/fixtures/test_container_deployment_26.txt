@@ -1,4 +1,4 @@
 apiVersion: v2
-name: hs-lib-pod-test
+name: hs-pylib-pod-test
 version: 0.1.0
-description: Helm chart for hs-lib Pod deployment test
+description: Helm chart for hs-pylib Pod deployment test

@@ -1,6 +1,6 @@
-# hs-lib - Project State
+# hs-pylib - Project State
 
-**Repository**: <https://github.com/hypersec-io/hs-lib>
+**Repository**: <https://github.com/hypersec-io/hs-pylib>
 **Type**: Python package (shared library)
 **Purpose**: Enterprise infrastructure for all HyperSec Python projects
 
@@ -17,7 +17,7 @@
 
 **Versions:**
 
-- hs-lib: v2.10.15
+- hs-pylib: v2.13.0
 - hs-ci: v1.37.0 (GitHub Actions architecture)
 
 **Build type:** Native wheel only (no Nuitka)
@@ -26,7 +26,7 @@
 
 ## Latest Session (2025-12-05)
 
-### Completed: hs_lib.kafka Module
+### Completed: hs_pylib.kafka Module
 
 **Branch:** `feat/DFE-553/add-kafka-library`
 **Commit:** `2a9b38b`
@@ -52,14 +52,14 @@ Implemented complete Kafka client library:
 
 **Source:** `/projects/dfe-control-plane/HS-LIB-UPDATE.md`
 
-This file is the **living scope document** for hs-lib improvements. It is maintained in the dfe-control-plane project during integration testing and will be updated as work progresses.
+This file is the **living scope document** for hs-pylib improvements. It is maintained in the dfe-control-plane project during integration testing and will be updated as work progresses.
 
 **Current priorities (from HS-LIB-UPDATE.md):**
 
-1. `hs_lib.http` - HttpClient with Stamina retries (solves B113, adds observability)
-2. `hs_lib.metrics.fastapi` - Middleware + router for standard /metrics
-3. `hs_lib.metrics.db` - DB query metrics helpers
-4. `hs_lib.cache` - Deferred until needed
+1. `hs_pylib.http` - HttpClient with Stamina retries (solves B113, adds observability)
+2. `hs_pylib.metrics.fastapi` - Middleware + router for standard /metrics
+3. `hs_pylib.metrics.db` - DB query metrics helpers
+4. `hs_pylib.cache` - Deferred until needed
 
 **Always re-read HS-LIB-UPDATE.md at session start** - it may have changed.
 
@@ -85,7 +85,7 @@ This file is the **living scope document** for hs-lib improvements. It is mainta
 
 **Precedence:** env vars (`HYPERCI_*`) > `.hypersec-ci.yaml` > `ci/defaults.yaml`
 
-**Current hs-lib config:**
+**Current hs-pylib config:**
 
 ```yaml
 language: python

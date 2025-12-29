@@ -1,4 +1,4 @@
-# hs-lib TODO
+# hs-pylib TODO
 
 ## Active
 
@@ -39,18 +39,18 @@
 
 ## Backlog
 
-### Add hs_lib.cache module (Cashews wrapper) - **4h**
+### Add hs_pylib.cache module (Cashews wrapper) - **4h**
 
 **Status:** Not started - identified as gap during dfe-control-plane metrics work
 
 **Solution:** Wrap [Cashews](https://github.com/Krukov/cashews) (527 stars, MIT, active)
 
 **Task:**
-- Create `hs_lib.cache` module wrapping Cashews with disk backend
+- Create `hs_pylib.cache` module wrapping Cashews with disk backend
 - Cache tuple: `(source, identifier, value, time)` - source-based TTLs
 - Per-source TTL config: `{"http": "24h", "tavily": "1h", "db": "30m"}`
 - `@cached("http", key="{url}")` decorator
-- Built-in metrics (hit/miss) via hs_lib.metrics
+- Built-in metrics (hit/miss) via hs_pylib.metrics
 
 **Dependencies:**
 ```toml
@@ -64,7 +64,7 @@
 
 **Design:** See dfe-control-plane/HS-LIB-UPDATE.md §5
 
-### Add hs_lib.http.HttpClient (Stamina + httpx) - **3h**
+### Add hs_pylib.http.HttpClient (Stamina + httpx) - **3h**
 
 **Status:** Not started - identified during dfe-control-plane B113 fixes
 
@@ -72,7 +72,7 @@
 
 **Task:**
 
-- Create `hs_lib.http.HttpClient` wrapping httpx + stamina
+- Create `hs_pylib.http.HttpClient` wrapping httpx + stamina
 - Auto timeout (default 30s) - solves B113 bandit issues
 - Auto retries with exponential backoff via stamina
 - Stamina auto-detects structlog + prometheus-client
@@ -86,20 +86,20 @@
 
 **Rationale:**
 
-- Stamina auto-integrates with hs_lib.logger (structlog) and hs_lib.metrics (prometheus)
+- Stamina auto-integrates with hs_pylib.logger (structlog) and hs_pylib.metrics (prometheus)
 - Testing friendly: `stamina.set_testing(attempts=1)` in pytest
 - Same author as attrs/structlog - quality pedigree
 
 **Design:** See dfe-control-plane/HS-LIB-UPDATE.md §4
 
-### Add FastAPI metrics middleware to hs_lib.metrics - **2h**
+### Add FastAPI metrics middleware to hs_pylib.metrics - **2h**
 
 **Status:** Not started - identified during dfe-control-plane metrics work
 
 **Task:**
-- Create `hs_lib.metrics.fastapi.PrometheusMiddleware`
+- Create `hs_pylib.metrics.fastapi.PrometheusMiddleware`
 - Auto-track: request count, duration, status by endpoint
-- Create `hs_lib.metrics.fastapi.create_metrics_router()` for `/metrics` endpoint
+- Create `hs_pylib.metrics.fastapi.create_metrics_router()` for `/metrics` endpoint
 - Zero-config: `app.add_middleware(PrometheusMiddleware)`
 
 **Rationale:**
@@ -107,7 +107,7 @@
 - Currently each app implements manually
 - Consistency across HyperSec apps
 
-### Add DB query metrics helpers to hs_lib.metrics - **1h**
+### Add DB query metrics helpers to hs_pylib.metrics - **1h**
 
 **Status:** Not started - identified during dfe-control-plane metrics work
 
@@ -121,7 +121,7 @@
 - Can't auto-instrument all clients
 - Explicit instrumentation is reliable
 
-### [BACKLOG] hs_lib.kafka: JSON key-value offset seek - **2d**
+### [BACKLOG] hs_pylib.kafka: JSON key-value offset seek - **2d**
 
 **Status:** Backlog - documented in admin.py:552-582
 
@@ -201,9 +201,9 @@
 **Status:** Clarify architecture and naming patterns
 
 **Task:**
-- Document why we have ci/modules/python/tools vs hs-lib package
+- Document why we have ci/modules/python/tools vs hs-pylib package
 - Explain .d directory pattern (bootstrap.d, run.d)
-- Clarify naming: hs-lib (package), hs-ci (CI system)
+- Clarify naming: hs-pylib (package), hs-ci (CI system)
 - Add architecture notes to STATE.md or separate doc
 
 ### Clean up deprecated CI directories - **0.5h**
@@ -229,7 +229,7 @@
 
 ## Completed (2025-12-05)
 
-### hs_lib.kafka module - **8h** ✅
+### hs_pylib.kafka module - **8h** ✅
 
 **Completed:** Full Kafka client library with corporate defaults
 **Branch:** `feat/DFE-553/add-kafka-library`

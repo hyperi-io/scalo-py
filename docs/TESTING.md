@@ -1,4 +1,4 @@
-# hs-lib Testing Guide
+# hs-pylib Testing Guide
 
 ## Test Requirements
 
@@ -108,7 +108,7 @@ Test fixtures are stored in `tests/integration/fixtures/` using standardized nam
 
 **How they work:**
 1. Create temporary directory
-2. Copy hs-lib source + pyproject.toml
+2. Copy hs-pylib source + pyproject.toml
 3. Generate Dockerfile from fixture
 4. Build Docker image
 5. Run container
@@ -160,7 +160,7 @@ minikube logs
 docker info
 
 # View test containers (including stopped)
-docker ps -a --filter "name=hs-lib-test"
+docker ps -a --filter "name=hs-pylib-test"
 
 # Clean up test artifacts
 docker container prune

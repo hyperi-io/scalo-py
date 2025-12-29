@@ -1,8 +1,8 @@
-# hs-lib Configuration Guide
+# hs-pylib Configuration Guide
 
 ## Overview
 
-hs-lib provides intelligent, container-aware configuration management that automatically detects and adapts to your deployment environment (Kubernetes/HELM, Docker, or bare metal). It follows industry-standard conventions while remaining flexible and override-friendly.
+hs-pylib provides intelligent, container-aware configuration management that automatically detects and adapts to your deployment environment (Kubernetes/HELM, Docker, or bare metal). It follows industry-standard conventions while remaining flexible and override-friendly.
 
 ## Key Features
 
@@ -17,7 +17,7 @@ hs-lib provides intelligent, container-aware configuration management that autom
 ## Quick Start
 
 ```python
-from hs_lib import config
+from hs_pylib import config
 
 # Auto-detects environment and configures paths
 print(f"Environment: {config.get_environment()}")  # kubernetes, docker, or bare_metal
@@ -30,7 +30,7 @@ db_config = config.get_database_config("postgresql")  # Database config
 
 ## Environment Detection
 
-hs-lib automatically detects your runtime environment:
+hs-pylib automatically detects your runtime environment:
 
 | Environment | Detection Method |
 |------------|------------------|
@@ -53,7 +53,7 @@ export HS_LIB_DEBUG=1
 
 ### Standard Mount Points
 
-hs-lib detects and uses standard mount points based on your environment:
+hs-pylib detects and uses standard mount points based on your environment:
 
 #### HELM Deployments (Kubernetes)
 
@@ -87,7 +87,7 @@ hs-lib detects and uses standard mount points based on your environment:
 
 ### Auto-Detection Priority
 
-hs-lib checks for existing directories in this order:
+hs-pylib checks for existing directories in this order:
 
 1. **HELM standard paths** (`/config`, `/secrets`, `/data`)
 2. **Docker standard paths** (`/app/config`, `/run/secrets`)
@@ -97,7 +97,7 @@ hs-lib checks for existing directories in this order:
 ### Accessing Mount Paths
 
 ```python
-from hs_lib.config import get_mount_config
+from hs_pylib.config import get_mount_config
 
 mounts = get_mount_config()
 print(f"Config: {mounts.config_dir}")
@@ -111,10 +111,10 @@ print(f"Temp: {mounts.temp_dir}")
 
 ### Standard Variables Detection
 
-hs-lib automatically detects common environment variables:
+hs-pylib automatically detects common environment variables:
 
 ```python
-from hs_lib.config import get_standard_env_vars
+from hs_pylib.config import get_standard_env_vars
 
 env_vars = get_standard_env_vars()
 # Returns detected variables from:
@@ -130,7 +130,7 @@ env_vars = get_standard_env_vars()
 Helper for database environment variables:
 
 ```python
-from hs_lib.config import get_database_config
+from hs_pylib.config import get_database_config
 
 # Auto-detects POSTGRES_* environment variables
 postgres_config = get_database_config("postgresql")
@@ -156,10 +156,10 @@ export HS_LIB_ENV_PREFIX=MYAPP
 
 ### Dynaconf Integration
 
-hs-lib uses Dynaconf for configuration management:
+hs-pylib uses Dynaconf for configuration management:
 
 ```python
-from hs_lib.config import settings
+from hs_pylib.config import settings
 
 # Access configuration values
 api_key = settings.API_KEY
@@ -176,7 +176,7 @@ database_url = settings.get("DATABASE_URL", "postgresql://localhost/db")
 
 ### YAML Configuration
 
-hs-lib supports environment variable substitution in YAML:
+hs-pylib supports environment variable substitution in YAML:
 
 ```yaml
 # config.yaml
@@ -242,8 +242,8 @@ spec:
 ### Python Application
 
 ```python
-from hs_lib.config import get_mount_config, get_environment
-from hs_lib.logger import get_logger
+from hs_pylib.config import get_mount_config, get_environment
+from hs_pylib.logger import get_logger
 
 logger = get_logger("my-service")
 
@@ -293,7 +293,7 @@ secrets:
 ### Python Application
 
 ```python
-from hs_lib.config import get_database_config, get_mount_config
+from hs_pylib.config import get_database_config, get_mount_config
 
 # Auto-detects Docker environment
 mounts = get_mount_config()
@@ -333,11 +333,11 @@ class Config:
         # ... dozens more lines
 ```
 
-#### After (hs-lib)
+#### After (hs-pylib)
 
 ```python
-# 5 lines with hs-lib
-from hs_lib.config import get_mount_config, get_database_config
+# 5 lines with hs-pylib
+from hs_pylib.config import get_mount_config, get_database_config
 
 mounts = get_mount_config()  # Auto-detects paths
 db_config = get_database_config("postgresql")  # Auto-detects env vars
@@ -358,7 +358,7 @@ TEMP_DIR = "/tmp"
 #### After
 
 ```python
-from hs_lib.config import get_mount_config
+from hs_pylib.config import get_mount_config
 
 mounts = get_mount_config()
 LOG_DIR = mounts.logs_dir  # /app/logs in Docker, ~/.local/share/app/logs locally
@@ -371,7 +371,7 @@ TEMP_DIR = mounts.temp_dir
 ### Custom Mount Detection
 
 ```python
-from hs_lib.config import detect_standard_mounts
+from hs_pylib.config import detect_standard_mounts
 
 # Returns dict of detected mount points
 detected = detect_standard_mounts()
@@ -381,7 +381,7 @@ detected = detect_standard_mounts()
 ### HELM Detection
 
 ```python
-from hs_lib.config import detect_helm_deployment
+from hs_pylib.config import detect_helm_deployment
 
 if detect_helm_deployment():
     print("Running in HELM-deployed pod")
@@ -391,7 +391,7 @@ if detect_helm_deployment():
 ### Complete Container Information
 
 ```python
-from hs_lib.config import get_container_config
+from hs_pylib.config import get_container_config
 
 info = get_container_config()
 # Returns:
@@ -407,7 +407,7 @@ info = get_container_config()
 ### Multi-Environment Configuration
 
 ```python
-from hs_lib.config import get_target_config
+from hs_pylib.config import get_target_config
 
 # Load environment-specific config
 config = get_target_config("production")
@@ -448,7 +448,7 @@ python app.py
 
 ## Environment Variable Reference
 
-### hs-lib Control Variables
+### hs-pylib Control Variables
 
 | Variable | Purpose | Default |
 |----------|---------|---------|

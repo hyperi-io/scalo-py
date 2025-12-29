@@ -1,10 +1,10 @@
-# hs-lib Documentation
+# hs-pylib Documentation
 
 Production-ready infrastructure for Python applications.
 
 ## Application Types
 
-hs-lib provides 5 application types with container-native patterns:
+hs-pylib provides 5 application types with container-native patterns:
 
 - **[API](APP-API.md)** - FastAPI applications with auto-metrics and health checks
 - **[Daemon](APP-DAEMON.md)** - Long-running background services with scheduled tasks
@@ -27,13 +27,13 @@ hs-lib provides 5 application types with container-native patterns:
 ## Quick Start
 
 ```bash
-pip install hs-lib
+pip install hs-pylib
 ```
 
 ### API Application
 
 ```python
-from hs_lib import Application
+from hs_pylib import Application
 
 app = Application.api(name="my-api", profile="prod")
 
@@ -48,7 +48,7 @@ if __name__ == "__main__":
 ### Daemon Application
 
 ```python
-from hs_lib import Application
+from hs_pylib import Application
 
 app = Application.daemon(name="worker", profile="prod")
 
@@ -64,7 +64,7 @@ if __name__ == "__main__":
 ### CLI Application
 
 ```python
-from hs_lib import Application
+from hs_pylib import Application
 
 app = Application.cli(name="my-tool", version="1.0.0")
 
@@ -289,7 +289,7 @@ def query_db(sql: str) -> list:
 ### Logging
 
 ```python
-from hs_lib import logger
+from hs_pylib import logger
 
 logger.info("Application started")
 logger.error("Failed to connect", database="prod-db", retry=3)
@@ -298,7 +298,7 @@ logger.error("Failed to connect", database="prod-db", retry=3)
 ### Metrics
 
 ```python
-from hs_lib.metrics import create_metrics
+from hs_pylib.metrics import create_metrics
 
 metrics = create_metrics("myapp")
 metrics.counter("requests", "Total requests").inc()
@@ -308,7 +308,7 @@ metrics.gauge("queue_size", "Queue size").set(42)
 ### Configuration
 
 ```python
-from hs_lib.config import get_config
+from hs_pylib.config import get_config
 
 config = get_config()
 db_url = config["database"]["url"]
@@ -317,7 +317,7 @@ db_url = config["database"]["url"]
 ### Anonymization
 
 ```python
-from hs_lib.anonymizer import anonymize_text
+from hs_pylib.anonymizer import anonymize_text
 
 text = "My SSN is 123-45-6789"
 clean = anonymize_text(text, preset="compliance")
@@ -338,7 +338,7 @@ app = Flask(__name__)
 def get_users():
     return {"users": []}
 
-# After (hs-lib)
+# After (hs-pylib)
 app = Application.api(name="my-api")
 
 @app.get("/users")
@@ -357,7 +357,7 @@ Replace with Typer-based Application.cli():
 def sync(source):
     pass
 
-# After (hs-lib)
+# After (hs-pylib)
 app = Application.cli(name="my-tool")
 
 @app.command()
@@ -367,8 +367,8 @@ def sync(source: str):
 
 ## Repository
 
-- **GitHub**: <https://github.com/hypersec-io/hs-lib>
-- **Issues**: <https://github.com/hypersec-io/hs-lib/issues>
+- **GitHub**: <https://github.com/hypersec-io/hs-pylib>
+- **Issues**: <https://github.com/hypersec-io/hs-pylib/issues>
 
 ## License
 

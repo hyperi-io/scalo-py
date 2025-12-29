@@ -8,7 +8,7 @@ Production Kubernetes deployment with HELM, ArgoCD, and KEDA autoscaling.
 
 ```python
 # src/my_app/__init__.py
-from hs_lib import Application
+from hs_pylib import Application
 
 app = Application.api(
     name="my-app",

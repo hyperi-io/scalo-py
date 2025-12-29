@@ -5,7 +5,7 @@ Single-run jobs for batch processing and data pipelines.
 ## Quick Start
 
 ```python
-from hs_lib import Application, logger
+from hs_pylib import Application, logger
 
 app = Application.oneshot(name="data-import", version="1.0.0")
 
@@ -87,7 +87,7 @@ def cleanup():
 ## Production Example: ETL Job
 
 ```python
-from hs_lib import Application, logger
+from hs_pylib import Application, logger
 from datetime import datetime
 
 app = Application.oneshot(

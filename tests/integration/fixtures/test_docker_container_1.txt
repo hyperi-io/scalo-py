@@ -1,6 +1,6 @@
 import sys
-sys.path.insert(0, '/app/hs-lib/src')
-from hs_lib.config import detect_environment, get_mount_config
+sys.path.insert(0, '/app/hs-pylib/src')
+from hs_pylib.config import detect_environment, get_mount_config
 
 env = detect_environment()
 mounts = get_mount_config()

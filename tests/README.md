@@ -1,6 +1,6 @@
-# hs-lib Test Suite
+# hs-pylib Test Suite
 
-Test organization for hs-lib following standard testing patterns.
+Test organization for hs-pylib following standard testing patterns.
 
 ## Directory Structure
 
@@ -80,7 +80,7 @@ pytest tests/unit/ -v
 
 **With coverage:**
 ```bash
-pytest tests/ --cov=hs_lib --cov-report=html
+pytest tests/ --cov=hs_pylib --cov-report=html
 ```
 
 **Specific test file:**
@@ -106,7 +106,7 @@ pytest tests/unit/test_application.py::TestApplicationFactory::test_api_factory 
 
 ```python
 # tests/unit/test_mymodule.py
-from hs_lib import Application
+from hs_pylib import Application
 
 def test_api_factory():
     """Test API factory creates APIApplication."""
@@ -120,7 +120,7 @@ def test_api_factory():
 ```python
 # tests/e2e/test_myfeature.py
 import pytest
-from hs_lib import Application
+from hs_pylib import Application
 from fastapi.testclient import TestClient
 
 @pytest.mark.skipif(not FASTAPI_AVAILABLE, reason="FastAPI not installed")
@@ -149,4 +149,4 @@ Tests run automatically via CI scripts:
 Individual test commands used by CI:
 - `pytest tests/unit/ -v` - Fast unit tests
 - `pytest tests/e2e/ -v -k "not deploy"` - E2E without deployment
-- `pytest tests/ --cov=hs_lib` - Full suite with coverage
+- `pytest tests/ --cov=hs_pylib` - Full suite with coverage

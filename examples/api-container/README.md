@@ -16,7 +16,7 @@ Simple FastAPI application with container-native patterns.
 
 ```bash
 # Install dependencies
-pip install hs-lib[api]
+pip install hs-pylib[api]
 
 # Run locally
 python src/example_api.py
@@ -128,6 +128,6 @@ process_resident_memory_bytes
 
 ## See Also
 
-- [hs-lib Documentation](https://github.com/hypersec-io/hs-lib/tree/main/docs)
+- [hs-pylib Documentation](https://github.com/hypersec-io/hs-pylib/tree/main/docs)
 - [Container Deployment Guide](../../docs/CONTAINER_DEPLOYMENT.md)
 - [Kubernetes Guide](../../docs/KUBERNETES.md)

@@ -1,5 +1,5 @@
 """
-Tests for hs_lib.application module
+Tests for hs_pylib.application module
 Factory pattern for API, Daemon, CLI, and Oneshot applications
 """
 
@@ -26,13 +26,13 @@ class TestApplicationFactory:
 
     def test_import_application(self):
         """Test that Application can be imported."""
-        from hs_lib import Application
+        from hs_pylib import Application
 
         assert Application is not None
 
     def test_application_has_factory_methods(self):
         """Test that Application has all factory methods."""
-        from hs_lib import Application
+        from hs_pylib import Application
 
         assert hasattr(Application, "api")
         assert hasattr(Application, "daemon")
@@ -41,7 +41,7 @@ class TestApplicationFactory:
 
     def test_api_factory_requires_fastapi(self):
         """Test that api() factory requires FastAPI."""
-        from hs_lib import Application
+        from hs_pylib import Application
 
         # This should fail with ImportError if FastAPI not installed
         try:
@@ -56,7 +56,7 @@ class TestApplicationFactory:
 
     def test_daemon_factory(self):
         """Test daemon() factory creates DaemonApplication."""
-        from hs_lib import Application
+        from hs_pylib import Application
 
         app = Application.daemon(name="test-daemon")
 
@@ -69,7 +69,7 @@ class TestApplicationFactory:
 
     def test_cli_factory_requires_typer(self):
         """Test that cli() factory requires Typer."""
-        from hs_lib import Application
+        from hs_pylib import Application
 
         try:
             app = Application.cli(name="test-cli")
@@ -84,7 +84,7 @@ class TestApplicationFactory:
 
     def test_oneshot_factory(self):
         """Test oneshot() factory creates OneshotApplication."""
-        from hs_lib import Application
+        from hs_pylib import Application
 
         app = Application.oneshot(name="test-oneshot")
 
@@ -99,7 +99,7 @@ class TestDaemonApplication:
 
     def test_daemon_creation(self):
         """Test creating a daemon application."""
-        from hs_lib import Application
+        from hs_pylib import Application
 
         app = Application.daemon(name="test-daemon")
 
@@ -111,7 +111,7 @@ class TestDaemonApplication:
 
     def test_daemon_scheduled_decorator(self):
         """Test @app.scheduled decorator."""
-        from hs_lib import Application
+        from hs_pylib import Application
 
         app = Application.daemon(name="test-daemon")
 
@@ -126,7 +126,7 @@ class TestDaemonApplication:
 
     def test_daemon_startup_decorator(self):
         """Test @app.startup decorator."""
-        from hs_lib import Application
+        from hs_pylib import Application
 
         app = Application.daemon(name="test-daemon")
 
@@ -140,7 +140,7 @@ class TestDaemonApplication:
 
     def test_daemon_shutdown_decorator(self):
         """Test @app.shutdown decorator."""
-        from hs_lib import Application
+        from hs_pylib import Application
 
         app = Application.daemon(name="test-daemon")
 
@@ -159,7 +159,7 @@ class TestCLIApplication:
     @pytest.mark.skipif(not TYPER_AVAILABLE, reason="Typer not installed")
     def test_cli_creation(self):
         """Test creating a CLI application."""
-        from hs_lib import Application
+        from hs_pylib import Application
 
         try:
             app = Application.cli(name="test-cli", version="1.2.3")
@@ -171,7 +171,7 @@ class TestCLIApplication:
     @pytest.mark.skipif(not TYPER_AVAILABLE, reason="Typer not installed")
     def test_cli_command_decorator(self):
         """Test @app.command decorator."""
-        from hs_lib import Application
+        from hs_pylib import Application
 
         try:
             app = Application.cli(name="test-cli")
@@ -194,7 +194,7 @@ class TestOneshotApplication:
 
     def test_oneshot_creation(self):
         """Test creating a oneshot application."""
-        from hs_lib import Application
+        from hs_pylib import Application
 
         app = Application.oneshot(name="test-oneshot")
 
@@ -203,7 +203,7 @@ class TestOneshotApplication:
 
     def test_oneshot_task_decorator(self):
         """Test @app.task decorator."""
-        from hs_lib import Application
+        from hs_pylib import Application
 
         app = Application.oneshot(name="test-oneshot")
 
@@ -215,7 +215,7 @@ class TestOneshotApplication:
 
     def test_oneshot_run_without_task_raises(self):
         """Test that _execute_task() without task raises RuntimeError."""
-        from hs_lib import Application
+        from hs_pylib import Application
 
         app = Application.oneshot(name="test-oneshot")
 
@@ -230,7 +230,7 @@ class TestAPIApplication:
     @pytest.mark.skipif(not FASTAPI_AVAILABLE, reason="FastAPI not installed")
     def test_api_creation(self):
         """Test creating an API application."""
-        from hs_lib import Application
+        from hs_pylib import Application
 
         try:
             app = Application.api(name="test-api", port=9000)
@@ -242,7 +242,7 @@ class TestAPIApplication:
     @pytest.mark.skipif(not FASTAPI_AVAILABLE, reason="FastAPI not installed")
     def test_api_cors_enabled(self):
         """Test CORS middleware configuration."""
-        from hs_lib import Application
+        from hs_pylib import Application
 
         try:
             app = Application.api(
@@ -258,7 +258,7 @@ class TestAPIApplication:
     @pytest.mark.skipif(not FASTAPI_AVAILABLE, reason="FastAPI not installed")
     def test_api_startup_decorator(self):
         """Test @app.on_startup decorator."""
-        from hs_lib import Application
+        from hs_pylib import Application
 
         try:
             app = Application.api(name="test-api")
@@ -274,7 +274,7 @@ class TestAPIApplication:
     @pytest.mark.skipif(not FASTAPI_AVAILABLE, reason="FastAPI not installed")
     def test_api_shutdown_decorator(self):
         """Test @app.on_shutdown decorator."""
-        from hs_lib import Application
+        from hs_pylib import Application
 
         try:
             app = Application.api(name="test-api")
@@ -290,7 +290,7 @@ class TestAPIApplication:
     @pytest.mark.skipif(not FASTAPI_AVAILABLE, reason="FastAPI not installed")
     def test_api_exception_handler_decorator(self):
         """Test @app.exception_handler decorator."""
-        from hs_lib import Application
+        from hs_pylib import Application
 
         try:
             app = Application.api(name="test-api")
@@ -307,7 +307,7 @@ class TestAPIApplication:
     @pytest.mark.skipif(not FASTAPI_AVAILABLE, reason="FastAPI not installed")
     def test_api_include_router(self):
         """Test include_router method."""
-        from hs_lib import Application
+        from hs_pylib import Application
 
         try:
             from fastapi import APIRouter
@@ -328,7 +328,7 @@ class TestAPIApplication:
     @pytest.mark.skipif(not FASTAPI_AVAILABLE, reason="FastAPI not installed")
     def test_api_add_middleware(self):
         """Test add_middleware method."""
-        from hs_lib import Application
+        from hs_pylib import Application
 
         try:
             from starlette.middleware.base import BaseHTTPMiddleware

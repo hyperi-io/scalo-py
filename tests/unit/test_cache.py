@@ -1,12 +1,12 @@
-# Project:   hs-lib
+# Project:   hs-pylib
 # File:      tests/unit/test_cache.py
-# Purpose:   Unit tests for hs_lib.cache module
+# Purpose:   Unit tests for hs_pylib.cache module
 # Language:  Python
 #
 # License:   LicenseRef-HyperSec-EULA
 # Copyright: (c) 2025 HyperSec
 
-"""Unit tests for hs_lib.cache module."""
+"""Unit tests for hs_pylib.cache module."""
 
 import pytest
 
@@ -16,43 +16,43 @@ class TestCacheImports:
 
     def test_import_cache(self):
         """Test cache can be imported."""
-        from hs_lib.cache import cache
+        from hs_pylib.cache import cache
 
         assert cache is not None
 
     def test_import_configure_cache(self):
         """Test configure_cache can be imported."""
-        from hs_lib.cache import configure_cache
+        from hs_pylib.cache import configure_cache
 
         assert configure_cache is not None
 
     def test_import_cached(self):
         """Test cached decorator can be imported."""
-        from hs_lib.cache import cached
+        from hs_pylib.cache import cached
 
         assert cached is not None
 
     def test_import_get_ttl(self):
         """Test get_ttl can be imported."""
-        from hs_lib.cache import get_ttl
+        from hs_pylib.cache import get_ttl
 
         assert get_ttl is not None
 
     def test_import_get_cached(self):
         """Test get_cached can be imported."""
-        from hs_lib.cache import get_cached
+        from hs_pylib.cache import get_cached
 
         assert get_cached is not None
 
     def test_import_set_cached(self):
         """Test set_cached can be imported."""
-        from hs_lib.cache import set_cached
+        from hs_pylib.cache import set_cached
 
         assert set_cached is not None
 
     def test_import_invalidate_source(self):
         """Test invalidate_source can be imported."""
-        from hs_lib.cache import invalidate_source
+        from hs_pylib.cache import invalidate_source
 
         assert invalidate_source is not None
 
@@ -62,11 +62,11 @@ class TestGetTtl:
 
     def test_returns_default_for_unknown_source(self):
         """Test returns default TTL for unknown source."""
-        from hs_lib.cache import cache as cache_mod
+        from hs_pylib.cache import cache as cache_mod
 
         # Access module-level variables through the cache module
         import sys
-        cache_module = sys.modules["hs_lib.cache.cache"]
+        cache_module = sys.modules["hs_pylib.cache.cache"]
 
         # Save original state
         original = cache_module._source_ttls.copy()
@@ -75,7 +75,7 @@ class TestGetTtl:
             # Reset module state
             cache_module._source_ttls = {"_default": "1h"}
 
-            from hs_lib.cache import get_ttl
+            from hs_pylib.cache import get_ttl
 
             assert get_ttl("unknown") == "1h"
         finally:
@@ -84,10 +84,10 @@ class TestGetTtl:
 
     def test_returns_source_specific_ttl(self):
         """Test returns source-specific TTL when configured."""
-        from hs_lib.cache import cache as cache_mod
+        from hs_pylib.cache import cache as cache_mod
 
         import sys
-        cache_module = sys.modules["hs_lib.cache.cache"]
+        cache_module = sys.modules["hs_pylib.cache.cache"]
 
         # Save original state
         original = cache_module._source_ttls.copy()
@@ -100,7 +100,7 @@ class TestGetTtl:
                 "db": "30m",
             }
 
-            from hs_lib.cache import get_ttl
+            from hs_pylib.cache import get_ttl
 
             assert get_ttl("http") == "24h"
             assert get_ttl("db") == "30m"
@@ -115,14 +115,14 @@ class TestCachedDecorator:
 
     def test_cached_is_callable(self):
         """Test cached returns a callable."""
-        from hs_lib.cache import cached
+        from hs_pylib.cache import cached
 
         decorator = cached("http")
         assert callable(decorator)
 
     def test_cached_with_key(self):
         """Test cached decorator with key template."""
-        from hs_lib.cache import cached
+        from hs_pylib.cache import cached
 
         # Just verify it doesn't raise
         decorator = cached("http", key="{url}")
@@ -130,7 +130,7 @@ class TestCachedDecorator:
 
     def test_cached_with_ttl_override(self):
         """Test cached decorator with TTL override."""
-        from hs_lib.cache import cached
+        from hs_pylib.cache import cached
 
         # Just verify it doesn't raise
         decorator = cached("http", ttl="30m")
@@ -139,9 +139,9 @@ class TestCachedDecorator:
 
 def _get_cache_module():
     """Helper to get the cache module."""
-    from hs_lib.cache import cache as cache_mod  # noqa: F401 - trigger import
+    from hs_pylib.cache import cache as cache_mod  # noqa: F401 - trigger import
     import sys
-    return sys.modules["hs_lib.cache.cache"]
+    return sys.modules["hs_pylib.cache.cache"]
 
 
 class TestConfigureCache:
@@ -156,7 +156,7 @@ class TestConfigureCache:
         original_configured = cache_module._configured
 
         try:
-            from hs_lib.cache import configure_cache, get_ttl
+            from hs_pylib.cache import configure_cache, get_ttl
 
             configure_cache(
                 directory=str(temp_dir / "cache"),
@@ -188,7 +188,7 @@ class TestConfigureCache:
             mock_counter = MagicMock()
             mock_metrics.counter = MagicMock(return_value=mock_counter)
 
-            from hs_lib.cache import configure_cache
+            from hs_pylib.cache import configure_cache
 
             configure_cache(
                 directory=str(temp_dir / "cache"),
@@ -223,7 +223,7 @@ class TestCacheMetricsIntegration:
             mock_metrics = MagicMock()
             mock_metrics.counter = MagicMock(return_value=MagicMock())
 
-            from hs_lib.cache import configure_cache
+            from hs_pylib.cache import configure_cache
 
             configure_cache(directory=str(temp_dir / "cache"), metrics=mock_metrics)
 
