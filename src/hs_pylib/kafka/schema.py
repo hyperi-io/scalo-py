@@ -131,10 +131,13 @@ class SchemaAnalyser:
                 self._track_field_stats(value, f"{field_name}.")
 
             # Track sample values (non-null, non-complex)
-            if value is not None and not isinstance(value, (dict, list)):
-                if len(stats.sample_values) < self.MAX_SAMPLE_VALUES:
-                    if value not in stats.sample_values:
-                        stats.sample_values.append(value)
+            if (
+                value is not None
+                and not isinstance(value, (dict, list))
+                and len(stats.sample_values) < self.MAX_SAMPLE_VALUES
+                and value not in stats.sample_values
+            ):
+                stats.sample_values.append(value)
 
     def get_schema(self) -> dict[str, Any]:
         """
