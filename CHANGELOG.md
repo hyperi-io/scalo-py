@@ -1,3 +1,10 @@
+## [2.13.1](https://github.com/hypersec-io/hs-pylib/compare/v2.13.0...v2.13.1) (2025-12-29)
+
+
+### Bug Fixes
+
+* add SERVICE-ACCESS.md to gitleaks allowlist ([e4167a5](https://github.com/hypersec-io/hs-pylib/commit/e4167a5340f23619a361d35111e4bd8951a2804c))
+
 # [2.13.0](https://github.com/hypersec-io/hs-pylib/compare/v2.12.5...v2.13.0) (2025-12-29)
 
 
