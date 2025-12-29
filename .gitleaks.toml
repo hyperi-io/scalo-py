@@ -28,6 +28,7 @@ paths = [
     '''\.pip/pip\.conf''',
     '''tests/unit/test_anonymizer\.py''',      # Fake API keys for PII anonymization tests
     '''tests/unit/test_logger_filters\.py''',  # Fake API keys for log masking tests
+    '''docs/SERVICE-ACCESS\.md''',             # Example credentials in documentation (test environment)
 ]
 
 # Regex patterns that are test fixtures (fake secrets for testing)
