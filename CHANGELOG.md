@@ -1,3 +1,10 @@
+## [2.13.3](https://github.com/hypersec-io/hs-pylib/compare/v2.13.2...v2.13.3) (2025-12-29)
+
+
+### Bug Fixes
+
+* combine nested if statements in schema.py (SIM102) ([4e44cdc](https://github.com/hypersec-io/hs-pylib/commit/4e44cdc32950c3be3b1b8eacca092bd8ca7f5303))
+
 ## [2.13.2](https://github.com/hypersec-io/hs-pylib/compare/v2.13.1...v2.13.2) (2025-12-29)
 
 
