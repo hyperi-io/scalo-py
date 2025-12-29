@@ -2,9 +2,9 @@
 
 ## Overview
 
-This document tracks all issues, fixes, and improvements discovered while developing [hs-lib] that need to be backported to the `hypersec-forge-python` template.
+This document tracks all issues, fixes, and improvements discovered while developing [hs-pylib] that need to be backported to the `hypersec-forge-python` template.
 
-As [hs-lib] serves as the real-world test case for the template, this ensures all learnings flow back to improve the template for future projects.
+As [hs-pylib] serves as the real-world test case for the template, this ensures all learnings flow back to improve the template for future projects.
 
 ---
 
@@ -314,7 +314,7 @@ When applying changes back to template, verify:
 
 1. **Create feature branch** in forge repository:
    ```bash
-   git checkout -b feat/no-ref/apply-hs-lib-learnings
+   git checkout -b feat/no-ref/apply-hs-pylib-learnings
    ```
 
 2. **Apply each change** to template files in the forge repository
@@ -340,7 +340,7 @@ When applying changes back to template, verify:
 
    - Ensures generated packages export __version__ attribute
    - Required for package distribution and version verification
-   - Discovered during hs-lib development"
+   - Discovered during hs-pylib development"
    ```
 
 6. **Push and create PR** for review
@@ -454,9 +454,9 @@ For library projects, include:
 - This document should be updated continuously as we discover issues
 - Each entry should include: issue, current state, fix, affected files, priority
 - Mark items as completed when applied to template and verified
-- Use this as reference when updating template after hs-lib stabilizes
+- Use this as reference when updating template after hs-pylib stabilizes
 
 ## Related Documentation
 
-- [hs-lib Deployment Guide](../DEPLOYMENT.md)
-- [hs-lib Artifactory Configuration](ARTIFACTORY.md)
+- [hs-pylib Deployment Guide](../DEPLOYMENT.md)
+- [hs-pylib Artifactory Configuration](ARTIFACTORY.md)

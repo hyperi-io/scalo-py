@@ -1,8 +1,8 @@
 import sys
 import os
 
-# hs-lib is installed as a package now, no need to modify path
-from hs_lib import Application, get_mount_config, get_database_config
+# hs-pylib is installed as a package now, no need to modify path
+from hs_pylib import Application, get_mount_config, get_database_config
 
 # Create API application
 app = Application.api(name="docker-test-api", port=8000)

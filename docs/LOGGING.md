@@ -1,11 +1,11 @@
-# hs-lib Logging
+# hs-pylib Logging
 
 Auto-configured structured logging with sensible defaults.
 
 ## Quick Start
 
 ```python
-from hs_lib import logger
+from hs_pylib import logger
 
 logger.info("Application started")
 logger.error("Failed to connect", database="prod-db", retry=3)
@@ -102,7 +102,7 @@ export HS_LIB_LOGGING__MASK_SENSITIVE_DATA=false
 ### Custom Sensitive Fields
 
 ```python
-from hs_lib.logger.filters import SensitiveDataFilter
+from hs_pylib.logger.filters import SensitiveDataFilter
 
 SensitiveDataFilter.add_sensitive_fields({"employee_id", "ssn"})
 ```
@@ -112,11 +112,11 @@ SensitiveDataFilter.add_sensitive_fields({"employee_id", "ssn"})
 For compliance-critical logs (HIPAA, GDPR, PCI-DSS):
 
 ```bash
-pip install hs-lib[presidio]
+pip install hs-pylib[presidio]
 ```
 
 ```python
-from hs_lib.logger import configure_logger
+from hs_pylib.logger import configure_logger
 
 configure_logger(masking_level="advanced")  # Uses Presidio
 ```
@@ -136,4 +136,4 @@ Built on Loguru with:
 
 ## API Reference
 
-See module docstring: `help(hs-lib.logger)`
+See module docstring: `help(hs-pylib.logger)`

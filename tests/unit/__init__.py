@@ -1,1 +1,1 @@
-"""Unit tests for hs_lib components."""
+"""Unit tests for hs_pylib components."""

@@ -4,7 +4,7 @@ Profile-based configuration for different deployment environments.
 
 ## Overview
 
-hs-lib applications support three deployment profiles:
+hs-pylib applications support three deployment profiles:
 
 - **dev**: Local development
 - **docker**: CI/CD and integration testing
@@ -245,7 +245,7 @@ containers:
 Define custom profiles for special environments:
 
 ```python
-from hs_lib.application.profiles import PROFILES
+from hs_pylib.application.profiles import PROFILES
 
 # Add staging profile (between docker and prod)
 PROFILES["staging"] = {

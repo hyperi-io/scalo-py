@@ -1,10 +1,12 @@
 """
-Tests for hs_lib logger filters (sensitive data masking).
+Tests for hs_pylib logger filters (sensitive data masking and rate limiting).
 """
+
+import time
 
 import pytest
 
-from hs_lib.logger.filters import MASK_VALUE, SENSITIVE_FIELDS, SensitiveDataFilter
+from hs_pylib.logger.filters import MASK_VALUE, SENSITIVE_FIELDS, RateLimitFilter, SensitiveDataFilter
 
 
 class TestSensitiveDataFilter:
@@ -398,3 +400,250 @@ class TestSensitiveDataFilter:
         assert result["enabled"] is True
         assert result["items"] is None
         assert result["password"] == MASK_VALUE
+
+
+class TestRateLimitFilter:
+    """Test the RateLimitFilter for log rate limiting."""
+
+    def _make_record(self, message: str, level_no: int = 20, name: str = "test") -> dict:
+        """Create a mock Loguru record for testing."""
+
+        class MockLevel:
+            def __init__(self, no):
+                self.no = no
+
+        return {
+            "message": message,
+            "level": MockLevel(level_no),
+            "name": name,
+        }
+
+    def test_allows_first_message(self):
+        """Test that the first message is always allowed."""
+        rate_filter = RateLimitFilter(period_sec=30)
+        record = self._make_record("Test message")
+
+        result = rate_filter(record)
+
+        assert result is True
+
+    def test_suppresses_duplicate_within_period(self):
+        """Test that duplicate messages within the period are suppressed."""
+        rate_filter = RateLimitFilter(period_sec=30)
+        record1 = self._make_record("Test message")
+        record2 = self._make_record("Test message")
+
+        result1 = rate_filter(record1)
+        result2 = rate_filter(record2)
+
+        assert result1 is True
+        assert result2 is False
+
+    def test_allows_duplicate_after_period(self):
+        """Test that duplicate messages are allowed after the period expires."""
+        rate_filter = RateLimitFilter(period_sec=0.1)  # 100ms for fast test
+        record1 = self._make_record("Test message")
+        record2 = self._make_record("Test message")
+
+        result1 = rate_filter(record1)
+        time.sleep(0.15)  # Wait for period to expire
+        result2 = rate_filter(record2)
+
+        assert result1 is True
+        assert result2 is True
+
+    def test_allows_different_messages(self):
+        """Test that different messages are not rate limited against each other."""
+        rate_filter = RateLimitFilter(period_sec=30)
+        record1 = self._make_record("Message A")
+        record2 = self._make_record("Message B")
+
+        result1 = rate_filter(record1)
+        result2 = rate_filter(record2)
+
+        assert result1 is True
+        assert result2 is True
+
+    def test_counts_suppressed_messages(self):
+        """Test that suppressed messages are counted correctly."""
+        rate_filter = RateLimitFilter(period_sec=30)
+
+        # Send 5 identical messages
+        for i in range(5):
+            record = self._make_record("Repeated message")
+            rate_filter(record)
+
+        # Check the internal count
+        count = rate_filter.get_suppressed_count(name="test", level=20, message="Repeated message")
+        assert count == 4  # First one goes through, 4 suppressed
+
+    def test_adds_suppression_summary(self):
+        """Test that suppression summary is added when messages resume."""
+        rate_filter = RateLimitFilter(period_sec=0.1, summary_enabled=True)
+
+        # First message
+        record1 = self._make_record("Test message")
+        rate_filter(record1)
+
+        # Suppress 3 more
+        for _ in range(3):
+            record = self._make_record("Test message")
+            rate_filter(record)
+
+        # Wait for period and send another
+        time.sleep(0.15)
+        record_final = self._make_record("Test message")
+        rate_filter(record_final)
+
+        # The final record should have the suppression count appended
+        assert "(suppressed 3 similar)" in record_final["message"]
+
+    def test_summary_disabled(self):
+        """Test that suppression summary can be disabled."""
+        rate_filter = RateLimitFilter(period_sec=0.1, summary_enabled=False)
+
+        # First message
+        record1 = self._make_record("Test message")
+        rate_filter(record1)
+
+        # Suppress some
+        for _ in range(3):
+            record = self._make_record("Test message")
+            rate_filter(record)
+
+        # Wait and send another
+        time.sleep(0.15)
+        record_final = self._make_record("Test message")
+        rate_filter(record_final)
+
+        # No summary should be added
+        assert "suppressed" not in record_final["message"]
+        assert record_final["message"] == "Test message"
+
+    def test_different_levels_not_grouped(self):
+        """Test that same message at different levels are tracked separately."""
+        rate_filter = RateLimitFilter(period_sec=30)
+        record_info = self._make_record("Same message", level_no=20)  # INFO
+        record_error = self._make_record("Same message", level_no=40)  # ERROR
+
+        result1 = rate_filter(record_info)
+        result2 = rate_filter(record_error)
+
+        # Both should be allowed (different levels)
+        assert result1 is True
+        assert result2 is True
+
+    def test_different_loggers_not_grouped(self):
+        """Test that same message from different loggers are tracked separately."""
+        rate_filter = RateLimitFilter(period_sec=30)
+        record_a = self._make_record("Same message", name="logger_a")
+        record_b = self._make_record("Same message", name="logger_b")
+
+        result1 = rate_filter(record_a)
+        result2 = rate_filter(record_b)
+
+        # Both should be allowed (different loggers)
+        assert result1 is True
+        assert result2 is True
+
+    def test_reset_clears_state(self):
+        """Test that reset() clears all rate limit state."""
+        rate_filter = RateLimitFilter(period_sec=30)
+
+        # Build up some state
+        for _ in range(5):
+            record = self._make_record("Test message")
+            rate_filter(record)
+
+        # Reset
+        rate_filter.reset()
+
+        # State should be cleared
+        assert rate_filter.get_suppressed_count("test", 20, "Test message") == 0
+        assert len(rate_filter._last_seen) == 0
+        assert len(rate_filter._skip_counts) == 0
+
+    def test_normalise_numbers_groups_similar(self):
+        """Test that normalise_numbers groups messages with different numbers."""
+        rate_filter = RateLimitFilter(period_sec=30, normalise_numbers=True)
+
+        record1 = self._make_record("Failed to process order 12345")
+        record2 = self._make_record("Failed to process order 67890")
+
+        result1 = rate_filter(record1)
+        result2 = rate_filter(record2)
+
+        # Second should be suppressed (same pattern, different number)
+        assert result1 is True
+        assert result2 is False
+
+    def test_normalise_numbers_uuids(self):
+        """Test that UUIDs are normalised."""
+        rate_filter = RateLimitFilter(period_sec=30, normalise_numbers=True)
+
+        record1 = self._make_record("Processing request 550e8400-e29b-41d4-a716-446655440000")
+        record2 = self._make_record("Processing request a1b2c3d4-e5f6-7890-abcd-ef1234567890")
+
+        result1 = rate_filter(record1)
+        result2 = rate_filter(record2)
+
+        assert result1 is True
+        assert result2 is False
+
+    def test_normalise_numbers_ips(self):
+        """Test that IP addresses are normalised."""
+        rate_filter = RateLimitFilter(period_sec=30, normalise_numbers=True)
+
+        record1 = self._make_record("Connection from 192.168.1.100 failed")
+        record2 = self._make_record("Connection from 10.0.0.50 failed")
+
+        result1 = rate_filter(record1)
+        result2 = rate_filter(record2)
+
+        assert result1 is True
+        assert result2 is False
+
+    def test_normalise_numbers_timestamps(self):
+        """Test that ISO timestamps are normalised."""
+        rate_filter = RateLimitFilter(period_sec=30, normalise_numbers=True)
+
+        record1 = self._make_record("Event at 2024-01-15T10:30:00.123Z")
+        record2 = self._make_record("Event at 2024-12-25T23:59:59.999Z")
+
+        result1 = rate_filter(record1)
+        result2 = rate_filter(record2)
+
+        assert result1 is True
+        assert result2 is False
+
+    def test_normalise_disabled_treats_as_different(self):
+        """Test that without normalise_numbers, different numbers are different messages."""
+        rate_filter = RateLimitFilter(period_sec=30, normalise_numbers=False)
+
+        record1 = self._make_record("Failed to process order 12345")
+        record2 = self._make_record("Failed to process order 67890")
+
+        result1 = rate_filter(record1)
+        result2 = rate_filter(record2)
+
+        # Both should be allowed (different messages when not normalising)
+        assert result1 is True
+        assert result2 is True
+
+    def test_high_volume_suppression(self):
+        """Test suppression with high volume of messages."""
+        rate_filter = RateLimitFilter(period_sec=30)
+
+        # Simulate 1000 rapid-fire identical messages
+        allowed = 0
+        suppressed = 0
+        for _ in range(1000):
+            record = self._make_record("Rapid error message")
+            if rate_filter(record):
+                allowed += 1
+            else:
+                suppressed += 1
+
+        # Only the first should be allowed
+        assert allowed == 1
+        assert suppressed == 999

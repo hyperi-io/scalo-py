@@ -1,12 +1,12 @@
-# Project:   hs-lib
+# Project:   hs-pylib
 # File:      tests/unit/test_metrics_fastapi.py
-# Purpose:   Unit tests for hs_lib.metrics.fastapi module
+# Purpose:   Unit tests for hs_pylib.metrics.fastapi module
 # Language:  Python
 #
 # License:   LicenseRef-HyperSec-EULA
 # Copyright: (c) 2025 HyperSec
 
-"""Unit tests for hs_lib.metrics.fastapi module."""
+"""Unit tests for hs_pylib.metrics.fastapi module."""
 
 import pytest
 
@@ -16,7 +16,7 @@ class TestPrometheusMiddleware:
 
     def test_import(self):
         """Test that PrometheusMiddleware can be imported."""
-        from hs_lib.metrics.fastapi import PrometheusMiddleware
+        from hs_pylib.metrics.fastapi import PrometheusMiddleware
 
         assert PrometheusMiddleware is not None
 
@@ -24,7 +24,7 @@ class TestPrometheusMiddleware:
         """Test middleware creates HTTP metrics."""
         from unittest.mock import MagicMock
 
-        from hs_lib.metrics.fastapi import PrometheusMiddleware
+        from hs_pylib.metrics.fastapi import PrometheusMiddleware
 
         mock_app = MagicMock()
         mock_metrics = MagicMock()
@@ -48,7 +48,7 @@ class TestPrometheusMiddleware:
         """Test default excluded paths."""
         from unittest.mock import MagicMock
 
-        from hs_lib.metrics.fastapi import PrometheusMiddleware
+        from hs_pylib.metrics.fastapi import PrometheusMiddleware
 
         mock_app = MagicMock()
         mock_metrics = MagicMock()
@@ -66,7 +66,7 @@ class TestPrometheusMiddleware:
         """Test custom excluded paths."""
         from unittest.mock import MagicMock
 
-        from hs_lib.metrics.fastapi import PrometheusMiddleware
+        from hs_pylib.metrics.fastapi import PrometheusMiddleware
 
         mock_app = MagicMock()
         mock_metrics = MagicMock()
@@ -88,7 +88,7 @@ class TestCreateMetricsRouter:
 
     def test_import(self):
         """Test that create_metrics_router can be imported."""
-        from hs_lib.metrics.fastapi import create_metrics_router
+        from hs_pylib.metrics.fastapi import create_metrics_router
 
         assert create_metrics_router is not None
 
@@ -96,7 +96,7 @@ class TestCreateMetricsRouter:
         """Test creates a router with metrics endpoint."""
         from unittest.mock import MagicMock
 
-        from hs_lib.metrics.fastapi import create_metrics_router
+        from hs_pylib.metrics.fastapi import create_metrics_router
 
         mock_metrics = MagicMock()
         mock_metrics.metrics = b"# HELP test\n"
@@ -120,7 +120,7 @@ class TestCreateMetricsRouter:
         """Test custom metrics path."""
         from unittest.mock import MagicMock
 
-        from hs_lib.metrics.fastapi import create_metrics_router
+        from hs_pylib.metrics.fastapi import create_metrics_router
 
         mock_metrics = MagicMock()
         router = create_metrics_router(mock_metrics, path="/custom-metrics")
@@ -140,13 +140,13 @@ class TestCreateHealthRouter:
 
     def test_import(self):
         """Test that create_health_router can be imported."""
-        from hs_lib.metrics.fastapi import create_health_router
+        from hs_pylib.metrics.fastapi import create_health_router
 
         assert create_health_router is not None
 
     def test_creates_router_with_health_endpoints(self):
         """Test creates router with all health endpoints."""
-        from hs_lib.metrics.fastapi import create_health_router
+        from hs_pylib.metrics.fastapi import create_health_router
 
         router = create_health_router()
 
@@ -158,7 +158,7 @@ class TestCreateHealthRouter:
 
     def test_health_router_prefix(self):
         """Test health router has correct prefix."""
-        from hs_lib.metrics.fastapi import create_health_router
+        from hs_pylib.metrics.fastapi import create_health_router
 
         router = create_health_router()
         assert router.prefix == "/health"
@@ -166,7 +166,7 @@ class TestCreateHealthRouter:
     @pytest.mark.asyncio
     async def test_liveness_endpoint(self):
         """Test liveness endpoint returns alive status."""
-        from hs_lib.metrics.fastapi import create_health_router
+        from hs_pylib.metrics.fastapi import create_health_router
 
         router = create_health_router()
 
@@ -180,7 +180,7 @@ class TestCreateHealthRouter:
     @pytest.mark.asyncio
     async def test_readiness_with_check(self):
         """Test readiness endpoint with custom check."""
-        from hs_lib.metrics.fastapi import create_health_router
+        from hs_pylib.metrics.fastapi import create_health_router
 
         # Test with passing check
         router = create_health_router(ready_check=lambda: True)
@@ -194,7 +194,7 @@ class TestCreateHealthRouter:
     @pytest.mark.asyncio
     async def test_readiness_with_failing_check(self):
         """Test readiness endpoint with failing check."""
-        from hs_lib.metrics.fastapi import create_health_router
+        from hs_pylib.metrics.fastapi import create_health_router
 
         router = create_health_router(ready_check=lambda: False)
 

@@ -1,4 +1,4 @@
 apiVersion: v2
-name: hs-lib-api-test
+name: hs-pylib-api-test
 version: 0.1.0
-description: Helm chart for hs-lib API deployment test
+description: Helm chart for hs-pylib API deployment test

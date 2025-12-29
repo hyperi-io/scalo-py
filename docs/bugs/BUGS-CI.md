@@ -1,7 +1,7 @@
 # CI Bugs (ci repository issues)
 
 **Repository:** https://github.com/hypersec-io/ci
-**Purpose:** Track bugs in the ci infrastructure (not hs-lib bugs)
+**Purpose:** Track bugs in the ci infrastructure (not hs-pylib bugs)
 
 ---
 
@@ -84,7 +84,7 @@ build_and_publish.sh should either:
 
 ### BUG-CI-003: Workflow template references obsolete ci structure paths
 
-**Status:** FIXED (in hs-lib, but template needs update)
+**Status:** FIXED (in hs-pylib, but template needs update)
 **Severity:** HIGH
 **Affects:** ci/templates/ci-publish.yml (if it exists)
 

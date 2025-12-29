@@ -5,7 +5,7 @@ Application metrics with Prometheus and OpenTelemetry support.
 ## Quick Start
 
 ```python
-from hs_lib.metrics import create_metrics
+from hs_pylib.metrics import create_metrics
 
 # Create metrics manager (Prometheus by default)
 metrics = create_metrics("myapp")
@@ -25,7 +25,7 @@ content_type = metrics.content_type
 ### Prometheus (Default)
 
 ```python
-from hs_lib.metrics import create_metrics
+from hs_pylib.metrics import create_metrics
 
 metrics = create_metrics("myapp", backend="prometheus")
 
@@ -46,9 +46,9 @@ counter.labels(method="GET", status="200").inc()
 ### OpenTelemetry
 
 ```python
-from hs_lib.metrics import create_metrics
+from hs_pylib.metrics import create_metrics
 
-# Requires: pip install hs-lib[opentelemetry]
+# Requires: pip install hs-pylib[opentelemetry]
 metrics = create_metrics(
     "myapp",
     backend="opentelemetry",
@@ -91,8 +91,8 @@ metrics:
 ```
 
 ```python
-from hs_lib.config import get_config
-from hs_lib.metrics import create_metrics
+from hs_pylib.config import get_config
+from hs_pylib.metrics import create_metrics
 
 config = get_config()
 metrics = create_metrics(
@@ -172,8 +172,8 @@ content_type = metrics.get_content_type()
 ## FastAPI Integration
 
 ```python
-from hs_lib import Application
-from hs_lib.metrics import create_metrics
+from hs_pylib import Application
+from hs_pylib.metrics import create_metrics
 from fastapi import Response
 
 app = Application.api(name="my-api")
@@ -305,8 +305,8 @@ OpenTelemetry backend automatically converts to OTEL conventions:
 ## Example: Complete Application
 
 ```python
-from hs_lib import Application
-from hs_lib.metrics import create_metrics
+from hs_pylib import Application
+from hs_pylib.metrics import create_metrics
 
 app = Application.api(name="shop-api", profile="prod")
 metrics = create_metrics("shop-api")

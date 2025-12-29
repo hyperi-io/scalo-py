@@ -1,6 +1,6 @@
 # Container Deployment Guide
 
-Production-ready container deployment for hs-lib applications.
+Production-ready container deployment for hs-pylib applications.
 
 ## Quick Start
 
@@ -8,7 +8,7 @@ Production-ready container deployment for hs-lib applications.
 
 ```python
 # src/my_app/__init__.py
-from hs_lib import Application
+from hs_pylib import Application
 
 app = Application.api(
     name="my-app",
@@ -434,7 +434,7 @@ HEALTHCHECK CMD curl -f http://localhost:8080/health || exit 1
 
 ### 5. Graceful Shutdown
 
-Handle SIGTERM properly (hs-lib does this automatically):
+Handle SIGTERM properly (hs-pylib does this automatically):
 
 ```python
 # Automatic with SignalHandlerMixin

@@ -5,7 +5,7 @@ FastAPI applications with container-native patterns.
 ## Quick Start
 
 ```python
-from hs_lib import Application
+from hs_pylib import Application
 
 app = Application.api(name="my-api", version="1.0.0", profile="prod")
 
@@ -157,7 +157,7 @@ The `/ready` endpoint will return 503 if any check returns `False` or raises an 
 ## Production Example
 
 ```python
-from hs_lib import Application, logger
+from hs_pylib import Application, logger
 from fastapi import Depends, HTTPException
 from pydantic import BaseModel
 

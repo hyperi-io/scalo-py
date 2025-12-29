@@ -1,14 +1,14 @@
-# hs-lib
+# hs-pylib
 
 <!-- BADGES:START -->
-[![Build Status](https://github.com/hypersec-io/hs-lib/workflows/CI%20Publish/badge.svg)](https://github.com/hypersec-io/hs-lib/actions)
+[![Build Status](https://github.com/hypersec-io/hs-pylib/workflows/CI%20Publish/badge.svg)](https://github.com/hypersec-io/hs-pylib/actions)
 [![Python Version](https://img.shields.io/badge/python-3.12%2B-blue)](https://www.python.org/)
 [![License](https://img.shields.io/badge/license-Proprietary-red)](LICENSE)
 <!-- BADGES:END -->
 
 Enterprise Python infrastructure for HyperSec projects.
 
-hs-lib provides container-native application patterns, metrics, logging, and infrastructure utilities for all HyperSec Python projects.
+hs-pylib provides container-native application patterns, metrics, logging, and infrastructure utilities for all HyperSec Python projects.
 
 ## Features
 
@@ -31,11 +31,11 @@ hs-lib provides container-native application patterns, metrics, logging, and inf
 
 ## Installation
 
-> **Package naming:** `hs-lib` on PyPI, `hs_lib` for Python imports.
+> **Package naming:** `hs-pylib` on PyPI, `hs_pylib` for Python imports.
 
 ### pyproject.toml Configuration (Recommended)
 
-For projects using uv with both JFrog (hs-lib) and PyPI packages, add this to your `pyproject.toml`:
+For projects using uv with both JFrog (hs-pylib) and PyPI packages, add this to your `pyproject.toml`:
 
 ```toml
 [tool.uv]
@@ -52,7 +52,7 @@ url = "https://pypi.org/simple"
 default = true
 
 [tool.uv.sources]
-hs-lib = { index = "hypersec-jfrog" }
+hs-pylib = { index = "hypersec-jfrog" }
 ```
 
 **Key settings:**
@@ -60,7 +60,7 @@ hs-lib = { index = "hypersec-jfrog" }
 - `index-strategy = "unsafe-best-match"` - Allows mixing packages from JFrog and PyPI
 - `explicit = true` on JFrog - Only use JFrog for explicitly mapped packages
 - `default = true` on PyPI - Use PyPI for everything else
-- `[tool.uv.sources]` - Explicitly route `hs-lib` to JFrog
+- `[tool.uv.sources]` - Explicitly route `hs-pylib` to JFrog
 
 Then set credentials via environment variables and install:
 
@@ -81,27 +81,27 @@ export UV_INDEX_HYPERSEC_JFROG_USERNAME="your-email@hypersec.io"
 export UV_INDEX_HYPERSEC_JFROG_PASSWORD="your-jfrog-api-key"
 
 # Using uv with extra-index-url
-uv pip install hs-lib \
+uv pip install hs-pylib \
   --extra-index-url https://hypersec.jfrog.io/artifactory/api/pypi/hypersec-pypi/simple
 
 # With optional dependencies
-uv pip install hs-lib[presidio,opentelemetry] \
+uv pip install hs-pylib[presidio,opentelemetry] \
   --extra-index-url https://hypersec.jfrog.io/artifactory/api/pypi/hypersec-pypi/simple
 ```
 
 ### Optional Dependencies
 
-- `hs-lib[presidio]` - PII anonymization
-- `hs-lib[opentelemetry]` - OpenTelemetry metrics
-- `hs-lib[api]` - FastAPI support
-- `hs-lib[metrics]` - Prometheus metrics
+- `hs-pylib[presidio]` - PII anonymization
+- `hs-pylib[opentelemetry]` - OpenTelemetry metrics
+- `hs-pylib[api]` - FastAPI support
+- `hs-pylib[metrics]` - Prometheus metrics
 
 ## Quick Start
 
 ### API Application (FastAPI)
 
 ```python
-from hs_lib import Application
+from hs_pylib import Application
 
 app = Application.api(name="my-api", version="1.0.0", profile="prod")
 
@@ -120,7 +120,7 @@ app.run()
 ### Daemon Application
 
 ```python
-from hs_lib import Application
+from hs_pylib import Application
 
 app = Application.daemon(name="my-worker", profile="prod")
 
@@ -139,7 +139,7 @@ app.run()
 ### CLI Application (Typer)
 
 ```python
-from hs_lib import Application
+from hs_pylib import Application
 
 app = Application.cli(name="my-tool", version="1.0.0")
 
@@ -179,7 +179,7 @@ docker run -p 8000:8000 -p 8080:8080 -e PROFILE=docker my-app:latest
 ### Kubernetes (HELM)
 
 ```bash
-helm install my-app ./templates/helm/hs-lib-app \
+helm install my-app ./templates/helm/hs-pylib-app \
   --set app.type=api \
   --set image.repository=my-app \
   --set image.tag=1.0.0 \

@@ -1,4 +1,4 @@
-"""Tests for hs_lib.application.cli module (Typer-based)."""
+"""Tests for hs_pylib.application.cli module (Typer-based)."""
 
 import pytest
 
@@ -8,7 +8,7 @@ class TestCLIApplication:
 
     def test_cli_application_creation(self):
         """Test creating a CLI application."""
-        from hs_lib import Application
+        from hs_pylib import Application
 
         app = Application.cli(name="test-cli", version="1.0.0")
 
@@ -19,7 +19,7 @@ class TestCLIApplication:
 
     def test_cli_auto_version_detection(self):
         """Test version defaults to 1.0.0."""
-        from hs_lib import Application
+        from hs_pylib import Application
 
         app = Application.cli(name="test-app")
 
@@ -27,7 +27,7 @@ class TestCLIApplication:
 
     def test_cli_version_unknown_for_nonexistent_package(self):
         """Test version can be set to any string."""
-        from hs_lib import Application
+        from hs_pylib import Application
 
         app = Application.cli(name="nonexistent-package-12345", version="unknown")
 
@@ -35,7 +35,7 @@ class TestCLIApplication:
 
     def test_cli_command_registration(self):
         """Test registering commands."""
-        from hs_lib import Application
+        from hs_pylib import Application
 
         app = Application.cli(name="test-cli")
 
@@ -49,7 +49,7 @@ class TestCLIApplication:
 
     def test_cli_option_decorator(self):
         """Test commands work with type hints (Typer style)."""
-        from hs_lib import Application
+        from hs_pylib import Application
 
         app = Application.cli(name="test-cli")
 
@@ -63,7 +63,7 @@ class TestCLIApplication:
 
     def test_cli_argument_decorator(self):
         """Test commands work with arguments (Typer style)."""
-        from hs_lib import Application
+        from hs_pylib import Application
 
         app = Application.cli(name="test-cli")
 
@@ -97,7 +97,7 @@ class TestCLIGroupCommands:
 
     def test_group_command_creation(self):
         """Test Typer supports subcommands natively."""
-        from hs_lib import Application
+        from hs_pylib import Application
 
         app = Application.cli(name="test-cli")
 
@@ -116,7 +116,7 @@ class TestCLIGroupCommands:
 
     def test_subcommand_in_group(self):
         """Test subcommands work in Typer."""
-        from hs_lib import Application
+        from hs_pylib import Application
 
         app = Application.cli(name="test-cli")
 
@@ -134,7 +134,7 @@ class TestGlobalOptions:
 
     def test_verbose_flag_added(self):
         """Test verbose flag is available (via profile)."""
-        from hs_lib import Application
+        from hs_pylib import Application
 
         app = Application.cli(name="test-cli", add_verbose=True)
 
@@ -143,7 +143,7 @@ class TestGlobalOptions:
 
     def test_quiet_flag_added(self):
         """Test quiet flag is available (via profile)."""
-        from hs_lib import Application
+        from hs_pylib import Application
 
         app = Application.cli(name="test-cli", add_quiet=True)
 
@@ -156,7 +156,7 @@ class TestAddCommand:
 
     def test_add_command_programmatically(self):
         """Test adding commands programmatically."""
-        from hs_lib import Application
+        from hs_pylib import Application
 
         app = Application.cli(name="test-cli")
 

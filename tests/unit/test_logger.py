@@ -1,4 +1,4 @@
-"""Tests for hs_lib.logger module.
+"""Tests for hs_pylib.logger module.
 
 Following No Mocks Policy: Tests use real logger, no mocks of internal implementation.
 """
@@ -14,13 +14,13 @@ class TestLoggerBasics:
 
     def test_logger_import(self):
         """Test logger can be imported."""
-        from hs_lib.logger import logger
+        from hs_pylib.logger import logger
 
         assert logger is not None
 
     def test_logger_has_standard_methods(self):
         """Test logger has standard logging methods."""
-        from hs_lib.logger import logger
+        from hs_pylib.logger import logger
 
         assert hasattr(logger, "debug")
         assert hasattr(logger, "info")
@@ -30,7 +30,7 @@ class TestLoggerBasics:
 
     def test_logger_convenience_functions(self):
         """Test convenience functions exist."""
-        from hs_lib import logger
+        from hs_pylib import logger
 
         # These are the public API
         assert hasattr(logger, "info")
@@ -45,28 +45,28 @@ class TestLoggerIntegration:
 
     def test_info_logging(self, tmp_path):
         """Test info logging works."""
-        from hs_lib.logger import logger
+        from hs_pylib.logger import logger
 
         # Just verify it doesn't crash
         logger.info("Test info message")
 
     def test_error_logging(self, tmp_path):
         """Test error logging works."""
-        from hs_lib.logger import logger
+        from hs_pylib.logger import logger
 
         # Just verify it doesn't crash
         logger.error("Test error message")
 
     def test_warning_logging(self, tmp_path):
         """Test warning logging works."""
-        from hs_lib.logger import logger
+        from hs_pylib.logger import logger
 
         # Just verify it doesn't crash
         logger.warning("Test warning message")
 
     def test_debug_logging(self, tmp_path):
         """Test debug logging works."""
-        from hs_lib.logger import logger
+        from hs_pylib.logger import logger
 
         # Just verify it doesn't crash
         logger.debug("Test debug message")

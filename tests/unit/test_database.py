@@ -1,10 +1,10 @@
-"""Tests for hs_lib.database module."""
+"""Tests for hs_pylib.database module."""
 
 import os
 
 import pytest
 
-from hs_lib.database import build_database_url, get_database_config
+from hs_pylib.database import build_database_url, get_database_config
 
 
 class TestClickHouseSupport:

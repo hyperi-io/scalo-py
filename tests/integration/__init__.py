@@ -1,1 +1,1 @@
-"""Integration tests for hs_lib components."""
+"""Integration tests for hs_pylib components."""

@@ -1,4 +1,4 @@
-# Project:      hs-lib
+# Project:      hs-pylib
 # File:         .gitleaks.toml
 # Purpose:      Gitleaks configuration - allowlist historical false positives
 # License:      LicenseRef-HyperSec-EULA
@@ -11,7 +11,7 @@ useDefault = true
 # Allowlist for historical commits containing secrets in deleted/backup files
 # These tokens have been rotated and the files are no longer in use
 [allowlist]
-description = "hs-lib historical false positives"
+description = "hs-pylib historical false positives"
 
 # Commits containing old backup files with now-rotated credentials
 commits = [
