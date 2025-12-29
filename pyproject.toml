@@ -125,6 +125,7 @@ dev = [
     "vulture",
     "tiktoken",
     "pyright",
+    "faker>=33.0.0",
 ]
 docs = [
     "sphinx>=7.0.0,<8.0.0",
