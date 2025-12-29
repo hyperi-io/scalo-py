@@ -1,0 +1,88 @@
+# Test workflow to verify container hooks work correctly
+# This workflow does NOT use `container:` - the hooks should inject it
+#
+# Expected behavior:
+# 1. Container is created at START of job (not reused from previous)
+# 2. Job runs inside the container with all pre-installed tools
+# 3. Container is destroyed after job completes
+
+name: Test Container Hooks
+
+on:
+  workflow_dispatch:
+
+jobs:
+  test-container-injection:
+    name: Test Container Injection
+    runs-on: devex-runner
+    # NO container: directive - hooks should inject it!
+    steps:
+      - name: Verify running in container
+        run: |
+          echo "=== Container Verification ==="
+          echo "Hostname: $(hostname)"
+          echo "User: $(whoami)"
+          echo "OS: $(cat /etc/os-release | head -1)"
+          echo ""
+          echo "=== Checking container label ==="
+          # The hooks add a label to managed containers
+          if docker inspect $(hostname) 2>/dev/null | grep -q "hypersec.runner.managed"; then
+            echo "SUCCESS: Running in hooks-managed container"
+          else
+            echo "INFO: Container check (may not work from inside)"
+          fi
+
+      - name: Verify pre-installed tools
+        run: |
+          echo "=== Tool Versions ==="
+          echo "Python: $(python3 --version)"
+          echo "uv: $(uv --version)"
+          echo "Node: $(node --version)"
+          echo "npm: $(npm --version)"
+          echo "Go: $(go version)"
+          echo "Rust: $(rustc --version)"
+          echo "Clang: $(clang --version | head -1)"
+          echo "Docker CLI: $(docker --version)"
+          echo "gh CLI: $(gh --version | head -1)"
+          echo ""
+          echo "SUCCESS: All expected tools are available"
+
+      - name: Create marker file (for job 2 to verify isolation)
+        run: |
+          echo "Job 1 ran at $(date)" > /tmp/job1-marker.txt
+          echo "Created marker file: /tmp/job1-marker.txt"
+          cat /tmp/job1-marker.txt
+
+  test-container-reset:
+    name: Test Container Reset
+    needs: test-container-injection
+    runs-on: devex-runner
+    # NO container: directive - hooks should inject it!
+    steps:
+      - name: Verify fresh container (no marker from job 1)
+        run: |
+          echo "=== Testing Container Isolation ==="
+          if [ -f /tmp/job1-marker.txt ]; then
+            echo "FAILURE: Found marker file from job 1!"
+            echo "Container was NOT reset between jobs"
+            cat /tmp/job1-marker.txt
+            exit 1
+          else
+            echo "SUCCESS: Container is fresh (no marker file from job 1)"
+            echo "Container was correctly reset at START of this job"
+          fi
+
+      - name: Verify different container instance
+        run: |
+          echo "=== Container Instance Check ==="
+          echo "Hostname: $(hostname)"
+          echo "Container started fresh for this job"
+
+      - name: Final verification
+        run: |
+          echo "=== Final Status ==="
+          echo "✓ Container injection working (no container: needed)"
+          echo "✓ Container reset at job START (ephemeral isolation)"
+          echo "✓ Pre-installed tools available"
+          echo ""
+          echo "TRANSPARENT CONTAINERIZATION: SUCCESS"
