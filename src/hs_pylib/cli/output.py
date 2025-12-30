@@ -30,6 +30,7 @@ from typing import Any
 
 __all__ = [
     "console",
+    "stderr_console",
     "print_success",
     "print_error",
     "print_warning",
@@ -49,9 +50,11 @@ try:
 
     HAS_RICH = True
     console = Console()
+    stderr_console = Console(stderr=True)
 except ImportError:
     HAS_RICH = False
     console = None
+    stderr_console = None
 
 
 # Output helpers with Rich fallback
@@ -75,7 +78,7 @@ def print_success(message: str, **kwargs):
 
 def print_error(message: str, **kwargs):
     """
-    Print error message with red X.
+    Print error message with red X to stderr.
 
     Args:
         message: Error message to display
@@ -85,8 +88,8 @@ def print_error(message: str, **kwargs):
         print_error("File not found!")
         # Output: ✗ File not found! (in red)
     """
-    if HAS_RICH and console:
-        console.print(f"[red]✗[/red] {message}", **kwargs, file=sys.stderr)
+    if HAS_RICH and stderr_console:
+        stderr_console.print(f"[red]✗[/red] {message}", **kwargs)
     else:
         print(f"✗ {message}", **kwargs, file=sys.stderr)
 

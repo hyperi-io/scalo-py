@@ -123,6 +123,31 @@ def emojis_to_text(text: str) -> str:
     return result
 
 
+def _is_ci_environment() -> bool:
+    """Detect if running in a CI environment (GitHub Actions, GitLab CI, etc).
+
+    Returns:
+        True if running in a CI environment, False otherwise
+    """
+    return (
+        os.getenv("CI") == "true"
+        or os.getenv("GITHUB_ACTIONS") == "true"
+        or os.getenv("GITLAB_CI") == "true"
+        or os.getenv("JENKINS_URL") is not None
+        or os.getenv("CIRCLECI") == "true"
+        or os.getenv("TRAVIS") == "true"
+    )
+
+
+def _is_github_actions() -> bool:
+    """Detect if running in GitHub Actions specifically.
+
+    Returns:
+        True if running in GitHub Actions, False otherwise
+    """
+    return os.getenv("GITHUB_ACTIONS") == "true"
+
+
 def _is_interactive_console() -> bool:
     """Detect if console is interactive (NOT Docker/K8s/daemon).
 
@@ -137,6 +162,10 @@ def _is_interactive_console() -> bool:
     Returns:
         True if interactive terminal that supports emojis, False otherwise
     """
+    # CI environments are non-interactive
+    if _is_ci_environment():
+        return False
+
     # Check if output is a TTY (Docker/K8s stdout is NOT a TTY)
     if not sys.stderr.isatty():
         return False  # Non-interactive (container, pipe, file)
@@ -215,12 +244,49 @@ def _add_emoji_to_record(
     return filter_func
 
 
-def _get_log_format(is_file: bool, color_scheme: str = "solarized") -> str:
+def _github_actions_sink(message):
+    """Sink that outputs GitHub Actions workflow commands for log messages.
+
+    Maps log levels to GitHub Actions commands:
+    - DEBUG -> ::debug::
+    - INFO/SUCCESS -> plain output
+    - WARNING -> ::warning::
+    - ERROR/CRITICAL -> ::error::
+
+    See: https://docs.github.com/en/actions/writing-workflows/choosing-what-your-workflow-does/workflow-commands-for-github-actions
+    """
+    record = message.record
+    level = record["level"].name
+    text = str(message).strip()
+
+    # Map log levels to GitHub Actions commands
+    if level == "DEBUG":
+        print(f"::debug::{text}", file=sys.stderr)
+    elif level == "WARNING":
+        print(f"::warning::{text}", file=sys.stderr)
+    elif level in ("ERROR", "CRITICAL"):
+        # Include file/line info if available for annotations
+        file_info = ""
+        if record.get("file"):
+            file_info = f"file={record['file'].path}"
+            if record.get("line"):
+                file_info += f",line={record['line']}"
+        if file_info:
+            print(f"::error {file_info}::{text}", file=sys.stderr)
+        else:
+            print(f"::error::{text}", file=sys.stderr)
+    else:
+        # INFO, SUCCESS, TRACE - plain output
+        print(text, file=sys.stderr)
+
+
+def _get_log_format(is_file: bool, color_scheme: str = "solarized", ci_mode: bool = False) -> str:
     """Get log format string based on output type.
 
     Args:
         is_file: True if logging to file (ASCII-only), False for console
         color_scheme: Color scheme to use ("solarized" or "loguru")
+        ci_mode: True to use CI-compatible format (no colors, simple prefix)
 
     Returns:
         Format string for loguru
@@ -228,6 +294,11 @@ def _get_log_format(is_file: bool, color_scheme: str = "solarized") -> str:
     # File logging: Plain ASCII only (CHARS-POLICY.md requirement)
     if is_file:
         return "{time:YYYY-MM-DDTHH:mm:ss.SSSZZ} [{level: <8}] {name}:{function}:{line} - {message}"
+
+    # CI mode: Simple format without ANSI colors for GitHub Actions/GitLab CI
+    # Uses prefix format that integrates with CI log parsing
+    if ci_mode:
+        return "[{level: <8}] {name}:{function}:{line} - {message}"
 
     # Console logging with colors
     if color_scheme == "solarized":
@@ -258,6 +329,7 @@ def setup(
     masking_preset=None,
     rate_limit_sec=None,
     rate_limit_similar=False,
+    ci_mode=None,
 ):
     """Setup standard logging with RFC 3339 compliance and CHARS-POLICY.md enforcement
 
@@ -292,6 +364,10 @@ def setup(
             - False (default): Only suppress exact duplicate messages
             - True: Treat messages differing only in numbers/IDs as similar
               e.g., "Failed order 123" and "Failed order 456" are grouped together
+        ci_mode: CI mode for GitHub Actions / GitLab CI compatible output
+            - None (default): Auto-detect from environment (GITHUB_ACTIONS, CI, etc.)
+            - True: Force CI mode - use workflow commands (::error::, ::warning::, etc.)
+            - False: Force normal mode - standard console output
     """
 
     # Remove default handler
@@ -300,11 +376,22 @@ def setup(
     # Get logging config
     config = get_logging_config()
 
+    # CI mode: Auto-detect from environment or config, can be overridden by parameter
+    # Priority: parameter > config > auto-detect
+    if ci_mode is None:
+        ci_mode = config.get("ci_mode")  # Check config first
+    if ci_mode is None:
+        ci_mode = _is_ci_environment()  # Auto-detect from environment
+
+    # Use GitHub Actions workflow commands if in GitHub Actions
+    use_github_actions_commands = ci_mode and _is_github_actions()
+
     # Auto-detect terminal type if not specified
     # Default: permitted emojis ONLY for interactive terminals
     # Non-interactive (Docker/K8s/daemon) = ASCII-only (CRITICAL for log aggregators)
+    # CI mode = ASCII-only (no emojis)
     if use_emojis is None:
-        use_emojis = _is_interactive_console()
+        use_emojis = not ci_mode and _is_interactive_console()
 
     # If allow_all_emojis is True but use_emojis is False, warn and disable
     if allow_all_emojis and not use_emojis:
@@ -335,8 +422,8 @@ def setup(
             normalise_numbers=rate_limit_similar,
         )
 
-    # Configure color scheme
-    if color_scheme == "solarized":
+    # Configure color scheme (skip if CI mode - no colors)
+    if not ci_mode and color_scheme == "solarized":
         # Solarized color scheme for log levels
         logger.level("TRACE", color=f"<fg {SOLARIZED['base01']}>")  # base01 - gray
         logger.level("DEBUG", color=f"<fg {SOLARIZED['base01']}>")  # base01 - gray
@@ -346,24 +433,61 @@ def setup(
         logger.level("ERROR", color=f"<fg {SOLARIZED['orange']}>")  # orange - error
         logger.level("CRITICAL", color=f"<fg {SOLARIZED['red']}>")  # red - critical
 
-    # Add console handler with RFC 3339 format and emoji support
+    # Add console handler
     if config.get("console", True):
-        console_format = _get_log_format(is_file=False, color_scheme=color_scheme)
-
-        logger.add(
-            sys.stderr,
-            level=config.get("level", "INFO"),
-            format=console_format,
-            colorize=True,
-            filter=_add_emoji_to_record(
-                use_emojis,
-                allow_all=allow_all_emojis,
-                mask_sensitive=mask_sensitive,
-                masking_level=masking_level,
-                masking_preset=masking_preset,
-                rate_limit_filter=rate_limit_filter,
-            ),
-        )
+        if use_github_actions_commands:
+            # GitHub Actions: Use custom sink for workflow commands (::error::, ::warning::, etc.)
+            console_format = _get_log_format(is_file=False, ci_mode=True)
+            logger.add(
+                _github_actions_sink,
+                level=config.get("level", "INFO"),
+                format=console_format,
+                colorize=False,
+                filter=_add_emoji_to_record(
+                    False,  # No emojis in CI
+                    convert_to_text=True,
+                    allow_all=False,
+                    mask_sensitive=mask_sensitive,
+                    masking_level=masking_level,
+                    masking_preset=masking_preset,
+                    rate_limit_filter=rate_limit_filter,
+                ),
+            )
+        elif ci_mode:
+            # Other CI (GitLab, Jenkins, etc.): Simple format without colors
+            console_format = _get_log_format(is_file=False, ci_mode=True)
+            logger.add(
+                sys.stderr,
+                level=config.get("level", "INFO"),
+                format=console_format,
+                colorize=False,
+                filter=_add_emoji_to_record(
+                    False,  # No emojis in CI
+                    convert_to_text=True,
+                    allow_all=False,
+                    mask_sensitive=mask_sensitive,
+                    masking_level=masking_level,
+                    masking_preset=masking_preset,
+                    rate_limit_filter=rate_limit_filter,
+                ),
+            )
+        else:
+            # Normal console: Colors and optional emojis
+            console_format = _get_log_format(is_file=False, color_scheme=color_scheme)
+            logger.add(
+                sys.stderr,
+                level=config.get("level", "INFO"),
+                format=console_format,
+                colorize=True,
+                filter=_add_emoji_to_record(
+                    use_emojis,
+                    allow_all=allow_all_emojis,
+                    mask_sensitive=mask_sensitive,
+                    masking_level=masking_level,
+                    masking_preset=masking_preset,
+                    rate_limit_filter=rate_limit_filter,
+                ),
+            )
 
     # Add file handler if specified (ALWAYS ASCII-only per CHARS-POLICY.md)
     log_file = config.get("file")

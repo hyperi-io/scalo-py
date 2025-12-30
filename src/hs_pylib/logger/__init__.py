@@ -1,6 +1,8 @@
 """hs-pylib Logger Module - Re-exports from logger.py for backward compatibility."""
 
 from .logger import (
+    _is_ci_environment,
+    _is_github_actions,
     debug,
     emojis_to_text,
     error,
@@ -12,11 +14,17 @@ from .logger import (
     warning,
 )
 
+# Public API names (without underscore prefix)
+is_ci_environment = _is_ci_environment
+is_github_actions = _is_github_actions
+
 __all__ = [
     "debug",
     "emojis_to_text",
     "error",
     "info",
+    "is_ci_environment",
+    "is_github_actions",
     "logger",
     "setup",
     "strip_emojis",
