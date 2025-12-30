@@ -1,3 +1,10 @@
+## [2.13.7](https://github.com/hypersec-io/hs-pylib/compare/v2.13.6...v2.13.7) (2025-12-30)
+
+
+### Bug Fixes
+
+* print_error stderr console and add CI mode logger ([73ef10e](https://github.com/hypersec-io/hs-pylib/commit/73ef10e705efaa5c0cb555e5e43bd88b80dcf37a))
+
 ## [2.13.6](https://github.com/hypersec-io/hs-pylib/compare/v2.13.5...v2.13.6) (2025-12-30)
 
 
