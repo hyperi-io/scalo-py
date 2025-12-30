@@ -170,6 +170,10 @@ class ProcessMetrics:
         self.registry = registry or CollectorRegistry()
         self.process = psutil.Process()
         self.start_time = time.time()
+        # Track previous CPU totals to avoid double counting
+        initial_cpu = self.process.cpu_times()
+        self._prev_cpu_user = initial_cpu.user
+        self._prev_cpu_system = initial_cpu.system
 
         # Runtime environment detection
         runtime_env = RuntimeEnvironment(app_name)
@@ -259,7 +263,15 @@ class ProcessMetrics:
             cpu_times = self.process.cpu_times()
 
             self.cpu_percent.set(cpu_percent)
-            self.cpu_seconds_total.inc(cpu_times.user + cpu_times.system)
+            # Only increment by the delta since last update
+            delta_user = cpu_times.user - self._prev_cpu_user
+            delta_system = cpu_times.system - self._prev_cpu_system
+            if delta_user > 0:
+                self.cpu_seconds_total.inc(delta_user)
+            if delta_system > 0:
+                self.cpu_seconds_total.inc(delta_system)
+            self._prev_cpu_user = cpu_times.user
+            self._prev_cpu_system = cpu_times.system
 
             # Memory metrics
             memory_info = self.process.memory_info()
@@ -325,6 +337,10 @@ class ContainerMetrics:
             self.enabled = False
             return
 
+        self._memory_limit_bytes_value: int | None = None
+        self._prev_throttled_usec: int = 0
+        self._prev_oom_kills: int = 0
+
         # Container memory metrics
         self.memory_limit_bytes = Gauge(
             "container_memory_limit_bytes",
@@ -385,6 +401,7 @@ class ContainerMetrics:
             memory_limit = self._read_cgroup_memory_limit()
             if memory_limit:
                 self.memory_limit_bytes.set(memory_limit)
+                self._memory_limit_bytes_value = memory_limit
 
             # CPU quota
             cpu_quota = self._read_cgroup_cpu_quota()
@@ -410,6 +427,15 @@ class ContainerMetrics:
 
             return limit
 
+        except (FileNotFoundError, ValueError, PermissionError):
+            return None
+
+    def _read_cgroup_memory_usage(self) -> int | None:
+        """Read current memory usage from cgroups v2."""
+        try:
+            with open("/sys/fs/cgroup/memory.current") as f:
+                usage_str = f.read().strip()
+            return int(usage_str)
         except (FileNotFoundError, ValueError, PermissionError):
             return None
 
@@ -440,13 +466,12 @@ class ContainerMetrics:
 
         try:
             # Memory metrics
-            process = psutil.Process()
-            memory_usage = process.memory_info().rss
-            memory_limit = self.memory_limit_bytes._value.get()
+            memory_usage = self._read_cgroup_memory_usage()
+            if memory_usage is not None:
+                self.memory_usage_bytes.set(memory_usage)
 
-            self.memory_usage_bytes.set(memory_usage)
-
-            if memory_limit and memory_limit > 0:
+            memory_limit = self._memory_limit_bytes_value
+            if memory_limit and memory_limit > 0 and memory_usage is not None:
                 available = memory_limit - memory_usage
                 self.memory_available_bytes.set(max(0, available))
 
@@ -457,8 +482,55 @@ class ContainerMetrics:
                 if pressure > 95:
                     logger.warning(f"High memory pressure: {pressure:.1f}%")
 
+            # CPU throttling metrics
+            cpu_stats = self._read_cgroup_cpu_stats()
+            if cpu_stats:
+                throttled_usec = cpu_stats.get("throttled_usec")
+                if throttled_usec is not None:
+                    delta_throttled = throttled_usec - self._prev_throttled_usec
+                    if delta_throttled > 0:
+                        self.cpu_throttled_seconds_total.inc(delta_throttled / 1_000_000)
+                    self._prev_throttled_usec = throttled_usec
+
+            # OOM kill counter from memory.events
+            oom_kills = self._read_memory_events_oom_kill()
+            if oom_kills is not None:
+                delta_oom = oom_kills - self._prev_oom_kills
+                if delta_oom > 0:
+                    self.oom_kills_total.inc(delta_oom)
+                self._prev_oom_kills = oom_kills
+
         except Exception as e:
             logger.error(f"Failed to update container metrics: {e}")
+
+    def _read_cgroup_cpu_stats(self) -> dict[str, int]:
+        """Read cpu.stat (cgroups v2)."""
+        stats: dict[str, int] = {}
+        try:
+            with open("/sys/fs/cgroup/cpu.stat") as f:
+                for line in f:
+                    if " " not in line:
+                        continue
+                    key, value = line.strip().split(" ", 1)
+                    try:
+                        stats[key] = int(value)
+                    except ValueError:
+                        continue
+        except (FileNotFoundError, PermissionError):
+            return {}
+        return stats
+
+    def _read_memory_events_oom_kill(self) -> int | None:
+        """Read oom_kill counter from memory.events (cgroups v2)."""
+        try:
+            with open("/sys/fs/cgroup/memory.events") as f:
+                for line in f:
+                    if line.startswith("oom_kill"):
+                        _, value = line.strip().split(" ", 1)
+                        return int(value)
+        except (FileNotFoundError, PermissionError, ValueError):
+            return None
+        return None
 
 
 class HTTPMetrics:

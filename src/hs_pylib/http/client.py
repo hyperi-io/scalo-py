@@ -10,10 +10,11 @@
 
 from __future__ import annotations
 
+import asyncio
+import time
 from typing import Any
 
 import httpx
-import stamina
 
 from hs_pylib.logger import logger
 
@@ -106,16 +107,25 @@ class HttpClient:
             httpx.HTTPError: On non-retryable errors or after retries exhausted
         """
 
-        @stamina.retry(
-            on=(httpx.HTTPStatusError, httpx.TransportError),
-            attempts=self._retries,
-        )
-        def _do_request() -> httpx.Response:
-            response = self._client.request(method, url, **kwargs)
-            response.raise_for_status()
-            return response
-
-        return _do_request()
+        backoff = 0.5
+        for attempt in range(1, self._retries + 1):
+            try:
+                response = self._client.request(method, url, **kwargs)
+                response.raise_for_status()
+                return response
+            except httpx.HTTPStatusError as exc:
+                status = exc.response.status_code
+                if 500 <= status < 600 and attempt < self._retries:
+                    time.sleep(backoff)
+                    backoff *= 2
+                    continue
+                raise
+            except httpx.TransportError:
+                if attempt < self._retries:
+                    time.sleep(backoff)
+                    backoff *= 2
+                    continue
+                raise
 
     def get(self, url: str, **kwargs: Any) -> httpx.Response:
         """Send GET request.
@@ -289,16 +299,25 @@ class AsyncHttpClient:
             httpx.HTTPError: On non-retryable errors or after retries exhausted
         """
 
-        @stamina.retry(
-            on=(httpx.HTTPStatusError, httpx.TransportError),
-            attempts=self._retries,
-        )
-        async def _do_request() -> httpx.Response:
-            response = await self._client.request(method, url, **kwargs)
-            response.raise_for_status()
-            return response
-
-        return await _do_request()
+        backoff = 0.5
+        for attempt in range(1, self._retries + 1):
+            try:
+                response = await self._client.request(method, url, **kwargs)
+                response.raise_for_status()
+                return response
+            except httpx.HTTPStatusError as exc:
+                status = exc.response.status_code
+                if 500 <= status < 600 and attempt < self._retries:
+                    await asyncio.sleep(backoff)
+                    backoff *= 2
+                    continue
+                raise
+            except httpx.TransportError:
+                if attempt < self._retries:
+                    await asyncio.sleep(backoff)
+                    backoff *= 2
+                    continue
+                raise
 
     async def get(self, url: str, **kwargs: Any) -> httpx.Response:
         """Send async GET request.

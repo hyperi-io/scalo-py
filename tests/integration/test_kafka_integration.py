@@ -9,19 +9,27 @@
 """
 Integration tests for hs_pylib.kafka module.
 
-These tests require a running Kafka broker. Configure via environment:
+These tests require a running Kafka broker. The test framework automatically:
 
-    KAFKA_BOOTSTRAP_SERVERS=db.tyrell.com.au:9092
+1. Tries remote Kafka from .env (k8s.tyrell.com.au:30092) if reachable
+2. Falls back to local Docker Kafka (localhost:9092) if available
+3. Auto-starts Docker Kafka via docker-compose.kafka.yml if needed
+
+Configure remote Kafka via .env:
+
+    KAFKA_BOOTSTRAP_SERVERS=k8s.tyrell.com.au:30092
     KAFKA_SECURITY_PROTOCOL=SASL_PLAINTEXT
-    KAFKA_SASL_MECHANISM=SCRAM-SHA-256
+    KAFKA_SASL_MECHANISM=SCRAM-SHA-512
     KAFKA_SASL_USERNAME=admin
-    KAFKA_SASL_PASSWORD=admin123
+    KAFKA_SASL_PASSWORD=TyrellPOC2024
+
+Or start local Kafka manually:
+
+    docker compose -f docker-compose.kafka.yml up -d
 
 Run with: pytest tests/integration/test_kafka_integration.py -v -m integration
 """
 
-import json
-import os
 import time
 import uuid
 from datetime import datetime, timezone
@@ -32,24 +40,8 @@ from faker import Faker
 # Mark all tests in this module as integration tests
 pytestmark = pytest.mark.integration
 
-
-def get_kafka_config() -> dict:
-    """Get Kafka configuration from environment with TLS verification disabled."""
-    from hs_pylib.kafka.config import config_from_env, merge_config, ADMIN_DEFAULTS
-
-    env_config = config_from_env()
-
-    if not env_config.get("bootstrap.servers"):
-        pytest.skip("KAFKA_BOOTSTRAP_SERVERS not set")
-
-    # Merge with defaults and disable TLS verification for self-signed certs
-    return merge_config(env_config, ADMIN_DEFAULTS, verify_ssl=False)
-
-
-@pytest.fixture
-def kafka_config():
-    """Fixture providing Kafka configuration."""
-    return get_kafka_config()
+# Note: kafka_config fixture is provided by conftest.py (session-scoped)
+# It automatically tries remote Kafka, then falls back to Docker
 
 
 class TestKafkaClientIntegration:

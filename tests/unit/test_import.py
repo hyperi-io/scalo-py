@@ -22,8 +22,7 @@ def test_submodules_import():
 
 def test_convenience_imports():
     """Test convenience function imports."""
-    from hs_pylib import Application, get_logging_config, logger
+    from hs_pylib import get_logging_config, logger
 
     assert logger is not None
     assert get_logging_config is not None
-    assert Application is not None

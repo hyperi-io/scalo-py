@@ -30,7 +30,7 @@ Standard ENV Variables (Cloud-Native)
     POSTGRES_HOST=prod-db.svc.cluster.local
     POSTGRES_PORT=5432
     POSTGRES_USER=myapp
-    POSTGRES_PASSWORD=secret123
+    POSTGRES_PASSWORD=<password>
     POSTGRES_DATABASE=production
     POSTGRES_SSLMODE=require
 
@@ -39,7 +39,7 @@ Standard ENV Variables (Cloud-Native)
     MYSQL_HOST=mysql.example.com
     MYSQL_PORT=3306
     MYSQL_USER=root
-    MYSQL_PASSWORD=secret
+    MYSQL_PASSWORD=<password>
     MYSQL_DATABASE=mydb
 
 **MongoDB:**
@@ -47,14 +47,14 @@ Standard ENV Variables (Cloud-Native)
     MONGO_HOST=mongo.svc.local
     MONGO_PORT=27017
     MONGO_USER=admin
-    MONGO_PASSWORD=secret
+    MONGO_PASSWORD=<password>
     MONGO_DATABASE=app_db
 
 **Redis:**
 
     REDIS_HOST=redis.svc.local
     REDIS_PORT=6379
-    REDIS_PASSWORD=secret
+    REDIS_PASSWORD=<password>
     REDIS_DB=0
 
 **ClickHouse:**
@@ -62,7 +62,7 @@ Standard ENV Variables (Cloud-Native)
     CLICKHOUSE_HOST=clickhouse.svc
     CLICKHOUSE_PORT=9000
     CLICKHOUSE_USER=default
-    CLICKHOUSE_PASSWORD=secret
+    CLICKHOUSE_PASSWORD=<password>
     CLICKHOUSE_DATABASE=analytics
 
 Usage Patterns
@@ -107,14 +107,14 @@ Deployment
     environment:
       POSTGRES_HOST: db
       POSTGRES_USER: myapp
-      POSTGRES_PASSWORD: secret
+      POSTGRES_PASSWORD: <password>
       POSTGRES_DATABASE: myapp_db
 
 **Local Dev (.env file):**
 
     POSTGRES_HOST=localhost
     POSTGRES_USER=dev
-    POSTGRES_PASSWORD=dev123
+    POSTGRES_PASSWORD=<password>
     POSTGRES_DATABASE=myapp_dev
 
 Zero Configuration Required

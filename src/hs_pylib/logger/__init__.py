@@ -1,5 +1,25 @@
 """hs-pylib Logger Module - Re-exports from logger.py for backward compatibility."""
 
-# Re-export everything from logger.py
-# This creates: hs_pylib.logger.logger, hs_pylib.logger.info, etc.
-from .logger import *  # noqa: F403
+from .logger import (
+    debug,
+    emojis_to_text,
+    error,
+    info,
+    logger,
+    setup,
+    strip_emojis,
+    success,
+    warning,
+)
+
+__all__ = [
+    "debug",
+    "emojis_to_text",
+    "error",
+    "info",
+    "logger",
+    "setup",
+    "strip_emojis",
+    "success",
+    "warning",
+]
