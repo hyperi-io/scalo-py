@@ -1,3 +1,30 @@
+## [2.13.6](https://github.com/hypersec-io/hs-pylib/compare/v2.13.5...v2.13.6) (2025-12-30)
+
+
+### Bug Fixes
+
+* remove unused application framework, add Kafka Docker testing ([c916a92](https://github.com/hypersec-io/hs-pylib/commit/c916a928965bcd2864ab7f28d6e431a4f75c91bf))
+
+
+### BREAKING CHANGES
+
+* Remove application framework (hs_pylib.application)
+- Zero production usage, adds complexity without benefit
+- Removed 2,656 lines of unused code and tests
+
+Added:
+- Docker Kafka for local integration testing (docker-compose.kafka.yml)
+- Smart Kafka fixtures in conftest.py (remote fallback to local Docker)
+- Unit tests for Kafka fixture logic (19 tests)
+- Integration tests for Docker Kafka fallback
+
+Changed:
+- Kafka integration tests now auto-detect remote or local Kafka
+- Docker container cleanup only stops what tests started
+- Unique project name (hs-pylib-test) avoids conflicts
+
+Python version policy: >=3.12 only
+
 ## [2.13.5](https://github.com/hypersec-io/hs-pylib/compare/v2.13.4...v2.13.5) (2025-12-29)
 
 
