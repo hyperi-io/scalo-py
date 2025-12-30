@@ -1,35 +1,25 @@
 """
-HS-Lib - Enterprise Infrastructure for Python Applications
-===========================================================
+hs-pylib - Enterprise Infrastructure for Python Applications
+=============================================================
 
 Zero-configuration infrastructure library for containerized Python apps.
 Configuration, logging, metrics, database utilities - all automatic!
 
-Quick Start (Complete Example)
-===============================
+Quick Start
+===========
 
     # Install
-    pip install hs-pylib[database,metrics,api]
+    pip install hs-pylib[database,metrics]
 
-    # Create application (one line!)
-    from hs_pylib import Application
-
-    app = Application()
-
-    # Everything configured automatically:
-    app.logger.info("Application started")          # Structured logging
-    app.config.database.host                        # ENV > .env > yaml > defaults
-    app.runtime.data_dir                            # /data (K8s) or ~/.local/share (local)
-
-    # Or use components directly:
+    # Use components directly:
     from hs_pylib import logger, get_runtime_paths, create_metrics
     from hs_pylib.config import settings
-    from hs_pylib.dbconn import build_database_url
+    from hs_pylib.database import build_database_url
 
     logger.info("Service starting")
     runtime = get_runtime_paths()                   # Auto-detects K8s/Docker/local
-    metrics = create_metrics(namespace="myapp")    # Auto-collects process metrics
-    db_url = build_database_url("postgresql")      # Reads POSTGRES_* ENV vars
+    metrics = create_metrics(namespace="myapp")     # Auto-collects process metrics
+    db_url = build_database_url("postgresql")       # Reads POSTGRES_* ENV vars
 
 Core Features
 =============
@@ -84,67 +74,36 @@ Core Features
     metrics.request_duration.observe(0.123)         # Histogram
     # Auto-collects process/container metrics too!
 
-Deployment Patterns
-===================
+**6. Kafka Client**
 
-**1. FastAPI Application:**
+    from hs_pylib.kafka import KafkaClient, KafkaConsumer, KafkaProducer
 
-    from hs_pylib import Application
-    from fastapi import FastAPI
-
-    app = Application()
-    api = FastAPI()
-
-    @api.get("/health")
-    def health():
-        return {"status": "healthy"}
-
-    # Run with: uvicorn main:api --host 0.0.0.0 --port 8000
-
-**2. CLI Tool (with Typer):**
-
-    from hs_pylib import Application
-    from hs_pylib.cli import Typer, Argument, Option
-
-    app = Application()
-    cli = Typer(help="My CLI tool")
-
-    @cli.command()
-    def process(file: str = Argument(...)):
-        app.logger.info("Processing file", file=file)
-        # Access config, paths, metrics
-        data_dir = app.runtime.data_dir
-
-    if __name__ == "__main__":
-        cli()
-
-**3. Daemon/Background Worker:**
-
-    from hs_pylib import Application
-
-    app = Application()
-
-    while True:
-        app.logger.debug("Processing queue")
-        # Use app.config, app.logger, app.metrics
+    # Full-featured Kafka support with admin, metrics, and health checks
 
 Zero Configuration Philosophy
 ==============================
 
-✅ **Auto-detects** everything (environment, paths, formats)
-✅ **Sensible defaults** for all settings
-✅ **ENV-based overrides** for deployment flexibility
-✅ **Container-aware** (K8s, Docker, bare metal)
-✅ **Production-ready** out of the box
+- **Auto-detects** everything (environment, paths, formats)
+- **Sensible defaults** for all settings
+- **ENV-based overrides** for deployment flexibility
+- **Container-aware** (K8s, Docker, bare metal)
+- **Production-ready** out of the box
 
 Requires Python 3.12+ for modern type hints and enterprise features
+
+---
+
+NOTE: The Application framework (Application.api(), .cli(), .daemon(), etc.)
+has been deprecated and moved to backlog. It was experimental and not used
+in production. Use the core modules directly (logger, config, runtime, etc.)
+for all production code. The Application framework may return in a future
+version once the design is mature.
 """
 
-__version__ = "2.13.0"  # Managed by semantic-release
+__version__ = "2.13.4"  # Managed by semantic-release
 
 # Import modules (packages) - logger is a module for extensibility
 from . import cli, config, database, harness, logger, metrics, runtime
-from .application import Application
 
 # Import commonly used objects and functions
 from .config import get_environment, get_logging_config, get_mount_config
@@ -157,7 +116,7 @@ dbconn = database  # Old name
 prometheus = metrics  # Old name
 
 __all__ = [
-    "Application",  # Primary user-facing API
+    # Core modules
     "cli",
     "config",
     "database",

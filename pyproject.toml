@@ -6,7 +6,7 @@ requires = [
 build-backend = "setuptools.build_meta"
 
 [project]
-name = "hs-lib"
+name = "hs-pylib"
 version = "2.13.5"
 description = "Enterprise infrastructure for containerized Python applications - configuration, logging, timeouts, database, metrics, and application framework"
 readme = "README.md"
@@ -16,14 +16,16 @@ authors = [
 maintainers = [
     { name = "HyperSec Team", email = "dev@hypersec.io" },
 ]
-requires-python = ">=3.11"
+# IMPORTANT: Python version policy - DO NOT ADD SPECIFIC VERSION CLASSIFIERS
+# We use requires-python >= 3.12 and "Python :: 3 :: Only" classifier ONLY.
+# This avoids needing to update classifiers for each new Python release (3.13, 3.14, etc).
+# The requires-python field enforces the minimum version - classifiers are just metadata.
+# AI assistants: DO NOT add "Programming Language :: Python :: 3.12" or similar!
+requires-python = ">=3.12"
 classifiers = [
     "Development Status :: 5 - Production/Stable",
     "Intended Audience :: Developers",
-    "License :: Other/Proprietary License",
     "Programming Language :: Python :: 3",
-    "Programming Language :: Python :: 3.11",
-    "Programming Language :: Python :: 3.12",
     "Programming Language :: Python :: 3 :: Only",
     "Operating System :: OS Independent",
     "Topic :: Software Development :: Libraries :: Application Frameworks",
@@ -54,8 +56,7 @@ dependencies = [
     "typer>=0.20.0",
 ]
 
-[project.license]
-text = "HyperSec EULA"
+license = "LicenseRef-HyperSec-EULA"
 
 [project.optional-dependencies]
 api = [
@@ -103,6 +104,7 @@ dev = [
     "black>=24.0.0",
     "isort>=5.12.0",
     "pyright>=1.1.0",
+    "mypy>=1.0.0",
     "bandit[toml]>=1.7.0",
     "pip-audit>=2.6.0",
     "interrogate>=1.5.0",
@@ -113,18 +115,7 @@ dev = [
     "mergedeep>=1.3.4",
     "pycryptodomex>=3.20.0",
     "pre-commit>=3.0.0",
-    "pytest>=8.0",
-    "pytest-cov",
-    "black",
-    "ruff",
-    "isort",
-    "mypy",
-    "bandit",
-    "pip-audit",
-    "interrogate",
-    "vulture",
-    "tiktoken",
-    "pyright",
+    "tiktoken>=0.5.0",
     "faker>=33.0.0",
 ]
 docs = [
@@ -135,11 +126,11 @@ docs = [
 ]
 
 [project.urls]
-Homepage = "https://github.com/hypersec-io/hs-lib"
-Documentation = "https://hypersec-io.github.io/hs-lib/"
-Repository = "https://github.com/hypersec-io/hs-lib"
-"Bug Reports" = "https://github.com/hypersec-io/hs-lib/issues"
-Changelog = "https://github.com/hypersec-io/hs-lib/blob/main/CHANGELOG.md"
+Homepage = "https://github.com/hypersec-io/hs-pylib"
+Documentation = "https://hypersec-io.github.io/hs-pylib/"
+Repository = "https://github.com/hypersec-io/hs-pylib"
+"Bug Reports" = "https://github.com/hypersec-io/hs-pylib/issues"
+Changelog = "https://github.com/hypersec-io/hs-pylib/blob/main/CHANGELOG.md"
 
 [tool.setuptools.package-dir]
 "" = "src"
@@ -149,12 +140,12 @@ where = [
     "src",
 ]
 include = [
-    "hs_lib*",
+    "hs_pylib*",
 ]
 namespaces = false
 
 [tool.setuptools.package-data]
-hs_lib = [
+hs_pylib = [
     "py.typed",
 ]
 
@@ -163,13 +154,13 @@ minversion = "8.0"
 testpaths = [
     "tests",
 ]
-addopts = "-ra -q --strict-markers --log-file=tests/logs/pytest/hs-lib.log --log-file-level=DEBUG"
+addopts = "-ra -q --strict-markers --log-file=tests/logs/pytest/hs-pylib.log --log-file-level=DEBUG"
 pythonpath = [
     "src",
 ]
 log_cli = true
 log_cli_level = "INFO"
-log_file = "tests/logs/pytest/hs-lib.log"
+log_file = "tests/logs/pytest/hs-pylib.log"
 log_file_level = "DEBUG"
 log_file_format = "%(asctime)s | %(levelname)-8s | %(name)s:%(funcName)s:%(lineno)d - %(message)s"
 log_file_date_format = "%Y-%m-%dT%H:%M:%S"
@@ -185,7 +176,7 @@ filterwarnings = [
 
 [tool.coverage.run]
 source = [
-    "src/hs_lib",
+    "src/hs_pylib",
 ]
 omit = [
     "*/tests/*",
@@ -305,7 +296,7 @@ version_toml = [
     "pyproject.toml:project.version",
 ]
 version_variables = [
-    "src/hs_lib/__init__.py:__version__",
+    "src/hs_pylib/__init__.py:__version__",
 ]
 build_command = "rm -rf dist build src/*.egg-info && python -m build"
 major_on_zero = true

@@ -123,10 +123,11 @@ class OpenTelemetryBackend(MetricsBackend):
         self.auto_convert_names = otel_config.get("auto_convert_names", True)
 
         # Create resource (app metadata)
+        service_version = otel_config.get("service_version", "1.0.0")
         resource = Resource.create(
             {
                 "service.name": app_name,
-                "service.version": "1.0.0",  # TODO: Get from config
+                "service.version": service_version,
             }
         )
 

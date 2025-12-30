@@ -37,7 +37,7 @@ from __future__ import annotations
 import time
 from typing import TYPE_CHECKING, Any, Callable
 
-from fastapi import APIRouter
+from fastapi import APIRouter, HTTPException
 from starlette.middleware.base import BaseHTTPMiddleware
 from starlette.requests import Request
 from starlette.responses import Response
@@ -124,15 +124,21 @@ class PrometheusMiddleware(BaseHTTPMiddleware):
 
         # Time the request
         start_time = time.perf_counter()
-        response = await call_next(request)
-        duration = time.perf_counter() - start_time
-
-        # Record metrics
-        status_code = str(response.status_code)
-        self.request_counter.labels(method=method, endpoint=endpoint, status_code=status_code).inc()
-        self.request_duration.labels(method=method, endpoint=endpoint).observe(duration)
-
-        return response
+        status_code = "200"
+        try:
+            response = await call_next(request)
+            status_code = str(response.status_code)
+            return response
+        except HTTPException as exc:  # Capture known HTTP errors
+            status_code = str(exc.status_code)
+            raise
+        except Exception:
+            status_code = "500"
+            raise
+        finally:
+            duration = time.perf_counter() - start_time
+            self.request_counter.labels(method=method, endpoint=endpoint, status_code=status_code).inc()
+            self.request_duration.labels(method=method, endpoint=endpoint).observe(duration)
 
     def _normalise_path(self, request: Request) -> str:
         """Normalise path to reduce metric cardinality.

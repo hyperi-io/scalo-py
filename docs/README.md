@@ -19,6 +19,8 @@ hs-pylib provides 5 application types with container-native patterns:
 - **[Configuration](CONFIG.md)** - 7-layer configuration cascade (ENV → .env → config files → defaults)
 - **[Anonymizer](ANONYMIZER.md)** - PII detection and anonymization using Microsoft Presidio
 
+> Heads-up: the bundled `Application.*` framework referenced below is currently removed from the codebase (see TODO/STATE for context). Use the modular APIs directly or restore the legacy application package from history if you still depend on it.
+
 ## Standards
 
 - **[CLI Standards](CLI-STANDARDS.md)** - Typer framework standards (mandatory)

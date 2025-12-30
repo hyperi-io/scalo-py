@@ -395,10 +395,14 @@ def setup(
 # ============================================================================
 # Smart Auto-Configuration (Zero-Config Pattern)
 # ============================================================================
-# Only auto-configure if user hasn't already configured logger
-# Opt-out: Set HS_LIB_NO_LOGGER_CONFIG=1 to skip auto-config
+# Only auto-configure if explicitly requested.
+# Opt-in: set HS_LIB_AUTO_LOGGER_CONFIG=1 (keeps HS_LIB_NO_LOGGER_CONFIG as override)
 
-if not os.getenv("HS_LIB_NO_LOGGER_CONFIG"):
+def _env_flag(name: str, default: bool = False) -> bool:
+    return os.getenv(name, str(default)).lower() in ("1", "true", "yes")
+
+
+if _env_flag("HS_LIB_AUTO_LOGGER_CONFIG") and not _env_flag("HS_LIB_NO_LOGGER_CONFIG"):
     # Initialize with smart defaults (auto-detects terminal, RFC 3339, emojis)
     setup()
 

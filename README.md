@@ -8,26 +8,21 @@
 
 Enterprise Python infrastructure for HyperSec projects.
 
-hs-pylib provides container-native application patterns, metrics, logging, and infrastructure utilities for all HyperSec Python projects.
+hs-pylib provides metrics, logging, and infrastructure utilities for all HyperSec Python projects.
+
+> Note: The previous `Application.*` framework (API/Daemon/CLI/Oneshot/MCP) was removed in 2.13.x. Use the individual modules (`logger`, `metrics`, `config`, `kafka`, `http`, `cache`) directly or restore the legacy package from history if you need it.
 
 ## Features
-
-### Core Infrastructure (Stable)
 
 - **Logging**: Structured JSON logging with sensitive data masking
 - **PII Anonymization**: ML-based anonymization with Presidio integration
 - **Database Utilities**: ClickHouse, PostgreSQL, MySQL, Redis connection helpers
 - **Configuration**: Multi-layer cascade with environment variable support
 - **Runtime**: Application metadata and environment detection
-
-### Application Framework (Experimental)
-
-- **Application Types**: API (FastAPI), Daemon, CLI (Typer), MCP, and Oneshot
-- **Profile-Based Configuration**: `dev`, `docker`, and `prod` profiles
-- **Health Checks**: Kubernetes-ready liveness/readiness probes
 - **Metrics**: Prometheus and OpenTelemetry backends
-
-> **Note:** The Application framework is experimental and may change. Use the stable core modules (logging, config, runtime, database, metrics) directly for production code.
+- **Kafka**: Complete Kafka client library with admin, consumer, producer, and schema analysis
+- **Harness**: Smart timeout monitors and container registry utilities
+- **CLI**: Typer-based CLI utilities
 
 ## Installation
 
@@ -98,99 +93,78 @@ uv pip install hs-pylib[presidio,opentelemetry] \
 
 ## Quick Start
 
-### API Application (FastAPI)
+### Logging
 
 ```python
-from hs_pylib import Application
+from hs_pylib import logger
 
-app = Application.api(name="my-api", version="1.0.0", profile="prod")
-
-@app.get("/")
-def read_root():
-    return {"message": "Hello World"}
-
-@app.health_check
-async def check_database():
-    # Custom health check
-    return await db.ping()
-
-app.run()
+logger.setup(app_name="my-app", json_output=True)
+logger.info("Application started")
+logger.error("Something went wrong", exc_info=True)
 ```
 
-### Daemon Application
+### Configuration
 
 ```python
-from hs_pylib import Application
+from hs_pylib import config
 
-app = Application.daemon(name="my-worker", profile="prod")
+# Initialize configuration
+config.setup(app_name="my-app")
 
-@app.scheduled(interval=60)
-async def process_queue():
-    # Runs every 60 seconds
-    await process_messages()
-
-@app.startup
-async def on_start():
-    await initialize_database()
-
-app.run()
+# Access settings
+settings = config.get_settings()
+db_config = config.get_database_config()
 ```
 
-### CLI Application (Typer)
+### Database Connections
 
 ```python
-from hs_pylib import Application
+from hs_pylib import database
 
-app = Application.cli(name="my-tool", version="1.0.0")
+# Get database URLs from environment
+postgres_url = database.get_postgresql_url()
+redis_url = database.get_redis_url()
 
-@app.command()
-def deploy(environment: str, region: str = "us-east-1"):
-    """Deploy application to environment."""
-    print(f"Deploying to {environment} in {region}")
-
-app.run()
+# Build custom connection URL
+url = database.build_database_url(
+    driver="postgresql",
+    host="localhost",
+    port=5432,
+    database="mydb",
+    username="user",
+    password="pass"
+)
 ```
 
-## Profiles
+### Kafka
 
-- **`dev`**: Development mode (console logs, no health checks)
-- **`docker`**: Docker Compose mode (JSON logs, health checks on port 8080)
-- **`prod`**: Production mode (JSON logs, health checks, metrics on port 9090)
+```python
+from hs_pylib.kafka import KafkaClient
 
-Profiles are auto-detected from:
+# Create client with configuration
+client = KafkaClient.from_config(config_file="kafka.properties")
 
-1. Environment variable: `HS_LIB_PROFILE` or `APP_PROFILE`
-2. Kubernetes detection (sets `prod`)
-3. Docker detection (sets `docker`)
-4. Default: `dev`
+# Produce messages
+await client.produce("my-topic", {"key": "value"})
 
-## Container Deployment
-
-### Docker
-
-```bash
-# Build
-docker build -t my-app:latest .
-
-# Run with health checks
-docker run -p 8000:8000 -p 8080:8080 -e PROFILE=docker my-app:latest
+# Consume messages
+async for message in client.consume("my-topic", group_id="my-group"):
+    process(message)
 ```
 
-### Kubernetes (HELM)
+### Metrics
 
-```bash
-helm install my-app ./templates/helm/hs-pylib-app \
-  --set app.type=api \
-  --set image.repository=my-app \
-  --set image.tag=1.0.0 \
-  --set keda.enabled=true
+```python
+from hs_pylib.metrics import create_metrics_backend
+
+# Prometheus backend
+metrics = create_metrics_backend("prometheus")
+counter = metrics.counter("requests_total", "Total requests")
+counter.inc()
 ```
 
 ## Documentation
 
-- **Application Framework**: `docs/APP-*.md`
-- **Profiles**: `docs/PROFILES.md`
-- **Kubernetes**: `docs/KUBERNETES.md`
 - **Metrics**: `docs/METRICS.md`
 - **Logging**: `docs/LOGGING.md`
 - **Anonymizer**: `docs/ANONYMIZER.md`

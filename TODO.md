@@ -121,6 +121,37 @@
 - Can't auto-instrument all clients
 - Explicit instrumentation is reliable
 
+### [BACKLOG] hs_pylib.application: Application Framework - **deferred**
+
+**Status:** Removed from hs-pylib v2.13.5, preserved in git history
+
+**What was removed:**
+
+- `src/hs_pylib/application/` - API, CLI, Daemon, MCP, Oneshot application types
+- Profile-based configuration (dev, docker, prod)
+- Health check mixins
+- Signal handling
+
+**Why removed:**
+
+- Zero production usage across dfe-* projects (dfe-control-plane, dfe-engine, dfe-discovery, dfe-developer, dfe-cli-core, dfe-beats)
+- 2,656 lines of experimental code
+- Production apps use FastAPI/Typer directly with hs_pylib.metrics/logger/config
+
+**Reactivation criteria:**
+
+- When 2+ production apps need standardized application patterns
+- When profile-based config provides value over direct configuration
+- Branch: `feat/application-framework` (if created) or restore from git history
+
+**Restore from:**
+
+```bash
+git show ae3d339:src/hs_pylib/application/ > application_backup.tar
+```
+
+---
+
 ### [BACKLOG] hs_pylib.kafka: JSON key-value offset seek - **2d**
 
 **Status:** Backlog - documented in admin.py:552-582
