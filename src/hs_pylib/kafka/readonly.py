@@ -73,7 +73,7 @@ class ReadOnlyKafkaClient:
         self._verify_ssl = verify_ssl
         self._admin = AdminClient(self._config)
 
-    def __enter__(self) -> "ReadOnlyKafkaClient":
+    def __enter__(self) -> ReadOnlyKafkaClient:
         return self
 
     def __exit__(self, exc_type, exc_val, exc_tb) -> None:

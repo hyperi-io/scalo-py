@@ -27,10 +27,10 @@ if TYPE_CHECKING:
 
 
 def reservoir_sample(
-    messages: Iterator["Message"],
+    messages: Iterator[Message],
     k: int,
     seed: int | None = None,
-) -> list["Message"]:
+) -> list[Message]:
     """
     Reservoir sampling for uniform random sample from stream.
 
@@ -50,7 +50,7 @@ def reservoir_sample(
     else:
         rng = random.Random()
 
-    reservoir: list["Message"] = []
+    reservoir: list[Message] = []
 
     for i, msg in enumerate(messages):
         if i < k:
@@ -66,12 +66,12 @@ def reservoir_sample(
 
 
 def time_bounded_consume(
-    consumer: "KafkaConsumer",
+    consumer: KafkaConsumer,
     start_time: int,
     end_time: int,
     limit: int | None = None,
     timeout: float = 1.0,
-) -> list["Message"]:
+) -> list[Message]:
     """
     Consume messages within a time range.
 
@@ -88,7 +88,7 @@ def time_bounded_consume(
     Returns:
         List of messages within the time range
     """
-    messages: list["Message"] = []
+    messages: list[Message] = []
     consecutive_nulls = 0
     max_consecutive_nulls = 3  # Stop after 3 consecutive empty polls
 
@@ -122,10 +122,10 @@ def time_bounded_consume(
 
 
 def partition_sample(
-    messages: Iterator["Message"],
+    messages: Iterator[Message],
     n_per_partition: int,
     seed: int | None = None,
-) -> dict[int, list["Message"]]:
+) -> dict[int, list[Message]]:
     """
     Sample n messages per partition using reservoir sampling.
 
@@ -146,7 +146,7 @@ def partition_sample(
         rng = random.Random()
 
     # Group messages by partition with reservoir sampling
-    reservoirs: dict[int, list["Message"]] = defaultdict(list)
+    reservoirs: dict[int, list[Message]] = defaultdict(list)
     counts: dict[int, int] = defaultdict(int)
 
     for msg in messages:

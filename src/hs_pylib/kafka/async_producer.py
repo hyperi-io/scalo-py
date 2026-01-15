@@ -56,7 +56,7 @@ class AsyncKafkaProducer:
         self._executor = executor or ThreadPoolExecutor(max_workers=4)
         self._owns_executor = executor is None
 
-    async def __aenter__(self) -> "AsyncKafkaProducer":
+    async def __aenter__(self) -> AsyncKafkaProducer:
         return self
 
     async def __aexit__(self, exc_type, exc_val, exc_tb) -> None:
@@ -112,10 +112,7 @@ class AsyncKafkaProducer:
         # Convert headers
         headers_list = None
         if headers:
-            headers_list = [
-                (k, v.encode("utf-8") if isinstance(v, str) else v)
-                for k, v in headers.items()
-            ]
+            headers_list = [(k, v.encode("utf-8") if isinstance(v, str) else v) for k, v in headers.items()]
 
         # Build produce kwargs
         kwargs: dict[str, Any] = {

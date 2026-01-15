@@ -92,7 +92,13 @@ class PrometheusMiddleware(BaseHTTPMiddleware):
             metrics_manager = create_metrics("app")
 
         self.metrics = metrics_manager
-        self.exclude_paths = exclude_paths or ["/metrics", "/health", "/health/live", "/health/ready", "/health/startup"]
+        self.exclude_paths = exclude_paths or [
+            "/metrics",
+            "/health",
+            "/health/live",
+            "/health/ready",
+            "/health/startup",
+        ]
 
         # Create HTTP metrics
         self.request_counter = self.metrics.counter(

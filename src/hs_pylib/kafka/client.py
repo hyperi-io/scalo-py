@@ -84,7 +84,7 @@ class KafkaClient:
         # Create admin client
         self._admin = AdminClient(self._config)
 
-    def __enter__(self) -> "KafkaClient":
+    def __enter__(self) -> KafkaClient:
         return self
 
     def __exit__(self, exc_type, exc_val, exc_tb) -> None:
@@ -236,10 +236,7 @@ class KafkaClient:
         consumer = Consumer(consumer_config)
         try:
             # Create TopicPartition list with timestamps
-            tps = [
-                TopicPartition(topic, partition, timestamp)
-                for partition, timestamp in timestamps.items()
-            ]
+            tps = [TopicPartition(topic, partition, timestamp) for partition, timestamp in timestamps.items()]
 
             # Get offsets
             result = consumer.offsets_for_times(tps)

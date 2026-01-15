@@ -218,8 +218,7 @@ def config_from_file(
         format = format_map.get(ext)
         if format is None:
             raise ValueError(
-                f"Unsupported configuration file extension: {ext}. "
-                f"Supported: .properties, .json, .yaml, .yml, .ini"
+                f"Unsupported configuration file extension: {ext}. Supported: .properties, .json, .yaml, .yml, .ini"
             )
 
     content = file_path.read_text()
@@ -273,10 +272,7 @@ def _parse_yaml(content: str) -> dict[str, Any]:
     try:
         import yaml
     except ImportError:
-        raise ImportError(
-            "PyYAML is required for YAML configuration files. "
-            "Install with: pip install pyyaml"
-        )
+        raise ImportError("PyYAML is required for YAML configuration files. Install with: pip install pyyaml")
 
     return yaml.safe_load(content) or {}
 

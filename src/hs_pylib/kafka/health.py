@@ -497,10 +497,7 @@ class KafkaConsumerHealth:
                     HealthCheckResult(
                         issue=HealthIssue.FETCH_ERRORS,
                         severity="warning",
-                        message=(
-                            f"Broker {broker_name} errors: tx={tx_errs}, rx={rx_errs}, "
-                            f"timeouts={req_timeouts}"
-                        ),
+                        message=(f"Broker {broker_name} errors: tx={tx_errs}, rx={rx_errs}, timeouts={req_timeouts}"),
                         details={
                             "broker": broker_name,
                             "tx_errors": tx_errs,
@@ -552,10 +549,7 @@ class KafkaConsumerHealth:
             "kafka_consumer_healthy": 1 if not self._issues_detected else 0,
             "kafka_consumer_issues_total": sum(self._issues_detected.values()),
             # Issue counts by type
-            **{
-                f"kafka_consumer_issue_{issue.value}_total": count
-                for issue, count in self._issues_detected.items()
-            },
+            **{f"kafka_consumer_issue_{issue.value}_total": count for issue, count in self._issues_detected.items()},
             # Current state
             "kafka_consumer_partitions_assigned": total_partitions,
             "kafka_consumer_lag_total": total_lag,

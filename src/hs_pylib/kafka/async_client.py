@@ -62,7 +62,7 @@ class AsyncKafkaClient:
         self._executor = executor or ThreadPoolExecutor(max_workers=4)
         self._owns_executor = executor is None
 
-    async def __aenter__(self) -> "AsyncKafkaClient":
+    async def __aenter__(self) -> AsyncKafkaClient:
         return self
 
     async def __aexit__(self, exc_type, exc_val, exc_tb) -> None:
@@ -128,9 +128,7 @@ class AsyncKafkaClient:
         # Get watermarks
         base_config = self._user_config.copy()
         base_config["group.id"] = f"hs-pylib-async-{id(self)}"
-        consumer_config = merge_config(
-            base_config, CONSUMER_DEFAULTS, verify_ssl=self._verify_ssl
-        )
+        consumer_config = merge_config(base_config, CONSUMER_DEFAULTS, verify_ssl=self._verify_ssl)
 
         consumer = Consumer(consumer_config)
         try:
@@ -180,9 +178,7 @@ class AsyncKafkaClient:
 
         base_config = self._user_config.copy()
         base_config["group.id"] = f"hs-pylib-async-wm-{id(self)}"
-        consumer_config = merge_config(
-            base_config, CONSUMER_DEFAULTS, verify_ssl=self._verify_ssl
-        )
+        consumer_config = merge_config(base_config, CONSUMER_DEFAULTS, verify_ssl=self._verify_ssl)
 
         consumer = Consumer(consumer_config)
         try:

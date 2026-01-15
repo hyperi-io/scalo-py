@@ -32,7 +32,7 @@ Run with: pytest tests/integration/test_kafka_integration.py -v -m integration
 
 import time
 import uuid
-from datetime import datetime, timezone
+from datetime import UTC, datetime, timezone
 
 import pytest
 from faker import Faker
@@ -91,9 +91,11 @@ class TestKafkaClientIntegration:
             print(f"\nTopic: {metadata.name}")
             print(f"  Partitions: {len(metadata.partitions)}")
             for p in metadata.partitions[:3]:  # Show first 3
-                print(f"    [{p.partition}] leader={p.leader}, "
-                      f"watermarks=({p.low_watermark}, {p.high_watermark}), "
-                      f"messages={p.high_watermark - p.low_watermark}")
+                print(
+                    f"    [{p.partition}] leader={p.leader}, "
+                    f"watermarks=({p.low_watermark}, {p.high_watermark}), "
+                    f"messages={p.high_watermark - p.low_watermark}"
+                )
 
     def test_get_watermark_offsets(self, kafka_config):
         """Should get watermark offsets for a topic."""
@@ -168,11 +170,12 @@ class TestReadOnlyMetricsIntegration:
         4. Key metrics have expected values from real broker
         """
         import time
+
         from confluent_kafka import Consumer
 
-        from hs_pylib.kafka.config import merge_config, CONSUMER_DEFAULTS
-        from hs_pylib.kafka.readonly import ReadOnlyKafkaClient
+        from hs_pylib.kafka.config import CONSUMER_DEFAULTS, merge_config
         from hs_pylib.kafka.metrics import KafkaMetricsCollector, create_stats_callback
+        from hs_pylib.kafka.readonly import ReadOnlyKafkaClient
 
         # 1. Create metrics collector
         collector = KafkaMetricsCollector()
@@ -309,11 +312,12 @@ class TestReadOnlyMetricsIntegration:
         This simulates what a Prometheus exporter would do.
         """
         import time
+
         from confluent_kafka import Consumer
 
-        from hs_pylib.kafka.config import merge_config, CONSUMER_DEFAULTS
-        from hs_pylib.kafka.readonly import ReadOnlyKafkaClient
+        from hs_pylib.kafka.config import CONSUMER_DEFAULTS, merge_config
         from hs_pylib.kafka.metrics import KafkaMetricsCollector, create_stats_callback
+        from hs_pylib.kafka.readonly import ReadOnlyKafkaClient
 
         collector = KafkaMetricsCollector()
         callback = create_stats_callback(collector)
@@ -356,13 +360,13 @@ class TestReadOnlyMetricsIntegration:
                     broker_label = f'broker="{broker_name}"'
                     for key, value in broker_stats.items():
                         if isinstance(value, (int, float)):
-                            lines.append(f'kafka_broker_{key}{{{broker_label}}} {value}')
+                            lines.append(f"kafka_broker_{key}{{{broker_label}}} {value}")
 
                 # Consumer lag metrics with labels
                 for topic, partitions in collector.get_consumer_lag().items():
                     for partition, lag in partitions.items():
                         labels = f'topic="{topic}",partition="{partition}"'
-                        lines.append(f'kafka_consumer_lag{{{labels}}} {lag}')
+                        lines.append(f"kafka_consumer_lag{{{labels}}} {lag}")
 
                 return "\n".join(lines)
 
@@ -398,7 +402,7 @@ def generate_user_event() -> dict:
     return {
         "event_id": str(uuid.uuid4()),
         "event_type": fake.random_element(["login", "logout", "purchase", "view"]),
-        "timestamp": datetime.now(timezone.utc).isoformat(),
+        "timestamp": datetime.now(UTC).isoformat(),
         "user": {
             "id": fake.uuid4(),
             "name": fake.name(),
@@ -418,7 +422,7 @@ def generate_order_event() -> dict:
     return {
         "order_id": str(uuid.uuid4()),
         "customer_id": fake.uuid4(),
-        "created_at": datetime.now(timezone.utc).isoformat(),
+        "created_at": datetime.now(UTC).isoformat(),
         "status": fake.random_element(["pending", "confirmed", "shipped", "delivered"]),
         "items": [
             {
@@ -448,7 +452,7 @@ class TestKafkaProducerConsumerIntegration:
 
     def test_produce_and_consume_user_events(self, kafka_config, test_topic):
         """Should produce and consume user events with JSON payloads."""
-        from hs_pylib.kafka import KafkaProducer, KafkaConsumer
+        from hs_pylib.kafka import KafkaConsumer, KafkaProducer
 
         num_messages = 10
 
@@ -477,9 +481,7 @@ class TestKafkaProducerConsumerIntegration:
         print(f"\n=== Consuming messages from {test_topic} ===")
         consumed_messages = []
 
-        with KafkaConsumer(
-            kafka_config, f"test-group-{uuid.uuid4().hex[:8]}", verify_ssl=False
-        ) as consumer:
+        with KafkaConsumer(kafka_config, f"test-group-{uuid.uuid4().hex[:8]}", verify_ssl=False) as consumer:
             consumer.subscribe([test_topic])
 
             # Poll for messages with timeout
@@ -504,7 +506,7 @@ class TestKafkaProducerConsumerIntegration:
 
     def test_produce_order_events_with_headers(self, kafka_config, test_topic):
         """Should produce order events with custom headers."""
-        from hs_pylib.kafka import KafkaProducer, KafkaConsumer
+        from hs_pylib.kafka import KafkaConsumer, KafkaProducer
 
         num_messages = 5
 
@@ -533,9 +535,7 @@ class TestKafkaProducerConsumerIntegration:
 
         # 2. Consume and verify headers
         consumed = 0
-        with KafkaConsumer(
-            kafka_config, f"test-group-{uuid.uuid4().hex[:8]}", verify_ssl=False
-        ) as consumer:
+        with KafkaConsumer(kafka_config, f"test-group-{uuid.uuid4().hex[:8]}", verify_ssl=False) as consumer:
             consumer.subscribe([test_topic])
 
             start = time.time()
@@ -610,7 +610,7 @@ class TestKafkaConsumerOffsetReset:
             for i in range(20):
                 event = {
                     "index": i,
-                    "timestamp": datetime.now(timezone.utc).isoformat(),
+                    "timestamp": datetime.now(UTC).isoformat(),
                     "data": fake.sentence(),
                 }
                 producer.send(topic, value=event)

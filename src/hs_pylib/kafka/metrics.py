@@ -63,9 +63,7 @@ class KafkaMetricsCollector:
     _stats: dict[str, Any] = field(default_factory=dict, init=False)
     _broker_stats: dict[str, dict[str, Any]] = field(default_factory=dict, init=False)
     _topic_stats: dict[str, dict[str, Any]] = field(default_factory=dict, init=False)
-    _partition_stats: dict[str, dict[int, dict[str, Any]]] = field(
-        default_factory=dict, init=False
-    )
+    _partition_stats: dict[str, dict[int, dict[str, Any]]] = field(default_factory=dict, init=False)
     _cgrp_stats: dict[str, Any] = field(default_factory=dict, init=False)
     _eos_stats: dict[str, Any] = field(default_factory=dict, init=False)
     _consumer_lag: dict[str, dict[int, int]] = field(default_factory=dict, init=False)
@@ -151,52 +149,60 @@ class KafkaMetricsCollector:
                     # RTT latency window (full percentiles)
                     if "rtt" in broker:
                         rtt = broker["rtt"]
-                        broker_metrics.update({
-                            "rtt_min_us": rtt.get("min", 0),
-                            "rtt_max_us": rtt.get("max", 0),
-                            "rtt_avg_us": rtt.get("avg", 0),
-                            "rtt_sum_us": rtt.get("sum", 0),
-                            "rtt_cnt": rtt.get("cnt", 0),
-                            "rtt_stddev_us": rtt.get("stddev", 0),
-                            "rtt_p50_us": rtt.get("p50", 0),
-                            "rtt_p75_us": rtt.get("p75", 0),
-                            "rtt_p90_us": rtt.get("p90", 0),
-                            "rtt_p95_us": rtt.get("p95", 0),
-                            "rtt_p99_us": rtt.get("p99", 0),
-                            "rtt_p99_99_us": rtt.get("p99_99", 0),
-                        })
+                        broker_metrics.update(
+                            {
+                                "rtt_min_us": rtt.get("min", 0),
+                                "rtt_max_us": rtt.get("max", 0),
+                                "rtt_avg_us": rtt.get("avg", 0),
+                                "rtt_sum_us": rtt.get("sum", 0),
+                                "rtt_cnt": rtt.get("cnt", 0),
+                                "rtt_stddev_us": rtt.get("stddev", 0),
+                                "rtt_p50_us": rtt.get("p50", 0),
+                                "rtt_p75_us": rtt.get("p75", 0),
+                                "rtt_p90_us": rtt.get("p90", 0),
+                                "rtt_p95_us": rtt.get("p95", 0),
+                                "rtt_p99_us": rtt.get("p99", 0),
+                                "rtt_p99_99_us": rtt.get("p99_99", 0),
+                            }
+                        )
 
                     # Throttle latency window
                     if "throttle" in broker:
                         throttle = broker["throttle"]
-                        broker_metrics.update({
-                            "throttle_min_ms": throttle.get("min", 0),
-                            "throttle_max_ms": throttle.get("max", 0),
-                            "throttle_avg_ms": throttle.get("avg", 0),
-                            "throttle_sum_ms": throttle.get("sum", 0),
-                            "throttle_cnt": throttle.get("cnt", 0),
-                            "throttle_p99_ms": throttle.get("p99", 0),
-                        })
+                        broker_metrics.update(
+                            {
+                                "throttle_min_ms": throttle.get("min", 0),
+                                "throttle_max_ms": throttle.get("max", 0),
+                                "throttle_avg_ms": throttle.get("avg", 0),
+                                "throttle_sum_ms": throttle.get("sum", 0),
+                                "throttle_cnt": throttle.get("cnt", 0),
+                                "throttle_p99_ms": throttle.get("p99", 0),
+                            }
+                        )
 
                     # Internal latency (time from produce() to broker send)
                     if "int_latency" in broker:
                         il = broker["int_latency"]
-                        broker_metrics.update({
-                            "int_latency_min_us": il.get("min", 0),
-                            "int_latency_max_us": il.get("max", 0),
-                            "int_latency_avg_us": il.get("avg", 0),
-                            "int_latency_p99_us": il.get("p99", 0),
-                        })
+                        broker_metrics.update(
+                            {
+                                "int_latency_min_us": il.get("min", 0),
+                                "int_latency_max_us": il.get("max", 0),
+                                "int_latency_avg_us": il.get("avg", 0),
+                                "int_latency_p99_us": il.get("p99", 0),
+                            }
+                        )
 
                     # Outbuf latency (time in output buffer)
                     if "outbuf_latency" in broker:
                         ol = broker["outbuf_latency"]
-                        broker_metrics.update({
-                            "outbuf_latency_min_us": ol.get("min", 0),
-                            "outbuf_latency_max_us": ol.get("max", 0),
-                            "outbuf_latency_avg_us": ol.get("avg", 0),
-                            "outbuf_latency_p99_us": ol.get("p99", 0),
-                        })
+                        broker_metrics.update(
+                            {
+                                "outbuf_latency_min_us": ol.get("min", 0),
+                                "outbuf_latency_max_us": ol.get("max", 0),
+                                "outbuf_latency_avg_us": ol.get("avg", 0),
+                                "outbuf_latency_p99_us": ol.get("p99", 0),
+                            }
+                        )
 
                     self._broker_stats[broker_name] = broker_metrics
 
@@ -211,25 +217,29 @@ class KafkaMetricsCollector:
                     # Batch size window stats
                     if "batchsize" in topic:
                         bs = topic["batchsize"]
-                        topic_metrics.update({
-                            "batchsize_min": bs.get("min", 0),
-                            "batchsize_max": bs.get("max", 0),
-                            "batchsize_avg": bs.get("avg", 0),
-                            "batchsize_sum": bs.get("sum", 0),
-                            "batchsize_cnt": bs.get("cnt", 0),
-                            "batchsize_p99": bs.get("p99", 0),
-                        })
+                        topic_metrics.update(
+                            {
+                                "batchsize_min": bs.get("min", 0),
+                                "batchsize_max": bs.get("max", 0),
+                                "batchsize_avg": bs.get("avg", 0),
+                                "batchsize_sum": bs.get("sum", 0),
+                                "batchsize_cnt": bs.get("cnt", 0),
+                                "batchsize_p99": bs.get("p99", 0),
+                            }
+                        )
 
                     # Batch count window stats
                     if "batchcnt" in topic:
                         bc = topic["batchcnt"]
-                        topic_metrics.update({
-                            "batchcnt_min": bc.get("min", 0),
-                            "batchcnt_max": bc.get("max", 0),
-                            "batchcnt_avg": bc.get("avg", 0),
-                            "batchcnt_sum": bc.get("sum", 0),
-                            "batchcnt_cnt": bc.get("cnt", 0),
-                        })
+                        topic_metrics.update(
+                            {
+                                "batchcnt_min": bc.get("min", 0),
+                                "batchcnt_max": bc.get("max", 0),
+                                "batchcnt_avg": bc.get("avg", 0),
+                                "batchcnt_sum": bc.get("sum", 0),
+                                "batchcnt_cnt": bc.get("cnt", 0),
+                            }
+                        )
 
                     self._topic_stats[topic_name] = topic_metrics
 
@@ -246,9 +256,7 @@ class KafkaMetricsCollector:
                                 continue
 
                             # Consumer lag
-                            self._consumer_lag[topic_name][part_id] = part.get(
-                                "consumer_lag", 0
-                            )
+                            self._consumer_lag[topic_name][part_id] = part.get("consumer_lag", 0)
 
                             # Full partition stats
                             self._partition_stats[topic_name][part_id] = {
@@ -278,9 +286,7 @@ class KafkaMetricsCollector:
                                 "ls_offset": part.get("ls_offset", -1),
                                 # Lag metrics
                                 "consumer_lag": part.get("consumer_lag", -1),
-                                "consumer_lag_stored": part.get(
-                                    "consumer_lag_stored", -1
-                                ),
+                                "consumer_lag_stored": part.get("consumer_lag_stored", -1),
                                 # Message counts
                                 "txmsgs": part.get("txmsgs", 0),
                                 "txbytes": part.get("txbytes", 0),

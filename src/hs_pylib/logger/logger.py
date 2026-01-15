@@ -522,6 +522,7 @@ def setup(
 # Only auto-configure if explicitly requested.
 # Opt-in: set HS_LIB_AUTO_LOGGER_CONFIG=1 (keeps HS_LIB_NO_LOGGER_CONFIG as override)
 
+
 def _env_flag(name: str, default: bool = False) -> bool:
     return os.getenv(name, str(default)).lower() in ("1", "true", "yes")
 

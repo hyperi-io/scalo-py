@@ -29,6 +29,12 @@ from .merge import (
     merge_toml,
     merge_yaml,
 )
+from .postgres_loader import (
+    PostgresConfigError,
+    PostgresConfigLoader,
+    get_default_loader,
+    load_postgres_config,
+)
 
 __all__ = [
     # Config classes and functions
@@ -58,4 +64,9 @@ __all__ = [
     "merge_json",
     "merge_toml",
     "merge_yaml",
+    # PostgreSQL config loader
+    "PostgresConfigLoader",
+    "PostgresConfigError",
+    "load_postgres_config",
+    "get_default_loader",
 ]

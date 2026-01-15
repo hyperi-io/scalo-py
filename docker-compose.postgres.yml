@@ -1,0 +1,52 @@
+# hs-pylib Local PostgreSQL for Integration Testing
+# =================================================
+# PostgreSQL 17 Alpine for cache backend testing
+#
+# Usage:
+#   docker compose -f docker-compose.postgres.yml up -d
+#   docker compose -f docker-compose.postgres.yml down -v
+#
+# PostgreSQL will be available at localhost:5432
+# DSN: postgresql://postgres:postgres@localhost:5432/hs_pylib_test
+#
+# The integration tests will automatically detect and use this if
+# no remote PostgreSQL is configured in the environment.
+
+services:
+  postgres:
+    image: postgres:17-alpine
+    container_name: hs-pylib-postgres
+    hostname: postgres
+    ports:
+      - "5432:5432"
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_DB: hs_pylib_test
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d hs_pylib_test"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+      start_period: 5s
+
+  # Optional: pgAdmin for debugging
+  pgadmin:
+    image: dpage/pgadmin4:latest
+    container_name: hs-pylib-pgadmin
+    profiles:
+      - ui  # Only start with: docker compose -f docker-compose.postgres.yml --profile ui up
+    ports:
+      - "5050:80"
+    environment:
+      PGADMIN_DEFAULT_EMAIL: admin@hypersec.io
+      PGADMIN_DEFAULT_PASSWORD: admin
+      PGADMIN_CONFIG_SERVER_MODE: "False"
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+volumes:
+  postgres-data:
