@@ -1,3 +1,10 @@
+# [2.14.0](https://github.com/hypersec-io/hs-pylib/compare/v2.13.7...v2.14.0) (2026-01-15)
+
+
+### Features
+
+* add PostgreSQL cache and config backends for multi-pod deployments ([6d09b2d](https://github.com/hypersec-io/hs-pylib/commit/6d09b2d3e5b9601e9687162216625a082daad50a))
+
 ## [2.13.7](https://github.com/hypersec-io/hs-pylib/compare/v2.13.6...v2.13.7) (2025-12-30)
 
 
