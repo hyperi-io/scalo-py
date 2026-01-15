@@ -8,8 +8,8 @@
 
 """Unit tests for hs_pylib.http module."""
 
-import pytest
 import httpx
+import pytest
 import stamina
 
 # Disable retries for faster tests

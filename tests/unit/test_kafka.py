@@ -767,7 +767,7 @@ class TestKafkaClientTopicStats:
 
         # Setup watermarks - called per partition
         mock_consumer_for_watermarks.return_value.get_watermark_offsets.side_effect = [
-            (0, 500),   # Partition 0
+            (0, 500),  # Partition 0
             (100, 800),  # Partition 1
         ]
         mock_consumer_for_watermarks.return_value.close = Mock()
@@ -901,9 +901,7 @@ class TestKafkaConsumerSubscribe:
         consumer = KafkaConsumer("localhost:9092", "my-group")
         consumer.subscribe(["topic1", "topic2", "topic3"])
 
-        mock_consumer.return_value.subscribe.assert_called_once_with(
-            ["topic1", "topic2", "topic3"]
-        )
+        mock_consumer.return_value.subscribe.assert_called_once_with(["topic1", "topic2", "topic3"])
 
     def test_consumer_unsubscribe(self, mock_consumer):
         """Consumer should support unsubscribe."""
@@ -2721,9 +2719,7 @@ class TestKafkaAdmin:
 
         mock_future = Future()
         mock_future.set_result(None)
-        mock_admin_client_for_admin.return_value.create_partitions.return_value = {
-            "test-topic": mock_future
-        }
+        mock_admin_client_for_admin.return_value.create_partitions.return_value = {"test-topic": mock_future}
 
         admin = KafkaAdmin("localhost:9092")
         admin.increase_partitions("test-topic", 6)
@@ -2738,9 +2734,7 @@ class TestKafkaAdmin:
 
         mock_future = Future()
         mock_future.set_result(None)
-        mock_admin_client_for_admin.return_value.alter_configs.return_value = {
-            "test-topic": mock_future
-        }
+        mock_admin_client_for_admin.return_value.alter_configs.return_value = {"test-topic": mock_future}
 
         admin = KafkaAdmin("localhost:9092")
         admin.set_retention("test-topic", hours=24)
@@ -2755,9 +2749,7 @@ class TestKafkaAdmin:
 
         mock_future = Future()
         mock_future.set_result(None)
-        mock_admin_client_for_admin.return_value.alter_configs.return_value = {
-            "test-topic": mock_future
-        }
+        mock_admin_client_for_admin.return_value.alter_configs.return_value = {"test-topic": mock_future}
 
         admin = KafkaAdmin("localhost:9092")
         admin.set_retention("test-topic", ms=86400000)  # 1 day
@@ -2781,9 +2773,7 @@ class TestKafkaAdmin:
 
         mock_future = Future()
         mock_future.set_result(mock_result)
-        mock_admin_client_for_admin.return_value.describe_configs.return_value = {
-            "test-topic": mock_future
-        }
+        mock_admin_client_for_admin.return_value.describe_configs.return_value = {"test-topic": mock_future}
 
         admin = KafkaAdmin("localhost:9092")
         config = admin.get_topic_config("test-topic")
@@ -2799,9 +2789,7 @@ class TestKafkaAdmin:
 
         mock_future = Future()
         mock_future.set_result(None)
-        mock_admin_client_for_admin.return_value.alter_configs.return_value = {
-            "test-topic": mock_future
-        }
+        mock_admin_client_for_admin.return_value.alter_configs.return_value = {"test-topic": mock_future}
 
         admin = KafkaAdmin("localhost:9092")
         admin.set_cleanup_policy("test-topic", "compact")
@@ -2816,9 +2804,7 @@ class TestKafkaAdmin:
 
         mock_future = Future()
         mock_future.set_result(None)
-        mock_admin_client_for_admin.return_value.alter_configs.return_value = {
-            "test-topic": mock_future
-        }
+        mock_admin_client_for_admin.return_value.alter_configs.return_value = {"test-topic": mock_future}
 
         admin = KafkaAdmin("localhost:9092")
         admin.alter_config("test-topic", {"max.message.bytes": "1048576"})
@@ -2883,9 +2869,7 @@ class TestKafkaAdminOffsetReset:
         # Mock alter_consumer_group_offsets
         mock_future = Future()
         mock_future.set_result(None)
-        mock_admin.return_value.alter_consumer_group_offsets.return_value = {
-            "test-group": mock_future
-        }
+        mock_admin.return_value.alter_consumer_group_offsets.return_value = {"test-group": mock_future}
 
         admin = KafkaAdmin("localhost:9092")
         admin.reset_offsets_to_timestamp(
@@ -2926,9 +2910,7 @@ class TestKafkaAdminOffsetReset:
         # Mock alter_consumer_group_offsets
         mock_future = Future()
         mock_future.set_result(None)
-        mock_admin.return_value.alter_consumer_group_offsets.return_value = {
-            "test-group": mock_future
-        }
+        mock_admin.return_value.alter_consumer_group_offsets.return_value = {"test-group": mock_future}
 
         admin = KafkaAdmin("localhost:9092")
         target_time = datetime(2024, 1, 1, 12, 0, 0, tzinfo=UTC)
@@ -2966,9 +2948,7 @@ class TestKafkaAdminOffsetReset:
         # Mock alter_consumer_group_offsets
         mock_future = Future()
         mock_future.set_result(None)
-        mock_admin.return_value.alter_consumer_group_offsets.return_value = {
-            "test-group": mock_future
-        }
+        mock_admin.return_value.alter_consumer_group_offsets.return_value = {"test-group": mock_future}
 
         admin = KafkaAdmin("localhost:9092")
         admin.reset_offsets_to_earliest(
@@ -2999,9 +2979,7 @@ class TestKafkaAdminOffsetReset:
         # Mock alter_consumer_group_offsets
         mock_future = Future()
         mock_future.set_result(None)
-        mock_admin.return_value.alter_consumer_group_offsets.return_value = {
-            "test-group": mock_future
-        }
+        mock_admin.return_value.alter_consumer_group_offsets.return_value = {"test-group": mock_future}
 
         admin = KafkaAdmin("localhost:9092")
         admin.reset_offsets_to_latest(

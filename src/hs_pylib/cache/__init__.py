@@ -1,18 +1,19 @@
 # Project:   hs-pylib
 # File:      cache/__init__.py
-# Purpose:   Disk-backed cache module with per-source TTLs
+# Purpose:   Cache module with disk and PostgreSQL backends
 # Language:  Python
 #
 # License:   LicenseRef-HyperSec-EULA
 # Copyright: (c) 2025 HyperSec
 
 """
-hs-pylib Cache Module - Disk-Backed Caching with Per-Source TTLs.
+hs-pylib Cache Module - Disk and PostgreSQL Cache Backends.
 
-Provides async-first caching using Cashews with DiskCache backend (SQLite).
-Designed for caching HTTP fetches, web searches, DB queries, and remote files.
+Provides async-first caching with two backend options:
+1. **Disk (default)**: Local SQLite via Cashews - fast, per-pod
+2. **PostgreSQL**: Shared across pods - for multi-instance deployments
 
-Quick Start:
+Disk Cache (single pod):
     >>> from hs_pylib.cache import configure_cache, cached, cache
     >>>
     >>> # Configure at app startup
@@ -27,20 +28,21 @@ Quick Start:
     ... async def fetch_url(url: str) -> dict:
     ...     async with httpx.AsyncClient() as client:
     ...         return (await client.get(url)).json()
-    >>>
-    >>> # Direct cache access
-    >>> await cache.set("http:example.com", data, expire="24h")
-    >>> result = await cache.get("http:example.com")
 
-Cache Tuple Structure:
-    (source, identifier, value, time)
-    - source: Cache category (http, tavily, db, file)
-    - identifier: Actual fetch key (URL, query, SQL)
-    - value: Cached result (JSON, bytes, objects)
-    - time: TTL with per-source overrides
+PostgreSQL Cache (multi-pod):
+    >>> from hs_pylib.cache import PostgresCache, generate_cache_key
+    >>>
+    >>> cache = PostgresCache(dsn="postgresql://user:pass@host/db")
+    >>> await cache.init()
+    >>>
+    >>> key = generate_cache_key("analytics", "events", org_id="acme")
+    >>> await cache.set(key, {"data": [...]}, ttl_seconds=300, namespace="analytics")
+    >>> value = await cache.get(key)
+    >>>
+    >>> await cache.close()
 
 Dependencies:
-    pip install hs-pylib[cache]  # Installs cashews[diskcache]
+    pip install hs-pylib[cache]  # Installs cashews, msgpack, psycopg
 """
 
 from .cache import (
@@ -53,7 +55,37 @@ from .cache import (
     set_cached,
 )
 
+# PostgreSQL cache imports - optional, requires psycopg
+try:
+    from .postgres import (
+        PostgresCache,
+        PostgresCacheError,
+        generate_cache_key,
+    )
+
+    _postgres_available = True
+except ImportError:
+    _postgres_available = False
+
+    # Provide stub for type checking
+    class PostgresCache:  # type: ignore[no-redef]
+        """PostgreSQL cache (requires psycopg)."""
+
+        def __init__(self, *args, **kwargs):
+            raise ImportError("PostgresCache requires psycopg. Install with: pip install hs-pylib[cache]")
+
+    class PostgresCacheError(Exception):  # type: ignore[no-redef]
+        """PostgreSQL cache error (requires psycopg)."""
+
+        pass
+
+    def generate_cache_key(*args, **kwargs) -> str:  # type: ignore[no-redef]
+        """Generate cache key (requires psycopg)."""
+        raise ImportError("generate_cache_key requires psycopg. Install with: pip install hs-pylib[cache]")
+
+
 __all__ = [
+    # Disk cache (cashews)
     "cache",
     "configure_cache",
     "cached",
@@ -61,4 +93,8 @@ __all__ = [
     "get_cached",
     "set_cached",
     "invalidate_source",
+    # PostgreSQL cache
+    "PostgresCache",
+    "PostgresCacheError",
+    "generate_cache_key",
 ]

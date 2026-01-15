@@ -62,10 +62,11 @@ class TestGetTtl:
 
     def test_returns_default_for_unknown_source(self):
         """Test returns default TTL for unknown source."""
-        from hs_pylib.cache import cache as cache_mod
-
         # Access module-level variables through the cache module
         import sys
+
+        from hs_pylib.cache import cache as cache_mod
+
         cache_module = sys.modules["hs_pylib.cache.cache"]
 
         # Save original state
@@ -84,9 +85,10 @@ class TestGetTtl:
 
     def test_returns_source_specific_ttl(self):
         """Test returns source-specific TTL when configured."""
+        import sys
+
         from hs_pylib.cache import cache as cache_mod
 
-        import sys
         cache_module = sys.modules["hs_pylib.cache.cache"]
 
         # Save original state
@@ -139,8 +141,10 @@ class TestCachedDecorator:
 
 def _get_cache_module():
     """Helper to get the cache module."""
-    from hs_pylib.cache import cache as cache_mod  # noqa: F401 - trigger import
     import sys
+
+    from hs_pylib.cache import cache as cache_mod  # noqa: F401 - trigger import
+
     return sys.modules["hs_pylib.cache.cache"]
 
 

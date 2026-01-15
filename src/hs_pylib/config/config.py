@@ -570,6 +570,73 @@ settings = Dynaconf(
 )
 
 
+# =============================================================================
+# PostgreSQL Config Layer (Optional - Layer 5 of 8)
+# =============================================================================
+#
+# If HS_CONFIG_DSN is set, load config from PostgreSQL and merge into settings.
+# This provides a shared configuration store for multi-pod deployments.
+#
+# 8-Layer Cascade (with PostgreSQL):
+#   1. CLI args           → Runtime override
+#   2. ENV vars           → Deployment/secrets
+#   3. .env file          → Local dev secrets
+#   4. settings.{env}     → Environment-specific local file
+#   5. PostgreSQL         → Shared org config (THIS LAYER - OPTIONAL)
+#   6. settings.yaml      → Project base
+#   7. defaults.yaml      → Safe defaults
+#   8. Hard-coded         → Last resort
+#
+# PostgreSQL config is loaded ONCE at module init and cached.
+# To refresh, call PostgresConfigLoader.clear_cache() and re-import.
+#
+def _load_postgres_config_layer() -> None:
+    """Load PostgreSQL config layer if enabled."""
+    if not os.getenv("HS_CONFIG_DSN"):
+        return
+
+    try:
+        from hs_pylib.config.postgres_loader import PostgresConfigLoader
+
+        loader = PostgresConfigLoader()
+        pg_config = loader.load_sync()
+
+        if pg_config:
+            # Merge PostgreSQL config as lower priority than file-based config
+            # Dynaconf's update() adds values without overwriting existing ones
+            # when using merge_enabled, but we want the opposite: existing values
+            # (from ENV/.env/files) should win over PostgreSQL values.
+            #
+            # So we iterate and only set values that don't already exist.
+            def _merge_if_missing(target, source, prefix=""):
+                for key, value in source.items():
+                    full_key = f"{prefix}.{key}" if prefix else key
+                    if isinstance(value, dict):
+                        _merge_if_missing(target, value, full_key)
+                    else:
+                        # Only set if not already defined (existing wins)
+                        if target.get(full_key) is None:
+                            target.set(full_key, value)
+
+            _merge_if_missing(settings, pg_config)
+
+            if os.getenv("HS_LIB_DEBUG"):
+                print(f"PostgreSQL config loaded: {len(pg_config)} top-level keys")
+
+    except Exception as e:
+        # Log warning but don't crash - file cascade continues
+        import logging
+
+        logging.getLogger(__name__).warning(
+            "PostgreSQL config layer failed to load",
+            extra={"error": str(e)},
+        )
+
+
+# Load PostgreSQL config layer at module init (if enabled)
+_load_postgres_config_layer()
+
+
 def get_settings():
     """
     Get standard dynaconf settings object with automatic cascade.

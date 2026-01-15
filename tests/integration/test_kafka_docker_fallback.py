@@ -35,13 +35,13 @@ class TestDockerKafkaFallback:
 
         with KafkaClient(kafka_config_local_only, verify_ssl=False) as client:
             topics = client.list_topics()
-            print(f"\n  Connected to local Docker Kafka")
+            print("\n  Connected to local Docker Kafka")
             print(f"  Found {len(topics)} topics")
             assert isinstance(topics, list)
 
     def test_can_produce_and_consume(self, kafka_config_local_only):
         """Should produce and consume messages on local Kafka."""
-        from hs_pylib.kafka import KafkaProducer, KafkaConsumer
+        from hs_pylib.kafka import KafkaConsumer, KafkaProducer
 
         topic = f"hs-pylib-docker-test-{uuid.uuid4().hex[:8]}"
         group_id = f"docker-test-{uuid.uuid4().hex[:8]}"
@@ -65,4 +65,4 @@ class TestDockerKafkaFallback:
             assert msg is not None, "Failed to consume message"
             consumed = msg.value_as_json()
             assert consumed["id"] == test_message["id"]
-            print(f"  Consumed message successfully")
+            print("  Consumed message successfully")

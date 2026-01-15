@@ -128,9 +128,7 @@ class KafkaAdmin:
             try:
                 future.result()
             except Exception as e:
-                raise KafkaAdminError(
-                    f"Failed to increase partitions for {topic_name}: {e}"
-                ) from e
+                raise KafkaAdminError(f"Failed to increase partitions for {topic_name}: {e}") from e
 
     # =========================================================================
     # Retention Operations
@@ -257,9 +255,7 @@ class KafkaAdmin:
                 # result is dict[str, ConfigEntry] - iterate values to get entries
                 return {entry.name: entry.value for entry in result.values()}
             except Exception as e:
-                raise KafkaAdminError(
-                    f"Failed to get config for {topic}: {e}"
-                ) from e
+                raise KafkaAdminError(f"Failed to get config for {topic}: {e}") from e
 
         return {}
 
@@ -296,9 +292,7 @@ class KafkaAdmin:
             try:
                 future.result()
             except Exception as e:
-                raise KafkaAdminError(
-                    f"Failed to alter config for {topic}: {e}"
-                ) from e
+                raise KafkaAdminError(f"Failed to alter config for {topic}: {e}") from e
 
     # =========================================================================
     # Consumer Group Offset Operations
@@ -354,10 +348,7 @@ class KafkaAdmin:
 
         try:
             # Create TopicPartitions with target timestamp
-            partitions = [
-                TopicPartition(topic, p, timestamp_ms)
-                for p in range(partition_count)
-            ]
+            partitions = [TopicPartition(topic, p, timestamp_ms) for p in range(partition_count)]
 
             # Get offsets for the timestamps
             result_partitions = consumer.offsets_for_times(partitions, timeout=timeout)
@@ -371,23 +362,17 @@ class KafkaAdmin:
                     commit_partitions.append(TopicPartition(topic, tp.partition, tp.offset))
 
             if not commit_partitions:
-                raise KafkaAdminError(
-                    f"No valid offsets found for timestamp {timestamp_ms} on {topic}"
-                )
+                raise KafkaAdminError(f"No valid offsets found for timestamp {timestamp_ms} on {topic}")
 
             # Commit the new offsets via AdminClient
             group_partitions = ConsumerGroupTopicPartitions(group_id, commit_partitions)
-            futures = self._admin.alter_consumer_group_offsets(
-                [group_partitions], request_timeout=timeout
-            )
+            futures = self._admin.alter_consumer_group_offsets([group_partitions], request_timeout=timeout)
 
             for group, future in futures.items():
                 try:
                     future.result()
                 except Exception as e:
-                    raise KafkaAdminError(
-                        f"Failed to reset offsets for {group_id}: {e}"
-                    ) from e
+                    raise KafkaAdminError(f"Failed to reset offsets for {group_id}: {e}") from e
 
             return new_offsets
 
@@ -425,9 +410,7 @@ class KafkaAdmin:
             admin.reset_offsets_to_time("my-group", "my-topic", target)
         """
         timestamp_ms = int(time.timestamp() * 1000)
-        return self.reset_offsets_to_timestamp(
-            group_id, topic, timestamp_ms, timeout=timeout
-        )
+        return self.reset_offsets_to_timestamp(group_id, topic, timestamp_ms, timeout=timeout)
 
     def reset_offsets_to_earliest(
         self,
@@ -466,25 +449,19 @@ class KafkaAdmin:
             commit_partitions = []
 
             for p in range(partition_count):
-                low, high = consumer.get_watermark_offsets(
-                    TopicPartition(topic, p), timeout=timeout
-                )
+                low, high = consumer.get_watermark_offsets(TopicPartition(topic, p), timeout=timeout)
                 new_offsets[p] = low
                 commit_partitions.append(TopicPartition(topic, p, low))
 
             # Commit the new offsets via AdminClient
             group_partitions = ConsumerGroupTopicPartitions(group_id, commit_partitions)
-            futures = self._admin.alter_consumer_group_offsets(
-                [group_partitions], request_timeout=timeout
-            )
+            futures = self._admin.alter_consumer_group_offsets([group_partitions], request_timeout=timeout)
 
             for group, future in futures.items():
                 try:
                     future.result()
                 except Exception as e:
-                    raise KafkaAdminError(
-                        f"Failed to reset offsets for {group_id}: {e}"
-                    ) from e
+                    raise KafkaAdminError(f"Failed to reset offsets for {group_id}: {e}") from e
 
             return new_offsets
 
@@ -528,30 +505,25 @@ class KafkaAdmin:
             commit_partitions = []
 
             for p in range(partition_count):
-                low, high = consumer.get_watermark_offsets(
-                    TopicPartition(topic, p), timeout=timeout
-                )
+                low, high = consumer.get_watermark_offsets(TopicPartition(topic, p), timeout=timeout)
                 new_offsets[p] = high
                 commit_partitions.append(TopicPartition(topic, p, high))
 
             # Commit the new offsets via AdminClient
             group_partitions = ConsumerGroupTopicPartitions(group_id, commit_partitions)
-            futures = self._admin.alter_consumer_group_offsets(
-                [group_partitions], request_timeout=timeout
-            )
+            futures = self._admin.alter_consumer_group_offsets([group_partitions], request_timeout=timeout)
 
             for group, future in futures.items():
                 try:
                     future.result()
                 except Exception as e:
-                    raise KafkaAdminError(
-                        f"Failed to reset offsets for {group_id}: {e}"
-                    ) from e
+                    raise KafkaAdminError(f"Failed to reset offsets for {group_id}: {e}") from e
 
             return new_offsets
 
         finally:
             consumer.close()
+
 
 # =============================================================================
 # BACKLOG: JSON Key-Value Offset Seek

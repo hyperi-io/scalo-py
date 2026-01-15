@@ -56,7 +56,7 @@ class TestKafkaConnectionCheck:
     def test_returns_false_on_socket_timeout(self):
         """Should return False when connection times out."""
         mock_socket = MagicMock()
-        mock_socket.connect.side_effect = socket.timeout("Connection timed out")
+        mock_socket.connect.side_effect = TimeoutError("Connection timed out")
 
         with patch("socket.socket", return_value=mock_socket):
             result = _check_kafka_connection("localhost", 9092, timeout=1.0)
@@ -66,7 +66,7 @@ class TestKafkaConnectionCheck:
     def test_returns_false_on_socket_error(self):
         """Should return False when connection is refused."""
         mock_socket = MagicMock()
-        mock_socket.connect.side_effect = socket.error("Connection refused")
+        mock_socket.connect.side_effect = OSError("Connection refused")
 
         with patch("socket.socket", return_value=mock_socket):
             result = _check_kafka_connection("localhost", 9092, timeout=1.0)
@@ -182,9 +182,7 @@ class TestKafkaConfigForEnv:
 
     @patch.object(conftest, "_check_kafka_connection")
     @patch.object(conftest, "_start_docker_kafka")
-    def test_returns_local_config_when_remote_unavailable(
-        self, mock_start_docker, mock_check_conn
-    ):
+    def test_returns_local_config_when_remote_unavailable(self, mock_start_docker, mock_check_conn):
         """Should fall back to local Docker when remote is unavailable."""
         # First call (remote check) fails, second call (local check) succeeds
         mock_check_conn.side_effect = [False, True]
@@ -254,9 +252,7 @@ class TestKafkaFixtureConstants:
     def test_docker_compose_path_is_valid(self):
         """Docker compose file path should be valid."""
         assert KAFKA_DOCKER_COMPOSE.name == "docker-compose.kafka.yml"
-        assert KAFKA_DOCKER_COMPOSE.exists(), (
-            f"Docker compose file not found at {KAFKA_DOCKER_COMPOSE}"
-        )
+        assert KAFKA_DOCKER_COMPOSE.exists(), f"Docker compose file not found at {KAFKA_DOCKER_COMPOSE}"
 
     def test_container_name_is_set(self):
         """Container name should be defined."""

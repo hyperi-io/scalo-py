@@ -65,7 +65,7 @@ class AsyncKafkaConsumer:
         self._owns_executor = executor is None
         self._closed = False
 
-    async def __aenter__(self) -> "AsyncKafkaConsumer":
+    async def __aenter__(self) -> AsyncKafkaConsumer:
         return self
 
     async def __aexit__(self, exc_type, exc_val, exc_tb) -> None:

@@ -55,7 +55,7 @@ class KafkaProducer:
         # Create producer
         self._producer = Producer(self._config)
 
-    def __enter__(self) -> "KafkaProducer":
+    def __enter__(self) -> KafkaProducer:
         return self
 
     def __exit__(self, exc_type, exc_val, exc_tb) -> None:
@@ -104,10 +104,7 @@ class KafkaProducer:
         # Convert headers
         headers_list = None
         if headers:
-            headers_list = [
-                (k, v.encode("utf-8") if isinstance(v, str) else v)
-                for k, v in headers.items()
-            ]
+            headers_list = [(k, v.encode("utf-8") if isinstance(v, str) else v) for k, v in headers.items()]
 
         # Build produce kwargs
         kwargs: dict[str, Any] = {

@@ -72,7 +72,7 @@ class KafkaConsumer:
         self._consumer = Consumer(self._config)
         self._closed = False
 
-    def __enter__(self) -> "KafkaConsumer":
+    def __enter__(self) -> KafkaConsumer:
         return self
 
     def __exit__(self, exc_type, exc_val, exc_tb) -> None:
