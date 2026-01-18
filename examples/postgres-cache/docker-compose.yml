@@ -1,0 +1,28 @@
+# Project:   hs-pylib
+# File:      examples/postgres-cache/docker-compose.yml
+# Purpose:   PostgreSQL for cache example
+# Language:  YAML
+#
+# License:   LicenseRef-HyperSec-EULA
+# Copyright: (c) 2026 HyperSec
+
+services:
+  postgres:
+    image: postgres:16-alpine
+    container_name: cache-example-postgres
+    environment:
+      POSTGRES_DB: cache_example
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+volumes:
+  postgres-data:
