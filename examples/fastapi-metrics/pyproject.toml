@@ -1,0 +1,29 @@
+# Project:   hs-pylib
+# File:      examples/fastapi-metrics/pyproject.toml
+# Purpose:   Example project demonstrating hs-pylib metrics with FastAPI
+# Language:  Python
+#
+# License:   LicenseRef-HyperSec-EULA
+# Copyright: (c) 2026 HyperSec
+
+[project]
+name = "fastapi-metrics-example"
+version = "0.1.0"
+description = "Example demonstrating hs-pylib Prometheus metrics with FastAPI"
+requires-python = ">=3.12"
+dependencies = [
+    "hs-pylib>=2.14.0",
+    "fastapi>=0.115.0",
+    "uvicorn>=0.32.0",
+    "httpx>=0.28.0",  # For testing
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=8.0",
+    "pytest-asyncio>=0.24",
+]
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"

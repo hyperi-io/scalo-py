@@ -1,0 +1,27 @@
+# Project:   hs-pylib
+# File:      examples/kafka-producer-consumer/pyproject.toml
+# Purpose:   Example project demonstrating hs-pylib Kafka client
+# Language:  Python
+#
+# License:   LicenseRef-HyperSec-EULA
+# Copyright: (c) 2026 HyperSec
+
+[project]
+name = "kafka-producer-consumer-example"
+version = "0.1.0"
+description = "Example demonstrating hs-pylib Kafka producer and consumer"
+requires-python = ">=3.12"
+dependencies = [
+    "hs-pylib>=2.14.0",
+    "confluent-kafka>=2.6.0",
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=8.0",
+    "pytest-asyncio>=0.24",
+]
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"

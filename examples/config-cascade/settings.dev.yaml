@@ -1,0 +1,18 @@
+# Project:   hs-pylib
+# File:      examples/config-cascade/settings.dev.yaml
+# Purpose:   Development environment overrides
+# Language:  YAML
+#
+# License:   LicenseRef-HyperSec-EULA
+# Copyright: (c) 2026 HyperSec
+
+# Development overrides - loaded when ENV_FOR_DYNACONF=dev
+database:
+  host: "localhost"
+  pool_size: 2
+
+logging:
+  level: "DEBUG"
+
+cache:
+  ttl_seconds: 60

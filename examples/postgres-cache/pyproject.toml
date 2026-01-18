@@ -1,0 +1,26 @@
+# Project:   hs-pylib
+# File:      examples/postgres-cache/pyproject.toml
+# Purpose:   Example project demonstrating hs-pylib PostgreSQL cache
+# Language:  Python
+#
+# License:   LicenseRef-HyperSec-EULA
+# Copyright: (c) 2026 HyperSec
+
+[project]
+name = "postgres-cache-example"
+version = "0.1.0"
+description = "Example demonstrating hs-pylib PostgreSQL cache for multi-pod deployments"
+requires-python = ">=3.12"
+dependencies = [
+    "hs-pylib[cache]>=2.14.0",
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=8.0",
+    "pytest-asyncio>=0.24",
+]
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
