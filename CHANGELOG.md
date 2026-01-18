@@ -1,3 +1,10 @@
+## [2.14.1](https://github.com/hypersec-io/hs-pylib/compare/v2.14.0...v2.14.1) (2026-01-18)
+
+
+### Bug Fixes
+
+* replace examples with standalone projects using current API ([a9221f7](https://github.com/hypersec-io/hs-pylib/commit/a9221f73f2efee8e79518e805bfd532475fda7b5))
+
 # [2.14.0](https://github.com/hypersec-io/hs-pylib/compare/v2.13.7...v2.14.0) (2026-01-15)
 
 
