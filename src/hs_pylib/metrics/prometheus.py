@@ -138,7 +138,7 @@ try:
     PROMETHEUS_AVAILABLE = True
 except ImportError:
     PROMETHEUS_AVAILABLE = False
-    logger.warning("prometheus_client not available - metrics disabled")
+    logger.debug("prometheus_client not available - metrics will be disabled if used")
 
 
 class ProcessMetrics:
