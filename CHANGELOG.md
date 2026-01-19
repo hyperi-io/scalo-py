@@ -1,3 +1,10 @@
+## [2.14.3](https://github.com/hypersec-io/hs-pylib/compare/v2.14.2...v2.14.3) (2026-01-19)
+
+
+### Bug Fixes
+
+* Using lazy imports and a helper function on config to prevent use of print on cyclic functions ([0e6d6b9](https://github.com/hypersec-io/hs-pylib/commit/0e6d6b9162512579f2bf1b1bc180d78c187ab889))
+
 ## [2.14.2](https://github.com/hypersec-io/hs-pylib/compare/v2.14.1...v2.14.2) (2026-01-19)
 
 
