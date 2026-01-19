@@ -1,3 +1,10 @@
+## [2.14.6](https://github.com/hypersec-io/hs-pylib/compare/v2.14.5...v2.14.6) (2026-01-19)
+
+
+### Bug Fixes
+
+* Updating prometheus warning to a debug message ([23ddcc6](https://github.com/hypersec-io/hs-pylib/commit/23ddcc6880a400276f841bd1f4b01d9e207ff8ed))
+
 ## [2.14.5](https://github.com/hypersec-io/hs-pylib/compare/v2.14.4...v2.14.5) (2026-01-19)
 
 
