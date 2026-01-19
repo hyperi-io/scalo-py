@@ -1,3 +1,10 @@
+## [2.14.5](https://github.com/hypersec-io/hs-pylib/compare/v2.14.4...v2.14.5) (2026-01-19)
+
+
+### Bug Fixes
+
+* Further fix of cyclicar imports ([2e0b867](https://github.com/hypersec-io/hs-pylib/commit/2e0b867ef7994033db8024420aeb7595c6ac8ea2))
+
 ## [2.14.4](https://github.com/hypersec-io/hs-pylib/compare/v2.14.3...v2.14.4) (2026-01-19)
 
 
