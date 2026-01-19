@@ -26,8 +26,18 @@ import sys
 
 from loguru import logger as _logger
 
-from ..config import get_logging_config
 from .filters import RateLimitFilter, get_sensitive_filter
+
+
+def _get_logging_config():
+    """Lazy import of get_logging_config to avoid circular dependency.
+
+    The config module imports logger for debug logging, and logger imports
+    config for get_logging_config. Using lazy import breaks the cycle.
+    """
+    from ..config import get_logging_config
+
+    return get_logging_config()
 
 # Standard logger instance
 logger = _logger
@@ -373,8 +383,8 @@ def setup(
     # Remove default handler
     logger.remove()
 
-    # Get logging config
-    config = get_logging_config()
+    # Get logging config (lazy import to avoid circular dependency)
+    config = _get_logging_config()
 
     # CI mode: Auto-detect from environment or config, can be overridden by parameter
     # Priority: parameter > config > auto-detect
