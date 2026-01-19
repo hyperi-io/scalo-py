@@ -1,3 +1,10 @@
+## [2.14.4](https://github.com/hypersec-io/hs-pylib/compare/v2.14.3...v2.14.4) (2026-01-19)
+
+
+### Bug Fixes
+
+* Allow HS_LIB_DEBUG or LOG_LEVEL = DEBUG ([7593ecd](https://github.com/hypersec-io/hs-pylib/commit/7593ecd267f9f6a5e473150236ad0aefb9dfa93d))
+
 ## [2.14.3](https://github.com/hypersec-io/hs-pylib/compare/v2.14.2...v2.14.3) (2026-01-19)
 
 
