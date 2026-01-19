@@ -1,3 +1,10 @@
+## [2.14.2](https://github.com/hypersec-io/hs-pylib/compare/v2.14.1...v2.14.2) (2026-01-19)
+
+
+### Bug Fixes
+
+* move config away from using print and to the logger module ([ddf399f](https://github.com/hypersec-io/hs-pylib/commit/ddf399f0a9731f775abc67d0fff3ffaa94ea6a31))
+
 ## [2.14.1](https://github.com/hypersec-io/hs-pylib/compare/v2.14.0...v2.14.1) (2026-01-18)
 
 
