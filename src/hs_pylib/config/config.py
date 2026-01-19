@@ -108,7 +108,7 @@ from dynaconf import Dynaconf
 
 def _debug_log(msg: str) -> None:
     """Log debug message if HS_LIB_DEBUG is set. Uses lazy import to avoid circular dependency."""
-    if os.getenv("HS_LIB_DEBUG"):
+    if (os.getenv("HS_LIB_DEBUG") or (os.getenv("LOG_LEVEL") == "DEBUG")):
         from hs_pylib.logger import logger
 
         logger.debug(msg)
