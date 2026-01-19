@@ -102,9 +102,16 @@ import tempfile
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Literal
-from hs_pylib import logger
 
 from dynaconf import Dynaconf
+
+
+def _debug_log(msg: str) -> None:
+    """Log debug message if HS_LIB_DEBUG is set. Uses lazy import to avoid circular dependency."""
+    if os.getenv("HS_LIB_DEBUG"):
+        from hs_pylib.logger import logger
+
+        logger.debug(msg)
 
 
 def _is_container() -> tuple[bool, str]:
@@ -178,8 +185,7 @@ def detect_environment() -> Literal["kubernetes", "docker", "container", "bare_m
     """
     is_container, method = _is_container()
 
-    if os.getenv("HS_LIB_DEBUG"):
-        logger.debug(f"Environment detected: {method}")
+    _debug_log(f"Environment detected: {method}")
 
     if not is_container:
         return "bare_metal"
@@ -242,8 +248,7 @@ class MountConfig:
                 try:
                     path.mkdir(parents=True, exist_ok=True)
                 except (PermissionError, OSError) as e:
-                    if os.getenv("HS_LIB_DEBUG"):
-                        logger.debug(f"Could not create {field}: {e}")
+                    _debug_log(f"Could not create {field}: {e}")
 
 
 def detect_helm_deployment() -> bool:
@@ -344,8 +349,7 @@ def detect_standard_mounts() -> dict[str, Path]:
             path = Path(path_str)
             if path.exists():
                 detected[mount_type] = path
-                if os.getenv("HS_LIB_DEBUG"):
-                    logger.debug(f"Detected {mount_type}: {path}")
+                _debug_log(f"Detected {mount_type}: {path}")
                 break
 
     return detected
@@ -397,8 +401,7 @@ def get_default_mounts(environment: str, app_name: str, auto_detect: bool = True
                 cache_dir=detected.get("cache_dir"),  # Optional
                 run_dir=detected.get("run_dir"),  # Optional
             )
-            if os.getenv("HS_LIB_DEBUG"):
-                logger.debug("HELM K8s mount paths detected")
+            _debug_log("HELM K8s mount paths detected")
         else:
             # Generic K8s paths
             config = MountConfig(
@@ -410,8 +413,7 @@ def get_default_mounts(environment: str, app_name: str, auto_detect: bool = True
                 cache_dir=detected.get("cache_dir"),  # Optional
                 run_dir=detected.get("run_dir"),  # Optional
             )
-            if os.getenv("HS_LIB_DEBUG"):
-                logger.debug("K8s mount paths - using app namespace")
+            _debug_log("K8s mount paths - using app namespace")
 
     elif environment in ["docker", "container"]:
         # Docker convention - /app namespace with detected overrides
@@ -424,8 +426,7 @@ def get_default_mounts(environment: str, app_name: str, auto_detect: bool = True
             cache_dir=detected.get("cache_dir", Path("/app/cache")),
             run_dir=detected.get("run_dir", Path(f"/run/{app_name}")),
         )
-        if os.getenv("HS_LIB_DEBUG"):
-            logger.debug("Docker mount paths - /app namespace")
+        _debug_log("Docker mount paths - /app namespace")
 
     else:  # bare_metal
         # Local development - user home directory
@@ -439,8 +440,7 @@ def get_default_mounts(environment: str, app_name: str, auto_detect: bool = True
             cache_dir=home / f".cache/{app_name}",
             run_dir=Path(f"/run/user/{os.getuid()}/{app_name}") if hasattr(os, "getuid") else None,
         )
-        if os.getenv("HS_LIB_DEBUG"):
-            logger.debug("Local mount paths - user home directory")
+        _debug_log("Local mount paths - user home directory")
 
     return config
 
@@ -547,8 +547,7 @@ if config_dir and config_dir.exists():
         config_file = config_dir / filename
         if config_file.exists():
             settings_files.append(str(config_file))
-            if os.getenv("HS_LIB_DEBUG"):
-                logger.debug(f"Config file found: {config_file}")
+            _debug_log(f"Config file found: {config_file}")
             break  # Stop at first match
 
     # Check for app-specific defaults
@@ -558,8 +557,7 @@ if config_dir and config_dir.exists():
             app_config_file = app_config_dir / filename
             if app_config_file.exists():
                 settings_files.append(str(app_config_file))
-                if os.getenv("HS_LIB_DEBUG"):
-                    logger.debug(f"App config file found: {app_config_file}")
+                _debug_log(f"App config file found: {app_config_file}")
 
 # Initialize Dynaconf with discovered settings
 settings = Dynaconf(
@@ -621,8 +619,7 @@ def _load_postgres_config_layer() -> None:
 
             _merge_if_missing(settings, pg_config)
 
-            if os.getenv("HS_LIB_DEBUG"):
-                logger.debug(f"PostgreSQL config loaded: {len(pg_config)} top-level keys")
+            _debug_log(f"PostgreSQL config loaded: {len(pg_config)} top-level keys")
 
     except Exception as e:
         # Log warning but don't crash - file cascade continues
@@ -732,8 +729,7 @@ def get_config(
             if path.exists():
                 config_files.append(str(path))
             else:
-                if os.getenv("HS_LIB_DEBUG"):
-                    logger.debug(f"[WARN] Config file not found: {path}")
+                _debug_log(f"[WARN] Config file not found: {path}")
 
     # Create new Dynaconf instance
     return Dynaconf(
@@ -1163,7 +1159,7 @@ targets:
     example_setting: value
 """
             targets_file.write_text(targets_template)
-            logger.debug(f"Created targets template: {targets_file}")
+            _debug_log(f"Created targets template: {targets_file}")
 
     # Create .env template
     if create_env:
@@ -1179,9 +1175,9 @@ targets:
 # {ENV_PREFIX}_SETTING_NAME=value
 """
             env_file.write_text(env_template)
-            logger.debug(f"Created .env template: {env_file}")
+            _debug_log(f"Created .env template: {env_file}")
 
-    logger.debug(f"Config directory '{config_dir}' initalized.")
+    _debug_log(f"Config directory '{config_dir}' initialized.")
     return config_dir
 
 
