@@ -1,3 +1,10 @@
+# [2.15.0](https://github.com/hypersec-io/hs-pylib/compare/v2.14.7...v2.15.0) (2026-01-20)
+
+
+### Features
+
+* add license module for cross-language license management ([6fdd5f1](https://github.com/hypersec-io/hs-pylib/commit/6fdd5f100ee49fb67d4a76d3ebae4cf52db3e442))
+
 ## [2.14.7](https://github.com/hypersec-io/hs-pylib/compare/v2.14.6...v2.14.7) (2026-01-19)
 
 
