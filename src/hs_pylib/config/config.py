@@ -1089,6 +1089,7 @@ def get_target_config(target: str = None, targets_file: str = None) -> dict:
 def init_config_directory(
     app_name: str = None,
     config_dir: str = None,
+    config_subdir_name: str = "config",
     create_targets: bool = True,
     create_env: bool = True,
 ) -> Path:
@@ -1133,7 +1134,7 @@ def init_config_directory(
 
     # Create directory structure
     config_dir.mkdir(parents=True, exist_ok=True)
-    (config_dir / "config").mkdir(exist_ok=True)
+    (config_dir / config_subdir_name).mkdir(exist_ok=True)
 
     # Create targets.yaml template
     if create_targets:
