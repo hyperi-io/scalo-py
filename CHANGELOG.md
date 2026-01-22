@@ -1,3 +1,10 @@
+## [2.15.2](https://github.com/hypersec-io/hs-pylib/compare/v2.15.1...v2.15.2) (2026-01-22)
+
+
+### Bug Fixes
+
+* Make subdir creation a param ([4a64cd5](https://github.com/hypersec-io/hs-pylib/commit/4a64cd52ba93bacd6ae0c8d08fd68acef99ae3c6))
+
 ## [2.15.1](https://github.com/hypersec-io/hs-pylib/compare/v2.15.0...v2.15.1) (2026-01-21)
 
 
