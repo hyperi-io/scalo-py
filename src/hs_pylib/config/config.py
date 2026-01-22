@@ -1089,6 +1089,7 @@ def get_target_config(target: str = None, targets_file: str = None) -> dict:
 def init_config_directory(
     app_name: str = None,
     config_dir: str = None,
+    create_subdir = True,
     config_subdir_name: str = "config",
     create_targets: bool = True,
     create_env: bool = True,
@@ -1105,6 +1106,8 @@ def init_config_directory(
     Args:
         app_name: Application name (default: APP_NAME from config)
         config_dir: Custom config directory (default: ~/.{app_name})
+        create_subdir: Create subdirectory for config files
+        config_subdir_name: Name of config subdirectory (default: config)
         create_targets: Create targets.yaml template
         create_env: Create .env template
 
@@ -1134,7 +1137,10 @@ def init_config_directory(
 
     # Create directory structure
     config_dir.mkdir(parents=True, exist_ok=True)
-    (config_dir / config_subdir_name).mkdir(exist_ok=True)
+
+    # Create subdirectory if set
+    if create_subdir:
+        (config_dir / config_subdir_name).mkdir(exist_ok=True)
 
     # Create targets.yaml template
     if create_targets:
