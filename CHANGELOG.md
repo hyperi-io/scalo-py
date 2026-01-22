@@ -1,3 +1,10 @@
+## [2.15.3](https://github.com/hypersec-io/hs-pylib/compare/v2.15.2...v2.15.3) (2026-01-22)
+
+
+### Bug Fixes
+
+* Logger emoji is using two whitespace chars ([c072f6b](https://github.com/hypersec-io/hs-pylib/commit/c072f6ba1d113720ecec3c29749e3d3e815fe98a))
+
 ## [2.15.2](https://github.com/hypersec-io/hs-pylib/compare/v2.15.1...v2.15.2) (2026-01-22)
 
 
