@@ -1,3 +1,10 @@
+## [2.15.4](https://github.com/hypersec-io/hs-pylib/compare/v2.15.3...v2.15.4) (2026-01-23)
+
+
+### Bug Fixes
+
+* Only adding extra space for warning ([3cd774b](https://github.com/hypersec-io/hs-pylib/commit/3cd774b36ba4f91694d41cc6b1595265b55b060d))
+
 ## [2.15.3](https://github.com/hypersec-io/hs-pylib/compare/v2.15.2...v2.15.3) (2026-01-22)
 
 
