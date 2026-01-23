@@ -66,7 +66,7 @@ SOLARIZED = {
 LOG_LEVEL_EMOJIS = {
     "CRITICAL": "💥",  # FATAL - Irrecoverable error
     "ERROR": "❌",  # ERROR - Blocking issue
-    "WARNING": "⚠️",  # WARN - Non-blocking issue
+    "WARNING": "⚠️ ",  # WARN - Non-blocking issue (extra space: variation selector eats one)
     "INFO": "",  # INFO - No emoji
     "SUCCESS": "✅",  # SUCCESS - Everything working
     "DEBUG": "",  # DEBUG - No emoji
@@ -238,13 +238,13 @@ def _add_emoji_to_record(
                 # Allow all emojis - pass through unchanged, just add level emoji
                 emoji = LOG_LEVEL_EMOJIS.get(record["level"].name, "")
                 if emoji:
-                    record["message"] = f"{emoji}  {record['message']}"
+                    record["message"] = f"{emoji} {record['message']}"
                 # User emojis in message pass through unchanged
             else:
                 # Filtered mode - only add CHARS-POLICY approved emojis
                 emoji = LOG_LEVEL_EMOJIS.get(record["level"].name, "")
                 if emoji:
-                    record["message"] = f"{emoji}  {record['message']}"
+                    record["message"] = f"{emoji} {record['message']}"
                 # Note: We don't strip user emojis, but we don't add non-approved ones
         elif convert_to_text:
             # Convert any emojis in message to ASCII text
