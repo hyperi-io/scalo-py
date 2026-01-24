@@ -1,3 +1,10 @@
+## [2.15.5](https://github.com/hypersec-io/hs-pylib/compare/v2.15.4...v2.15.5) (2026-01-24)
+
+
+### Bug Fixes
+
+* Enabled new custom log command ([aefe7f8](https://github.com/hypersec-io/hs-pylib/commit/aefe7f89c58eb2ce9d0158a0f45c1a8552208ef6))
+
 ## [2.15.4](https://github.com/hypersec-io/hs-pylib/compare/v2.15.3...v2.15.4) (2026-01-23)
 
 
