@@ -1,3 +1,10 @@
+## [2.15.6](https://github.com/hypersec-io/hs-pylib/compare/v2.15.5...v2.15.6) (2026-01-24)
+
+
+### Bug Fixes
+
+* Remove custom emoji definition ([8f4bb88](https://github.com/hypersec-io/hs-pylib/commit/8f4bb886223b8782c3e78316f90732d9e572e7b4))
+
 ## [2.15.5](https://github.com/hypersec-io/hs-pylib/compare/v2.15.4...v2.15.5) (2026-01-24)
 
 
