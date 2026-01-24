@@ -563,6 +563,18 @@ def debug(msg):
     logger.debug(msg)
 
 
+def log(msg: str, color: str | None = None, level: str = "INFO", emoji: str | None = None):
+    level = level.upper()
+    if (emoji):
+        msg = f"{emoji} {msg}"
+    if (color):
+        hex_color = SOLARIZED.get(color, color)
+        colored_msg = f"<fg {hex_color}>{msg}</fg {hex_color}>"
+        logger.opt(colors = True).log(level, colored_msg)
+    else:
+        logger.log(level, msg)
+
+
 # Export for direct usage
 __all__ = [
     "logger",
@@ -572,6 +584,7 @@ __all__ = [
     "error",
     "success",
     "debug",
+    "log",
     "strip_emojis",
     "emojis_to_text",
     "LOG_LEVEL_EMOJIS",
