@@ -1,3 +1,10 @@
+## [2.15.7](https://github.com/hypersec-io/hs-pylib/compare/v2.15.6...v2.15.7) (2026-01-24)
+
+
+### Bug Fixes
+
+* Add new function to init ([0f4e581](https://github.com/hypersec-io/hs-pylib/commit/0f4e581b99e648e7f0415725cdf0d4cdcaa19f53))
+
 ## [2.15.6](https://github.com/hypersec-io/hs-pylib/compare/v2.15.5...v2.15.6) (2026-01-24)
 
 
