@@ -19,6 +19,17 @@ ALL configuration automatically follows this priority (highest to lowest):
     7. defaults.yaml      → Safe fallback defaults (local dev)
     8. Hard-coded         → Last resort in code (fallback values)
 
+**.env Cascade Mode (Optional):**
+
+    By default, only ./.env is loaded. Enable cascade mode to aggregate
+    multiple .env files (home as base, project as overlay):
+
+    Set HS_DOTENV_CASCADE=true or use get_config(dotenv_cascade=True)
+
+    When enabled, loads in order (later overrides earlier):
+        1. ~/.env          → Home directory (global API keys, credentials)
+        2. ./.env          → Project directory (project-specific overrides)
+
 PostgreSQL config (layer 4) is OPTIONAL. Enable by setting HS_CONFIG_DSN.
 When enabled, PostgreSQL config OVERRIDES file-based config (layers 5-7).
 Only ENV vars, .env, and CLI args take precedence over PostgreSQL.
@@ -568,11 +579,37 @@ if config_dir and config_dir.exists():
                 settings_files.append(str(app_config_file))
                 _debug_log(f"App config file found: {app_config_file}")
 
+# Check if .env cascade is enabled globally via environment variable
+# HS_DOTENV_CASCADE=true enables loading ~/.env then ./.env
+_DOTENV_CASCADE_ENABLED = os.getenv("HS_DOTENV_CASCADE", "false").lower() in ("true", "1", "yes")
+
+# Pre-load .env files in cascade order if enabled
+_use_dynaconf_dotenv = True
+if _DOTENV_CASCADE_ENABLED:
+    try:
+        from dotenv import load_dotenv as dotenv_load
+
+        # Load in order: home (base) -> project (overlay)
+        home_env = Path.home() / ".env"
+        if home_env.exists():
+            dotenv_load(home_env, override=True)
+            _debug_log(f"Loaded home .env: {home_env}")
+
+        project_env = Path(".env")
+        if project_env.exists():
+            dotenv_load(project_env, override=True)
+            _debug_log(f"Loaded project .env: {project_env}")
+
+        # Disable Dynaconf's dotenv since we loaded manually
+        _use_dynaconf_dotenv = False
+    except ImportError:
+        _debug_log("[WARN] python-dotenv not installed, .env cascade disabled")
+
 # Initialize Dynaconf with discovered settings
 settings = Dynaconf(
     envvar_prefix=ENV_PREFIX,  # Environment variables use {ENV_PREFIX}_ prefix
     settings_files=settings_files if settings_files else [],  # Use discovered files
-    load_dotenv=True,  # Load .env file (3rd priority)
+    load_dotenv=_use_dynaconf_dotenv,  # Load .env file (3rd priority)
     environments=False,  # Single config approach
     # PRECEDENCE: CLI → ENV → .env → config override → default → hardcoded
 )
@@ -666,8 +703,41 @@ def get_settings():
     return settings
 
 
+def _load_dotenv_cascade(dotenv_files: list[str] | None = None) -> None:
+    """Load multiple .env files in cascade order.
+
+    Files are loaded in order, with later files overriding earlier ones.
+    This allows home directory .env to provide defaults, with project
+    .env providing overrides.
+
+    Args:
+        dotenv_files: List of .env file paths to load. If None, uses default
+                     cascade: [~/.env, ./.env]
+    """
+    from dotenv import load_dotenv as dotenv_load
+
+    if dotenv_files is None:
+        # Default cascade: home first (base), then project (overlay)
+        dotenv_files = [
+            str(Path.home() / ".env"),  # ~/.env - global defaults
+            ".env",  # ./.env - project overrides (relative to cwd)
+        ]
+
+    for env_file in dotenv_files:
+        path = Path(env_file).expanduser()
+        if path.exists():
+            # override=True means later files override earlier values
+            dotenv_load(path, override=True)
+            _debug_log(f"Loaded .env file: {path}")
+
+
 def get_config(
-    additional_files: list[str] = None, env_prefix: str = None, load_dotenv: bool = True, merge_existing: bool = True
+    additional_files: list[str] = None,
+    env_prefix: str = None,
+    load_dotenv: bool = True,
+    merge_existing: bool = True,
+    dotenv_cascade: bool = False,
+    dotenv_files: list[str] = None,
 ):
     """
     Get configuration with optional additional file sources.
@@ -689,10 +759,32 @@ def get_config(
         # Fresh config (ignore default settings)
         config = get_config(merge_existing=False)
 
+        # Enable .env cascade (home + project)
+        config = get_config(dotenv_cascade=True)
+
+        # Custom .env file list
+        config = get_config(dotenv_files=["~/.env", "/etc/myapp/.env", ".env"])
+
     **Automatic Cascade Still Works:**
 
         config = get_config(additional_files=["custom.yaml"])
         value = config.database.host  # Still cascades: ENV > .env > custom.yaml > ...
+
+    **.env Cascade (when dotenv_cascade=True):**
+
+        Files loaded in order (later overrides earlier):
+        1. ~/.env          - Home directory (global defaults, API keys)
+        2. ./.env          - Project directory (project-specific overrides)
+
+        Example:
+            # ~/.env
+            API_KEY=global-key
+            DEBUG=false
+
+            # ./project/.env
+            DEBUG=true  # Overrides home
+
+            # Result: API_KEY=global-key, DEBUG=true
 
     Args:
         additional_files: Additional config file paths to merge (list of str)
@@ -704,6 +796,12 @@ def get_config(
                     Set False for security-sensitive contexts
         merge_existing: Merge with existing settings files (default: True)
                        Set False to use only additional_files
+        dotenv_cascade: Enable .env cascade loading (default: False)
+                       When True, loads ~/.env then ./.env (home as base,
+                       project as overlay). Implies load_dotenv=True.
+        dotenv_files: Custom list of .env files to load in order (optional)
+                     Later files override earlier ones. Implies load_dotenv=True.
+                     Example: ["~/.env", "/etc/myapp/.env", ".env"]
 
     Returns:
         Dynaconf settings object with cascade built-in
@@ -725,9 +823,28 @@ def get_config(
             additional_files=["plugins/auth.yaml", "plugins/cache.yaml"],
             merge_existing=True  # Merge with main settings
         )
+
+        # Enable .env cascade (home defaults + project overrides)
+        config = get_config(dotenv_cascade=True)
+        # Loads: ~/.env (base) -> ./.env (overlay)
+
+        # Custom .env file order
+        config = get_config(dotenv_files=[
+            "~/.config/myapp/.env",  # User config
+            "/etc/myapp/.env",       # System config
+            ".env",                  # Project config (highest priority)
+        ])
     """
     # Use provided prefix or default
     prefix = env_prefix or ENV_PREFIX
+
+    # Handle .env cascade loading
+    use_dynaconf_dotenv = load_dotenv
+    if dotenv_cascade or dotenv_files:
+        # Load .env files manually in cascade order
+        _load_dotenv_cascade(dotenv_files)
+        # Disable Dynaconf's built-in dotenv loading to avoid double-loading
+        use_dynaconf_dotenv = False
 
     # Build file list
     config_files = []
@@ -752,7 +869,7 @@ def get_config(
     return Dynaconf(
         envvar_prefix=prefix,
         settings_files=config_files,
-        load_dotenv=load_dotenv,
+        load_dotenv=use_dynaconf_dotenv,
         environments=False,
         merge_enabled=True,
     )
