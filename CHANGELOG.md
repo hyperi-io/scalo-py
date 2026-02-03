@@ -1,3 +1,11 @@
+# [2.17.0](https://github.com/hypersec-io/hs-pylib/compare/v2.16.0...v2.17.0) (2026-02-03)
+
+
+### Features
+
+* Add .env cascade loading for home and project directories ([f8c7168](https://github.com/hypersec-io/hs-pylib/commit/f8c71686aa4801ff29d81128ba8ca9777292faa5))
+* Add unified secrets management module with multi-provider support ([a701143](https://github.com/hypersec-io/hs-pylib/commit/a70114377073d1310dee82d8c0dee1311f83318e))
+
 # [2.16.0](https://github.com/hypersec-io/hs-pylib/compare/v2.15.7...v2.16.0) (2026-02-03)
 
 
