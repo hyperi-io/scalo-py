@@ -1,3 +1,10 @@
+# [2.16.0](https://github.com/hypersec-io/hs-pylib/compare/v2.15.7...v2.16.0) (2026-02-03)
+
+
+### Features
+
+* PostgreSQL config overrides files, add fallback file support ([f48f94e](https://github.com/hypersec-io/hs-pylib/commit/f48f94efae46985180fc1cc394910d479bafb2b0))
+
 ## [2.15.7](https://github.com/hypersec-io/hs-pylib/compare/v2.15.6...v2.15.7) (2026-01-24)
 
 
