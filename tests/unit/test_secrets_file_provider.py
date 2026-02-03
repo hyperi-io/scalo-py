@@ -101,14 +101,19 @@ class TestFileProvider:
 
     def test_version_from_mtime(self, tmp_path):
         """Test that version is computed from file metadata."""
+        import time
+
         secret_file = tmp_path / "secret.txt"
         secret_file.write_text("value1")
 
         provider = FileProvider()
         result1 = provider.get_sync(str(secret_file))
 
-        # Modify file
-        secret_file.write_text("value2")
+        # Ensure mtime changes (filesystem may have 1-second resolution)
+        time.sleep(0.1)
+
+        # Modify file with different size to guarantee version change
+        secret_file.write_text("value2-longer-content")
         result2 = provider.get_sync(str(secret_file))
 
         # Versions should be different after modification
