@@ -5,7 +5,7 @@ hs-pylib Config - Enterprise Configuration with Automatic Cascade
 Provides zero-configuration, automatic cascade for Python applications.
 Just import and use - no cascade implementation needed!
 
-Configuration Cascade (7 Layers, HyperSec Standard)
+Configuration Cascade (8 Layers, HyperSec Standard)
 ====================================================
 
 ALL configuration automatically follows this priority (highest to lowest):
@@ -13,10 +13,18 @@ ALL configuration automatically follows this priority (highest to lowest):
     1. CLI args/switches  → --host=X --port=Y (runtime, apps/CLIs only)
     2. ENV variables      → MYAPP_DATABASE_HOST=prod.db.com (deployment)
     3. .env file          → Local secrets (gitignored, never commit)
-    4. settings.{env}.yaml → Environment-specific (settings.production.yaml)
-    5. settings.yaml      → Project base config (team defaults)
-    6. defaults.yaml      → Safe fallback defaults (local dev)
-    7. Hard-coded         → Last resort in code (fallback values)
+    4. PostgreSQL         → Shared org config (OPTIONAL, OVERRIDES files)
+    5. settings.{env}.yaml → Environment-specific (settings.production.yaml)
+    6. settings.yaml      → Project base config (team defaults)
+    7. defaults.yaml      → Safe fallback defaults (local dev)
+    8. Hard-coded         → Last resort in code (fallback values)
+
+PostgreSQL config (layer 4) is OPTIONAL. Enable by setting HS_CONFIG_DSN.
+When enabled, PostgreSQL config OVERRIDES file-based config (layers 5-7).
+Only ENV vars, .env, and CLI args take precedence over PostgreSQL.
+
+Fallback file support: Set HS_CONFIG_FALLBACK_ENABLED=true to write
+PostgreSQL config to a local file for use when the database is unavailable.
 
 **Real-World Example - database.host:**
 
@@ -25,10 +33,11 @@ ALL configuration automatically follows this priority (highest to lowest):
     1. CLI      --host prod.db.com          "prod.db.com"       CLI override
     2. ENV      MYAPP_DATABASE_HOST=test    "test.db"           CI/staging
     3. .env     MYAPP_DATABASE_HOST=local   "local.db"          Dev secrets
-    4. {env}    settings.production.yaml    "prod-rw.db.com"    Prod deploy
-    5. base     settings.yaml               "postgres.svc"      Team default
-    6. defaults defaults.yaml               "localhost"         Safe default
-    7. code     settings.get("db.host", "localhost")           Fallback
+    4. PG       config_values table         "pg-host.db.com"    Shared config
+    5. {env}    settings.production.yaml    "prod-rw.db.com"    Prod deploy
+    6. base     settings.yaml               "postgres.svc"      Team default
+    7. defaults defaults.yaml               "localhost"         Safe default
+    8. code     settings.get("db.host", "localhost")           Fallback
 
 **Zero Configuration Required - Automatic Cascade:**
 
@@ -108,7 +117,7 @@ from dynaconf import Dynaconf
 
 def _debug_log(msg: str) -> None:
     """Log debug message if HS_LIB_DEBUG is set. Uses lazy import to avoid circular dependency."""
-    if (os.getenv("HS_LIB_DEBUG") or (os.getenv("LOG_LEVEL") == "DEBUG")):
+    if os.getenv("HS_LIB_DEBUG") or (os.getenv("LOG_LEVEL") == "DEBUG"):
         from hs_pylib.logger import logger
 
         logger.debug(msg)
@@ -570,18 +579,21 @@ settings = Dynaconf(
 
 
 # =============================================================================
-# PostgreSQL Config Layer (Optional - Layer 5 of 8)
+# PostgreSQL Config Layer (Optional - Layer 4 of 8)
 # =============================================================================
 #
 # If HS_CONFIG_DSN is set, load config from PostgreSQL and merge into settings.
 # This provides a shared configuration store for multi-pod deployments.
 #
+# PostgreSQL config OVERRIDES file-based config, making the database the
+# source of truth for centralised configuration management.
+#
 # 8-Layer Cascade (with PostgreSQL):
 #   1. CLI args           → Runtime override
 #   2. ENV vars           → Deployment/secrets
 #   3. .env file          → Local dev secrets
-#   4. settings.{env}     → Environment-specific local file
-#   5. PostgreSQL         → Shared org config (THIS LAYER - OPTIONAL)
+#   4. PostgreSQL         → Shared org config (OVERRIDES files)
+#   5. settings.{env}     → Environment-specific local file
 #   6. settings.yaml      → Project base
 #   7. defaults.yaml      → Safe defaults
 #   8. Hard-coded         → Last resort
@@ -589,8 +601,16 @@ settings = Dynaconf(
 # PostgreSQL config is loaded ONCE at module init and cached.
 # To refresh, call PostgresConfigLoader.clear_cache() and re-import.
 #
+# Fallback file support: If HS_CONFIG_FALLBACK_ENABLED=true, the PostgreSQL
+# config is written to a local YAML file. If PostgreSQL becomes unavailable,
+# the fallback file is used instead.
+#
 def _load_postgres_config_layer() -> None:
-    """Load PostgreSQL config layer if enabled."""
+    """Load PostgreSQL config layer if enabled.
+
+    PostgreSQL config OVERRIDES file-based config values. Only ENV vars,
+    .env file, and CLI args have higher priority than PostgreSQL.
+    """
     if not os.getenv("HS_CONFIG_DSN"):
         return
 
@@ -601,25 +621,22 @@ def _load_postgres_config_layer() -> None:
         pg_config = loader.load_sync()
 
         if pg_config:
-            # Merge PostgreSQL config as lower priority than file-based config
-            # Dynaconf's update() adds values without overwriting existing ones
-            # when using merge_enabled, but we want the opposite: existing values
-            # (from ENV/.env/files) should win over PostgreSQL values.
-            #
-            # So we iterate and only set values that don't already exist.
-            def _merge_if_missing(target, source, prefix=""):
+            # PostgreSQL config OVERRIDES file-based config
+            # We iterate and set all values, overwriting file-based values.
+            # Only ENV vars and .env have higher priority (handled by Dynaconf).
+            def _set_all(target, source, prefix=""):
                 for key, value in source.items():
                     full_key = f"{prefix}.{key}" if prefix else key
                     if isinstance(value, dict):
-                        _merge_if_missing(target, value, full_key)
+                        _set_all(target, value, full_key)
                     else:
-                        # Only set if not already defined (existing wins)
-                        if target.get(full_key) is None:
-                            target.set(full_key, value)
+                        # Set value (overrides file-based config)
+                        # Dynaconf will still respect ENV vars which have higher priority
+                        target.set(full_key, value)
 
-            _merge_if_missing(settings, pg_config)
+            _set_all(settings, pg_config)
 
-            _debug_log(f"PostgreSQL config loaded: {len(pg_config)} top-level keys")
+            _debug_log(f"PostgreSQL config loaded (overrides files): {len(pg_config)} top-level keys")
 
     except Exception as e:
         # Log warning but don't crash - file cascade continues
@@ -1089,7 +1106,7 @@ def get_target_config(target: str = None, targets_file: str = None) -> dict:
 def init_config_directory(
     app_name: str = None,
     config_dir: str = None,
-    create_subdir = True,
+    create_subdir=True,
     config_subdir_name: str = "config",
     create_targets: bool = True,
     create_env: bool = True,
