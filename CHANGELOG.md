@@ -1,3 +1,10 @@
+## [2.17.1](https://github.com/hypersec-io/hs-pylib/compare/v2.17.0...v2.17.1) (2026-02-03)
+
+
+### Bug Fixes
+
+* Fix flaky test_version_from_mtime test ([a8b5fdf](https://github.com/hypersec-io/hs-pylib/commit/a8b5fdf7d8e96121570cd1bba95abb13ac7a9c84))
+
 # [2.17.0](https://github.com/hypersec-io/hs-pylib/compare/v2.16.0...v2.17.0) (2026-02-03)
 
 
