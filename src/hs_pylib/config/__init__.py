@@ -32,6 +32,7 @@ from .merge import (
 from .postgres_loader import (
     PostgresConfigError,
     PostgresConfigLoader,
+    PostgresConfigUnavailable,
     get_default_loader,
     load_postgres_config,
 )
@@ -67,6 +68,7 @@ __all__ = [
     # PostgreSQL config loader
     "PostgresConfigLoader",
     "PostgresConfigError",
+    "PostgresConfigUnavailable",
     "load_postgres_config",
     "get_default_loader",
 ]

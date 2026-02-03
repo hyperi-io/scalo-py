@@ -329,19 +329,25 @@ class TestPostgresConfigLoaderLoadSync:
 
         PostgresConfigLoader.clear_all_cache()
 
-        loader = PostgresConfigLoader(dsn="postgresql://invalid@nonexistent:9999/db")
+        # Set retry_attempts=1 to avoid waiting for retries
+        loader = PostgresConfigLoader(
+            dsn="postgresql://invalid@nonexistent:9999/db",
+            retry_attempts=1,
+        )
 
-        # Mock psycopg to raise connection error
+        # Create mock psycopg with proper OperationalError class
         mock_psycopg = MagicMock()
-        mock_psycopg.connect.side_effect = Exception("Connection refused")
+        # Create a real exception class for OperationalError
+        mock_psycopg.OperationalError = type("OperationalError", (Exception,), {})
+        mock_psycopg.connect.side_effect = mock_psycopg.OperationalError("Connection refused")
 
         with patch.dict("sys.modules", {"psycopg": mock_psycopg}):
             result = loader.load_sync()
 
         assert result == {}
 
-    def test_load_sync_invalid_table_name_raises(self):
-        """Test that invalid table names are rejected."""
+    def test_load_sync_invalid_table_name_returns_empty_when_optional(self):
+        """Test that invalid table names return empty dict when optional=True."""
         from hs_pylib.config import PostgresConfigLoader
 
         PostgresConfigLoader.clear_all_cache()
@@ -349,24 +355,30 @@ class TestPostgresConfigLoaderLoadSync:
         loader = PostgresConfigLoader(
             dsn="postgresql://x@y/z",
             table_name="invalid;DROP TABLE users;--",
+            optional=True,  # Default, but explicit for clarity
         )
 
-        # Mock successful connection
-        mock_conn = MagicMock()
-        mock_cursor = MagicMock()
-        mock_conn.__enter__ = MagicMock(return_value=mock_conn)
-        mock_conn.__exit__ = MagicMock(return_value=False)
-        mock_conn.cursor.return_value.__enter__ = MagicMock(return_value=mock_cursor)
-        mock_conn.cursor.return_value.__exit__ = MagicMock(return_value=False)
-
-        mock_psycopg = MagicMock()
-        mock_psycopg.connect.return_value = mock_conn
-
-        with patch.dict("sys.modules", {"psycopg": mock_psycopg}):
-            # Should return empty due to invalid table name (logged as warning)
-            result = loader.load_sync()
+        # Validation happens before connect, so no mock needed
+        # Should return empty due to invalid table name (logged as warning)
+        result = loader.load_sync()
 
         assert result == {}
+
+    def test_load_sync_invalid_table_name_raises_when_not_optional(self):
+        """Test that invalid table names raise error when optional=False."""
+        from hs_pylib.config import PostgresConfigError, PostgresConfigLoader
+
+        PostgresConfigLoader.clear_all_cache()
+
+        loader = PostgresConfigLoader(
+            dsn="postgresql://x@y/z",
+            table_name="invalid;DROP TABLE users;--",
+            optional=False,
+        )
+
+        # Should raise PostgresConfigError due to invalid table name
+        with pytest.raises(PostgresConfigError, match="Invalid table name"):
+            loader.load_sync()
 
 
 class TestPostgresConfigLoaderSetValue:
@@ -489,3 +501,546 @@ class TestGetDefaultLoader:
         loader2 = get_default_loader()
 
         assert loader1 is loader2
+
+
+class TestPostgresConfigLoaderConnectionResilience:
+    """Test connection resilience features (timeouts, retries, optional flag)."""
+
+    def test_init_connection_timeout_from_env(self):
+        """Test connection timeout can be set via environment variable."""
+        from hs_pylib.config import PostgresConfigLoader
+
+        with patch.dict(
+            os.environ,
+            {
+                "HS_CONFIG_DSN": "postgresql://x@y/z",
+                "HS_CONFIG_CONNECT_TIMEOUT": "15",
+            },
+        ):
+            loader = PostgresConfigLoader()
+
+            assert loader.connect_timeout == 15
+
+    def test_init_query_timeout_from_env(self):
+        """Test query timeout can be set via environment variable."""
+        from hs_pylib.config import PostgresConfigLoader
+
+        with patch.dict(
+            os.environ,
+            {
+                "HS_CONFIG_DSN": "postgresql://x@y/z",
+                "HS_CONFIG_QUERY_TIMEOUT": "30",
+            },
+        ):
+            loader = PostgresConfigLoader()
+
+            assert loader.query_timeout == 30
+
+    def test_init_retry_attempts_from_env(self):
+        """Test retry attempts can be set via environment variable."""
+        from hs_pylib.config import PostgresConfigLoader
+
+        with patch.dict(
+            os.environ,
+            {
+                "HS_CONFIG_DSN": "postgresql://x@y/z",
+                "HS_CONFIG_RETRY_ATTEMPTS": "5",
+            },
+        ):
+            loader = PostgresConfigLoader()
+
+            assert loader.retry_attempts == 5
+
+    def test_init_retry_delay_from_env(self):
+        """Test retry delay can be set via environment variable."""
+        from hs_pylib.config import PostgresConfigLoader
+
+        with patch.dict(
+            os.environ,
+            {
+                "HS_CONFIG_DSN": "postgresql://x@y/z",
+                "HS_CONFIG_RETRY_DELAY_MS": "2000",
+            },
+        ):
+            loader = PostgresConfigLoader()
+
+            assert loader.retry_delay_ms == 2000
+
+    def test_init_optional_true_from_env(self):
+        """Test optional flag true from environment variable."""
+        from hs_pylib.config import PostgresConfigLoader
+
+        with patch.dict(
+            os.environ,
+            {
+                "HS_CONFIG_DSN": "postgresql://x@y/z",
+                "HS_CONFIG_OPTIONAL": "true",
+            },
+        ):
+            loader = PostgresConfigLoader()
+
+            assert loader.optional is True
+
+    def test_init_optional_false_from_env(self):
+        """Test optional flag false from environment variable."""
+        from hs_pylib.config import PostgresConfigLoader
+
+        with patch.dict(
+            os.environ,
+            {
+                "HS_CONFIG_DSN": "postgresql://x@y/z",
+                "HS_CONFIG_OPTIONAL": "false",
+            },
+        ):
+            loader = PostgresConfigLoader()
+
+            assert loader.optional is False
+
+    def test_init_optional_false_from_arg(self):
+        """Test optional flag can be set via constructor argument."""
+        from hs_pylib.config import PostgresConfigLoader
+
+        loader = PostgresConfigLoader(
+            dsn="postgresql://x@y/z",
+            optional=False,
+        )
+
+        assert loader.optional is False
+
+    def test_init_defaults(self):
+        """Test default values for connection resilience settings."""
+        from hs_pylib.config import PostgresConfigLoader
+
+        with patch.dict(os.environ, {"HS_CONFIG_DSN": "postgresql://x@y/z"}, clear=True):
+            loader = PostgresConfigLoader()
+
+            assert loader.connect_timeout == 5  # DEFAULT_CONNECT_TIMEOUT
+            assert loader.query_timeout == 10  # DEFAULT_QUERY_TIMEOUT
+            assert loader.retry_attempts == 3  # DEFAULT_RETRY_ATTEMPTS
+            assert loader.retry_delay_ms == 1000  # DEFAULT_RETRY_DELAY_MS
+            assert loader.optional is True  # DEFAULT_OPTIONAL
+
+    def test_build_conninfo_adds_connect_timeout(self):
+        """Test that _build_conninfo adds connect_timeout to DSN."""
+        from hs_pylib.config import PostgresConfigLoader
+
+        loader = PostgresConfigLoader(
+            dsn="postgresql://user@host/db",
+            connect_timeout=10,
+        )
+
+        conninfo = loader._build_conninfo()
+
+        assert "connect_timeout=10" in conninfo
+
+    def test_build_conninfo_preserves_existing_timeout(self):
+        """Test that _build_conninfo preserves existing connect_timeout in DSN."""
+        from hs_pylib.config import PostgresConfigLoader
+
+        loader = PostgresConfigLoader(
+            dsn="postgresql://user@host/db?connect_timeout=30",
+            connect_timeout=10,  # Should be ignored since DSN has one
+        )
+
+        conninfo = loader._build_conninfo()
+
+        assert conninfo == "postgresql://user@host/db?connect_timeout=30"
+        assert "connect_timeout=10" not in conninfo
+
+    def test_build_conninfo_with_existing_params(self):
+        """Test that _build_conninfo uses & separator when DSN has params."""
+        from hs_pylib.config import PostgresConfigLoader
+
+        loader = PostgresConfigLoader(
+            dsn="postgresql://user@host/db?sslmode=require",
+            connect_timeout=5,
+        )
+
+        conninfo = loader._build_conninfo()
+
+        assert conninfo == "postgresql://user@host/db?sslmode=require&connect_timeout=5"
+
+
+class TestPostgresConfigLoaderOptionalFlag:
+    """Test optional flag behaviour (graceful fallback vs hard failure)."""
+
+    def test_load_sync_optional_true_returns_empty_on_import_error(self):
+        """Test that load_sync returns empty dict on import error when optional=True."""
+        from hs_pylib.config import PostgresConfigLoader
+
+        PostgresConfigLoader.clear_all_cache()
+
+        loader = PostgresConfigLoader(dsn="postgresql://x@y/z", optional=True)
+
+        with (
+            patch.dict("sys.modules", {"psycopg": None}),
+            patch("builtins.__import__", side_effect=ImportError("No psycopg")),
+        ):
+            result = loader.load_sync()
+
+        assert result == {}
+
+    def test_load_sync_optional_false_raises_on_import_error(self):
+        """Test that load_sync raises PostgresConfigError on import error when optional=False."""
+        from hs_pylib.config import PostgresConfigError, PostgresConfigLoader
+
+        PostgresConfigLoader.clear_all_cache()
+
+        loader = PostgresConfigLoader(dsn="postgresql://x@y/z", optional=False)
+
+        with (
+            patch.dict("sys.modules", {"psycopg": None}),
+            patch("builtins.__import__", side_effect=ImportError("No psycopg")),
+            pytest.raises(PostgresConfigError, match="psycopg not installed"),
+        ):
+            loader.load_sync()
+
+
+class TestPostgresConfigLoaderAuditTrail:
+    """Test audit trail functionality."""
+
+    def test_set_value_accepts_description_and_updated_by(self):
+        """Test that set_value accepts description and updated_by parameters."""
+        from hs_pylib.config import PostgresConfigLoader
+
+        loader = PostgresConfigLoader(dsn="postgresql://x@y/z")
+
+        # Mock the database connection
+        mock_conn = MagicMock()
+        mock_cursor = MagicMock()
+        mock_conn.__enter__ = MagicMock(return_value=mock_conn)
+        mock_conn.__exit__ = MagicMock(return_value=False)
+        mock_conn.cursor.return_value.__enter__ = MagicMock(return_value=mock_cursor)
+        mock_conn.cursor.return_value.__exit__ = MagicMock(return_value=False)
+
+        mock_psycopg = MagicMock()
+        mock_psycopg.connect.return_value = mock_conn
+
+        with patch.dict("sys.modules", {"psycopg": mock_psycopg}):
+            result = loader.set_value(
+                "database.host",
+                "localhost",
+                description="Database hostname",
+                updated_by="admin@example.com",
+            )
+
+        # Should succeed (returns True on successful DB operation)
+        assert result is True
+
+        # Verify the execute was called with description and updated_by
+        call_args = mock_cursor.execute.call_args
+        assert call_args is not None
+        # The second argument tuple should contain description and updated_by
+        params = call_args[0][1]  # (namespace, key, json_value, description, updated_by)
+        assert params[3] == "Database hostname"
+        assert params[4] == "admin@example.com"
+
+    def test_get_history_returns_empty_when_disabled(self):
+        """Test that get_history returns empty list when disabled."""
+        from hs_pylib.config import PostgresConfigLoader
+
+        with patch.dict(os.environ, {}, clear=True):
+            os.environ.pop("HS_CONFIG_DSN", None)
+
+            loader = PostgresConfigLoader()
+
+            assert loader.get_history() == []
+
+    def test_ensure_table_with_audit_flag(self):
+        """Test that ensure_table accepts with_audit parameter."""
+        from hs_pylib.config import PostgresConfigLoader
+
+        loader = PostgresConfigLoader(dsn="postgresql://x@y/z")
+
+        # Mock the database connection
+        mock_conn = MagicMock()
+        mock_cursor = MagicMock()
+        mock_conn.__enter__ = MagicMock(return_value=mock_conn)
+        mock_conn.__exit__ = MagicMock(return_value=False)
+        mock_conn.cursor.return_value.__enter__ = MagicMock(return_value=mock_cursor)
+        mock_conn.cursor.return_value.__exit__ = MagicMock(return_value=False)
+
+        mock_psycopg = MagicMock()
+        mock_psycopg.connect.return_value = mock_conn
+
+        with patch.dict("sys.modules", {"psycopg": mock_psycopg}):
+            result = loader.ensure_table(with_audit=True)
+
+        assert result is True
+
+        # Verify that multiple CREATE statements were executed
+        # (main table, indexes, history table, trigger function, trigger)
+        assert mock_cursor.execute.call_count >= 5
+
+
+class TestPostgresConfigUnavailableException:
+    """Test PostgresConfigUnavailable exception."""
+
+    def test_import_postgres_config_unavailable(self):
+        """Test that PostgresConfigUnavailable can be imported."""
+        from hs_pylib.config import PostgresConfigUnavailable
+
+        assert PostgresConfigUnavailable is not None
+
+    def test_postgres_config_unavailable_is_subclass_of_error(self):
+        """Test that PostgresConfigUnavailable is a subclass of PostgresConfigError."""
+        from hs_pylib.config import PostgresConfigError, PostgresConfigUnavailable
+
+        assert issubclass(PostgresConfigUnavailable, PostgresConfigError)
+
+    def test_postgres_config_unavailable_can_be_raised(self):
+        """Test that PostgresConfigUnavailable can be raised and caught."""
+        from hs_pylib.config import PostgresConfigUnavailable
+
+        with pytest.raises(PostgresConfigUnavailable, match="unavailable"):
+            raise PostgresConfigUnavailable("database unavailable")
+
+
+class TestPostgresConfigLoaderFallbackFile:
+    """Test fallback file functionality."""
+
+    def test_init_fallback_disabled_by_default(self):
+        """Test that fallback is disabled by default."""
+        from hs_pylib.config import PostgresConfigLoader
+
+        with patch.dict(os.environ, {"HS_CONFIG_DSN": "postgresql://x@y/z"}, clear=True):
+            loader = PostgresConfigLoader()
+
+            assert loader.fallback_enabled is False
+
+    def test_init_fallback_enabled_from_env(self):
+        """Test fallback can be enabled via environment variable."""
+        from hs_pylib.config import PostgresConfigLoader
+
+        with patch.dict(
+            os.environ,
+            {
+                "HS_CONFIG_DSN": "postgresql://x@y/z",
+                "HS_CONFIG_FALLBACK_ENABLED": "true",
+            },
+        ):
+            loader = PostgresConfigLoader()
+
+            assert loader.fallback_enabled is True
+
+    def test_init_fallback_file_from_env(self):
+        """Test fallback file path can be set via environment variable."""
+        from hs_pylib.config import PostgresConfigLoader
+
+        with patch.dict(
+            os.environ,
+            {
+                "HS_CONFIG_DSN": "postgresql://x@y/z",
+                "HS_CONFIG_FALLBACK_FILE": "/custom/path/fallback.yaml",
+            },
+        ):
+            loader = PostgresConfigLoader()
+
+            assert str(loader.fallback_file) == "/custom/path/fallback.yaml"
+
+    def test_init_fallback_mode_from_env(self):
+        """Test fallback mode can be set via environment variable."""
+        from hs_pylib.config import PostgresConfigLoader
+
+        with patch.dict(
+            os.environ,
+            {
+                "HS_CONFIG_DSN": "postgresql://x@y/z",
+                "HS_CONFIG_FALLBACK_MODE": "merge",
+            },
+        ):
+            loader = PostgresConfigLoader()
+
+            assert loader.fallback_mode == "merge"
+
+    def test_init_fallback_from_args(self):
+        """Test fallback settings can be set via constructor arguments."""
+        from pathlib import Path
+
+        from hs_pylib.config import PostgresConfigLoader
+
+        loader = PostgresConfigLoader(
+            dsn="postgresql://x@y/z",
+            fallback_enabled=True,
+            fallback_file="/my/fallback.yaml",
+            fallback_mode="merge",
+        )
+
+        assert loader.fallback_enabled is True
+        assert loader.fallback_file == Path("/my/fallback.yaml")
+        assert loader.fallback_mode == "merge"
+
+    def test_write_fallback_file_disabled(self):
+        """Test that _write_fallback_file returns False when disabled."""
+        from hs_pylib.config import PostgresConfigLoader
+
+        loader = PostgresConfigLoader(
+            dsn="postgresql://x@y/z",
+            fallback_enabled=False,
+        )
+
+        result = loader._write_fallback_file({"key": "value"})
+
+        assert result is False
+
+    def test_write_fallback_file_creates_file(self, tmp_path):
+        """Test that _write_fallback_file creates the fallback file."""
+        from hs_pylib.config import PostgresConfigLoader
+
+        fallback_file = tmp_path / "fallback.yaml"
+
+        loader = PostgresConfigLoader(
+            dsn="postgresql://x@y/z",
+            fallback_enabled=True,
+            fallback_file=str(fallback_file),
+        )
+
+        config = {"database": {"host": "localhost", "port": 5432}}
+        result = loader._write_fallback_file(config)
+
+        assert result is True
+        assert fallback_file.exists()
+
+        content = fallback_file.read_text()
+        assert "database:" in content
+        assert "host: localhost" in content
+        assert "port: 5432" in content
+        assert "# PostgreSQL config fallback file" in content
+
+    def test_write_fallback_file_merge_mode(self, tmp_path):
+        """Test that merge mode merges with existing file."""
+        import yaml
+
+        from hs_pylib.config import PostgresConfigLoader
+
+        fallback_file = tmp_path / "fallback.yaml"
+
+        # Create existing file
+        existing = {"existing_key": "existing_value", "database": {"user": "olduser"}}
+        with open(fallback_file, "w") as f:
+            yaml.safe_dump(existing, f)
+
+        loader = PostgresConfigLoader(
+            dsn="postgresql://x@y/z",
+            fallback_enabled=True,
+            fallback_file=str(fallback_file),
+            fallback_mode="merge",
+        )
+
+        new_config = {"database": {"host": "newhost"}}
+        result = loader._write_fallback_file(new_config)
+
+        assert result is True
+
+        # Read and verify merged content
+        with open(fallback_file) as f:
+            merged = yaml.safe_load(f)
+
+        assert merged["existing_key"] == "existing_value"
+        assert merged["database"]["host"] == "newhost"
+        assert merged["database"]["user"] == "olduser"
+
+    def test_load_fallback_file_disabled(self):
+        """Test that _load_fallback_file returns None when disabled."""
+        from hs_pylib.config import PostgresConfigLoader
+
+        loader = PostgresConfigLoader(
+            dsn="postgresql://x@y/z",
+            fallback_enabled=False,
+        )
+
+        result = loader._load_fallback_file()
+
+        assert result is None
+
+    def test_load_fallback_file_not_exists(self, tmp_path):
+        """Test that _load_fallback_file returns None when file doesn't exist."""
+        from hs_pylib.config import PostgresConfigLoader
+
+        loader = PostgresConfigLoader(
+            dsn="postgresql://x@y/z",
+            fallback_enabled=True,
+            fallback_file=str(tmp_path / "nonexistent.yaml"),
+        )
+
+        result = loader._load_fallback_file()
+
+        assert result is None
+
+    def test_load_fallback_file_success(self, tmp_path):
+        """Test that _load_fallback_file loads config from file."""
+        import yaml
+
+        from hs_pylib.config import PostgresConfigLoader
+
+        fallback_file = tmp_path / "fallback.yaml"
+
+        config = {"database": {"host": "localhost"}, "api": {"timeout": 30}}
+        with open(fallback_file, "w") as f:
+            yaml.safe_dump(config, f)
+
+        loader = PostgresConfigLoader(
+            dsn="postgresql://x@y/z",
+            fallback_enabled=True,
+            fallback_file=str(fallback_file),
+        )
+
+        result = loader._load_fallback_file()
+
+        assert result == config
+
+    def test_deep_merge_simple(self):
+        """Test _deep_merge with simple dicts."""
+        from hs_pylib.config import PostgresConfigLoader
+
+        loader = PostgresConfigLoader(dsn="postgresql://x@y/z")
+
+        base = {"a": 1, "b": 2}
+        override = {"b": 3, "c": 4}
+
+        result = loader._deep_merge(base, override)
+
+        assert result == {"a": 1, "b": 3, "c": 4}
+
+    def test_deep_merge_nested(self):
+        """Test _deep_merge with nested dicts."""
+        from hs_pylib.config import PostgresConfigLoader
+
+        loader = PostgresConfigLoader(dsn="postgresql://x@y/z")
+
+        base = {"db": {"host": "old", "port": 5432}}
+        override = {"db": {"host": "new", "user": "admin"}}
+
+        result = loader._deep_merge(base, override)
+
+        assert result == {"db": {"host": "new", "port": 5432, "user": "admin"}}
+
+    def test_load_sync_uses_fallback_on_connection_error(self, tmp_path):
+        """Test that load_sync uses fallback file when DB is unavailable."""
+        import yaml
+
+        from hs_pylib.config import PostgresConfigLoader
+
+        PostgresConfigLoader.clear_all_cache()
+
+        fallback_file = tmp_path / "fallback.yaml"
+        fallback_config = {"database": {"host": "fallback-host"}}
+        with open(fallback_file, "w") as f:
+            yaml.safe_dump(fallback_config, f)
+
+        loader = PostgresConfigLoader(
+            dsn="postgresql://invalid@nonexistent:9999/db",
+            fallback_enabled=True,
+            fallback_file=str(fallback_file),
+            retry_attempts=1,
+        )
+
+        # Mock psycopg with OperationalError
+        mock_psycopg = MagicMock()
+        mock_psycopg.OperationalError = type("OperationalError", (Exception,), {})
+        mock_psycopg.connect.side_effect = mock_psycopg.OperationalError("Connection refused")
+
+        with patch.dict("sys.modules", {"psycopg": mock_psycopg}):
+            result = loader.load_sync()
+
+        assert result == fallback_config
