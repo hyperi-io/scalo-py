@@ -1,29 +1,29 @@
-# Project:   hs-pylib
+# Project:   hyperi-pylib
 # File:      tests/unit/test_license_integrity.py
 # Purpose:   Unit tests for license integrity module
 # Language:  Python
 #
-# License:   LicenseRef-HyperSec-EULA
-# Copyright: (c) 2026 HyperSec
+# License:   FSL-1.1-ALv2
+# Copyright: (c) 2026 HYPERI PTY LIMITED
 
-"""Unit tests for hs_pylib.license.integrity module."""
+"""Unit tests for hyperi_pylib.license.integrity module."""
 
 from __future__ import annotations
 
 import pytest
 
-from hs_pylib.license.error import (
+from hyperi_pylib.license.error import (
     LicenseExpiredError,
     LicenseIntegrityError,
     LicenseSignatureError,
 )
-from hs_pylib.license.integrity import (
+from hyperi_pylib.license.integrity import (
     compute_settings_hash,
     run_integrity_checks,
     verify_settings_integrity,
     verify_signature,
 )
-from hs_pylib.license.types import LicenseSettings
+from hyperi_pylib.license.types import LicenseSettings
 
 
 class TestComputeSettingsHash:

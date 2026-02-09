@@ -1,6 +1,6 @@
 # PostgreSQL Cache Example
 
-Demonstrates hs-pylib's PostgreSQL cache backend for multi-pod deployments.
+Demonstrates hyperi-pylib's PostgreSQL cache backend for multi-pod deployments.
 
 ## Features
 
@@ -36,7 +36,7 @@ docker compose down -v
 ┌─────────────────────────────────────────────────────────┐
 │                    Application                          │
 │  ┌─────────────────────────────────────────────────┐   │
-│  │         PostgresCache (hs-pylib)                │   │
+│  │         PostgresCache (hyperi-pylib)                │   │
 │  │  ┌─────────────┐  ┌─────────────────────────┐   │   │
 │  │  │ Serialiser  │  │ AsyncConnectionPool     │   │   │
 │  │  │ (msgpack)   │  │ (psycopg3)              │   │   │
@@ -60,7 +60,7 @@ docker compose down -v
 ## API Usage
 
 ```python
-from hs_pylib.cache import PostgresCache, generate_cache_key
+from hyperi_pylib.cache import PostgresCache, generate_cache_key
 
 # Initialise cache
 cache = PostgresCache(dsn="postgresql://user:pass@host/db")
@@ -113,5 +113,5 @@ services:
 
 ## See Also
 
-- [hs-pylib Cache Documentation](../../docs/CACHE.md)
-- [PostgreSQL Cache Implementation](../../src/hs_pylib/cache/postgres.py)
+- [hyperi-pylib Cache Documentation](../../docs/CACHE.md)
+- [PostgreSQL Cache Implementation](../../src/hyperi_pylib/cache/postgres.py)

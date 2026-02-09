@@ -6,12 +6,12 @@ from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 
-from hs_pylib.secrets.exceptions import (
+from hyperi_pylib.secrets.exceptions import (
     ProviderNotConfiguredError,
     SecretNotFoundError,
 )
-from hs_pylib.secrets.manager import SecretsManager
-from hs_pylib.secrets.types import CacheConfig, RotationEvent, SecretValue
+from hyperi_pylib.secrets.manager import SecretsManager
+from hyperi_pylib.secrets.types import CacheConfig, RotationEvent, SecretValue
 
 
 class TestSecretsManager:
@@ -284,7 +284,7 @@ class TestSecretsManagerWithMockedProviders:
         # Skip if httpx not available
         pytest.importorskip("httpx")
 
-        from hs_pylib.secrets.types import OpenBaoConfig
+        from hyperi_pylib.secrets.types import OpenBaoConfig
 
         mock_value = SecretValue(
             data=b"vault-secret",
@@ -293,7 +293,7 @@ class TestSecretsManagerWithMockedProviders:
             source="openbao",
         )
 
-        with patch("hs_pylib.secrets.providers.openbao.OpenBaoProvider") as MockProvider:
+        with patch("hyperi_pylib.secrets.providers.openbao.OpenBaoProvider") as MockProvider:
             mock_instance = MagicMock()
             mock_instance.name = "openbao"
             mock_instance.get_async = AsyncMock(return_value=mock_value)
@@ -319,7 +319,7 @@ class TestSecretsManagerWithMockedProviders:
         # Skip if boto3 not available
         pytest.importorskip("boto3")
 
-        from hs_pylib.secrets.types import AWSConfig
+        from hyperi_pylib.secrets.types import AWSConfig
 
         mock_value = SecretValue(
             data=b"aws-secret",
@@ -328,7 +328,7 @@ class TestSecretsManagerWithMockedProviders:
             source="aws",
         )
 
-        with patch("hs_pylib.secrets.providers.aws.AWSProvider") as MockProvider:
+        with patch("hyperi_pylib.secrets.providers.aws.AWSProvider") as MockProvider:
             mock_instance = MagicMock()
             mock_instance.name = "aws"
             mock_instance.get_async = AsyncMock(return_value=mock_value)

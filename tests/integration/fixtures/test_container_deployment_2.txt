@@ -2,15 +2,15 @@ import sys
 import os
 sys.path.insert(0, '/app')
 
-from hs_pylib import Application, create_metrics
-from hs_pylib.prometheus import PrometheusMetrics
+from hyperi_pylib import Application, create_metrics
+from hyperi_pylib.prometheus import PrometheusMetrics
 import time
 
 # Create API application
 app = Application.api(name="metrics-test-api", port=8000, metrics_port=8080)
 
 # Create custom metrics
-metrics = create_metrics(app_name="hs-pylib_test")
+metrics = create_metrics(app_name="hyperi-pylib_test")
 
 # Add a counter metric
 request_counter = metrics.counter(

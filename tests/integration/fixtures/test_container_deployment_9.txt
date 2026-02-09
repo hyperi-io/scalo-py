@@ -5,9 +5,9 @@ import socketserver
 
 # Simple metrics
 metrics = {
-    'hs-pylib_requests_total': 0,
-    'hs-pylib_errors_total': 0,
-    'hs-pylib_uptime_seconds': time.time()
+    'hyperi-pylib_requests_total': 0,
+    'hyperi-pylib_errors_total': 0,
+    'hyperi-pylib_uptime_seconds': time.time()
 }
 
 class MetricsHandler(http.server.BaseHTTPRequestHandler):
@@ -15,23 +15,23 @@ class MetricsHandler(http.server.BaseHTTPRequestHandler):
         if self.path == '/metrics':
             # Generate Prometheus-format metrics
             output = []
-            output.append('# HELP hs-pylib_requests_total Total requests')
-            output.append('# TYPE hs-pylib_requests_total counter')
-            output.append(f'hs-pylib_requests_total {metrics["hs-pylib_requests_total"]}')
-            output.append('# HELP hs-pylib_errors_total Total errors')
-            output.append('# TYPE hs-pylib_errors_total counter')
-            output.append(f'hs-pylib_errors_total {metrics["hs-pylib_errors_total"]}')
-            output.append('# HELP hs-pylib_uptime_seconds Uptime in seconds')
-            output.append('# TYPE hs-pylib_uptime_seconds gauge')
-            uptime = time.time() - metrics["hs-pylib_uptime_seconds"]
-            output.append(f'hs-pylib_uptime_seconds {uptime}')
+            output.append('# HELP hyperi-pylib_requests_total Total requests')
+            output.append('# TYPE hyperi-pylib_requests_total counter')
+            output.append(f'hyperi-pylib_requests_total {metrics["hyperi-pylib_requests_total"]}')
+            output.append('# HELP hyperi-pylib_errors_total Total errors')
+            output.append('# TYPE hyperi-pylib_errors_total counter')
+            output.append(f'hyperi-pylib_errors_total {metrics["hyperi-pylib_errors_total"]}')
+            output.append('# HELP hyperi-pylib_uptime_seconds Uptime in seconds')
+            output.append('# TYPE hyperi-pylib_uptime_seconds gauge')
+            uptime = time.time() - metrics["hyperi-pylib_uptime_seconds"]
+            output.append(f'hyperi-pylib_uptime_seconds {uptime}')
 
             self.send_response(200)
             self.send_header('Content-type', 'text/plain')
             self.end_headers()
             self.wfile.write('\\n'.join(output).encode())
         else:
-            metrics['hs-pylib_requests_total'] += 1
+            metrics['hyperi-pylib_requests_total'] += 1
             self.send_response(200)
             self.send_header('Content-type', 'text/plain')
             self.end_headers()

@@ -1,13 +1,13 @@
-# Project:   hs-pylib
+# Project:   hyperi-pylib
 # File:      tests/integration/test_cache_postgres.py
 # Purpose:   Integration tests for PostgreSQL cache backend with real database
 # Language:  Python
 #
-# License:   LicenseRef-HyperSec-EULA
-# Copyright: (c) 2025 HyperSec
+# License:   FSL-1.1-ALv2
+# Copyright: (c) 2026 HYPERI PTY LIMITED
 
 """
-Integration tests for hs_pylib.cache.postgres module.
+Integration tests for hyperi_pylib.cache.postgres module.
 
 These tests require a running PostgreSQL database. The test framework automatically:
 
@@ -21,7 +21,7 @@ Configure remote PostgreSQL via .env:
     DFE_POSTGRES_PORT=5432
     DFE_POSTGRES_USER=postgres
     DFE_POSTGRES_PASSWORD=yourpassword
-    DFE_POSTGRES_DATABASE=hs_pylib_test
+    DFE_POSTGRES_DATABASE=hyperi_pylib_test
 
 Or start local PostgreSQL manually:
 
@@ -50,7 +50,7 @@ class TestPostgresCacheLifecycle:
     @pytest.mark.asyncio
     async def test_init_creates_table(self, postgres_dsn):
         """Should create cache table on init."""
-        from hs_pylib.cache.postgres import PostgresCache
+        from hyperi_pylib.cache.postgres import PostgresCache
 
         unique_table = f"cache_test_{uuid.uuid4().hex[:8]}"
 
@@ -78,7 +78,7 @@ class TestPostgresCacheLifecycle:
     @pytest.mark.asyncio
     async def test_context_manager(self, postgres_dsn):
         """Should work as async context manager."""
-        from hs_pylib.cache.postgres import PostgresCache
+        from hyperi_pylib.cache.postgres import PostgresCache
 
         unique_table = f"cache_ctx_{uuid.uuid4().hex[:8]}"
 
@@ -101,7 +101,7 @@ class TestPostgresCacheLifecycle:
     @pytest.mark.asyncio
     async def test_close_releases_resources(self, postgres_dsn):
         """Should properly close pool and release resources."""
-        from hs_pylib.cache.postgres import PostgresCache
+        from hyperi_pylib.cache.postgres import PostgresCache
 
         unique_table = f"cache_close_{uuid.uuid4().hex[:8]}"
 
@@ -129,7 +129,7 @@ class TestPostgresCacheCRUD:
     @pytest_asyncio.fixture
     async def cache(self, postgres_dsn):
         """Provide an initialized cache instance with unique table."""
-        from hs_pylib.cache.postgres import PostgresCache
+        from hyperi_pylib.cache.postgres import PostgresCache
 
         unique_table = f"cache_crud_{uuid.uuid4().hex[:8]}"
 
@@ -256,7 +256,7 @@ class TestPostgresCacheExpiration:
     @pytest_asyncio.fixture
     async def cache(self, postgres_dsn):
         """Provide an initialized cache instance with unique table."""
-        from hs_pylib.cache.postgres import PostgresCache
+        from hyperi_pylib.cache.postgres import PostgresCache
 
         unique_table = f"cache_exp_{uuid.uuid4().hex[:8]}"
 
@@ -393,7 +393,7 @@ class TestPostgresCacheBulkInvalidation:
     @pytest_asyncio.fixture
     async def cache(self, postgres_dsn):
         """Provide an initialized cache instance with unique table."""
-        from hs_pylib.cache.postgres import PostgresCache
+        from hyperi_pylib.cache.postgres import PostgresCache
 
         unique_table = f"cache_bulk_{uuid.uuid4().hex[:8]}"
 
@@ -516,7 +516,7 @@ class TestPostgresCacheStats:
     @pytest_asyncio.fixture
     async def cache(self, postgres_dsn):
         """Provide an initialized cache instance with unique table."""
-        from hs_pylib.cache.postgres import PostgresCache
+        from hyperi_pylib.cache.postgres import PostgresCache
 
         unique_table = f"cache_stats_{uuid.uuid4().hex[:8]}"
 
@@ -602,7 +602,7 @@ class TestPostgresCacheConcurrency:
     @pytest_asyncio.fixture
     async def cache(self, postgres_dsn):
         """Provide an initialized cache instance with unique table."""
-        from hs_pylib.cache.postgres import PostgresCache
+        from hyperi_pylib.cache.postgres import PostgresCache
 
         unique_table = f"cache_conc_{uuid.uuid4().hex[:8]}"
 
@@ -690,7 +690,7 @@ class TestGenerateCacheKeyIntegration:
     @pytest_asyncio.fixture
     async def cache(self, postgres_dsn):
         """Provide an initialized cache instance with unique table."""
-        from hs_pylib.cache.postgres import PostgresCache
+        from hyperi_pylib.cache.postgres import PostgresCache
 
         unique_table = f"cache_keygen_{uuid.uuid4().hex[:8]}"
 
@@ -711,7 +711,7 @@ class TestGenerateCacheKeyIntegration:
     @pytest.mark.asyncio
     async def test_generate_cache_key_with_cache(self, cache):
         """Should generate and use cache key correctly."""
-        from hs_pylib.cache.postgres import generate_cache_key
+        from hyperi_pylib.cache.postgres import generate_cache_key
 
         # Generate key with params
         key = generate_cache_key(
@@ -735,7 +735,7 @@ class TestGenerateCacheKeyIntegration:
     @pytest.mark.asyncio
     async def test_different_params_produce_different_keys(self, cache):
         """Should generate different keys for different params."""
-        from hs_pylib.cache.postgres import generate_cache_key
+        from hyperi_pylib.cache.postgres import generate_cache_key
 
         key1 = generate_cache_key("ns", "id", params={"page": 1})
         key2 = generate_cache_key("ns", "id", params={"page": 2})

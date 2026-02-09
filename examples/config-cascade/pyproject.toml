@@ -1,18 +1,18 @@
-# Project:   hs-pylib
+# Project:   hyperi-pylib
 # File:      examples/config-cascade/pyproject.toml
-# Purpose:   Example project demonstrating hs-pylib configuration cascade
+# Purpose:   Example project demonstrating hyperi-pylib configuration cascade
 # Language:  Python
 #
-# License:   LicenseRef-HyperSec-EULA
-# Copyright: (c) 2026 HyperSec
+# License:   FSL-1.1-ALv2
+# Copyright: (c) 2026 HYPERI PTY LIMITED
 
 [project]
 name = "config-cascade-example"
 version = "0.1.0"
-description = "Example demonstrating hs-pylib 7-layer configuration cascade"
+description = "Example demonstrating hyperi-pylib 7-layer configuration cascade"
 requires-python = ">=3.12"
 dependencies = [
-    "hs-pylib>=2.14.0",
+    "hyperi-pylib>=2.14.0",
 ]
 
 [project.optional-dependencies]

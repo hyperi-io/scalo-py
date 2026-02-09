@@ -1,5 +1,5 @@
 """
-Container deployment tests for hs_pylib applications.
+Container deployment tests for hyperi_pylib applications.
 Tests Docker, Kubernetes (Minikube), and Helm deployments with proper cleanup.
 
 NOTE: These tests require external tools to be installed:
@@ -21,7 +21,7 @@ from pathlib import Path
 
 import pytest
 
-from hs_pylib import harness
+from hyperi_pylib import harness
 
 
 # Check and warn about missing tools at module import time
@@ -281,12 +281,12 @@ class ContainerTestBase:
 @pytest.mark.integration
 @pytest.mark.skipif(not docker_available(), reason="Docker not available or not running")
 class TestDockerDeployment(ContainerTestBase):
-    """Test hs_pylib applications in Docker containers."""
+    """Test hyperi_pylib applications in Docker containers."""
 
     @pytest.fixture
     def docker_test_env(self, request) -> Generator[dict, None, None]:
         """Fixture providing Docker test environment with cleanup."""
-        test_id = f"hs-pylib-test-{uuid.uuid4().hex[:8]}"
+        test_id = f"hyperi-pylib-test-{uuid.uuid4().hex[:8]}"
         containers = []
         images = []
         networks = []
@@ -327,7 +327,7 @@ class TestDockerDeployment(ContainerTestBase):
                 self.run_command(["docker", "rmi", "-f", image], check=False)
 
     def test_docker_api_deployment(self, docker_test_env):
-        """Test deploying a hs_pylib API application in Docker."""
+        """Test deploying a hyperi_pylib API application in Docker."""
         test_id = docker_test_env["test_id"]
         temp_dir = Path(tempfile.mkdtemp(prefix=test_id))
 
@@ -336,13 +336,13 @@ class TestDockerDeployment(ContainerTestBase):
             app_file = temp_dir / "app.py"
             app_file.write_text(self.load_fixture("test_container_deployment_1"))
 
-            # Copy hs_pylib source and pyproject.toml
-            hs_pylib_src = Path(__file__).parent.parent.parent / "src" / "hs_pylib"
-            shutil.copytree(hs_pylib_src, temp_dir / "hs_pylib")
+            # Copy hyperi_pylib source and pyproject.toml
+            hyperi_pylib_src = Path(__file__).parent.parent.parent / "src" / "hyperi_pylib"
+            shutil.copytree(hyperi_pylib_src, temp_dir / "hyperi_pylib")
 
-            # Copy pyproject.toml from hs_pylib root
-            hs_pylib_pyproject = Path(__file__).parent.parent.parent / "pyproject.toml"
-            shutil.copy(hs_pylib_pyproject, temp_dir / "pyproject.toml")
+            # Copy pyproject.toml from hyperi_pylib root
+            hyperi_pylib_pyproject = Path(__file__).parent.parent.parent / "pyproject.toml"
+            shutil.copy(hyperi_pylib_pyproject, temp_dir / "pyproject.toml")
 
             # Create Dockerfile
             dockerfile = temp_dir / "Dockerfile"
@@ -411,11 +411,11 @@ class TestDockerDeployment(ContainerTestBase):
             app_file = temp_dir / "app_metrics.py"
             app_file.write_text(self.load_fixture("test_container_deployment_2"))
 
-            # Copy hs_pylib source and pyproject.toml
-            hs_pylib_root = Path(__file__).parent.parent.parent
-            hs_pylib_src = hs_pylib_root / "src" / "hs_pylib"
-            shutil.copytree(hs_pylib_src, temp_dir / "src" / "hs_pylib")
-            shutil.copy(hs_pylib_root / "pyproject.toml", temp_dir / "pyproject.toml")
+            # Copy hyperi_pylib source and pyproject.toml
+            hyperi_pylib_root = Path(__file__).parent.parent.parent
+            hyperi_pylib_src = hyperi_pylib_root / "src" / "hyperi_pylib"
+            shutil.copytree(hyperi_pylib_src, temp_dir / "src" / "hyperi_pylib")
+            shutil.copy(hyperi_pylib_root / "pyproject.toml", temp_dir / "pyproject.toml")
 
             # Create Dockerfile with prometheus-client
             dockerfile = temp_dir / "Dockerfile"
@@ -485,7 +485,7 @@ class TestDockerDeployment(ContainerTestBase):
             shutil.rmtree(temp_dir, ignore_errors=True)
 
     def test_docker_daemon_deployment(self, docker_test_env):
-        """Test deploying a hs_pylib daemon application in Docker."""
+        """Test deploying a hyperi_pylib daemon application in Docker."""
         test_id = docker_test_env["test_id"]
         temp_dir = Path(tempfile.mkdtemp(prefix=test_id))
 
@@ -494,11 +494,11 @@ class TestDockerDeployment(ContainerTestBase):
             app_file = temp_dir / "daemon.py"
             app_file.write_text(self.load_fixture("test_container_deployment_3"))
 
-            # Copy hs_pylib source and pyproject.toml
-            hs_pylib_root = Path(__file__).parent.parent.parent
-            hs_pylib_src = hs_pylib_root / "src" / "hs_pylib"
-            shutil.copytree(hs_pylib_src, temp_dir / "src" / "hs_pylib")
-            shutil.copy(hs_pylib_root / "pyproject.toml", temp_dir / "pyproject.toml")
+            # Copy hyperi_pylib source and pyproject.toml
+            hyperi_pylib_root = Path(__file__).parent.parent.parent
+            hyperi_pylib_src = hyperi_pylib_root / "src" / "hyperi_pylib"
+            shutil.copytree(hyperi_pylib_src, temp_dir / "src" / "hyperi_pylib")
+            shutil.copy(hyperi_pylib_root / "pyproject.toml", temp_dir / "pyproject.toml")
 
             # Create Dockerfile
             dockerfile = temp_dir / "Dockerfile"
@@ -583,13 +583,13 @@ class TestDockerDeployment(ContainerTestBase):
             app_file = temp_dir / "app.py"
             app_file.write_text(self.load_fixture("test_container_deployment_5"))
 
-            # Copy hs_pylib source and pyproject.toml
-            hs_pylib_src = Path(__file__).parent.parent.parent / "src" / "hs_pylib"
-            shutil.copytree(hs_pylib_src, temp_dir / "src/hs_pylib")
+            # Copy hyperi_pylib source and pyproject.toml
+            hyperi_pylib_src = Path(__file__).parent.parent.parent / "src" / "hyperi_pylib"
+            shutil.copytree(hyperi_pylib_src, temp_dir / "src/hyperi_pylib")
 
             # Copy pyproject.toml
-            hs_pylib_pyproject = Path(__file__).parent.parent.parent / "pyproject.toml"
-            shutil.copy(hs_pylib_pyproject, temp_dir / "pyproject.toml")
+            hyperi_pylib_pyproject = Path(__file__).parent.parent.parent / "pyproject.toml"
+            shutil.copy(hyperi_pylib_pyproject, temp_dir / "pyproject.toml")
 
             # Create Dockerfile
             dockerfile = temp_dir / "Dockerfile"
@@ -632,7 +632,7 @@ class TestDockerDeployment(ContainerTestBase):
 @pytest.mark.skip(reason="Helm chart deployment requires pre-built images - not implemented yet")
 @pytest.mark.integration
 class TestHelmBasedDeployment(ContainerTestBase):
-    """Test hs_pylib applications with Helm charts in Kubernetes (Minikube)."""
+    """Test hyperi_pylib applications with Helm charts in Kubernetes (Minikube)."""
 
     @pytest.fixture
     def helm_env(self, request) -> Generator[dict, None, None]:
@@ -643,7 +643,7 @@ class TestHelmBasedDeployment(ContainerTestBase):
         if not minikube_available():
             pytest.skip("Minikube not available or failed to start")
 
-        test_id = f"hs-pylib-{uuid.uuid4().hex[:8]}"
+        test_id = f"hyperi-pylib-{uuid.uuid4().hex[:8]}"
         namespace = f"helm-{test_id}"
 
         # Create test log file
@@ -706,7 +706,7 @@ class TestHelmBasedDeployment(ContainerTestBase):
         self.run_command(["kubectl", "delete", "namespace", namespace, "--timeout=60s"], check=False, timeout=70)
 
     def test_helm_pod_deployment(self, helm_env):
-        """Test deploying a hs_pylib application as a Helm-managed Pod."""
+        """Test deploying a hyperi_pylib application as a Helm-managed Pod."""
         namespace = helm_env["namespace"]
         test_id = helm_env["test_id"]
 
@@ -895,9 +895,9 @@ class TestHelmBasedDeployment(ContainerTestBase):
             )
 
             # Verify metrics
-            assert "hs_pylib_requests_total" in result.stdout
-            assert "hs_pylib_errors_total" in result.stdout
-            assert "hs_pylib_uptime_seconds" in result.stdout
+            assert "hyperi_pylib_requests_total" in result.stdout
+            assert "hyperi_pylib_errors_total" in result.stdout
+            assert "hyperi_pylib_uptime_seconds" in result.stdout
             assert "# HELP" in result.stdout
             assert "# TYPE" in result.stdout
 
@@ -911,7 +911,7 @@ class TestHelmBasedDeployment(ContainerTestBase):
             shutil.rmtree(chart_dir, ignore_errors=True)
 
     def test_helm_api_deployment_with_service(self, helm_env):
-        """Test deploying a hs_pylib API with Helm-managed Deployment and Service."""
+        """Test deploying a hyperi_pylib API with Helm-managed Deployment and Service."""
         namespace = helm_env["namespace"]
         test_id = helm_env["test_id"]
 
@@ -984,7 +984,7 @@ class TestHelmBasedDeployment(ContainerTestBase):
             # Check environment in pod
             result = self.run_command(["kubectl", "exec", pod_name, "-n", namespace, "--", "env"])
 
-            assert "APP_NAME=hs_pylib-api" in result.stdout
+            assert "APP_NAME=hyperi_pylib-api" in result.stdout
             assert f"POSTGRES_HOST=postgres.{namespace}.svc.cluster.local" in result.stdout
 
         finally:
@@ -993,7 +993,7 @@ class TestHelmBasedDeployment(ContainerTestBase):
 
 @pytest.mark.integration
 class TestHelmDeployment(ContainerTestBase):
-    """Test hs_pylib applications with Helm charts."""
+    """Test hyperi_pylib applications with Helm charts."""
 
     @pytest.fixture
     def helm_test_env(self) -> Generator[dict, None, None]:
@@ -1004,7 +1004,7 @@ class TestHelmDeployment(ContainerTestBase):
         if not minikube_available():
             pytest.skip("Minikube not available or failed to start")
 
-        test_id = f"hs-pylib-{uuid.uuid4().hex[:8]}"
+        test_id = f"hyperi-pylib-{uuid.uuid4().hex[:8]}"
         namespace = f"helm-test-{test_id}"
 
         # Note: Images pre-pulled into Minikube during setup
@@ -1052,7 +1052,7 @@ class TestHelmDeployment(ContainerTestBase):
         self.run_command(["kubectl", "delete", "namespace", namespace, "--timeout=60s"], check=False, timeout=70)
 
     def test_helm_chart_deployment(self, helm_test_env):
-        """Test deploying a hs_pylib application via Helm chart."""
+        """Test deploying a hyperi_pylib application via Helm chart."""
         namespace = helm_test_env["namespace"]
         test_id = helm_test_env["test_id"]
 
@@ -1137,7 +1137,7 @@ class TestHelmDeployment(ContainerTestBase):
             result = self.run_command(["kubectl", "exec", pod_name, "-n", namespace, "--", "env"])
 
             assert f"HELM_RELEASE_NAME={release_name}" in result.stdout
-            assert "APP_NAME=hs-pylib-helm-app" in result.stdout
+            assert "APP_NAME=hyperi-pylib-helm-app" in result.stdout
             assert "POSTGRES_HOST=postgres" in result.stdout
             assert "POSTGRES_DATABASE=helmdb" in result.stdout
 
@@ -1164,7 +1164,7 @@ class TestHelmDeployment(ContainerTestBase):
             (chart_dir / "Chart.yaml").write_text(
                 """
 apiVersion: v2
-name: hs_pylib-custom
+name: hyperi_pylib-custom
 version: 0.1.0
 """
             )
@@ -1195,7 +1195,7 @@ data:
             )
 
             # Create custom values file
-            custom_values = {"env": {"APP_NAME": "custom-hs_pylib-app", "LOG_LEVEL": "DEBUG"}}
+            custom_values = {"env": {"APP_NAME": "custom-hyperi_pylib-app", "LOG_LEVEL": "DEBUG"}}
 
             custom_values_file = chart_dir / "custom-values.yaml"
             import yaml
@@ -1216,7 +1216,7 @@ data:
                 ["kubectl", "get", "configmap", f"{release_name}-config", "-n", namespace, "-o", "jsonpath={.data}"]
             )
 
-            assert "custom-hs_pylib-app" in result.stdout
+            assert "custom-hyperi_pylib-app" in result.stdout
             assert "DEBUG" in result.stdout
 
         finally:

@@ -5,7 +5,7 @@ Long-running background services with container-native patterns.
 ## Quick Start
 
 ```python
-from hs_pylib import Application
+from hyperi_pylib import Application
 
 app = Application.daemon(name="worker", version="1.0.0", profile="prod")
 
@@ -118,7 +118,7 @@ def my_task():
 ## Production Example
 
 ```python
-from hs_pylib import Application, logger
+from hyperi_pylib import Application, logger
 
 app = Application.daemon(
     name="data-processor",

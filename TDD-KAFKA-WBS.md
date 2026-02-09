@@ -1,4 +1,4 @@
-# TDD Work Breakdown Structure: hs_pylib.kafka
+# TDD Work Breakdown Structure: hyperi_pylib.kafka
 
 **Issue:** DFE-553
 **Branch:** `feat/DFE-553/add-kafka-library`
@@ -24,8 +24,8 @@
 - [ ] Run `uv sync` to install
 
 ### 0.2 Create Module Structure
-- [ ] Create `src/hs_pylib/kafka/` directory
-- [ ] Create `src/hs_pylib/kafka/__init__.py` (empty)
+- [ ] Create `src/hyperi_pylib/kafka/` directory
+- [ ] Create `src/hyperi_pylib/kafka/__init__.py` (empty)
 - [ ] Create `tests/unit/test_kafka.py` (empty test file)
 
 ---
@@ -426,7 +426,7 @@ pytest tests/unit/test_kafka.py -v
 pytest tests/unit/test_kafka.py::TestDefaults -v
 
 # Run with coverage
-pytest tests/unit/test_kafka.py -v --cov=src/hs_pylib/kafka --cov-report=term-missing
+pytest tests/unit/test_kafka.py -v --cov=src/hyperi_pylib/kafka --cov-report=term-missing
 
 # Run integration tests (requires Kafka)
 pytest tests/integration/test_kafka_integration.py -v -m integration
@@ -443,17 +443,17 @@ from unittest.mock import Mock, patch
 
 @pytest.fixture
 def mock_admin_client():
-    with patch('hs_pylib.kafka.client.AdminClient') as mock:
+    with patch('hyperi_pylib.kafka.client.AdminClient') as mock:
         yield mock
 
 @pytest.fixture
 def mock_consumer():
-    with patch('hs_pylib.kafka.consumer.Consumer') as mock:
+    with patch('hyperi_pylib.kafka.consumer.Consumer') as mock:
         yield mock
 
 @pytest.fixture
 def mock_producer():
-    with patch('hs_pylib.kafka.producer.Producer') as mock:
+    with patch('hyperi_pylib.kafka.producer.Producer') as mock:
         yield mock
 ```
 

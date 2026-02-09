@@ -24,7 +24,7 @@ def test_namespace():
 @pytest.fixture(scope="module")
 def config_loader(postgres_dsn, test_namespace):
     """Create a PostgresConfigLoader with the test DSN."""
-    from hs_pylib.config import PostgresConfigLoader
+    from hyperi_pylib.config import PostgresConfigLoader
 
     # Clear any cached config
     PostgresConfigLoader.clear_all_cache()
@@ -72,7 +72,7 @@ class TestPostgresConfigLoaderEnsureTable:
 
     def test_ensure_table_creates_table(self, postgres_dsn, test_namespace):
         """Test that ensure_table creates the table if it doesn't exist."""
-        from hs_pylib.config import PostgresConfigLoader
+        from hyperi_pylib.config import PostgresConfigLoader
 
         unique_table = f"config_test_{uuid.uuid4().hex[:8]}"
 
@@ -278,7 +278,7 @@ class TestPostgresConfigLoaderDeleteNamespace:
 
     def test_delete_namespace_removes_all_keys(self, postgres_dsn):
         """Test that delete_namespace removes all keys in namespace."""
-        from hs_pylib.config import PostgresConfigLoader
+        from hyperi_pylib.config import PostgresConfigLoader
 
         unique_ns = f"delete-test-{uuid.uuid4().hex[:8]}"
 
@@ -315,7 +315,7 @@ class TestPostgresConfigLoaderNamespaceIsolation:
 
     def test_namespaces_are_isolated(self, postgres_dsn):
         """Test that different namespaces don't see each other's config."""
-        from hs_pylib.config import PostgresConfigLoader
+        from hyperi_pylib.config import PostgresConfigLoader
 
         PostgresConfigLoader.clear_all_cache()
 
@@ -362,7 +362,7 @@ class TestPostgresConfigLoaderConcurrency:
         """Test that concurrent writes don't cause errors."""
         from concurrent.futures import ThreadPoolExecutor
 
-        from hs_pylib.config import PostgresConfigLoader
+        from hyperi_pylib.config import PostgresConfigLoader
 
         loader = PostgresConfigLoader(
             dsn=postgres_dsn,
@@ -409,7 +409,7 @@ class TestPostgresConfigLoaderEdgeCases:
 
     def test_empty_namespace_uses_default(self, postgres_dsn):
         """Test that empty namespace falls back to 'default'."""
-        from hs_pylib.config import PostgresConfigLoader
+        from hyperi_pylib.config import PostgresConfigLoader
 
         loader = PostgresConfigLoader(
             dsn=postgres_dsn,

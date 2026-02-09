@@ -10,4 +10,4 @@ service:
   port: 8080
 
 env:
-  APP_NAME: hs-pylib-metrics-app
+  APP_NAME: hyperi-pylib-metrics-app

@@ -1,6 +1,6 @@
 # PostgreSQL Configuration Source
 
-Implementation specification for PostgreSQL as a configuration source in the HyperSec config cascade. This document covers both hs-pylib (Python) and hs-rustlib (Rust) implementations.
+Implementation specification for PostgreSQL as a configuration source in the HyperI config cascade. This document covers both hyperi-pylib (Python) and hs-rustlib (Rust) implementations.
 
 ## Overview
 
@@ -130,31 +130,31 @@ CREATE TRIGGER config_values_audit
 
 | Variable | Description | Default |
 |----------|-------------|---------|
-| `HS_CONFIG_DSN` | PostgreSQL connection URL (required to enable) | None |
-| `HS_CONFIG_TABLE` | Table name for config values | `config_values` |
-| `HS_CONFIG_NAMESPACE` | Namespace for app isolation | `default` |
-| `HS_CONFIG_CACHE_TTL` | In-memory cache TTL (seconds) | `60` |
-| `HS_CONFIG_CONNECT_TIMEOUT` | Connection timeout (seconds) | `5` |
-| `HS_CONFIG_QUERY_TIMEOUT` | Query timeout (seconds) | `10` |
-| `HS_CONFIG_RETRY_ATTEMPTS` | Retry attempts on connection failure | `3` |
-| `HS_CONFIG_RETRY_DELAY_MS` | Delay between retries (milliseconds) | `1000` |
-| `HS_CONFIG_OPTIONAL` | Continue if PostgreSQL unavailable | `true` |
+| `HYPERI_CONFIG_DSN` | PostgreSQL connection URL (required to enable) | None |
+| `HYPERI_CONFIG_TABLE` | Table name for config values | `config_values` |
+| `HYPERI_CONFIG_NAMESPACE` | Namespace for app isolation | `default` |
+| `HYPERI_CONFIG_CACHE_TTL` | In-memory cache TTL (seconds) | `60` |
+| `HYPERI_CONFIG_CONNECT_TIMEOUT` | Connection timeout (seconds) | `5` |
+| `HYPERI_CONFIG_QUERY_TIMEOUT` | Query timeout (seconds) | `10` |
+| `HYPERI_CONFIG_RETRY_ATTEMPTS` | Retry attempts on connection failure | `3` |
+| `HYPERI_CONFIG_RETRY_DELAY_MS` | Delay between retries (milliseconds) | `1000` |
+| `HYPERI_CONFIG_OPTIONAL` | Continue if PostgreSQL unavailable | `true` |
 
 ### Fallback File Settings (NEW)
 
 | Variable | Description | Default |
 |----------|-------------|---------|
-| `HS_CONFIG_FALLBACK_ENABLED` | Enable fallback file generation | `false` |
-| `HS_CONFIG_FALLBACK_FILE` | Path to fallback file | `/tmp/{namespace}_config_fallback.yaml` |
-| `HS_CONFIG_FALLBACK_MODE` | `replace` or `merge` | `replace` |
+| `HYPERI_CONFIG_FALLBACK_ENABLED` | Enable fallback file generation | `false` |
+| `HYPERI_CONFIG_FALLBACK_FILE` | Path to fallback file | `/tmp/{namespace}_config_fallback.yaml` |
+| `HYPERI_CONFIG_FALLBACK_MODE` | `replace` or `merge` | `replace` |
 
 **Example:**
 
 ```bash
-export HS_CONFIG_DSN="postgres://config_user:secret@config-db:5432/config"
-export HS_CONFIG_NAMESPACE="dfe-loader-prod"
-export HS_CONFIG_FALLBACK_ENABLED="true"
-export HS_CONFIG_FALLBACK_FILE="/config/fallback.yaml"
+export HYPERI_CONFIG_DSN="postgres://config_user:secret@config-db:5432/config"
+export HYPERI_CONFIG_NAMESPACE="dfe-loader-prod"
+export HYPERI_CONFIG_FALLBACK_ENABLED="true"
+export HYPERI_CONFIG_FALLBACK_FILE="/config/fallback.yaml"
 ```
 
 ---
@@ -198,7 +198,7 @@ When PostgreSQL config is loaded successfully, it can optionally be written to a
 
 ---
 
-## Python Implementation (hs-pylib)
+## Python Implementation (hyperi-pylib)
 
 ### Dependencies
 
@@ -208,14 +208,14 @@ When PostgreSQL config is loaded successfully, it can optionally be written to a
 ### Usage
 
 ```python
-# Automatic integration - just set HS_CONFIG_DSN
-from hs_pylib.config import settings
+# Automatic integration - just set HYPERI_CONFIG_DSN
+from hyperi_pylib.config import settings
 
 # PostgreSQL config is automatically loaded and merged
 value = settings.database.host  # Returns PostgreSQL value (overrides files)
 
 # Manual loading for custom scenarios
-from hs_pylib.config import PostgresConfigLoader
+from hyperi_pylib.config import PostgresConfigLoader
 
 loader = PostgresConfigLoader(
     dsn="postgresql://user:pass@host/db",
@@ -618,27 +618,27 @@ impl Config {
 
     fn load_postgres_source_from_env() -> PostgresConfigSource {
         PostgresConfigSource {
-            enabled: std::env::var("HS_CONFIG_DSN").is_ok(),
-            url: std::env::var("HS_CONFIG_DSN").ok(),
-            app_id: std::env::var("HS_CONFIG_NAMESPACE")
+            enabled: std::env::var("HYPERI_CONFIG_DSN").is_ok(),
+            url: std::env::var("HYPERI_CONFIG_DSN").ok(),
+            app_id: std::env::var("HYPERI_CONFIG_NAMESPACE")
                 .unwrap_or_else(|_| "default".to_string()),
-            connect_timeout_secs: std::env::var("HS_CONFIG_CONNECT_TIMEOUT")
+            connect_timeout_secs: std::env::var("HYPERI_CONFIG_CONNECT_TIMEOUT")
                 .ok().and_then(|v| v.parse().ok()).unwrap_or(5),
-            query_timeout_secs: std::env::var("HS_CONFIG_QUERY_TIMEOUT")
+            query_timeout_secs: std::env::var("HYPERI_CONFIG_QUERY_TIMEOUT")
                 .ok().and_then(|v| v.parse().ok()).unwrap_or(10),
-            retry_attempts: std::env::var("HS_CONFIG_RETRY_ATTEMPTS")
+            retry_attempts: std::env::var("HYPERI_CONFIG_RETRY_ATTEMPTS")
                 .ok().and_then(|v| v.parse().ok()).unwrap_or(3),
-            retry_delay_ms: std::env::var("HS_CONFIG_RETRY_DELAY_MS")
+            retry_delay_ms: std::env::var("HYPERI_CONFIG_RETRY_DELAY_MS")
                 .ok().and_then(|v| v.parse().ok()).unwrap_or(1000),
-            optional: std::env::var("HS_CONFIG_OPTIONAL")
+            optional: std::env::var("HYPERI_CONFIG_OPTIONAL")
                 .map(|v| !v.eq_ignore_ascii_case("false") && v != "0")
                 .unwrap_or(true),
-            fallback_enabled: std::env::var("HS_CONFIG_FALLBACK_ENABLED")
+            fallback_enabled: std::env::var("HYPERI_CONFIG_FALLBACK_ENABLED")
                 .map(|v| v.eq_ignore_ascii_case("true") || v == "1")
                 .unwrap_or(false),
-            fallback_file: std::env::var("HS_CONFIG_FALLBACK_FILE")
+            fallback_file: std::env::var("HYPERI_CONFIG_FALLBACK_FILE")
                 .ok().map(PathBuf::from),
-            fallback_mode: std::env::var("HS_CONFIG_FALLBACK_MODE")
+            fallback_mode: std::env::var("HYPERI_CONFIG_FALLBACK_MODE")
                 .map(|v| if v.eq_ignore_ascii_case("merge") { FallbackMode::Merge } else { FallbackMode::Replace })
                 .unwrap_or_default(),
         }
@@ -661,16 +661,16 @@ config:
 
 # deployment.yaml
 env:
-  - name: HS_CONFIG_DSN
+  - name: HYPERI_CONFIG_DSN
     valueFrom:
       secretKeyRef:
         name: app-secrets
         key: config-dsn
-  - name: HS_CONFIG_NAMESPACE
+  - name: HYPERI_CONFIG_NAMESPACE
     value: {{ .Values.config.postgres.namespace | quote }}
-  - name: HS_CONFIG_FALLBACK_ENABLED
+  - name: HYPERI_CONFIG_FALLBACK_ENABLED
     value: {{ .Values.config.postgres.fallbackEnabled | quote }}
-  - name: HS_CONFIG_FALLBACK_FILE
+  - name: HYPERI_CONFIG_FALLBACK_FILE
     value: {{ .Values.config.postgres.fallbackFile | quote }}
 
 volumeMounts:
@@ -740,7 +740,7 @@ pytest tests/integration/test_config_postgres_loader.py -v
 
 ## Migration Checklist
 
-### hs-pylib (Python) ✅ COMPLETE
+### hyperi-pylib (Python) ✅ COMPLETE
 
 - [x] Update cascade priority (PostgreSQL now layer 4)
 - [x] Add fallback file support

@@ -1,15 +1,15 @@
-# Project:   hs-pylib
+# Project:   hyperi-pylib
 # File:      examples/kafka-producer-consumer/consumer.py
-# Purpose:   Demonstrate hs-pylib Kafka consumer
+# Purpose:   Demonstrate hyperi-pylib Kafka consumer
 # Language:  Python
 #
-# License:   LicenseRef-HyperSec-EULA
-# Copyright: (c) 2026 HyperSec
+# License:   FSL-1.1-ALv2
+# Copyright: (c) 2026 HYPERI PTY LIMITED
 
 """
 Kafka Consumer Example.
 
-Demonstrates hs-pylib's Kafka consumer with corporate defaults.
+Demonstrates hyperi-pylib's Kafka consumer with corporate defaults.
 Run with: uv run python consumer.py
 
 Requires Kafka running (use docker compose up -d).
@@ -20,8 +20,8 @@ import os
 import signal
 import sys
 
-from hs_pylib.kafka import KafkaConsumer
-from hs_pylib.logger import error, info, success, warning
+from hyperi_pylib.kafka import KafkaConsumer
+from hyperi_pylib.logger import error, info, success, warning
 
 
 BOOTSTRAP_SERVERS = os.environ.get("KAFKA_BOOTSTRAP_SERVERS", "localhost:9092")
@@ -135,7 +135,7 @@ def main() -> None:
     signal.signal(signal.SIGINT, signal_handler)
     signal.signal(signal.SIGTERM, signal_handler)
 
-    print("=== hs-pylib Kafka Consumer Demo ===\n")
+    print("=== hyperi-pylib Kafka Consumer Demo ===\n")
     print("Press Ctrl+C to stop consuming.\n")
 
     try:

@@ -1,6 +1,6 @@
 # FastAPI Metrics Example
 
-Demonstrates hs-pylib's Prometheus metrics integration with FastAPI.
+Demonstrates hyperi-pylib's Prometheus metrics integration with FastAPI.
 
 ## Features
 
@@ -50,7 +50,7 @@ process_cpu_seconds_total 0.52
 ## Creating Custom Metrics
 
 ```python
-from hs_pylib.metrics import create_metrics
+from hyperi_pylib.metrics import create_metrics
 
 # Create metrics manager
 metrics = create_metrics(namespace="myapp")
@@ -115,5 +115,5 @@ scrape_configs:
 
 ## See Also
 
-- [hs-pylib Metrics Documentation](../../docs/METRICS.md)
+- [hyperi-pylib Metrics Documentation](../../docs/METRICS.md)
 - [Prometheus Python Client](https://github.com/prometheus/client_python)

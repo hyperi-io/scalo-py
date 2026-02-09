@@ -1,14 +1,14 @@
-# hs-pylib
+# hyperi-pylib
 
 <!-- BADGES:START -->
-[![Build Status](https://github.com/hypersec-io/hs-pylib/workflows/CI%20Publish/badge.svg)](https://github.com/hypersec-io/hs-pylib/actions)
+[![Build Status](https://github.com/hypersec-io/hyperi-pylib/workflows/CI%20Publish/badge.svg)](https://github.com/hypersec-io/hyperi-pylib/actions)
 [![Python Version](https://img.shields.io/badge/python-3.12%2B-blue)](https://www.python.org/)
 [![License](https://img.shields.io/badge/license-Proprietary-red)](LICENSE)
 <!-- BADGES:END -->
 
-Enterprise Python infrastructure for HyperSec projects.
+Enterprise Python infrastructure for HyperI projects.
 
-hs-pylib provides metrics, logging, and infrastructure utilities for all HyperSec Python projects.
+hyperi-pylib provides metrics, logging, and infrastructure utilities for all HyperI Python projects.
 
 > Note: The previous `Application.*` framework (API/Daemon/CLI/Oneshot/MCP) was removed in 2.13.x. Use the individual modules (`logger`, `metrics`, `config`, `kafka`, `http`, `cache`) directly or restore the legacy package from history if you need it.
 
@@ -26,11 +26,11 @@ hs-pylib provides metrics, logging, and infrastructure utilities for all HyperSe
 
 ## Installation
 
-> **Package naming:** `hs-pylib` on PyPI, `hs_pylib` for Python imports.
+> **Package naming:** `hyperi-pylib` on PyPI, `hyperi_pylib` for Python imports.
 
 ### pyproject.toml Configuration (Recommended)
 
-For projects using uv with both JFrog (hs-pylib) and PyPI packages, add this to your `pyproject.toml`:
+For projects using uv with both JFrog (hyperi-pylib) and PyPI packages, add this to your `pyproject.toml`:
 
 ```toml
 [tool.uv]
@@ -47,7 +47,7 @@ url = "https://pypi.org/simple"
 default = true
 
 [tool.uv.sources]
-hs-pylib = { index = "hypersec-jfrog" }
+hyperi-pylib = { index = "hypersec-jfrog" }
 ```
 
 **Key settings:**
@@ -55,7 +55,7 @@ hs-pylib = { index = "hypersec-jfrog" }
 - `index-strategy = "unsafe-best-match"` - Allows mixing packages from JFrog and PyPI
 - `explicit = true` on JFrog - Only use JFrog for explicitly mapped packages
 - `default = true` on PyPI - Use PyPI for everything else
-- `[tool.uv.sources]` - Explicitly route `hs-pylib` to JFrog
+- `[tool.uv.sources]` - Explicitly route `hyperi-pylib` to JFrog
 
 Then set credentials via environment variables and install:
 
@@ -76,27 +76,27 @@ export UV_INDEX_HYPERSEC_JFROG_USERNAME="your-email@hypersec.io"
 export UV_INDEX_HYPERSEC_JFROG_PASSWORD="your-jfrog-api-key"
 
 # Using uv with extra-index-url
-uv pip install hs-pylib \
+uv pip install hyperi-pylib \
   --extra-index-url https://hypersec.jfrog.io/artifactory/api/pypi/hypersec-pypi/simple
 
 # With optional dependencies
-uv pip install hs-pylib[presidio,opentelemetry] \
+uv pip install hyperi-pylib[presidio,opentelemetry] \
   --extra-index-url https://hypersec.jfrog.io/artifactory/api/pypi/hypersec-pypi/simple
 ```
 
 ### Optional Dependencies
 
-- `hs-pylib[presidio]` - PII anonymization
-- `hs-pylib[opentelemetry]` - OpenTelemetry metrics
-- `hs-pylib[api]` - FastAPI support
-- `hs-pylib[metrics]` - Prometheus metrics
+- `hyperi-pylib[presidio]` - PII anonymization
+- `hyperi-pylib[opentelemetry]` - OpenTelemetry metrics
+- `hyperi-pylib[api]` - FastAPI support
+- `hyperi-pylib[metrics]` - Prometheus metrics
 
 ## Quick Start
 
 ### Logging
 
 ```python
-from hs_pylib import logger
+from hyperi_pylib import logger
 
 logger.setup(app_name="my-app", json_output=True)
 logger.info("Application started")
@@ -106,7 +106,7 @@ logger.error("Something went wrong", exc_info=True)
 ### Configuration
 
 ```python
-from hs_pylib import config
+from hyperi_pylib import config
 
 # Initialize configuration
 config.setup(app_name="my-app")
@@ -119,7 +119,7 @@ db_config = config.get_database_config()
 ### Database Connections
 
 ```python
-from hs_pylib import database
+from hyperi_pylib import database
 
 # Get database URLs from environment
 postgres_url = database.get_postgresql_url()
@@ -139,7 +139,7 @@ url = database.build_database_url(
 ### Kafka
 
 ```python
-from hs_pylib.kafka import KafkaClient
+from hyperi_pylib.kafka import KafkaClient
 
 # Create client with configuration
 client = KafkaClient.from_config(config_file="kafka.properties")
@@ -155,7 +155,7 @@ async for message in client.consume("my-topic", group_id="my-group"):
 ### Metrics
 
 ```python
-from hs_pylib.metrics import create_metrics_backend
+from hyperi_pylib.metrics import create_metrics_backend
 
 # Prometheus backend
 metrics = create_metrics_backend("prometheus")
@@ -185,4 +185,4 @@ uv build
 
 ## License
 
-Proprietary - HyperSec Internal Use Only
+FSL-1.1-ALv2 - See LICENSE

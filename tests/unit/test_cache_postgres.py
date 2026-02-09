@@ -1,12 +1,12 @@
-# Project:   hs-pylib
+# Project:   hyperi-pylib
 # File:      tests/unit/test_cache_postgres.py
 # Purpose:   Unit tests for PostgreSQL cache backend
 # Language:  Python
 #
-# License:   LicenseRef-HyperSec-EULA
-# Copyright: (c) 2025 HyperSec
+# License:   FSL-1.1-ALv2
+# Copyright: (c) 2026 HYPERI PTY LIMITED
 
-"""Unit tests for hs_pylib.cache.postgres module."""
+"""Unit tests for hyperi_pylib.cache.postgres module."""
 
 import hashlib
 import json
@@ -21,25 +21,25 @@ class TestPostgresCacheImports:
 
     def test_import_postgres_cache(self):
         """Test PostgresCache can be imported."""
-        from hs_pylib.cache import PostgresCache
+        from hyperi_pylib.cache import PostgresCache
 
         assert PostgresCache is not None
 
     def test_import_postgres_cache_error(self):
         """Test PostgresCacheError can be imported."""
-        from hs_pylib.cache import PostgresCacheError
+        from hyperi_pylib.cache import PostgresCacheError
 
         assert PostgresCacheError is not None
 
     def test_import_generate_cache_key(self):
         """Test generate_cache_key can be imported."""
-        from hs_pylib.cache import generate_cache_key
+        from hyperi_pylib.cache import generate_cache_key
 
         assert generate_cache_key is not None
 
     def test_direct_import_from_postgres_module(self):
         """Test direct imports from postgres module."""
-        from hs_pylib.cache.postgres import (
+        from hyperi_pylib.cache.postgres import (
             PostgresCache,
             PostgresCacheError,
             generate_cache_key,
@@ -55,14 +55,14 @@ class TestGenerateCacheKey:
 
     def test_basic_key_generation(self):
         """Test basic key with namespace and identifier."""
-        from hs_pylib.cache.postgres import generate_cache_key
+        from hyperi_pylib.cache.postgres import generate_cache_key
 
         key = generate_cache_key(namespace="analytics", identifier="query1")
         assert key == "analytics:query1"
 
     def test_key_with_org_id(self):
         """Test key with org_id included."""
-        from hs_pylib.cache.postgres import generate_cache_key
+        from hyperi_pylib.cache.postgres import generate_cache_key
 
         key = generate_cache_key(
             namespace="metrics",
@@ -73,7 +73,7 @@ class TestGenerateCacheKey:
 
     def test_key_with_params(self):
         """Test key with params generates hash suffix."""
-        from hs_pylib.cache.postgres import generate_cache_key
+        from hyperi_pylib.cache.postgres import generate_cache_key
 
         key = generate_cache_key(
             namespace="clickhouse",
@@ -90,7 +90,7 @@ class TestGenerateCacheKey:
 
     def test_key_with_org_and_params(self):
         """Test key with both org_id and params."""
-        from hs_pylib.cache.postgres import generate_cache_key
+        from hyperi_pylib.cache.postgres import generate_cache_key
 
         key = generate_cache_key(
             namespace="analytics",
@@ -108,7 +108,7 @@ class TestGenerateCacheKey:
 
     def test_deterministic_key_generation(self):
         """Test that same inputs always generate same key."""
-        from hs_pylib.cache.postgres import generate_cache_key
+        from hyperi_pylib.cache.postgres import generate_cache_key
 
         params = {"a": 1, "b": "test", "c": [1, 2, 3]}
 
@@ -119,7 +119,7 @@ class TestGenerateCacheKey:
 
     def test_params_order_does_not_affect_key(self):
         """Test that params dict order doesn't affect key."""
-        from hs_pylib.cache.postgres import generate_cache_key
+        from hyperi_pylib.cache.postgres import generate_cache_key
 
         params1 = {"z": 1, "a": 2, "m": 3}
         params2 = {"a": 2, "m": 3, "z": 1}
@@ -131,7 +131,7 @@ class TestGenerateCacheKey:
 
     def test_params_hash_matches_expected(self):
         """Test that params hash is computed correctly."""
-        from hs_pylib.cache.postgres import generate_cache_key
+        from hyperi_pylib.cache.postgres import generate_cache_key
 
         params = {"key": "value"}
         params_str = json.dumps(params, sort_keys=True, default=str)
@@ -144,14 +144,14 @@ class TestGenerateCacheKey:
 
     def test_none_org_id_excluded_from_key(self):
         """Test that None org_id is not included in key."""
-        from hs_pylib.cache.postgres import generate_cache_key
+        from hyperi_pylib.cache.postgres import generate_cache_key
 
         key = generate_cache_key("ns", "id", org_id=None)
         assert key == "ns:id"
 
     def test_empty_params_excluded_from_key(self):
         """Test that empty params dict is excluded from key."""
-        from hs_pylib.cache.postgres import generate_cache_key
+        from hyperi_pylib.cache.postgres import generate_cache_key
 
         key_no_params = generate_cache_key("ns", "id", params=None)
         key_empty_params = generate_cache_key("ns", "id", params={})
@@ -169,14 +169,14 @@ class TestPostgresCacheConstructor:
 
     def test_constructor_sets_dsn(self):
         """Test constructor sets DSN correctly."""
-        from hs_pylib.cache.postgres import PostgresCache
+        from hyperi_pylib.cache.postgres import PostgresCache
 
         cache = PostgresCache(dsn="postgresql://user:pass@host/db")
         assert cache._dsn == "postgresql://user:pass@host/db"
 
     def test_constructor_default_values(self):
         """Test constructor has correct defaults."""
-        from hs_pylib.cache.postgres import PostgresCache
+        from hyperi_pylib.cache.postgres import PostgresCache
 
         cache = PostgresCache(dsn="postgresql://localhost/test")
 
@@ -190,7 +190,7 @@ class TestPostgresCacheConstructor:
 
     def test_constructor_custom_values(self):
         """Test constructor accepts custom values."""
-        from hs_pylib.cache.postgres import PostgresCache
+        from hyperi_pylib.cache.postgres import PostgresCache
 
         cache = PostgresCache(
             dsn="postgresql://localhost/test",
@@ -209,7 +209,7 @@ class TestPostgresCacheConstructor:
 
     def test_constructor_with_metrics(self):
         """Test constructor accepts metrics manager."""
-        from hs_pylib.cache.postgres import PostgresCache
+        from hyperi_pylib.cache.postgres import PostgresCache
 
         mock_metrics = MagicMock()
         cache = PostgresCache(
@@ -228,13 +228,13 @@ class TestPostgresCacheError:
 
     def test_error_is_exception(self):
         """Test PostgresCacheError is an Exception."""
-        from hs_pylib.cache.postgres import PostgresCacheError
+        from hyperi_pylib.cache.postgres import PostgresCacheError
 
         assert issubclass(PostgresCacheError, Exception)
 
     def test_error_with_message(self):
         """Test PostgresCacheError can be raised with message."""
-        from hs_pylib.cache.postgres import PostgresCacheError
+        from hyperi_pylib.cache.postgres import PostgresCacheError
 
         with pytest.raises(PostgresCacheError, match="test error"):
             raise PostgresCacheError("test error")
@@ -246,7 +246,7 @@ class TestPostgresCacheNotInitialized:
     @pytest.mark.asyncio
     async def test_get_raises_when_not_initialized(self):
         """Test get raises error when not initialized."""
-        from hs_pylib.cache.postgres import PostgresCache, PostgresCacheError
+        from hyperi_pylib.cache.postgres import PostgresCache, PostgresCacheError
 
         cache = PostgresCache(dsn="postgresql://localhost/test")
 
@@ -256,7 +256,7 @@ class TestPostgresCacheNotInitialized:
     @pytest.mark.asyncio
     async def test_set_raises_when_not_initialized(self):
         """Test set raises error when not initialized."""
-        from hs_pylib.cache.postgres import PostgresCache, PostgresCacheError
+        from hyperi_pylib.cache.postgres import PostgresCache, PostgresCacheError
 
         cache = PostgresCache(dsn="postgresql://localhost/test")
 
@@ -266,7 +266,7 @@ class TestPostgresCacheNotInitialized:
     @pytest.mark.asyncio
     async def test_delete_raises_when_not_initialized(self):
         """Test delete raises error when not initialized."""
-        from hs_pylib.cache.postgres import PostgresCache, PostgresCacheError
+        from hyperi_pylib.cache.postgres import PostgresCache, PostgresCacheError
 
         cache = PostgresCache(dsn="postgresql://localhost/test")
 
@@ -276,7 +276,7 @@ class TestPostgresCacheNotInitialized:
     @pytest.mark.asyncio
     async def test_exists_raises_when_not_initialized(self):
         """Test exists raises error when not initialized."""
-        from hs_pylib.cache.postgres import PostgresCache, PostgresCacheError
+        from hyperi_pylib.cache.postgres import PostgresCache, PostgresCacheError
 
         cache = PostgresCache(dsn="postgresql://localhost/test")
 
@@ -286,7 +286,7 @@ class TestPostgresCacheNotInitialized:
     @pytest.mark.asyncio
     async def test_stats_raises_when_not_initialized(self):
         """Test stats raises error when not initialized."""
-        from hs_pylib.cache.postgres import PostgresCache, PostgresCacheError
+        from hyperi_pylib.cache.postgres import PostgresCache, PostgresCacheError
 
         cache = PostgresCache(dsn="postgresql://localhost/test")
 
@@ -296,7 +296,7 @@ class TestPostgresCacheNotInitialized:
     @pytest.mark.asyncio
     async def test_invalidate_by_prefix_raises_when_not_initialized(self):
         """Test invalidate_by_prefix raises error when not initialized."""
-        from hs_pylib.cache.postgres import PostgresCache, PostgresCacheError
+        from hyperi_pylib.cache.postgres import PostgresCache, PostgresCacheError
 
         cache = PostgresCache(dsn="postgresql://localhost/test")
 
@@ -306,7 +306,7 @@ class TestPostgresCacheNotInitialized:
     @pytest.mark.asyncio
     async def test_invalidate_by_namespace_raises_when_not_initialized(self):
         """Test invalidate_by_namespace raises error when not initialized."""
-        from hs_pylib.cache.postgres import PostgresCache, PostgresCacheError
+        from hyperi_pylib.cache.postgres import PostgresCache, PostgresCacheError
 
         cache = PostgresCache(dsn="postgresql://localhost/test")
 
@@ -316,7 +316,7 @@ class TestPostgresCacheNotInitialized:
     @pytest.mark.asyncio
     async def test_invalidate_by_org_raises_when_not_initialized(self):
         """Test invalidate_by_org raises error when not initialized."""
-        from hs_pylib.cache.postgres import PostgresCache, PostgresCacheError
+        from hyperi_pylib.cache.postgres import PostgresCache, PostgresCacheError
 
         cache = PostgresCache(dsn="postgresql://localhost/test")
 
@@ -326,7 +326,7 @@ class TestPostgresCacheNotInitialized:
     @pytest.mark.asyncio
     async def test_cleanup_expired_raises_when_not_initialized(self):
         """Test cleanup_expired raises error when not initialized."""
-        from hs_pylib.cache.postgres import PostgresCache, PostgresCacheError
+        from hyperi_pylib.cache.postgres import PostgresCache, PostgresCacheError
 
         cache = PostgresCache(dsn="postgresql://localhost/test")
 
@@ -361,8 +361,8 @@ class TestPostgresCacheMocked:
         """Test init creates connection pool."""
         pool, mock_conn = mock_pool
 
-        with patch("hs_pylib.cache.postgres.AsyncConnectionPool", return_value=pool):
-            from hs_pylib.cache.postgres import PostgresCache
+        with patch("hyperi_pylib.cache.postgres.AsyncConnectionPool", return_value=pool):
+            from hyperi_pylib.cache.postgres import PostgresCache
 
             cache = PostgresCache(dsn="postgresql://localhost/test", create_table=False)
             await cache.init()
@@ -375,8 +375,8 @@ class TestPostgresCacheMocked:
         """Test calling init multiple times is safe."""
         pool, mock_conn = mock_pool
 
-        with patch("hs_pylib.cache.postgres.AsyncConnectionPool", return_value=pool):
-            from hs_pylib.cache.postgres import PostgresCache
+        with patch("hyperi_pylib.cache.postgres.AsyncConnectionPool", return_value=pool):
+            from hyperi_pylib.cache.postgres import PostgresCache
 
             cache = PostgresCache(dsn="postgresql://localhost/test", create_table=False)
             await cache.init()
@@ -391,8 +391,8 @@ class TestPostgresCacheMocked:
         """Test close closes connection pool."""
         pool, mock_conn = mock_pool
 
-        with patch("hs_pylib.cache.postgres.AsyncConnectionPool", return_value=pool):
-            from hs_pylib.cache.postgres import PostgresCache
+        with patch("hyperi_pylib.cache.postgres.AsyncConnectionPool", return_value=pool):
+            from hyperi_pylib.cache.postgres import PostgresCache
 
             cache = PostgresCache(dsn="postgresql://localhost/test", create_table=False)
             await cache.init()
@@ -405,7 +405,7 @@ class TestPostgresCacheMocked:
     @pytest.mark.asyncio
     async def test_close_when_not_initialized(self):
         """Test close is safe when not initialized."""
-        from hs_pylib.cache.postgres import PostgresCache
+        from hyperi_pylib.cache.postgres import PostgresCache
 
         cache = PostgresCache(dsn="postgresql://localhost/test")
         # Should not raise
@@ -416,8 +416,8 @@ class TestPostgresCacheMocked:
         """Test async context manager usage."""
         pool, mock_conn = mock_pool
 
-        with patch("hs_pylib.cache.postgres.AsyncConnectionPool", return_value=pool):
-            from hs_pylib.cache.postgres import PostgresCache
+        with patch("hyperi_pylib.cache.postgres.AsyncConnectionPool", return_value=pool):
+            from hyperi_pylib.cache.postgres import PostgresCache
 
             async with PostgresCache(
                 dsn="postgresql://localhost/test",
@@ -433,8 +433,8 @@ class TestPostgresCacheMocked:
         """Test init creates table when create_table=True."""
         pool, mock_conn = mock_pool
 
-        with patch("hs_pylib.cache.postgres.AsyncConnectionPool", return_value=pool):
-            from hs_pylib.cache.postgres import PostgresCache
+        with patch("hyperi_pylib.cache.postgres.AsyncConnectionPool", return_value=pool):
+            from hyperi_pylib.cache.postgres import PostgresCache
 
             cache = PostgresCache(dsn="postgresql://localhost/test", create_table=True)
             await cache.init()
@@ -451,8 +451,8 @@ class TestPostgresCacheMocked:
         mock_counter = MagicMock()
         mock_metrics.counter = MagicMock(return_value=mock_counter)
 
-        with patch("hs_pylib.cache.postgres.AsyncConnectionPool", return_value=pool):
-            from hs_pylib.cache.postgres import PostgresCache
+        with patch("hyperi_pylib.cache.postgres.AsyncConnectionPool", return_value=pool):
+            from hyperi_pylib.cache.postgres import PostgresCache
 
             cache = PostgresCache(
                 dsn="postgresql://localhost/test",
@@ -476,8 +476,8 @@ class TestPostgresCacheMocked:
         mock_result.fetchone = AsyncMock(return_value=None)
         mock_conn.execute = AsyncMock(return_value=mock_result)
 
-        with patch("hs_pylib.cache.postgres.AsyncConnectionPool", return_value=pool):
-            from hs_pylib.cache.postgres import PostgresCache
+        with patch("hyperi_pylib.cache.postgres.AsyncConnectionPool", return_value=pool):
+            from hyperi_pylib.cache.postgres import PostgresCache
 
             cache = PostgresCache(dsn="postgresql://localhost/test", create_table=False)
             await cache.init()
@@ -501,8 +501,8 @@ class TestPostgresCacheMocked:
         mock_result.fetchone = AsyncMock(return_value=(value, expired_time, "default"))
         mock_conn.execute = AsyncMock(return_value=mock_result)
 
-        with patch("hs_pylib.cache.postgres.AsyncConnectionPool", return_value=pool):
-            from hs_pylib.cache.postgres import PostgresCache
+        with patch("hyperi_pylib.cache.postgres.AsyncConnectionPool", return_value=pool):
+            from hyperi_pylib.cache.postgres import PostgresCache
 
             cache = PostgresCache(dsn="postgresql://localhost/test", create_table=False)
             await cache.init()
@@ -527,8 +527,8 @@ class TestPostgresCacheMocked:
         mock_result.fetchone = AsyncMock(return_value=(value_bytes, future_time, "default"))
         mock_conn.execute = AsyncMock(return_value=mock_result)
 
-        with patch("hs_pylib.cache.postgres.AsyncConnectionPool", return_value=pool):
-            from hs_pylib.cache.postgres import PostgresCache
+        with patch("hyperi_pylib.cache.postgres.AsyncConnectionPool", return_value=pool):
+            from hyperi_pylib.cache.postgres import PostgresCache
 
             cache = PostgresCache(dsn="postgresql://localhost/test", create_table=False)
             await cache.init()
@@ -545,8 +545,8 @@ class TestPostgresCacheMocked:
         mock_result = AsyncMock()
         mock_conn.execute = AsyncMock(return_value=mock_result)
 
-        with patch("hs_pylib.cache.postgres.AsyncConnectionPool", return_value=pool):
-            from hs_pylib.cache.postgres import PostgresCache
+        with patch("hyperi_pylib.cache.postgres.AsyncConnectionPool", return_value=pool):
+            from hyperi_pylib.cache.postgres import PostgresCache
 
             cache = PostgresCache(
                 dsn="postgresql://localhost/test",
@@ -569,8 +569,8 @@ class TestPostgresCacheMocked:
         mock_result = AsyncMock()
         mock_conn.execute = AsyncMock(return_value=mock_result)
 
-        with patch("hs_pylib.cache.postgres.AsyncConnectionPool", return_value=pool):
-            from hs_pylib.cache.postgres import PostgresCache
+        with patch("hyperi_pylib.cache.postgres.AsyncConnectionPool", return_value=pool):
+            from hyperi_pylib.cache.postgres import PostgresCache
 
             cache = PostgresCache(dsn="postgresql://localhost/test", create_table=False)
             await cache.init()
@@ -588,8 +588,8 @@ class TestPostgresCacheMocked:
         mock_result.rowcount = 1
         mock_conn.execute = AsyncMock(return_value=mock_result)
 
-        with patch("hs_pylib.cache.postgres.AsyncConnectionPool", return_value=pool):
-            from hs_pylib.cache.postgres import PostgresCache
+        with patch("hyperi_pylib.cache.postgres.AsyncConnectionPool", return_value=pool):
+            from hyperi_pylib.cache.postgres import PostgresCache
 
             cache = PostgresCache(dsn="postgresql://localhost/test", create_table=False)
             await cache.init()
@@ -607,8 +607,8 @@ class TestPostgresCacheMocked:
         mock_result.rowcount = 0
         mock_conn.execute = AsyncMock(return_value=mock_result)
 
-        with patch("hs_pylib.cache.postgres.AsyncConnectionPool", return_value=pool):
-            from hs_pylib.cache.postgres import PostgresCache
+        with patch("hyperi_pylib.cache.postgres.AsyncConnectionPool", return_value=pool):
+            from hyperi_pylib.cache.postgres import PostgresCache
 
             cache = PostgresCache(dsn="postgresql://localhost/test", create_table=False)
             await cache.init()
@@ -626,8 +626,8 @@ class TestPostgresCacheMocked:
         mock_result.fetchone = AsyncMock(return_value=(1,))
         mock_conn.execute = AsyncMock(return_value=mock_result)
 
-        with patch("hs_pylib.cache.postgres.AsyncConnectionPool", return_value=pool):
-            from hs_pylib.cache.postgres import PostgresCache
+        with patch("hyperi_pylib.cache.postgres.AsyncConnectionPool", return_value=pool):
+            from hyperi_pylib.cache.postgres import PostgresCache
 
             cache = PostgresCache(dsn="postgresql://localhost/test", create_table=False)
             await cache.init()
@@ -645,8 +645,8 @@ class TestPostgresCacheMocked:
         mock_result.fetchone = AsyncMock(return_value=None)
         mock_conn.execute = AsyncMock(return_value=mock_result)
 
-        with patch("hs_pylib.cache.postgres.AsyncConnectionPool", return_value=pool):
-            from hs_pylib.cache.postgres import PostgresCache
+        with patch("hyperi_pylib.cache.postgres.AsyncConnectionPool", return_value=pool):
+            from hyperi_pylib.cache.postgres import PostgresCache
 
             cache = PostgresCache(dsn="postgresql://localhost/test", create_table=False)
             await cache.init()
@@ -664,8 +664,8 @@ class TestPostgresCacheMocked:
         mock_result.rowcount = 5
         mock_conn.execute = AsyncMock(return_value=mock_result)
 
-        with patch("hs_pylib.cache.postgres.AsyncConnectionPool", return_value=pool):
-            from hs_pylib.cache.postgres import PostgresCache
+        with patch("hyperi_pylib.cache.postgres.AsyncConnectionPool", return_value=pool):
+            from hyperi_pylib.cache.postgres import PostgresCache
 
             cache = PostgresCache(dsn="postgresql://localhost/test", create_table=False)
             await cache.init()
@@ -683,8 +683,8 @@ class TestPostgresCacheMocked:
         mock_result.rowcount = 10
         mock_conn.execute = AsyncMock(return_value=mock_result)
 
-        with patch("hs_pylib.cache.postgres.AsyncConnectionPool", return_value=pool):
-            from hs_pylib.cache.postgres import PostgresCache
+        with patch("hyperi_pylib.cache.postgres.AsyncConnectionPool", return_value=pool):
+            from hyperi_pylib.cache.postgres import PostgresCache
 
             cache = PostgresCache(dsn="postgresql://localhost/test", create_table=False)
             await cache.init()
@@ -702,8 +702,8 @@ class TestPostgresCacheMocked:
         mock_result.rowcount = 3
         mock_conn.execute = AsyncMock(return_value=mock_result)
 
-        with patch("hs_pylib.cache.postgres.AsyncConnectionPool", return_value=pool):
-            from hs_pylib.cache.postgres import PostgresCache
+        with patch("hyperi_pylib.cache.postgres.AsyncConnectionPool", return_value=pool):
+            from hyperi_pylib.cache.postgres import PostgresCache
 
             cache = PostgresCache(dsn="postgresql://localhost/test", create_table=False)
             await cache.init()
@@ -721,8 +721,8 @@ class TestPostgresCacheMocked:
         mock_result.rowcount = 100
         mock_conn.execute = AsyncMock(return_value=mock_result)
 
-        with patch("hs_pylib.cache.postgres.AsyncConnectionPool", return_value=pool):
-            from hs_pylib.cache.postgres import PostgresCache
+        with patch("hyperi_pylib.cache.postgres.AsyncConnectionPool", return_value=pool):
+            from hyperi_pylib.cache.postgres import PostgresCache
 
             cache = PostgresCache(dsn="postgresql://localhost/test", create_table=False)
             await cache.init()
@@ -754,8 +754,8 @@ class TestPostgresCacheMocked:
         # Return different results for different queries
         mock_conn.execute = AsyncMock(side_effect=[mock_count_result, mock_expired_result, mock_namespace_result])
 
-        with patch("hs_pylib.cache.postgres.AsyncConnectionPool", return_value=pool):
-            from hs_pylib.cache.postgres import PostgresCache
+        with patch("hyperi_pylib.cache.postgres.AsyncConnectionPool", return_value=pool):
+            from hyperi_pylib.cache.postgres import PostgresCache
 
             cache = PostgresCache(dsn="postgresql://localhost/test", create_table=False)
             await cache.init()

@@ -1,12 +1,12 @@
 """
-Tests for hs_pylib logger filters (sensitive data masking and rate limiting).
+Tests for hyperi_pylib logger filters (sensitive data masking and rate limiting).
 """
 
 import time
 
 import pytest
 
-from hs_pylib.logger.filters import MASK_VALUE, SENSITIVE_FIELDS, RateLimitFilter, SensitiveDataFilter
+from hyperi_pylib.logger.filters import MASK_VALUE, SENSITIVE_FIELDS, RateLimitFilter, SensitiveDataFilter
 
 
 class TestSensitiveDataFilter:

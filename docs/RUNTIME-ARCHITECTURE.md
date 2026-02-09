@@ -1,4 +1,4 @@
-# hs-pylib Runtime Architecture
+# hyperi-pylib Runtime Architecture
 
 Unified deployment model supporting both **containerized** and **local** environments.
 
@@ -13,10 +13,10 @@ Hardcoding paths like `/app/config` breaks local development. Using `~/.config` 
 
 ## Solution: Unified Runtime Environment
 
-hs-pylib provides automatic environment detection and unified path resolution:
+hyperi-pylib provides automatic environment detection and unified path resolution:
 
 ```python
-from hs_pylib import get_runtime_paths
+from hyperi_pylib import get_runtime_paths
 
 # Automatic detection
 paths = get_runtime_paths("my-app")
@@ -136,12 +136,12 @@ if paths.log_dir:
     log_file = paths.log_dir / "app.log"
 else:
     # Container mode - use stdout
-    # (hs-pylib logger handles this automatically)
+    # (hyperi-pylib logger handles this automatically)
 ```
 
 ## Container Detection
 
-hs-pylib automatically detects container environments using multiple methods:
+hyperi-pylib automatically detects container environments using multiple methods:
 
 ### Method 1: Docker (/.dockerenv)
 
@@ -179,7 +179,7 @@ if os.getpid() == 1:
 Convenience function for common usage:
 
 ```python
-from hs_pylib import get_runtime_paths
+from hyperi_pylib import get_runtime_paths
 
 paths = get_runtime_paths("my-app", ensure_dirs=True)
 ```
@@ -195,7 +195,7 @@ paths = get_runtime_paths("my-app", ensure_dirs=True)
 Advanced usage with custom detection:
 
 ```python
-from hs_pylib.runtime import RuntimeEnvironment
+from hyperi_pylib.runtime import RuntimeEnvironment
 
 # Auto-detect
 runtime = RuntimeEnvironment("my-app")
@@ -232,10 +232,10 @@ class RuntimePaths:
 
 ### Application Factory Pattern
 
-hs-pylib.application already integrates RuntimePaths:
+hyperi-pylib.application already integrates RuntimePaths:
 
 ```python
-from hs_pylib import Application
+from hyperi_pylib import Application
 
 # API application
 app = Application.api(name="my-service", port=8000)
@@ -251,7 +251,7 @@ app = Application.api(name="my-service", port=8000)
 For custom applications:
 
 ```python
-from hs_pylib import get_runtime_paths, Application
+from hyperi_pylib import get_runtime_paths, Application
 
 paths = get_runtime_paths("my-app")
 
@@ -380,7 +380,7 @@ python -m my_app.main
 ### Unit Tests
 
 ```python
-from hs_pylib.runtime import RuntimeEnvironment
+from hyperi_pylib.runtime import RuntimeEnvironment
 
 def test_local_paths():
     runtime = RuntimeEnvironment("test-app", force_mode="local")
@@ -435,7 +435,7 @@ CONFIG_DIR = Path.home() / ".my-app/config"  # Won't work for root daemon
 ### After (Unified Runtime)
 
 ```python
-from hs_pylib import get_runtime_paths
+from hyperi_pylib import get_runtime_paths
 
 # ✅ Works everywhere
 paths = get_runtime_paths("my-app")

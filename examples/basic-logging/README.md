@@ -1,6 +1,6 @@
 # Basic Logging Example
 
-Demonstrates hs-pylib's structured logging with automatic environment detection.
+Demonstrates hyperi-pylib's structured logging with automatic environment detection.
 
 ## Features
 
@@ -58,4 +58,4 @@ uv run pytest
 
 ## See Also
 
-- [hs-pylib Logging Documentation](../../docs/LOGGING.md)
+- [hyperi-pylib Logging Documentation](../../docs/LOGGING.md)

@@ -1,6 +1,6 @@
 # Container Deployment Guide
 
-Production-ready container deployment for hs-pylib applications.
+Production-ready container deployment for hyperi-pylib applications.
 
 ## Quick Start
 
@@ -8,7 +8,7 @@ Production-ready container deployment for hs-pylib applications.
 
 ```python
 # src/my_app/__init__.py
-from hs_pylib import Application
+from hyperi_pylib import Application
 
 app = Application.api(
     name="my-app",
@@ -205,15 +205,15 @@ Health check endpoints:
 ### Application Config
 
 ```dockerfile
-ENV HS_LIB_PROFILE=prod \
-    HS_LIB_LOGGING__LEVEL=INFO \
+ENV HYPERI_LIB_PROFILE=prod \
+    HYPERI_LIB_LOGGING__LEVEL=INFO \
     DATABASE_URL=postgresql://localhost/mydb
 ```
 
 ### Runtime Override
 
 ```bash
-docker run -e HS_LIB_PROFILE=docker \
+docker run -e HYPERI_LIB_PROFILE=docker \
            -e DATABASE_URL=postgresql://db:5432/mydb \
            my-app:1.0.0
 ```
@@ -301,7 +301,7 @@ services:
       - "8080:8080"
       - "9090:9090"
     environment:
-      - HS_LIB_PROFILE=docker
+      - HYPERI_LIB_PROFILE=docker
       - DATABASE_URL=postgresql://db:5432/mydb
     depends_on:
       - db
@@ -334,7 +334,7 @@ services:
     ports:
       - "8000:8000"
     environment:
-      - HS_LIB_PROFILE=prod
+      - HYPERI_LIB_PROFILE=prod
     secrets:
       - db_password
     deploy:
@@ -434,7 +434,7 @@ HEALTHCHECK CMD curl -f http://localhost:8080/health || exit 1
 
 ### 5. Graceful Shutdown
 
-Handle SIGTERM properly (hs-pylib does this automatically):
+Handle SIGTERM properly (hyperi-pylib does this automatically):
 
 ```python
 # Automatic with SignalHandlerMixin
@@ -482,7 +482,7 @@ docker exec -it my-app curl http://localhost:8080/health
 
 ```bash
 # Should be "prod" or "docker", not "dev"
-docker exec -it my-app env | grep HS_LIB_PROFILE
+docker exec -it my-app env | grep HYPERI_LIB_PROFILE
 ```
 
 ### Port Already in Use

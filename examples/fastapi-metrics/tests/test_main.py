@@ -1,10 +1,10 @@
-# Project:   hs-pylib
+# Project:   hyperi-pylib
 # File:      examples/fastapi-metrics/tests/test_main.py
 # Purpose:   Tests for fastapi-metrics example
 # Language:  Python
 #
-# License:   LicenseRef-HyperSec-EULA
-# Copyright: (c) 2026 HyperSec
+# License:   FSL-1.1-ALv2
+# Copyright: (c) 2026 HYPERI PTY LIMITED
 
 """Tests for fastapi-metrics example."""
 
@@ -115,7 +115,7 @@ class TestImports:
 
     def test_create_metrics_import(self) -> None:
         """Should be able to import create_metrics."""
-        from hs_pylib.metrics import create_metrics
+        from hyperi_pylib.metrics import create_metrics
 
         assert create_metrics is not None
 

@@ -5,8 +5,8 @@ from pathlib import Path
 
 import pytest
 
-from hs_pylib.secrets.exceptions import ProviderError, SecretNotFoundError
-from hs_pylib.secrets.providers.file import FileProvider
+from hyperi_pylib.secrets.exceptions import ProviderError, SecretNotFoundError
+from hyperi_pylib.secrets.providers.file import FileProvider
 
 
 class TestFileProvider:

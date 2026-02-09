@@ -1,10 +1,10 @@
-# hs-pylib Documentation
+# hyperi-pylib Documentation
 
 Production-ready infrastructure library for Python applications.
 
 ## Core Modules
 
-hs-pylib provides modular infrastructure components that work together or independently:
+hyperi-pylib provides modular infrastructure components that work together or independently:
 
 | Module | Description | Documentation |
 |--------|-------------|---------------|
@@ -20,13 +20,13 @@ hs-pylib provides modular infrastructure components that work together or indepe
 ## Quick Start
 
 ```bash
-pip install hs-pylib
+pip install hyperi-pylib
 ```
 
 ### Logging
 
 ```python
-from hs_pylib.logger import logger, info, error, success
+from hyperi_pylib.logger import logger, info, error, success
 
 # Using convenience functions
 info("Application starting", version="1.0.0")
@@ -40,7 +40,7 @@ logger.info("Processing user", user_id=123, action="login")
 ### Configuration
 
 ```python
-from hs_pylib.config import settings
+from hyperi_pylib.config import settings
 
 # Access configuration (automatic 7-layer cascade)
 host = settings.get("database.host", "localhost")
@@ -53,7 +53,7 @@ port = settings.get("database.port", 5432)
 ### Metrics
 
 ```python
-from hs_pylib.metrics import create_metrics
+from hyperi_pylib.metrics import create_metrics
 
 metrics = create_metrics(namespace="myapp")
 
@@ -75,7 +75,7 @@ print(metrics.export())
 
 ```python
 # Disk cache (single pod)
-from hs_pylib.cache import configure_cache, cached
+from hyperi_pylib.cache import configure_cache, cached
 
 configure_cache(directory="/tmp/cache", default_ttl="1h")
 
@@ -84,7 +84,7 @@ async def fetch_url(url: str) -> dict:
     ...
 
 # PostgreSQL cache (multi-pod)
-from hs_pylib.cache import PostgresCache, generate_cache_key
+from hyperi_pylib.cache import PostgresCache, generate_cache_key
 
 cache = PostgresCache(dsn="postgresql://user:pass@host/db")
 await cache.init()
@@ -97,7 +97,7 @@ value = await cache.get(key)
 ### Kafka
 
 ```python
-from hs_pylib.kafka import KafkaProducer, KafkaConsumer
+from hyperi_pylib.kafka import KafkaProducer, KafkaConsumer
 
 # Producer
 producer = KafkaProducer({"bootstrap.servers": "localhost:9092"})
@@ -117,7 +117,7 @@ for msg in consumer:
 ### Database URLs
 
 ```python
-from hs_pylib.database import build_database_url
+from hyperi_pylib.database import build_database_url
 
 # Reads POSTGRES_HOST, POSTGRES_PORT, etc. from environment
 postgres_url = build_database_url("postgresql")
@@ -129,7 +129,7 @@ redis_url = build_database_url("redis")
 ### Runtime Paths
 
 ```python
-from hs_pylib.runtime import get_runtime_paths
+from hyperi_pylib.runtime import get_runtime_paths
 
 runtime = get_runtime_paths()
 config_file = runtime.config_dir / "app.yaml"   # /config or ~/.config
@@ -158,16 +158,16 @@ See the [examples/](../examples/) directory for complete, runnable projects:
 
 ```bash
 # Core only
-pip install hs-pylib
+pip install hyperi-pylib
 
 # With caching (cashews + psycopg)
-pip install hs-pylib[cache]
+pip install hyperi-pylib[cache]
 
 # With metrics
-pip install hs-pylib[metrics]
+pip install hyperi-pylib[metrics]
 
 # All features
-pip install hs-pylib[all]
+pip install hyperi-pylib[all]
 ```
 
 ## Environment Variables
@@ -176,12 +176,12 @@ pip install hs-pylib[all]
 |----------|-------------|---------|
 | `LOG_LEVEL` | Logging level | INFO |
 | `HS_LOG_FORMAT` | Log format (console/json) | auto-detect |
-| `HS_CONFIG_DSN` | PostgreSQL config loader DSN | unset |
+| `HYPERI_CONFIG_DSN` | PostgreSQL config loader DSN | unset |
 
 ## Repository
 
-- **GitHub**: <https://github.com/hypersec-io/hs-pylib>
-- **Issues**: <https://github.com/hypersec-io/hs-pylib/issues>
+- **GitHub**: <https://github.com/hypersec-io/hyperi-pylib>
+- **Issues**: <https://github.com/hypersec-io/hyperi-pylib/issues>
 
 ## Deprecated: Application Framework
 

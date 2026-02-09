@@ -1,10 +1,10 @@
-# Project:   hs-pylib
+# Project:   hyperi-pylib
 # File:      examples/kafka-producer-consumer/tests/test_main.py
 # Purpose:   Tests for kafka-producer-consumer example
 # Language:  Python
 #
-# License:   LicenseRef-HyperSec-EULA
-# Copyright: (c) 2026 HyperSec
+# License:   FSL-1.1-ALv2
+# Copyright: (c) 2026 HYPERI PTY LIMITED
 
 """Tests for kafka-producer-consumer example.
 
@@ -20,19 +20,19 @@ class TestImports:
 
     def test_kafka_producer_import(self) -> None:
         """Should be able to import KafkaProducer."""
-        from hs_pylib.kafka import KafkaProducer
+        from hyperi_pylib.kafka import KafkaProducer
 
         assert KafkaProducer is not None
 
     def test_kafka_consumer_import(self) -> None:
         """Should be able to import KafkaConsumer."""
-        from hs_pylib.kafka import KafkaConsumer
+        from hyperi_pylib.kafka import KafkaConsumer
 
         assert KafkaConsumer is not None
 
     def test_kafka_client_import(self) -> None:
         """Should be able to import KafkaClient."""
-        from hs_pylib.kafka import KafkaClient
+        from hyperi_pylib.kafka import KafkaClient
 
         assert KafkaClient is not None
 
@@ -99,7 +99,7 @@ class TestIntegration:
 
     def test_producer_creates_successfully(self) -> None:
         """Should be able to create a producer."""
-        from hs_pylib.kafka import KafkaProducer
+        from hyperi_pylib.kafka import KafkaProducer
 
         producer = KafkaProducer({
             "bootstrap.servers": "localhost:9092",
@@ -108,7 +108,7 @@ class TestIntegration:
 
     def test_consumer_creates_successfully(self) -> None:
         """Should be able to create a consumer."""
-        from hs_pylib.kafka import KafkaConsumer
+        from hyperi_pylib.kafka import KafkaConsumer
 
         consumer = KafkaConsumer({
             "bootstrap.servers": "localhost:9092",

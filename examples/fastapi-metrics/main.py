@@ -1,15 +1,15 @@
-# Project:   hs-pylib
+# Project:   hyperi-pylib
 # File:      examples/fastapi-metrics/main.py
-# Purpose:   Demonstrate hs-pylib Prometheus metrics with FastAPI
+# Purpose:   Demonstrate hyperi-pylib Prometheus metrics with FastAPI
 # Language:  Python
 #
-# License:   LicenseRef-HyperSec-EULA
-# Copyright: (c) 2026 HyperSec
+# License:   FSL-1.1-ALv2
+# Copyright: (c) 2026 HYPERI PTY LIMITED
 
 """
 FastAPI Metrics Example.
 
-Demonstrates hs-pylib's Prometheus metrics integration with FastAPI.
+Demonstrates hyperi-pylib's Prometheus metrics integration with FastAPI.
 Run with: uv run python main.py
 
 Then visit:
@@ -26,8 +26,8 @@ from contextlib import asynccontextmanager
 from fastapi import FastAPI, Request, Response
 from fastapi.responses import PlainTextResponse
 
-from hs_pylib.logger import info, success
-from hs_pylib.metrics import create_metrics
+from hyperi_pylib.logger import info, success
+from hyperi_pylib.metrics import create_metrics
 
 
 # Configuration
@@ -73,7 +73,7 @@ async def lifespan(app: FastAPI):
 # Create FastAPI application
 app = FastAPI(
     title="FastAPI Metrics Example",
-    description="Demonstrates hs-pylib Prometheus metrics",
+    description="Demonstrates hyperi-pylib Prometheus metrics",
     version="1.0.0",
     lifespan=lifespan,
 )

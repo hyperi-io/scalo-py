@@ -1,4 +1,4 @@
-"""Pytest configuration and fixtures for hs-pylib tests."""
+"""Pytest configuration and fixtures for hyperi-pylib tests."""
 
 import os
 import socket
@@ -30,8 +30,8 @@ if env_file.exists():
 # =============================================================================
 
 KAFKA_DOCKER_COMPOSE = Path(__file__).parent.parent / "docker-compose.kafka.yml"
-KAFKA_CONTAINER_NAME = "hs-pylib-kafka"
-KAFKA_PROJECT_NAME = "hs-pylib-test"  # Unique project name to avoid conflicts
+KAFKA_CONTAINER_NAME = "hyperi-pylib-kafka"
+KAFKA_PROJECT_NAME = "hyperi-pylib-test"  # Unique project name to avoid conflicts
 
 # Track if we started Docker Kafka (so we know to clean it up)
 _kafka_started_by_tests = False
@@ -86,7 +86,7 @@ def _start_docker_kafka() -> bool:
             return True
 
         # Start the container with unique project name
-        print("\n  Starting local Docker Kafka (hs-pylib-test)...")
+        print("\n  Starting local Docker Kafka (hyperi-pylib-test)...")
         subprocess.run(
             [
                 "docker",
@@ -130,7 +130,7 @@ def _stop_docker_kafka() -> None:
         return
 
     try:
-        print("\n  Stopping Docker Kafka (hs-pylib-test)...")
+        print("\n  Stopping Docker Kafka (hyperi-pylib-test)...")
         subprocess.run(
             [
                 "docker",
@@ -165,7 +165,7 @@ def _get_kafka_config_for_env(force_local: bool = False) -> tuple[dict | None, s
     Returns:
         Tuple of (config dict or None, source description)
     """
-    from hs_pylib.kafka.config import ADMIN_DEFAULTS, config_from_env, merge_config
+    from hyperi_pylib.kafka.config import ADMIN_DEFAULTS, config_from_env, merge_config
 
     # Try remote Kafka from .env first (unless forcing local)
     if not force_local:
@@ -254,9 +254,9 @@ def cleanup_hung_processes():
     Uses HS_LIB-specific labels to avoid killing other projects' processes.
     """
     # Kill processes with HS_LIB test labels
-    hs_pylib_patterns = ["HS_LIB_TEST_HELM", "HS_LIB_TEST_K8S", "HS_LIB_TEST_DOCKER", "HS_LIB_TEST_MINIKUBE"]
+    hyperi_pylib_patterns = ["HYPERI_LIB_TEST_HELM", "HYPERI_LIB_TEST_K8S", "HYPERI_LIB_TEST_DOCKER", "HYPERI_LIB_TEST_MINIKUBE"]
 
-    for pattern in hs_pylib_patterns:
+    for pattern in hyperi_pylib_patterns:
         try:
             subprocess.run(["pkill", "-9", "-f", pattern], capture_output=True, timeout=5)
         except (subprocess.TimeoutExpired, Exception):
@@ -265,8 +265,8 @@ def cleanup_hung_processes():
     # Also kill generic hung Kubernetes commands (broad cleanup)
     generic_patterns = [
         "minikube ssh.*docker login",
-        "kubectl.*helm-hs-pylib",  # hs-pylib-specific namespace
-        "helm install.*hs-pylib",  # hs-pylib-specific releases
+        "kubectl.*helm-hyperi-pylib",  # hyperi-pylib-specific namespace
+        "helm install.*hyperi-pylib",  # hyperi-pylib-specific releases
     ]
 
     for pattern in generic_patterns:
@@ -304,11 +304,11 @@ def temp_dir():
 # =============================================================================
 
 POSTGRES_DOCKER_COMPOSE = Path(__file__).parent.parent / "docker-compose.postgres.yml"
-POSTGRES_CONTAINER_NAME = "hs-pylib-postgres"
-POSTGRES_PROJECT_NAME = "hs-pylib-test"  # Same project name as Kafka for simplicity
+POSTGRES_CONTAINER_NAME = "hyperi-pylib-postgres"
+POSTGRES_PROJECT_NAME = "hyperi-pylib-test"  # Same project name as Kafka for simplicity
 
 # Default connection settings for Docker PostgreSQL
-POSTGRES_DEFAULT_DSN = "postgresql://postgres:postgres@localhost:5432/hs_pylib_test"
+POSTGRES_DEFAULT_DSN = "postgresql://postgres:postgres@localhost:5432/hyperi_pylib_test"
 
 # Track if we started Docker PostgreSQL (so we know to clean it up)
 _postgres_started_by_tests = False
@@ -363,7 +363,7 @@ def _start_docker_postgres() -> bool:
             return True
 
         # Start the container with unique project name
-        print("\n  Starting local Docker PostgreSQL (hs-pylib-test)...")
+        print("\n  Starting local Docker PostgreSQL (hyperi-pylib-test)...")
         subprocess.run(
             [
                 "docker",
@@ -407,7 +407,7 @@ def _stop_docker_postgres() -> None:
         return
 
     try:
-        print("\n  Stopping Docker PostgreSQL (hs-pylib-test)...")
+        print("\n  Stopping Docker PostgreSQL (hyperi-pylib-test)...")
         subprocess.run(
             [
                 "docker",
@@ -450,14 +450,14 @@ def _get_postgres_dsn_for_env(force_local: bool = False) -> tuple[str | None, st
             if _check_postgres_connection(pg_host, pg_port, timeout=3.0):
                 pg_user = os.environ.get("DFE_POSTGRES_USER", "postgres")
                 pg_pass = os.environ.get("DFE_POSTGRES_PASSWORD", "")
-                pg_db = os.environ.get("DFE_POSTGRES_DATABASE", "hs_pylib_test")
+                pg_db = os.environ.get("DFE_POSTGRES_DATABASE", "hyperi_pylib_test")
                 dsn = f"postgresql://{pg_user}:{pg_pass}@{pg_host}:{pg_port}/{pg_db}"
                 print(f"\n  Using remote PostgreSQL: {pg_host}:{pg_port}/{pg_db}")
                 return dsn, "remote"
 
     # Try local Docker PostgreSQL
     if _check_postgres_connection("localhost", 5432, timeout=1.0) or _start_docker_postgres():
-        print("\n  Using local Docker PostgreSQL: localhost:5432/hs_pylib_test")
+        print("\n  Using local Docker PostgreSQL: localhost:5432/hyperi_pylib_test")
         return POSTGRES_DEFAULT_DSN, "local"
 
     return None, "none"

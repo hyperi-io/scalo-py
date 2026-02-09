@@ -1,6 +1,6 @@
-# hs-pylib CI Setup Guide
+# hyperi-pylib CI Setup Guide
 
-Step-by-step guide for setting up HyperSec CI on this project. Use this as a reference for other projects.
+Step-by-step guide for setting up HyperI CI on this project. Use this as a reference for other projects.
 
 ## Prerequisites
 
@@ -79,7 +79,7 @@ regexes = [
 
 ```bash
 git add .
-git commit -m "fix: add HyperSec CI v1.31.0"
+git commit -m "fix: add HyperI CI v1.31.0"
 git push origin main
 ```
 
@@ -113,26 +113,26 @@ git commit -m "chore: update CI to hs-ci vX.Y.Z"
 
 ```bash
 # List recent runs
-gh run list --repo hypersec-io/hs-pylib --limit 5
+gh run list --repo hypersec-io/hyperi-pylib --limit 5
 
 # Watch a specific run
-gh run watch <run-id> --repo hypersec-io/hs-pylib --exit-status
+gh run watch <run-id> --repo hypersec-io/hyperi-pylib --exit-status
 
 # View failed logs
-gh run view <run-id> --repo hypersec-io/hs-pylib --log-failed
+gh run view <run-id> --repo hypersec-io/hyperi-pylib --log-failed
 ```
 
 ## Verifying JFrog Publish
 
 ```bash
 # Search for package
-jf rt search "hypersec-pypi/hs-pylib/<version>/*"
+jf rt search "hypersec-pypi/hyperi-pylib/<version>/*"
 
 # Download and test
-jf rt download "hypersec-pypi-local/hs-pylib/<version>/hs_pylib-<version>-py3-none-any.whl" . --flat
+jf rt download "hypersec-pypi-local/hyperi-pylib/<version>/hyperi_pylib-<version>-py3-none-any.whl" . --flat
 python3 -m venv .venv
-.venv/bin/pip install hs_pylib-<version>-py3-none-any.whl
-.venv/bin/python -c "import hs_pylib; print(hs_pylib.__version__)"
+.venv/bin/pip install hyperi_pylib-<version>-py3-none-any.whl
+.venv/bin/python -c "import hyperi_pylib; print(hyperi_pylib.__version__)"
 ```
 
 ## Troubleshooting
@@ -141,7 +141,7 @@ python3 -m venv .venv
 
 1. Check the log for the specific finding:
    ```bash
-   gh run view <run-id> --repo hypersec-io/hs-pylib --log-failed | grep -A 10 "Finding:"
+   gh run view <run-id> --repo hypersec-io/hyperi-pylib --log-failed | grep -A 10 "Finding:"
    ```
 
 2. If it's a false positive (test data, rotated credential), add to `.gitleaks.toml`

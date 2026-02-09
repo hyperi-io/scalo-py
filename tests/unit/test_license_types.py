@@ -1,12 +1,12 @@
-# Project:   hs-pylib
+# Project:   hyperi-pylib
 # File:      tests/unit/test_license_types.py
 # Purpose:   Unit tests for license types
 # Language:  Python
 #
-# License:   LicenseRef-HyperSec-EULA
-# Copyright: (c) 2026 HyperSec
+# License:   FSL-1.1-ALv2
+# Copyright: (c) 2026 HYPERI PTY LIMITED
 
-"""Unit tests for hs_pylib.license.types module."""
+"""Unit tests for hyperi_pylib.license.types module."""
 
 from __future__ import annotations
 
@@ -15,7 +15,7 @@ from datetime import datetime, timezone
 
 import pytest
 
-from hs_pylib.license.types import (
+from hyperi_pylib.license.types import (
     LicenseOptions,
     LicenseSettings,
     LicenseSource,
@@ -238,10 +238,10 @@ class TestLicenseSourceInfo:
 
         info = LicenseSourceInfo(
             source=LicenseSource.FILE,
-            path=Path("/etc/hypersec/license.enc"),
+            path=Path("/etc/hyperi/license.enc"),
         )
         assert info.source == LicenseSource.FILE
-        assert info.path == Path("/etc/hypersec/license.enc")
+        assert info.path == Path("/etc/hyperi/license.enc")
         assert info.url is None
 
     def test_url_source(self) -> None:

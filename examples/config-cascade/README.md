@@ -1,6 +1,6 @@
 # Config Cascade Example
 
-Demonstrates hs-pylib's 7-layer configuration cascade system.
+Demonstrates hyperi-pylib's 7-layer configuration cascade system.
 
 ## Features
 
@@ -74,4 +74,4 @@ With environment override (DATABASE_HOST=prod-db):
 
 ## See Also
 
-- [hs-pylib Configuration Documentation](../../docs/CONFIG.md)
+- [hyperi-pylib Configuration Documentation](../../docs/CONFIG.md)

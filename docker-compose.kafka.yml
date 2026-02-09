@@ -1,4 +1,4 @@
-# hs-pylib Local Kafka for Integration Testing
+# hyperi-pylib Local Kafka for Integration Testing
 # =============================================
 # Lightweight Kafka using KRaft mode (no ZooKeeper required)
 # Uses official Apache Kafka image (apache/kafka)
@@ -15,7 +15,7 @@
 services:
   kafka:
     image: apache/kafka:3.9.0
-    container_name: hs-pylib-kafka
+    container_name: hyperi-pylib-kafka
     hostname: kafka
     ports:
       - "9092:9092"
@@ -56,7 +56,7 @@ services:
   # Optional: Kafka UI for debugging
   kafka-ui:
     image: provectuslabs/kafka-ui:latest
-    container_name: hs-pylib-kafka-ui
+    container_name: hyperi-pylib-kafka-ui
     profiles:
       - ui  # Only start with: docker compose -f docker-compose.kafka.yml --profile ui up
     ports:

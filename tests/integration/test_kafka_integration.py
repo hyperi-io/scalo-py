@@ -1,13 +1,13 @@
-# Project:   hs-pylib
+# Project:   hyperi-pylib
 # File:      tests/integration/test_kafka_integration.py
-# Purpose:   Integration tests for hs_pylib.kafka with real Kafka broker
+# Purpose:   Integration tests for hyperi_pylib.kafka with real Kafka broker
 # Language:  Python
 #
-# License:   LicenseRef-HyperSec-EULA
-# Copyright: (c) 2025 HyperSec
+# License:   FSL-1.1-ALv2
+# Copyright: (c) 2026 HYPERI PTY LIMITED
 
 """
-Integration tests for hs_pylib.kafka module.
+Integration tests for hyperi_pylib.kafka module.
 
 These tests require a running Kafka broker. The test framework automatically:
 
@@ -49,7 +49,7 @@ class TestKafkaClientIntegration:
 
     def test_list_topics(self, kafka_config):
         """Should list topics from real Kafka broker."""
-        from hs_pylib.kafka.client import KafkaClient
+        from hyperi_pylib.kafka.client import KafkaClient
 
         with KafkaClient(kafka_config, verify_ssl=False) as client:
             topics = client.list_topics()
@@ -62,7 +62,7 @@ class TestKafkaClientIntegration:
 
     def test_list_topics_includes_internal(self, kafka_config):
         """Should list internal topics when requested."""
-        from hs_pylib.kafka.client import KafkaClient
+        from hyperi_pylib.kafka.client import KafkaClient
 
         with KafkaClient(kafka_config, verify_ssl=False) as client:
             topics = client.list_topics(include_internal=True)
@@ -73,7 +73,7 @@ class TestKafkaClientIntegration:
 
     def test_describe_topic(self, kafka_config):
         """Should describe a topic with watermarks."""
-        from hs_pylib.kafka.client import KafkaClient
+        from hyperi_pylib.kafka.client import KafkaClient
 
         with KafkaClient(kafka_config, verify_ssl=False) as client:
             topics = client.list_topics()
@@ -99,7 +99,7 @@ class TestKafkaClientIntegration:
 
     def test_get_watermark_offsets(self, kafka_config):
         """Should get watermark offsets for a topic."""
-        from hs_pylib.kafka.client import KafkaClient
+        from hyperi_pylib.kafka.client import KafkaClient
 
         with KafkaClient(kafka_config, verify_ssl=False) as client:
             topics = client.list_topics()
@@ -117,7 +117,7 @@ class TestKafkaClientIntegration:
 
     def test_get_topic_message_count(self, kafka_config):
         """Should count messages in a topic."""
-        from hs_pylib.kafka.client import KafkaClient
+        from hyperi_pylib.kafka.client import KafkaClient
 
         with KafkaClient(kafka_config, verify_ssl=False) as client:
             topics = client.list_topics()
@@ -134,7 +134,7 @@ class TestKafkaClientIntegration:
 
     def test_get_consumer_lag(self, kafka_config):
         """Should get consumer group lag."""
-        from hs_pylib.kafka.client import KafkaClient
+        from hyperi_pylib.kafka.client import KafkaClient
 
         with KafkaClient(kafka_config, verify_ssl=False) as client:
             topics = client.list_topics()
@@ -173,9 +173,9 @@ class TestReadOnlyMetricsIntegration:
 
         from confluent_kafka import Consumer
 
-        from hs_pylib.kafka.config import CONSUMER_DEFAULTS, merge_config
-        from hs_pylib.kafka.metrics import KafkaMetricsCollector, create_stats_callback
-        from hs_pylib.kafka.readonly import ReadOnlyKafkaClient
+        from hyperi_pylib.kafka.config import CONSUMER_DEFAULTS, merge_config
+        from hyperi_pylib.kafka.metrics import KafkaMetricsCollector, create_stats_callback
+        from hyperi_pylib.kafka.readonly import ReadOnlyKafkaClient
 
         # 1. Create metrics collector
         collector = KafkaMetricsCollector()
@@ -187,7 +187,7 @@ class TestReadOnlyMetricsIntegration:
             CONSUMER_DEFAULTS,
             verify_ssl=False,
         )
-        consumer_config["group.id"] = "hs-pylib-metrics-test"
+        consumer_config["group.id"] = "hyperi-pylib-metrics-test"
         consumer_config["statistics.interval.ms"] = 1000  # Collect every 1s
         consumer_config["stats_cb"] = callback
 
@@ -278,7 +278,7 @@ class TestReadOnlyMetricsIntegration:
 
     def test_readonly_client_cannot_modify_data(self, kafka_config):
         """Verify ReadOnlyKafkaClient has no produce methods."""
-        from hs_pylib.kafka.readonly import ReadOnlyKafkaClient
+        from hyperi_pylib.kafka.readonly import ReadOnlyKafkaClient
 
         with ReadOnlyKafkaClient(kafka_config, verify_ssl=False) as client:
             # Should NOT have these methods
@@ -315,9 +315,9 @@ class TestReadOnlyMetricsIntegration:
 
         from confluent_kafka import Consumer
 
-        from hs_pylib.kafka.config import CONSUMER_DEFAULTS, merge_config
-        from hs_pylib.kafka.metrics import KafkaMetricsCollector, create_stats_callback
-        from hs_pylib.kafka.readonly import ReadOnlyKafkaClient
+        from hyperi_pylib.kafka.config import CONSUMER_DEFAULTS, merge_config
+        from hyperi_pylib.kafka.metrics import KafkaMetricsCollector, create_stats_callback
+        from hyperi_pylib.kafka.readonly import ReadOnlyKafkaClient
 
         collector = KafkaMetricsCollector()
         callback = create_stats_callback(collector)
@@ -327,7 +327,7 @@ class TestReadOnlyMetricsIntegration:
             CONSUMER_DEFAULTS,
             verify_ssl=False,
         )
-        consumer_config["group.id"] = "hs-pylib-prometheus-test"
+        consumer_config["group.id"] = "hyperi-pylib-prometheus-test"
         consumer_config["statistics.interval.ms"] = 1000
         consumer_config["stats_cb"] = callback
 
@@ -392,7 +392,7 @@ class TestReadOnlyMetricsIntegration:
 # Test Data Generation and Topic Setup
 # =============================================================================
 
-TEST_TOPIC_PREFIX = "hs-pylib-test-"
+TEST_TOPIC_PREFIX = "hyperi-pylib-test-"
 fake = Faker()
 Faker.seed(42)  # Reproducible test data
 
@@ -452,7 +452,7 @@ class TestKafkaProducerConsumerIntegration:
 
     def test_produce_and_consume_user_events(self, kafka_config, test_topic):
         """Should produce and consume user events with JSON payloads."""
-        from hs_pylib.kafka import KafkaConsumer, KafkaProducer
+        from hyperi_pylib.kafka import KafkaConsumer, KafkaProducer
 
         num_messages = 10
 
@@ -506,7 +506,7 @@ class TestKafkaProducerConsumerIntegration:
 
     def test_produce_order_events_with_headers(self, kafka_config, test_topic):
         """Should produce order events with custom headers."""
-        from hs_pylib.kafka import KafkaConsumer, KafkaProducer
+        from hyperi_pylib.kafka import KafkaConsumer, KafkaProducer
 
         num_messages = 5
 
@@ -557,7 +557,7 @@ class TestKafkaAdminIntegration:
 
     def test_get_topic_config(self, kafka_config):
         """Should retrieve topic configuration."""
-        from hs_pylib.kafka import KafkaAdmin, KafkaClient
+        from hyperi_pylib.kafka import KafkaAdmin, KafkaClient
 
         with KafkaClient(kafka_config, verify_ssl=False) as client:
             topics = client.list_topics()
@@ -586,7 +586,7 @@ class TestKafkaAdminIntegration:
 
     def test_admin_operations_context_manager(self, kafka_config):
         """Admin should work as context manager."""
-        from hs_pylib.kafka import KafkaAdmin
+        from hyperi_pylib.kafka import KafkaAdmin
 
         with KafkaAdmin(kafka_config, verify_ssl=False) as admin:
             assert admin is not None
@@ -601,7 +601,7 @@ class TestKafkaConsumerOffsetReset:
     @pytest.fixture
     def populated_topic(self, kafka_config):
         """Create a topic with test data and return its name."""
-        from hs_pylib.kafka import KafkaProducer
+        from hyperi_pylib.kafka import KafkaProducer
 
         topic = f"{TEST_TOPIC_PREFIX}offset-{uuid.uuid4().hex[:8]}"
 
@@ -622,7 +622,7 @@ class TestKafkaConsumerOffsetReset:
 
     def test_reset_offsets_to_earliest(self, kafka_config, populated_topic):
         """Should reset consumer group offsets to earliest."""
-        from hs_pylib.kafka import KafkaAdmin, KafkaConsumer
+        from hyperi_pylib.kafka import KafkaAdmin, KafkaConsumer
 
         group_id = f"test-reset-earliest-{uuid.uuid4().hex[:8]}"
 
@@ -655,7 +655,7 @@ class TestKafkaConsumerOffsetReset:
 
     def test_reset_offsets_to_latest(self, kafka_config, populated_topic):
         """Should reset consumer group offsets to latest."""
-        from hs_pylib.kafka import KafkaAdmin, KafkaClient
+        from hyperi_pylib.kafka import KafkaAdmin, KafkaClient
 
         group_id = f"test-reset-latest-{uuid.uuid4().hex[:8]}"
 
@@ -685,7 +685,7 @@ class TestSchemaAnalyserIntegration:
 
     def test_analyse_topic_schema(self, kafka_config):
         """Should analyse JSON schema from topic messages."""
-        from hs_pylib.kafka import KafkaConsumer, KafkaProducer, SchemaAnalyser
+        from hyperi_pylib.kafka import KafkaConsumer, KafkaProducer, SchemaAnalyser
 
         topic = f"{TEST_TOPIC_PREFIX}schema-{uuid.uuid4().hex[:8]}"
         group_id = f"schema-analyser-{uuid.uuid4().hex[:8]}"
@@ -737,7 +737,7 @@ class TestAsyncKafkaIntegration:
     @pytest.mark.asyncio
     async def test_async_client_list_topics(self, kafka_config):
         """Async client should list topics."""
-        from hs_pylib.kafka import AsyncKafkaClient
+        from hyperi_pylib.kafka import AsyncKafkaClient
 
         print("\n=== Async Client List Topics ===")
 
@@ -755,7 +755,7 @@ class TestAsyncKafkaIntegration:
     @pytest.mark.asyncio
     async def test_async_producer_send(self, kafka_config):
         """Async producer should send messages."""
-        from hs_pylib.kafka import AsyncKafkaProducer
+        from hyperi_pylib.kafka import AsyncKafkaProducer
 
         topic = f"{TEST_TOPIC_PREFIX}async-{uuid.uuid4().hex[:8]}"
 
@@ -777,7 +777,7 @@ class TestSamplingIntegration:
 
     def test_reservoir_sample_from_topic(self, kafka_config):
         """Should sample messages using reservoir sampling."""
-        from hs_pylib.kafka import KafkaClient, KafkaConsumer, reservoir_sample
+        from hyperi_pylib.kafka import KafkaClient, KafkaConsumer, reservoir_sample
 
         with KafkaClient(kafka_config, verify_ssl=False) as client:
             topics = client.list_topics()

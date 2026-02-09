@@ -1,38 +1,58 @@
-HYPERSEC PTY LTD PROPRIETARY SOFTWARE LICENSE NOTICE
-Last Updated: 09 September 2025
+# Functional Source License, Version 1.1, ALv2 Future License
 
-Copyright (c) 2025 HyperSec (ABN: 31622581748)
-All rights reserved.
+Copyright 2026 HYPERI PTY LIMITED (ABN 31 622 581 748)
 
-IMPORTANT - READ CAREFULLY
-By downloading, installing, accessing, or using any portion of the HyperSec software, you agree to the End User License Agreement (EULA) published at:
-  https://hypersec.io/eula
-The EULA (including Schedule A - Community Edition Usage Limits) is incorporated by reference and governs your use of:
-  - HyperSec Data Fusion Engine (DFE)
-  - HyperSec XDR
-  - Edge Stream Hub (ESH, formerly HyperCollectors)
-  - Any updates, binaries, containers, virtual appliances, scripts, or related components provided by HyperSec.
+## License
 
-SUMMARY (FOR CONVENIENCE ONLY - THE EULA CONTROLS)
-- Internal Use Only: License is non-exclusive, non-transferable, and non-sublicensable for your internal business use.
-- No Service Offering: You must not provide the software to third parties as a hosted, managed, SaaS/PaaS, service-bureau, or similar service unless expressly permitted by a separate written Enterprise agreement with HyperSec.
-- No Redistribution: Do not sell, rent, lease, lend, sublicense, distribute, publish, assign, transfer, or make the software available to any third party. Obtain software only from HyperSec-controlled download locations.
-- No Circumvention: Do not bypass or interfere with license keys, usage limits, metering, throughput/core caps, or other technical controls. Community Edition use is constrained by Schedule A and must not be used to avoid Enterprise licensing.
-- No Reverse Engineering: Do not reverse engineer, decompile, or disassemble except to the limited extent permitted by non-excludable law.
-- Open Source Components: The software may include third-party/open-source components licensed under their own terms. See THIRD-PARTY-NOTICES or the notices URL referenced in the EULA.
+This software is licensed under the Functional Source License, Version 1.1,
+ALv2 Future License (FSL-1.1-ALv2).
 
-WARRANTY, LIABILITY, AND ACL
-- The software (including Community Edition) is provided "as is" and "as available" to the maximum extent permitted by law. See the EULA for full warranty disclaimers and limitations of liability.
-- Nothing in this notice or the EULA excludes, restricts, or modifies any rights or remedies or any guarantee, warranty, or other term implied or imposed by the Australian Consumer Law or other applicable law that cannot lawfully be excluded or limited.
+You may obtain a copy of the License at:
 
-EXPORT AND SANCTIONS
-- You must comply with applicable export control and sanctions laws and must not use, export, or re-export the software in or to embargoed countries or prohibited parties.
+https://fsl.software/FSL-1.1-ALv2.template.md
 
-GOVERNING LAW
-- The EULA specifies governing law and forum (currently ACT, Australia).
+SPDX License Identifier: FSL-1.1-ALv2
 
-CONTACT
-- If you cannot access the EULA online or need a copy for your records, contact: legal@hypersec.io
+## Summary
 
-NOTE
-- This LICENSE file is a summary notice. In case of any conflict or ambiguity, the EULA at https://hypersec.io/eula prevails.
+Unless required by applicable law or agreed to in writing, software distributed
+under the License is distributed on an "AS IS" BASIS, WITHOUT WARRANTIES OR
+CONDITIONS OF ANY KIND, either express or implied. See the License for the
+specific language governing permissions and limitations under the License.
+
+### Permitted Uses
+
+- Internal use within your organisation
+- Non-commercial education and research
+- Professional services for licensees using this software
+
+### Competing Use Requires Commercial Licence
+
+Making this software available to others in a commercial product or service
+that substitutes for or competes with this software requires a commercial
+licence from HyperI. See [COMMERCIAL.md](COMMERCIAL.md) for details.
+
+### Apache 2.0 Conversion
+
+Each version of this software becomes available under the Apache License,
+Version 2.0 on the second anniversary of its release date. Release dates are
+recorded in the GitHub release history.
+
+You may obtain a copy of the Apache License at:
+
+https://www.apache.org/licenses/LICENSE-2.0
+
+## Australian Law Notice
+
+For users in Australia: To the extent this License is governed by Australian
+law, the laws of the Australian Capital Territory apply. Nothing in this
+License excludes, restricts or modifies any consumer guarantee, right or remedy
+conferred by the Competition and Consumer Act 2010 (Cth) or any other
+applicable Australian law that cannot be excluded, restricted or modified by
+agreement.
+
+Where the Australian Consumer Law (Schedule 2 of the Competition and Consumer
+Act 2010 (Cth)) implies guarantees that cannot be excluded, our liability for
+breach of such guarantees is limited, to the extent permitted by law, to the
+re-supply of the software or the payment of the cost of having the software
+re-supplied.

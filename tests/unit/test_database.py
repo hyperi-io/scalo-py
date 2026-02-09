@@ -1,10 +1,10 @@
-"""Tests for hs_pylib.database module."""
+"""Tests for hyperi_pylib.database module."""
 
 import os
 
 import pytest
 
-from hs_pylib.database import build_database_url, get_database_config
+from hyperi_pylib.database import build_database_url, get_database_config
 
 
 class TestClickHouseSupport:

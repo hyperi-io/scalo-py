@@ -1,16 +1,16 @@
-# Project:   hs-pylib
+# Project:   hyperi-pylib
 # File:      tests/unit/test_license_defaults.py
 # Purpose:   Unit tests for license defaults module
 # Language:  Python
 #
-# License:   LicenseRef-HyperSec-EULA
-# Copyright: (c) 2026 HyperSec
+# License:   FSL-1.1-ALv2
+# Copyright: (c) 2026 HYPERI PTY LIMITED
 
-"""Unit tests for hs_pylib.license.defaults module."""
+"""Unit tests for hyperi_pylib.license.defaults module."""
 
 from __future__ import annotations
 
-from hs_pylib.license.defaults import (
+from hyperi_pylib.license.defaults import (
     get_decryption_key,
     get_default_settings,
     get_test_enterprise_settings,
@@ -47,7 +47,7 @@ class TestGetDefaultSettings:
 
     def test_returns_license_settings(self) -> None:
         """Should return LicenseSettings instance."""
-        from hs_pylib.license.types import LicenseSettings
+        from hyperi_pylib.license.types import LicenseSettings
 
         settings = get_default_settings()
         assert isinstance(settings, LicenseSettings)
@@ -98,7 +98,7 @@ class TestGetTestEnterpriseSettings:
 
     def test_returns_license_settings(self) -> None:
         """Should return LicenseSettings instance."""
-        from hs_pylib.license.types import LicenseSettings
+        from hyperi_pylib.license.types import LicenseSettings
 
         settings = get_test_enterprise_settings()
         assert isinstance(settings, LicenseSettings)

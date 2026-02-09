@@ -33,7 +33,7 @@ class TestDotenvCascade:
             monkeypatch.delenv(key, raising=False)
 
         # Import and test
-        from hs_pylib.config.config import _load_dotenv_cascade
+        from hyperi_pylib.config.config import _load_dotenv_cascade
 
         _load_dotenv_cascade([str(home_env), str(project_env)])
 
@@ -57,7 +57,7 @@ class TestDotenvCascade:
         monkeypatch.chdir(project_dir)
         monkeypatch.delenv("ONLY_PROJECT", raising=False)
 
-        from hs_pylib.config.config import _load_dotenv_cascade
+        from hyperi_pylib.config.config import _load_dotenv_cascade
 
         # Should not raise even if home .env doesn't exist
         _load_dotenv_cascade(
@@ -88,7 +88,7 @@ class TestDotenvCascade:
         for key in ["LEVEL", "SYSTEM_VAR", "USER_VAR", "PROJECT_VAR"]:
             monkeypatch.delenv(key, raising=False)
 
-        from hs_pylib.config.config import _load_dotenv_cascade
+        from hyperi_pylib.config.config import _load_dotenv_cascade
 
         # Load in order: system -> user -> project
         _load_dotenv_cascade(
@@ -125,7 +125,7 @@ class TestDotenvCascade:
         monkeypatch.delenv("CASCADE_TEST_HOME", raising=False)
         monkeypatch.delenv("CASCADE_TEST_PROJECT", raising=False)
 
-        from hs_pylib.config import get_config
+        from hyperi_pylib.config import get_config
 
         # Use custom dotenv_files since we're in a test environment
         get_config(
@@ -148,7 +148,7 @@ class TestDotenvCascade:
         for key in ["CUSTOM_FILE_1", "CUSTOM_FILE_2", "SHARED"]:
             monkeypatch.delenv(key, raising=False)
 
-        from hs_pylib.config import get_config
+        from hyperi_pylib.config import get_config
 
         get_config(
             dotenv_files=[str(env1), str(env2)],
@@ -172,9 +172,9 @@ class TestDotenvCascade:
 
         monkeypatch.setenv("HOME", str(fake_home))
         monkeypatch.delenv("DEFAULT_BEHAVIOR_TEST", raising=False)
-        monkeypatch.delenv("HS_DOTENV_CASCADE", raising=False)
+        monkeypatch.delenv("HYPERI_DOTENV_CASCADE", raising=False)
 
-        from hs_pylib.config import get_config
+        from hyperi_pylib.config import get_config
 
         # Without dotenv_cascade, home .env should not be loaded
         # (only project .env via Dynaconf's standard behavior)
@@ -186,10 +186,10 @@ class TestDotenvCascade:
 
 
 class TestDotenvCascadeEnvVar:
-    """Tests for HS_DOTENV_CASCADE environment variable."""
+    """Tests for HYPERI_DOTENV_CASCADE environment variable."""
 
     def test_env_var_enables_cascade(self, tmp_path, monkeypatch):
-        """Test HS_DOTENV_CASCADE=true enables cascade at module init."""
+        """Test HYPERI_DOTENV_CASCADE=true enables cascade at module init."""
         # This test verifies the environment variable works
         # Note: Module-level initialization happens at import time,
         # so this is more of a documentation test
@@ -198,8 +198,8 @@ class TestDotenvCascadeEnvVar:
         (fake_home / ".env").write_text("ENV_VAR_CASCADE_TEST=from-home\n")
 
         monkeypatch.setenv("HOME", str(fake_home))
-        monkeypatch.setenv("HS_DOTENV_CASCADE", "true")
+        monkeypatch.setenv("HYPERI_DOTENV_CASCADE", "true")
 
         # The actual cascade would happen at module import time
         # This test documents the expected behavior
-        assert os.environ.get("HS_DOTENV_CASCADE") == "true"
+        assert os.environ.get("HYPERI_DOTENV_CASCADE") == "true"
