@@ -1,12 +1,12 @@
-# CLI Development Standards for hs-pylib
+# CLI Development Standards for hyperi-pylib
 
-**Mandatory standard for all hs-pylib CLI applications**
+**Mandatory standard for all hyperi-pylib CLI applications**
 
 ---
 
 ## Overview
 
-**Typer is the mandatory CLI framework** for all HyperSec Python CLI applications. Typer provides:
+**Typer is the mandatory CLI framework** for all HyperI Python CLI applications. Typer provides:
 - Type-hint driven interface (like FastAPI for CLIs)
 - Automatic validation and help generation
 - Excellent IDE support and type checking
@@ -22,23 +22,23 @@
 ## Installation
 
 ```bash
-# Install hs-pylib with CLI support
-pip install hs-pylib[cli]
+# Install hyperi-pylib with CLI support
+pip install hyperi-pylib[cli]
 
 # For development (includes all dependencies)
-pip install hs-pylib[dev,cli]
+pip install hyperi-pylib[dev,cli]
 ```
 
 ---
 
-## hs-pylib CLI Utilities
+## hyperi-pylib CLI Utilities
 
-hs-pylib provides ready-to-use utilities to accelerate CLI development:
+hyperi-pylib provides ready-to-use utilities to accelerate CLI development:
 
-### Output Formatting (`hs-pylib.cli.output`)
+### Output Formatting (`hyperi-pylib.cli.output`)
 
 ```python
-from hs_pylib.cli.output import print_success, print_error, print_table, print_json
+from hyperi_pylib.cli.output import print_success, print_error, print_table, print_json
 
 # Status messages with colors
 print_success("Deployment completed!")
@@ -58,11 +58,11 @@ config = {"host": "localhost", "port": 8000}
 print_json(config)
 ```
 
-### Reusable Options (`hs-pylib.cli.options`)
+### Reusable Options (`hyperi-pylib.cli.options`)
 
 ```python
-from hs_pylib.cli import Typer
-from hs_pylib.cli.options import VERBOSE_OPTION, CONFIG_OPTION, DRY_RUN_OPTION
+from hyperi_pylib.cli import Typer
+from hyperi_pylib.cli.options import VERBOSE_OPTION, CONFIG_OPTION, DRY_RUN_OPTION
 
 app = Typer()
 
@@ -90,11 +90,11 @@ def deploy(
 - `LOG_LEVEL_OPTION` - Log level (--log-level, -l)
 - `LOG_FILE_OPTION` - Log file (--log-file)
 
-### Version Handling (`hs-pylib.cli.version`)
+### Version Handling (`hyperi-pylib.cli.version`)
 
 ```python
-from hs_pylib.cli import Typer
-from hs_pylib.cli.version import version_option
+from hyperi_pylib.cli import Typer
+from hyperi_pylib.cli.version import version_option
 
 app = Typer()
 
@@ -117,7 +117,7 @@ def main(
 
 ```python
 # my_tool.py
-from hs_pylib.cli import Typer, Argument, Option
+from hyperi_pylib.cli import Typer, Argument, Option
 
 app = Typer(help="My awesome CLI tool")
 
@@ -151,7 +151,7 @@ python my_tool.py --help
 ```python
 # data_tool.py
 from pathlib import Path
-from hs_pylib.cli import Typer, Argument, Option
+from hyperi_pylib.cli import Typer, Argument, Option
 
 app = Typer(help="Data processing toolkit")
 
@@ -377,29 +377,29 @@ def test_help():
 
 ---
 
-## Integration with hs-pylib
+## Integration with hyperi-pylib
 
-### Using hs-pylib.config
+### Using hyperi-pylib.config
 
 ```python
-from hs_pylib.cli import Typer, Option
-from hs_pylib.config import get_config
+from hyperi_pylib.cli import Typer, Option
+from hyperi_pylib.config import get_config
 
 app = Typer()
 
 @app.command()
 def deploy(env: str = Option(...)):
-    """Deploy using hs-pylib config."""
+    """Deploy using hyperi-pylib config."""
     config = get_config()
     app_name = config.get("app_name")
     print(f"Deploying {app_name} to {env}")
 ```
 
-### Using hs-pylib.logger
+### Using hyperi-pylib.logger
 
 ```python
-from hs_pylib.cli import Typer
-from hs_pylib.logger import get_logger
+from hyperi_pylib.cli import Typer
+from hyperi_pylib.logger import get_logger
 
 app = Typer()
 logger = get_logger(__name__)
@@ -419,7 +419,7 @@ def process():
 Typer includes Rich for beautiful terminal output:
 
 ```python
-from hs_pylib.cli import Typer
+from hyperi_pylib.cli import Typer
 from rich.console import Console
 from rich.table import Table
 
@@ -505,10 +505,10 @@ A: Typer is built on Click. You can drop down to Click for advanced features.
 
 ```python
 from pathlib import Path
-from hs_pylib.cli import Typer
-from hs_pylib.cli.options import VERBOSE_OPTION, CONFIG_OPTION, DRY_RUN_OPTION
-from hs_pylib.cli.output import print_success, print_error, print_table
-from hs_pylib.cli.version import version_option
+from hyperi_pylib.cli import Typer
+from hyperi_pylib.cli.options import VERBOSE_OPTION, CONFIG_OPTION, DRY_RUN_OPTION
+from hyperi_pylib.cli.output import print_success, print_error, print_table
+from hyperi_pylib.cli.version import version_option
 
 app = Typer(help="My Production Application")
 
@@ -568,10 +568,10 @@ myapp deploy --help
 ## Examples
 
 Complete examples are available in:
-- [hs-pylib/cli/examples.py](../src/hs-pylib/cli/examples.py)
-- [hs-pylib/cli/output.py](../src/hs-pylib/cli/output.py) - Output utilities
-- [hs-pylib/cli/options.py](../src/hs-pylib/cli/options.py) - Reusable options
-- [hs-pylib/cli/version.py](../src/hs-pylib/cli/version.py) - Version handling
+- [hyperi-pylib/cli/examples.py](../src/hyperi-pylib/cli/examples.py)
+- [hyperi-pylib/cli/output.py](../src/hyperi-pylib/cli/output.py) - Output utilities
+- [hyperi-pylib/cli/options.py](../src/hyperi-pylib/cli/options.py) - Reusable options
+- [hyperi-pylib/cli/version.py](../src/hyperi-pylib/cli/version.py) - Version handling
 - [Typer documentation](https://typer.tiangolo.com/tutorial/)
 
 ---
@@ -599,4 +599,4 @@ Complete examples are available in:
 
 **Last Updated:** 2025-11-07
 **Version:** 1.0.0
-**Status:** Mandatory for all hs-pylib CLI applications
+**Status:** Mandatory for all hyperi-pylib CLI applications

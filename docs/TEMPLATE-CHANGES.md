@@ -2,9 +2,9 @@
 
 ## Overview
 
-This document tracks all issues, fixes, and improvements discovered while developing [hs-pylib] that need to be backported to the `hypersec-forge-python` template.
+This document tracks all issues, fixes, and improvements discovered while developing [hyperi-pylib] that need to be backported to the `hypersec-forge-python` template.
 
-As [hs-pylib] serves as the real-world test case for the template, this ensures all learnings flow back to improve the template for future projects.
+As [hyperi-pylib] serves as the real-world test case for the template, this ensures all learnings flow back to improve the template for future projects.
 
 ---
 
@@ -125,13 +125,13 @@ SetuptoolsDeprecationWarning: `project.license` as a TOML table is deprecated
 **Current State**:
 ```toml
 [project]
-license = {text = "HyperSec EULA"}
+license = {text = "FSL-1.1-ALv2"}
 ```
 
 **Required Fix** (for setuptools >= 77.0.0):
 ```toml
 [project]
-license = "LicenseRef-HyperSec-EULA"  # SPDX expression for proprietary
+license = "FSL-1.1-ALv2"  # SPDX expression for proprietary
 
 # And remove classifier:
 # "License :: Other/Proprietary License"  # Remove this
@@ -314,7 +314,7 @@ When applying changes back to template, verify:
 
 1. **Create feature branch** in forge repository:
    ```bash
-   git checkout -b feat/no-ref/apply-hs-pylib-learnings
+   git checkout -b feat/no-ref/apply-hyperi-pylib-learnings
    ```
 
 2. **Apply each change** to template files in the forge repository
@@ -340,7 +340,7 @@ When applying changes back to template, verify:
 
    - Ensures generated packages export __version__ attribute
    - Required for package distribution and version verification
-   - Discovered during hs-pylib development"
+   - Discovered during hyperi-pylib development"
    ```
 
 6. **Push and create PR** for review
@@ -378,7 +378,7 @@ When applying changes back to template, verify:
 ### Issue #5: LICENSE file format (Setuptools deprecation) - COMPLETE
 **Status**: COMPLETED (Commit: d661b39)
 **Applied**: `pyproject.toml.jinja`
-**Fix**: Updated to SPDX format - `license = "LicenseRef-HyperSec-EULA"` for EULA, `"Apache-2.0"` for Apache
+**Fix**: Updated to SPDX format - `license = "FSL-1.1-ALv2"` for EULA, `"Apache-2.0"` for Apache
 **Verified**: Template now uses modern license format
 
 ### Issue #6: Bootstrap and CI configuration - COMPLETE
@@ -454,9 +454,9 @@ For library projects, include:
 - This document should be updated continuously as we discover issues
 - Each entry should include: issue, current state, fix, affected files, priority
 - Mark items as completed when applied to template and verified
-- Use this as reference when updating template after hs-pylib stabilizes
+- Use this as reference when updating template after hyperi-pylib stabilizes
 
 ## Related Documentation
 
-- [hs-pylib Deployment Guide](../DEPLOYMENT.md)
-- [hs-pylib Artifactory Configuration](ARTIFACTORY.md)
+- [hyperi-pylib Deployment Guide](../DEPLOYMENT.md)
+- [hyperi-pylib Artifactory Configuration](ARTIFACTORY.md)

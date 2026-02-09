@@ -1,10 +1,10 @@
-# Project:   hs-pylib
+# Project:   hyperi-pylib
 # File:      tests/integration/test_kafka_docker_fallback.py
 # Purpose:   Test Docker Kafka fallback (forces local Docker even if remote available)
 # Language:  Python
 #
-# License:   LicenseRef-HyperSec-EULA
-# Copyright: (c) 2025 HyperSec
+# License:   FSL-1.1-ALv2
+# Copyright: (c) 2026 HYPERI PTY LIMITED
 
 """
 Integration tests for Docker Kafka fallback.
@@ -28,7 +28,7 @@ class TestDockerKafkaFallback:
 
     def test_can_connect_to_local_kafka(self, kafka_config_local_only):
         """Should connect to local Docker Kafka."""
-        from hs_pylib.kafka.client import KafkaClient
+        from hyperi_pylib.kafka.client import KafkaClient
 
         # Verify we're using localhost
         assert kafka_config_local_only.get("bootstrap.servers") == "localhost:9092"
@@ -41,9 +41,9 @@ class TestDockerKafkaFallback:
 
     def test_can_produce_and_consume(self, kafka_config_local_only):
         """Should produce and consume messages on local Kafka."""
-        from hs_pylib.kafka import KafkaConsumer, KafkaProducer
+        from hyperi_pylib.kafka import KafkaConsumer, KafkaProducer
 
-        topic = f"hs-pylib-docker-test-{uuid.uuid4().hex[:8]}"
+        topic = f"hyperi-pylib-docker-test-{uuid.uuid4().hex[:8]}"
         group_id = f"docker-test-{uuid.uuid4().hex[:8]}"
         test_message = {"test": "docker-fallback", "id": str(uuid.uuid4())}
 

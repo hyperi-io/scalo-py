@@ -1,18 +1,18 @@
-# Project:   hs-pylib
+# Project:   hyperi-pylib
 # File:      examples/basic-logging/pyproject.toml
-# Purpose:   Example project demonstrating hs-pylib logging
+# Purpose:   Example project demonstrating hyperi-pylib logging
 # Language:  Python
 #
-# License:   LicenseRef-HyperSec-EULA
-# Copyright: (c) 2026 HyperSec
+# License:   FSL-1.1-ALv2
+# Copyright: (c) 2026 HYPERI PTY LIMITED
 
 [project]
 name = "basic-logging-example"
 version = "0.1.0"
-description = "Example demonstrating hs-pylib structured logging"
+description = "Example demonstrating hyperi-pylib structured logging"
 requires-python = ">=3.12"
 dependencies = [
-    "hs-pylib>=2.14.0",
+    "hyperi-pylib>=2.14.0",
 ]
 
 [project.optional-dependencies]

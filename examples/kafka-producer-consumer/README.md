@@ -1,6 +1,6 @@
 # Kafka Producer/Consumer Example
 
-Demonstrates hs-pylib's Kafka client library with corporate defaults.
+Demonstrates hyperi-pylib's Kafka client library with corporate defaults.
 
 ## Features
 
@@ -37,7 +37,7 @@ docker compose down -v
 ### Producer (`producer.py`)
 
 ```python
-from hs_pylib.kafka import KafkaProducer
+from hyperi_pylib.kafka import KafkaProducer
 
 producer = KafkaProducer({"bootstrap.servers": "localhost:9092"})
 producer.produce("my-topic", key="key1", value={"event": "created"})
@@ -47,7 +47,7 @@ producer.flush()
 ### Consumer (`consumer.py`)
 
 ```python
-from hs_pylib.kafka import KafkaConsumer
+from hyperi_pylib.kafka import KafkaConsumer
 
 consumer = KafkaConsumer({
     "bootstrap.servers": "localhost:9092",
@@ -62,7 +62,7 @@ for message in consumer:
 ### Admin Client
 
 ```python
-from hs_pylib.kafka import KafkaClient
+from hyperi_pylib.kafka import KafkaClient
 
 client = KafkaClient({"bootstrap.servers": "localhost:9092"})
 topics = client.list_topics()
@@ -70,7 +70,7 @@ topics = client.list_topics()
 
 ## Corporate Defaults
 
-The hs-pylib Kafka clients include production-ready defaults:
+The hyperi-pylib Kafka clients include production-ready defaults:
 
 **Producer:**
 - `acks=all` - Wait for all replicas
@@ -106,5 +106,5 @@ services:
 
 ## See Also
 
-- [hs-pylib Kafka Documentation](../../src/hs_pylib/kafka/__init__.py)
+- [hyperi-pylib Kafka Documentation](../../src/hyperi_pylib/kafka/__init__.py)
 - [Kafka Client Tests](../../tests/integration/test_kafka_*.py)

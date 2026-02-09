@@ -1,12 +1,12 @@
-# Project:   hs-pylib
+# Project:   hyperi-pylib
 # File:      tests/unit/test_metrics_db.py
-# Purpose:   Unit tests for hs_pylib.metrics.db module
+# Purpose:   Unit tests for hyperi_pylib.metrics.db module
 # Language:  Python
 #
-# License:   LicenseRef-HyperSec-EULA
-# Copyright: (c) 2025 HyperSec
+# License:   FSL-1.1-ALv2
+# Copyright: (c) 2026 HYPERI PTY LIMITED
 
-"""Unit tests for hs_pylib.metrics.db module."""
+"""Unit tests for hyperi_pylib.metrics.db module."""
 
 from unittest.mock import MagicMock, patch
 
@@ -18,13 +18,13 @@ class TestDbQueryContextManager:
 
     def test_import(self):
         """Test that db_query can be imported."""
-        from hs_pylib.metrics.db import db_query
+        from hyperi_pylib.metrics.db import db_query
 
         assert db_query is not None
 
     def test_records_success_metrics(self):
         """Test context manager records success metrics."""
-        from hs_pylib.metrics.db import _metrics_cache, db_query
+        from hyperi_pylib.metrics.db import _metrics_cache, db_query
 
         # Clear cache for clean test
         _metrics_cache.clear()
@@ -44,7 +44,7 @@ class TestDbQueryContextManager:
 
     def test_records_error_metrics(self):
         """Test context manager records error metrics on exception."""
-        from hs_pylib.metrics.db import _metrics_cache, db_query
+        from hyperi_pylib.metrics.db import _metrics_cache, db_query
 
         # Clear cache for clean test
         _metrics_cache.clear()
@@ -64,7 +64,7 @@ class TestDbQueryContextManager:
 
     def test_reraises_exception(self):
         """Test context manager re-raises the original exception."""
-        from hs_pylib.metrics.db import _metrics_cache, db_query
+        from hyperi_pylib.metrics.db import _metrics_cache, db_query
 
         _metrics_cache.clear()
 
@@ -81,13 +81,13 @@ class TestTrackDbQueryDecorator:
 
     def test_import(self):
         """Test that track_db_query can be imported."""
-        from hs_pylib.metrics.db import track_db_query
+        from hyperi_pylib.metrics.db import track_db_query
 
         assert track_db_query is not None
 
     def test_decorator_wraps_function(self):
         """Test decorator wraps function correctly."""
-        from hs_pylib.metrics.db import _metrics_cache, track_db_query
+        from hyperi_pylib.metrics.db import _metrics_cache, track_db_query
 
         _metrics_cache.clear()
 
@@ -104,7 +104,7 @@ class TestTrackDbQueryDecorator:
 
     def test_decorator_preserves_function_name(self):
         """Test decorator preserves original function name."""
-        from hs_pylib.metrics.db import _metrics_cache, track_db_query
+        from hyperi_pylib.metrics.db import _metrics_cache, track_db_query
 
         _metrics_cache.clear()
 
@@ -120,7 +120,7 @@ class TestTrackDbQueryDecorator:
 
     def test_decorator_uses_function_name_as_operation(self):
         """Test decorator uses function name as operation by default."""
-        from hs_pylib.metrics.db import _metrics_cache, track_db_query
+        from hyperi_pylib.metrics.db import _metrics_cache, track_db_query
 
         _metrics_cache.clear()
 
@@ -141,7 +141,7 @@ class TestTrackDbQueryDecorator:
 
     def test_decorator_with_custom_operation(self):
         """Test decorator with custom operation name."""
-        from hs_pylib.metrics.db import _metrics_cache, track_db_query
+        from hyperi_pylib.metrics.db import _metrics_cache, track_db_query
 
         _metrics_cache.clear()
 
@@ -166,14 +166,14 @@ class TestTrackDbQueryAsyncDecorator:
 
     def test_import(self):
         """Test that track_db_query_async can be imported."""
-        from hs_pylib.metrics.db import track_db_query_async
+        from hyperi_pylib.metrics.db import track_db_query_async
 
         assert track_db_query_async is not None
 
     @pytest.mark.asyncio
     async def test_async_decorator_wraps_function(self):
         """Test async decorator wraps function correctly."""
-        from hs_pylib.metrics.db import _metrics_cache, track_db_query_async
+        from hyperi_pylib.metrics.db import _metrics_cache, track_db_query_async
 
         _metrics_cache.clear()
 
@@ -191,7 +191,7 @@ class TestTrackDbQueryAsyncDecorator:
     @pytest.mark.asyncio
     async def test_async_decorator_records_success(self):
         """Test async decorator records success metrics."""
-        from hs_pylib.metrics.db import _metrics_cache, track_db_query_async
+        from hyperi_pylib.metrics.db import _metrics_cache, track_db_query_async
 
         _metrics_cache.clear()
 
@@ -212,7 +212,7 @@ class TestTrackDbQueryAsyncDecorator:
     @pytest.mark.asyncio
     async def test_async_decorator_records_error(self):
         """Test async decorator records error metrics."""
-        from hs_pylib.metrics.db import _metrics_cache, track_db_query_async
+        from hyperi_pylib.metrics.db import _metrics_cache, track_db_query_async
 
         _metrics_cache.clear()
 

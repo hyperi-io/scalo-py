@@ -1,10 +1,10 @@
-# Project:   hs-pylib
+# Project:   hyperi-pylib
 # File:      tests/unit/test_conftest_kafka_fixtures.py
 # Purpose:   Unit tests for Kafka fixture logic in conftest.py
 # Language:  Python
 #
-# License:   LicenseRef-HyperSec-EULA
-# Copyright: (c) 2025 HyperSec
+# License:   FSL-1.1-ALv2
+# Copyright: (c) 2026 HYPERI PTY LIMITED
 
 """
 Unit tests for Kafka fixture helpers in conftest.py.
@@ -256,10 +256,10 @@ class TestKafkaFixtureConstants:
 
     def test_container_name_is_set(self):
         """Container name should be defined."""
-        assert KAFKA_CONTAINER_NAME == "hs-pylib-kafka"
+        assert KAFKA_CONTAINER_NAME == "hyperi-pylib-kafka"
 
     def test_project_name_is_unique(self):
         """Project name should be unique to avoid conflicts."""
-        assert KAFKA_PROJECT_NAME == "hs-pylib-test"
-        # Should contain hs-pylib to identify it
-        assert "hs-pylib" in KAFKA_PROJECT_NAME
+        assert KAFKA_PROJECT_NAME == "hyperi-pylib-test"
+        # Should contain hyperi-pylib to identify it
+        assert "hyperi-pylib" in KAFKA_PROJECT_NAME

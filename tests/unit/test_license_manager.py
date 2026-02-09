@@ -1,12 +1,12 @@
-# Project:   hs-pylib
+# Project:   hyperi-pylib
 # File:      tests/unit/test_license_manager.py
 # Purpose:   Unit tests for license manager module
 # Language:  Python
 #
-# License:   LicenseRef-HyperSec-EULA
-# Copyright: (c) 2026 HyperSec
+# License:   FSL-1.1-ALv2
+# Copyright: (c) 2026 HYPERI PTY LIMITED
 
-"""Unit tests for hs_pylib.license.manager module."""
+"""Unit tests for hyperi_pylib.license.manager module."""
 
 from __future__ import annotations
 
@@ -16,7 +16,7 @@ from pathlib import Path
 
 import pytest
 
-from hs_pylib.license import (
+from hyperi_pylib.license import (
     License,
     LicenseAlreadyInitializedError,
     LicenseDecryptionError,
@@ -35,7 +35,7 @@ from hs_pylib.license import (
     try_get,
     verify_integrity,
 )
-from hs_pylib.license.defaults import get_default_settings
+from hyperi_pylib.license.defaults import get_default_settings
 
 
 @pytest.fixture(autouse=True)
@@ -294,9 +294,9 @@ class TestLicenseLoadCascade:
 
         import os
 
-        old_env = os.environ.get("HYPERSEC_LICENSE_PATH")
+        old_env = os.environ.get("HYPERI_LICENSE_PATH")
         try:
-            os.environ["HYPERSEC_LICENSE_PATH"] = str(env_file)
+            os.environ["HYPERI_LICENSE_PATH"] = str(env_file)
 
             opts = LicenseOptions(
                 license_path=explicit_file,
@@ -308,12 +308,12 @@ class TestLicenseLoadCascade:
             assert license_obj.settings.label == "Explicit"
         finally:
             if old_env is not None:
-                os.environ["HYPERSEC_LICENSE_PATH"] = old_env
+                os.environ["HYPERI_LICENSE_PATH"] = old_env
             else:
-                os.environ.pop("HYPERSEC_LICENSE_PATH", None)
+                os.environ.pop("HYPERI_LICENSE_PATH", None)
 
     def test_env_var_used_when_no_explicit_path(self, tmp_path: Path) -> None:
-        """HYPERSEC_LICENSE_PATH env var should be used."""
+        """HYPERI_LICENSE_PATH env var should be used."""
         settings = LicenseSettings(label="FromEnv", is_default=False)
         key = b"test"
 
@@ -322,9 +322,9 @@ class TestLicenseLoadCascade:
 
         import os
 
-        old_env = os.environ.get("HYPERSEC_LICENSE_PATH")
+        old_env = os.environ.get("HYPERI_LICENSE_PATH")
         try:
-            os.environ["HYPERSEC_LICENSE_PATH"] = str(env_file)
+            os.environ["HYPERI_LICENSE_PATH"] = str(env_file)
 
             opts = LicenseOptions(
                 verify_signature=False,
@@ -335,17 +335,17 @@ class TestLicenseLoadCascade:
             assert license_obj.settings.label == "FromEnv"
         finally:
             if old_env is not None:
-                os.environ["HYPERSEC_LICENSE_PATH"] = old_env
+                os.environ["HYPERI_LICENSE_PATH"] = old_env
             else:
-                os.environ.pop("HYPERSEC_LICENSE_PATH", None)
+                os.environ.pop("HYPERI_LICENSE_PATH", None)
 
     def test_falls_back_to_default(self) -> None:
         """Should fall back to default when no file found."""
         import os
 
-        old_env = os.environ.get("HYPERSEC_LICENSE_PATH")
+        old_env = os.environ.get("HYPERI_LICENSE_PATH")
         try:
-            os.environ.pop("HYPERSEC_LICENSE_PATH", None)
+            os.environ.pop("HYPERI_LICENSE_PATH", None)
 
             opts = LicenseOptions(verify_signature=False)
             license_obj = License.load(opts)
@@ -354,4 +354,4 @@ class TestLicenseLoadCascade:
             assert license_obj.source == LicenseSource.DEFAULT
         finally:
             if old_env is not None:
-                os.environ["HYPERSEC_LICENSE_PATH"] = old_env
+                os.environ["HYPERI_LICENSE_PATH"] = old_env

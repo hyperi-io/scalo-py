@@ -8,7 +8,7 @@ Production Kubernetes deployment with HELM, ArgoCD, and KEDA autoscaling.
 
 ```python
 # src/my_app/__init__.py
-from hs_pylib import Application
+from hyperi_pylib import Application
 
 app = Application.api(
     name="my-app",
@@ -60,7 +60,7 @@ spec:
         - containerPort: 9090
           name: metrics
         env:
-        - name: HS_LIB_PROFILE
+        - name: HYPERI_LIB_PROFILE
           value: "prod"
         livenessProbe:
           httpGet:

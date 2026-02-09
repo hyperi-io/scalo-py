@@ -1,0 +1,97 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "hyperi-pylib-app.fullname" . }}
+  labels:
+    {{- include "hyperi-pylib-app.labels" . | nindent 4 }}
+spec:
+  {{- if not .Values.autoscaling.enabled }}
+  {{- if not .Values.keda.enabled }}
+  replicas: {{ .Values.replicaCount }}
+  {{- end }}
+  {{- end }}
+  selector:
+    matchLabels:
+      {{- include "hyperi-pylib-app.selectorLabels" . | nindent 6 }}
+  strategy:
+    type: RollingUpdate
+    rollingUpdate:
+      maxUnavailable: 0
+      maxSurge: 1
+  template:
+    metadata:
+      annotations:
+        {{- toYaml .Values.podAnnotations | nindent 8 }}
+      labels:
+        {{- include "hyperi-pylib-app.selectorLabels" . | nindent 8 }}
+    spec:
+      {{- with .Values.imagePullSecrets }}
+      imagePullSecrets:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      serviceAccountName: {{ include "hyperi-pylib-app.serviceAccountName" . }}
+      securityContext:
+        {{- toYaml .Values.podSecurityContext | nindent 8 }}
+      containers:
+      - name: {{ .Chart.Name }}
+        securityContext:
+          {{- toYaml .Values.securityContext | nindent 10 }}
+        image: {{ include "hyperi-pylib-app.image" . }}
+        imagePullPolicy: {{ .Values.image.pullPolicy }}
+        ports:
+        {{- if and (eq .Values.app.type "api") .Values.service.http.enabled }}
+        - name: http
+          containerPort: {{ .Values.service.http.targetPort }}
+          protocol: TCP
+        {{- end }}
+        {{- if .Values.service.health.enabled }}
+        - name: health
+          containerPort: {{ .Values.service.health.targetPort }}
+          protocol: TCP
+        {{- end }}
+        {{- if .Values.service.metrics.enabled }}
+        - name: metrics
+          containerPort: {{ .Values.service.metrics.targetPort }}
+          protocol: TCP
+        {{- end }}
+        env:
+        - name: HYPERI_LIB_PROFILE
+          value: {{ .Values.app.profile | quote }}
+        {{- with .Values.env }}
+        {{- toYaml . | nindent 8 }}
+        {{- end }}
+        {{- with .Values.envFrom }}
+        envFrom:
+        {{- toYaml . | nindent 8 }}
+        {{- end }}
+        {{- if .Values.healthCheck.enabled }}
+        livenessProbe:
+          httpGet:
+            path: /health
+            port: health
+          {{- toYaml .Values.healthCheck.liveness | nindent 10 }}
+        readinessProbe:
+          httpGet:
+            path: /ready
+            port: health
+          {{- toYaml .Values.healthCheck.readiness | nindent 10 }}
+        startupProbe:
+          httpGet:
+            path: /health
+            port: health
+          {{- toYaml .Values.healthCheck.startup | nindent 10 }}
+        {{- end }}
+        resources:
+          {{- toYaml .Values.resources | nindent 10 }}
+      {{- with .Values.nodeSelector }}
+      nodeSelector:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.affinity }}
+      affinity:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.tolerations }}
+      tolerations:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}

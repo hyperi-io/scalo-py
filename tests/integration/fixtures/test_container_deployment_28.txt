@@ -6,4 +6,4 @@ image:
 restartPolicy: Never
 
 env:
-  APP_NAME: hs-pylib-pod-app
+  APP_NAME: hyperi-pylib-pod-app

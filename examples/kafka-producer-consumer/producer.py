@@ -1,15 +1,15 @@
-# Project:   hs-pylib
+# Project:   hyperi-pylib
 # File:      examples/kafka-producer-consumer/producer.py
-# Purpose:   Demonstrate hs-pylib Kafka producer
+# Purpose:   Demonstrate hyperi-pylib Kafka producer
 # Language:  Python
 #
-# License:   LicenseRef-HyperSec-EULA
-# Copyright: (c) 2026 HyperSec
+# License:   FSL-1.1-ALv2
+# Copyright: (c) 2026 HYPERI PTY LIMITED
 
 """
 Kafka Producer Example.
 
-Demonstrates hs-pylib's Kafka producer with corporate defaults.
+Demonstrates hyperi-pylib's Kafka producer with corporate defaults.
 Run with: uv run python producer.py
 
 Requires Kafka running (use docker compose up -d).
@@ -20,8 +20,8 @@ import os
 import time
 from datetime import datetime
 
-from hs_pylib.kafka import KafkaProducer
-from hs_pylib.logger import error, info, success
+from hyperi_pylib.kafka import KafkaProducer
+from hyperi_pylib.logger import error, info, success
 
 
 BOOTSTRAP_SERVERS = os.environ.get("KAFKA_BOOTSTRAP_SERVERS", "localhost:9092")
@@ -94,7 +94,7 @@ def produce_messages(count: int = 10) -> None:
 
 def main() -> None:
     """Run the producer demonstration."""
-    print("=== hs-pylib Kafka Producer Demo ===\n")
+    print("=== hyperi-pylib Kafka Producer Demo ===\n")
 
     try:
         produce_messages(10)

@@ -2,7 +2,7 @@
 
 import pytest
 
-from hs_pylib.secrets.exceptions import (
+from hyperi_pylib.secrets.exceptions import (
     AuthenticationError,
     CacheError,
     ProviderError,

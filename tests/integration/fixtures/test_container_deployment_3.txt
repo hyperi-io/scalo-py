@@ -2,7 +2,7 @@ import sys
 import os
 sys.path.insert(0, '/app')
 
-from hs_pylib import Application, get_mount_config
+from hyperi_pylib import Application, get_mount_config
 
 # Create daemon application
 app = Application.daemon(name="docker-test-daemon")

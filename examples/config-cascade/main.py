@@ -1,23 +1,23 @@
-# Project:   hs-pylib
+# Project:   hyperi-pylib
 # File:      examples/config-cascade/main.py
-# Purpose:   Demonstrate hs-pylib configuration cascade
+# Purpose:   Demonstrate hyperi-pylib configuration cascade
 # Language:  Python
 #
-# License:   LicenseRef-HyperSec-EULA
-# Copyright: (c) 2026 HyperSec
+# License:   FSL-1.1-ALv2
+# Copyright: (c) 2026 HYPERI PTY LIMITED
 
 """
 Config Cascade Example.
 
-Demonstrates hs-pylib's 7-layer configuration cascade system.
+Demonstrates hyperi-pylib's 7-layer configuration cascade system.
 Run with: uv run python main.py
 """
 
 import os
 from pathlib import Path
 
-from hs_pylib.config import get_settings, settings
-from hs_pylib.logger import info
+from hyperi_pylib.config import get_settings, settings
+from hyperi_pylib.logger import info
 
 
 def show_database_config() -> dict:
@@ -107,7 +107,7 @@ def main() -> None:
     """Run the configuration demonstration."""
     info("Config cascade example starting")
 
-    print("=== hs-pylib Configuration Cascade Demo ===\n")
+    print("=== hyperi-pylib Configuration Cascade Demo ===\n")
 
     print("=== Current Configuration ===")
     config = get_all_config()

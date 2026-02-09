@@ -1,19 +1,19 @@
-# Project:   hs-pylib
+# Project:   hyperi-pylib
 # File:      examples/basic-logging/main.py
-# Purpose:   Demonstrate hs-pylib structured logging
+# Purpose:   Demonstrate hyperi-pylib structured logging
 # Language:  Python
 #
-# License:   LicenseRef-HyperSec-EULA
-# Copyright: (c) 2026 HyperSec
+# License:   FSL-1.1-ALv2
+# Copyright: (c) 2026 HYPERI PTY LIMITED
 
 """
 Basic Logging Example.
 
-Demonstrates hs-pylib's structured logging with automatic environment detection.
+Demonstrates hyperi-pylib's structured logging with automatic environment detection.
 Run with: uv run python main.py
 """
 
-from hs_pylib.logger import debug, error, info, logger, success, warning
+from hyperi_pylib.logger import debug, error, info, logger, success, warning
 
 
 def process_user(user_id: int, action: str) -> bool:

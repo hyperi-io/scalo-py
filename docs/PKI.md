@@ -1,8 +1,8 @@
-# hs-pylib TLS/PKI Integration Guide
+# hyperi-pylib TLS/PKI Integration Guide
 
 ## Overview
 
-This document covers TLS configuration for hs-pylib components. All TLS settings follow the [PKI standards](../ai/standards/common/PKI.md) with profile-based security levels.
+This document covers TLS configuration for hyperi-pylib components. All TLS settings follow the [PKI standards](../ai/standards/common/PKI.md) with profile-based security levels.
 
 ## Security Profiles
 
@@ -16,15 +16,15 @@ This document covers TLS configuration for hs-pylib components. All TLS settings
 
 ---
 
-## Planned: `hs_pylib.tls` Module
+## Planned: `hyperi_pylib.tls` Module
 
 The following module will provide zero-config TLS with profile-based defaults.
 
 ### SSL Context Factory
 
 ```python
-# Future API - hs_pylib.tls module
-from hs_pylib.tls import create_ssl_context
+# Future API - hyperi_pylib.tls module
+from hyperi_pylib.tls import create_ssl_context
 
 # Usage
 ctx = create_ssl_context(profile="prod")     # Corporate default (P-384)
@@ -39,7 +39,7 @@ ctx = create_ssl_context(profile="prod", ca_bundle="/path/to/ca.crt")
 
 ```python
 """
-hs_pylib/tls.py - TLS configuration factory
+hyperi_pylib/tls.py - TLS configuration factory
 
 Implementation notes for contributors.
 """
@@ -147,7 +147,7 @@ def create_ssl_context(
 The existing `build_database_url()` reads `POSTGRES_SSLMODE` from environment:
 
 ```python
-from hs_pylib.database import build_database_url
+from hyperi_pylib.database import build_database_url
 
 # Current behaviour - reads ENV
 # POSTGRES_SSLMODE=verify-full
@@ -161,7 +161,7 @@ Auto-configure SSL based on profile:
 
 ```python
 # Future API
-from hs_pylib.database import build_database_url
+from hyperi_pylib.database import build_database_url
 
 # Auto-applies sslmode based on profile
 db_url = build_database_url("postgresql", profile="prod")
@@ -178,7 +178,7 @@ db_url = build_database_url(
 ### Implementation Reference
 
 ```python
-# Enhancement to hs_pylib/database/connection.py
+# Enhancement to hyperi_pylib/database/connection.py
 
 # SSL mode by profile
 SSLMODE_BY_PROFILE = {
@@ -220,7 +220,7 @@ def build_database_url(
 ```python
 # Direct psycopg2/asyncpg usage with profile settings
 import ssl
-from hs_pylib.tls import create_ssl_context
+from hyperi_pylib.tls import create_ssl_context
 
 # Create SSL context for database
 ctx = create_ssl_context(profile="prod")
@@ -260,7 +260,7 @@ engine = create_engine(
 The existing Kafka module supports SSL via `merge_config()`:
 
 ```python
-from hs_pylib.kafka import merge_config, PRODUCER_DEFAULTS
+from hyperi_pylib.kafka import merge_config, PRODUCER_DEFAULTS
 
 config = merge_config(
     {
@@ -280,7 +280,7 @@ Zero-config mTLS from settings:
 
 ```python
 # Future API
-from hs_pylib.kafka import KafkaProducer
+from hyperi_pylib.kafka import KafkaProducer
 
 # Auto-loads TLS config from settings.yaml or ENV
 producer = KafkaProducer(
@@ -292,7 +292,7 @@ producer = KafkaProducer(
 ### Implementation Reference
 
 ```python
-# Enhancement to hs_pylib/kafka/config.py
+# Enhancement to hyperi_pylib/kafka/config.py
 
 # Kafka SSL settings by profile
 KAFKA_SSL_DEFAULTS = {
@@ -384,7 +384,7 @@ producer = Producer({
 
 ```python
 import requests
-from hs_pylib.tls import create_ssl_context
+from hyperi_pylib.tls import create_ssl_context
 
 # Simple: use system CA (works for most cases)
 response = requests.get("https://api.example.com", verify=True)
@@ -479,11 +479,11 @@ openssl ecparam -genkey -name secp384r1 -out server.key
 
 # CSR
 openssl req -new -key server.key -out server.csr \
-    -subj "/CN=app.example.com/O=HyperSec/C=AU"
+    -subj "/CN=app.example.com/O=HyperI/C=AU"
 
 # Self-signed (dev only)
 openssl req -x509 -new -key server.key -out server.crt -days 365 \
-    -subj "/CN=app.example.com/O=HyperSec/C=AU"
+    -subj "/CN=app.example.com/O=HyperI/C=AU"
 ```
 
 ### Generate P-256 Certificate (devtest profile)
@@ -494,11 +494,11 @@ openssl ecparam -genkey -name prime256v1 -out server.key
 
 # CSR
 openssl req -new -key server.key -out server.csr \
-    -subj "/CN=dev.local/O=HyperSec/C=AU"
+    -subj "/CN=dev.local/O=HyperI/C=AU"
 
 # Self-signed
 openssl req -x509 -new -key server.key -out server.crt -days 365 \
-    -subj "/CN=dev.local/O=HyperSec/C=AU"
+    -subj "/CN=dev.local/O=HyperI/C=AU"
 ```
 
 ---

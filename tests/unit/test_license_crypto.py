@@ -1,18 +1,18 @@
-# Project:   hs-pylib
+# Project:   hyperi-pylib
 # File:      tests/unit/test_license_crypto.py
 # Purpose:   Unit tests for license crypto module
 # Language:  Python
 #
-# License:   LicenseRef-HyperSec-EULA
-# Copyright: (c) 2026 HyperSec
+# License:   FSL-1.1-ALv2
+# Copyright: (c) 2026 HYPERI PTY LIMITED
 
-"""Unit tests for hs_pylib.license.crypto module."""
+"""Unit tests for hyperi_pylib.license.crypto module."""
 
 from __future__ import annotations
 
 import pytest
 
-from hs_pylib.license.crypto import (
+from hyperi_pylib.license.crypto import (
     MIN_ENCRYPTED_SIZE,
     NONCE_SIZE,
     TAG_SIZE,
@@ -20,7 +20,7 @@ from hs_pylib.license.crypto import (
     derive_key,
     encrypt,
 )
-from hs_pylib.license.error import LicenseDecryptionError, LicenseEncryptionError
+from hyperi_pylib.license.error import LicenseDecryptionError, LicenseEncryptionError
 
 
 class TestDeriveKey:

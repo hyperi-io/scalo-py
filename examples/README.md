@@ -1,6 +1,6 @@
-# hs-pylib Examples
+# hyperi-pylib Examples
 
-Standalone example projects demonstrating hs-pylib features.
+Standalone example projects demonstrating hyperi-pylib features.
 
 Each example is a complete, runnable project with its own `pyproject.toml`, tests, and documentation.
 
@@ -37,7 +37,7 @@ All examples follow this structure:
 
 ```
 <example-name>/
-├── pyproject.toml      # Project config with hs-pylib dependency
+├── pyproject.toml      # Project config with hyperi-pylib dependency
 ├── README.md           # Documentation
 ├── main.py             # Main example code
 ├── tests/
@@ -52,9 +52,9 @@ All examples follow this structure:
 - [uv](https://github.com/astral-sh/uv) package manager (recommended)
 - Docker (for postgres-cache and kafka examples)
 
-## Installing hs-pylib
+## Installing hyperi-pylib
 
-Examples install hs-pylib from PyPI. For local development against the library source:
+Examples install hyperi-pylib from PyPI. For local development against the library source:
 
 ```bash
 # From the example directory
@@ -93,7 +93,7 @@ Some examples require external services:
 When adding new examples:
 
 1. Create a new directory under `examples/`
-2. Include `pyproject.toml` with hs-pylib dependency
+2. Include `pyproject.toml` with hyperi-pylib dependency
 3. Include `README.md` with quick start and explanation
 4. Include `main.py` as the entry point
 5. Include `tests/test_main.py` with basic tests
@@ -101,5 +101,5 @@ When adding new examples:
 
 ## See Also
 
-- [hs-pylib Documentation](../docs/)
-- [hs-pylib API Reference](../src/hs_pylib/)
+- [hyperi-pylib Documentation](../docs/)
+- [hyperi-pylib API Reference](../src/hyperi_pylib/)

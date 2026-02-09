@@ -5,11 +5,11 @@ WORKDIR /app
 # Install uv
 RUN pip install --no-cache-dir uv
 
-# Copy pyproject.toml and hs-pylib source
+# Copy pyproject.toml and hyperi-pylib source
 COPY pyproject.toml /app/
-COPY src/hs-pylib /app/src/hs-pylib
+COPY src/hyperi-pylib /app/src/hyperi-pylib
 
-# Install hs-pylib with dependencies
+# Install hyperi-pylib with dependencies
 RUN cd /app && uv pip install --system -e .
 
 # Copy application

@@ -1,4 +1,4 @@
-# hs-pylib TODO
+# hyperi-pylib TODO
 
 ## Active
 
@@ -43,7 +43,7 @@
 
 ## Backlog
 
-### Add hs_pylib.http.HttpClient (Stamina + httpx) - **3h**
+### Add hyperi_pylib.http.HttpClient (Stamina + httpx) - **3h**
 
 **Status:** Not started - identified during dfe-control-plane B113 fixes
 
@@ -51,7 +51,7 @@
 
 **Task:**
 
-- Create `hs_pylib.http.HttpClient` wrapping httpx + stamina
+- Create `hyperi_pylib.http.HttpClient` wrapping httpx + stamina
 - Auto timeout (default 30s) - solves B113 bandit issues
 - Auto retries with exponential backoff via stamina
 - Stamina auto-detects structlog + prometheus-client
@@ -65,30 +65,30 @@
 
 **Rationale:**
 
-- Stamina auto-integrates with hs_pylib.logger (structlog) and hs_pylib.metrics (prometheus)
+- Stamina auto-integrates with hyperi_pylib.logger (structlog) and hyperi_pylib.metrics (prometheus)
 - Testing friendly: `stamina.set_testing(attempts=1)` in pytest
 - Same author as attrs/structlog - quality pedigree
 
 **Design:** See dfe-control-plane/HS-LIB-UPDATE.md §4
 
-### Add FastAPI metrics middleware to hs_pylib.metrics - **2h**
+### Add FastAPI metrics middleware to hyperi_pylib.metrics - **2h**
 
 **Status:** Not started - identified during dfe-control-plane metrics work
 
 **Task:**
 
-- Create `hs_pylib.metrics.fastapi.PrometheusMiddleware`
+- Create `hyperi_pylib.metrics.fastapi.PrometheusMiddleware`
 - Auto-track: request count, duration, status by endpoint
-- Create `hs_pylib.metrics.fastapi.create_metrics_router()` for `/metrics` endpoint
+- Create `hyperi_pylib.metrics.fastapi.create_metrics_router()` for `/metrics` endpoint
 - Zero-config: `app.add_middleware(PrometheusMiddleware)`
 
 **Rationale:**
 
 - All FastAPI apps need HTTP metrics
 - Currently each app implements manually
-- Consistency across HyperSec apps
+- Consistency across HyperI apps
 
-### Add DB query metrics helpers to hs_pylib.metrics - **1h**
+### Add DB query metrics helpers to hyperi_pylib.metrics - **1h**
 
 **Status:** Not started - identified during dfe-control-plane metrics work
 
@@ -104,13 +104,13 @@
 - Can't auto-instrument all clients
 - Explicit instrumentation is reliable
 
-### [BACKLOG] hs_pylib.application: Application Framework - **deferred**
+### [BACKLOG] hyperi_pylib.application: Application Framework - **deferred**
 
-**Status:** Removed from hs-pylib v2.13.6, preserved in git history
+**Status:** Removed from hyperi-pylib v2.13.6, preserved in git history
 
 **What was removed:**
 
-- `src/hs_pylib/application/` - API, CLI, Daemon, MCP, Oneshot application types
+- `src/hyperi_pylib/application/` - API, CLI, Daemon, MCP, Oneshot application types
 - Profile-based configuration (dev, docker, prod)
 - Health check mixins
 - Signal handling
@@ -119,14 +119,14 @@
 
 - Zero production usage across dfe-* projects
 - 2,656 lines of experimental code
-- Production apps use FastAPI/Typer directly with hs_pylib.metrics/logger/config
+- Production apps use FastAPI/Typer directly with hyperi_pylib.metrics/logger/config
 
 **Reactivation criteria:**
 
 - When 2+ production apps need standardized application patterns
 - When profile-based config provides value over direct configuration
 
-### [BACKLOG] hs_pylib.kafka: JSON key-value offset seek - **2d**
+### [BACKLOG] hyperi_pylib.kafka: JSON key-value offset seek - **2d**
 
 **Status:** Backlog - documented in admin.py:552-582
 
@@ -147,7 +147,7 @@
 
 **Status:** Org-level GH_RUNNER_DEFAULT set to BuildJet but runners not responding
 
-**Current workaround:** hs-pylib uses repo-level override to `ubuntu-latest`
+**Current workaround:** hyperi-pylib uses repo-level override to `ubuntu-latest`
 
 **Task:**
 
@@ -202,7 +202,7 @@
 
 ## Completed (2026-01-20)
 
-### hs_pylib.license module ✅
+### hyperi_pylib.license module ✅
 
 Direct Python port of hs-rustlib licensing module for cross-language interoperability.
 
@@ -214,12 +214,12 @@ Direct Python port of hs-rustlib licensing module for cross-language interoperab
 - Global singleton API with thread safety
 
 **Files:**
-- `src/hs_pylib/license/` - 6 module files (error, types, defaults, crypto, integrity, manager)
+- `src/hyperi_pylib/license/` - 6 module files (error, types, defaults, crypto, integrity, manager)
 - `tests/unit/test_license_*.py` - 5 test files
 
 **Security Note:** Obfuscation handled by Nuitka compilation - Python source has plaintext defaults.
 
-**Dependencies:** `cryptography>=42.0` via `pip install hs-pylib[license]`
+**Dependencies:** `cryptography>=42.0` via `pip install hyperi-pylib[license]`
 
 ---
 
@@ -236,13 +236,13 @@ Direct Python port of hs-rustlib licensing module for cross-language interoperab
 ### PostgreSQL Config Loader ✅
 
 - `PostgresConfigLoader` for shared configuration store
-- Layer 5 in 8-layer config cascade (enabled via `HS_CONFIG_DSN`)
+- Layer 5 in 8-layer config cascade (enabled via `HYPERI_CONFIG_DSN`)
 - Namespace isolation, cache TTL, sync/async modes
 - 31 unit + 25 integration tests
 
 ### dfe-engine Updated ✅
 
-- Updated to `hs-pylib>=2.14.0`
+- Updated to `hyperi-pylib>=2.14.0`
 - Security fixes: urllib3, werkzeug CVEs
 
 ---
@@ -262,14 +262,14 @@ Direct Python port of hs-rustlib licensing module for cross-language interoperab
 
 ### Fixed CI runner issue ✅
 
-- Set repo-level `GH_RUNNER_DEFAULT=ubuntu-latest` for hs-pylib
+- Set repo-level `GH_RUNNER_DEFAULT=ubuntu-latest` for hyperi-pylib
 - Published v2.13.6 to JFrog
 
 ---
 
 ## Completed (2025-12-05)
 
-### hs_pylib.kafka module ✅
+### hyperi_pylib.kafka module ✅
 
 Full Kafka client library with corporate defaults (160 unit + 19 integration tests)
 

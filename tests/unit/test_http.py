@@ -1,12 +1,12 @@
-# Project:   hs-pylib
+# Project:   hyperi-pylib
 # File:      tests/unit/test_http.py
-# Purpose:   Unit tests for hs_pylib.http module
+# Purpose:   Unit tests for hyperi_pylib.http module
 # Language:  Python
 #
-# License:   LicenseRef-HyperSec-EULA
-# Copyright: (c) 2025 HyperSec
+# License:   FSL-1.1-ALv2
+# Copyright: (c) 2026 HYPERI PTY LIMITED
 
-"""Unit tests for hs_pylib.http module."""
+"""Unit tests for hyperi_pylib.http module."""
 
 import httpx
 import pytest
@@ -21,13 +21,13 @@ class TestHttpClient:
 
     def test_import(self):
         """Test that HttpClient can be imported."""
-        from hs_pylib.http import HttpClient
+        from hyperi_pylib.http import HttpClient
 
         assert HttpClient is not None
 
     def test_init_defaults(self):
         """Test HttpClient initialises with defaults."""
-        from hs_pylib.http import HttpClient
+        from hyperi_pylib.http import HttpClient
 
         client = HttpClient()
         assert client._timeout == 30.0
@@ -36,7 +36,7 @@ class TestHttpClient:
 
     def test_init_custom_timeout(self):
         """Test HttpClient with custom timeout."""
-        from hs_pylib.http import HttpClient
+        from hyperi_pylib.http import HttpClient
 
         client = HttpClient(timeout=60.0)
         assert client._timeout == 60.0
@@ -44,7 +44,7 @@ class TestHttpClient:
 
     def test_init_custom_retries(self):
         """Test HttpClient with custom retries."""
-        from hs_pylib.http import HttpClient
+        from hyperi_pylib.http import HttpClient
 
         client = HttpClient(retries=5)
         assert client._retries == 5
@@ -52,7 +52,7 @@ class TestHttpClient:
 
     def test_init_with_base_url(self):
         """Test HttpClient with base URL."""
-        from hs_pylib.http import HttpClient
+        from hyperi_pylib.http import HttpClient
 
         client = HttpClient(base_url="https://api.example.com")
         assert client._client.base_url == httpx.URL("https://api.example.com")
@@ -60,7 +60,7 @@ class TestHttpClient:
 
     def test_context_manager(self):
         """Test HttpClient as context manager."""
-        from hs_pylib.http import HttpClient
+        from hyperi_pylib.http import HttpClient
 
         with HttpClient() as client:
             assert client is not None
@@ -68,7 +68,7 @@ class TestHttpClient:
 
     def test_get_request(self, httpx_mock):
         """Test GET request."""
-        from hs_pylib.http import HttpClient
+        from hyperi_pylib.http import HttpClient
 
         httpx_mock.add_response(
             method="GET",
@@ -83,7 +83,7 @@ class TestHttpClient:
 
     def test_post_request(self, httpx_mock):
         """Test POST request."""
-        from hs_pylib.http import HttpClient
+        from hyperi_pylib.http import HttpClient
 
         httpx_mock.add_response(
             method="POST",
@@ -102,7 +102,7 @@ class TestHttpClient:
 
     def test_put_request(self, httpx_mock):
         """Test PUT request."""
-        from hs_pylib.http import HttpClient
+        from hyperi_pylib.http import HttpClient
 
         httpx_mock.add_response(
             method="PUT",
@@ -119,7 +119,7 @@ class TestHttpClient:
 
     def test_patch_request(self, httpx_mock):
         """Test PATCH request."""
-        from hs_pylib.http import HttpClient
+        from hyperi_pylib.http import HttpClient
 
         httpx_mock.add_response(
             method="PATCH",
@@ -136,7 +136,7 @@ class TestHttpClient:
 
     def test_delete_request(self, httpx_mock):
         """Test DELETE request."""
-        from hs_pylib.http import HttpClient
+        from hyperi_pylib.http import HttpClient
 
         httpx_mock.add_response(
             method="DELETE",
@@ -150,7 +150,7 @@ class TestHttpClient:
 
     def test_head_request(self, httpx_mock):
         """Test HEAD request."""
-        from hs_pylib.http import HttpClient
+        from hyperi_pylib.http import HttpClient
 
         httpx_mock.add_response(
             method="HEAD",
@@ -163,7 +163,7 @@ class TestHttpClient:
 
     def test_options_request(self, httpx_mock):
         """Test OPTIONS request."""
-        from hs_pylib.http import HttpClient
+        from hyperi_pylib.http import HttpClient
 
         httpx_mock.add_response(
             method="OPTIONS",
@@ -180,13 +180,13 @@ class TestAsyncHttpClient:
 
     def test_import(self):
         """Test that AsyncHttpClient can be imported."""
-        from hs_pylib.http import AsyncHttpClient
+        from hyperi_pylib.http import AsyncHttpClient
 
         assert AsyncHttpClient is not None
 
     def test_init_defaults(self):
         """Test AsyncHttpClient initialises with defaults."""
-        from hs_pylib.http import AsyncHttpClient
+        from hyperi_pylib.http import AsyncHttpClient
 
         client = AsyncHttpClient()
         assert client._timeout == 30.0
@@ -194,21 +194,21 @@ class TestAsyncHttpClient:
 
     def test_init_custom_timeout(self):
         """Test AsyncHttpClient with custom timeout."""
-        from hs_pylib.http import AsyncHttpClient
+        from hyperi_pylib.http import AsyncHttpClient
 
         client = AsyncHttpClient(timeout=60.0)
         assert client._timeout == 60.0
 
     def test_init_custom_retries(self):
         """Test AsyncHttpClient with custom retries."""
-        from hs_pylib.http import AsyncHttpClient
+        from hyperi_pylib.http import AsyncHttpClient
 
         client = AsyncHttpClient(retries=5)
         assert client._retries == 5
 
     def test_init_with_base_url(self):
         """Test AsyncHttpClient with base URL."""
-        from hs_pylib.http import AsyncHttpClient
+        from hyperi_pylib.http import AsyncHttpClient
 
         client = AsyncHttpClient(base_url="https://api.example.com")
         assert client._client.base_url == httpx.URL("https://api.example.com")
@@ -216,7 +216,7 @@ class TestAsyncHttpClient:
     @pytest.mark.asyncio
     async def test_async_context_manager(self):
         """Test AsyncHttpClient as async context manager."""
-        from hs_pylib.http import AsyncHttpClient
+        from hyperi_pylib.http import AsyncHttpClient
 
         async with AsyncHttpClient() as client:
             assert client is not None
@@ -225,7 +225,7 @@ class TestAsyncHttpClient:
     @pytest.mark.asyncio
     async def test_async_get_request(self, httpx_mock):
         """Test async GET request."""
-        from hs_pylib.http import AsyncHttpClient
+        from hyperi_pylib.http import AsyncHttpClient
 
         httpx_mock.add_response(
             method="GET",
@@ -241,7 +241,7 @@ class TestAsyncHttpClient:
     @pytest.mark.asyncio
     async def test_async_post_request(self, httpx_mock):
         """Test async POST request."""
-        from hs_pylib.http import AsyncHttpClient
+        from hyperi_pylib.http import AsyncHttpClient
 
         httpx_mock.add_response(
             method="POST",
@@ -261,7 +261,7 @@ class TestAsyncHttpClient:
     @pytest.mark.asyncio
     async def test_async_put_request(self, httpx_mock):
         """Test async PUT request."""
-        from hs_pylib.http import AsyncHttpClient
+        from hyperi_pylib.http import AsyncHttpClient
 
         httpx_mock.add_response(
             method="PUT",
@@ -279,7 +279,7 @@ class TestAsyncHttpClient:
     @pytest.mark.asyncio
     async def test_async_delete_request(self, httpx_mock):
         """Test async DELETE request."""
-        from hs_pylib.http import AsyncHttpClient
+        from hyperi_pylib.http import AsyncHttpClient
 
         httpx_mock.add_response(
             method="DELETE",

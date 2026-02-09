@@ -1,5 +1,5 @@
 """
-Docker container tests for hs_pylib applications
+Docker container tests for hyperi_pylib applications
 Tests containerized deployments with actual Docker containers
 """
 
@@ -26,7 +26,7 @@ def docker_available():
 @pytest.mark.integration
 @pytest.mark.skipif(not docker_available(), reason="Docker not available")
 class TestDockerContainer:
-    """Test hs_pylib applications in Docker containers."""
+    """Test hyperi_pylib applications in Docker containers."""
 
     @staticmethod
     def load_fixture(fixture_name: str) -> str:
@@ -53,7 +53,7 @@ class TestDockerContainer:
             subprocess.run(["docker", "rmi", "-f", image], capture_output=True)
 
     def test_docker_environment_detection(self, docker_cleanup):
-        """Test that hs_pylib detects Docker environment correctly."""
+        """Test that hyperi_pylib detects Docker environment correctly."""
         # Create a test Dockerfile
         temp_dir = Path(tempfile.mkdtemp())
 
@@ -67,7 +67,7 @@ class TestDockerContainer:
             dockerfile.write_text(self.load_fixture("test_docker_container_2"))
 
             # Build Docker image
-            image_name = "hs-pylib-test:docker-env"
+            image_name = "hyperi-pylib-test:docker-env"
             result = subprocess.run(
                 ["docker", "build", "-t", image_name, "--build-arg", f"host={Path.cwd()}", "."],
                 cwd=temp_dir,
@@ -85,7 +85,7 @@ class TestDockerContainer:
             docker_cleanup["images"].append(image_name)
 
             # Run container
-            container_name = "hs-pylib-docker-test"
+            container_name = "hyperi-pylib-docker-test"
             result = subprocess.run(
                 ["docker", "run", "--name", container_name, "--rm", image_name], capture_output=True, text=True
             )
@@ -111,7 +111,7 @@ class TestDockerContainer:
             dockerfile.write_text(self.load_fixture("test_docker_container_5"))
 
             # Build image
-            image_name = "hs-pylib-test:mounts"
+            image_name = "hyperi-pylib-test:mounts"
             subprocess.run(["docker", "build", "-t", image_name, "."], cwd=temp_dir, capture_output=True)
             docker_cleanup["images"].append(image_name)
 
@@ -152,7 +152,7 @@ class TestDockerContainer:
             dockerfile.write_text(self.load_fixture("test_docker_container_7"))
 
             # Build image
-            image_name = "hs-pylib-test:env"
+            image_name = "hyperi-pylib-test:env"
             subprocess.run(["docker", "build", "-t", image_name, "."], cwd=temp_dir, capture_output=True)
             docker_cleanup["images"].append(image_name)
 
@@ -197,14 +197,14 @@ class TestDockerContainer:
             dockerfile.write_text(self.load_fixture("test_docker_container_9"))
 
             # Build API image
-            api_image = "hs-pylib-test:api"
+            api_image = "hyperi-pylib-test:api"
             subprocess.run(
                 ["docker", "build", "-f", "Dockerfile.api", "-t", api_image, "."], cwd=temp_dir, capture_output=True
             )
             docker_cleanup["images"].append(api_image)
 
             # Create a network for containers
-            network_name = "hs-pylib-test-network"
+            network_name = "hyperi-pylib-test-network"
             subprocess.run(["docker", "network", "create", network_name], capture_output=True)
 
             try:
@@ -256,7 +256,7 @@ class TestDockerContainer:
             dockerfile.write_text(self.load_fixture("test_docker_container_11"))
 
             # Build image
-            image_name = "hs-pylib-test:helm"
+            image_name = "hyperi-pylib-test:helm"
             subprocess.run(["docker", "build", "-t", image_name, "."], cwd=temp_dir, capture_output=True)
             docker_cleanup["images"].append(image_name)
 
@@ -310,7 +310,7 @@ class TestDockerContainer:
             dockerfile.write_text(self.load_fixture("test_docker_container_13"))
 
             # Build image
-            image_name = "hs-pylib-test:resources"
+            image_name = "hyperi-pylib-test:resources"
             subprocess.run(["docker", "build", "-t", image_name, "."], cwd=temp_dir, capture_output=True)
             docker_cleanup["images"].append(image_name)
 

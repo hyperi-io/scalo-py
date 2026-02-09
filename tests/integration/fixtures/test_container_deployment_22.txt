@@ -1,4 +1,4 @@
 apiVersion: v2
-name: hs-pylib-metrics-test
+name: hyperi-pylib-metrics-test
 version: 0.1.0
-description: Helm chart for hs-pylib Prometheus metrics test
+description: Helm chart for hyperi-pylib Prometheus metrics test

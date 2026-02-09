@@ -1,10 +1,10 @@
-# Project:   hs-pylib
+# Project:   hyperi-pylib
 # File:      examples/basic-logging/tests/test_main.py
 # Purpose:   Tests for basic-logging example
 # Language:  Python
 #
-# License:   LicenseRef-HyperSec-EULA
-# Copyright: (c) 2026 HyperSec
+# License:   FSL-1.1-ALv2
+# Copyright: (c) 2026 HYPERI PTY LIMITED
 
 """Tests for basic-logging example."""
 

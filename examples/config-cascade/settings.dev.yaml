@@ -1,10 +1,10 @@
-# Project:   hs-pylib
+# Project:   hyperi-pylib
 # File:      examples/config-cascade/settings.dev.yaml
 # Purpose:   Development environment overrides
 # Language:  YAML
 #
-# License:   LicenseRef-HyperSec-EULA
-# Copyright: (c) 2026 HyperSec
+# License:   FSL-1.1-ALv2
+# Copyright: (c) 2026 HYPERI PTY LIMITED
 
 # Development overrides - loaded when ENV_FOR_DYNACONF=dev
 database:

@@ -1,0 +1,13 @@
+{{- if .Values.podDisruptionBudget.enabled }}
+apiVersion: policy/v1
+kind: PodDisruptionBudget
+metadata:
+  name: {{ include "hyperi-pylib-app.fullname" . }}
+  labels:
+    {{- include "hyperi-pylib-app.labels" . | nindent 4 }}
+spec:
+  minAvailable: {{ .Values.podDisruptionBudget.minAvailable }}
+  selector:
+    matchLabels:
+      {{- include "hyperi-pylib-app.selectorLabels" . | nindent 6 }}
+{{- end }}

@@ -1,18 +1,18 @@
-# Project:   hs-pylib
+# Project:   hyperi-pylib
 # File:      examples/postgres-cache/pyproject.toml
-# Purpose:   Example project demonstrating hs-pylib PostgreSQL cache
+# Purpose:   Example project demonstrating hyperi-pylib PostgreSQL cache
 # Language:  Python
 #
-# License:   LicenseRef-HyperSec-EULA
-# Copyright: (c) 2026 HyperSec
+# License:   FSL-1.1-ALv2
+# Copyright: (c) 2026 HYPERI PTY LIMITED
 
 [project]
 name = "postgres-cache-example"
 version = "0.1.0"
-description = "Example demonstrating hs-pylib PostgreSQL cache for multi-pod deployments"
+description = "Example demonstrating hyperi-pylib PostgreSQL cache for multi-pod deployments"
 requires-python = ">=3.12"
 dependencies = [
-    "hs-pylib[cache]>=2.14.0",
+    "hyperi-pylib[cache]>=2.14.0",
 ]
 
 [project.optional-dependencies]

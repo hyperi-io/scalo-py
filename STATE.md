@@ -1,8 +1,8 @@
-# hs-pylib - Project State
+# hyperi-pylib - Project State
 
-**Repository**: <https://github.com/hypersec-io/hs-pylib>
+**Repository**: <https://github.com/hypersec-io/hyperi-pylib>
 **Type**: Python package (shared library)
-**Purpose**: Enterprise infrastructure for all HyperSec Python projects
+**Purpose**: Enterprise infrastructure for all HyperI Python projects
 
 ---
 
@@ -27,7 +27,7 @@ Do NOT manually run ruff/pyright/pytest individually - use the CI script which r
 
 **Versions:**
 
-- hs-pylib: v2.14.0
+- hyperi-pylib: v2.14.0
 - hs-ci: v1.37.0 (GitHub Actions architecture)
 
 **Build type:** Native wheel only (no Nuitka)
@@ -62,16 +62,16 @@ Do NOT manually run ruff/pyright/pytest individually - use the CI script which r
    - Integration tests: 25 for config loader, 40+ for cache
 
 4. **dfe-engine Updated**
-   - Updated to `hs-pylib>=2.14.0`
+   - Updated to `hyperi-pylib>=2.14.0`
    - Security fixes: urllib3 2.6.0→2.6.3, werkzeug 3.1.4→3.1.5
 
 ### Key Files Created/Modified
 
-- `src/hs_pylib/cache/postgres.py` - NEW: PostgresCache implementation
-- `src/hs_pylib/cache/__init__.py` - Updated exports for PostgresCache
-- `src/hs_pylib/config/postgres_loader.py` - NEW: PostgresConfigLoader
-- `src/hs_pylib/config/__init__.py` - Updated exports
-- `src/hs_pylib/config/config.py` - Added layer 5 integration
+- `src/hyperi_pylib/cache/postgres.py` - NEW: PostgresCache implementation
+- `src/hyperi_pylib/cache/__init__.py` - Updated exports for PostgresCache
+- `src/hyperi_pylib/config/postgres_loader.py` - NEW: PostgresConfigLoader
+- `src/hyperi_pylib/config/__init__.py` - Updated exports
+- `src/hyperi_pylib/config/config.py` - Added layer 5 integration
 - `docker-compose.postgres.yml` - NEW: Local PostgreSQL for testing
 - `tests/conftest.py` - Added PostgreSQL fixtures
 - `tests/unit/test_cache_postgres.py` - NEW: Unit tests
@@ -107,7 +107,7 @@ Do NOT manually run ruff/pyright/pytest individually - use the CI script which r
 ┌─────────────────────────────────────────────────────────┐
 │                    Application (dfe-engine)             │
 │  ┌─────────────────────────────────────────────────┐   │
-│  │         PostgresCache (hs-pylib)                │   │
+│  │         PostgresCache (hyperi-pylib)                │   │
 │  │  ┌─────────────┐  ┌─────────────────────────┐   │   │
 │  │  │ Serializer  │  │ AsyncConnectionPool     │   │   │
 │  │  │ (msgpack)   │  │ (psycopg3)              │   │   │
@@ -131,7 +131,7 @@ Do NOT manually run ruff/pyright/pytest individually - use the CI script which r
 ### API Usage
 
 ```python
-from hs_pylib.cache import PostgresCache, generate_cache_key
+from hyperi_pylib.cache import PostgresCache, generate_cache_key
 
 cache = PostgresCache(dsn="postgresql://user:pass@host/db")
 await cache.init()
@@ -164,7 +164,7 @@ ci/scripts/local/build-local.sh
 ### Runner Configuration
 
 **Org-level:** `GH_RUNNER_DEFAULT=buildjet-4vcpu-ubuntu-2204` (BuildJet - currently unavailable)
-**Repo-level (hs-pylib):** `GH_RUNNER_DEFAULT=ubuntu-latest` (overrides org setting)
+**Repo-level (hyperi-pylib):** `GH_RUNNER_DEFAULT=ubuntu-latest` (overrides org setting)
 
 ---
 

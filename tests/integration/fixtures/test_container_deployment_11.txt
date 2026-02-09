@@ -22,7 +22,7 @@ spec:
         - containerPort: 80
         env:
         - name: APP_NAME
-          value: hs-pylib-api
+          value: hyperi-pylib-api
         - name: POSTGRES_HOST
           value: postgres.{namespace}.svc.cluster.local
         - name: POSTGRES_USER

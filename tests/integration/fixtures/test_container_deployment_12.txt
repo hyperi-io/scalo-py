@@ -1,6 +1,6 @@
 apiVersion: v2
-name: hs-pylib-test
-description: A Helm chart for testing hs-pylib
+name: hyperi-pylib-test
+description: A Helm chart for testing hyperi-pylib
 type: application
 version: 0.1.0
 appVersion: "1.0"

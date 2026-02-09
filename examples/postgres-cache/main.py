@@ -1,15 +1,15 @@
-# Project:   hs-pylib
+# Project:   hyperi-pylib
 # File:      examples/postgres-cache/main.py
-# Purpose:   Demonstrate hs-pylib PostgreSQL cache
+# Purpose:   Demonstrate hyperi-pylib PostgreSQL cache
 # Language:  Python
 #
-# License:   LicenseRef-HyperSec-EULA
-# Copyright: (c) 2026 HyperSec
+# License:   FSL-1.1-ALv2
+# Copyright: (c) 2026 HYPERI PTY LIMITED
 
 """
 PostgreSQL Cache Example.
 
-Demonstrates hs-pylib's PostgreSQL cache backend for multi-pod deployments.
+Demonstrates hyperi-pylib's PostgreSQL cache backend for multi-pod deployments.
 Run with: uv run python main.py
 
 Requires PostgreSQL running (use docker compose up -d).
@@ -19,8 +19,8 @@ import asyncio
 import os
 from datetime import datetime
 
-from hs_pylib.cache import PostgresCache, generate_cache_key
-from hs_pylib.logger import error, info, success
+from hyperi_pylib.cache import PostgresCache, generate_cache_key
+from hyperi_pylib.logger import error, info, success
 
 
 # Default DSN for local development
@@ -173,7 +173,7 @@ async def main() -> None:
     dsn = os.environ.get("POSTGRES_DSN", DEFAULT_DSN)
     info("PostgreSQL cache example starting", dsn=dsn.split("@")[1] if "@" in dsn else dsn)
 
-    print("=== hs-pylib PostgreSQL Cache Demo ===")
+    print("=== hyperi-pylib PostgreSQL Cache Demo ===")
 
     try:
         # Initialise cache

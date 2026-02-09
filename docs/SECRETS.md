@@ -1,8 +1,8 @@
-# hs-pylib Secrets Management Guide
+# hyperi-pylib Secrets Management Guide
 
 ## Overview
 
-hs-pylib provides a unified secrets management module for securely loading certificates, credentials, and other sensitive data from multiple sources with automatic caching and resilience.
+hyperi-pylib provides a unified secrets management module for securely loading certificates, credentials, and other sensitive data from multiple sources with automatic caching and resilience.
 
 ## Key Features
 
@@ -16,7 +16,7 @@ hs-pylib provides a unified secrets management module for securely loading certi
 ## Quick Start
 
 ```python
-from hs_pylib.secrets import SecretsManager, SecretRef
+from hyperi_pylib.secrets import SecretsManager, SecretRef
 
 # Simple file-based usage (backwards compatible)
 secrets = SecretsManager()
@@ -37,16 +37,16 @@ api_key = await secrets.get("api_key")
 
 ```bash
 # Core only (file provider)
-pip install hs-pylib
+pip install hyperi-pylib
 
 # With OpenBao/Vault support
-pip install hs-pylib[secrets-vault]
+pip install hyperi-pylib[secrets-vault]
 
 # With AWS Secrets Manager support
-pip install hs-pylib[secrets-aws]
+pip install hyperi-pylib[secrets-aws]
 
 # All secrets providers
-pip install hs-pylib[secrets-all]
+pip install hyperi-pylib[secrets-all]
 ```
 
 ## Providers
@@ -56,7 +56,7 @@ pip install hs-pylib[secrets-all]
 Loads secrets from local filesystem. This is the default provider and requires no additional dependencies.
 
 ```python
-from hs_pylib.secrets import SecretsManager
+from hyperi_pylib.secrets import SecretsManager
 
 secrets = SecretsManager()
 
@@ -85,7 +85,7 @@ secrets = SecretsManager.from_config({
 Loads secrets from HashiCorp Vault or OpenBao (Vault fork).
 
 ```python
-from hs_pylib.secrets import SecretsManager
+from hyperi_pylib.secrets import SecretsManager
 
 secrets = SecretsManager.from_config({
     "openbao": {
@@ -158,7 +158,7 @@ secrets = SecretsManager.from_config({
 Loads secrets from AWS Secrets Manager with automatic credential chain.
 
 ```python
-from hs_pylib.secrets import SecretsManager
+from hyperi_pylib.secrets import SecretsManager
 
 secrets = SecretsManager.from_config({
     "aws": {
@@ -283,7 +283,7 @@ await secrets.stop_refresh()
 Register callbacks to be notified when secrets are refreshed with new versions:
 
 ```python
-from hs_pylib.secrets import SecretsManager, RotationEvent
+from hyperi_pylib.secrets import SecretsManager, RotationEvent
 
 def on_secret_rotation(event: RotationEvent):
     logger.info(
@@ -368,10 +368,10 @@ secrets:
 ### Loading Configuration
 
 ```python
-from hs_pylib.secrets import SecretsManager
-from hs_pylib.config import settings
+from hyperi_pylib.secrets import SecretsManager
+from hyperi_pylib.config import settings
 
-# From hs-pylib config cascade
+# From hyperi-pylib config cascade
 secrets = SecretsManager.from_config(settings.get("secrets", {}))
 
 # Or from YAML file directly
@@ -385,9 +385,9 @@ secrets = SecretsManager.from_config(config["secrets"])
 
 | Variable | Description | Default |
 |----------|-------------|---------|
-| `HS_SECRETS_CACHE_DIR` | Cache directory | Auto-detect |
-| `HS_SECRETS_CACHE_TTL` | Cache TTL in seconds | 3600 |
-| `HS_SECRETS_CACHE_KEY` | Cache encryption key | None (plaintext) |
+| `HYPERI_SECRETS_CACHE_DIR` | Cache directory | Auto-detect |
+| `HYPERI_SECRETS_CACHE_TTL` | Cache TTL in seconds | 3600 |
+| `HYPERI_SECRETS_CACHE_KEY` | Cache encryption key | None (plaintext) |
 | `VAULT_ADDR` | OpenBao/Vault address | None |
 | `VAULT_TOKEN` | Vault token (if using token auth) | None |
 | `VAULT_ROLE_ID` | AppRole role ID | None |
@@ -400,8 +400,8 @@ secrets = SecretsManager.from_config(config["secrets"])
 The secrets module integrates seamlessly with TLS configuration:
 
 ```python
-from hs_pylib.secrets import SecretsManager
-from hs_pylib.tls import TlsConfig  # Future module
+from hyperi_pylib.secrets import SecretsManager
+from hyperi_pylib.tls import TlsConfig  # Future module
 
 secrets = SecretsManager.from_config({
     "sources": {
@@ -524,7 +524,7 @@ class CacheError(SecretsError):
 ### Debug Mode
 
 ```bash
-export HS_SECRETS_DEBUG=1
+export HYPERI_SECRETS_DEBUG=1
 python app.py
 
 # Output:
@@ -539,7 +539,7 @@ python app.py
 
 | Issue | Solution |
 |-------|----------|
-| `ProviderNotConfiguredError` | Ensure provider config is present and install extras (`pip install hs-pylib[secrets-vault]`) |
+| `ProviderNotConfiguredError` | Ensure provider config is present and install extras (`pip install hyperi-pylib[secrets-vault]`) |
 | `SecretNotFoundError` | Verify secret path/name exists in provider |
 | Vault auth failing | Check role_id/secret_id, verify AppRole policy |
 | AWS auth failing | Verify IAM permissions, check region setting |
