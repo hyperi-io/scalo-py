@@ -1,6 +1,6 @@
 # hyperi-pylib - Project State
 
-**Repository**: <https://github.com/hypersec-io/hyperi-pylib>
+**Repository**: <https://github.com/hyperi-io/hyperi-pylib>
 **Type**: Python package (shared library)
 **Purpose**: Enterprise infrastructure for all HyperI Python projects
 

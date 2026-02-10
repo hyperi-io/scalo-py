@@ -145,11 +145,11 @@ docs = [
 ]
 
 [project.urls]
-Homepage = "https://github.com/hypersec-io/hyperi-pylib"
-Documentation = "https://hypersec-io.github.io/hyperi-pylib/"
-Repository = "https://github.com/hypersec-io/hyperi-pylib"
-"Bug Reports" = "https://github.com/hypersec-io/hyperi-pylib/issues"
-Changelog = "https://github.com/hypersec-io/hyperi-pylib/blob/main/CHANGELOG.md"
+Homepage = "https://github.com/hyperi-io/hyperi-pylib"
+Documentation = "https://hyperi-io.github.io/hyperi-pylib/"
+Repository = "https://github.com/hyperi-io/hyperi-pylib"
+"Bug Reports" = "https://github.com/hyperi-io/hyperi-pylib/issues"
+Changelog = "https://github.com/hyperi-io/hyperi-pylib/blob/main/CHANGELOG.md"
 
 [tool.setuptools.package-dir]
 "" = "src"

@@ -262,6 +262,6 @@ helm uninstall my-app
 
 ## See Also
 
-- [hyperi-pylib Documentation](https://github.com/hypersec-io/hyperi-pylib/tree/main/docs)
+- [hyperi-pylib Documentation](https://github.com/hyperi-io/hyperi-pylib/tree/main/docs)
 - [Kubernetes Guide](../../../docs/KUBERNETES.md)
 - [Profiles Guide](../../../docs/PROFILES.md)

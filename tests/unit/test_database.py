@@ -31,6 +31,7 @@ class TestClickHouseSupport:
         monkeypatch.setenv("CLICKHOUSE_HOST", "localhost")
         monkeypatch.setenv("CLICKHOUSE_USER", "default")
         monkeypatch.setenv("CLICKHOUSE_DATABASE", "default")
+        monkeypatch.delenv("CLICKHOUSE_PASSWORD", raising=False)
 
         url = build_database_url("clickhouse")
         assert url == "clickhouse://default@localhost:9000/default"
@@ -91,6 +92,11 @@ class TestExistingDatabases:
 
     def test_postgresql_url(self, monkeypatch):
         """Test PostgreSQL URL building."""
+        # Clear all alternative prefixes that get_database_config checks
+        for prefix in ("POSTGRESQL", "PG"):
+            for suffix in ("HOST", "PORT", "USER", "USERNAME", "PASSWORD", "PASS", "DATABASE", "DB", "SSLMODE", "CONNECT_TIMEOUT", "SERVICE_HOST", "SERVICE_PORT"):
+                monkeypatch.delenv(f"{prefix}_{suffix}", raising=False)
+
         monkeypatch.setenv("POSTGRES_HOST", "db.example.com")
         monkeypatch.setenv("POSTGRES_USER", "myuser")
         monkeypatch.setenv("POSTGRES_PASSWORD", "mypass")

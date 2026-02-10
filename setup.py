@@ -33,7 +33,7 @@ setup(
     long_description_content_type=long_description_content_type,
     author='HyperI Team',
     author_email='dev@hyperi.io',
-    url='https://github.com/hypersec-io/hyperi-pylib',
+    url='https://github.com/hyperi-io/hyperi-pylib',
     packages=['hyperi_pylib'],
     package_dir={'': 'src'},
     python_requires=project['requires-python'],

@@ -180,8 +180,8 @@ pip install hyperi-pylib[all]
 
 ## Repository
 
-- **GitHub**: <https://github.com/hypersec-io/hyperi-pylib>
-- **Issues**: <https://github.com/hypersec-io/hyperi-pylib/issues>
+- **GitHub**: <https://github.com/hyperi-io/hyperi-pylib>
+- **Issues**: <https://github.com/hyperi-io/hyperi-pylib/issues>
 
 ## Deprecated: Application Framework
 

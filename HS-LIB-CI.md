@@ -14,7 +14,7 @@ Step-by-step guide for setting up HyperI CI on this project. Use this as a refer
 ### 1. Add CI Submodule
 
 ```bash
-git submodule add https://github.com/hypersec-io/ci.git ci
+git submodule add https://github.com/hyperi-io/ci.git ci
 git submodule update --init ci
 ```
 
@@ -113,13 +113,13 @@ git commit -m "chore: update CI to hs-ci vX.Y.Z"
 
 ```bash
 # List recent runs
-gh run list --repo hypersec-io/hyperi-pylib --limit 5
+gh run list --repo hyperi-io/hyperi-pylib --limit 5
 
 # Watch a specific run
-gh run watch <run-id> --repo hypersec-io/hyperi-pylib --exit-status
+gh run watch <run-id> --repo hyperi-io/hyperi-pylib --exit-status
 
 # View failed logs
-gh run view <run-id> --repo hypersec-io/hyperi-pylib --log-failed
+gh run view <run-id> --repo hyperi-io/hyperi-pylib --log-failed
 ```
 
 ## Verifying JFrog Publish
@@ -141,7 +141,7 @@ python3 -m venv .venv
 
 1. Check the log for the specific finding:
    ```bash
-   gh run view <run-id> --repo hypersec-io/hyperi-pylib --log-failed | grep -A 10 "Finding:"
+   gh run view <run-id> --repo hyperi-io/hyperi-pylib --log-failed | grep -A 10 "Finding:"
    ```
 
 2. If it's a false positive (test data, rotated credential), add to `.gitleaks.toml`
