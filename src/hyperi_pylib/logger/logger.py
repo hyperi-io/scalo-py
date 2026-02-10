@@ -39,6 +39,7 @@ def _get_logging_config():
 
     return get_logging_config()
 
+
 # Standard logger instance
 logger = _logger
 
@@ -565,10 +566,10 @@ def debug(msg):
 
 def log(msg: str, color: str | None = None, level: str = "INFO"):
     level = level.upper()
-    if (color):
+    if color:
         hex_color = SOLARIZED.get(color, color)
         colored_msg = f"<fg {hex_color}>{msg}</fg {hex_color}>"
-        logger.opt(colors = True).log(level, colored_msg)
+        logger.opt(colors=True).log(level, colored_msg)
     else:
         logger.log(level, msg)
 

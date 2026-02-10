@@ -228,7 +228,9 @@ class PostgresConfigLoader:
         self.table_name = table_name or os.getenv("HYPERI_CONFIG_TABLE", self.DEFAULT_TABLE)
         self.namespace = namespace or os.getenv("HYPERI_CONFIG_NAMESPACE", self.DEFAULT_NAMESPACE)
         self.cache_ttl = (
-            cache_ttl if cache_ttl is not None else int(os.getenv("HYPERI_CONFIG_CACHE_TTL", str(self.DEFAULT_CACHE_TTL)))
+            cache_ttl
+            if cache_ttl is not None
+            else int(os.getenv("HYPERI_CONFIG_CACHE_TTL", str(self.DEFAULT_CACHE_TTL)))
         )
         self.connect_timeout = (
             connect_timeout
