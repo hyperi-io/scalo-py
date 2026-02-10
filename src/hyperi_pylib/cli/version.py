@@ -151,4 +151,6 @@ def version_option(
 
 
 # Pre-configured version option for hyperi-pylib itself
-HYPERI_LIB_VERSION_OPTION = version_option("hyperi_pylib", app_name="hyperi-pylib", python_version=True) if HAS_TYPER else None
+HYPERI_LIB_VERSION_OPTION = (
+    version_option("hyperi_pylib", app_name="hyperi-pylib", python_version=True) if HAS_TYPER else None
+)

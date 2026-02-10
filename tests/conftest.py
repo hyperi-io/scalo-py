@@ -251,10 +251,15 @@ def cleanup_hung_processes():
     """
     Kill hung background processes from previous test runs.
 
-    Uses HS_LIB-specific labels to avoid killing other projects' processes.
+    Uses HYPERI_LIB-specific labels to avoid killing other projects' processes.
     """
-    # Kill processes with HS_LIB test labels
-    hyperi_pylib_patterns = ["HYPERI_LIB_TEST_HELM", "HYPERI_LIB_TEST_K8S", "HYPERI_LIB_TEST_DOCKER", "HYPERI_LIB_TEST_MINIKUBE"]
+    # Kill processes with HYPERI_LIB test labels
+    hyperi_pylib_patterns = [
+        "HYPERI_LIB_TEST_HELM",
+        "HYPERI_LIB_TEST_K8S",
+        "HYPERI_LIB_TEST_DOCKER",
+        "HYPERI_LIB_TEST_MINIKUBE",
+    ]
 
     for pattern in hyperi_pylib_patterns:
         try:

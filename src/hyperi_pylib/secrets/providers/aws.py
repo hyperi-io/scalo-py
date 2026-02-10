@@ -54,7 +54,9 @@ class AWSProvider(SecretProvider):
         if not BOTO3_AVAILABLE:
             from ..exceptions import ProviderNotAvailableError
 
-            raise ProviderNotAvailableError("aws", "boto3", "pip install boto3 or pip install hyperi-pylib[secrets-aws]")
+            raise ProviderNotAvailableError(
+                "aws", "boto3", "pip install boto3 or pip install hyperi-pylib[secrets-aws]"
+            )
 
         self._config = config
         self._sync_client = None

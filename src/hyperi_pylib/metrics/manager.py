@@ -120,7 +120,9 @@ class MetricsManager:
                 self._actual_backend = "opentelemetry"
                 return OpenTelemetryBackend(app_name=app_name, config=self.backend_config)
             except ImportError:
-                logger.error("OpenTelemetry backend not available. Install with: pip install hyperi-pylib[opentelemetry]")
+                logger.error(
+                    "OpenTelemetry backend not available. Install with: pip install hyperi-pylib[opentelemetry]"
+                )
                 logger.warning("Falling back to Prometheus backend")
                 from .prometheus_backend import PrometheusBackend
 
