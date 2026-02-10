@@ -1,6 +1,6 @@
 # CI Bugs (ci repository issues)
 
-**Repository:** https://github.com/hypersec-io/ci
+**Repository:** https://github.com/hyperi-io/ci
 **Purpose:** Track bugs in the ci infrastructure (not hyperi-pylib bugs)
 
 ---

@@ -8,7 +8,7 @@
 
 ## Overview
 
-The new ci repository structure (hypersec-io/ci) has several issues that need to be fixed before it can fully replace the old hs-ci infrastructure. These bugs were discovered during hyperi-pylib v2.10.1 publish testing.
+The new ci repository structure (hyperi-io/ci) has several issues that need to be fixed before it can fully replace the old hs-ci infrastructure. These bugs were discovered during hyperi-pylib v2.10.1 publish testing.
 
 ---
 
@@ -188,7 +188,7 @@ These workarounds should be removed once the ci development branch has the fixes
 
 ## Impact Assessment
 
-**Projects affected:** ALL projects using ci submodule (hypersec-io/ci)
+**Projects affected:** ALL projects using ci submodule (hyperi-io/ci)
 
 **Breaking changes:** None if fixes are backward compatible
 

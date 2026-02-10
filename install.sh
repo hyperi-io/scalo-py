@@ -4,7 +4,7 @@
 # This script adds HyperCI to a project as a git submodule and runs initial bootstrap.
 #
 # Usage:
-#   curl -fsSL https://raw.githubusercontent.com/hypersec-io/hyperci/main/install.sh | bash
+#   curl -fsSL https://raw.githubusercontent.com/hyperi-io/hyperci/main/install.sh | bash
 #   OR download and run locally:
 #   bash install.sh [OPTIONS]
 #
@@ -22,7 +22,7 @@
 # Requirements:
 # - git (for submodule management)
 # - Python 3.12+ (for bootstrap)
-# - Network access to https://github.com/hypersec-io/hyperci.git
+# - Network access to https://github.com/hyperi-io/hyperci.git
 
 set -euo pipefail
 
@@ -34,7 +34,7 @@ BLUE='\033[0;34m'
 NC='\033[0m'
 
 # Defaults
-HYPERCI_REPO="https://github.com/hypersec-io/hyperci.git"
+HYPERCI_REPO="https://github.com/hyperi-io/hyperci.git"
 HYPERCI_BRANCH="main"
 HYPERCI_VERSION=""
 SKIP_BOOTSTRAP=false
@@ -223,7 +223,7 @@ print_success() {
     echo "4. Build your project:"
     echo "   ./ci/run build"
     echo ""
-    echo "Documentation: https://github.com/hypersec-io/hyperci"
+    echo "Documentation: https://github.com/hyperi-io/hyperci"
 }
 
 # Main

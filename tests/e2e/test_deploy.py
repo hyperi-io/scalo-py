@@ -63,7 +63,7 @@ def test_template_deploy_flow(license_id: str, enable_gha: bool) -> None:
         "-d",
         "author_email=e2e@example.com",
         "-d",
-        "github_org=hypersec-io",
+        "github_org=hyperi-io",
         "-d",
         f"license={license_id}",
         "-d",
