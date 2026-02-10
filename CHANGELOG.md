@@ -1,3 +1,34 @@
+# [2.18.0](https://github.com/hyperi-io/hyperi-pylib/compare/v2.17.1...v2.18.0) (2026-02-10)
+
+
+### Bug Fixes
+
+* formatting and license header cleanup from rebrand ([e1eb045](https://github.com/hyperi-io/hyperi-pylib/commit/e1eb0452aaf5a5709f19c0aca84663d8608ede87))
+* update GitHub org from hypersec-io to hyperi-io, fix database test env bleed ([5f65061](https://github.com/hyperi-io/hyperi-pylib/commit/5f65061af5d6e2f345b7cae29d56909478295eeb))
+
+
+### Features
+
+* rebrand from HyperSec/hs-pylib to HyperI/hyperi-pylib ([373eff7](https://github.com/hyperi-io/hyperi-pylib/commit/373eff72881a7ee45272ecff0e8318907d45888c))
+
+
+### BREAKING CHANGES
+
+* Package renamed from hs-pylib to hyperi-pylib.
+All imports change from hs_pylib to hyperi_pylib.
+All env vars renamed from HS_*/HYPERSEC_* to HYPERI_*.
+
+- Change license from proprietary EULA to FSL-1.1-ALv2
+- Add COMMERCIAL.md, CONTRIBUTING.md, SECURITY.md
+- Rename package directory src/hs_pylib -> src/hyperi_pylib
+- Update all imports, tests, configs, docker-compose files
+- Rename env vars: HS_CONFIG_* -> HYPERI_CONFIG_*, HS_LIB_* -> HYPERI_LIB_*,
+  HS_SECRETS_* -> HYPERI_SECRETS_*, HYPERSEC_LICENSE_* -> HYPERI_LICENSE_*
+- Update brand text, emails (dev@hyperi.io), copyright (HYPERI PTY LIMITED)
+- Rename Helm chart from hs-pylib-app to hyperi-pylib-app
+- Update license defaults key to hyperi-default-license-key-v1
+- Update license paths from /etc/hypersec/ to /etc/hyperi/
+
 ## [2.17.1](https://github.com/hypersec-io/hs-pylib/compare/v2.17.0...v2.17.1) (2026-02-03)
 
 
