@@ -1,3 +1,10 @@
+## [2.19.1](https://github.com/hyperi-io/hyperi-pylib/compare/v2.19.0...v2.19.1) (2026-02-16)
+
+
+### Bug Fixes
+
+* replace subprocess git with dulwich in DirectoryConfigStore ([08528a8](https://github.com/hyperi-io/hyperi-pylib/commit/08528a8c28d5ed38e5bde82cd61517cdbd62d23c))
+
 # [2.19.0](https://github.com/hyperi-io/hyperi-pylib/compare/v2.18.1...v2.19.0) (2026-02-16)
 
 
