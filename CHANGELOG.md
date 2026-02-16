@@ -1,3 +1,10 @@
+# [2.19.0](https://github.com/hyperi-io/hyperi-pylib/compare/v2.18.1...v2.19.0) (2026-02-16)
+
+
+### Features
+
+* add DirectoryConfigStore and dual OTel+Prometheus metrics export ([5a15570](https://github.com/hyperi-io/hyperi-pylib/commit/5a155707d81305eebc02013534b96f4493704e8d))
+
 ## [2.18.1](https://github.com/hyperi-io/hyperi-pylib/compare/v2.18.0...v2.18.1) (2026-02-16)
 
 
