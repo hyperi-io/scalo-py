@@ -2,17 +2,17 @@
 hyperi-pylib Metrics Module - Backend-Agnostic Metrics Instrumentation.
 
 Provides unified API for metrics collection with pluggable backends:
-- Prometheus (default)
-- OpenTelemetry (optional)
+- OpenTelemetry (default) - dual export: OTLP push + Prometheus scrape
+- Prometheus - standalone Prometheus scrape
 
 Quick Start:
     >>> from hyperi_pylib.metrics import create_metrics
     >>>
-    >>> # Default backend (Prometheus)
+    >>> # Default backend (OpenTelemetry with dual export)
     >>> metrics = create_metrics("myapp")
     >>>
-    >>> # Or specify backend
-    >>> metrics = create_metrics("myapp", backend="opentelemetry")
+    >>> # Or explicit Prometheus-only
+    >>> metrics = create_metrics("myapp", backend="prometheus")
     >>>
     >>> # Same API regardless of backend
     >>> metrics.counter("requests", "Total requests").inc()
@@ -31,8 +31,11 @@ FastAPI Integration:
 
 Configuration (settings.yaml):
     metrics:
-      backend: prometheus  # or "opentelemetry"
-      namespace: myapp
+      backend: opentelemetry  # or "prometheus"
+      opentelemetry:
+        endpoint: http://otel-collector:4317
+        protocol: grpc
+        prometheus_scrape: true  # also expose /metrics (default)
 """
 
 # Primary API (backend-agnostic)

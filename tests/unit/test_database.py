@@ -94,7 +94,20 @@ class TestExistingDatabases:
         """Test PostgreSQL URL building."""
         # Clear all alternative prefixes that get_database_config checks
         for prefix in ("POSTGRESQL", "PG"):
-            for suffix in ("HOST", "PORT", "USER", "USERNAME", "PASSWORD", "PASS", "DATABASE", "DB", "SSLMODE", "CONNECT_TIMEOUT", "SERVICE_HOST", "SERVICE_PORT"):
+            for suffix in (
+                "HOST",
+                "PORT",
+                "USER",
+                "USERNAME",
+                "PASSWORD",
+                "PASS",
+                "DATABASE",
+                "DB",
+                "SSLMODE",
+                "CONNECT_TIMEOUT",
+                "SERVICE_HOST",
+                "SERVICE_PORT",
+            ):
                 monkeypatch.delenv(f"{prefix}_{suffix}", raising=False)
 
         monkeypatch.setenv("POSTGRES_HOST", "db.example.com")

@@ -21,6 +21,7 @@ from .config import (
     settings,
     setup,
 )
+from .dfe_store import DirectoryConfigStore
 from .merge import (
     detect_file_type,
     merge_files,
@@ -65,6 +66,8 @@ __all__ = [
     "merge_json",
     "merge_toml",
     "merge_yaml",
+    # Directory config store
+    "DirectoryConfigStore",
     # PostgreSQL config loader
     "PostgresConfigLoader",
     "PostgresConfigError",

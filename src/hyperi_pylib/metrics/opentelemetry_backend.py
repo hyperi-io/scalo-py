@@ -1,9 +1,25 @@
 """
-OpenTelemetry metrics backend.
+OpenTelemetry metrics backend with dual export.
 
-Provides OpenTelemetry implementation of MetricsBackend interface.
+Provides OpenTelemetry implementation of MetricsBackend interface with
+simultaneous OTLP push and Prometheus scrape support.
+
+A single MeterProvider with multiple MetricReaders means every metric
+observation is seen by ALL readers automatically - no duplication needed.
+
+Configuration (settings.yaml):
+    metrics:
+      backend: opentelemetry
+      opentelemetry:
+        endpoint: http://otel-collector:4317    # or OTEL_EXPORTER_OTLP_ENDPOINT
+        protocol: grpc                           # grpc|http, or OTEL_EXPORTER_OTLP_PROTOCOL
+        export_interval_millis: 60000
+        prometheus_scrape: true                  # also expose /metrics (default: true)
+        auto_convert_names: true                 # Prometheus->OTEL name conversion
+        service_version: "1.0.0"
 """
 
+import os
 from typing import Any
 
 from ..logger import logger
@@ -12,7 +28,6 @@ from .base import MetricsBackend, NoOpMetric
 # Try to import OpenTelemetry SDK
 try:
     from opentelemetry import metrics
-    from opentelemetry.exporter.otlp.proto.grpc.metric_exporter import OTLPMetricExporter
     from opentelemetry.exporter.prometheus import PrometheusMetricReader
     from opentelemetry.sdk.metrics import MeterProvider
     from opentelemetry.sdk.metrics.export import PeriodicExportingMetricReader
@@ -22,34 +37,64 @@ try:
 except ImportError:
     OTEL_AVAILABLE = False
 
+# Try to import prometheus_client for generate_latest
+try:
+    from prometheus_client import CONTENT_TYPE_LATEST, generate_latest
+except ImportError:
+    generate_latest = None
+    CONTENT_TYPE_LATEST = "text/plain; version=0.0.4"
+
+
+def _create_otlp_exporter(protocol: str, endpoint: str) -> Any:
+    """Create OTLP exporter based on protocol selection.
+
+    Args:
+        protocol: "grpc" or "http"
+        endpoint: Collector endpoint URL
+
+    Returns:
+        OTLP metric exporter instance
+    """
+    if protocol == "http":
+        from opentelemetry.exporter.otlp.proto.http.metric_exporter import OTLPMetricExporter
+
+        return OTLPMetricExporter(endpoint=endpoint)
+    else:
+        from opentelemetry.exporter.otlp.proto.grpc.metric_exporter import OTLPMetricExporter
+
+        return OTLPMetricExporter(endpoint=endpoint)
+
 
 class OpenTelemetryBackend(MetricsBackend):
     """
-    OpenTelemetry implementation of MetricsBackend.
+    OpenTelemetry implementation of MetricsBackend with dual export.
 
-    Supports multiple exporters:
-    - OTLP (gRPC/HTTP) - for OpenTelemetry Collector
-    - Prometheus - for Prometheus scraping
+    By default, attaches BOTH an OTLP push exporter AND a Prometheus scrape
+    reader to a single MeterProvider. Every counter.add(1) is observed by
+    all readers automatically.
 
-    **Prometheus→OTEL Name Conversion:**
+    **Dual export architecture:**
+
+    ::
+
+        Application -> MetricsManager -> OpenTelemetryBackend
+                                             |
+                                         MeterProvider
+                                           /        \\
+              PeriodicExportingMetricReader    PrometheusMetricReader
+                        |                            |
+                  OTLP Collector              /metrics endpoint
+                   (push)                      (scrape)
+
+    **Prometheus->OTEL Name Conversion:**
 
     Automatically converts Prometheus metric names to OTEL semantic conventions.
     Developers write Prometheus-style names, backend converts to OTEL standards.
 
     Example:
-        - http_requests_total → http.server.request.count
-        - http_request_duration_seconds → http.server.request.duration
-        - task_execution_total → task.execution.count
-
-    Configuration:
-        metrics:
-          backend: opentelemetry
-          opentelemetry:
-            endpoint: http://otel-collector:4318  # OTLP endpoint
-            protocol: grpc  # or "http"
-            exporter: otlp  # or "prometheus"
-            export_interval_millis: 60000  # 60 seconds
-            auto_convert_names: true  # Enable Prometheus→OTEL conversion
+        - http_requests_total -> http.server.request.count
+        - http_request_duration_seconds -> http.server.request.duration
+        - task_execution_total -> task.execution.count
     """
 
     # Prometheus to OpenTelemetry Semantic Convention mappings
@@ -82,7 +127,7 @@ class OpenTelemetryBackend(MetricsBackend):
         "db_connections_active": "db.client.connections.usage",
     }
 
-    # Label name mappings (Prometheus → OTEL)
+    # Label name mappings (Prometheus -> OTEL)
     LABEL_MAP = {
         # HTTP labels
         "method": "http.method",
@@ -101,11 +146,14 @@ class OpenTelemetryBackend(MetricsBackend):
 
     def __init__(self, app_name: str, config: dict[str, Any] | None = None):
         """
-        Initialize OpenTelemetry backend.
+        Initialise OpenTelemetry backend with dual export support.
+
+        Reads configuration from the provided dict and falls back to standard
+        OTel environment variables (OTEL_EXPORTER_OTLP_ENDPOINT, etc.).
 
         Args:
             app_name: Application name
-            config: Backend configuration
+            config: Backend configuration dict
         """
         super().__init__(app_name, config)
 
@@ -114,12 +162,22 @@ class OpenTelemetryBackend(MetricsBackend):
             self.enabled = False
             return
 
-        # Extract config
         otel_config = config.get("opentelemetry", {}) if config else {}
-        exporter_type = otel_config.get("exporter", "otlp")
-        endpoint = otel_config.get("endpoint", "http://localhost:4318")
-        otel_config.get("protocol", "grpc")
+
+        # Resolve endpoint: config > env var > default
+        endpoint = otel_config.get(
+            "endpoint",
+            os.environ.get("OTEL_EXPORTER_OTLP_ENDPOINT", "http://localhost:4317"),
+        )
+
+        # Resolve protocol: config > env var > default
+        protocol = otel_config.get(
+            "protocol",
+            os.environ.get("OTEL_EXPORTER_OTLP_PROTOCOL", "grpc"),
+        )
+
         export_interval = otel_config.get("export_interval_millis", 60000)
+        prometheus_scrape = otel_config.get("prometheus_scrape", True)
         self.auto_convert_names = otel_config.get("auto_convert_names", True)
 
         # Create resource (app metadata)
@@ -131,26 +189,36 @@ class OpenTelemetryBackend(MetricsBackend):
             }
         )
 
-        # Create exporter based on config
         try:
-            if exporter_type == "prometheus":
-                # Prometheus exporter (for scraping)
-                reader = PrometheusMetricReader()
-            else:
-                # OTLP exporter (push to collector)
-                otlp_exporter = OTLPMetricExporter(
-                    endpoint=endpoint,
-                    # insecure=True if using http, secure if using https
-                )
-                reader = PeriodicExportingMetricReader(
+            metric_readers = []
+            readers_desc = []
+
+            # OTLP push reader (always created unless endpoint explicitly empty)
+            if endpoint:
+                otlp_exporter = _create_otlp_exporter(protocol, endpoint)
+                otlp_reader = PeriodicExportingMetricReader(
                     exporter=otlp_exporter,
                     export_interval_millis=export_interval,
                 )
+                metric_readers.append(otlp_reader)
+                readers_desc.append(f"otlp({protocol})->{endpoint}")
 
-            # Create meter provider
+            # Prometheus scrape reader (enabled by default)
+            self._prometheus_reader = None
+            if prometheus_scrape:
+                self._prometheus_reader = PrometheusMetricReader()
+                metric_readers.append(self._prometheus_reader)
+                readers_desc.append("prometheus(/metrics)")
+
+            if not metric_readers:
+                logger.error("No metric readers configured — at least one of OTLP or Prometheus required")
+                self.enabled = False
+                return
+
+            # Single MeterProvider with all readers
             self._provider = MeterProvider(
                 resource=resource,
-                metric_readers=[reader],
+                metric_readers=metric_readers,
             )
 
             # Set global meter provider
@@ -163,10 +231,10 @@ class OpenTelemetryBackend(MetricsBackend):
             self._metrics_cache: dict[str, Any] = {}
 
             self.enabled = True
-            logger.info(f"OpenTelemetry metrics initialized: exporter={exporter_type}, endpoint={endpoint}")
+            logger.info(f"OpenTelemetry metrics initialised: readers=[{', '.join(readers_desc)}]")
 
         except Exception as e:
-            logger.error(f"Failed to initialize OpenTelemetry backend: {e}")
+            logger.error(f"Failed to initialise OpenTelemetry backend: {e}")
             self.enabled = False
 
     def _convert_metric_name(self, prometheus_name: str) -> str:
@@ -183,14 +251,12 @@ class OpenTelemetryBackend(MetricsBackend):
         if not self.auto_convert_names:
             return prometheus_name
 
-        # Check if we have a mapping
         otel_name = self.PROMETHEUS_TO_OTEL.get(prometheus_name)
 
         if otel_name:
-            logger.debug(f"Converted metric name: {prometheus_name} → {otel_name}")
+            logger.debug(f"Converted metric name: {prometheus_name} -> {otel_name}")
             return otel_name
 
-        # No mapping, use original name
         logger.debug(f"No OTEL mapping for '{prometheus_name}', using original name")
         return prometheus_name
 
@@ -199,10 +265,10 @@ class OpenTelemetryBackend(MetricsBackend):
         Convert Prometheus label names to OTEL attribute names.
 
         Args:
-            labels: Prometheus-style labels (e.g., {"method": "GET", "status": "200"})
+            labels: Prometheus-style labels (e.g., {{"method": "GET", "status": "200"}})
 
         Returns:
-            OTEL-style attributes (e.g., {"http.method": "GET", "http.status_code": "200"})
+            OTEL-style attributes (e.g., {{"http.method": "GET", "http.status_code": "200"}})
         """
         if not self.auto_convert_names or not labels:
             return labels
@@ -227,15 +293,10 @@ class OpenTelemetryBackend(MetricsBackend):
 
         Returns:
             Counter instance
-
-        Example:
-            >>> counter = backend.counter("http_requests_total", "Total HTTP requests")
-            >>> # Creates counter with name "http.server.request.count" (auto-converted)
         """
         if not self.enabled:
             return NoOpMetric()
 
-        # Convert Prometheus name to OTEL semantic convention
         otel_name = self._convert_metric_name(name)
 
         cache_key = f"counter:{otel_name}"
@@ -268,14 +329,12 @@ class OpenTelemetryBackend(MetricsBackend):
         if not self.enabled:
             return NoOpMetric()
 
-        # Convert Prometheus name to OTEL semantic convention
         otel_name = self._convert_metric_name(name)
 
         cache_key = f"gauge:{otel_name}"
         if cache_key in self._metrics_cache:
             return self._metrics_cache[cache_key]
 
-        # OTel uses UpDownCounter for gauge-like metrics
         gauge = self._meter.create_up_down_counter(
             name=otel_name,
             description=description,
@@ -305,15 +364,10 @@ class OpenTelemetryBackend(MetricsBackend):
 
         Returns:
             Histogram instance
-
-        Example:
-            >>> hist = backend.histogram("http_request_duration_seconds", "Request duration")
-            >>> # Creates histogram with name "http.server.request.duration" (auto-converted)
         """
         if not self.enabled:
             return NoOpMetric()
 
-        # Convert Prometheus name to OTEL semantic convention
         otel_name = self._convert_metric_name(name)
 
         cache_key = f"histogram:{otel_name}"
@@ -331,47 +385,28 @@ class OpenTelemetryBackend(MetricsBackend):
 
     def get_metrics(self) -> bytes:
         """
-        Get metrics in Prometheus format (if using Prometheus exporter).
+        Get metrics in Prometheus exposition format.
 
-        **How OpenTelemetry exports metrics:**
+        When a PrometheusMetricReader is attached (prometheus_scrape: true),
+        this returns actual Prometheus-format metrics via generate_latest().
+        Applications can serve this from their own /metrics endpoint.
 
-        1. **OTLP mode (default)**: Metrics are pushed automatically to collector
-           - No HTTP endpoint needed
-           - Periodic export at configured interval
-           - Use this method returns informational message
-
-        2. **Prometheus mode**: Metrics exposed for scraping
-           - PrometheusMetricReader exposes /metrics endpoint on port 9464
-           - This method returns current metrics snapshot
-           - Applications can also serve via their own endpoint
-
-        **For OTLP mode**, metrics are pushed automatically. No endpoint needed.
-
-        **For Prometheus mode**, PrometheusMetricReader runs HTTP server on port 9464
-        or you can serve metrics via your application's endpoint using this method.
+        When only OTLP is active, returns an informational message since
+        metrics are pushed automatically to the collector.
 
         Returns:
-            Metrics as bytes (Prometheus format if using Prometheus exporter)
+            Metrics as bytes in Prometheus text format
         """
         if not self.enabled:
             return b"# OpenTelemetry metrics not available\n"
 
-        # Check if using Prometheus exporter
-        if hasattr(self, "_provider") and self._provider:
-            # Get metrics from PrometheusMetricReader if available
-            for reader in self._provider._sdk_config.metric_readers:
-                if isinstance(reader, PrometheusMetricReader):
-                    # PrometheusMetricReader exposes metrics via HTTP server (port 9464)
-                    # For applications that want to serve via their own endpoint,
-                    # we'd need to access the registry directly
-                    # For now, return info message
-                    return (
-                        b"# OpenTelemetry Prometheus exporter active\n"
-                        b"# Metrics available at http://localhost:9464/metrics\n"
-                        b"# Or configure your application to serve this endpoint\n"
-                    )
+        # If Prometheus scrape reader is active, return real metrics
+        if self._prometheus_reader is not None and generate_latest is not None:
+            from prometheus_client import REGISTRY
 
-        # OTLP mode - metrics pushed automatically
+            return generate_latest(REGISTRY)
+
+        # OTLP-only mode
         return (
             b"# OpenTelemetry OTLP exporter active\n"
             b"# Metrics are pushed automatically to collector\n"
@@ -380,13 +415,15 @@ class OpenTelemetryBackend(MetricsBackend):
 
     def get_content_type(self) -> str:
         """Get content type for metrics endpoint."""
+        if self._prometheus_reader is not None and CONTENT_TYPE_LATEST:
+            return CONTENT_TYPE_LATEST
         return "text/plain; version=0.0.4"
 
     def start_auto_update(self) -> None:
         """
         Start automatic metric collection.
 
-        Note: OTel uses periodic exporting, so this is a no-op.
+        OTel uses periodic exporting, so this is a no-op.
         """
         pass
 
@@ -394,7 +431,7 @@ class OpenTelemetryBackend(MetricsBackend):
         """
         Stop automatic metric collection.
 
-        Note: OTel manages its own lifecycle.
+        Shuts down the MeterProvider which flushes and stops all readers.
         """
         if self.enabled and hasattr(self, "_provider"):
             try:
@@ -406,6 +443,10 @@ class OpenTelemetryBackend(MetricsBackend):
         """
         Update metrics immediately.
 
-        Note: OTel exports periodically, this is a no-op.
+        Forces a flush of all metric readers.
         """
-        pass
+        if self.enabled and hasattr(self, "_provider"):
+            try:
+                self._provider.force_flush()
+            except Exception as e:
+                logger.debug(f"Force flush failed (may be expected during shutdown): {e}")

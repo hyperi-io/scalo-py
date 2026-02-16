@@ -2,8 +2,11 @@
 Unified metrics manager with backend abstraction.
 
 Provides backend-agnostic API for application metrics.
+Default backend is OpenTelemetry with dual export (OTLP push + Prometheus scrape).
+Falls back to Prometheus-only if OTel packages are not installed.
 """
 
+import os
 from typing import Any
 
 from ..config import get_config
@@ -62,13 +65,15 @@ class MetricsManager:
         self.update_interval = update_interval
         self.backend_config = backend_config or {}
 
-        # Determine backend (config > param > default)
+        # Determine backend: explicit param > env var > config file > default (opentelemetry)
+        if backend is None:
+            backend = os.environ.get("HYPERI_METRICS_BACKEND")
         if backend is None:
             try:
                 config = get_config()
-                backend = config.get("metrics", {}).get("backend", "prometheus")
+                backend = config.get("metrics", {}).get("backend", "opentelemetry")
             except Exception:
-                backend = "prometheus"
+                backend = "opentelemetry"
 
         self._requested_backend = backend  # Store original request
         self._actual_backend = backend  # Will be updated if fallback occurs
