@@ -6,6 +6,9 @@ represents a config "table" (analogous to a database table). Supports
 in-memory caching with background polling refresh, thread-safe access,
 and optional git-aware writes with audit trail.
 
+Git operations use dulwich (pure-Python git) — no system git binary required.
+Safe for containers and environments where git is not installed.
+
 Key Features:
 - Each YAML file in the directory = one config table
 - In-memory cache with background polling refresh (works on S3/FUSE mounts)
@@ -37,13 +40,14 @@ Usage:
 
 import fcntl
 import os
-import subprocess
 import threading
-import time
 from pathlib import Path
 from typing import Any, Callable
 
 import yaml
+from dulwich import porcelain as git
+from dulwich.errors import NotGitRepository
+from dulwich.repo import Repo as DulwichRepo
 
 from ..logger import logger
 
@@ -54,6 +58,8 @@ class DirectoryConfigStore:
 
     Each YAML file in the directory is a "table". Supports in-memory caching
     with background refresh, thread-safe reads, and git-tracked writes.
+
+    Git operations use dulwich (pure-Python) — no git binary required.
 
     Args:
         directory: Path to the YAML config directory.
@@ -84,8 +90,9 @@ class DirectoryConfigStore:
         else:
             self._writable = writable
 
-        # Auto-detect git
-        self._is_git = self._check_git_repo()
+        # Auto-detect git repo using dulwich
+        self._repo: DulwichRepo | None = None
+        self._is_git = self._open_git_repo()
 
         # In-memory cache: table_name -> (data_dict, file_mtime)
         self._cache: dict[str, tuple[dict, float]] = {}
@@ -132,6 +139,9 @@ class DirectoryConfigStore:
         if self._refresh_thread is not None:
             self._refresh_thread.join(timeout=10)
             self._refresh_thread = None
+        if self._repo is not None:
+            self._repo.close()
+            self._repo = None
         logger.debug("DirectoryConfigStore stopped")
 
     def __enter__(self):
@@ -286,13 +296,16 @@ class DirectoryConfigStore:
     @property
     def current_branch(self) -> str | None:
         """Current git branch name, or None if not a git repo or detached HEAD."""
-        if not self._is_git:
+        if not self._is_git or self._repo is None:
             return None
-        result = self._git_run(["git", "rev-parse", "--abbrev-ref", "HEAD"])
-        if result is None:
+        try:
+            symrefs = self._repo.refs.get_symrefs()
+            head_target = symrefs.get(b"HEAD", b"")
+            if head_target.startswith(b"refs/heads/"):
+                return head_target[len(b"refs/heads/") :].decode("utf-8")
             return None
-        branch = result.strip()
-        return None if branch == "HEAD" else branch
+        except Exception:
+            return None
 
     def list_branches(self) -> list[str]:
         """
@@ -304,13 +317,16 @@ class DirectoryConfigStore:
         Raises:
             RuntimeError: If not a git repo.
         """
-        if not self._is_git:
+        if not self._is_git or self._repo is None:
             raise RuntimeError("Directory is not a git repository")
 
-        result = self._git_run(["git", "branch", "--list", "--format=%(refname:short)"])
-        if result is None:
-            return []
-        return sorted(line.strip() for line in result.strip().splitlines() if line.strip())
+        branches = []
+        for ref in self._repo.refs:
+            ref_str = ref.decode("utf-8") if isinstance(ref, bytes) else ref
+            if ref_str.startswith("refs/heads/"):
+                branches.append(ref_str[len("refs/heads/") :])
+
+        return sorted(branches)
 
     def switch_branch(self, branch: str, create: bool = False) -> None:
         """
@@ -325,15 +341,23 @@ class DirectoryConfigStore:
             RuntimeError: If not a git repo.
             ValueError: If branch doesn't exist and create=False.
         """
-        if not self._is_git:
+        if not self._is_git or self._repo is None:
             raise RuntimeError("Directory is not a git repository")
 
+        ref_name = f"refs/heads/{branch}".encode()
         existing = self.list_branches()
 
         if branch in existing:
-            self._git_run(["git", "checkout", branch])
+            # Switch HEAD to point at existing branch
+            self._repo.refs.set_symbolic_ref(b"HEAD", ref_name)
+            # Update working tree
+            self._checkout_head()
         elif create:
-            self._git_run(["git", "checkout", "-b", branch])
+            # Create branch from current HEAD, then switch
+            head_sha = self._repo.head()
+            self._repo.refs[ref_name] = head_sha
+            self._repo.refs.set_symbolic_ref(b"HEAD", ref_name)
+            # Working tree already matches HEAD, no checkout needed
         else:
             raise ValueError(f"Branch '{branch}' does not exist. Use create=True to create it.")
 
@@ -530,59 +554,75 @@ class DirectoryConfigStore:
             raise KeyError(f"Key '{key}' not found")
         del current[keys[-1]]
 
-    # ── Internal: Git ──────────────────────────────────────────────────
+    # ── Internal: Git (dulwich) ────────────────────────────────────────
 
-    def _check_git_repo(self) -> bool:
-        """Check if the directory is inside a git repository."""
-        result = self._git_run(["git", "rev-parse", "--git-dir"])
-        return result is not None
-
-    def _git_run(self, cmd: list[str], check: bool = False) -> str | None:
-        """
-        Run a git command in the config directory.
-
-        Returns:
-            stdout as string, or None on failure.
-        """
+    def _open_git_repo(self) -> bool:
+        """Try to open the directory as a dulwich git repo."""
         try:
-            result = subprocess.run(
-                cmd,
-                cwd=str(self._directory),
-                capture_output=True,
-                text=True,
-                timeout=30,
+            self._repo = DulwichRepo.discover(str(self._directory))
+            return True
+        except NotGitRepository:
+            self._repo = None
+            return False
+        except Exception as e:
+            logger.warning(f"Failed to open git repo at {self._directory}: {e}")
+            self._repo = None
+            return False
+
+    def _checkout_head(self) -> None:
+        """Update working tree to match HEAD (after branch switch)."""
+        if self._repo is None:
+            return
+        try:
+            from dulwich.index import build_index_from_tree
+
+            head_commit = self._repo[self._repo.head()]
+            index_path = os.path.join(self._repo.controldir(), "index")
+            build_index_from_tree(
+                self._repo.path,
+                index_path,
+                self._repo.object_store,
+                head_commit.tree,
             )
-            if result.returncode != 0:
-                if check:
-                    logger.error(f"Git command failed: {' '.join(cmd)}: {result.stderr.strip()}")
-                return None
-            return result.stdout
-        except (subprocess.TimeoutExpired, FileNotFoundError) as e:
-            if check:
-                logger.error(f"Git command error: {e}")
-            return None
+        except Exception as e:
+            logger.error(f"Failed to checkout HEAD: {e}")
 
     def _git_commit(self, file_path: Path, message: str, author: str | None = None) -> None:
-        """Stage and commit a file."""
-        # Stage the file
-        rel_path = file_path.relative_to(self._directory)
-        self._git_run(["git", "add", str(rel_path)], check=True)
+        """Stage and commit a file using dulwich."""
+        if self._repo is None:
+            return
 
-        # Build commit command
-        cmd = ["git", "commit", "-m", message]
-        if author:
-            cmd.extend(["--author", author])
+        try:
+            repo_root = Path(self._repo.path)
+            rel_path = str(file_path.relative_to(repo_root))
 
-        result = self._git_run(cmd, check=True)
-        if result is not None:
-            logger.debug(f"Git commit: {message}")
+            # Stage and commit via porcelain
+            git.add(self._repo, paths=[rel_path])
+
+            author_bytes = author.encode("utf-8") if author else None
+            commit_id = git.commit(
+                self._repo,
+                message=message.encode("utf-8"),
+                author=author_bytes,
+                committer=author_bytes,
+            )
+            logger.debug(f"Git commit {commit_id.decode()[:8]}: {message}")
+        except Exception as e:
+            logger.error(f"Git commit failed: {e}")
 
     def _git_push_remote(self) -> None:
-        """Push to the remote origin."""
+        """Push current branch to remote origin using dulwich."""
+        if self._repo is None:
+            return
+
         branch = self.current_branch
         if branch is None:
             logger.warning("Cannot push: detached HEAD")
             return
-        result = self._git_run(["git", "push", "origin", branch], check=True)
-        if result is not None:
+
+        try:
+            refspec = f"refs/heads/{branch}".encode()
+            git.push(self._repo, remote_location="origin", refspecs=[refspec])
             logger.debug(f"Git pushed to origin/{branch}")
+        except Exception as e:
+            logger.error(f"Git push failed: {e}")
