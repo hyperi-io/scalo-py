@@ -56,7 +56,7 @@ dependencies = [
     "typer>=0.20.0",
 ]
 
-license = "FSL-1.1-ALv2"
+license = "LicenseRef-FSL-1.1-ALv2"
 
 [project.optional-dependencies]
 api = [
