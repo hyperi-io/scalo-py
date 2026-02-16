@@ -129,11 +129,12 @@ class TestOpenTelemetryBackend:
 class TestBackendAbstraction:
     """Test backend abstraction and switching."""
 
-    def test_default_backend_is_prometheus(self):
-        """Test that default backend is Prometheus."""
+    def test_default_backend_is_opentelemetry(self):
+        """Test that default backend is OpenTelemetry (falls back to Prometheus if not installed)."""
         metrics = create_metrics("test-app")
 
-        assert metrics.backend_name == "prometheus"
+        # OTel is the default; falls back to Prometheus if OTel packages missing
+        assert metrics.backend_name in ["opentelemetry", "prometheus"]
 
     def test_backend_switching(self):
         """Test switching backends via parameter."""
