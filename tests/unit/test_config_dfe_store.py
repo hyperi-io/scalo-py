@@ -435,3 +435,225 @@ class TestGitDetection:
         store = DirectoryConfigStore(config_dir)
         with pytest.raises(RuntimeError, match="not a git repository"):
             store.switch_branch("feature-branch")
+
+
+# ── Subdirectory Support ────────────────────────────────────────────
+
+
+@pytest.fixture
+def nested_config_dir(tmp_path):
+    """Create a temp directory with YAML configs in subdirectories."""
+    # Root-level config
+    (tmp_path / "globals.yaml").write_text(yaml.safe_dump({"version": "1.0", "env": "prod"}))
+
+    # Subdirectory configs
+    (tmp_path / "loaders").mkdir()
+    (tmp_path / "loaders" / "dfe-loader.yaml").write_text(
+        yaml.safe_dump({"database": {"host": "localhost", "port": 5432}, "batch_size": 1000})
+    )
+    (tmp_path / "loaders" / "csv-loader.yaml").write_text(yaml.safe_dump({"delimiter": ",", "encoding": "utf-8"}))
+
+    (tmp_path / "engines").mkdir()
+    (tmp_path / "engines" / "dfe-engine.yaml").write_text(yaml.safe_dump({"workers": 4, "timeout": 30}))
+
+    # Deep nesting
+    (tmp_path / "monitoring" / "alerts").mkdir(parents=True)
+    (tmp_path / "monitoring" / "alerts" / "thresholds.yaml").write_text(yaml.safe_dump({"cpu": 90, "memory": 85}))
+
+    return tmp_path
+
+
+@pytest.fixture
+def nested_store(nested_config_dir):
+    """Create a DirectoryConfigStore with nested subdirectories."""
+    s = DirectoryConfigStore(nested_config_dir, refresh_interval=0)
+    s.start()
+    yield s
+    s.stop()
+
+
+class TestSubdirectoryListTables:
+    """Test table listing with subdirectories."""
+
+    def test_list_tables_with_subdirectories(self, nested_store):
+        tables = nested_store.list_tables()
+        assert "globals" in tables
+        assert "loaders/dfe-loader" in tables
+        assert "loaders/csv-loader" in tables
+        assert "engines/dfe-engine" in tables
+        assert "monitoring/alerts/thresholds" in tables
+
+    def test_list_tables_sorted(self, nested_store):
+        tables = nested_store.list_tables()
+        assert tables == sorted(tables)
+
+    def test_root_and_subdir_tables_coexist(self, nested_store):
+        tables = nested_store.list_tables()
+        # Root tables have no separator
+        root_tables = [t for t in tables if "/" not in t]
+        subdir_tables = [t for t in tables if "/" in t]
+        assert len(root_tables) >= 1
+        assert len(subdir_tables) >= 3
+
+    def test_list_tables_includes_yml_in_subdirs(self, nested_config_dir):
+        (nested_config_dir / "engines" / "alt.yml").write_text(yaml.safe_dump({"key": "val"}))
+        store = DirectoryConfigStore(nested_config_dir, refresh_interval=0)
+        store.start()
+        assert "engines/alt" in store.list_tables()
+        store.stop()
+
+
+class TestSubdirectoryRead:
+    """Test reading from subdirectory tables."""
+
+    def test_get_subdirectory_table(self, nested_store):
+        data = nested_store.get("loaders/dfe-loader")
+        assert data["database"]["host"] == "localhost"
+        assert data["batch_size"] == 1000
+
+    def test_get_subdirectory_dot_notation_key(self, nested_store):
+        assert nested_store.get("loaders/dfe-loader", "database.host") == "localhost"
+        assert nested_store.get("loaders/dfe-loader", "database.port") == 5432
+
+    def test_get_deep_nested_table(self, nested_store):
+        assert nested_store.get("monitoring/alerts/thresholds", "cpu") == 90
+
+    def test_get_root_table_still_works(self, nested_store):
+        assert nested_store.get("globals", "version") == "1.0"
+
+    def test_get_missing_subdirectory_table(self, nested_store):
+        assert nested_store.get("loaders/nonexistent") is None
+        assert nested_store.get("loaders/nonexistent", default={"x": 1}) == {"x": 1}
+
+
+class TestSubdirectoryWrite:
+    """Test writing to subdirectory tables."""
+
+    def test_set_subdirectory_table(self, nested_store, nested_config_dir):
+        nested_store.set("loaders/dfe-loader", "database.host", "new-host.example.com")
+        assert nested_store.get("loaders/dfe-loader", "database.host") == "new-host.example.com"
+
+        # Verify persisted to disk
+        data = yaml.safe_load((nested_config_dir / "loaders" / "dfe-loader.yaml").read_text())
+        assert data["database"]["host"] == "new-host.example.com"
+
+    def test_set_creates_new_subdirectory(self, nested_store, nested_config_dir):
+        nested_store.set("new-category/new-service", "key", "value")
+        assert nested_store.get("new-category/new-service", "key") == "value"
+        assert (nested_config_dir / "new-category" / "new-service.yaml").exists()
+
+    def test_set_deep_nested_table(self, nested_store, nested_config_dir):
+        nested_store.set("a/b/c", "key", "deep_value")
+        assert nested_store.get("a/b/c", "key") == "deep_value"
+        assert (nested_config_dir / "a" / "b" / "c.yaml").exists()
+
+    def test_delete_subdirectory_table_key(self, nested_store, nested_config_dir):
+        nested_store.delete("loaders/dfe-loader", "batch_size")
+        assert nested_store.get("loaders/dfe-loader", "batch_size") is None
+
+        data = yaml.safe_load((nested_config_dir / "loaders" / "dfe-loader.yaml").read_text())
+        assert "batch_size" not in data
+
+
+class TestSubdirectoryValidation:
+    """Test table name validation rules."""
+
+    def test_rejects_path_traversal(self, nested_store):
+        with pytest.raises(ValueError, match="must not contain"):
+            nested_store.get("loaders/../secrets")
+
+    def test_rejects_path_traversal_standalone(self, nested_store):
+        with pytest.raises(ValueError, match="must not contain"):
+            nested_store.get("../etc/passwd")
+
+    def test_strips_absolute_path_prefix(self, nested_store):
+        """Leading slashes are stripped, so '/etc/passwd' becomes 'etc/passwd' (not rejected)."""
+        # Should not raise — returns None because table doesn't exist
+        assert nested_store.get("/etc/passwd") is None
+
+    def test_rejects_empty_name(self, nested_store):
+        with pytest.raises(ValueError, match="must not be empty"):
+            nested_store.get("")
+
+    def test_normalises_backslash(self, nested_store):
+        """Backslashes in table names are normalised to forward slashes."""
+        # "loaders\dfe-loader" should resolve to "loaders/dfe-loader"
+        result = nested_store.get("loaders\\dfe-loader", "database.host")
+        assert result == "localhost"
+
+    def test_strips_leading_trailing_slashes(self, nested_store):
+        result = nested_store.get("/loaders/dfe-loader/", "database.host")
+        assert result == "localhost"
+
+    def test_validation_on_set(self, nested_store):
+        with pytest.raises(ValueError, match="must not contain"):
+            nested_store.set("loaders/../hack", "key", "val")
+
+    def test_validation_on_delete(self, nested_store):
+        with pytest.raises(ValueError, match="must not contain"):
+            nested_store.delete("../hack", "key")
+
+    def test_validation_on_on_change(self, nested_store):
+        with pytest.raises(ValueError, match="must not contain"):
+            nested_store.on_change("loaders/../../etc", lambda _t, _d: None)
+
+
+class TestSubdirectoryWatchers:
+    """Test change notifications for subdirectory tables."""
+
+    def test_on_change_subdirectory_table(self, nested_store):
+        changes = []
+        nested_store.on_change("loaders/dfe-loader", lambda table, data: changes.append((table, data)))
+
+        nested_store.set("loaders/dfe-loader", "batch_size", 9999)
+
+        assert len(changes) == 1
+        assert changes[0][0] == "loaders/dfe-loader"
+        assert changes[0][1]["batch_size"] == 9999
+
+    def test_on_change_deep_nested_table(self, nested_store):
+        changes = []
+        nested_store.on_change("monitoring/alerts/thresholds", lambda table, data: changes.append((table, data)))
+
+        nested_store.set("monitoring/alerts/thresholds", "cpu", 95)
+
+        assert len(changes) == 1
+        assert changes[0][1]["cpu"] == 95
+
+
+class TestSubdirectoryRefresh:
+    """Test background refresh with subdirectory files."""
+
+    def test_refresh_detects_subdirectory_changes(self, nested_store, nested_config_dir):
+        assert nested_store.get("loaders/dfe-loader", "batch_size") == 1000
+
+        # Modify file externally
+        data = yaml.safe_load((nested_config_dir / "loaders" / "dfe-loader.yaml").read_text())
+        data["batch_size"] = 5000
+        path = nested_config_dir / "loaders" / "dfe-loader.yaml"
+        path.write_text(yaml.safe_dump(data))
+
+        # Bump mtime for fast filesystems
+        import os
+
+        mtime = path.stat().st_mtime + 1
+        os.utime(str(path), (mtime, mtime))
+
+        nested_store._refresh_all()
+
+        assert nested_store.get("loaders/dfe-loader", "batch_size") == 5000
+
+    def test_refresh_detects_new_file_in_subdirectory(self, nested_store, nested_config_dir):
+        assert "loaders/new-loader" not in nested_store.list_tables()
+
+        (nested_config_dir / "loaders" / "new-loader.yaml").write_text(yaml.safe_dump({"port": 9090}))
+        nested_store._refresh_all()
+
+        assert nested_store.get("loaders/new-loader", "port") == 9090
+
+    def test_refresh_detects_new_subdirectory(self, nested_store, nested_config_dir):
+        (nested_config_dir / "services").mkdir()
+        (nested_config_dir / "services" / "auth.yaml").write_text(yaml.safe_dump({"provider": "oauth2"}))
+        nested_store._refresh_all()
+
+        assert nested_store.get("services/auth", "provider") == "oauth2"

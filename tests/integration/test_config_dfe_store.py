@@ -222,3 +222,47 @@ class TestGitHistory:
         diff = _git(git_config_dir, "log", "-1", "-p", "--", "dfe-loader.yaml")
         assert "prod-db.example.com" in diff
         store.stop()
+
+
+class TestGitSubdirectory:
+    """Test git commits for files in subdirectories."""
+
+    def test_git_commit_subdirectory_file(self, git_config_dir):
+        """Setting a value in a subdirectory table creates a git commit with correct path."""
+        # Create initial subdirectory structure and commit it
+        (git_config_dir / "loaders").mkdir()
+        loader_config = {"batch_size": 500, "enabled": True}
+        (git_config_dir / "loaders" / "dfe-loader.yaml").write_text(yaml.safe_dump(loader_config))
+        _git(git_config_dir, "add", ".")
+        _git(git_config_dir, "commit", "-m", "Add loader config")
+
+        store = DirectoryConfigStore(git_config_dir, refresh_interval=0)
+        store.start()
+
+        store.set("loaders/dfe-loader", "batch_size", 2000, message="Increase loader batch size")
+
+        # Verify commit was created with correct message
+        log = _git(git_config_dir, "log", "--oneline", "-1")
+        assert "Increase loader batch size" in log
+
+        # Verify the diff references the correct subdirectory path
+        diff = _git(git_config_dir, "log", "-1", "-p", "--", "loaders/dfe-loader.yaml")
+        assert "2000" in diff
+
+        store.stop()
+
+    def test_git_commit_deep_nested_file(self, git_config_dir):
+        """Creating a deeply nested table auto-creates directories and commits."""
+        store = DirectoryConfigStore(git_config_dir, refresh_interval=0)
+        store.start()
+
+        store.set("monitoring/alerts/thresholds", "cpu", 90, message="Set CPU alert threshold")
+
+        # Verify commit
+        log = _git(git_config_dir, "log", "--oneline", "-1")
+        assert "Set CPU alert threshold" in log
+
+        # Verify file exists in correct location
+        assert (git_config_dir / "monitoring" / "alerts" / "thresholds.yaml").exists()
+
+        store.stop()

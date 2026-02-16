@@ -11,6 +11,7 @@ Safe for containers and environments where git is not installed.
 
 Key Features:
 - Each YAML file in the directory = one config table
+- Subdirectory support: table names are path-like (e.g. "loaders/dfe-loader")
 - In-memory cache with background polling refresh (works on S3/FUSE mounts)
 - Thread-safe reads via RLock
 - Write support with advisory file locking
@@ -23,12 +24,15 @@ Usage:
     store = DirectoryConfigStore("/config/dfe", refresh_interval=30)
     store.start()
 
-    # Read
+    # Read — root-level table
     config = store.get("dfe-loader")
     host = store.get("dfe-loader", "database.host")
 
-    # Write (if writable)
-    store.set("dfe-loader", "database.host", "new-host",
+    # Read — subdirectory table (path-like name)
+    loader = store.get("loaders/dfe-loader", "database.host")
+
+    # Write (if writable) — creates subdirectories automatically
+    store.set("loaders/dfe-loader", "database.host", "new-host",
               message="Update DB host", author="derek@hyperi.io")
 
     # Git branch management
@@ -56,10 +60,14 @@ class DirectoryConfigStore:
     """
     YAML directory-based configuration store with optional git awareness.
 
-    Each YAML file in the directory is a "table". Supports in-memory caching
-    with background refresh, thread-safe reads, and git-tracked writes.
+    Each YAML file in the directory (and subdirectories) is a "table".
+    Table names use forward-slash paths: root files are just the stem
+    (e.g. "globals"), subdirectory files include the path prefix
+    (e.g. "loaders/dfe-loader", "monitoring/alerts/thresholds").
 
-    Git operations use dulwich (pure-Python) — no git binary required.
+    Supports in-memory caching with background refresh, thread-safe reads,
+    and git-tracked writes. Git operations use dulwich (pure-Python) — no
+    git binary required.
 
     Args:
         directory: Path to the YAML config directory.
@@ -160,7 +168,8 @@ class DirectoryConfigStore:
         Get config value from a table.
 
         Args:
-            table: Table name (YAML filename without extension).
+            table: Table name — bare name for root files (e.g. "globals"),
+                   path-like for subdirectories (e.g. "loaders/dfe-loader").
             key: Optional dot-notation key (e.g. "database.host").
                  If None, returns the entire table dict.
             default: Value to return if key not found.
@@ -168,6 +177,7 @@ class DirectoryConfigStore:
         Returns:
             Config value, or default if not found.
         """
+        table = self._validate_table_name(table)
         with self._lock:
             entry = self._cache.get(table)
             if entry is None:
@@ -179,15 +189,18 @@ class DirectoryConfigStore:
 
     def list_tables(self) -> list[str]:
         """
-        List available config tables.
+        List available config tables (including subdirectories).
 
         Returns:
-            Sorted list of table names (YAML filenames without extension).
+            Sorted list of table names. Root files return bare names
+            (e.g. "globals"), subdirectory files return path-like names
+            (e.g. "loaders/dfe-loader").
         """
-        tables = []
-        for path in self._directory.iterdir():
-            if path.is_file() and path.suffix in (".yaml", ".yml"):
-                tables.append(path.stem)
+        tables = set()
+        for pattern in ("**/*.yaml", "**/*.yml"):
+            for path in self._directory.glob(pattern):
+                if path.is_file():
+                    tables.add(self._path_to_table(self._directory, path))
         return sorted(tables)
 
     # ── Write ──────────────────────────────────────────────────────────
@@ -219,6 +232,7 @@ class DirectoryConfigStore:
         if not self._writable:
             raise PermissionError("DirectoryConfigStore is read-only")
 
+        table = self._validate_table_name(table)
         file_path = self._table_path(table)
         data = self._load_yaml_locked(file_path) or {}
         self._set_nested(data, key, value)
@@ -263,6 +277,7 @@ class DirectoryConfigStore:
         if not self._writable:
             raise PermissionError("DirectoryConfigStore is read-only")
 
+        table = self._validate_table_name(table)
         file_path = self._table_path(table)
         data = self._load_yaml_locked(file_path)
         if data is None:
@@ -376,9 +391,10 @@ class DirectoryConfigStore:
         from the background refresh thread.
 
         Args:
-            table: Table name to watch.
+            table: Table name to watch (supports path-like names e.g. "loaders/dfe-loader").
             callback: Function called with (table_name, data) on change.
         """
+        table = self._validate_table_name(table)
         if table not in self._watchers:
             self._watchers[table] = []
         self._watchers[table].append(callback)
@@ -394,12 +410,13 @@ class DirectoryConfigStore:
                 logger.error(f"Config refresh failed: {e}")
 
     def _refresh_all(self) -> None:
-        """Re-read all YAML files, detect changes, notify watchers."""
-        for path in self._directory.iterdir():
-            if not path.is_file() or path.suffix not in (".yaml", ".yml"):
-                continue
+        """Re-read all YAML files (including subdirectories), detect changes, notify watchers."""
+        yaml_files = []
+        for pattern in ("**/*.yaml", "**/*.yml"):
+            yaml_files.extend(p for p in self._directory.glob(pattern) if p.is_file())
 
-            table = path.stem
+        for path in yaml_files:
+            table = self._path_to_table(self._directory, path)
             try:
                 mtime = path.stat().st_mtime
             except OSError:
@@ -437,11 +454,57 @@ class DirectoryConfigStore:
             except Exception as e:
                 logger.error(f"Config change callback error for '{table}': {e}")
 
+    # ── Internal: Table Name Handling ─────────────────────────────────
+
+    @staticmethod
+    def _validate_table_name(table: str) -> str:
+        """
+        Validate and normalise a table name.
+
+        Normalises backslashes to forward slashes, strips leading/trailing
+        slashes, and rejects path traversal attempts.
+
+        Args:
+            table: Table name to validate.
+
+        Returns:
+            Normalised table name.
+
+        Raises:
+            ValueError: If table name contains path traversal or is absolute.
+        """
+        # Normalise backslashes
+        table = table.replace("\\", "/")
+        # Strip leading/trailing slashes
+        table = table.strip("/")
+
+        if ".." in table.split("/"):
+            raise ValueError(f"Table name must not contain '..': {table}")
+        if not table:
+            raise ValueError("Table name must not be empty")
+
+        return table
+
+    @staticmethod
+    def _path_to_table(base_dir: Path, file_path: Path) -> str:
+        """
+        Convert a YAML file path to a table name.
+
+        Args:
+            base_dir: The config root directory.
+            file_path: Absolute path to a YAML file.
+
+        Returns:
+            Table name with forward-slash separators (e.g. "loaders/dfe-loader").
+        """
+        rel = file_path.relative_to(base_dir)
+        return str(rel.with_suffix("")).replace(os.sep, "/")
+
     # ── Internal: YAML I/O ─────────────────────────────────────────────
 
     def _table_path(self, table: str) -> Path:
-        """Get the YAML file path for a table name."""
-        # Try .yaml first, then .yml
+        """Get the YAML file path for a table name (supports subdirectories)."""
+        # Table name uses "/" separators — convert to path components
         path = self._directory / f"{table}.yaml"
         if not path.exists():
             yml_path = self._directory / f"{table}.yml"
