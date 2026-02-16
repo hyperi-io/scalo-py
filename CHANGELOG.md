@@ -1,3 +1,10 @@
+# [2.20.0](https://github.com/hyperi-io/hyperi-pylib/compare/v2.19.1...v2.20.0) (2026-02-16)
+
+
+### Features
+
+* add subdirectory support to DirectoryConfigStore ([b20240a](https://github.com/hyperi-io/hyperi-pylib/commit/b20240ab335c83c5d4ebcb9a1d322056003fd9eb))
+
 ## [2.19.1](https://github.com/hyperi-io/hyperi-pylib/compare/v2.19.0...v2.19.1) (2026-02-16)
 
 
