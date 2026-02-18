@@ -1,3 +1,10 @@
+## [2.20.1](https://github.com/hyperi-io/hyperi-pylib/compare/v2.20.0...v2.20.1) (2026-02-18)
+
+
+### Bug Fixes
+
+* Update to use hyperi repo in jfrog ([8374992](https://github.com/hyperi-io/hyperi-pylib/commit/8374992f95f0fe9b31da6c42f095ef4b9ef42936))
+
 # [2.20.0](https://github.com/hyperi-io/hyperi-pylib/compare/v2.19.1...v2.20.0) (2026-02-16)
 
 
