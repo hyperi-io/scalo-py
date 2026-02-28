@@ -133,7 +133,6 @@ class TestCheckOnStartup:
             api_url="https://test.example.com/api/v1/check",
         )
 
-        before = threading.active_count()
         check_on_startup(product="test-app", version="1.0.0", config=config)
 
         # Give the daemon thread a moment to complete
