@@ -1,3 +1,10 @@
+## [2.23.1](https://github.com/hyperi-io/hyperi-pylib/compare/v2.23.0...v2.23.1) (2026-02-28)
+
+
+### Bug Fixes
+
+* remove unused variable in version check test ([02eb683](https://github.com/hyperi-io/hyperi-pylib/commit/02eb68355ec41b70098e3491144372503def1996))
+
 # [2.23.0](https://github.com/hyperi-io/hyperi-pylib/compare/v2.22.0...v2.23.0) (2026-02-28)
 
 
