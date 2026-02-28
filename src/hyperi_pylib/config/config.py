@@ -31,10 +31,10 @@ ALL configuration automatically follows this priority (highest to lowest):
         2. ./.env          → Project directory (project-specific overrides)
 
 PostgreSQL config (layer 4) is OPTIONAL — built-for, not built-with.
-The PostgreSQL config layer is implemented and tested but is NOT currently
-used in production. It exists so we can pivot to centralised config
-management if needed in the future without redesigning the cascade.
-Enable by setting HYPERI_CONFIG_DSN.
+The YAML file-based approach already provides centralised config management
+(gitops-optimised, stored on S3 for AWS deployments, used across all
+services). The PG option exists for a more complex PG-over-YAML path if
+the ROI justifies it in the future. Enable by setting HYPERI_CONFIG_DSN.
 When enabled, PostgreSQL config OVERRIDES file-based config (layers 5-7).
 Only ENV vars, .env, and CLI args take precedence over PostgreSQL.
 
@@ -689,11 +689,11 @@ settings = Dynaconf(
 # Built-For, Not Built-With
 # =============================================================================
 #
-# Status: The PostgreSQL config layer is implemented and tested but is NOT
-# currently used in production. It exists so we can pivot to centralised
-# config management if needed in the future without redesigning the cascade.
-# File-based config + environment variables cover all current deployment
-# scenarios.
+# Status: The YAML file-based approach already provides centralised config
+# management (gitops-optimised, stored on S3 for AWS deployments, used
+# across all services). The PG option exists for a more complex PG-over-YAML
+# path if the ROI justifies it in the future. The cascade is designed so PG
+# can be enabled without code changes — just set HYPERI_CONFIG_DSN.
 #
 # If HYPERI_CONFIG_DSN is set, load config from PostgreSQL and merge into settings.
 # This provides a shared configuration store for multi-pod deployments.
