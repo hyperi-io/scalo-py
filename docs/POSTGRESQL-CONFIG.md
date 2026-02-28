@@ -5,10 +5,12 @@ Implementation specification for PostgreSQL as a configuration source in the Hyp
 ## Overview
 
 **Status: Built-For, Not Built-With.** The PostgreSQL config layer is implemented
-and tested but is **not currently used in production**. It exists so we can pivot
-to centralised config management if needed in the future without redesigning the
-cascade. File-based config + environment variables cover all current deployment
-scenarios.
+and tested but is **not currently active**. The YAML file-based approach already
+provides centralised configuration management (gitops-optimised, stored on S3
+for AWS deployments, used across all services). The PostgreSQL option exists in
+case we want to pursue a more complex PG-over-YAML path in the future — the ROI
+for that is not there yet. The cascade is designed so PG can be enabled without
+any code changes, just set `HYPERI_CONFIG_DSN`.
 
 PostgreSQL serves as a **centralised configuration store** that **OVERRIDES file-based config**. This allows multi-pod deployments to share configuration from a single source of truth.
 
