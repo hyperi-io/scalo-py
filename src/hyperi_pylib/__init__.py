@@ -103,7 +103,7 @@ version once the design is mature.
 __version__ = "2.13.4"  # Managed by semantic-release
 
 # Import modules (packages) - logger is a module for extensibility
-from . import cli, config, database, harness, logger, metrics, runtime
+from . import cli, config, database, harness, logger, metrics, runtime, version_check
 
 # Import commonly used objects and functions
 from .config import get_environment, get_logging_config, get_mount_config
@@ -124,6 +124,7 @@ __all__ = [
     "logger",
     "runtime",
     "metrics",
+    "version_check",
     # Backward compatibility
     "dbconn",
     "prometheus",
