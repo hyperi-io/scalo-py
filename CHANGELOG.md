@@ -1,3 +1,10 @@
+# [2.23.0](https://github.com/hyperi-io/hyperi-pylib/compare/v2.22.0...v2.23.0) (2026-02-28)
+
+
+### Features
+
+* startup version check module ([837c316](https://github.com/hyperi-io/hyperi-pylib/commit/837c3161a87ea27fe1cf5f7d11834e6425bcb4ff))
+
 # [2.22.0](https://github.com/hyperi-io/hyperi-pylib/compare/v2.21.0...v2.22.0) (2026-02-28)
 
 
