@@ -30,7 +30,11 @@ ALL configuration automatically follows this priority (highest to lowest):
         1. ~/.env          → Home directory (global API keys, credentials)
         2. ./.env          → Project directory (project-specific overrides)
 
-PostgreSQL config (layer 4) is OPTIONAL. Enable by setting HYPERI_CONFIG_DSN.
+PostgreSQL config (layer 4) is OPTIONAL — built-for, not built-with.
+The PostgreSQL config layer is implemented and tested but is NOT currently
+used in production. It exists so we can pivot to centralised config
+management if needed in the future without redesigning the cascade.
+Enable by setting HYPERI_CONFIG_DSN.
 When enabled, PostgreSQL config OVERRIDES file-based config (layers 5-7).
 Only ENV vars, .env, and CLI args take precedence over PostgreSQL.
 
@@ -73,18 +77,22 @@ PostgreSQL config to a local file for use when the database is unavailable.
 
     Prefix customizable via: HYPERI_LIB_ENV_PREFIX=MYAPP
 
-**Multi-File Support:**
+**Multi-File Discovery (matches rustlib):**
 
-    hyperi-pylib auto-discovers and merges multiple config sources:
+    For each config layer (defaults, settings, settings.{env}), files are
+    searched across these locations (all merged, later overrides earlier):
 
-    1. Built-in defaults (hyperi-pylib internals)
-    2. ~/.{app}/defaults.yaml (user defaults)
-    3. /config/defaults.yaml (container defaults)
-    4. settings.yaml (project base)
-    5. settings.production.yaml (environment-specific)
-    6. Additional files via get_config() parameter
+    1. ./                          (current directory)
+    2. ./config/                   (project config subdir)
+    3. /config/                    (container ConfigMap mount)
+    4. ~/.config/{app_name}/       (user config, XDG-compliant)
 
-    All files merged automatically with proper priority!
+    Both .yaml and .yml checked (.yaml first). All found files merged.
+
+    **App name** resolved from: APP_NAME env → HYPERI_LIB_APP_NAME env →
+    auto-detect → default "app".
+
+    **App env** resolved from: APP_ENV → ENVIRONMENT → ENV → "development".
 
 Quick Start
 ===========
@@ -537,6 +545,26 @@ def get_app_name() -> str:
 
 APP_NAME = get_app_name()
 
+
+def get_app_env() -> str:
+    """Get application environment with proper priority.
+
+    Priority order (matches rustlib):
+    1. APP_ENV environment variable
+    2. ENVIRONMENT environment variable
+    3. ENV environment variable
+    4. Default to "development"
+    """
+    return (
+        os.getenv("APP_ENV")
+        or os.getenv("ENVIRONMENT")
+        or os.getenv("ENV")
+        or "development"
+    )
+
+
+APP_ENV = get_app_env()
+
 # Auto-detection settings (can be disabled via env var)
 AUTO_DETECT = os.getenv("HYPERI_LIB_AUTO_DETECT", "true").lower() in ("true", "1", "yes")
 DETECTED_ENV = detect_environment() if AUTO_DETECT else "bare_metal"
@@ -559,25 +587,66 @@ else:
         # Installed package: use mount config
         config_dir = MOUNT_CONFIG.config_dir
 
-# Build settings file list (check what exists, first match wins)
-settings_files = []
-if config_dir and config_dir.exists():
-    # Check for various config file names - stop at first match
-    for filename in ["config.yaml", "config.yml", "settings.yaml", "settings.yml"]:
-        config_file = config_dir / filename
-        if config_file.exists():
-            settings_files.append(str(config_file))
-            _debug_log(f"Config file found: {config_file}")
-            break  # Stop at first match
 
-    # Check for app-specific defaults
-    app_config_dir = config_dir / APP_NAME
-    if app_config_dir.exists():
-        for filename in ["default.yaml", "default.yml"]:
-            app_config_file = app_config_dir / filename
-            if app_config_file.exists():
-                settings_files.append(str(app_config_file))
-                _debug_log(f"App config file found: {app_config_file}")
+def _find_config_files(base_name: str) -> list[str]:
+    """Find config files across all search locations.
+
+    Searches (in order, all merged — later locations override earlier):
+    1. Current directory (./)
+    2. Project config subdir (./config/)
+    3. Container mount (/config/) — always checked, no-op if absent
+    4. User config (~/.config/{app_name}/) — only when app_name is set
+    5. Mount config dir (from environment detection)
+
+    Both .yaml and .yml extensions are checked (.yaml first).
+    Matches rustlib's find_config_files() search order.
+    """
+    found = []
+    search_dirs = [
+        Path("."),
+        Path("./config"),
+        Path("/config"),
+    ]
+
+    # User config directory (XDG-compliant, only when app_name is set)
+    if APP_NAME and APP_NAME != "app":
+        try:
+            user_config = Path.home() / ".config" / APP_NAME
+            search_dirs.append(user_config)
+        except RuntimeError:
+            pass  # No home directory
+
+    # Mount config dir from environment detection
+    if config_dir and config_dir not in search_dirs:
+        search_dirs.append(config_dir)
+
+    for search_dir in search_dirs:
+        if not search_dir.is_dir():
+            continue
+        for ext in [".yaml", ".yml"]:
+            candidate = search_dir / f"{base_name}{ext}"
+            if candidate.exists():
+                resolved = str(candidate.resolve())
+                if resolved not in found:
+                    found.append(resolved)
+                    _debug_log(f"Config file found: {candidate}")
+
+    return found
+
+
+# Build settings file list using multi-layer discovery
+# Matches rustlib cascade: defaults.yaml (layer 7), settings.yaml (layer 6),
+# settings.{env}.yaml (layer 5) — all merged, later layers override earlier
+settings_files = []
+
+# Layer 7: defaults.yaml (lowest priority file layer)
+settings_files.extend(_find_config_files("defaults"))
+
+# Layer 6: settings.yaml (base application settings)
+settings_files.extend(_find_config_files("settings"))
+
+# Layer 5: settings.{env}.yaml (environment-specific overrides)
+settings_files.extend(_find_config_files(f"settings.{APP_ENV}"))
 
 # Check if .env cascade is enabled globally via environment variable
 # HYPERI_DOTENV_CASCADE=true enables loading ~/.env then ./.env
@@ -617,7 +686,14 @@ settings = Dynaconf(
 
 # =============================================================================
 # PostgreSQL Config Layer (Optional - Layer 4 of 8)
+# Built-For, Not Built-With
 # =============================================================================
+#
+# Status: The PostgreSQL config layer is implemented and tested but is NOT
+# currently used in production. It exists so we can pivot to centralised
+# config management if needed in the future without redesigning the cascade.
+# File-based config + environment variables cover all current deployment
+# scenarios.
 #
 # If HYPERI_CONFIG_DSN is set, load config from PostgreSQL and merge into settings.
 # This provides a shared configuration store for multi-pod deployments.
@@ -937,7 +1013,7 @@ def get_standard_env_vars() -> dict:
     # Application standard environment variables
     app_vars = {
         "APP_NAME": os.getenv("APP_NAME") or APP_NAME,
-        "APP_ENV": os.getenv("APP_ENV") or os.getenv("ENVIRONMENT") or DETECTED_ENV,
+        "APP_ENV": os.getenv("APP_ENV") or os.getenv("ENVIRONMENT") or os.getenv("ENV") or "development",
         "APP_VERSION": os.getenv("APP_VERSION") or os.getenv("VERSION"),
         "LOG_LEVEL": os.getenv("LOG_LEVEL"),
         "DEBUG": os.getenv("DEBUG"),
@@ -1077,10 +1153,11 @@ def get_logging_config():
     if not log_level:
         log_level = logging_config.get("level", "INFO")
 
-    # LOG_FORMAT: Output format (json, text, console, logfmt)
+    # LOG_FORMAT: Output format (auto, json, text, console, logfmt)
+    # "auto" detects JSON in containers, text in terminals (matches rustlib)
     log_format = os.getenv("LOG_FORMAT")
     if not log_format:
-        log_format = logging_config.get("format", "console")
+        log_format = logging_config.get("format", "auto")
 
     # LOG_OUTPUT: Destination (stdout, stderr, file)
     log_output = os.getenv("LOG_OUTPUT")

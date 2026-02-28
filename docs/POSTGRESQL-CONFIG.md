@@ -4,6 +4,12 @@ Implementation specification for PostgreSQL as a configuration source in the Hyp
 
 ## Overview
 
+**Status: Built-For, Not Built-With.** The PostgreSQL config layer is implemented
+and tested but is **not currently used in production**. It exists so we can pivot
+to centralised config management if needed in the future without redesigning the
+cascade. File-based config + environment variables cover all current deployment
+scenarios.
+
 PostgreSQL serves as a **centralised configuration store** that **OVERRIDES file-based config**. This allows multi-pod deployments to share configuration from a single source of truth.
 
 **Key principle:** Configuration flows ONE WAY only: PostgreSQL → Application. Never Application → PostgreSQL.
