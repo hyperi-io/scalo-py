@@ -59,6 +59,7 @@ helm install my-app ./templates/helm/hyperi-pylib-app -f values-prod.yaml
 ### Application Types
 
 Set `app.type` to one of:
+
 - `api` - REST API (FastAPI)
 - `daemon` - Background worker
 - `mcp` - Model Context Protocol server
@@ -66,6 +67,7 @@ Set `app.type` to one of:
 ### Profiles
 
 Set `app.profile` to one of:
+
 - `dev` - Development (console logs, no health checks)
 - `docker` - Docker Compose (JSON logs, health checks)
 - `prod` - Production (JSON logs, health checks, metrics) - **Default**
@@ -73,6 +75,7 @@ Set `app.profile` to one of:
 ### Health Checks
 
 All application types include:
+
 - Liveness probe: `/health` (is app running?)
 - Readiness probe: `/ready` (can app serve traffic?)
 - Startup probe: `/health` (slow startup protection)
@@ -238,6 +241,7 @@ podDisruptionBudget:
 ## Examples
 
 See complete examples:
+
 - [examples/api-container](../../examples/api-container) - REST API
 - [examples/daemon-container](../../examples/daemon-container) - Background worker
 

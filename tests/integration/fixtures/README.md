@@ -7,6 +7,7 @@ This directory contains code snippets, Dockerfiles, and YAML manifests used by t
 Fixtures follow the pattern: `{test_file_base}_{number}.txt`
 
 For example:
+
 - `test_container_deployment_code_1.txt` - First Python code snippet for container deployment tests
 - `test_container_deployment_dockerfile_1.txt` - First Dockerfile for container deployment tests
 - `test_container_deployment_12.txt` - Helm Chart.yaml template
@@ -23,9 +24,10 @@ dockerfile_content = self.load_fixture("test_container_deployment_dockerfile_1")
 
 ## File Index
 
-### test_container_deployment fixtures:
+### test_container_deployment fixtures
 
 **Python Code:**
+
 - `test_container_deployment_code_1.txt` - API application with database config
 - `test_container_deployment_code_2.txt` - API with Prometheus metrics
 - `test_container_deployment_code_3.txt` - Daemon application with scheduled tasks
@@ -34,17 +36,20 @@ dockerfile_content = self.load_fixture("test_container_deployment_dockerfile_1")
 - `test_container_deployment_9.txt` - Prometheus metrics HTTP server
 
 **Dockerfiles:**
+
 - `test_container_deployment_dockerfile_1.txt` - API Dockerfile with uv
 - `test_container_deployment_dockerfile_2.txt` - Metrics API Dockerfile
 - `test_container_deployment_4.txt` - Daemon Dockerfile
 - `test_container_deployment_6.txt` - Database app Dockerfile
 
 **Kubernetes Manifests:**
+
 - `test_container_deployment_8.txt` - Pod manifest template
 - `test_container_deployment_10.txt` - Deployment + Service with Prometheus annotations
 - `test_container_deployment_11.txt` - Deployment + Service for API
 
 **Helm Charts (Original TestHelmDeployment):**
+
 - `test_container_deployment_12.txt` - Chart.yaml
 - `test_container_deployment_13.txt` - values.yaml
 - `test_container_deployment_14.txt` - Deployment template
@@ -53,25 +58,29 @@ dockerfile_content = self.load_fixture("test_container_deployment_dockerfile_1")
 **Helm Charts (TestHelmBasedDeployment - converted from kubectl):**
 
 *Pod Deployment:*
+
 - `test_container_deployment_helm_pod_chart.txt` - Chart.yaml for Pod test
 - `test_container_deployment_helm_pod_values.txt` - values.yaml for Pod test
 - `test_container_deployment_helm_pod_template.txt` - Pod template
 
 *Metrics Deployment:*
+
 - `test_container_deployment_helm_metrics_chart.txt` - Chart.yaml for Prometheus metrics test
 - `test_container_deployment_helm_metrics_values.txt` - values.yaml for metrics test
 - `test_container_deployment_helm_metrics_deployment.txt` - Deployment template with Prometheus annotations
 - `test_container_deployment_helm_metrics_service.txt` - Service template for metrics
 
 *API Deployment:*
+
 - `test_container_deployment_helm_api_chart.txt` - Chart.yaml for API test
 - `test_container_deployment_helm_api_values.txt` - values.yaml for API test
 - `test_container_deployment_helm_api_deployment.txt` - Deployment template for API
 - `test_container_deployment_helm_api_service.txt` - Service template for API
 
-### test_docker_container fixtures:
+### test_docker_container fixtures
 
 **Python Code:**
+
 - `test_docker_container_1.txt` - Environment detection test app
 - `test_docker_container_4.txt` - Mount paths detection script
 - `test_docker_container_6.txt` - Environment variables check script
@@ -80,6 +89,7 @@ dockerfile_content = self.load_fixture("test_container_deployment_dockerfile_1")
 - `test_docker_container_12.txt` - Container resource limits check
 
 **Dockerfiles:**
+
 - `test_docker_container_2.txt` - Dockerfile with build context
 - `test_docker_container_3.txt` - Simple Dockerfile without context
 - `test_docker_container_5.txt` - Dockerfile for mount paths test

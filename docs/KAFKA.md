@@ -9,6 +9,7 @@ HyperI Kafka client library specification for high-volume, batch-oriented messag
 All consumption and production operations are batch-oriented. No single-message iteration patterns.
 
 **Why batch?**
+
 - Amortizes network round-trip latency across many messages
 - Enables efficient compression (LZ4 on batches)
 - Matches our 10K+ messages/batch, PB/day scale
@@ -16,6 +17,7 @@ All consumption and production operations are batch-oriented. No single-message 
 - Better memory efficiency with pre-allocated buffers
 
 **Anti-pattern (DO NOT USE):**
+
 ```python
 # WRONG - single message iteration
 for msg in consumer:
@@ -24,6 +26,7 @@ for msg in consumer:
 ```
 
 **Correct pattern:**
+
 ```python
 # RIGHT - batch processing
 while True:
@@ -38,11 +41,13 @@ while True:
 Messages may be delivered more than once but never lost. This requires:
 
 **Producer side:**
+
 - `acks=all` - Wait for all in-sync replicas to acknowledge
 - `retries=5` - Retry on transient failures
 - `enable.idempotence=false` - We accept duplicates for simplicity
 
 **Consumer side:**
+
 - `enable.auto.commit=false` - Manual commit only
 - Commit AFTER successful processing
 - On failure, messages will be redelivered
@@ -52,6 +57,7 @@ Messages may be delivered more than once but never lost. This requires:
 ### 3. Consumer Group Scaling
 
 Design for horizontal scaling via consumer groups:
+
 - Partitions = max parallelism
 - One consumer per partition (ideal)
 - Rebalancing handled automatically
@@ -320,6 +326,7 @@ class PartitionMetrics:
 These defaults are embedded and match across Python/Rust/Go:
 
 **Producer:**
+
 ```python
 PRODUCER_DEFAULTS = {
     "acks": "all",
@@ -334,6 +341,7 @@ PRODUCER_DEFAULTS = {
 ```
 
 **Consumer:**
+
 ```python
 CONSUMER_DEFAULTS = {
     "auto.offset.reset": "earliest",
@@ -463,6 +471,7 @@ class QueueFullError(KafkaProducerError):
 ```
 
 **Handling:**
+
 ```python
 try:
     producer.flush()
@@ -489,6 +498,7 @@ class RebalanceError(KafkaConsumerError):
 ```
 
 **Handling:**
+
 ```python
 try:
     batch = consumer.poll_batch()
@@ -522,10 +532,12 @@ Both Python (confluent-kafka) and Rust (rdkafka) wrap librdkafka. Use identical 
 ### Memory Estimation
 
 Per consumer:
+
 - `fetch.max.bytes` (50MB default) = max memory per poll
 - With 10K messages at 5KB each = 50MB buffer
 
 Per producer:
+
 - `queue.buffering.max.messages` (100K default) x avg message size
 - With 5KB messages = 500MB max buffer
 
@@ -543,6 +555,7 @@ Per producer:
 | Defaults | `KafkaConfig::default()` | `PRODUCER_DEFAULTS`, `CONSUMER_DEFAULTS` |
 
 Both implementations share:
+
 - Same librdkafka defaults
 - Batch-first design
 - Manual commit (at-least-once)

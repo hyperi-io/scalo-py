@@ -197,6 +197,7 @@ def check_redis():
 ```
 
 Health check endpoints:
+
 - `/health` - Liveness (always 200 if running)
 - `/ready` - Readiness (503 if dependencies fail)
 

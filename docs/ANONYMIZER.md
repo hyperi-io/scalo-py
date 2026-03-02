@@ -201,12 +201,14 @@ anonymizer = Anonymizer(
 - **Streaming** (large datasets): Constant memory usage, cache improves throughput
 
 Use StreamingAnonymizer for:
+
 - ClickHouse queries (millions of rows)
 - Polars lazy evaluation (GB+ files)
 - Kafka/RabbitMQ streams
 - Large log files (JSONL, CSV)
 
 Use logger filters for:
+
 - Runtime log masking
 - Fast regex patterns only
 - Zero external dependencies

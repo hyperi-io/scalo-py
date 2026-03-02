@@ -91,6 +91,7 @@ Becomes these PostgreSQL rows:
 | my-app | kafka.brokers | ["broker1:9092", "broker2:9092"] |
 
 **Conversion rules:**
+
 - Nested dicts → Dot-notation keys (`database.host`)
 - Arrays → Stored as JSONB arrays in a single row
 - Scalars → Stored as JSONB primitives (string, number, boolean, null)

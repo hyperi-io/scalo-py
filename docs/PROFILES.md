@@ -36,6 +36,7 @@ app = Application.api(name="my-api", profile="dev")
 ```
 
 **Features:**
+
 - Console logging with colors
 - DEBUG level logs
 - Hot reload enabled (where supported)
@@ -44,6 +45,7 @@ app = Application.api(name="my-api", profile="dev")
 - Graceful shutdown still works (Ctrl+C)
 
 **Use Cases:**
+
 - Local development with hot reload
 - Debugging with verbose logs
 - Testing without metrics overhead
@@ -57,6 +59,7 @@ app = Application.daemon(name="worker", profile="docker")
 ```
 
 **Features:**
+
 - JSON structured logging
 - INFO level logs (cleaner output)
 - Health check HTTP server on port 8080
@@ -64,6 +67,7 @@ app = Application.daemon(name="worker", profile="docker")
 - No hot reload (containers are immutable)
 
 **Use Cases:**
+
 - GitHub Actions / GitLab CI
 - Docker Compose integration tests
 - Pre-production validation
@@ -77,6 +81,7 @@ app = Application.api(name="api", profile="prod")
 ```
 
 **Features:**
+
 - JSON structured logging for log aggregation
 - INFO level logs
 - Health check endpoints for k8s probes
@@ -90,6 +95,7 @@ app = Application.api(name="api", profile="prod")
   - `startup_initial_delay`: 0s
 
 **Use Cases:**
+
 - Production Kubernetes clusters
 - HELM deployments
 - KEDA autoscaling
@@ -265,6 +271,7 @@ app = Application.api(name="my-api", profile="staging")
 **Problem**: `/health` returns 404
 
 **Solution**: Check profile enables health checks:
+
 ```python
 app = Application.daemon(profile="prod")  # prod enables health checks
 # NOT: profile="dev" (dev disables health checks)
@@ -275,6 +282,7 @@ app = Application.daemon(profile="prod")  # prod enables health checks
 **Problem**: `/metrics` returns 404
 
 **Solution**: Enable metrics in profile:
+
 ```python
 app = Application.api(
     profile="prod",  # prod enables metrics
@@ -288,6 +296,7 @@ app = Application.api(
 **Problem**: Logs are JSON but need console output
 
 **Solution**: Use dev profile or override:
+
 ```python
 app = Application.api(
     profile="prod",

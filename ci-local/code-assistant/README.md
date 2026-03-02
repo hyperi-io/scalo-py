@@ -5,6 +5,7 @@
 ## What Goes Here
 
 **Add markdown files with custom guidance:**
+
 - Project-specific coding patterns
 - Developer workflow preferences
 - Team-specific conventions
@@ -13,6 +14,7 @@
 ## How It Works
 
 **The `/start` command loads ALL .md files from this directory:**
+
 - Files are read automatically on session start
 - Supplements corporate standards from `ci/docs/standards/`
 - Overrides/customizations without modifying corporate standards
@@ -20,6 +22,7 @@
 ## Examples
 
 **Example: PROJECT-SPECIFIC.md**
+
 ```markdown
 # Project-Specific Guidance
 
@@ -35,6 +38,7 @@ When implementing features, follow the layered architecture:
 ```
 
 **Example: DEVELOPER-PREFERENCES.md**
+
 ```markdown
 # Developer Preferences (Derek)
 

@@ -94,6 +94,7 @@ def check_redis():
 The `/ready` endpoint will return 503 if any check returns `False` or raises an exception.
 
 Configure port:
+
 ```python
 app = Application.daemon(
     name="worker",
@@ -109,6 +110,7 @@ Enabled automatically in docker/prod profiles. Tracks:
 - `task_execution_duration_seconds` (histogram): Task duration by task name
 
 Access via metrics mixin:
+
 ```python
 @app.task(interval=60)
 def my_task():
@@ -147,11 +149,13 @@ if __name__ == "__main__":
 ```
 
 Dockerfile:
+
 ```dockerfile
 CMD ["python", "-m", "my_worker", "start", "--profile", "prod"]
 ```
 
 Kubernetes manifest:
+
 ```yaml
 livenessProbe:
   httpGet:

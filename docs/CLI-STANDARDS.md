@@ -7,14 +7,15 @@
 ## Overview
 
 **Typer is the mandatory CLI framework** for all HyperI Python CLI applications. Typer provides:
+
 - Type-hint driven interface (like FastAPI for CLIs)
 - Automatic validation and help generation
 - Excellent IDE support and type checking
 - Rich terminal output capabilities
 - Easy testing with CliRunner
 
-**Repository:** https://github.com/fastapi/typer
-**Documentation:** https://typer.tiangolo.com/
+**Repository:** <https://github.com/fastapi/typer>
+**Documentation:** <https://typer.tiangolo.com/>
 **Stars:** 18k+
 
 ---
@@ -78,6 +79,7 @@ def deploy(
 ```
 
 **Available standard options:**
+
 - `VERBOSE_OPTION` - Verbose output (--verbose, -v)
 - `QUIET_OPTION` - Suppress output (--quiet, -q)
 - `DEBUG_OPTION` - Debug mode (--debug, -d)
@@ -139,6 +141,7 @@ if __name__ == "__main__":
 ```
 
 **Run it:**
+
 ```bash
 python my_tool.py input.txt --output out.txt -v
 python my_tool.py --help
@@ -184,6 +187,7 @@ if __name__ == "__main__":
 ```
 
 **Run it:**
+
 ```bash
 python data_tool.py extract data.csv --format csv
 python data_tool.py transform input.csv output.json
@@ -197,6 +201,7 @@ python data_tool.py load output.json --target postgresql://...
 ### 1. Type Hints are MANDATORY
 
 **✅ Good:**
+
 ```python
 def backup(
     source: Path = Argument(...),
@@ -208,6 +213,7 @@ def backup(
 ```
 
 **❌ Bad:**
+
 ```python
 def backup(source, count=1, verbose=False):  # No type hints!
     pass
@@ -216,6 +222,7 @@ def backup(source, count=1, verbose=False):  # No type hints!
 ### 2. Add Help Text to ALL Parameters
 
 **✅ Good:**
+
 ```python
 def deploy(
     env: str = Option(..., help="Environment: dev/staging/prod"),
@@ -226,6 +233,7 @@ def deploy(
 ```
 
 **❌ Bad:**
+
 ```python
 def deploy(
     env: str = Option(...),  # No help text!
@@ -237,6 +245,7 @@ def deploy(
 ### 3. Use Docstrings for Command Descriptions
 
 **✅ Good:**
+
 ```python
 @app.command()
 def validate(file: Path):
@@ -250,6 +259,7 @@ def validate(file: Path):
 ```
 
 **❌ Bad:**
+
 ```python
 @app.command()
 def validate(file: Path):  # No docstring!
@@ -259,6 +269,7 @@ def validate(file: Path):  # No docstring!
 ### 4. Use Path for File Arguments
 
 **✅ Good:**
+
 ```python
 from pathlib import Path
 
@@ -269,6 +280,7 @@ def process(input: Path = Argument(...)):
 ```
 
 **❌ Bad:**
+
 ```python
 def process(input: str = Argument(...)):  # Use Path, not str!
     pass
@@ -277,6 +289,7 @@ def process(input: str = Argument(...)):  # Use Path, not str!
 ### 5. Provide Sensible Defaults
 
 **✅ Good:**
+
 ```python
 def backup(
     source: Path,
@@ -287,6 +300,7 @@ def backup(
 ```
 
 **❌ Bad:**
+
 ```python
 def backup(
     source: Path,
@@ -299,6 +313,7 @@ def backup(
 ### 6. Use Enums for Fixed Choices
 
 **✅ Good:**
+
 ```python
 from enum import Enum
 
@@ -314,6 +329,7 @@ def run(log_level: LogLevel = Option(LogLevel.INFO)):
 ```
 
 **❌ Bad:**
+
 ```python
 def run(log_level: str = Option("info")):  # Use Enum for validation!
     if log_level not in ["debug", "info", "warning", "error"]:
@@ -325,6 +341,7 @@ def run(log_level: str = Option("info")):  # Use Enum for validation!
 See [PYTHON-STANDARDS.md](../ci/docs/standards/PYTHON-STANDARDS.md) for complete code style standards.
 
 **✅ Good:**
+
 ```python
 def process(files: list[Path]):
     """Process multiple files."""
@@ -345,6 +362,7 @@ def process(files: list[Path]):
 ```
 
 **❌ Bad:**
+
 ```python
 def process(files: list[Path]):
     # Dense, hard to follow
@@ -491,6 +509,7 @@ A: Yes! Typer supports async commands out of the box.
 
 **Q: How do I install a Typer CLI as a command?**
 A: Use pyproject.toml scripts:
+
 ```toml
 [project.scripts]
 mytool = "mypackage.cli:app"
@@ -551,6 +570,7 @@ if __name__ == "__main__":
 ```
 
 **Usage:**
+
 ```bash
 # Show version
 myapp --version
@@ -568,6 +588,7 @@ myapp deploy --help
 ## Examples
 
 Complete examples are available in:
+
 - [hyperi-pylib/cli/examples.py](../src/hyperi-pylib/cli/examples.py)
 - [hyperi-pylib/cli/output.py](../src/hyperi-pylib/cli/output.py) - Output utilities
 - [hyperi-pylib/cli/options.py](../src/hyperi-pylib/cli/options.py) - Reusable options
@@ -579,6 +600,7 @@ Complete examples are available in:
 ## Summary
 
 ✅ **DO:**
+
 - Use type hints for all parameters
 - Add help text to all options/arguments
 - Use docstrings for command descriptions
@@ -589,6 +611,7 @@ Complete examples are available in:
 - Test with CliRunner
 
 ❌ **DON'T:**
+
 - Skip type hints
 - Skip help text
 - Use str for file paths (use Path)

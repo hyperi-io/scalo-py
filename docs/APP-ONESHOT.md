@@ -241,6 +241,7 @@ Use oneshot applications for:
 - **Database maintenance**: VACUUM, ANALYZE, backups
 
 Don't use for:
+
 - Long-running services (use Daemon instead)
 - Web APIs (use API instead)
 - Interactive tools (use CLI instead)

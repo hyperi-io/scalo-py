@@ -1,15 +1,18 @@
 # Code Review Findings — hyperi-pylib (OCD pass)
 
 ## Critical / High
+
 - `process_cpu_seconds_total` is over-counted each update (`src/hyperi_pylib/metrics/prometheus.py:195-287`): the code calls `cpu_seconds_total.inc(cpu_times.user + cpu_times.system)` with the absolute cumulative CPU time. This adds the full total on every tick rather than the delta, causing the counter to explode over time. Track the delta (store previous totals) or switch to a gauge to avoid incorrect CPU metrics.
 
 ## Medium
+
 - FastAPI middleware misses error paths and can distort responses (`src/hyperi_pylib/metrics/fastapi.py:109-135`): the `dispatch` method records metrics only when `call_next` returns successfully. Exceptions (HTTPException or unhandled errors) bypass the counter/histogram, so 5xx paths are invisible. The BaseHTTPMiddleware wrapper also buffers request bodies and can interfere with streaming. Consider using a plain ASGI middleware with try/except/finally, counting errors, and optionally wrapping response bodies to capture sizes.
-- HTTP clients retry all HTTP status failures (`src/hyperi_pylib/http/client.py:109-118` and :247-256`): the stamina decorator retries on `httpx.HTTPStatusError`, so 4xx responses are retried as if transient. That wastes requests and can amplify bad inputs. Restrict retries to transport/timeouts and 5xx, and add backoff/jitter configuration hooks.
+- HTTP clients retry all HTTP status failures (`src/hyperi_pylib/http/client.py:109-118` and :247-256`): the stamina decorator retries on`httpx.HTTPStatusError`, so 4xx responses are retried as if transient. That wastes requests and can amplify bad inputs. Restrict retries to transport/timeouts and 5xx, and add backoff/jitter configuration hooks.
 - Logger auto-configures on import (`src/hyperi_pylib/logger/logger.py:251-404`): importing `hyperi_pylib.logger` always removes handlers and installs new ones unless `HYPERI_LIB_NO_LOGGER_CONFIG` is set. This can clobber host application logging and is hard to opt out of in embedded/library use. Provide a no-side-effect import path (e.g., delay setup until explicitly called or guard with a flag) and document the safe usage.
 - Documentation drift about the Application framework (`README.md`, `docs/README.md`): docs still advertise `Application.api/daemon/cli/etc`, but the application package was removed (per TODO/STATE backlog). Users following the README will hit import errors. Update docs or restore the API behind a compatibility shim.
 - Container metrics are only partial and rely on private state (`src/hyperi_pylib/metrics/prometheus.py:303-420`): `ContainerMetrics.update` reads process RSS instead of cgroup memory usage and accesses `Gauge._value` to fetch limits; CPU throttle/oom counters are never updated. Resulting container stats are misleading. Read cgroup usage files for memory, avoid private attributes, and emit real throttle/OOM signals.
 
 ## Low / Test Coverage Gaps
+
 - Behavioural coverage for new modules is thin: HTTP and FastAPI metrics tests only construct objects (`tests/unit/test_http.py`, `tests/unit/test_metrics_fastapi.py`) and never exercise retries, error handling, or middleware instrumentation paths. Add integration-style tests that hit real requests, assert retry policy, and validate counter/histogram updates (including error responses).
 - Duplicate container detection logic exists in both `config.config` and `runtime.runtime`; keeping two implementations risks divergence. Centralise detection and share helpers to avoid future inconsistencies.

@@ -1,6 +1,6 @@
 # CI Bugs (ci repository issues)
 
-**Repository:** https://github.com/hyperi-io/ci
+**Repository:** <https://github.com/hyperi-io/ci>
 **Purpose:** Track bugs in the ci infrastructure (not hyperi-pylib bugs)
 
 ---
@@ -17,6 +17,7 @@
 The `bootstrap` script installs git hooks but doesn't create a Python virtual environment (.venv). However, `build_and_publish.sh` expects .venv to exist and fails with "Missing .venv. Run python-setup before invoking build_and_publish."
 
 **Current behavior:**
+
 ```bash
 ./ci/scripts/bootstrap        # Installs hooks only
 ./ci/scripts/build_and_publish.sh  # FAILS - no .venv
@@ -24,11 +25,13 @@ The `bootstrap` script installs git hooks but doesn't create a Python virtual en
 
 **Expected behavior:**
 Bootstrap should either:
+
 1. Create .venv and install dependencies (uv sync), OR
 2. build_and_publish.sh should handle missing .venv gracefully
 
 **Workaround for GitHub Actions:**
 Add explicit Python setup step before build_and_publish:
+
 ```yaml
 - name: Setup Python Environment
   run: |
@@ -55,6 +58,7 @@ Add explicit Python setup step before build_and_publish:
 The script runs `twine check dist/*` but twine is not installed in the venv, causing "command not found" error (exit 127).
 
 **Current behavior:**
+
 ```bash
 ./ci/scripts/build_and_publish.sh
 # ...builds successfully...
@@ -65,10 +69,12 @@ The script runs `twine check dist/*` but twine is not installed in the venv, cau
 
 **Expected behavior:**
 build_and_publish.sh should either:
+
 1. Check if twine is available and install if missing, OR
 2. Skip twine check if not available (uv publish validates anyway)
 
 **Workaround for .github/workflows/ci-publish.yml:**
+
 ```yaml
 - name: Setup Python Environment
   run: |
@@ -90,6 +96,7 @@ build_and_publish.sh should either:
 
 **Description:**
 Generated workflow files reference old hs-ci paths:
+
 - `ci/bootstrap` instead of `ci/scripts/bootstrap`
 - `ci/modules/python/run.d/51-publish.py` instead of `ci/scripts/build_and_publish.sh`
 

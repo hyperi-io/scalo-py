@@ -75,6 +75,7 @@ secrets = SecretsManager.from_config({
 ```
 
 **Use cases:**
+
 - Kubernetes secrets mounted as files
 - Docker secrets in `/run/secrets`
 - Local development with file-based credentials
