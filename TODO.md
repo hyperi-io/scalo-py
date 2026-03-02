@@ -2,42 +2,14 @@
 
 ## Active
 
-### Debug GitHub Actions bootstrap failures - **2h** 🟡
+### Fix CI markdownlint scanning .venv/ - **0.5h**
 
-**Status:** HS_CI_PAT works for checkout, bootstrap failing
-
-**Problem:**
-
-- uv sync/lock/build fail in GitHub Actions environment
-- Works locally with same configuration
-- May be env var propagation or uv version differences
-
-**Next:**
-
-- Verify UV_INDEX_JFROG credentials actually set in GHA environment
-- Check if --index-strategy flags working in GHA
-- Consider sourcing .env before bootstrap or different export method
-
-### Skip standard build matrix entry for apps - **0.5h**
-
-**Status:** Apps shouldn't have standard-any build job at all
+**Status:** Quality job creates .venv/ on ARC runner, markdownlint scans it
 
 **Task:**
 
-- Update matrix generation in workflow to skip standard build when build_type: app
-- Only include Nuitka builds (x64, arm64) for apps
-- Standard build only for packages
-
-### Replace HS_CI_PAT with GitHub App token - **4h**
-
-**Status:** PAT is user-tied, need corporate solution
-
-**Task:**
-
-- Create GitHub App for CI with contents:read permission
-- Use actions/create-github-app-token@v1 in workflows
-- Update all workflows to use app token
-- Remove HS_CI_PAT secret
+- Update ci repo markdownlint config to exclude `.venv/` directory
+- Also exclude `node_modules/`, `vendor/`, other common dependency dirs
 
 ---
 
@@ -143,17 +115,10 @@
 
 ## Backlog (CI/Build)
 
-### Fix BuildJet runner availability - **1h**
+### ~~Fix BuildJet runner availability~~ ✅ (replaced by ARC runners)
 
-**Status:** Org-level GH_RUNNER_DEFAULT set to BuildJet but runners not responding
-
-**Current workaround:** hyperi-pylib uses repo-level override to `ubuntu-latest`
-
-**Task:**
-
-- Investigate BuildJet account/runner status
-- Either fix BuildJet or update org-level variable to `ubuntu-latest`
-- Consider using devex-runners when local runners are ready
+**Resolved:** Org-level `GH_RUNNER_DEFAULT=arc-runner-16cpu` now uses ARC self-hosted runners.
+Repo-level override to `ubuntu-latest` deleted. CI passing on ARC runners (ci v1.59.10).
 
 ### Allow null/none in ci.yaml to skip tests/linters - **1h**
 
@@ -275,4 +240,17 @@ Full Kafka client library with corporate defaults (160 unit + 19 integration tes
 
 ---
 
-**Last Updated:** 2026-01-20
+## Completed (2026-03-02)
+
+### ARC runner migration ✅
+
+- Deleted repo-level `GH_RUNNER_DEFAULT=ubuntu-latest` override
+- Org-level now `GH_RUNNER_DEFAULT=arc-runner-16cpu` (ARC self-hosted)
+- Updated ci submodule v1.59.8 → v1.59.10 (Node.js fix, container block removal)
+- Regenerated workflows via `./ci/attach.sh --force`
+- Migrated config from `.hypersec-ci.yaml` → `.hyperi-ci.yaml`
+- CI fully passing: Detect (30s) → Quality (1m15s) → Test (4m19s)
+
+---
+
+**Last Updated:** 2026-03-02
