@@ -1,4 +1,4 @@
-# Project:      hs-lib
+# Project:      hyperi-pylib
 # File:         .github/workflows/semantic-release.yml
 # Purpose:      Create version tags using semantic-release
 # License:      FSL-1.1-ALv2
