@@ -204,11 +204,13 @@ if __name__ == "__main__":
 ## Container Deployment
 
 Dockerfile:
+
 ```dockerfile
 CMD ["python", "-m", "user_service", "serve", "--profile", "prod"]
 ```
 
 Kubernetes manifest:
+
 ```yaml
 spec:
   containers:

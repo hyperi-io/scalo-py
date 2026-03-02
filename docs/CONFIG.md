@@ -471,6 +471,7 @@ python app.py
 ### Database Variables
 
 Pattern: `{PREFIX}_{SUFFIX}` where:
+
 - Prefix: `POSTGRES`, `MYSQL`, `MONGO`, `REDIS`, `CLICKHOUSE`
 - Suffix: `HOST`, `PORT`, `USER`, `PASSWORD`, `DATABASE`
 

@@ -73,11 +73,13 @@ topics = client.list_topics()
 The hyperi-pylib Kafka clients include production-ready defaults:
 
 **Producer:**
+
 - `acks=all` - Wait for all replicas
 - `retries=5` - Automatic retry on failure
 - `linger.ms=5` - Batch for efficiency
 
 **Consumer:**
+
 - `auto.offset.reset=earliest` - Start from beginning
 - `enable.auto.commit=false` - Manual commit for reliability
 

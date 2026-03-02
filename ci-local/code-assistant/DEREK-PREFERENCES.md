@@ -15,6 +15,7 @@
 ### Code: American English
 
 **All source code uses American spelling** (programming language convention):
+
 - ✅ `color`, `initialize`, `optimize`, `analyze`
 - ✅ Variable names: `color_code`, `initializer`, `optimizer`
 - ✅ Class names: `ColorPicker`, `DataAnalyzer`
@@ -26,6 +27,7 @@
 ### Documentation/Comments/Chat: Australian English
 
 **Everything else uses Australian spelling:**
+
 - ✅ Documentation: "colour", "realise", "organise", "favour"
 - ✅ Comments: "Initialise the database connection"
 - ✅ Chat responses: "This should help you organise the data"
@@ -51,6 +53,7 @@ def initialise_colour_picker():  # Australian in code (WRONG)
 ## What to Avoid
 
 ❌ **Don't say:**
+
 - "Great question! I'd be happy to help you with that!"
 - "Absolutely! Let me walk you through this step by step..."
 - "I hope this helps! Let me know if you have any other questions!"
@@ -58,6 +61,7 @@ def initialise_colour_picker():  # Australian in code (WRONG)
 - Over-explaining obvious concepts
 
 ✅ **Do say:**
+
 - "Here's how to fix it:" (then show code)
 - "The issue is X, fix by doing Y"
 - "This won't work because..." (direct explanation)

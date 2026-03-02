@@ -25,6 +25,7 @@ app.run()
 ```
 
 Usage:
+
 ```bash
 my-tool sync /src /dest --verbose
 my-tool process data.json --format csv
@@ -65,6 +66,7 @@ app.add_typer(db_app, name="db")
 ```
 
 Usage:
+
 ```bash
 myapp db migrate
 myapp db backup
@@ -85,6 +87,7 @@ def main(
 ```
 
 All commands inherit callback settings:
+
 ```bash
 myapp --verbose sync /src /dest
 myapp --config prod.yaml process data.json

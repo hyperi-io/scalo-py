@@ -13,6 +13,7 @@ logger.success("Deployment complete")
 ```
 
 Output:
+
 ```
 2025-11-04T10:00:00.000+1100 | INFO | myapp:main:42 - Application started
 2025-11-04T10:00:01.000+1100 | ERROR | myapp:main:45 - Failed to connect database=prod-db retry=3
@@ -28,6 +29,7 @@ Logger configures itself on import with production-ready defaults:
 - **Emojis:** Auto-detect (TTY: yes, containers: no)
 
 Opt-out of auto-config:
+
 ```bash
 export HYPERI_LIB_NO_LOGGER_CONFIG=1  # Configure manually
 ```
@@ -66,11 +68,13 @@ logging:
 ## Container Deployment
 
 Production K8s (JSON logs for aggregation):
+
 ```bash
 LOG_FORMAT=json LOG_OUTPUT=stdout LOG_LEVEL=INFO
 ```
 
 Staging (human-readable):
+
 ```bash
 LOG_FORMAT=console LOG_OUTPUT=stderr LOG_LEVEL=DEBUG
 ```
@@ -89,6 +93,7 @@ LOG_FORMAT=console LOG_OUTPUT=stderr LOG_LEVEL=DEBUG
 Automatically masks passwords, tokens, API keys, secrets in logs.
 
 Enabled by default. Disable (not recommended):
+
 ```bash
 export HYPERI_LIB_LOGGING__MASK_SENSITIVE_DATA=false
 ```
@@ -128,6 +133,7 @@ Note: Slower than regex (5-50ms vs <1ms per log message).
 ## Technical Details
 
 Built on Loguru with:
+
 - RFC 3339 timestamp compliance
 - Solarized color palette (terminal only)
 - Emoji support for log levels (✅ ❌ ⚠️ 💥)

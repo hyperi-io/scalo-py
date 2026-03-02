@@ -28,17 +28,20 @@ temp_file = paths.temp_dir / "cache.json"
 ```
 
 **Container mode:**
+
 - `config_dir` → `/app/config`
 - `data_dir` → `/app/data`
 - `temp_dir` → `/app/tmp`
 
 **Local mode (non-root user):**
+
 - `config_dir` → `~/.my-app/config`
 - `data_dir` → `~/.my-app/data`
 - `temp_dir` → `/tmp/my-app-{uid}`
 - `log_dir` → `~/.my-app/logs`
 
 **Local mode (root user):**
+
 - `config_dir` → `/etc/my-app`
 - `data_dir` → `/var/lib/my-app`
 - `temp_dir` → `/tmp/my-app`
@@ -49,19 +52,23 @@ temp_file = paths.temp_dir / "cache.json"
 ### config_dir - Read-Only Configuration
 
 **Container:** `/app/config` (Kubernetes ConfigMap)
+
 - Mounted read-only
 - Configuration files (YAML, JSON, etc.)
 - Never write to this directory in production
 
 **Local (non-root):** `~/.my-app/config` (daemon convention)
+
 - Writable during development
 - User-specific configuration
 
 **Local (root):** `/etc/my-app` (system daemon convention)
+
 - System-wide configuration
 - Requires root privileges to modify
 
 **Usage:**
+
 ```python
 settings_file = paths.config_dir / "app.yaml"
 with open(settings_file) as f:
@@ -71,19 +78,23 @@ with open(settings_file) as f:
 ### data_dir - Persistent Storage
 
 **Container:** `/app/data` (Kubernetes PersistentVolumeClaim)
+
 - Survives pod restarts
 - Database files, uploaded content, application state
 - Backed by network storage (NFS, Ceph, EBS)
 
 **Local (non-root):** `~/.my-app/data` (daemon convention)
+
 - User-specific application data
 - Survives between runs
 
 **Local (root):** `/var/lib/my-app` (system daemon convention)
+
 - System-wide application data
 - Standard Unix daemon storage location
 
 **Usage:**
+
 ```python
 db_file = paths.data_dir / "app.db"
 state_file = paths.data_dir / "last_sync.json"
@@ -93,20 +104,24 @@ uploads_dir = paths.data_dir / "uploads"
 ### temp_dir - Ephemeral Storage
 
 **Container:** `/app/tmp` (Kubernetes EmptyDir)
+
 - Deleted on pod restart
 - Fast local SSD/RAM storage
 - Temporary files, caches, processing
 
 **Local (non-root):** `/tmp/my-app-{uid}` (user-isolated)
+
 - Temporary files
 - UID suffix prevents conflicts between users
 - May be cleared by system
 
 **Local (root):** `/tmp/my-app`
+
 - System daemon temporary storage
 - May be cleared by system
 
 **Usage:**
+
 ```python
 cache_file = paths.temp_dir / "download.tmp"
 processing_dir = paths.temp_dir / "work"
@@ -115,21 +130,25 @@ processing_dir = paths.temp_dir / "work"
 ### log_dir - Log Output
 
 **Container:** `None` (stdout/stderr)
+
 - Container runtime captures logs
 - No log files needed
 - Aggregated by Kubernetes/Docker
 
 **Local (non-root):** `~/.my-app/logs` (daemon convention)
+
 - File-based logging
 - Rotated log files
 - Useful for debugging
 
 **Local (root):** `/var/log/my-app` (system daemon convention)
+
 - System daemon logs
 - Managed by log rotation
 - Standard Unix logging location
 
 **Usage:**
+
 ```python
 if paths.log_dir:
     # Local mode - write log files
@@ -185,6 +204,7 @@ paths = get_runtime_paths("my-app", ensure_dirs=True)
 ```
 
 **Parameters:**
+
 - `app_name` (str): Application name (used in local paths)
 - `ensure_dirs` (bool): Create directories if missing (default: True)
 
@@ -272,6 +292,7 @@ app = Application.daemon(
 ### Linux/Unix (Daemon/CLI Conventions)
 
 **Non-root user:**
+
 ```
 config_dir: ~/.appname/config
 data_dir:   ~/.appname/data
@@ -280,6 +301,7 @@ log_dir:    ~/.appname/logs
 ```
 
 **Root user (system daemon):**
+
 ```
 config_dir: /etc/appname
 data_dir:   /var/lib/appname
@@ -290,6 +312,7 @@ log_dir:    /var/log/appname
 ### macOS (Daemon/CLI Conventions)
 
 **Same as Linux** - Uses Unix daemon conventions:
+
 ```
 config_dir: ~/.appname/config
 data_dir:   ~/.appname/data
@@ -300,6 +323,7 @@ log_dir:    ~/.appname/logs (non-root) or /var/log/appname (root)
 ### Windows (Not Currently Supported)
 
 **Future support planned:**
+
 ```
 config_dir: %APPDATA%\appname
 data_dir:   %LOCALAPPDATA%\appname

@@ -5,6 +5,7 @@
 ### Prerequisites
 
 **Required Tools:**
+
 - Python 3.12+
 - Docker (for container deployment tests)
 - Minikube (for Kubernetes/Helm tests)
@@ -12,19 +13,21 @@
 - kubectl (installed via Minikube)
 
 **Minikube Installation:**
-Follow the official installation guide: https://minikube.sigs.k8s.io/docs/start/?arch=%2Flinux%2Fx86-64%2Fstable%2Fbinary%20download
+Follow the official installation guide: <https://minikube.sigs.k8s.io/docs/start/?arch=%2Flinux%2Fx86-64%2Fstable%2Fbinary%20download>
 
 **Note:** No kubectl alias is required. Tests use `kubectl` directly (Minikube provides it).
 
 ### Test Infrastructure
 
 **Minikube Behavior:**
+
 - K8s/Helm tests automatically start Minikube if not running
 - Tests deploy to Minikube cluster
 - Tests clean up and stop Minikube after completion
 - Each test run is isolated (fresh Minikube instance)
 
 **Docker Behavior:**
+
 - Tests build actual Docker images
 - Tests run real containers
 - Tests verify container behavior (logs, environment detection)
@@ -79,6 +82,7 @@ All test runs log to `/logs` directory:
 - **Previous logs**: `logs/<test-name>-YYYYMMDD-HHMMSS.log` (archived on each run)
 
 Example:
+
 ```bash
 # Current run
 logs/test-full-run.log
@@ -101,12 +105,14 @@ Test fixtures are stored in `tests/integration/fixtures/` using standardized nam
 ### Docker Tests
 
 **What they test:**
+
 - Environment detection (Docker vs bare metal)
 - Container configuration
 - Application behavior in containers
 - Logging and output
 
 **How they work:**
+
 1. Create temporary directory
 2. Copy hyperi-pylib source + pyproject.toml
 3. Generate Dockerfile from fixture
@@ -118,6 +124,7 @@ Test fixtures are stored in `tests/integration/fixtures/` using standardized nam
 ### Helm/K8s Tests
 
 **What they test:**
+
 - Helm chart deployment
 - Kubernetes pod creation
 - Service exposure
@@ -125,6 +132,7 @@ Test fixtures are stored in `tests/integration/fixtures/` using standardized nam
 - Environment variable injection
 
 **How they work:**
+
 1. Start Minikube (if not running)
 2. Create namespace
 3. Generate Helm chart from fixtures

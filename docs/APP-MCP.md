@@ -31,6 +31,7 @@ if __name__ == "__main__":
 ```
 
 Usage:
+
 ```bash
 python -m my_tools serve  # Start MCP server
 ```
@@ -276,6 +277,7 @@ Use MCP applications for:
 - **Documentation**: Provide context to AI about your codebase
 
 Integration with:
+
 - Claude Desktop
 - Continue (VS Code)
 - Cursor

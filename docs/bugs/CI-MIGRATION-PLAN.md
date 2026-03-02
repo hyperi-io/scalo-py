@@ -19,6 +19,7 @@ The new ci repository structure (hyperi-io/ci) has several issues that need to b
 **File:** `ci/scripts/bootstrap`
 
 **Current behavior:**
+
 ```bash
 #!/usr/bin/env bash
 # Only installs git hooks
@@ -27,6 +28,7 @@ ln -sf ../../ci/hooks/pre-commit .git/hooks/pre-commit
 ```
 
 **Required behavior:**
+
 ```bash
 #!/usr/bin/env bash
 # Install git hooks
@@ -53,12 +55,14 @@ fi
 **File:** `ci/scripts/build_and_publish.sh` line 55
 
 **Current code:**
+
 ```bash
 echo "Running twine check"
 twine check dist/*
 ```
 
 **Option A - Graceful fallback (recommended):**
+
 ```bash
 echo "Running twine check"
 if command -v twine &> /dev/null; then
@@ -69,6 +73,7 @@ fi
 ```
 
 **Option B - Install if missing:**
+
 ```bash
 echo "Running twine check"
 if ! command -v twine &> /dev/null; then
@@ -87,6 +92,7 @@ twine check dist/*
 **File:** `ci/templates/ci-publish.yml` (if exists) OR create new template
 
 **Required changes:**
+
 1. Change `ci/bootstrap` → `ci/scripts/bootstrap`
 2. Change `ci/modules/python/run.d/51-publish.py` → `ci/scripts/build_and_publish.sh`
 3. Add Python environment setup step if BUG-CI-001 is not fixed:
@@ -139,7 +145,7 @@ After implementing fixes on feat/DFE-523-modular-multi-language-ci:
 
 Once fixes are merged to feat/DFE-523-modular-multi-language-ci:
 
-### For hyperi-pylib:
+### For hyperi-pylib
 
 ```bash
 # Update ci submodule to dev branch
@@ -169,6 +175,7 @@ git commit -m "fix: update ci submodule to dev branch (DFE-523 fixes)"
 Until fixes are merged, hyperi-pylib uses these workarounds in `.github/workflows/ci-publish.yml`:
 
 1. **Manual venv creation:**
+
    ```yaml
    - name: Setup Python Environment
      run: |
@@ -193,6 +200,7 @@ These workarounds should be removed once the ci development branch has the fixes
 **Breaking changes:** None if fixes are backward compatible
 
 **Migration effort:**
+
 - Low (if all bugs fixed in ci) - just update submodule
 - Medium (if bugs not fixed) - each project needs workflow workarounds
 
