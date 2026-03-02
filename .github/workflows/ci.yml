@@ -1,4 +1,4 @@
-# Project:      hs-lib
+# Project:      hyperi-pylib
 # File:         .github/workflows/ci.yml
 # Purpose:      Python CI pipeline - Quality, Test
 # License:      FSL-1.1-ALv2
@@ -18,9 +18,54 @@ on:
   workflow_dispatch:
 
 jobs:
+  # ==========================================================================
+  # Detect build configuration
+  # ==========================================================================
+  detect:
+    name: Detect
+    runs-on: ${{ vars.GH_RUNNER_DEFAULT || 'ubuntu-latest' }}
+    container:
+      image: ${{ vars.CI_RUNNER_IMAGE || 'hypersec.jfrog.io/hyperi-docker/ci-runner:ubuntu-24.04' }}
+      credentials:
+        username: ${{ secrets.ARTIFACTORY_CI_USERNAME }}
+        password: ${{ secrets.ARTIFACTORY_CI_TOKEN }}
+      options: --user 0
+    outputs:
+      use_tiers: ${{ steps.config.outputs.test_use_tiers }}
+      unit_enabled: ${{ steps.config.outputs.test_tier_unit_enabled }}
+      integration_enabled: ${{ steps.config.outputs.test_tier_integration_enabled }}
+      integration_detected: ${{ steps.config.outputs.test_tier_integration_detected }}
+      e2e_enabled: ${{ steps.config.outputs.test_tier_e2e_enabled }}
+      e2e_detected: ${{ steps.config.outputs.test_tier_e2e_detected }}
+    steps:
+      - name: Generate token
+        id: token
+        uses: actions/create-github-app-token@v1
+        with:
+          app-id: ${{ secrets.GH_APP_ID }}
+          private-key: ${{ secrets.GH_APP_PRIVATE_KEY }}
+          owner: ${{ github.repository_owner }}
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          submodules: recursive
+          token: ${{ steps.token.outputs.token }}
+      - uses: ./ci/actions/setup/detect-build-config
+        id: config
+
+  # ==========================================================================
+  # Quality checks
+  # ==========================================================================
   quality:
     name: Quality
+    needs: detect
     runs-on: ${{ vars.GH_RUNNER_DEFAULT || 'ubuntu-latest' }}
+    container:
+      image: ${{ vars.CI_RUNNER_IMAGE || 'hypersec.jfrog.io/hyperi-docker/ci-runner:ubuntu-24.04' }}
+      credentials:
+        username: ${{ secrets.ARTIFACTORY_CI_USERNAME }}
+        password: ${{ secrets.ARTIFACTORY_CI_TOKEN }}
+      options: --user 0
     steps:
       - name: Generate token
         id: token
@@ -40,11 +85,27 @@ jobs:
           artifactory-url: ${{ vars.ARTIFACTORY_PYPI_URL }}
           artifactory-username: ${{ secrets.ARTIFACTORY_CI_USERNAME }}
           artifactory-password: ${{ secrets.ARTIFACTORY_CI_TOKEN }}
+      - name: Commit auto-fixes
+        uses: stefanzweifel/git-auto-commit-action@v5
+        continue-on-error: true
+        with:
+          commit_message: 'docs: auto-fix markdown formatting [skip ci]'
+          file_pattern: '**/*.md'
 
+  # ==========================================================================
+  # Test - Legacy mode (use_tiers=false)
+  # ==========================================================================
   test:
     name: Test
-    needs: quality
+    needs: [detect, quality]
+    if: needs.detect.outputs.use_tiers != 'true'
     runs-on: ${{ vars.GH_RUNNER_DEFAULT || 'ubuntu-latest' }}
+    container:
+      image: ${{ vars.CI_RUNNER_IMAGE || 'hypersec.jfrog.io/hyperi-docker/ci-runner:ubuntu-24.04' }}
+      credentials:
+        username: ${{ secrets.ARTIFACTORY_CI_USERNAME }}
+        password: ${{ secrets.ARTIFACTORY_CI_TOKEN }}
+      options: --user 0
     steps:
       - name: Generate token
         id: token
@@ -61,6 +122,125 @@ jobs:
       - uses: ./ci/actions/jobs/test
         with:
           language: python
+          artifactory-url: ${{ vars.ARTIFACTORY_PYPI_URL }}
+          artifactory-username: ${{ secrets.ARTIFACTORY_CI_USERNAME }}
+          artifactory-password: ${{ secrets.ARTIFACTORY_CI_TOKEN }}
+
+  # ==========================================================================
+  # Test - Tiered mode: Unit tests (always runs first when tiered)
+  # ==========================================================================
+  test-unit:
+    name: Test (Unit)
+    needs: [detect, quality]
+    if: needs.detect.outputs.use_tiers == 'true' && needs.detect.outputs.unit_enabled == 'true'
+    runs-on: ${{ vars.GH_RUNNER_DEFAULT || 'ubuntu-latest' }}
+    container:
+      image: ${{ vars.CI_RUNNER_IMAGE || 'hypersec.jfrog.io/hyperi-docker/ci-runner:ubuntu-24.04' }}
+      credentials:
+        username: ${{ secrets.ARTIFACTORY_CI_USERNAME }}
+        password: ${{ secrets.ARTIFACTORY_CI_TOKEN }}
+      options: --user 0
+    steps:
+      - name: Generate token
+        id: token
+        uses: actions/create-github-app-token@v1
+        with:
+          app-id: ${{ secrets.GH_APP_ID }}
+          private-key: ${{ secrets.GH_APP_PRIVATE_KEY }}
+          owner: ${{ github.repository_owner }}
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          submodules: recursive
+          token: ${{ steps.token.outputs.token }}
+      - uses: ./ci/actions/jobs/test
+        with:
+          language: python
+          tier: unit
+          use-tiers: 'true'
+          artifactory-url: ${{ vars.ARTIFACTORY_PYPI_URL }}
+          artifactory-username: ${{ secrets.ARTIFACTORY_CI_USERNAME }}
+          artifactory-password: ${{ secrets.ARTIFACTORY_CI_TOKEN }}
+
+  # ==========================================================================
+  # Test - Tiered mode: Integration tests (runs after unit, if detected)
+  # ==========================================================================
+  test-integration:
+    name: Test (Integration)
+    needs: [detect, test-unit]
+    if: |
+      always() &&
+      needs.test-unit.result == 'success' &&
+      needs.detect.outputs.use_tiers == 'true' &&
+      needs.detect.outputs.integration_enabled == 'true' &&
+      needs.detect.outputs.integration_detected == 'true'
+    runs-on: ${{ vars.GH_RUNNER_DEFAULT || 'ubuntu-latest' }}
+    container:
+      image: ${{ vars.CI_RUNNER_IMAGE || 'hypersec.jfrog.io/hyperi-docker/ci-runner:ubuntu-24.04' }}
+      credentials:
+        username: ${{ secrets.ARTIFACTORY_CI_USERNAME }}
+        password: ${{ secrets.ARTIFACTORY_CI_TOKEN }}
+      options: --user 0
+    steps:
+      - name: Generate token
+        id: token
+        uses: actions/create-github-app-token@v1
+        with:
+          app-id: ${{ secrets.GH_APP_ID }}
+          private-key: ${{ secrets.GH_APP_PRIVATE_KEY }}
+          owner: ${{ github.repository_owner }}
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          submodules: recursive
+          token: ${{ steps.token.outputs.token }}
+      - uses: ./ci/actions/jobs/test
+        with:
+          language: python
+          tier: integration
+          use-tiers: 'true'
+          artifactory-url: ${{ vars.ARTIFACTORY_PYPI_URL }}
+          artifactory-username: ${{ secrets.ARTIFACTORY_CI_USERNAME }}
+          artifactory-password: ${{ secrets.ARTIFACTORY_CI_TOKEN }}
+
+  # ==========================================================================
+  # Test - Tiered mode: E2E tests (opt-in only, runs after integration)
+  # ==========================================================================
+  test-e2e:
+    name: Test (E2E)
+    needs: [detect, test-unit, test-integration]
+    if: |
+      always() &&
+      (needs.test-unit.result == 'success' || needs.test-unit.result == 'skipped') &&
+      (needs.test-integration.result == 'success' || needs.test-integration.result == 'skipped') &&
+      needs.detect.outputs.use_tiers == 'true' &&
+      needs.detect.outputs.e2e_enabled == 'true' &&
+      needs.detect.outputs.e2e_detected == 'true'
+    runs-on: ${{ vars.GH_RUNNER_DEFAULT || 'ubuntu-latest' }}
+    container:
+      image: ${{ vars.CI_RUNNER_IMAGE || 'hypersec.jfrog.io/hyperi-docker/ci-runner:ubuntu-24.04' }}
+      credentials:
+        username: ${{ secrets.ARTIFACTORY_CI_USERNAME }}
+        password: ${{ secrets.ARTIFACTORY_CI_TOKEN }}
+      options: --user 0
+    steps:
+      - name: Generate token
+        id: token
+        uses: actions/create-github-app-token@v1
+        with:
+          app-id: ${{ secrets.GH_APP_ID }}
+          private-key: ${{ secrets.GH_APP_PRIVATE_KEY }}
+          owner: ${{ github.repository_owner }}
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          submodules: recursive
+          token: ${{ steps.token.outputs.token }}
+      - uses: ./ci/actions/jobs/test
+        with:
+          language: python
+          tier: e2e
+          use-tiers: 'true'
           artifactory-url: ${{ vars.ARTIFACTORY_PYPI_URL }}
           artifactory-username: ${{ secrets.ARTIFACTORY_CI_USERNAME }}
           artifactory-password: ${{ secrets.ARTIFACTORY_CI_TOKEN }}

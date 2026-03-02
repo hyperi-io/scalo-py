@@ -1,4 +1,4 @@
-# Project:      hs-lib
+# Project:      hyperi-pylib
 # File:         .github/workflows/publish.yml
 # Purpose:      Python Publish pipeline - Build, Publish
 # License:      FSL-1.1-ALv2
@@ -25,6 +25,18 @@ jobs:
       protection_profile: ${{ steps.config.outputs.protection_profile }}
       publish_binaries: ${{ steps.config.outputs.publish_binaries }}
       binaries_repo: ${{ steps.config.outputs.binaries_repo }}
+      s3_enabled: ${{ steps.config.outputs.s3_enabled }}
+      s3_bucket: ${{ steps.config.outputs.s3_bucket }}
+      s3_prefix: ${{ steps.config.outputs.s3_prefix }}
+      s3_region: ${{ steps.config.outputs.s3_region }}
+      container_enabled: ${{ steps.config.outputs.container_enabled }}
+      container_registry: ${{ steps.config.outputs.container_registry }}
+      container_dockerfile: ${{ steps.config.outputs.container_dockerfile }}
+      container_context: ${{ steps.config.outputs.container_context }}
+      container_platforms: ${{ steps.config.outputs.container_platforms }}
+      helm_enabled: ${{ steps.config.outputs.helm_enabled }}
+      helm_chart_path: ${{ steps.config.outputs.helm_chart_path }}
+      helm_registry_url: ${{ steps.config.outputs.helm_registry_url }}
     steps:
       - name: Generate token
         id: token
@@ -112,6 +124,10 @@ jobs:
     needs: [detect, build-native, build-nuitka]
     if: always() && needs.build-native.result == 'success'
     runs-on: ${{ vars.GH_RUNNER_DEFAULT || 'ubuntu-latest' }}
+    permissions:
+      contents: write
+      packages: write   # Required for GHCR container/Helm push
+      id-token: write   # Required for AWS OIDC
     steps:
       - name: Generate token
         id: token
@@ -140,5 +156,22 @@ jobs:
           publish-binaries: ${{ needs.detect.outputs.publish_binaries }}
           binaries-repo: ${{ needs.detect.outputs.binaries_repo }}
           github-token: ${{ steps.token.outputs.token }}
+          # S3 publishing (optional - bucket from config or vars.AWS_S3_BUCKET)
+          s3-enabled: ${{ needs.detect.outputs.s3_enabled }}
+          s3-role-arn: ${{ vars.AWS_S3_ROLE_ARN }}
+          s3-bucket: ${{ needs.detect.outputs.s3_bucket || vars.AWS_S3_BUCKET }}
+          s3-region: ${{ needs.detect.outputs.s3_region || vars.AWS_REGION || 'ap-southeast-2' }}
+          s3-prefix: ${{ needs.detect.outputs.s3_prefix }}
+          s3-public-url: ${{ vars.AWS_S3_DOWNLOAD_URL }}
+          # Container publishing (optional - enable in .hyperi-ci.yaml)
+          container-enabled: ${{ needs.detect.outputs.container_enabled }}
+          container-registry: ${{ needs.detect.outputs.container_registry }}
+          container-dockerfile: ${{ needs.detect.outputs.container_dockerfile }}
+          container-context: ${{ needs.detect.outputs.container_context }}
+          container-platforms: ${{ needs.detect.outputs.container_platforms }}
+          # Helm chart publishing (optional - enable in .hyperi-ci.yaml)
+          helm-enabled: ${{ needs.detect.outputs.helm_enabled }}
+          helm-chart-path: ${{ needs.detect.outputs.helm_chart_path }}
+          helm-registry-url: ${{ needs.detect.outputs.helm_registry_url }}
           linear-api-key: ${{ secrets.LINEAR_API_KEY }}
           linear-prefixes: ${{ vars.LINEAR_PREFIXES || 'DFE' }}
