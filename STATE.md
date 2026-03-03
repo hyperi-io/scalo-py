@@ -92,6 +92,37 @@ ci/scripts/local/build-local.sh
 
 ---
 
+## Architecture: DfeApp CLI Framework
+
+Mirrors rustlib's `cli::app` module. Python DFE services subclass `DfeApp` to get
+standard CLI lifecycle for free (80% boilerplate, 20% app logic).
+
+```python
+from hyperi_pylib.cli import DfeApp, VersionInfo
+
+class MyService(DfeApp):
+    name = "dfe-control-plane"
+    env_prefix = "DFE_CP"
+
+    def version_info(self) -> VersionInfo:
+        return VersionInfo(self.name, "1.0.0")
+
+    def run_service(self, config) -> None:
+        ...  # sync
+
+    async def run_service_async(self, config) -> None:
+        ...  # or async
+
+if __name__ == "__main__":
+    MyService().cli()
+```
+
+**Standard subcommands:** `run`, `version`, `config-check`
+**No `top` command** — Python is never on the hot path (that's Rust)
+**Config:** Always uses `hyperi_pylib.config` cascade (Dynaconf), not bespoke loading
+
+---
+
 ## Quick Reference
 
 **Python requirement:** 3.12+
@@ -113,4 +144,4 @@ git commit -m "chore: update ci submodule to vX.Y.Z"
 
 ---
 
-**Last Updated:** 2026-03-02
+**Last Updated:** 2026-03-04

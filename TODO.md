@@ -240,6 +240,22 @@ Full Kafka client library with corporate defaults (160 unit + 19 integration tes
 
 ---
 
+## Completed (2026-03-04)
+
+### DfeApp CLI framework (v2.24.0) ✅
+
+- `DfeApp` ABC mirroring rustlib's `cli::app` module
+- Standard subcommands: `run`, `version`, `config-check` (no `top` — Python never on hot path)
+- `CommonArgs` dataclass (--config, --log-level, --verbose, --quiet, --metrics-addr)
+- `VersionInfo` with builder pattern, `CliError` hierarchy
+- Supports both sync `run_service()` and async `run_service_async()`
+- Config uses existing `hyperi_pylib.config` cascade (Dynaconf)
+- `register_commands()` hook for app-specific subcommands
+- 35 unit tests, all passing
+- Published to JFrog via full CI pipeline
+
+---
+
 ## Completed (2026-03-02)
 
 ### ARC runner migration ✅
@@ -253,4 +269,4 @@ Full Kafka client library with corporate defaults (160 unit + 19 integration tes
 
 ---
 
-**Last Updated:** 2026-03-02
+**Last Updated:** 2026-03-04
