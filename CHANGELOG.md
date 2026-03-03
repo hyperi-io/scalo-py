@@ -1,3 +1,16 @@
+# [2.24.0](https://github.com/hyperi-io/hyperi-pylib/compare/v2.23.1...v2.24.0) (2026-03-03)
+
+
+### Bug Fixes
+
+* add dprint.json config, fix ruff UP007 in expression transpiler ([5f3eae0](https://github.com/hyperi-io/hyperi-pylib/commit/5f3eae074a1f57a9359361a0cbe71418d86ae62a))
+* remove duplicate future import in expression transpiler ([7b4dd22](https://github.com/hyperi-io/hyperi-pylib/commit/7b4dd22d925e9865df653c2d14e298364afbd1ca))
+
+
+### Features
+
+* add DfeApp CLI framework mirroring rustlib's standard lifecycle ([301a960](https://github.com/hyperi-io/hyperi-pylib/commit/301a960bad596cb6a06d76750407f8d298e70782))
+
 ## [2.23.1](https://github.com/hyperi-io/hyperi-pylib/compare/v2.23.0...v2.23.1) (2026-02-28)
 
 
