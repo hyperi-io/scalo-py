@@ -83,6 +83,9 @@ opentelemetry = [
     "opentelemetry-exporter-otlp>=1.20.0",
     "opentelemetry-exporter-prometheus>=0.41b0",
 ]
+expression = [
+    "common-expression-language>=0.5.6",
+]
 database = []
 presidio = [
     "presidio-analyzer>=2.2.0",

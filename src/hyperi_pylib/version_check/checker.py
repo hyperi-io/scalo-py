@@ -16,6 +16,7 @@ import platform
 import threading
 import uuid
 from dataclasses import dataclass, field
+from datetime import UTC
 from pathlib import Path
 from typing import Optional
 
@@ -34,7 +35,7 @@ class VersionCheckConfig:
 
     product: str = ""
     current_version: str = ""
-    deployment: Optional[str] = None
+    deployment: str | None = None
     api_url: str = field(default_factory=lambda: os.getenv("VERSION_CHECK_URL", DEFAULT_API_URL))
     timeout: float = DEFAULT_TIMEOUT
     disabled: bool = field(default_factory=lambda: os.getenv("VERSION_CHECK_DISABLED", "").lower() in ("true", "1", "yes"))
@@ -44,19 +45,19 @@ class VersionCheckConfig:
 class VersionCheckResponse:
     """Response from the version check API."""
 
-    latest_version: Optional[str] = None
+    latest_version: str | None = None
     update_available: bool = False
-    release_url: Optional[str] = None
-    published_at: Optional[str] = None
-    message: Optional[str] = None
+    release_url: str | None = None
+    published_at: str | None = None
+    message: str | None = None
 
 
 def check_on_startup(
     product: str,
     version: str,
     *,
-    deployment: Optional[str] = None,
-    config: Optional[VersionCheckConfig] = None,
+    deployment: str | None = None,
+    config: VersionCheckConfig | None = None,
 ) -> None:
     """Spawn a daemon thread to check for a newer version.
 
@@ -175,9 +176,9 @@ def _format_age(published_at: str) -> str:
 
         # Ensure UTC
         if dt.tzinfo is None:
-            dt = dt.replace(tzinfo=timezone.utc)
+            dt = dt.replace(tzinfo=UTC)
 
-        now = datetime.now(timezone.utc)
+        now = datetime.now(UTC)
         delta = now - dt
         days = delta.days
 

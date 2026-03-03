@@ -1,63 +1,51 @@
 """
-hyperi-pylib CLI utilities - Typer-based command-line interface framework.
+hyperi-pylib CLI framework — Typer-based command-line interface for DFE services.
 
-This module provides CLI utilities and standards for hyperi-pylib applications.
-Typer is the mandatory standard for all CLI applications.
+Two levels of usage:
 
-Installation:
-    pip install hyperi-pylib[cli]
+**DfeApp framework** (recommended for DFE services)::
 
-Basic Usage:
-    from hyperi_pylib.cli import Typer, Option, Argument
-    from hyperi_pylib.cli.output import print_success, print_table
-    from hyperi_pylib.cli.options import VERBOSE_OPTION
-    from hyperi_pylib.cli.version import version_option
+    from hyperi_pylib.cli import DfeApp, VersionInfo
 
-    app = Typer(help="My application CLI")
+    class MyService(DfeApp):
+        name = "dfe-loader"
+        env_prefix = "DFE_LOADER"
 
-    @app.callback()
-    def main(version: bool = version_option("myapp")):
-        '''My application'''
-        pass
+        def version_info(self) -> VersionInfo:
+            return VersionInfo(self.name, "1.0.0")
 
-    @app.command()
-    def deploy(
-        environment: str,
-        verbose: bool = VERBOSE_OPTION
-    ):
-        '''Deploy application'''
-        print_success(f"Deployed to {environment}")
+        def run_service(self, config) -> None:
+            ...
 
     if __name__ == "__main__":
-        app()
+        MyService().cli()
 
-Features:
-    - Type-hint driven argument/option parsing
-    - Automatic help generation from docstrings
-    - Rich terminal output (colors, tables, progress bars)
-    - Reusable CLI options (verbose, config, dry-run, etc.)
-    - Version handling utilities
-    - Beautiful output formatting helpers
-    - Excellent IDE support (autocomplete, type checking)
-    - Test-friendly (CliRunner for testing)
+**Standalone Typer utilities** (for custom CLIs)::
 
-Standards:
-    - Use type hints for all parameters
-    - Add help text to all options/arguments
-    - Use docstrings for command descriptions
-    - Prefer clarity over cleverness (see PYTHON-STANDARDS.md)
+    from hyperi_pylib.cli import Typer, Option
+    from hyperi_pylib.cli.output import print_success
+    from hyperi_pylib.cli.options import VERBOSE_OPTION
 
 Modules:
+    - hyperi_pylib.cli.app - DfeApp framework (DfeApp, CommonArgs, run_app)
+    - hyperi_pylib.cli.error - CLI error types
+    - hyperi_pylib.cli.version_info - Structured version metadata
     - hyperi_pylib.cli.output - Output formatting utilities
     - hyperi_pylib.cli.options - Reusable CLI options
-    - hyperi_pylib.cli.version - Version handling
-    - hyperi_pylib.cli.examples - Complete usage examples
-
-Examples:
-    See hyperi_pylib/cli/examples.py and docs/CLI-STANDARDS.md for complete examples.
+    - hyperi_pylib.cli.version - Version handling (legacy, use version_info for new code)
 """
 
 __all__ = [
+    # DfeApp framework
+    "CommonArgs",
+    "CliError",
+    "ConfigError",
+    "DfeApp",
+    "InvalidArgumentError",
+    "LoggerError",
+    "ServiceError",
+    "VersionInfo",
+    "run_app",
     # Core Typer exports
     "Typer",
     "Option",
@@ -110,5 +98,7 @@ except ImportError:
 # Import submodules (always available, gracefully handle missing Typer)
 from . import options, output, version
 
-# Version info
-__version__ = "1.0.0"
+# DfeApp framework (always available — errors are clear if Typer missing)
+from .app import CommonArgs, DfeApp, run_app
+from .error import CliError, ConfigError, InvalidArgumentError, LoggerError, ServiceError
+from .version_info import VersionInfo

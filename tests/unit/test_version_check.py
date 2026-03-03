@@ -12,6 +12,7 @@ import json
 import os
 import threading
 import time
+from datetime import UTC
 
 import pytest
 
@@ -245,7 +246,7 @@ class TestFormatAge:
 
         from hyperi_pylib.version_check.checker import _format_age
 
-        now = datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
+        now = datetime.now(UTC).strftime("%Y-%m-%dT%H:%M:%SZ")
         assert _format_age(now) == "released today"
 
     def test_format_age_days(self):
@@ -253,7 +254,7 @@ class TestFormatAge:
 
         from hyperi_pylib.version_check.checker import _format_age
 
-        ten_days_ago = (datetime.now(timezone.utc) - timedelta(days=10)).strftime("%Y-%m-%dT%H:%M:%SZ")
+        ten_days_ago = (datetime.now(UTC) - timedelta(days=10)).strftime("%Y-%m-%dT%H:%M:%SZ")
         assert _format_age(ten_days_ago) == "released 10 days ago"
 
     def test_format_age_one_day(self):
@@ -261,7 +262,7 @@ class TestFormatAge:
 
         from hyperi_pylib.version_check.checker import _format_age
 
-        yesterday = (datetime.now(timezone.utc) - timedelta(days=1)).strftime("%Y-%m-%dT%H:%M:%SZ")
+        yesterday = (datetime.now(UTC) - timedelta(days=1)).strftime("%Y-%m-%dT%H:%M:%SZ")
         assert _format_age(yesterday) == "released 1 day ago"
 
     def test_format_age_months(self):
@@ -269,7 +270,7 @@ class TestFormatAge:
 
         from hyperi_pylib.version_check.checker import _format_age
 
-        three_months_ago = (datetime.now(timezone.utc) - timedelta(days=90)).strftime("%Y-%m-%dT%H:%M:%SZ")
+        three_months_ago = (datetime.now(UTC) - timedelta(days=90)).strftime("%Y-%m-%dT%H:%M:%SZ")
         assert _format_age(three_months_ago) == "released 3 months ago"
 
     def test_format_age_invalid(self):
