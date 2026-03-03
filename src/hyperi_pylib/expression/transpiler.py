@@ -31,7 +31,6 @@ from __future__ import annotations
 import re
 from dataclasses import dataclass, field
 from enum import Enum, auto
-from __future__ import annotations
 
 from .cel import ExpressionError, validate
 
