@@ -31,7 +31,7 @@ from __future__ import annotations
 import re
 from dataclasses import dataclass, field
 from enum import Enum, auto
-from typing import Union
+from __future__ import annotations
 
 from .cel import ExpressionError, validate
 
@@ -105,8 +105,7 @@ class ListExpr:
 
 
 # Union of all AST node types.
-Expr = Union[Literal, Ident, BinaryOp, UnaryOp, MethodCall,
-             FunctionCall, Ternary, ListExpr]
+Expr = Literal | Ident | BinaryOp | UnaryOp | MethodCall | FunctionCall | Ternary | ListExpr
 
 
 # ── Tokenizer ─────────────────────────────────────────────────────
