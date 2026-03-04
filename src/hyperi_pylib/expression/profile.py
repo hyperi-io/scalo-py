@@ -18,33 +18,37 @@ See: dfe-engine/docs/EXPRESSIONS-CEL.md
 from __future__ import annotations
 
 # Functions allowed in the DFE expression profile.
-ALLOWED_FUNCTIONS: frozenset[str] = frozenset({
-    # String methods
-    "contains",
-    "startsWith",
-    "endsWith",
-    "matches",
-    # Size / existence
-    "size",
-    "has",
-    # Type casts
-    "int",
-    "uint",
-    "double",
-    "string",
-    "bool",
-})
+ALLOWED_FUNCTIONS: frozenset[str] = frozenset(
+    {
+        # String methods
+        "contains",
+        "startsWith",
+        "endsWith",
+        "matches",
+        # Size / existence
+        "size",
+        "has",
+        # Type casts
+        "int",
+        "uint",
+        "double",
+        "string",
+        "bool",
+    }
+)
 
 # Functions explicitly banned — per-element iteration is too expensive.
-DISALLOWED_FUNCTIONS: frozenset[str] = frozenset({
-    "map",
-    "filter",
-    "exists",
-    "exists_one",
-    "all",
-    "timestamp",
-    "duration",
-})
+DISALLOWED_FUNCTIONS: frozenset[str] = frozenset(
+    {
+        "map",
+        "filter",
+        "exists",
+        "exists_one",
+        "all",
+        "timestamp",
+        "duration",
+    }
+)
 
 # Known function names (union of allowed + disallowed) for error messages.
 KNOWN_FUNCTIONS: frozenset[str] = ALLOWED_FUNCTIONS | DISALLOWED_FUNCTIONS

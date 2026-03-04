@@ -38,7 +38,9 @@ class VersionCheckConfig:
     deployment: str | None = None
     api_url: str = field(default_factory=lambda: os.getenv("VERSION_CHECK_URL", DEFAULT_API_URL))
     timeout: float = DEFAULT_TIMEOUT
-    disabled: bool = field(default_factory=lambda: os.getenv("VERSION_CHECK_DISABLED", "").lower() in ("true", "1", "yes"))
+    disabled: bool = field(
+        default_factory=lambda: os.getenv("VERSION_CHECK_DISABLED", "").lower() in ("true", "1", "yes")
+    )
 
 
 @dataclass

@@ -19,11 +19,160 @@ Configuration (settings.yaml):
         service_version: "1.0.0"
 """
 
+from __future__ import annotations
+
 import os
-from typing import Any
+from typing import Any, Callable
 
 from ..logger import logger
 from .base import MetricsBackend, NoOpMetric
+
+# ---------------------------------------------------------------------------
+# Prometheus-compatible adapter wrappers for OTel instruments
+#
+# fastapi.py and db.py use prometheus-client–style API:
+#   counter.labels(method="GET", endpoint="/api").inc()
+#   histogram.labels(db_type="postgres").observe(0.1)
+#
+# OTel instruments use:
+#   counter.add(1, attributes={"method": "GET", "endpoint": "/api"})
+#   histogram.record(0.1, attributes={"db_type": "postgres"})
+#
+# These adapters bridge the two so callers need not know which backend is active.
+# ---------------------------------------------------------------------------
+
+
+class _BoundCounter:
+    """OTel counter with pre-bound attribute set."""
+
+    def __init__(self, counter: Any, attributes: dict[str, Any]) -> None:
+        self._counter = counter
+        self._attributes = attributes
+
+    def inc(self, amount: float = 1) -> None:
+        self._counter.add(amount, attributes=self._attributes)
+
+
+class _BoundGauge:
+    """OTel gauge (UpDownCounter) with pre-bound attribute set."""
+
+    def __init__(self, adapter: OtelGaugeAdapter, attributes: dict[str, Any]) -> None:
+        self._adapter = adapter
+        self._attributes = attributes
+
+    def set(self, value: float) -> None:
+        self._adapter._set(value, self._attributes)
+
+    def inc(self, amount: float = 1) -> None:
+        self._adapter._add(amount, self._attributes)
+
+    def dec(self, amount: float = 1) -> None:
+        self._adapter._add(-amount, self._attributes)
+
+
+class _BoundHistogram:
+    """OTel histogram with pre-bound attribute set."""
+
+    def __init__(self, histogram: Any, attributes: dict[str, Any]) -> None:
+        self._histogram = histogram
+        self._attributes = attributes
+
+    def observe(self, value: float) -> None:
+        self._histogram.record(value, attributes=self._attributes)
+
+
+class OtelCounterAdapter:
+    """Wraps an OTel Counter with prometheus-client–compatible API.
+
+    Translates ``.labels(k=v).inc()`` into ``counter.add(1, attributes={...})``.
+    """
+
+    def __init__(
+        self,
+        counter: Any,
+        label_converter: Callable[[dict[str, Any]], dict[str, Any]],
+    ) -> None:
+        self._counter = counter
+        self._label_converter = label_converter
+
+    def labels(self, **kwargs: Any) -> _BoundCounter:
+        return _BoundCounter(self._counter, self._label_converter(kwargs))
+
+    def inc(self, amount: float = 1) -> None:
+        self._counter.add(amount)
+
+    def add(self, amount: float, attributes: dict[str, Any] | None = None) -> None:
+        """Native OTel API passthrough (for tests/advanced use)."""
+        self._counter.add(amount, attributes=attributes)
+
+
+class OtelGaugeAdapter:
+    """Wraps an OTel UpDownCounter with prometheus-client–compatible API.
+
+    Tracks current per-labelset values to support absolute ``.set()``, since
+    OTel UpDownCounter only accepts deltas.
+    """
+
+    def __init__(
+        self,
+        gauge: Any,
+        label_converter: Callable[[dict[str, Any]], dict[str, Any]],
+    ) -> None:
+        self._gauge = gauge
+        self._label_converter = label_converter
+        self._current: dict[tuple[tuple[str, Any], ...], float] = {}
+
+    def _key(self, attributes: dict[str, Any]) -> tuple[tuple[str, Any], ...]:
+        return tuple(sorted(attributes.items()))
+
+    def _set(self, value: float, attributes: dict[str, Any]) -> None:
+        key = self._key(attributes)
+        delta = value - self._current.get(key, 0.0)
+        self._current[key] = value
+        self._gauge.add(delta, attributes=attributes or None)
+
+    def _add(self, delta: float, attributes: dict[str, Any]) -> None:
+        key = self._key(attributes)
+        self._current[key] = self._current.get(key, 0.0) + delta
+        self._gauge.add(delta, attributes=attributes or None)
+
+    def labels(self, **kwargs: Any) -> _BoundGauge:
+        return _BoundGauge(self, self._label_converter(kwargs))
+
+    def set(self, value: float) -> None:
+        self._set(value, {})
+
+    def inc(self, amount: float = 1) -> None:
+        self._add(amount, {})
+
+    def dec(self, amount: float = 1) -> None:
+        self._add(-amount, {})
+
+
+class OtelHistogramAdapter:
+    """Wraps an OTel Histogram with prometheus-client–compatible API.
+
+    Translates ``.labels(k=v).observe(v)`` into ``histogram.record(v, attributes={...})``.
+    """
+
+    def __init__(
+        self,
+        histogram: Any,
+        label_converter: Callable[[dict[str, Any]], dict[str, Any]],
+    ) -> None:
+        self._histogram = histogram
+        self._label_converter = label_converter
+
+    def labels(self, **kwargs: Any) -> _BoundHistogram:
+        return _BoundHistogram(self._histogram, self._label_converter(kwargs))
+
+    def observe(self, value: float) -> None:
+        self._histogram.record(value)
+
+    def record(self, value: float, attributes: dict[str, Any] | None = None) -> None:
+        """Native OTel API passthrough (for tests/advanced use)."""
+        self._histogram.record(value, attributes=attributes)
+
 
 # Try to import OpenTelemetry SDK
 try:
@@ -309,8 +458,9 @@ class OpenTelemetryBackend(MetricsBackend):
             unit="1",
         )
 
-        self._metrics_cache[cache_key] = counter
-        return counter
+        adapter = OtelCounterAdapter(counter, self._convert_labels)
+        self._metrics_cache[cache_key] = adapter
+        return adapter
 
     def gauge(self, name: str, description: str, labels: list[str] | None = None) -> Any:
         """
@@ -341,8 +491,9 @@ class OpenTelemetryBackend(MetricsBackend):
             unit="1",
         )
 
-        self._metrics_cache[cache_key] = gauge
-        return gauge
+        adapter = OtelGaugeAdapter(gauge, self._convert_labels)
+        self._metrics_cache[cache_key] = adapter
+        return adapter
 
     def histogram(
         self,
@@ -380,8 +531,9 @@ class OpenTelemetryBackend(MetricsBackend):
             unit="1",
         )
 
-        self._metrics_cache[cache_key] = histogram
-        return histogram
+        adapter = OtelHistogramAdapter(histogram, self._convert_labels)
+        self._metrics_cache[cache_key] = adapter
+        return adapter
 
     def get_metrics(self) -> bytes:
         """
