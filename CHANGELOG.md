@@ -1,3 +1,10 @@
+## [2.24.1](https://github.com/hyperi-io/hyperi-pylib/compare/v2.24.0...v2.24.1) (2026-03-04)
+
+
+### Bug Fixes
+
+* add prometheus-compat adapters to OTel metrics backend ([79dd186](https://github.com/hyperi-io/hyperi-pylib/commit/79dd186df3590d82dfe101fc9af371c6946787b8))
+
 # [2.24.0](https://github.com/hyperi-io/hyperi-pylib/compare/v2.23.1...v2.24.0) (2026-03-03)
 
 
