@@ -555,12 +555,7 @@ def get_app_env() -> str:
     3. ENV environment variable
     4. Default to "development"
     """
-    return (
-        os.getenv("APP_ENV")
-        or os.getenv("ENVIRONMENT")
-        or os.getenv("ENV")
-        or "development"
-    )
+    return os.getenv("APP_ENV") or os.getenv("ENVIRONMENT") or os.getenv("ENV") or "development"
 
 
 APP_ENV = get_app_env()

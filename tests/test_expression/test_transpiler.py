@@ -163,7 +163,7 @@ class TestFunctions:
         assert transpile_to_clickhouse("double(x) > 1.5") == "toFloat64(x) > 1.5"
 
     def test_string_cast(self):
-        assert transpile_to_clickhouse("string(code) == \"200\"") == "toString(code) = '200'"
+        assert transpile_to_clickhouse('string(code) == "200"') == "toString(code) = '200'"
 
     def test_bool_cast(self):
         assert transpile_to_clickhouse("bool(flag) == true") == "toBool(flag) = 1"
@@ -248,7 +248,7 @@ class TestIdentifiers:
     """Simple and dotted identifiers."""
 
     def test_simple(self):
-        assert transpile_to_clickhouse("severity == \"critical\"") == "severity = 'critical'"
+        assert transpile_to_clickhouse('severity == "critical"') == "severity = 'critical'"
 
     def test_dotted(self):
         assert transpile_to_clickhouse('event.user_id == "abc"') == "event.user_id = 'abc'"
@@ -305,15 +305,11 @@ class TestCompound:
         assert result == "source_type = 'syslog' AND facility IN (1, 2, 3)"
 
     def test_complex_condition(self):
-        result = transpile_to_clickhouse(
-            'severity == "critical" && !is_test && amount > 10000'
-        )
+        result = transpile_to_clickhouse('severity == "critical" && !is_test && amount > 10000')
         assert result == "severity = 'critical' AND NOT is_test AND amount > 10000"
 
     def test_string_with_membership(self):
-        result = transpile_to_clickhouse(
-            'msg.contains("error") && status in ["active", "pending"]'
-        )
+        result = transpile_to_clickhouse('msg.contains("error") && status in ["active", "pending"]')
         assert result == "position(msg, 'error') > 0 AND status IN ('active', 'pending')"
 
 
@@ -347,7 +343,7 @@ class TestSQLInjection:
     """String escaping prevents SQL injection."""
 
     def test_single_quote_in_string(self):
-        result = transpile_to_clickhouse("name == \"O'Brien\"")
+        result = transpile_to_clickhouse('name == "O\'Brien"')
         assert result == r"name = 'O\'Brien'"
 
     def test_backslash_in_string(self):

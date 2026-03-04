@@ -47,8 +47,7 @@ try:
     import cel as _cel
 except ImportError as e:
     raise ImportError(
-        "CEL expression support requires the 'expression' extra. "
-        "Install with: pip install hyperi-pylib[expression]"
+        "CEL expression support requires the 'expression' extra. Install with: pip install hyperi-pylib[expression]"
     ) from e
 
 from .profile import ALLOWED_FUNCTIONS, DISALLOWED_FUNCTIONS
@@ -80,8 +79,7 @@ def _check_profile(expr: str) -> list[str]:
     for match in _FUNCTION_CALL_RE.finditer(expr):
         name = match.group(1)
         # Skip CEL keywords/literals that look like function calls
-        if name in ("true", "false", "null", "in", "has", "int", "uint",
-                     "double", "string", "bool"):
+        if name in ("true", "false", "null", "in", "has", "int", "uint", "double", "string", "bool"):
             continue
         if name in DISALLOWED_FUNCTIONS:
             errors.append(

@@ -270,9 +270,13 @@ def _build_typer_app(dfe_app: DfeApp) -> Any:
     @app.command()
     def run(
         config: str | None = Option(None, "--config", "-c", help="Path to configuration file", envvar="CLI_CONFIG"),
-        log_level: str = Option("info", "--log-level", "-l", help="Log level (debug, info, warning, error)", envvar="LOG_LEVEL"),
+        log_level: str = Option(
+            "info", "--log-level", "-l", help="Log level (debug, info, warning, error)", envvar="LOG_LEVEL"
+        ),
         log_format: str = Option("auto", "--log-format", help="Log format (json, text, auto)", envvar="LOG_FORMAT"),
-        metrics_addr: str = Option("0.0.0.0:9090", "--metrics-addr", help="Metrics server bind address", envvar="METRICS_ADDR"),
+        metrics_addr: str = Option(
+            "0.0.0.0:9090", "--metrics-addr", help="Metrics server bind address", envvar="METRICS_ADDR"
+        ),
         verbose: bool = Option(False, "--verbose", "-v", help="Enable debug logging"),
         quiet: bool = Option(False, "--quiet", "-q", help="Suppress non-error output"),
     ) -> None:

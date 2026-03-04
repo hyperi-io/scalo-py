@@ -221,7 +221,7 @@ class TestEvaluate:
         assert evaluate("is_admin ? 95 : 50", {"is_admin": False}) == 50
 
     def test_int_cast(self):
-        assert evaluate('int(x) > 10', {"x": "15"}) is True
+        assert evaluate("int(x) > 10", {"x": "15"}) is True
 
     def test_nested_field_access(self):
         assert evaluate('user.role == "admin"', {"user": {"role": "admin"}}) is True
@@ -295,34 +295,49 @@ class TestEvaluateCondition:
         assert evaluate_condition("", {}) is False
 
     def test_compound_condition(self):
-        assert evaluate_condition(
-            'severity == "critical" && amount > 10000',
-            {"severity": "critical", "amount": 15000},
-        ) is True
+        assert (
+            evaluate_condition(
+                'severity == "critical" && amount > 10000',
+                {"severity": "critical", "amount": 15000},
+            )
+            is True
+        )
 
     def test_compound_partial_match(self):
-        assert evaluate_condition(
-            'severity == "critical" && amount > 10000',
-            {"severity": "critical", "amount": 5000},
-        ) is False
+        assert (
+            evaluate_condition(
+                'severity == "critical" && amount > 10000',
+                {"severity": "critical", "amount": 5000},
+            )
+            is False
+        )
 
     def test_in_membership(self):
-        assert evaluate_condition(
-            'status in ["active", "pending"]',
-            {"status": "active"},
-        ) is True
+        assert (
+            evaluate_condition(
+                'status in ["active", "pending"]',
+                {"status": "active"},
+            )
+            is True
+        )
 
     def test_negated_in(self):
-        assert evaluate_condition(
-            '!(status in ["blocked", "banned"])',
-            {"status": "active"},
-        ) is True
+        assert (
+            evaluate_condition(
+                '!(status in ["blocked", "banned"])',
+                {"status": "active"},
+            )
+            is True
+        )
 
     def test_string_function(self):
-        assert evaluate_condition(
-            'msg.contains("error")',
-            {"msg": "an error occurred"},
-        ) is True
+        assert (
+            evaluate_condition(
+                'msg.contains("error")',
+                {"msg": "an error occurred"},
+            )
+            is True
+        )
 
     def test_numeric_comparison(self):
         assert evaluate_condition("amount > 10000", {"amount": 15000}) is True

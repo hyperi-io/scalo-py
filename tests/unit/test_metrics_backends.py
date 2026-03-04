@@ -85,35 +85,122 @@ class TestPrometheusBackend:
         counter.inc()
 
 
+try:
+    import opentelemetry  # noqa: F401
+
+    OTEL_INSTALLED = True
+except ImportError:
+    OTEL_INSTALLED = False
+
+otel_required = pytest.mark.skipif(not OTEL_INSTALLED, reason="OpenTelemetry not installed")
+
+
 class TestOpenTelemetryBackend:
     """Test OpenTelemetry backend implementation."""
 
     def test_create_with_otel_backend(self):
         """Test creating metrics with OpenTelemetry backend."""
-        # May fail if opentelemetry not installed (expected)
         try:
             metrics = create_metrics("test-app", backend="opentelemetry")
             assert metrics.backend_name == "opentelemetry"
         except ImportError:
             pytest.skip("OpenTelemetry not installed")
 
-    def test_counter_creation_otel(self):
-        """Test counter creation with OpenTelemetry backend."""
-        try:
-            metrics = create_metrics("test-app", backend="opentelemetry")
+    @otel_required
+    def test_counter_prometheus_style_api(self):
+        """OTel counter supports .labels().inc() (prometheus-client style)."""
+        metrics = create_metrics("otel-prom-api-1", backend="opentelemetry")
+        if not metrics.enabled:
+            pytest.skip("OpenTelemetry backend not enabled")
 
-            if not metrics.enabled:
-                pytest.skip("OpenTelemetry backend not enabled")
+        counter = metrics.counter("otel_http_requests_total", "Requests", labels=["method", "status"])
+        assert counter is not None
 
-            counter = metrics.counter("otel_requests", "OTel requests")
-            assert counter is not None
+        # prometheus-client style — must not raise
+        counter.labels(method="GET", status="200").inc()
+        counter.labels(method="POST", status="201").inc(3)
 
-            # Test add (OTel uses add() not inc())
-            counter.add(1)
-            counter.add(5)
+        # Unlabelled shorthand
+        counter.inc()
 
-        except ImportError:
-            pytest.skip("OpenTelemetry not installed")
+        # Native OTel add() passthrough still works
+        counter.add(1)
+
+    @otel_required
+    def test_gauge_prometheus_style_api(self):
+        """OTel gauge supports .labels().set()/.inc()/.dec()."""
+        metrics = create_metrics("otel-prom-api-2", backend="opentelemetry")
+        if not metrics.enabled:
+            pytest.skip("OpenTelemetry backend not enabled")
+
+        gauge = metrics.gauge("otel_queue_size", "Queue depth", labels=["queue"])
+        assert gauge is not None
+
+        # Labelled
+        gauge.labels(queue="default").set(42)
+        gauge.labels(queue="default").inc(5)
+        gauge.labels(queue="default").dec(2)
+
+        # Unlabelled
+        gauge.set(10)
+        gauge.inc()
+        gauge.dec()
+
+    @otel_required
+    def test_gauge_set_is_absolute(self):
+        """Gauge .set() is absolute, not a delta — subsequent reads reflect the set value."""
+        from hyperi_pylib.metrics.opentelemetry_backend import OtelGaugeAdapter
+
+        metrics = create_metrics("otel-prom-api-3", backend="opentelemetry")
+        if not metrics.enabled:
+            pytest.skip("OpenTelemetry backend not enabled")
+
+        gauge = metrics.gauge("otel_abs_gauge", "Absolute gauge")
+
+        # Internal state tracking must reflect absolute values
+        assert isinstance(gauge, OtelGaugeAdapter)
+        gauge.set(100)
+        key = ()  # no attributes
+        assert gauge._current[key] == 100.0
+        gauge.set(50)
+        assert gauge._current[key] == 50.0
+
+    @otel_required
+    def test_histogram_prometheus_style_api(self):
+        """OTel histogram supports .labels().observe()."""
+        metrics = create_metrics("otel-prom-api-4", backend="opentelemetry")
+        if not metrics.enabled:
+            pytest.skip("OpenTelemetry backend not enabled")
+
+        hist = metrics.histogram("otel_request_duration_seconds", "Latency", labels=["method"])
+        assert hist is not None
+
+        # prometheus-client style — must not raise
+        hist.labels(method="GET").observe(0.123)
+        hist.labels(method="POST").observe(0.456)
+
+        # Unlabelled shorthand
+        hist.observe(0.789)
+
+        # Native OTel record() passthrough still works
+        hist.record(0.001)
+
+    @otel_required
+    def test_label_name_conversion(self):
+        """Labels are converted to OTel attribute names when auto_convert_names is on."""
+        from hyperi_pylib.metrics.opentelemetry_backend import OtelCounterAdapter
+
+        metrics = create_metrics("otel-prom-api-5", backend="opentelemetry")
+        if not metrics.enabled:
+            pytest.skip("OpenTelemetry backend not enabled")
+
+        counter = metrics.counter("http_requests_total", "Requests", labels=["method", "status"])
+        assert isinstance(counter, OtelCounterAdapter)
+
+        # .labels() with prometheus names should produce OTel attribute names internally
+        bound = counter.labels(method="GET", status="200")
+        # http.method and http.status_code are the expected OTel names
+        assert bound._attributes.get("http.method") == "GET"
 
     def test_fallback_to_prometheus(self):
         """Test fallback to Prometheus if OpenTelemetry not available."""

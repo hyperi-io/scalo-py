@@ -50,18 +50,21 @@ class TranspileError(Exception):
 @dataclass
 class Literal:
     """String, number, boolean, or null literal."""
+
     value: str | int | float | bool | None
 
 
 @dataclass
 class Ident:
     """Identifier, possibly dotted (e.g. ``event.user_id``)."""
+
     name: str
 
 
 @dataclass
 class BinaryOp:
     """Binary operator (``==``, ``&&``, ``in``, ``+``, etc.)."""
+
     op: str
     left: Expr
     right: Expr
@@ -70,6 +73,7 @@ class BinaryOp:
 @dataclass
 class UnaryOp:
     """Unary operator (``!``, ``-``)."""
+
     op: str
     operand: Expr
 
@@ -77,6 +81,7 @@ class UnaryOp:
 @dataclass
 class MethodCall:
     """Method-style call (``x.contains(y)``)."""
+
     target: Expr
     method: str
     args: list[Expr] = field(default_factory=list)
@@ -85,6 +90,7 @@ class MethodCall:
 @dataclass
 class FunctionCall:
     """Free function call (``has(x)``, ``size(x)``, ``int(x)``)."""
+
     name: str
     args: list[Expr] = field(default_factory=list)
 
@@ -92,6 +98,7 @@ class FunctionCall:
 @dataclass
 class Ternary:
     """Ternary conditional (``a ? b : c``)."""
+
     condition: Expr
     true_expr: Expr
     false_expr: Expr
@@ -100,6 +107,7 @@ class Ternary:
 @dataclass
 class ListExpr:
     """List literal (``[a, b, c]``)."""
+
     elements: list[Expr] = field(default_factory=list)
 
 
@@ -112,10 +120,11 @@ Expr = Literal | Ident | BinaryOp | UnaryOp | MethodCall | FunctionCall | Ternar
 
 class TT(Enum):
     """Token type."""
+
     STRING = auto()
     NUMBER = auto()
     IDENT = auto()
-    OP = auto()       # ==, !=, <, <=, >, >=, &&, ||, +, -, *, /, %
+    OP = auto()  # ==, !=, <, <=, >, >=, &&, ||, +, -, *, /, %
     LPAREN = auto()
     RPAREN = auto()
     LBRACKET = auto()
@@ -124,7 +133,7 @@ class TT(Enum):
     DOT = auto()
     QUESTION = auto()
     COLON = auto()
-    BANG = auto()      # !
+    BANG = auto()  # !
     EOF = auto()
 
 
@@ -177,9 +186,7 @@ def _tokenize(expr: str) -> list[Token]:
                 break
 
         if not matched:
-            raise TranspileError(
-                f"Unexpected character {expr[pos]!r} at position {pos}"
-            )
+            raise TranspileError(f"Unexpected character {expr[pos]!r} at position {pos}")
 
     tokens.append(Token(TT.EOF, "", pos))
     return tokens
@@ -192,10 +199,10 @@ _PREC_TERNARY = 1
 _PREC_OR = 2
 _PREC_AND = 3
 _PREC_COMPARISON = 4  # ==, !=, <, <=, >, >=, in
-_PREC_ADDITIVE = 5    # +, -
+_PREC_ADDITIVE = 5  # +, -
 _PREC_MULTIPLICATIVE = 6  # *, /, %
-_PREC_UNARY = 7       # !, unary -
-_PREC_POSTFIX = 8     # .method(), ()
+_PREC_UNARY = 7  # !, unary -
+_PREC_POSTFIX = 8  # .method(), ()
 
 _BINARY_PREC: dict[str, int] = {
     "||": _PREC_OR,
@@ -233,10 +240,7 @@ class _Parser:
     def _expect(self, tt: TT) -> Token:
         tok = self._advance()
         if tok.type != tt:
-            raise TranspileError(
-                f"Expected {tt.name}, got {tok.type.name} ({tok.value!r}) "
-                f"at position {tok.pos}"
-            )
+            raise TranspileError(f"Expected {tt.name}, got {tok.type.name} ({tok.value!r}) at position {tok.pos}")
         return tok
 
     def parse(self) -> Expr:
@@ -244,9 +248,7 @@ class _Parser:
         expr = self._parse_expr(0)
         if self._peek().type != TT.EOF:
             tok = self._peek()
-            raise TranspileError(
-                f"Unexpected token {tok.value!r} at position {tok.pos}"
-            )
+            raise TranspileError(f"Unexpected token {tok.value!r} at position {tok.pos}")
         return expr
 
     def _parse_expr(self, min_prec: int) -> Expr:
@@ -374,10 +376,7 @@ class _Parser:
 
             return Ident(name)
 
-        raise TranspileError(
-            f"Unexpected token {tok.value!r} ({tok.type.name}) "
-            f"at position {tok.pos}"
-        )
+        raise TranspileError(f"Unexpected token {tok.value!r} ({tok.type.name}) at position {tok.pos}")
 
     def _parse_args(self) -> list[Expr]:
         """Parse a comma-separated argument list (without enclosing parens/brackets)."""
@@ -436,9 +435,18 @@ _WORD_OPS = {"AND", "OR", "IN", "NOT"}
 _SQL_PREC: dict[str, int] = {
     "OR": 1,
     "AND": 2,
-    "=": 3, "!=": 3, "<": 3, "<=": 3, ">": 3, ">=": 3, "IN": 3,
-    "+": 4, "-": 4,
-    "*": 5, "/": 5, "%": 5,
+    "=": 3,
+    "!=": 3,
+    "<": 3,
+    "<=": 3,
+    ">": 3,
+    ">=": 3,
+    "IN": 3,
+    "+": 4,
+    "-": 4,
+    "*": 5,
+    "/": 5,
+    "%": 5,
 }
 
 
