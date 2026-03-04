@@ -15,6 +15,25 @@
 
 ## Backlog
 
+### Use external tools (Docker/compose) for integration tests - **2h**
+
+**Status:** Not started — integration tests currently skip when external services unavailable
+
+**Task:**
+
+- Audit all integration tests that require external services (Postgres, Kafka, Redis, etc.)
+- Add Docker Compose fixtures or pytest-docker to spin up services for CI
+- Pattern already established in `tests/` (Kafka docker-compose) — extend to other backends
+- Ensure tests don't skip in CI; they should run against real services
+
+**Rationale:**
+
+- Integration tests that always skip provide no coverage guarantee
+- CI should run full integration suite, not just unit tests
+- External tool pattern is more reliable than mocking
+
+---
+
 ### Add hyperi_pylib.http.HttpClient (Stamina + httpx) - **3h**
 
 **Status:** Not started - identified during dfe-control-plane B113 fixes
@@ -42,39 +61,6 @@
 - Same author as attrs/structlog - quality pedigree
 
 **Design:** See dfe-control-plane/HS-LIB-UPDATE.md §4
-
-### Add FastAPI metrics middleware to hyperi_pylib.metrics - **2h**
-
-**Status:** Not started - identified during dfe-control-plane metrics work
-
-**Task:**
-
-- Create `hyperi_pylib.metrics.fastapi.PrometheusMiddleware`
-- Auto-track: request count, duration, status by endpoint
-- Create `hyperi_pylib.metrics.fastapi.create_metrics_router()` for `/metrics` endpoint
-- Zero-config: `app.add_middleware(PrometheusMiddleware)`
-
-**Rationale:**
-
-- All FastAPI apps need HTTP metrics
-- Currently each app implements manually
-- Consistency across HyperI apps
-
-### Add DB query metrics helpers to hyperi_pylib.metrics - **1h**
-
-**Status:** Not started - identified during dfe-control-plane metrics work
-
-**Task:**
-
-- Create context manager: `with metrics.db_query("postgres", "select"): ...`
-- Create decorator: `@metrics.track_db_query(db_type="clickhouse")`
-- Works with any DB client (not auto-instrumented)
-
-**Rationale:**
-
-- Multiple DB types (ClickHouse, Postgres, FalconDB)
-- Can't auto-instrument all clients
-- Explicit instrumentation is reliable
 
 ### [BACKLOG] hyperi_pylib.application: Application Framework - **deferred**
 
@@ -241,6 +227,17 @@ Full Kafka client library with corporate defaults (160 unit + 19 integration tes
 ---
 
 ## Completed (2026-03-04)
+
+### OTel metrics backend prometheus-compat adapters ✅
+
+- Added adapter classes (`OtelCounterAdapter`, `OtelGaugeAdapter`, `OtelHistogramAdapter`) to `opentelemetry_backend.py`
+- Adapters translate prometheus-client `.labels().inc()` / `.labels().observe()` API to OTel instrument calls
+- `OtelGaugeAdapter` implements absolute `.set()` via `_current` state tracking dict (OTel UpDownCounter only accepts deltas)
+- Updated `counter()`, `gauge()`, `histogram()` methods to return adapters, not raw instruments
+- Added 5 new `@otel_required` tests covering all adapter paths + label name conversion
+- 68/68 metrics tests passing
+- Removed stale backlog items (FastAPI middleware + DB metrics — both already implemented)
+- Updated ci → v1.60.3, ai → 1.14.5
 
 ### DfeApp CLI framework (v2.24.0) ✅
 
