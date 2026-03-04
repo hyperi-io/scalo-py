@@ -17,7 +17,7 @@ on:
 jobs:
   detect:
     name: Detect Config
-    runs-on: ${{ vars.GH_RUNNER_DEFAULT || 'ubuntu-latest' }}
+    runs-on: ${{ vars.GH_RUNNER_PUBLISH || vars.GH_RUNNER_DEFAULT || 'ubuntu-latest' }}
     outputs:
       nuitka_enabled: ${{ steps.config.outputs.nuitka_enabled }}
       nuitka_platforms: ${{ steps.config.outputs.nuitka_platforms }}
@@ -123,7 +123,7 @@ jobs:
     name: Publish
     needs: [detect, build-native, build-nuitka]
     if: always() && needs.build-native.result == 'success'
-    runs-on: ${{ vars.GH_RUNNER_DEFAULT || 'ubuntu-latest' }}
+    runs-on: ${{ vars.GH_RUNNER_PUBLISH || vars.GH_RUNNER_DEFAULT || 'ubuntu-latest' }}
     permissions:
       contents: write
       packages: write   # Required for GHCR container/Helm push
