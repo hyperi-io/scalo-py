@@ -1,6 +1,6 @@
 # Config Cascade Example
 
-Demonstrates hyperi-pylib's 7-layer configuration cascade system.
+Demonstrates hyperi-pylib's 8-layer configuration cascade system.
 
 ## Features
 
