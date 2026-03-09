@@ -23,7 +23,6 @@ import sys
 from hyperi_pylib.kafka import KafkaConsumer
 from hyperi_pylib.logger import error, info, success, warning
 
-
 BOOTSTRAP_SERVERS = os.environ.get("KAFKA_BOOTSTRAP_SERVERS", "localhost:9092")
 TOPIC = "example-events"
 GROUP_ID = "example-consumer-group"
@@ -51,13 +50,15 @@ def consume_messages(max_messages: int = 20, timeout: float = 30.0) -> int:
     )
 
     # Create consumer with corporate defaults
-    consumer = KafkaConsumer({
-        "bootstrap.servers": BOOTSTRAP_SERVERS,
-        "group.id": GROUP_ID,
-        # Corporate defaults are applied automatically:
-        # - auto.offset.reset=earliest
-        # - enable.auto.commit=false (manual commit for reliability)
-    })
+    consumer = KafkaConsumer(
+        {
+            "bootstrap.servers": BOOTSTRAP_SERVERS,
+            "group.id": GROUP_ID,
+            # Corporate defaults are applied automatically:
+            # - auto.offset.reset=earliest
+            # - enable.auto.commit=false (manual commit for reliability)
+        }
+    )
 
     try:
         # Subscribe to topic

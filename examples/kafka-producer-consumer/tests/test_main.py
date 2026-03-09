@@ -101,18 +101,22 @@ class TestIntegration:
         """Should be able to create a producer."""
         from hyperi_pylib.kafka import KafkaProducer
 
-        producer = KafkaProducer({
-            "bootstrap.servers": "localhost:9092",
-        })
+        producer = KafkaProducer(
+            {
+                "bootstrap.servers": "localhost:9092",
+            }
+        )
         assert producer is not None
 
     def test_consumer_creates_successfully(self) -> None:
         """Should be able to create a consumer."""
         from hyperi_pylib.kafka import KafkaConsumer
 
-        consumer = KafkaConsumer({
-            "bootstrap.servers": "localhost:9092",
-            "group.id": "test-group",
-        })
+        consumer = KafkaConsumer(
+            {
+                "bootstrap.servers": "localhost:9092",
+                "group.id": "test-group",
+            }
+        )
         assert consumer is not None
         consumer.close()

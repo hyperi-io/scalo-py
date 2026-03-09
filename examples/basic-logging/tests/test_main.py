@@ -12,7 +12,6 @@ import sys
 from io import StringIO
 
 import pytest
-
 from main import (
     demonstrate_log_levels,
     demonstrate_logger_object,

@@ -8,45 +8,44 @@ This allows building compiled wheels with:
 The compiled wheel can be installed via pip and imported normally.
 """
 
-from setuptools import setup
-
 # Read dependencies from pyproject.toml
 import tomllib
 from pathlib import Path
 
+from setuptools import setup
+
 pyproject_path = Path(__file__).parent / "pyproject.toml"
-with open(pyproject_path, 'rb') as f:
+with open(pyproject_path, "rb") as f:
     pyproject = tomllib.load(f)
 
-project = pyproject['project']
+project = pyproject["project"]
 
 # Read README.md if it exists, otherwise use description
-readme_path = Path('README.md')
-long_description = readme_path.read_text() if readme_path.exists() else project['description']
-long_description_content_type = 'text/markdown' if readme_path.exists() else 'text/plain'
+readme_path = Path("README.md")
+long_description = readme_path.read_text() if readme_path.exists() else project["description"]
+long_description_content_type = "text/markdown" if readme_path.exists() else "text/plain"
 
 setup(
-    name=project['name'],
-    version=project['version'],
-    description=project['description'],
+    name=project["name"],
+    version=project["version"],
+    description=project["description"],
     long_description=long_description,
     long_description_content_type=long_description_content_type,
-    author='HyperI Team',
-    author_email='dev@hyperi.io',
-    url='https://github.com/hyperi-io/hyperi-pylib',
-    packages=['hyperi_pylib'],
-    package_dir={'': 'src'},
-    python_requires=project['requires-python'],
-    install_requires=project['dependencies'],
-    classifiers=project['classifiers'],
-    keywords=project['keywords'],
-
+    author="HyperI Team",
+    author_email="dev@hyperi.io",
+    url="https://github.com/hyperi-io/hyperi-pylib",
+    packages=["hyperi_pylib"],
+    package_dir={"": "src"},
+    python_requires=project["requires-python"],
+    install_requires=project["dependencies"],
+    classifiers=project["classifiers"],
+    keywords=project["keywords"],
     # Nuitka-specific options for bdist_nuitka
     # For LIBRARY: Only compile this package, dependencies remain as Python imports
     command_options={
-        'nuitka': {
+        "nuitka": {
             # Enable data-hiding plugin (encrypts strings and function names)
-            '--enable-plugin': ['data-hiding'],
+            "--enable-plugin": ["data-hiding"],
             # bdist_nuitka automatically uses --mode=package (correct for libraries)
             # Do NOT add: --standalone (conflicts with --mode=package)
             # Do NOT add: --follow-imports (keeps dependencies as Python imports)

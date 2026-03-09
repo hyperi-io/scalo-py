@@ -29,7 +29,6 @@ from fastapi.responses import PlainTextResponse
 from hyperi_pylib.logger import info, success
 from hyperi_pylib.metrics import create_metrics
 
-
 # Configuration
 API_HOST = os.environ.get("API_HOST", "0.0.0.0")
 API_PORT = int(os.environ.get("API_PORT", "8000"))
