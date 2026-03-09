@@ -19,7 +19,9 @@ from .providers.base import SecretProvider
 from .providers.file import FileProvider
 from .types import (
     AWSConfig,
+    AzureConfig,
     CacheConfig,
+    GCPConfig,
     OpenBaoConfig,
     ProviderType,
     RotationCallback,
@@ -65,6 +67,7 @@ class SecretsManager:
         sources: dict[str, SourceConfig] | None = None,
         cache_config: CacheConfig | None = None,
         cache: CacheConfig | None = None,  # Alias for cache_config
+        env_prefix: str | None = None,
     ) -> None:
         """Initialize SecretsManager.
 
@@ -73,6 +76,11 @@ class SecretsManager:
             sources: Map of secret name to source configuration.
             cache_config: Cache configuration.
             cache: Alias for cache_config (for convenience).
+            env_prefix: Optional prefix for automatic ENV fallback lookup.
+                When a provider fetch fails and no explicit env_fallback is set on
+                the source, the manager looks up {PREFIX}_{NAME.upper()} in the
+                environment. E.g. prefix="DFE", name="fred_key" → DFE_FRED_KEY.
+                Without a prefix it looks up NAME.upper() directly.
         """
         # Default to file provider
         self._providers: dict[str, SecretProvider] = providers.copy() if providers else {}
@@ -81,6 +89,7 @@ class SecretsManager:
 
         self._sources = sources or {}
         self._cache = DiskCache(cache or cache_config or CacheConfig())
+        self._env_prefix = env_prefix.rstrip("_") if env_prefix else None
         self._rotation_callbacks: list[tuple[RotationCallback, list[str] | None]] = []
         self._refresh_task: asyncio.Task | None = None
         self._refresh_stop_event: asyncio.Event | None = None
@@ -128,6 +137,26 @@ class SecretsManager:
             except ImportError:
                 logger.warning("AWS provider not available. Install with: pip install hyperi-pylib[secrets-aws]")
 
+        # GCP provider
+        if "gcp" in config:
+            try:
+                from .providers.gcp import GCPProvider
+
+                gcp_config = cls._parse_gcp_config(config["gcp"])
+                providers["gcp"] = GCPProvider(gcp_config)
+            except ImportError:
+                logger.warning("GCP provider not available. Install with: pip install hyperi-pylib[secrets-gcp]")
+
+        # Azure provider
+        if "azure" in config:
+            try:
+                from .providers.azure import AzureProvider
+
+                azure_config = cls._parse_azure_config(config["azure"])
+                providers["azure"] = AzureProvider(azure_config)
+            except ImportError:
+                logger.warning("Azure provider not available. Install with: pip install hyperi-pylib[secrets-azure]")
+
         # Parse sources
         sources: dict[str, SourceConfig] = {}
         for name, source_cfg in config.get("sources", {}).items():
@@ -137,6 +166,7 @@ class SecretsManager:
                 path=source_cfg.get("path"),
                 secret_id=source_cfg.get("secret_id"),
                 key=source_cfg.get("key"),
+                env_fallback=source_cfg.get("env_fallback"),
             )
 
         # Parse cache config
@@ -152,7 +182,8 @@ class SecretsManager:
             encryption_key=encryption_key,
         )
 
-        return cls(providers=providers, sources=sources, cache_config=cache_config)
+        env_prefix = config.get("env_prefix") or os.environ.get("HYPERI_SECRETS_ENV_PREFIX")
+        return cls(providers=providers, sources=sources, cache_config=cache_config, env_prefix=env_prefix)
 
     @staticmethod
     def _get_encryption_key(cache_cfg: dict) -> bytes | None:
@@ -189,6 +220,26 @@ class SecretsManager:
             access_key_id=cfg.get("access_key_id"),
             secret_access_key=cfg.get("secret_access_key"),
             endpoint_url=cfg.get("endpoint_url"),
+            timeout_secs=cfg.get("timeout_secs", 30),
+        )
+
+    @staticmethod
+    def _parse_gcp_config(cfg: dict) -> GCPConfig:
+        """Parse GCP config with env var fallbacks."""
+        return GCPConfig(
+            project_id=cfg.get("project_id") or os.environ.get("GOOGLE_CLOUD_PROJECT", ""),
+            credentials_file=cfg.get("credentials_file") or os.environ.get("GOOGLE_APPLICATION_CREDENTIALS"),
+            timeout_secs=cfg.get("timeout_secs", 30),
+        )
+
+    @staticmethod
+    def _parse_azure_config(cfg: dict) -> AzureConfig:
+        """Parse Azure config with env var fallbacks."""
+        return AzureConfig(
+            vault_url=cfg.get("vault_url") or os.environ.get("AZURE_VAULT_URL", ""),
+            tenant_id=cfg.get("tenant_id") or os.environ.get("AZURE_TENANT_ID"),
+            client_id=cfg.get("client_id") or os.environ.get("AZURE_CLIENT_ID"),
+            client_secret=cfg.get("client_secret") or os.environ.get("AZURE_CLIENT_SECRET"),
             timeout_secs=cfg.get("timeout_secs", 30),
         )
 
@@ -280,8 +331,37 @@ class SecretsManager:
         value = self.get_sync(name_or_path)
         return value.decode(encoding)
 
+    def _env_fallback_var(self, name: str, source: SourceConfig) -> str | None:
+        """Compute the ENV var name to use as fallback for a source.
+
+        Priority:
+        1. source.env_fallback (explicit override)
+        2. {env_prefix}_{NAME.upper()} if manager has env_prefix
+        3. NAME.upper() (auto, no prefix)
+        """
+        if source.env_fallback:
+            return source.env_fallback
+        upper = name.upper()
+        if self._env_prefix:
+            return f"{self._env_prefix}_{upper}"
+        return upper
+
+    def _resolve_env_fallback(self, name: str, source: SourceConfig) -> SecretValue | None:
+        """Look up ENV fallback value; return SecretValue or None if not set."""
+        env_var = self._env_fallback_var(name, source)
+        if env_var is None:
+            return None
+        env_value = os.environ.get(env_var)
+        if env_value is None:
+            return None
+        logger.warning(
+            "Provider unavailable, using ENV fallback",
+            extra={"source": name, "env_var": env_var},
+        )
+        return SecretValue(data=env_value.encode("utf-8"), fetched_at=datetime.now(UTC), source="env")
+
     async def _get_by_source(self, name: str) -> SecretValue:
-        """Get secret using configured source."""
+        """Get secret using configured source, with ENV fallback on failure."""
         source = self._sources[name]
         provider_name = source.provider.value
         path = source.path or source.secret_id
@@ -289,10 +369,16 @@ class SecretsManager:
         if not path:
             raise SecretsError(f"source '{name}' has no path or secret_id")
 
-        return await self._get_from_provider(provider_name, path, source.key)
+        try:
+            return await self._get_from_provider(provider_name, path, source.key)
+        except (ProviderError, ProviderNotConfiguredError, SecretNotFoundError):
+            fallback = self._resolve_env_fallback(name, source)
+            if fallback is not None:
+                return fallback
+            raise
 
     def _get_by_source_sync(self, name: str) -> SecretValue:
-        """Get secret using configured source (sync)."""
+        """Get secret using configured source, with ENV fallback on failure (sync)."""
         source = self._sources[name]
         provider_name = source.provider.value
         path = source.path or source.secret_id
@@ -300,7 +386,13 @@ class SecretsManager:
         if not path:
             raise SecretsError(f"source '{name}' has no path or secret_id")
 
-        return self._get_from_provider_sync(provider_name, path, source.key)
+        try:
+            return self._get_from_provider_sync(provider_name, path, source.key)
+        except (ProviderError, ProviderNotConfiguredError, SecretNotFoundError):
+            fallback = self._resolve_env_fallback(name, source)
+            if fallback is not None:
+                return fallback
+            raise
 
     async def _get_from_provider(
         self,

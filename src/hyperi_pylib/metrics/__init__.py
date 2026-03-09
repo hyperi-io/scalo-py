@@ -19,16 +19,6 @@ Quick Start:
     >>> metrics.gauge("queue_size", "Queue depth").set(42)
     >>> metrics.histogram("latency", "Request latency").observe(0.123)
 
-FastAPI Integration:
-    >>> from fastapi import FastAPI
-    >>> from hyperi_pylib.metrics import create_metrics
-    >>> from hyperi_pylib.metrics.fastapi import PrometheusMiddleware, create_metrics_router
-    >>>
-    >>> app = FastAPI()
-    >>> metrics = create_metrics("myapp")
-    >>> app.add_middleware(PrometheusMiddleware, metrics_manager=metrics)
-    >>> app.include_router(create_metrics_router(metrics))
-
 Configuration (settings.yaml):
     metrics:
       backend: opentelemetry  # or "prometheus"

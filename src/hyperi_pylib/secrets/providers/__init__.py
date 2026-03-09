@@ -17,12 +17,30 @@ except ImportError:
     BOTO3_AVAILABLE = False
     AIOBOTOCORE_AVAILABLE = False
 
+try:
+    from .gcp import GCP_AVAILABLE, GCPProvider
+except ImportError:
+    GCPProvider = None  # type: ignore[assignment,misc]
+    GCP_AVAILABLE = False
+
+try:
+    from .azure import AZURE_ASYNC_AVAILABLE, AZURE_AVAILABLE, AzureProvider
+except ImportError:
+    AzureProvider = None  # type: ignore[assignment,misc]
+    AZURE_AVAILABLE = False
+    AZURE_ASYNC_AVAILABLE = False
+
 __all__ = [
     "SecretProvider",
     "FileProvider",
     "OpenBaoProvider",
     "AWSProvider",
+    "GCPProvider",
+    "AzureProvider",
     "HTTPX_AVAILABLE",
     "BOTO3_AVAILABLE",
     "AIOBOTOCORE_AVAILABLE",
+    "GCP_AVAILABLE",
+    "AZURE_AVAILABLE",
+    "AZURE_ASYNC_AVAILABLE",
 ]
