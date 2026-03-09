@@ -129,7 +129,7 @@ dev = [
     "ruff>=0.1.0",
     "black>=24.0.0",
     "isort>=5.12.0",
-    "pyright>=1.1.0",
+    "ty>=0.0.21",
     "mypy>=1.0.0",
     "bandit[toml]>=1.7.0",
     "pip-audit>=2.6.0",
@@ -292,14 +292,8 @@ force_grid_wrap = 0
 use_parentheses = true
 ensure_newline_before_comments = true
 
-[tool.pyright]
-pythonVersion = "3.12"
-typeCheckingMode = "basic"
-reportMissingImports = false
-reportMissingTypeStubs = false
-exclude = [
-    "tests",
-]
+[tool.ty.environment]
+python-version = "3.12"
 
 [tool.bandit]
 exclude_dirs = [
