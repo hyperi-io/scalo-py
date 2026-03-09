@@ -11,7 +11,6 @@
 import os
 
 import pytest
-
 from main import (
     demonstrate_config_files,
     demonstrate_env_override,

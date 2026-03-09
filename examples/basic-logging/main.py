@@ -57,7 +57,7 @@ def demonstrate_structured_logging() -> None:
 
     # Exception logging with traceback
     try:
-        result = 1 / 0
+        _ = 1 / 0
     except ZeroDivisionError:
         error("Calculation failed", operation="division", exc_info=True)
 

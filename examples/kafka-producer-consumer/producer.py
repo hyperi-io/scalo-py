@@ -23,7 +23,6 @@ from datetime import datetime
 from hyperi_pylib.kafka import KafkaProducer
 from hyperi_pylib.logger import error, info, success
 
-
 BOOTSTRAP_SERVERS = os.environ.get("KAFKA_BOOTSTRAP_SERVERS", "localhost:9092")
 TOPIC = "example-events"
 
@@ -46,13 +45,15 @@ def produce_messages(count: int = 10) -> None:
     info("Starting producer", bootstrap_servers=BOOTSTRAP_SERVERS, topic=TOPIC)
 
     # Create producer with corporate defaults
-    producer = KafkaProducer({
-        "bootstrap.servers": BOOTSTRAP_SERVERS,
-        # Corporate defaults are applied automatically:
-        # - acks=all
-        # - retries=5
-        # - linger.ms=5
-    })
+    producer = KafkaProducer(
+        {
+            "bootstrap.servers": BOOTSTRAP_SERVERS,
+            # Corporate defaults are applied automatically:
+            # - acks=all
+            # - retries=5
+            # - linger.ms=5
+        }
+    )
 
     try:
         for i in range(count):

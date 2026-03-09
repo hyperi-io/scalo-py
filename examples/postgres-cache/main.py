@@ -22,7 +22,6 @@ from datetime import datetime
 from hyperi_pylib.cache import PostgresCache, generate_cache_key
 from hyperi_pylib.logger import error, info, success
 
-
 # Default DSN for local development
 DEFAULT_DSN = "postgresql://postgres:postgres@localhost:5432/cache_example"
 
