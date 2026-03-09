@@ -23,11 +23,8 @@
 ## Installation
 
 ```bash
-# Install hyperi-pylib with CLI support
-pip install hyperi-pylib[cli]
-
-# For development (includes all dependencies)
-pip install hyperi-pylib[dev,cli]
+# Install hyperi-pylib (cli extras are included in the core package)
+uv add hyperi-pylib
 ```
 
 ---
@@ -338,8 +335,6 @@ def run(log_level: str = Option("info")):  # Use Enum for validation!
 
 ### 7. Follow "Clarity Over Cleverness" Code Style
 
-See [PYTHON-STANDARDS.md](../ci/docs/standards/PYTHON-STANDARDS.md) for complete code style standards.
-
 **✅ Good:**
 
 ```python
@@ -417,10 +412,9 @@ def deploy(env: str = Option(...)):
 
 ```python
 from hyperi_pylib.cli import Typer
-from hyperi_pylib.logger import get_logger
+from hyperi_pylib.logger import logger
 
 app = Typer()
-logger = get_logger(__name__)
 
 @app.command()
 def process():
@@ -585,14 +579,38 @@ myapp deploy --help
 
 ---
 
+## DfeApp: Service CLI Framework
+
+For Python DFE services, use `DfeApp` instead of building a raw Typer CLI.
+It provides `run`, `version`, and `config-check` subcommands automatically:
+
+```python
+from hyperi_pylib.cli import DfeApp, VersionInfo
+
+class MyService(DfeApp):
+    name = "my-service"
+    env_prefix = "MY_SVC"
+
+    def version_info(self) -> VersionInfo:
+        return VersionInfo(self.name, "1.0.0")
+
+    async def run_service_async(self, config) -> None:
+        ...
+
+if __name__ == "__main__":
+    MyService().cli()
+```
+
+Use raw Typer for tools and utilities; use `DfeApp` for long-running services.
+
 ## Examples
 
 Complete examples are available in:
 
-- [hyperi-pylib/cli/examples.py](../src/hyperi-pylib/cli/examples.py)
-- [hyperi-pylib/cli/output.py](../src/hyperi-pylib/cli/output.py) - Output utilities
-- [hyperi-pylib/cli/options.py](../src/hyperi-pylib/cli/options.py) - Reusable options
-- [hyperi-pylib/cli/version.py](../src/hyperi-pylib/cli/version.py) - Version handling
+- [src/hyperi_pylib/cli/examples.py](../src/hyperi_pylib/cli/examples.py)
+- [src/hyperi_pylib/cli/output.py](../src/hyperi_pylib/cli/output.py) - Output utilities
+- [src/hyperi_pylib/cli/options.py](../src/hyperi_pylib/cli/options.py) - Reusable options
+- [src/hyperi_pylib/cli/version.py](../src/hyperi_pylib/cli/version.py) - Version handling
 - [Typer documentation](https://typer.tiangolo.com/tutorial/)
 
 ---
@@ -618,8 +636,3 @@ Complete examples are available in:
 - Make all options required (provide defaults)
 - Write dense, clever code
 
----
-
-**Last Updated:** 2025-11-07
-**Version:** 1.0.0
-**Status:** Mandatory for all hyperi-pylib CLI applications

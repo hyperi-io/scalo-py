@@ -243,9 +243,7 @@ spec:
 
 ```python
 from hyperi_pylib.config import get_mount_config, get_environment
-from hyperi_pylib.logger import get_logger
-
-logger = get_logger("my-service")
+from hyperi_pylib.logger import logger
 
 # Auto-detects HELM deployment
 env = get_environment()  # Returns: "kubernetes"
@@ -511,7 +509,3 @@ class MountConfig:
     logs_dir: Optional[Path]     # Log files
 ```
 
-## Version History
-
-- **v1.6.0** - Added HELM/Docker auto-detection, database helpers
-- **v1.5.0** - Initial container-aware configuration

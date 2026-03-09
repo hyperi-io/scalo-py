@@ -1,193 +1,85 @@
 # hyperi-pylib Testing Guide
 
-## Test Requirements
-
-### Prerequisites
-
-**Required Tools:**
+## Prerequisites
 
 - Python 3.12+
-- Docker (for container deployment tests)
-- Minikube (for Kubernetes/Helm tests)
-- Helm (for Helm deployment tests)
-- kubectl (installed via Minikube)
-
-**Minikube Installation:**
-Follow the official installation guide: <https://minikube.sigs.k8s.io/docs/start/?arch=%2Flinux%2Fx86-64%2Fstable%2Fbinary%20download>
-
-**Note:** No kubectl alias is required. Tests use `kubectl` directly (Minikube provides it).
-
-### Test Infrastructure
-
-**Minikube Behavior:**
-
-- K8s/Helm tests automatically start Minikube if not running
-- Tests deploy to Minikube cluster
-- Tests clean up and stop Minikube after completion
-- Each test run is isolated (fresh Minikube instance)
-
-**Docker Behavior:**
-
-- Tests build actual Docker images
-- Tests run real containers
-- Tests verify container behavior (logs, environment detection)
-- Tests clean up containers and images after each run
+- `uv` package manager
+- `hyperi-ci` CLI: `uv tool install hyperi-ci`
+- Docker (for integration tests requiring external services)
 
 ## Running Tests
 
-### All Tests
+### Via Make (Recommended)
 
 ```bash
-# Run complete test suite (unit + integration + e2e)
-ci/.venv/bin/pytest tests/ -v
+make test          # Runs the full test suite via hyperi-ci
 ```
 
-### Test Categories
+### Directly with pytest
 
 ```bash
-# Unit tests only (fast, no external dependencies)
-ci/.venv/bin/pytest tests/unit/ -v
+uv run pytest tests/ -v
 
-# Integration tests (Docker + K8s/Helm)
-ci/.venv/bin/pytest tests/integration/ -v
+# By category
+uv run pytest tests/unit/ -v         # Fast, no external dependencies
+uv run pytest tests/integration/ -v  # Requires Docker for services
+uv run pytest tests/e2e/ -v          # End-to-end scenarios
 
-# E2E tests (application-level)
-ci/.venv/bin/pytest tests/e2e/ -v
+# By marker
+uv run pytest -m unit
+uv run pytest -m integration
 ```
 
-### Specific Test Suites
+### Specific Test
 
 ```bash
-# Docker deployment tests
-ci/.venv/bin/pytest tests/integration/test_docker_container.py -v
-ci/.venv/bin/pytest tests/integration/test_container_deployment.py::TestDockerDeployment -v
-
-# Kubernetes/Helm deployment tests
-ci/.venv/bin/pytest tests/integration/test_container_deployment.py::TestHelmBasedDeployment -v
-ci/.venv/bin/pytest tests/integration/test_container_deployment.py::TestHelmDeployment -v
+uv run pytest tests/unit/test_cli_app.py::TestDfeApp::test_version_command -v
 ```
 
-### Single Test
+## Coverage
 
 ```bash
-# Run specific test
-ci/.venv/bin/pytest tests/unit/test_application.py::TestApplication::test_api_application_creation -v
+uv run pytest --cov=src/hyperi_pylib --cov-report=term-missing
+```
+
+Minimum 80% enforced by CI.
+
+## Test Markers
+
+Defined in `pyproject.toml`:
+
+| Marker | Description |
+|--------|-------------|
+| `unit` | Fast, no external dependencies |
+| `integration` | Requires Docker / external services |
+| `e2e` | Full end-to-end scenarios |
+
+## Kafka Integration Tests
+
+Kafka tests use a Docker Compose fixture:
+
+```bash
+docker compose -f docker-compose.kafka.yml up -d
+uv run pytest tests/integration/ -m integration -v
+docker compose -f docker-compose.kafka.yml down
 ```
 
 ## Test Logging
 
-All test runs log to `/logs` directory:
-
-- **Active log**: `logs/<test-name>.log` (current run)
-- **Previous logs**: `logs/<test-name>-YYYYMMDD-HHMMSS.log` (archived on each run)
-
-Example:
-
-```bash
-# Current run
-logs/test-full-run.log
-
-# Previous runs (auto-archived)
-logs/test-full-run-20251009-141500.log
-logs/test-full-run-20251009-120000.log
-```
-
-## Test Fixtures
-
-Test fixtures are stored in `tests/integration/fixtures/` using standardized naming:
-
-- Format: `test_<suite>_<N>.txt`
-- Example: `test_container_deployment_1.txt`, `test_docker_container_5.txt`
-- Fixtures contain code snippets, Dockerfiles, Helm charts, K8s manifests
-
-## Integration Test Details
-
-### Docker Tests
-
-**What they test:**
-
-- Environment detection (Docker vs bare metal)
-- Container configuration
-- Application behavior in containers
-- Logging and output
-
-**How they work:**
-
-1. Create temporary directory
-2. Copy hyperi-pylib source + pyproject.toml
-3. Generate Dockerfile from fixture
-4. Build Docker image
-5. Run container
-6. Verify behavior (logs, HTTP endpoints, etc.)
-7. Clean up container and image
-
-### Helm/K8s Tests
-
-**What they test:**
-
-- Helm chart deployment
-- Kubernetes pod creation
-- Service exposure
-- ConfigMap mounting
-- Environment variable injection
-
-**How they work:**
-
-1. Start Minikube (if not running)
-2. Create namespace
-3. Generate Helm chart from fixtures
-4. Create ConfigMaps with app code
-5. Deploy via `helm install`
-6. Wait for pods to be ready
-7. Verify deployment (pod status, logs, services)
-8. Clean up (helm uninstall, delete namespace)
-9. Stop Minikube
+Logs to `tests/logs/pytest/hyperi-pylib.log` (configured in `pyproject.toml`).
 
 ## Troubleshooting
 
-### Minikube Issues
+Integration tests skip when external services are unavailable. Check the service
+is running before assuming a test is broken:
 
 ```bash
-# Check Minikube status
-minikube status
-
-# Start Minikube manually
-minikube start
-
-# Reset Minikube
-minikube delete && minikube start
-
-# View Minikube logs
-minikube logs
+docker compose -f docker-compose.kafka.yml ps
+docker ps | grep postgres
 ```
 
-### Docker Issues
+Ensure the package is installed in dev mode if you see import errors:
 
 ```bash
-# Check Docker daemon
-docker info
-
-# View test containers (including stopped)
-docker ps -a --filter "name=hyperi-pylib-test"
-
-# Clean up test artifacts
-docker container prune
-docker image prune
+uv sync
 ```
-
-### Test Timeouts
-
-Helm tests have timeouts (60s-90s). If tests timeout:
-
-1. Check Minikube is running: `minikube status`
-2. Check pod events: `kubectl get events -n <namespace>`
-3. Check pod logs: `kubectl logs -n <namespace> <pod-name>`
-4. Increase timeout in test if needed
-
-## Test Coverage
-
-- **Unit tests**: 153 passed (core functionality, no dependencies)
-- **Integration tests**: Docker + K8s/Helm deployment
-- **E2E tests**: Full application scenarios (API, daemon, oneshot)
-
-Total: 180+ tests
