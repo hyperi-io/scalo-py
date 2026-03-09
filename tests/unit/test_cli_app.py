@@ -296,7 +296,7 @@ class TestDfeApp:
         app = _SyncApp()
         typer_app = _build_typer_app(app)
         result = runner.invoke(typer_app, [])
-        assert result.exit_code == 0
+        assert result.exit_code == 2
         assert "run" in result.output
 
     def test_verbose_and_quiet_mutually_exclusive(self):
