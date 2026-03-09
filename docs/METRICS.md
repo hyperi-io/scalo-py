@@ -172,11 +172,10 @@ content_type = metrics.get_content_type()
 ## FastAPI Integration
 
 ```python
-from hyperi_pylib import Application
+from fastapi import FastAPI, Response
 from hyperi_pylib.metrics import create_metrics
-from fastapi import Response
 
-app = Application.api(name="my-api")
+app = FastAPI()
 metrics = create_metrics("my-api")
 
 @app.get("/metrics")
@@ -188,39 +187,10 @@ def metrics_endpoint():
 
 @app.get("/users")
 def get_users():
-    # Track request
     metrics.counter("users_requests").inc()
-
     users = fetch_users()
-
-    # Track result count
     metrics.gauge("users_count").set(len(users))
-
     return users
-```
-
-## Automatic Application Metrics
-
-Applications automatically track metrics based on profile:
-
-### API Application
-
-```python
-app = Application.api(name="my-api", profile="prod")
-# Automatic metrics:
-# - http_requests_total{method,path,status}
-# - http_request_duration_seconds{method,path}
-# - http_request_size_bytes{method,path}
-# - http_response_size_bytes{method,path}
-```
-
-### Daemon Application
-
-```python
-app = Application.daemon(name="worker", profile="prod")
-# Automatic metrics:
-# - task_execution_total{task,status}  # started/success/failed
-# - task_execution_duration_seconds{task}
 ```
 
 ## Process Metrics
@@ -305,10 +275,10 @@ OpenTelemetry backend automatically converts to OTEL conventions:
 ## Example: Complete Application
 
 ```python
-from hyperi_pylib import Application
+from fastapi import FastAPI, Response
 from hyperi_pylib.metrics import create_metrics
 
-app = Application.api(name="shop-api", profile="prod")
+app = FastAPI()
 metrics = create_metrics("shop-api")
 
 # Custom business metrics

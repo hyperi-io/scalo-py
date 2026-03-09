@@ -37,16 +37,16 @@ api_key = await secrets.get("api_key")
 
 ```bash
 # Core only (file provider)
-pip install hyperi-pylib
+uv add hyperi-pylib
 
 # With OpenBao/Vault support
-pip install hyperi-pylib[secrets-vault]
+uv add hyperi-pylib[secrets-vault]
 
 # With AWS Secrets Manager support
-pip install hyperi-pylib[secrets-aws]
+uv add hyperi-pylib[secrets-aws]
 
 # All secrets providers
-pip install hyperi-pylib[secrets-all]
+uv add hyperi-pylib[secrets-all]
 ```
 
 ## Providers
@@ -540,12 +540,9 @@ python app.py
 
 | Issue | Solution |
 |-------|----------|
-| `ProviderNotConfiguredError` | Ensure provider config is present and install extras (`pip install hyperi-pylib[secrets-vault]`) |
+| `ProviderNotConfiguredError` | Ensure provider config is present and install extras (`uv add hyperi-pylib[secrets-vault]`) |
 | `SecretNotFoundError` | Verify secret path/name exists in provider |
 | Vault auth failing | Check role_id/secret_id, verify AppRole policy |
 | AWS auth failing | Verify IAM permissions, check region setting |
 | Stale cache not working | Ensure cache directory is writable, check grace period |
 
-## Version History
-
-- **v2.16.0** - Initial secrets module with file, OpenBao, AWS providers

@@ -11,16 +11,20 @@ hyperi-pylib provides modular infrastructure components that work together or in
 | **logger** | Structured logging with RFC 3339 timestamps | [LOGGING.md](LOGGING.md) |
 | **config** | 7-layer configuration cascade | [CONFIG.md](CONFIG.md) |
 | **metrics** | Prometheus/OpenTelemetry metrics | [METRICS.md](METRICS.md) |
-| **cache** | Disk and PostgreSQL caching | See module docstrings |
-| **kafka** | Kafka producer/consumer/admin | See module docstrings |
+| **cache** | PostgreSQL-backed distributed cache | See module docstrings |
+| **kafka** | Kafka producer/consumer/admin | [KAFKA.md](KAFKA.md) |
 | **database** | Database URL construction | See module docstrings |
 | **runtime** | Container-aware runtime paths | [RUNTIME-ARCHITECTURE.md](RUNTIME-ARCHITECTURE.md) |
 | **anonymizer** | PII detection and anonymisation | [ANONYMIZER.md](ANONYMIZER.md) |
+| **secrets** | Vault / AWS Secrets Manager providers | [SECRETS.md](SECRETS.md) |
+| **cli** | DfeApp CLI framework | See module docstrings |
+| **http** | httpx client with stamina retries | See module docstrings |
+| **expression** | Common Expression Language (CEL) | See module docstrings |
 
 ## Quick Start
 
 ```bash
-pip install hyperi-pylib
+uv add hyperi-pylib
 ```
 
 ### Logging
@@ -149,25 +153,24 @@ See the [examples/](../examples/) directory for complete, runnable projects:
 
 ## Additional Documentation
 
-- **[CLI Standards](CLI-STANDARDS.md)** - Typer framework standards
+- **[CLI Standards](CLI-STANDARDS.md)** - Typer/DfeApp framework standards
 - **[Testing](TESTING.md)** - Testing patterns and best practices
-- **[Container Deployment](CONTAINER_DEPLOYMENT.md)** - Docker and Kubernetes deployment
 - **[Profiles](PROFILES.md)** - Environment-based configuration profiles
+- **[Secrets](SECRETS.md)** - Vault/AWS secrets management
+- **[Kafka](KAFKA.md)** - Kafka client design and usage
 
 ## Installation Options
 
 ```bash
 # Core only
-pip install hyperi-pylib
+uv add hyperi-pylib
 
-# With caching (cashews + psycopg)
-pip install hyperi-pylib[cache]
-
-# With metrics
-pip install hyperi-pylib[metrics]
-
-# All features
-pip install hyperi-pylib[all]
+# Common combinations
+uv add "hyperi-pylib[metrics]"
+uv add "hyperi-pylib[cache]"
+uv add "hyperi-pylib[kafka]"
+uv add "hyperi-pylib[secrets-vault]"
+uv add "hyperi-pylib[secrets-aws]"
 ```
 
 ## Environment Variables
@@ -175,22 +178,13 @@ pip install hyperi-pylib[all]
 | Variable | Description | Default |
 |----------|-------------|---------|
 | `LOG_LEVEL` | Logging level | INFO |
-| `HS_LOG_FORMAT` | Log format (console/json) | auto-detect |
+| `LOG_FORMAT` | Log format (console/json) | auto-detect |
 | `HYPERI_CONFIG_DSN` | PostgreSQL config loader DSN | unset |
 
 ## Repository
 
 - **GitHub**: <https://github.com/hyperi-io/hyperi-pylib>
 - **Issues**: <https://github.com/hyperi-io/hyperi-pylib/issues>
-
-## Deprecated: Application Framework
-
-The `Application.*` framework (API, CLI, Daemon, MCP, Oneshot types) was removed in v2.13.6.
-It was experimental and had zero production usage. The documentation files (APP-*.md) are
-preserved for reference but describe code that is no longer available.
-
-Use the modular APIs directly (logger, config, metrics, etc.) for production code.
-See the [examples/](../examples/) directory for current usage patterns.
 
 ## License
 
