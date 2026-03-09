@@ -74,12 +74,21 @@ def configure_cache(
     """
     global _source_ttls, _configured, _metrics, _hits_counter, _misses_counter
 
-    # Build disk URL with optional size limit
-    disk_url = f"disk://?directory={directory}&timeout=1"
-    if size_limit is not None:
-        disk_url += f"&size_limit={size_limit}"
+    # Use disk backend if diskcache is installed, otherwise fall back to memory
+    try:
+        import diskcache as _dc  # noqa: F401
 
-    cache.setup(disk_url)
+        backend_url = f"disk://?directory={directory}&timeout=1"
+        if size_limit is not None:
+            backend_url += f"&size_limit={size_limit}"
+    except ImportError:
+        backend_url = "mem://"
+        logger.warning(
+            "diskcache not installed, using in-memory cache backend",
+            directory=directory,
+        )
+
+    cache.setup(backend_url)
 
     # Store TTL configuration
     _source_ttls = {"_default": default_ttl}
