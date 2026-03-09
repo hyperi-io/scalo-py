@@ -1,3 +1,16 @@
+## [2.24.2](https://github.com/hyperi-io/hyperi-pylib/compare/v2.24.1...v2.24.2) (2026-03-09)
+
+
+### Bug Fixes
+
+* add semgrep to dev dependencies ([713ebd0](https://github.com/hyperi-io/hyperi-pylib/commit/713ebd0a2553d71be69c58880124206dc18a71fa))
+* migrate to hyperi-ci ([1aa77bf](https://github.com/hyperi-io/hyperi-pylib/commit/1aa77bfcdb04115662df721a4f83664200eaf361))
+* remove semgrep from dev deps, add diskcache fallback ([938fff8](https://github.com/hyperi-io/hyperi-pylib/commit/938fff82df9fd91e97b7d073e69084a7c03d3991))
+* replace pyright with ty type checker ([a0d92ae](https://github.com/hyperi-io/hyperi-pylib/commit/a0d92aed3673a1ef6af06c037062924ef6101dea))
+* resolve quality check failures for CI ([4cfe9fa](https://github.com/hyperi-io/hyperi-pylib/commit/4cfe9fa880f6c8088d860a7b3791a4b42f7a8c28))
+* set publish-target to oss for public PyPI ([773e5b5](https://github.com/hyperi-io/hyperi-pylib/commit/773e5b590f303ff5a0758a1300ae06abc4d42eeb))
+* update CLI test for typer 0.24 exit code change ([6cd981e](https://github.com/hyperi-io/hyperi-pylib/commit/6cd981ec7594a65fc5b15b824e891b95edc1b5f7))
+
 ## [2.24.1](https://github.com/hyperi-io/hyperi-pylib/compare/v2.24.0...v2.24.1) (2026-03-04)
 
 
