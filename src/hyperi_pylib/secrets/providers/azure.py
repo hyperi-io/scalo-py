@@ -150,12 +150,11 @@ class AzureProvider(SecretProvider):
 
         try:
             credential = self._async_credential()
-            async with credential:
-                async with AsyncSecretClient(vault_url=self._config.vault_url, credential=credential) as client:
-                    secret = await client.get_secret(path)
-                    data = self._parse_value(secret.value, path, key)
-                    version = secret.properties.version
-                    return SecretValue(data=data, fetched_at=datetime.now(UTC), version=version, source=self.name)
+            async with credential, AsyncSecretClient(vault_url=self._config.vault_url, credential=credential) as client:
+                secret = await client.get_secret(path)
+                data = self._parse_value(secret.value, path, key)
+                version = secret.properties.version
+                return SecretValue(data=data, fetched_at=datetime.now(UTC), version=version, source=self.name)
         except ResourceNotFoundError:
             raise SecretNotFoundError(path, self.name)
         except ClientAuthenticationError as e:
@@ -203,10 +202,9 @@ class AzureProvider(SecretProvider):
 
         try:
             credential = self._async_credential()
-            async with credential:
-                async with AsyncSecretClient(vault_url=self._config.vault_url, credential=credential) as client:
-                    async for _ in client.list_properties_of_secrets(max_page_size=1):
-                        break
+            async with credential, AsyncSecretClient(vault_url=self._config.vault_url, credential=credential) as client:
+                async for _ in client.list_properties_of_secrets(max_page_size=1):
+                    break
             return True
         except Exception:
             return False
