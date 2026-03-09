@@ -10,45 +10,60 @@ Enterprise infrastructure for all HyperI Python projects — configuration, logg
 
 ## Features
 
-Core modules, always installed:
+Core modules — always installed (`uv add hyperi-pylib`):
 
-| Module | Description |
-|---|---|
-| `logging` | Structured JSON logging with automatic sensitive data masking |
-| `config` | 8-layer cascade (CLI → ENV → .env → PostgreSQL → YAML → defaults), container-aware |
-| `runtime` | Container/K8s/local environment detection with standard path resolution |
-| `database` | Connection URL builders for PostgreSQL, Redis, and others |
-| `http` | httpx client with stamina retry support |
-| `metrics` | Prometheus metrics (counters, gauges, histograms) |
-| `expression` | Common Expression Language (CEL) evaluation |
-| `cli` | `DfeApp` framework — subclass to get `run`/`version`/`config-check` for free |
-| `harness` | Timeout monitors and utility helpers |
-| `version-check` | Startup check for new hyperi-pylib releases |
+| Module | Description | Third-party deps |
+|---|---|---|
+| `logging` | Structured JSON logging with automatic sensitive data masking | loguru |
+| `config` | 8-layer cascade (CLI → ENV → .env → PostgreSQL → YAML → defaults), container-aware | dynaconf, pyyaml, python-dotenv, mergedeep, tomli-w, dulwich |
+| `runtime` | Container/K8s/local environment detection with standard path resolution | stdlib only |
+| `database` | Connection URL builders for PostgreSQL, Redis, and others | stdlib only |
+| `cli` | `DfeApp` framework — subclass to get `run`/`version`/`config-check` for free | typer |
+| `harness` | Timeout monitors and utility helpers | stdlib only |
+| `version-check` | Startup check for new hyperi-pylib releases (skipped if httpx absent) | httpx (lazy) |
+
+Optional modules — enabled by installing the matching extra:
+
+| Module | Extra | Third-party deps |
+|---|---|---|
+| `http` | `http` | httpx, stamina |
+| `metrics` | `metrics` | prometheus-client, psutil |
+| `expression` | `expression` | common-expression-language (CEL via Rust/PyO3) |
+| `cache` | `cache` | cashews, msgpack, psycopg[binary,pool] |
+| `kafka` | `kafka` | confluent-kafka, genson |
+| `opentelemetry` | `opentelemetry` | opentelemetry SDK + OTLP + Prometheus exporters |
 
 ## Installation
 
 > **Package naming:** `hyperi-pylib` on PyPI, `hyperi_pylib` for Python imports.
 
 ```bash
-# Core package
+# Core only (logging, config, runtime, database, cli, harness, version-check)
 uv add hyperi-pylib
 
-# With optional extras
-uv add "hyperi-pylib[cache,kafka]"
+# With common extras
+uv add "hyperi-pylib[http,metrics,kafka]"
+
+# Full stack
+uv add "hyperi-pylib[http,metrics,expression,cache,kafka,opentelemetry]"
 ```
 
 ### Optional Extras
 
-| Extra | Installs | Why optional |
+| Extra | Packages | Size |
 |---|---|---|
-| `opentelemetry` | OpenTelemetry SDK + exporters | Large SDK set; only needed for OTel trace/metric export |
-| `cache` | cashews + msgpack + psycopg3 | psycopg3 requires C binary; only needed for `PostgresCache` |
-| `kafka` | confluent-kafka + genson | Heavy C extension (~10 MB); only Kafka services need it |
-| `presidio` | Presidio analyser + anonymiser | Pulls in spaCy + ML models (~500 MB); very niche use |
-| `secrets` | All backends: Vault + AWS + GCP + Azure | Full secrets stack — all cloud provider deps combined |
-| `secrets-aws` | AWS Secrets Manager via boto3 | boto3 is large (~100 MB); only AWS-deployed services need it |
-| `secrets-gcp` | GCP Secret Manager | grpcio + googleapis (~80-100 MB); only GCP-deployed services need it |
-| `secrets-azure` | Azure Key Vault | azure-identity + azure-keyvault-secrets (~50 MB); only Azure-deployed services need it |
+| `http` | httpx + stamina | ~1 MB |
+| `metrics` | prometheus-client + psutil | ~1 MB |
+| `expression` | common-expression-language (CEL) | ~6 MB |
+| `cache` | cashews + msgpack + psycopg[binary,pool] | ~14 MB (psycopg C libs) |
+| `kafka` | confluent-kafka + genson | ~11 MB (C libs) |
+| `opentelemetry` | OpenTelemetry SDK + exporters | ~4 MB |
+| `presidio` | Presidio analyser + anonymiser | ~500 MB (spaCy + ML models) |
+| `secrets` | All secrets backends (Vault + AWS + GCP + Azure) | — |
+| `secrets-vault` | OpenBao / HashiCorp Vault (uses `http` extra) | convenience marker |
+| `secrets-aws` | AWS Secrets Manager via boto3 | ~100 MB |
+| `secrets-gcp` | GCP Secret Manager | ~80–100 MB |
+| `secrets-azure` | Azure Key Vault | ~50 MB |
 
 ## Quick Start
 
