@@ -1,7 +1,7 @@
 # hyperi-pylib
 
 <!-- BADGES:START -->
-[![Build Status](https://github.com/hyperi-io/hyperi-pylib/workflows/CI%20Publish/badge.svg)](https://github.com/hyperi-io/hyperi-pylib/actions)
+[![Build Status](https://github.com/hyperi-io/hyperi-pylib/workflows/CI/badge.svg)](https://github.com/hyperi-io/hyperi-pylib/actions)
 [![Python Version](https://img.shields.io/badge/python-3.12%2B-blue)](https://www.python.org/)
 [![License](https://img.shields.io/badge/license-FSL--1.1--ALv2-blue)](LICENSE)
 <!-- BADGES:END -->
