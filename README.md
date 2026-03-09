@@ -1,7 +1,7 @@
 # hyperi-pylib
 
 <!-- BADGES:START -->
-[![Build Status](https://github.com/hyperi-io/hyperi-pylib/workflows/CI/badge.svg)](https://github.com/hyperi-io/hyperi-pylib/actions)
+[![Build Status](https://github.com/hyperi-io/hyperi-pylib/actions/workflows/ci.yml/badge.svg)](https://github.com/hyperi-io/hyperi-pylib/actions)
 [![Python Version](https://img.shields.io/badge/python-3.12%2B-blue)](https://www.python.org/)
 [![License](https://img.shields.io/badge/license-FSL--1.1--ALv2-blue)](LICENSE)
 <!-- BADGES:END -->
@@ -10,19 +10,20 @@ Enterprise infrastructure for all HyperI Python projects — configuration, logg
 
 ## Features
 
-- **Logging**: Structured JSON logging with automatic sensitive data masking
-- **Configuration**: 7-layer cascade (ENV → .env → YAML → defaults), container-aware
-- **Runtime**: Container/K8s/local environment detection with standard path resolution
-- **Database**: Connection URL builders for PostgreSQL, Redis, and others
-- **Metrics**: Prometheus and OpenTelemetry backends
-- **Kafka**: Producer, consumer, admin client, and schema analysis
-- **Cache**: PostgreSQL-backed distributed cache (msgpack serialisation, psycopg3)
-- **HTTP**: httpx-based client with stamina retry support
-- **Secrets**: Vault and AWS Secrets Manager providers
-- **PII Anonymisation**: ML-based anonymisation via Presidio
-- **Expression**: Common Expression Language (CEL) evaluation
-- **CLI**: `DfeApp` framework — subclass to get `run`/`version`/`config-check` for free
-- **Harness**: Timeout monitors and utility helpers
+Core modules, always installed:
+
+| Module | Description |
+|---|---|
+| `logging` | Structured JSON logging with automatic sensitive data masking |
+| `config` | 7-layer cascade (ENV → .env → YAML → defaults), container-aware |
+| `runtime` | Container/K8s/local environment detection with standard path resolution |
+| `database` | Connection URL builders for PostgreSQL, Redis, and others |
+| `http` | httpx client with stamina retry support |
+| `metrics` | Prometheus metrics (counters, gauges, histograms) |
+| `expression` | Common Expression Language (CEL) evaluation |
+| `cli` | `DfeApp` framework — subclass to get `run`/`version`/`config-check` for free |
+| `harness` | Timeout monitors and utility helpers |
+| `version-check` | Startup check for new hyperi-pylib releases |
 
 ## Installation
 
@@ -33,26 +34,21 @@ Enterprise infrastructure for all HyperI Python projects — configuration, logg
 uv add hyperi-pylib
 
 # With optional extras
-uv add "hyperi-pylib[metrics,cache,kafka]"
+uv add "hyperi-pylib[cache,kafka]"
 ```
 
 ### Optional Extras
 
-| Extra | Installs |
-|---|---|
-| `metrics` | Prometheus client |
-| `opentelemetry` | OpenTelemetry SDK + exporters |
-| `cache` | cashews + msgpack + psycopg3 |
-| `kafka` | confluent-kafka + genson |
-| `http` | httpx + stamina |
-| `api` | FastAPI + uvicorn |
-| `presidio` | Presidio analyser + anonymiser |
-| `expression` | Common Expression Language |
-| `secrets-vault` | OpenBao/Vault via httpx |
-| `secrets-aws` | AWS Secrets Manager via boto3 |
-| `secrets-all` | All secrets providers |
-| `license` | License validation (cryptography + httpx) |
-| `version-check` | Version update checks (httpx) |
+| Extra | Installs | Why optional |
+|---|---|---|
+| `opentelemetry` | OpenTelemetry SDK + exporters | Large SDK set; only needed for OTel trace/metric export |
+| `cache` | cashews + msgpack + psycopg3 | psycopg3 requires C binary; only needed for `PostgresCache` |
+| `kafka` | confluent-kafka + genson | Heavy C extension (~10 MB); only Kafka services need it |
+| `presidio` | Presidio analyser + anonymiser | Pulls in spaCy + ML models (~500 MB); very niche use |
+| `secrets` | All backends: Vault + AWS + GCP + Azure | Full secrets stack — all cloud provider deps combined |
+| `secrets-aws` | AWS Secrets Manager via boto3 | boto3 is large (~100 MB); only AWS-deployed services need it |
+| `secrets-gcp` | GCP Secret Manager | grpcio + googleapis (~80-100 MB); only GCP-deployed services need it |
+| `secrets-azure` | Azure Key Vault | azure-identity + azure-keyvault-secrets (~50 MB); only Azure-deployed services need it |
 
 ## Quick Start
 
@@ -156,8 +152,9 @@ Config always uses the Dynaconf cascade — no bespoke loading needed.
 ## Development
 
 ```bash
-# Full QA pipeline (lint, type-check, security, tests, build)
-ci/scripts/local/build-local.sh
+make quality   # lint, type-check, security audit
+make test      # run test suite
+make build     # build wheel
 ```
 
 ## License

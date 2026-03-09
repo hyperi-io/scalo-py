@@ -12,6 +12,8 @@ class ProviderType(Enum):
     FILE = "file"
     OPENBAO = "openbao"
     AWS = "aws"
+    GCP = "gcp"
+    AZURE = "azure"
 
 
 @dataclass
@@ -99,10 +101,13 @@ class SourceConfig:
     """File path or Vault path."""
 
     secret_id: str | None = None
-    """AWS secret ID."""
+    """AWS secret ID or GCP/Azure secret name."""
 
     key: str | None = None
     """Key within JSON secret."""
+
+    env_fallback: str | None = None
+    """ENV variable name to use if provider is unavailable (e.g. MY_API_KEY)."""
 
 
 @dataclass
@@ -166,6 +171,40 @@ class AWSConfig:
     """Request timeout in seconds."""
 
 
+@dataclass
+class GCPConfig:
+    """GCP Secret Manager configuration."""
+
+    project_id: str
+    """GCP project ID."""
+
+    credentials_file: str | None = None
+    """Path to service account JSON key file. None = Application Default Credentials."""
+
+    timeout_secs: int = 30
+    """Request timeout in seconds."""
+
+
+@dataclass
+class AzureConfig:
+    """Azure Key Vault configuration."""
+
+    vault_url: str
+    """Key Vault URL, e.g. https://my-vault.vault.azure.net/"""
+
+    tenant_id: str | None = None
+    """Azure AD tenant ID. None = DefaultAzureCredential chain."""
+
+    client_id: str | None = None
+    """Service principal client ID. None = DefaultAzureCredential chain."""
+
+    client_secret: str | None = None
+    """Service principal client secret. None = DefaultAzureCredential chain."""
+
+    timeout_secs: int = 30
+    """Request timeout in seconds."""
+
+
 # Type alias for rotation callbacks
 RotationCallback = Callable[[RotationEvent], None]
 
@@ -178,5 +217,7 @@ __all__ = [
     "SourceConfig",
     "OpenBaoConfig",
     "AWSConfig",
+    "GCPConfig",
+    "AzureConfig",
     "RotationCallback",
 ]
