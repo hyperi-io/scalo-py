@@ -17,4 +17,6 @@ on:
 jobs:
   ci:
     uses: hyperi-io/hyperi-ci/.github/workflows/python-ci.yml@main
+    with:
+      publish-target: oss
     secrets: inherit
