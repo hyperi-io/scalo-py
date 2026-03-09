@@ -9,7 +9,7 @@ hyperi-pylib provides modular infrastructure components that work together or in
 | Module | Description | Documentation |
 |--------|-------------|---------------|
 | **logger** | Structured logging with RFC 3339 timestamps | [LOGGING.md](LOGGING.md) |
-| **config** | 7-layer configuration cascade | [CONFIG.md](CONFIG.md) |
+| **config** | 8-layer configuration cascade | [CONFIG.md](CONFIG.md) |
 | **metrics** | Prometheus/OpenTelemetry metrics | [METRICS.md](METRICS.md) |
 | **cache** | PostgreSQL-backed distributed cache | See module docstrings |
 | **kafka** | Kafka producer/consumer/admin | [KAFKA.md](KAFKA.md) |
@@ -46,7 +46,7 @@ logger.info("Processing user", user_id=123, action="login")
 ```python
 from hyperi_pylib.config import settings
 
-# Access configuration (automatic 7-layer cascade)
+# Access configuration (automatic 8-layer cascade)
 host = settings.get("database.host", "localhost")
 port = settings.get("database.port", 5432)
 

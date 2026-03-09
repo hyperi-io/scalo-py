@@ -769,7 +769,7 @@ def get_settings():
         settings.get("api.timeout", 30)
 
     Returns:
-        Dynaconf settings object with 7-layer cascade built-in
+        Dynaconf settings object with 8-layer cascade built-in
     """
     return settings
 
@@ -814,7 +814,7 @@ def get_config(
     Get configuration with optional additional file sources.
 
     Creates a NEW Dynaconf instance with custom file sources while
-    preserving the automatic 7-layer cascade behavior.
+    preserving the automatic 8-layer cascade behavior.
 
     **Use Cases:**
 

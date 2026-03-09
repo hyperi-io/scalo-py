@@ -9,7 +9,7 @@ Each example is a complete, runnable project with its own `pyproject.toml`, test
 | Example | Description | Key Features |
 |---------|-------------|--------------|
 | [basic-logging](basic-logging/) | Structured logging | RFC 3339 timestamps, log levels, structured context |
-| [config-cascade](config-cascade/) | Configuration system | 7-layer cascade, YAML/ENV, environment detection |
+| [config-cascade](config-cascade/) | Configuration system | 8-layer cascade, YAML/ENV, environment detection |
 | [postgres-cache](postgres-cache/) | PostgreSQL cache | Multi-pod cache, TTL expiration, bulk invalidation |
 | [kafka-producer-consumer](kafka-producer-consumer/) | Kafka client | Producer/consumer, corporate defaults, health monitoring |
 | [fastapi-metrics](fastapi-metrics/) | Prometheus metrics | Counters, gauges, histograms, `/metrics` endpoint |

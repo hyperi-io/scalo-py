@@ -36,7 +36,7 @@ export HYPERI_LIB_NO_LOGGER_CONFIG=1  # Configure manually
 
 ## Configuration
 
-Override defaults via ENV variables or settings.yaml (7-layer cascade).
+Override defaults via ENV variables or settings.yaml (8-layer cascade).
 
 ### Environment Variables
 

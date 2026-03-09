@@ -15,7 +15,7 @@ Core modules, always installed:
 | Module | Description |
 |---|---|
 | `logging` | Structured JSON logging with automatic sensitive data masking |
-| `config` | 7-layer cascade (ENV → .env → YAML → defaults), container-aware |
+| `config` | 8-layer cascade (CLI → ENV → .env → PostgreSQL → YAML → defaults), container-aware |
 | `runtime` | Container/K8s/local environment detection with standard path resolution |
 | `database` | Connection URL builders for PostgreSQL, Redis, and others |
 | `http` | httpx client with stamina retry support |
@@ -68,7 +68,7 @@ Auto-detects console vs container — structured JSON in containers, human-reada
 ```python
 from hyperi_pylib.config import settings
 
-# Automatic cascade: ENV > .env > settings.yaml > defaults
+# Automatic cascade: CLI > ENV > .env > PostgreSQL > settings.yaml > defaults
 host = settings.database.host
 port = settings.api.port
 ```
