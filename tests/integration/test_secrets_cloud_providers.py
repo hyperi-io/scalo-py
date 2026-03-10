@@ -151,6 +151,7 @@ try:
         OpenBaoConfig,
         SecretsManager,
     )
+    from hyperi_pylib.secrets.exceptions import SecretNotFoundError
     from hyperi_pylib.secrets.providers import (
         AIOBOTOCORE_AVAILABLE,
         AZURE_AVAILABLE,
@@ -161,7 +162,6 @@ try:
         GCPProvider,
         OpenBaoProvider,
     )
-    from hyperi_pylib.secrets.exceptions import SecretNotFoundError
 except ImportError as _e:
     pytest.skip(f"secrets module not importable: {_e}", allow_module_level=True)
 
