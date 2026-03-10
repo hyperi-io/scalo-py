@@ -1,3 +1,16 @@
+## [2.24.3](https://github.com/hyperi-io/hyperi-pylib/compare/v2.24.2...v2.24.3) (2026-03-10)
+
+
+### Bug Fixes
+
+* add GCP/Azure secrets providers, ENV fallback, prefix support ([a5bd0f7](https://github.com/hyperi-io/hyperi-pylib/commit/a5bd0f76337db6d14f27b3687b6c9b7071126f62))
+* add src layout to ruff config for consistent import sorting in CI ([f5dc2ca](https://github.com/hyperi-io/hyperi-pylib/commit/f5dc2ca0cc0063c766003ebdb283266f9d6e0d3b))
+* combine nested async with statements in azure provider ([f69b0f1](https://github.com/hyperi-io/hyperi-pylib/commit/f69b0f1e6d8908e3e12d384ceff846974c2d2d42))
+* correct build badge workflow name and republish readme ([3012be4](https://github.com/hyperi-io/hyperi-pylib/commit/3012be41b31511c732031e6f2b4279a50dbf5645))
+* correct config cascade layer count from 7 to 8 ([75f0678](https://github.com/hyperi-io/hyperi-pylib/commit/75f0678985bf729815936b9973a4fdf2d5d02baa))
+* restructure to minimal core, restore optional extras with deps ([b2988cd](https://github.com/hyperi-io/hyperi-pylib/commit/b2988cd5de3ce40705421e1a3da10238c85b5716))
+* sort imports in secrets cloud providers test ([510b890](https://github.com/hyperi-io/hyperi-pylib/commit/510b89016b374b500ea6c8013be64f235b70dbb6))
+
 ## [2.24.2](https://github.com/hyperi-io/hyperi-pylib/compare/v2.24.1...v2.24.2) (2026-03-09)
 
 
