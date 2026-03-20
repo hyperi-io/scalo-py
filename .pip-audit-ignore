@@ -5,3 +5,9 @@
 # Risk: low - cache directory is application-controlled, not user-writable
 # Review: when diskcache >5.6.3 is released
 GHSA-w8v5-vhqr-4h9v
+
+# py 1.11.0 - ReDoS via Subversion info data (PYSEC-2022-42969)
+# Risk: accepted - dev-only transitive dep via interrogate, no upstream fix
+# The CVE requires a crafted Subversion repo, irrelevant to docstring checking
+# Review: when interrogate drops py dependency
+PYSEC-2022-42969
