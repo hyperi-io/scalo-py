@@ -47,7 +47,7 @@ keywords = [
     "fastapi",
 ]
 dependencies = [
-    "dynaconf>=3.2.12",
+    "dynaconf>=3.2.13",
     "loguru>=0.7.3",
     "python-dotenv>=1.0.0",
     "pyyaml>=6.0.3",
@@ -131,7 +131,7 @@ dev = [
     "boto3>=1.35.0",
     "aiobotocore>=2.15.0",
     "ruff>=0.1.0",
-    "black>=24.0.0",
+    "black>=26.3.1",
     "isort>=5.12.0",
     "ty>=0.0.21",
     "mypy>=1.0.0",
@@ -149,9 +149,9 @@ dev = [
     "faker>=33.0.0",
 ]
 docs = [
-    "sphinx>=7.0.0,<8.0.0",
+    "sphinx>=8.0.0,<10",
     "sphinx-rtd-theme>=3.0.0",
-    "myst-parser>=3.0.0",
+    "myst-parser>=5.0.0",
     "sphinx-autobuild>=2024.0.0",
 ]
 
