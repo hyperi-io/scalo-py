@@ -1,3 +1,10 @@
+## [2.24.4-dev.1](https://github.com/hyperi-io/hyperi-pylib/compare/v2.24.3...v2.24.4-dev.1) (2026-03-20)
+
+
+### Bug Fixes
+
+* update deps, resolve 4 CVEs, upgrade sphinx stack ([e1804e9](https://github.com/hyperi-io/hyperi-pylib/commit/e1804e933ed9eedc299d6f34dd337602fdd630cc))
+
 ## [2.24.3](https://github.com/hyperi-io/hyperi-pylib/compare/v2.24.2...v2.24.3) (2026-03-10)
 
 
