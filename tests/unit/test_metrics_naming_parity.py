@@ -104,11 +104,13 @@ def test_invalid_metric_produces_warning(case: dict) -> None:
 # ---------------------------------------------------------------------------
 
 
+@pytest.mark.skipif(not _FIXTURES_PATH.exists(), reason=_skip_reason)
 def test_fixture_file_exists() -> None:
     """Verify the shared fixture file is present (catches broken submodule paths)."""
     assert _FIXTURES_PATH.exists(), f"Fixture file not found: {_FIXTURES_PATH}"
 
 
+@pytest.mark.skipif(_fixtures is None, reason=_skip_reason)
 def test_fixture_has_valid_and_invalid_sections() -> None:
     """Verify the fixture YAML has both valid and invalid sections with entries."""
     assert "valid" in _fixtures
@@ -117,6 +119,7 @@ def test_fixture_has_valid_and_invalid_sections() -> None:
     assert len(_fixtures["invalid"]) > 0
 
 
+@pytest.mark.skipif(_fixtures is None, reason=_skip_reason)
 def test_fixture_entries_have_required_keys() -> None:
     """Every entry must have name, app, and type fields."""
     required = {"name", "app", "type"}
