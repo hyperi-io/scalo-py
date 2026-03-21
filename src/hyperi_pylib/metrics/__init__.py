@@ -29,6 +29,7 @@ Configuration (settings.yaml):
 """
 
 # Primary API (backend-agnostic)
+from .cardinality import CardinalityTracker
 from .manager import MetricsManager, create_metrics
 
 # Backward compatibility: Re-export Prometheus-specific classes
@@ -53,6 +54,7 @@ __all__ = [
     # Primary API
     "create_metrics",
     "MetricsManager",
+    "CardinalityTracker",
     # DFE metric groups
     "AppMetrics",
     "BackpressureMetrics",
