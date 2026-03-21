@@ -26,8 +26,10 @@ from hyperi_pylib.logger.filters import SensitiveDataFilter
 _FIXTURES_PATH = Path(__file__).parents[2] / "hyperi-ai" / "test-fixtures" / "masking-patterns.yaml"
 
 
-def _load_fixtures() -> dict:
-    """Load the shared masking patterns YAML."""
+def _load_fixtures() -> dict | None:
+    """Load the shared masking patterns YAML. Returns None if file missing (submodule not checked out)."""
+    if not _FIXTURES_PATH.exists():
+        return None
     with _FIXTURES_PATH.open() as f:
         return yaml.safe_load(f)
 
@@ -38,10 +40,13 @@ def _test_case_ids(test_cases: list[dict]) -> list[str]:
 
 
 _fixtures = _load_fixtures()
-_test_cases = _fixtures["test_cases"]
+_test_cases = _fixtures["test_cases"] if _fixtures else []
+
+_skip_reason = "hyperi-ai submodule not checked out (test-fixtures unavailable)"
 
 
-@pytest.mark.parametrize("case", _test_cases, ids=_test_case_ids(_test_cases))
+@pytest.mark.skipif(not _test_cases, reason=_skip_reason)
+@pytest.mark.parametrize("case", _test_cases, ids=_test_case_ids(_test_cases) if _test_cases else [])
 def test_masking_parity(case: dict) -> None:
     """
     Each test case in masking-patterns.yaml is exercised against SensitiveDataFilter.
