@@ -1,3 +1,11 @@
+# [2.25.0-dev.3](https://github.com/hyperi-io/hyperi-pylib/compare/v2.25.0-dev.2...v2.25.0-dev.3) (2026-03-21)
+
+
+### Bug Fixes
+
+* add ruff S,N,PT,RUF,PIE,T20 rules, replace bandit ([9b2810e](https://github.com/hyperi-io/hyperi-pylib/commit/9b2810e46009392ae76fda7c6c766a76c3162162))
+* resolve ruff S/format violations for full-repo CI check ([5bb8654](https://github.com/hyperi-io/hyperi-pylib/commit/5bb86544519112ca4ce814348ccdf71521d4dab9))
+
 # [2.25.0-dev.2](https://github.com/hyperi-io/hyperi-pylib/compare/v2.25.0-dev.1...v2.25.0-dev.2) (2026-03-21)
 
 
