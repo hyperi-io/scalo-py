@@ -38,6 +38,7 @@ from .postgres_loader import (
     get_default_loader,
     load_postgres_config,
 )
+from .reloader import ConfigReloader, ReloaderConfig
 
 __all__ = [
     # Config classes and functions
@@ -76,4 +77,7 @@ __all__ = [
     "PostgresConfigUnavailable",
     "load_postgres_config",
     "get_default_loader",
+    # Config reloader
+    "ConfigReloader",
+    "ReloaderConfig",
 ]
