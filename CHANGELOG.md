@@ -1,3 +1,10 @@
+# [2.25.0-dev.4](https://github.com/hyperi-io/hyperi-pylib/compare/v2.25.0-dev.3...v2.25.0-dev.4) (2026-03-21)
+
+
+### Bug Fixes
+
+* inline Renovate config (preset resolution broken) ([afb187d](https://github.com/hyperi-io/hyperi-pylib/commit/afb187d6ca07c1007ad7aa887b9fbda893be3d96))
+
 # [2.25.0-dev.3](https://github.com/hyperi-io/hyperi-pylib/compare/v2.25.0-dev.2...v2.25.0-dev.3) (2026-03-21)
 
 
