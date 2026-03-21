@@ -39,10 +39,27 @@ from .prometheus import (
     PrometheusMetrics,
 )
 
+# DFE metric groups (composable structs matching rustlib)
+from .dfe_groups import (
+    AppMetrics,
+    BackpressureMetrics,
+    BufferMetrics,
+    CircuitBreakerMetrics,
+    ConsumerMetrics,
+    SinkMetrics,
+)
+
 __all__ = [
     # Primary API
     "create_metrics",
     "MetricsManager",
+    # DFE metric groups
+    "AppMetrics",
+    "BackpressureMetrics",
+    "BufferMetrics",
+    "CircuitBreakerMetrics",
+    "ConsumerMetrics",
+    "SinkMetrics",
     # Backward compatibility
     "PrometheusMetrics",
     "ProcessMetrics",
