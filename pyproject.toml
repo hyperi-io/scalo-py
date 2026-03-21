@@ -272,16 +272,13 @@ ignore = [
     "UP035",
     "SIM108",
     "W191",
-    # Security rule relaxations (library code)
-    "S101",   # assert (used in tests — standard pytest pattern)
+    # Production-specific security relaxations
+    "S104",   # hardcoded-bind-all-interfaces (0.0.0.0 is intentional for containers)
     "S110",   # try-except-pass (intentional in error handling)
+    "S112",   # try-except-continue (intentional skip patterns)
     "S311",   # suspicious-non-cryptographic-random (used for jitter, not crypto)
     "S603",   # subprocess-without-shell-equals-true (CI scripts)
     "S607",   # start-process-with-partial-path (CI scripts)
-    "S105",   # hardcoded-password-string (test fixtures)
-    "S104",   # hardcoded-bind-all-interfaces (0.0.0.0 is intentional for containers)
-    "S108",   # hardcoded-temp-file (intentional /tmp use in runtime detection)
-    "S112",   # try-except-continue (intentional skip patterns)
     "S608",   # hardcoded-sql-expression (cache module SQL, not user input)
     # Print statements — library uses print for CLI output, not logging
     "T201",
@@ -292,7 +289,6 @@ ignore = [
     "RUF059", # unused-unpacked-variable
     "RUF001", # ambiguous-unicode-character-string
     "RUF002", # ambiguous-unicode-character-docstring
-    "RUF003", # ambiguous-unicode-character-comment
     "RUF006", # asyncio-dangling-task (intentional fire-and-forget)
     # Naming relaxations
     "N806",   # non-lowercase-variable-in-function
@@ -301,10 +297,6 @@ ignore = [
     "PIE810", # multiple-starts-ends-with (stylistic)
     "SIM102", # collapsible-if (readability preference)
     "RUF005", # collection-literal-concatenation (readability preference)
-    # Pytest style (relaxed — conventions vary)
-    "PT001",  # pytest-fixture-incorrect-parentheses-style
-    "PT003",  # pytest-extraneous-scope-function
-    "PT021",  # pytest-fixture-finalizer-callback
     # Docstring style rules — keep D1xx (missing docstrings), relax formatting
     "D100",   # Missing module docstring (too noisy for __init__.py etc)
     "D104",   # Missing docstring in public package
@@ -324,9 +316,6 @@ fixable = [
 unfixable = []
 dummy-variable-rgx = "^(_+|(_+[a-zA-Z0-9_]*[a-zA-Z0-9]+?))$"
 
-[tool.ruff.lint.per-file-ignores]
-"tests/**/*.py" = ["S", "PT011", "PT006", "PT017", "PT012", "PT018", "PT003", "PT022", "N803", "RUF003", "RUF015", "RUF043"]
-"tests/*.py" = ["S", "PT011", "PT006", "PT017", "PT012", "PT018", "PT003", "PT022", "N803", "RUF003", "RUF015", "RUF043"]
 
 [tool.ruff.lint.pydocstyle]
 convention = "google"
