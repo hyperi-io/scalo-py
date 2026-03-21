@@ -65,7 +65,6 @@ class PostgresCacheError(Exception):
     """Base exception for PostgreSQL cache errors."""
 
 
-
 class PostgresCache:
     """PostgreSQL-backed cache for multi-instance deployments.
 

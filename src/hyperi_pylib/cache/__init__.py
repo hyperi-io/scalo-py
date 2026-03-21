@@ -77,7 +77,6 @@ except ImportError:
     class PostgresCacheError(Exception):  # type: ignore[no-redef]
         """PostgreSQL cache error (requires psycopg)."""
 
-
     def generate_cache_key(*args, **kwargs) -> str:  # type: ignore[no-redef]
         """Generate cache key (requires psycopg)."""
         raise ImportError("generate_cache_key requires psycopg. Install with: pip install hyperi-pylib[cache]")
