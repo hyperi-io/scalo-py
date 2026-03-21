@@ -415,5 +415,6 @@ default = true
 dev = [
     "azure-identity>=1.25.1",
     "azure-keyvault-secrets>=4.9.0",
+    "fastapi>=0.115.0",
     "google-cloud-secret-manager>=2.26.0",
 ]
