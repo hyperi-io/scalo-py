@@ -28,15 +28,19 @@ from hyperi_pylib.metrics.naming import validate_dfe_prefix, validate_metric_nam
 _FIXTURES_PATH = Path(__file__).parents[2] / "hyperi-ai" / "test-fixtures" / "metrics-naming.yaml"
 
 
-def _load_fixtures() -> dict:
-    """Load the shared metrics-naming YAML."""
+def _load_fixtures() -> dict | None:
+    """Load the shared metrics-naming YAML. Returns None if file missing."""
+    if not _FIXTURES_PATH.exists():
+        return None
     with _FIXTURES_PATH.open() as f:
         return yaml.safe_load(f)
 
 
 _fixtures = _load_fixtures()
-_valid_cases = _fixtures["valid"]
-_invalid_cases = _fixtures["invalid"]
+_valid_cases = _fixtures["valid"] if _fixtures else []
+_invalid_cases = _fixtures["invalid"] if _fixtures else []
+
+_skip_reason = "hyperi-ai submodule not checked out (test-fixtures unavailable)"
 
 
 def _valid_ids(cases: list[dict]) -> list[str]:
@@ -52,7 +56,8 @@ def _invalid_ids(cases: list[dict]) -> list[str]:
 # ---------------------------------------------------------------------------
 
 
-@pytest.mark.parametrize("case", _valid_cases, ids=_valid_ids(_valid_cases))
+@pytest.mark.skipif(not _valid_cases, reason=_skip_reason)
+@pytest.mark.parametrize("case", _valid_cases, ids=_valid_ids(_valid_cases) if _valid_cases else [])
 def test_valid_metric_name_no_warnings(case: dict) -> None:
     """Valid metric names produce no warnings from validate_metric_name."""
     warnings = validate_metric_name(case["name"], case["type"])
@@ -71,7 +76,8 @@ def test_valid_dfe_prefix_no_warnings(case: dict) -> None:
 # ---------------------------------------------------------------------------
 
 
-@pytest.mark.parametrize("case", _invalid_cases, ids=_invalid_ids(_invalid_cases))
+@pytest.mark.skipif(not _invalid_cases, reason=_skip_reason)
+@pytest.mark.parametrize("case", _invalid_cases, ids=_invalid_ids(_invalid_cases) if _invalid_cases else [])
 def test_invalid_metric_produces_warning(case: dict) -> None:
     """
     Invalid metric names produce at least one warning from validate_metric_name
