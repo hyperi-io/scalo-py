@@ -61,7 +61,6 @@ class TestProcessMetrics:
         """Test ProcessMetrics gracefully handles missing prometheus_client."""
         # This is more of a documentation test since we skip if not available
         # In real scenarios without prometheus_client, enabled should be False
-        pass
 
 
 @pytest.mark.skipif(not PROMETHEUS_AVAILABLE, reason="prometheus_client not installed")

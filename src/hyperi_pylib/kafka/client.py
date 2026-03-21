@@ -92,7 +92,6 @@ class KafkaClient:
 
     def close(self) -> None:
         """Close the client (no-op for AdminClient)."""
-        pass
 
     # =========================================================================
     # Topic Operations

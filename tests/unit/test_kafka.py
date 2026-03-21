@@ -2834,7 +2834,7 @@ class TestKafkaAdminOffsetReset:
     def mock_admin_for_offset(self):
         """Mock AdminClient for offset reset tests."""
         # Import the module first to allow patching
-        import hyperi_pylib.kafka.admin  # noqa: F401
+        import hyperi_pylib.kafka.admin
 
         with (
             patch("hyperi_pylib.kafka.admin.AdminClient") as mock_admin,

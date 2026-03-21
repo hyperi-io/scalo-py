@@ -44,7 +44,6 @@ class MetricsBackend(ABC):
         Returns:
             Counter instance (backend-specific)
         """
-        pass
 
     @abstractmethod
     def gauge(self, name: str, description: str, labels: list[str] | None = None) -> Any:
@@ -61,7 +60,6 @@ class MetricsBackend(ABC):
         Returns:
             Gauge instance (backend-specific)
         """
-        pass
 
     @abstractmethod
     def histogram(
@@ -85,7 +83,6 @@ class MetricsBackend(ABC):
         Returns:
             Histogram instance (backend-specific)
         """
-        pass
 
     @abstractmethod
     def get_metrics(self) -> bytes:
@@ -95,7 +92,6 @@ class MetricsBackend(ABC):
         Returns:
             Metrics as bytes (ready for HTTP response)
         """
-        pass
 
     @abstractmethod
     def get_content_type(self) -> str:
@@ -105,22 +101,18 @@ class MetricsBackend(ABC):
         Returns:
             Content-Type string
         """
-        pass
 
     @abstractmethod
     def start_auto_update(self) -> None:
         """Start background metric collection (if applicable)."""
-        pass
 
     @abstractmethod
     def stop_auto_update(self) -> None:
         """Stop background metric collection (if applicable)."""
-        pass
 
     @abstractmethod
     def update(self) -> None:
         """Update metrics immediately (if applicable)."""
-        pass
 
 
 class NoOpMetric:
@@ -128,23 +120,18 @@ class NoOpMetric:
 
     def inc(self, *args, **kwargs):
         """No-op increment."""
-        pass
 
     def dec(self, *args, **kwargs):
         """No-op decrement."""
-        pass
 
     def set(self, *args, **kwargs):
         """No-op set."""
-        pass
 
     def observe(self, *args, **kwargs):
         """No-op observe."""
-        pass
 
     def info(self, *args, **kwargs):
         """No-op info."""
-        pass
 
     def labels(self, *args, **kwargs):
         """No-op labels."""
@@ -160,4 +147,3 @@ class NoOpMetric:
 
     def __exit__(self, *args):
         """No-op context manager exit."""
-        pass

@@ -143,7 +143,7 @@ def _get_cache_module():
     """Helper to get the cache module."""
     import sys
 
-    from hyperi_pylib.cache import cache as cache_mod  # noqa: F401 - trigger import
+    from hyperi_pylib.cache import cache as cache_mod
 
     return sys.modules["hyperi_pylib.cache.cache"]
 
