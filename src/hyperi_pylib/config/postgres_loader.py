@@ -153,10 +153,8 @@ class PostgresConfigError(Exception):
     """Raised when PostgreSQL config operations fail."""
 
 
-
 class PostgresConfigUnavailable(PostgresConfigError):
     """Raised when PostgreSQL is unavailable but optional=True."""
-
 
 
 class PostgresConfigLoader:

@@ -43,7 +43,6 @@ class KafkaAdminError(Exception):
     """Kafka admin operation error."""
 
 
-
 CleanupPolicy = Literal["delete", "compact", "compact,delete"]
 
 

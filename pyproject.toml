@@ -273,11 +273,13 @@ ignore = [
     "SIM108",
     "W191",
     # Security rule relaxations (library code)
+    "S101",   # assert (used in tests — standard pytest pattern)
     "S110",   # try-except-pass (intentional in error handling)
     "S311",   # suspicious-non-cryptographic-random (used for jitter, not crypto)
     "S603",   # subprocess-without-shell-equals-true (CI scripts)
     "S607",   # start-process-with-partial-path (CI scripts)
     "S105",   # hardcoded-password-string (test fixtures)
+    "S104",   # hardcoded-bind-all-interfaces (0.0.0.0 is intentional for containers)
     "S108",   # hardcoded-temp-file (intentional /tmp use in runtime detection)
     "S112",   # try-except-continue (intentional skip patterns)
     "S608",   # hardcoded-sql-expression (cache module SQL, not user input)
@@ -297,6 +299,8 @@ ignore = [
     "N818",   # error-suffix-on-exception-name (existing exception names)
     # Misc
     "PIE810", # multiple-starts-ends-with (stylistic)
+    "SIM102", # collapsible-if (readability preference)
+    "RUF005", # collection-literal-concatenation (readability preference)
     # Pytest style (relaxed — conventions vary)
     "PT001",  # pytest-fixture-incorrect-parentheses-style
     "PT003",  # pytest-extraneous-scope-function
