@@ -53,6 +53,27 @@ class VersionInfo:
     platform: str | None = None
     pylib_version: str = field(default_factory=_get_pylib_version)
 
+    @classmethod
+    def from_env(cls, name: str, version: str) -> "VersionInfo":
+        """Create VersionInfo with auto-detected metadata from environment.
+
+        Checks env vars: GIT_COMMIT, BUILD_COMMIT for commit hash (GIT_COMMIT takes precedence).
+        Checks env vars: BUILD_DATE, BUILD_TIME for build date (BUILD_DATE takes precedence).
+        Auto-detects python_version and platform from the running interpreter and system.
+        """
+        import os
+
+        commit = os.getenv("GIT_COMMIT") or os.getenv("BUILD_COMMIT")
+        build_date = os.getenv("BUILD_DATE") or os.getenv("BUILD_TIME")
+        return cls(
+            name=name,
+            version=version,
+            commit=commit,
+            build_date=build_date,
+            python_version=f"{sys.version_info.major}.{sys.version_info.minor}.{sys.version_info.micro}",
+            platform=platform.platform(),
+        )
+
     def with_commit(self, commit: str) -> "VersionInfo":
         """Set git commit SHA."""
         self.commit = commit
