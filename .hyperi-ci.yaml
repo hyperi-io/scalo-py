@@ -10,8 +10,5 @@ publish:
 
 quality:
   python:
-    # pip-audit: interrogate depends on 'py' which has an unpatched CVE
-    # No fix available upstream — warn until interrogate drops the dep
-    pip_audit: warn
     # vulture: library code has extensive public API that looks "unused"
     vulture: warn
