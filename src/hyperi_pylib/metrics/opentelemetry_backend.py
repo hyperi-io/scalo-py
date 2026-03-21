@@ -30,7 +30,7 @@ from .base import MetricsBackend, NoOpMetric
 # ---------------------------------------------------------------------------
 # Prometheus-compatible adapter wrappers for OTel instruments
 #
-# fastapi.py and db.py use prometheus-client–style API:
+# fastapi.py and db.py use prometheus-client-style API:
 #   counter.labels(method="GET", endpoint="/api").inc()
 #   histogram.labels(db_type="postgres").observe(0.1)
 #
