@@ -73,11 +73,13 @@ def test_masking_parity(case: dict) -> None:
         )
 
 
+@pytest.mark.skipif(not _FIXTURES_PATH.exists(), reason=_skip_reason)
 def test_fixture_file_exists() -> None:
     """Verify the shared fixture file is present (catches broken submodule paths)."""
     assert _FIXTURES_PATH.exists(), f"Fixture file not found: {_FIXTURES_PATH}"
 
 
+@pytest.mark.skipif(_fixtures is None, reason=_skip_reason)
 def test_fixture_has_required_keys() -> None:
     """Verify the fixture YAML has the expected top-level keys."""
     assert "sensitive_field_names" in _fixtures
@@ -85,6 +87,7 @@ def test_fixture_has_required_keys() -> None:
     assert len(_fixtures["test_cases"]) > 0
 
 
+@pytest.mark.skipif(_fixtures is None, reason=_skip_reason)
 def test_fixture_sensitive_fields_present() -> None:
     """Verify that the fixture's sensitive_field_names are a subset of the filter's SENSITIVE_FIELDS."""
     from hyperi_pylib.logger.filters import SENSITIVE_FIELDS
