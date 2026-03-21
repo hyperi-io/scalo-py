@@ -32,7 +32,7 @@ from __future__ import annotations
 from .manager import HealthManager
 
 
-def create_health_router(manager: HealthManager | None = None) -> "APIRouter":
+def create_health_router(manager: HealthManager | None = None) -> APIRouter:
     """Create a FastAPI router with standard health probe endpoints.
 
     Provides three endpoints matching rustlib's built-in health probes:

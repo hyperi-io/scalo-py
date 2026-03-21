@@ -408,7 +408,7 @@ class TestRegisterGauge:
 
         sp.set_component("memory", 0.4)
         sp.set_component("queue", 0.6)
-        result = sp.calculate()
+        sp.calculate()
 
         output = mgr.metrics_text
         assert "scaling_pressure" in output

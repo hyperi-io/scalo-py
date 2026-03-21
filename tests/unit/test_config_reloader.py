@@ -16,7 +16,6 @@ import pytest
 
 from hyperi_pylib.config.reloader import ConfigReloader, ReloaderConfig
 
-
 # ---------------------------------------------------------------------------
 # Helpers
 # ---------------------------------------------------------------------------
