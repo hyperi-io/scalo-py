@@ -203,9 +203,8 @@ class TestSyncContextManager:
         """Exception in block records failure and re-raises."""
         cfg = CircuitBreakerConfig(failure_threshold=1)
         cb = CircuitBreaker("test", cfg)
-        with pytest.raises(ValueError, match="boom"):
-            with cb:
-                raise ValueError("boom")
+        with pytest.raises(ValueError, match="boom"), cb:
+            raise ValueError("boom")
         assert cb.state == CircuitState.OPEN
 
     def test_context_manager_rejects_when_open(self):
@@ -214,9 +213,8 @@ class TestSyncContextManager:
         cb = CircuitBreaker("test", cfg)
         cb.record_failure()
         assert cb.state == CircuitState.OPEN
-        with pytest.raises(CircuitBreakerError):
-            with cb:
-                pass  # Should never reach here
+        with pytest.raises(CircuitBreakerError), cb:
+            pass  # Should never reach here
 
 
 class TestAsyncContextManager:
@@ -259,9 +257,8 @@ class TestCircuitBreakerError:
         cfg = CircuitBreakerConfig(failure_threshold=1, reset_timeout=60.0)
         cb = CircuitBreaker("payments-api", cfg)
         cb.record_failure()
-        with pytest.raises(CircuitBreakerError, match="payments-api"):
-            with cb:
-                pass
+        with pytest.raises(CircuitBreakerError, match="payments-api"), cb:
+            pass
 
 
 class TestThreadSafety:
