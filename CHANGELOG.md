@@ -1,3 +1,10 @@
+# [2.25.0-dev.2](https://github.com/hyperi-io/hyperi-pylib/compare/v2.25.0-dev.1...v2.25.0-dev.2) (2026-03-21)
+
+
+### Bug Fixes
+
+* replace interrogate with ruff D rules, remove py CVE ([6b109e2](https://github.com/hyperi-io/hyperi-pylib/commit/6b109e24f2465db73f22e2b138ec46fa7629c3a3))
+
 # [2.25.0-dev.1](https://github.com/hyperi-io/hyperi-pylib/compare/v2.24.4-dev.1...v2.25.0-dev.1) (2026-03-21)
 
 
