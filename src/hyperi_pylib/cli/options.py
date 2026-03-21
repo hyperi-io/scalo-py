@@ -207,7 +207,7 @@ def path_option(
 
 
 # Helper function for custom Enum options
-def enum_option(  # noqa: ARG001
+def enum_option(
     enum_class,
     default,
     *param_decls: str,

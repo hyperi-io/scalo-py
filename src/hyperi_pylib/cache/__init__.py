@@ -77,7 +77,6 @@ except ImportError:
     class PostgresCacheError(Exception):  # type: ignore[no-redef]
         """PostgreSQL cache error (requires psycopg)."""
 
-        pass
 
     def generate_cache_key(*args, **kwargs) -> str:  # type: ignore[no-redef]
         """Generate cache key (requires psycopg)."""

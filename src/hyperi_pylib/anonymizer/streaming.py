@@ -309,7 +309,7 @@ class StreamingAnonymizer:
             >>> anonymized = anonymizer.anonymize_pandas(df, columns=["email", "phone"])
         """
         try:
-            import pandas as pd  # noqa: F401, unused-import
+            import pandas as pd
         except ImportError:
             raise ImportError("Pandas not installed. Install with: pip install pandas")
 

@@ -86,7 +86,7 @@ class TestPrometheusBackend:
 
 
 try:
-    import opentelemetry  # noqa: F401
+    import opentelemetry
 
     OTEL_INSTALLED = True
 except ImportError:

@@ -76,7 +76,7 @@ def configure_cache(
 
     # Use disk backend if diskcache is installed, otherwise fall back to memory
     try:
-        import diskcache as _dc  # noqa: F401
+        import diskcache as _dc
 
         backend_url = f"disk://?directory={directory}&timeout=1"
         if size_limit is not None:

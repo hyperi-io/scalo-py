@@ -577,7 +577,6 @@ class OpenTelemetryBackend(MetricsBackend):
 
         OTel uses periodic exporting, so this is a no-op.
         """
-        pass
 
     def stop_auto_update(self) -> None:
         """

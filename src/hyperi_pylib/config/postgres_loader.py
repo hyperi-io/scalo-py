@@ -152,13 +152,11 @@ logger = logging.getLogger(__name__)
 class PostgresConfigError(Exception):
     """Raised when PostgreSQL config operations fail."""
 
-    pass
 
 
 class PostgresConfigUnavailable(PostgresConfigError):
     """Raised when PostgreSQL is unavailable but optional=True."""
 
-    pass
 
 
 class PostgresConfigLoader:

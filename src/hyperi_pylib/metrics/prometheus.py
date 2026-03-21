@@ -994,23 +994,18 @@ class _NoOpMetric:
 
     def inc(self, *args, **kwargs):
         """No-op increment."""
-        pass
 
     def dec(self, *args, **kwargs):
         """No-op decrement."""
-        pass
 
     def set(self, *args, **kwargs):
         """No-op set."""
-        pass
 
     def observe(self, *args, **kwargs):
         """No-op observe."""
-        pass
 
     def info(self, *args, **kwargs):
         """No-op info."""
-        pass
 
     def labels(self, *args, **kwargs):
         """No-op labels."""

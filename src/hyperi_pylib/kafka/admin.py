@@ -42,7 +42,6 @@ from .config import ADMIN_DEFAULTS, merge_config
 class KafkaAdminError(Exception):
     """Kafka admin operation error."""
 
-    pass
 
 
 CleanupPolicy = Literal["delete", "compact", "compact,delete"]
@@ -95,7 +94,6 @@ class KafkaAdmin:
 
     def close(self) -> None:
         """Close the admin client (no-op for AdminClient)."""
-        pass
 
     # =========================================================================
     # Partition Operations
