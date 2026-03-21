@@ -319,3 +319,55 @@ class TestDfeApp:
     def test_is_async_overridden_async_app(self):
         app = _AsyncApp()
         assert _is_async_overridden(app) is True
+
+    def test_metrics_attributes_initialised_on_dfeapp(self):
+        """DfeApp.__init__ sets _metrics and _app_metrics to None."""
+        app = _SyncApp()
+        assert app._metrics is None
+        assert app._app_metrics is None
+
+    def test_metrics_auto_init_after_run(self):
+        """After run, _metrics and _app_metrics are set when metrics extra is available."""
+        pytest.importorskip("hyperi_pylib.metrics", reason="metrics extra not installed")
+
+        app = _SyncApp()
+        typer_app = _build_typer_app(app)
+        result = runner.invoke(typer_app, ["run"])
+        assert result.exit_code == 0
+        assert app._metrics is not None
+        assert app._app_metrics is not None
+
+    def test_metrics_init_failure_does_not_crash_service(self, monkeypatch):
+        """Metrics init failure is non-fatal — service still runs."""
+        import sys
+        import types
+
+        # Inject a broken create_metrics into the metrics module namespace
+        # so the import succeeds but the call raises
+        fake_metrics = types.ModuleType("hyperi_pylib.metrics")
+
+        def broken_create_metrics(*args, **kwargs):
+            raise RuntimeError("simulated metrics failure")
+
+        fake_metrics.create_metrics = broken_create_metrics
+        monkeypatch.setitem(sys.modules, "hyperi_pylib.metrics", fake_metrics)
+
+        # Also ensure AppMetrics import succeeds from dfe_groups
+        fake_dfe_groups = types.ModuleType("hyperi_pylib.metrics.dfe_groups")
+
+        class _FakeAppMetrics:
+            def __init__(self, *args, **kwargs):
+                pass
+
+        fake_dfe_groups.AppMetrics = _FakeAppMetrics
+        monkeypatch.setitem(sys.modules, "hyperi_pylib.metrics.dfe_groups", fake_dfe_groups)
+
+        app = _SyncApp()
+        typer_app = _build_typer_app(app)
+        result = runner.invoke(typer_app, ["run"])
+
+        # Service must still run — metrics failure is non-fatal
+        assert result.exit_code == 0
+        assert app.ran is True
+        assert app._metrics is None
+        assert app._app_metrics is None

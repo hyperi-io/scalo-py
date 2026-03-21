@@ -183,6 +183,10 @@ class DfeApp(ABC):
 
     def __init__(self) -> None:
         self._common_args = CommonArgs()
+        self._metrics: Any = None
+        """MetricsManager instance, set automatically by _handle_run() if metrics extra is installed."""
+        self._app_metrics: Any = None
+        """AppMetrics instance, set automatically by _handle_run() if metrics extra is installed."""
 
     @abstractmethod
     def version_info(self) -> VersionInfo:
@@ -334,6 +338,26 @@ def _handle_run(dfe_app: DfeApp, args: CommonArgs) -> None:
 
         config = args.load_config(dfe_app.env_prefix)
         logger.debug("configuration loaded")
+
+        # Auto-init metrics if available (metrics extra installed)
+        try:
+            from hyperi_pylib.metrics import create_metrics
+            from hyperi_pylib.metrics.dfe_groups import AppMetrics
+
+            ns = dfe_app.name.replace("-", "_")
+            metrics_manager = create_metrics(ns, backend="prometheus")
+            app_metrics = AppMetrics(metrics_manager, info.version, info.commit or "unknown")
+            dfe_app._metrics = metrics_manager
+            dfe_app._app_metrics = app_metrics
+            logger.debug("metrics auto-initialised", namespace=ns, addr=args.metrics_addr)
+        except ImportError:
+            dfe_app._metrics = None
+            dfe_app._app_metrics = None
+            logger.debug("metrics not available (install hyperi-pylib[metrics])")
+        except Exception as e:
+            dfe_app._metrics = None
+            dfe_app._app_metrics = None
+            logger.warning("metrics initialisation failed", error=str(e))
 
         # Check if run_service_async is overridden (not the default delegation)
         uses_async = _is_async_overridden(dfe_app)
