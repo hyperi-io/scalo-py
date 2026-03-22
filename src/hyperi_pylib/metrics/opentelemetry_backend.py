@@ -382,6 +382,18 @@ class OpenTelemetryBackend(MetricsBackend):
             self.enabled = True
             logger.info(f"OpenTelemetry metrics initialised: readers=[{', '.join(readers_desc)}]")
 
+            # Register graceful shutdown to prevent atexit export errors
+            # (OTel SDK tries to flush on exit — suppress errors when collector is unavailable)
+            import atexit
+
+            def _graceful_shutdown():
+                try:
+                    self._provider.shutdown()
+                except Exception:
+                    pass  # Suppress export errors at shutdown (collector may be unavailable)
+
+            atexit.register(_graceful_shutdown)
+
         except Exception as e:
             logger.error(f"Failed to initialise OpenTelemetry backend: {e}")
             self.enabled = False
