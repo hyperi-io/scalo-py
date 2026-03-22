@@ -12,6 +12,10 @@ import pytest
 # Enable DEBUG logging for all tests
 os.environ["LOG_LEVEL"] = "DEBUG"
 
+# Disable OTel OTLP exporter in tests — prevents atexit export errors
+# when no collector is running (causes exit code 1 even with all tests passing)
+os.environ.setdefault("OTEL_EXPORTER_OTLP_ENDPOINT", "")
+
 # Load .env file for test credentials (Artifactory, database, etc.)
 env_file = Path(__file__).parent.parent / ".env"
 if env_file.exists():
