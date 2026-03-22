@@ -23,7 +23,7 @@ from hyperi_pylib.metrics.dfe_groups import (
 )
 
 
-@pytest.fixture()
+@pytest.fixture
 def mgr() -> MetricsManager:
     """Create a fresh MetricsManager with Prometheus backend for testing."""
     return create_metrics(f"dfe_loader_{int(time.monotonic_ns())}", backend="prometheus", enable_auto_update=False)

@@ -132,7 +132,7 @@ class OpenBaoConfig:
     role: str | None = None
     """Role name (for kubernetes auth)."""
 
-    token_path: str = "/var/run/secrets/kubernetes.io/serviceaccount/token"  # noqa: S105
+    token_path: str = "/var/run/secrets/kubernetes.io/serviceaccount/token"
     """Path to service account token (for kubernetes auth)."""
 
     mount: str | None = None

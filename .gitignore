@@ -266,3 +266,6 @@ cython_debug/
 # === End /projects/hs-lib/ci/modules/common/templates/.gitignore ===
 out/
 coverage/
+
+# AI agent working files (not committed)
+docs/superpowers/
