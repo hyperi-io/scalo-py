@@ -1,3 +1,11 @@
+# [2.25.0-dev.5](https://github.com/hyperi-io/hyperi-pylib/compare/v2.25.0-dev.4...v2.25.0-dev.5) (2026-03-22)
+
+
+### Bug Fixes
+
+* restore test rule ignores pending hyperi-ci two-tier release ([a45ded1](https://github.com/hyperi-io/hyperi-pylib/commit/a45ded1a59632fb9984a6ad5142019de4219b738))
+* shrink ruff ignore list, test rules handled by hyperi-ci ([2b269f1](https://github.com/hyperi-io/hyperi-pylib/commit/2b269f139b1ab469b577d33cfe5d08e124d49786))
+
 # [2.25.0-dev.4](https://github.com/hyperi-io/hyperi-pylib/compare/v2.25.0-dev.3...v2.25.0-dev.4) (2026-03-21)
 
 
