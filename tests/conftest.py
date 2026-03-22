@@ -14,8 +14,6 @@ os.environ["LOG_LEVEL"] = "DEBUG"
 
 # Disable OTel OTLP exporter in tests — prevents atexit export errors
 # when no collector is running (causes exit code 1 even with all tests passing)
-os.environ["OTEL_EXPORTER_OTLP_ENDPOINT"] = ""
-os.environ["OTEL_SDK_DISABLED"] = "true"
 
 # Load .env file for test credentials (Artifactory, database, etc.)
 env_file = Path(__file__).parent.parent / ".env"
