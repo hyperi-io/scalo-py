@@ -2,6 +2,33 @@
 
 ## Active
 
+### BLOCKER: Fix OTel atexit exit code 1 in CI tests — **2h**
+
+**Status:** Blocking pylib GA release (v2.25.0)
+
+**Problem:** OTel SDK's `PeriodicExportingMetricReader` tries to flush to `localhost:4317` at process exit. When no OTel collector is running (CI), the error propagates as exit code 1 — even though all 1482 tests pass.
+
+**Root cause:** The OTel OTLP exporter defaults to `http://localhost:4317`. In CI, no collector runs. The SDK's atexit handler flushes and fails, setting exit code 1.
+
+**Fix options:**
+1. Spin up OTel collector container in CI test fixtures (proper fix)
+2. Set `OTEL_EXPORTER_OTLP_ENDPOINT` to empty in CI-only env (but breaks `test_dual_export`)
+3. Fix the OTel backend to catch atexit errors (partial — atexit handler registration order)
+
+**Constraint:** Release CI must use docker services, NEVER local environment services.
+
+### CI test infrastructure: release CI must use docker — **4h**
+
+**Status:** Not started — critical architectural rule to enforce
+
+**Rule:** Release/CI tests MUST use docker-based services (OTel collector, Postgres, Kafka, etc.), NEVER assume local host services are running. Local services are for developer convenience only.
+
+**Task:**
+- Add OTel collector container to CI test fixtures (docker-compose or testcontainers)
+- Update conftest.py to auto-start OTel collector when `TEST_MODE=docker`
+- Ensure all integration tests have docker fallback
+- Document the rule in hyperi-ai standards
+
 ### Fix CI markdownlint scanning .venv/ - **0.5h**
 
 **Status:** Quality job creates .venv/ on ARC runner, markdownlint scans it
@@ -33,6 +60,26 @@
 - Integration tests that always skip provide no coverage guarantee
 - CI should run full integration suite, not just unit tests
 - External tool pattern is more reliable than mocking
+
+### Update documentation for session work — **2h**
+
+**Status:** Not started
+
+**Task:**
+- Update hyperi-ai CI standards docs for two-tier quality profiles
+- Update hyperi-ai skills (release, ci-check) for new tooling
+- Add "how to iterate and add ruff allows" guide to hyperi-ci docs
+- Update hyperi-ci DESIGN.md with two-tier quality architecture
+- Add spike/alpha/beta channel support to hyperi-ci TODO
+
+### Remove TEMP test_ignore entries from pylib and dfe-engine — **0.5h**
+
+**Status:** Waiting for hyperi-ci v1.4.0 to propagate to CI runners
+
+**Task:**
+- Once CI runners pick up hyperi-ci v1.4.0 (two-tier quality), re-shrink ignore lists
+- Remove all entries marked `# TEMP: remove after hyperi-ci two-tier quality released`
+- Verify CI passes with shrunk lists
 
 ---
 
@@ -85,6 +132,19 @@
 
 - When 2+ production apps need standardized application patterns
 - When profile-based config provides value over direct configuration
+
+### [BACKLOG] hyperi_pylib.kafka: Opinionated SASL-SCRAM helpers - **1h**
+
+**Status:** Not started — identified during dfe-loader E2E test work
+
+**Task:**
+
+- Add `KafkaConfig.external_sasl_scram(brokers, username, password)` classmethod — SASL_SSL + SCRAM-SHA-512
+- Add `KafkaConfig.internal_sasl_scram(brokers, username, password)` classmethod — SASL_PLAINTEXT + SCRAM-SHA-512
+- Encodes the org-wide decision: SCRAM works unchanged on Apache Kafka, AutoMQ, MSK, Confluent Cloud
+- Removes per-project manual assembly of `security.protocol` + `sasl.*` fields
+
+---
 
 ### [BACKLOG] hyperi_pylib.kafka: JSON key-value offset seek - **2d**
 
@@ -268,4 +328,35 @@ Full Kafka client library with corporate defaults (160 unit + 19 integration tes
 
 ---
 
-**Last Updated:** 2026-03-04
+## Completed (2026-03-22)
+
+### Rustlib/Pylib gap remediation (P0-P2)
+
+- DFE metric groups (AppMetrics, BufferMetrics, ConsumerMetrics, SinkMetrics, CircuitBreakerMetrics, BackpressureMetrics)
+- Health endpoint FastAPI router (/health/live, /health/ready, /health/startup)
+- VersionInfo.from_env() classmethod
+- Scaling pressure calculator (0-100 composite score for KEDA)
+- Circuit breaker (Closed/Open/HalfOpen state machine)
+- Auto metrics init in DfeApp
+- Config reload wrapper (on_reload callbacks)
+- Label cardinality validation
+- Shared masking pattern + metrics naming test fixtures (hyperi-ai submodule)
+- Log throttle parity verification
+
+### Dependency updates + 4 CVE fixes
+
+- dynaconf 3.2.13 (CVE-2026-33154), black 26.3.1 (CVE-2026-32274)
+- pyasn1 0.6.3 (CVE-2026-30922), pyjwt 2.12.1 (CVE-2026-32597)
+- sphinx 7→9, myst-parser 4→5
+- All 30+ packages upgraded to latest
+
+### Tooling modernisation
+
+- Replaced interrogate with ruff D rules (pydocstyle)
+- Replaced bandit with ruff S rules
+- Added ruff rule groups: S, N, PT, RUF, PIE, T20
+- Removed py package CVE (PYSEC-2022-42969)
+
+---
+
+**Last Updated:** 2026-03-22
