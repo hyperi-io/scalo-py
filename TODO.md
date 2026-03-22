@@ -15,15 +15,17 @@
 
 ## Backlog
 
-### Use external tools (Docker/compose) for integration tests - **2h**
+### Standardise test infrastructure: dual-mode (remote + docker-local) - **2h**
 
 **Status:** Not started — integration tests currently skip when external services unavailable
 
 **Task:**
 
-- Audit all integration tests that require external services (Postgres, Kafka, Redis, etc.)
-- Add Docker Compose fixtures or pytest-docker to spin up services for CI
-- Pattern already established in `tests/` (Kafka docker-compose) — extend to other backends
+- Implement dual-mode test infrastructure per `~/DFE-TEST-INFRA-PROMPT.md` (Python adaptation)
+- `TEST_MODE=remote` (default): use devex cluster endpoints from `.env`
+- `TEST_MODE=docker`: use `dfe-docker` infra profile (localhost, no auth)
+- Add `conftest.py` fixtures for `ClickHouseTestConfig` and `KafkaTestConfig`
+- Replace hardcoded env var reads with mode-aware config helpers
 - Ensure tests don't skip in CI; they should run against real services
 
 **Rationale:**

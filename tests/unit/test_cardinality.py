@@ -14,7 +14,7 @@ import pytest
 from loguru import logger
 
 
-@pytest.fixture()
+@pytest.fixture
 def tracker():
     """Fresh CardinalityTracker with default threshold (50)."""
     from hyperi_pylib.metrics.cardinality import CardinalityTracker
@@ -22,7 +22,7 @@ def tracker():
     return CardinalityTracker()
 
 
-@pytest.fixture()
+@pytest.fixture
 def low_threshold_tracker():
     """CardinalityTracker with a low threshold (3) for easier triggering in tests."""
     from hyperi_pylib.metrics.cardinality import CardinalityTracker
