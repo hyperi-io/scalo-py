@@ -9,6 +9,9 @@ publish:
   enabled: true
 
 quality:
+  # examples/ has its own tests/ — exclude from quality scans
+  exclude_paths:
+    - examples/
   python:
     # vulture: library code has extensive public API that looks "unused"
     vulture: warn
