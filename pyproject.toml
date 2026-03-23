@@ -272,23 +272,6 @@ ignore = [
     "UP035",
     "SIM108",
     "W191",
-    # TEMP: test-related rules — remove after hyperi-ci two-tier quality released
-    "S101",   # assert (test pattern)
-    "S105",   # hardcoded passwords (test fixtures)
-    "S108",   # hardcoded temp file (test dirs)
-    "PT003",  # fixture scope
-    "PT006",  # parametrize names type
-    "PT011",  # raises too broad
-    "PT012",  # raises multiple statements
-    "PT017",  # assert in except
-    "PT018",  # composite assertion
-    "N803",   # invalid argument name (test fixtures)
-    "RUF003", # ambiguous unicode comment
-    "RUF015", # unnecessary iterable allocation
-    "RUF043", # pytest raises ambiguous
-    "PT001",  # fixture parentheses style
-    "PT021",  # fixture finalizer callback
-    "S106",   # hardcoded password func arg
     # Production-specific security relaxations
     "S104",   # hardcoded-bind-all-interfaces (0.0.0.0 is intentional for containers)
     "S110",   # try-except-pass (intentional in error handling)

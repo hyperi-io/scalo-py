@@ -355,7 +355,7 @@ def detect_standard_mounts() -> dict[str, Path]:
             tempfile.gettempdir(),  # Universal standard
             f"{tempfile.gettempdir()}/{app_name}",  # App-specific temp
             "/app/tmp",  # Docker app temp
-            "/var/tmp",  # Alternative system temp (checked, not created)  # nosec B108
+            "/var/tmp",  # Alternative system temp (checked, not created)  # noqa: S108  # nosec B108
             "/run/tmp",  # Runtime temp (tmpfs)
         ],
         # Additional commonly used paths in DevOps
