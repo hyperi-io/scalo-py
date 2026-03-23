@@ -117,7 +117,7 @@ class TestGitBranches:
 
         # Switch back to original branch
         # We're already on 'modified', go back
-        main_branch = [b for b in store.list_branches() if b != "modified"][0]
+        main_branch = next(b for b in store.list_branches() if b != "modified")
         store.switch_branch(main_branch)
 
         # Should have the original value

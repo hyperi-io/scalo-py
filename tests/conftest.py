@@ -208,7 +208,7 @@ def kafka_available() -> bool:
 
 
 @pytest.fixture(scope="session")
-def kafka_config(request):
+def kafka_config():
     """
     Provide Kafka configuration for integration tests.
 
@@ -226,14 +226,13 @@ def kafka_config(request):
             "run: docker compose -f docker-compose.kafka.yml up -d"
         )
 
-    # Register cleanup finalizer
-    request.addfinalizer(_stop_docker_kafka)
+    yield config
 
-    return config
+    _stop_docker_kafka()
 
 
 @pytest.fixture(scope="session")
-def kafka_config_local_only(request):
+def kafka_config_local_only():
     """
     Provide Kafka configuration forcing local Docker only.
 
@@ -244,10 +243,9 @@ def kafka_config_local_only(request):
     if config is None:
         pytest.skip("No local Kafka available. Run: docker compose -f docker-compose.kafka.yml up -d")
 
-    # Register cleanup finalizer
-    request.addfinalizer(_stop_docker_kafka)
+    yield config
 
-    return config
+    _stop_docker_kafka()
 
 
 def cleanup_hung_processes():
@@ -479,7 +477,7 @@ def postgres_available() -> bool:
 
 
 @pytest.fixture(scope="session")
-def postgres_dsn(request):
+def postgres_dsn():
     """
     Provide PostgreSQL DSN for integration tests.
 
@@ -497,14 +495,13 @@ def postgres_dsn(request):
             "run: docker compose -f docker-compose.postgres.yml up -d"
         )
 
-    # Register cleanup finalizer
-    request.addfinalizer(_stop_docker_postgres)
+    yield dsn
 
-    return dsn
+    _stop_docker_postgres()
 
 
 @pytest.fixture(scope="session")
-def postgres_dsn_local_only(request):
+def postgres_dsn_local_only():
     """
     Provide PostgreSQL DSN forcing local Docker only.
 
@@ -515,7 +512,6 @@ def postgres_dsn_local_only(request):
     if dsn is None:
         pytest.skip("No local PostgreSQL available. Run: docker compose -f docker-compose.postgres.yml up -d")
 
-    # Register cleanup finalizer
-    request.addfinalizer(_stop_docker_postgres)
+    yield dsn
 
-    return dsn
+    _stop_docker_postgres()
