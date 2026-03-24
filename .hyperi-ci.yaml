@@ -8,6 +8,9 @@ build:
 publish:
   enabled: true
 
+test:
+  min_coverage: 70  # Current: 73%. Target: 80%. Ratchet up as coverage improves.
+
 quality:
   # examples/ has its own tests/ — exclude from quality scans
   exclude_paths:
