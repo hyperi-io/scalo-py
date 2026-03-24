@@ -1,3 +1,21 @@
+# [2.25.0-dev.6](https://github.com/hyperi-io/hyperi-pylib/compare/v2.25.0-dev.5...v2.25.0-dev.6) (2026-03-24)
+
+
+### Bug Fixes
+
+* convert request.addfinalizer to yield pattern, fix RUF015 ([4e00940](https://github.com/hyperi-io/hyperi-pylib/commit/4e0094015b2750ca33111094d689a6734ba841e0))
+* disable OTel OTLP exporter in tests to prevent exit code 1 ([ebefa0d](https://github.com/hyperi-io/hyperi-pylib/commit/ebefa0d68c32da5386a4d6b32580a3eed99838a6))
+* exclude examples/ from quality scans ([294ffb5](https://github.com/hyperi-io/hyperi-pylib/commit/294ffb5f073880d112868c0b6cd26a5ae88bf45b))
+* force-disable OTel SDK in tests ([645a085](https://github.com/hyperi-io/hyperi-pylib/commit/645a085c9cb8d75df01fe97f05efe8d40e6cbd63))
+* remove TEMP test ignores, handled by hyperi-ci two-tier quality ([c35dd2a](https://github.com/hyperi-io/hyperi-pylib/commit/c35dd2a6c25171204a941deaadd484f38378b100))
+* replace invalid Renovate preset :pinActionsToFullSha with helpers:pinGitHubActionDigestsToSemver ([8d373de](https://github.com/hyperi-io/hyperi-pylib/commit/8d373dee558eaa4946f27597bb25a8fc8985850f))
+* resolve OTel atexit exit code 1 in CI ([3ca03e1](https://github.com/hyperi-io/hyperi-pylib/commit/3ca03e1e9f88b4fc1449f7f605857739d194852b))
+* restructure tests per testing standards ([88d7086](https://github.com/hyperi-io/hyperi-pylib/commit/88d708631251a169b14d58e48deabc880000048f))
+* revert OTel env override that broke dual export test ([5ed8f26](https://github.com/hyperi-io/hyperi-pylib/commit/5ed8f2648911abdd94276274fbfe3af8c3e46da4))
+* set min_coverage 70% and fix smoke tests for CI containers ([4cf4e8e](https://github.com/hyperi-io/hyperi-pylib/commit/4cf4e8e134f23ed9c8e485f2dbfcb6e96ee1b12a))
+* suppress OTel export errors at shutdown ([77c8df5](https://github.com/hyperi-io/hyperi-pylib/commit/77c8df5402e83b8957d33896b214b179ac247c7c))
+* update hyperi-ai submodule and lock file ([5b78587](https://github.com/hyperi-io/hyperi-pylib/commit/5b78587511bf53af9e5db7ae195cab2eb518ab84))
+
 # [2.25.0-dev.5](https://github.com/hyperi-io/hyperi-pylib/compare/v2.25.0-dev.4...v2.25.0-dev.5) (2026-03-22)
 
 
