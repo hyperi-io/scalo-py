@@ -30,7 +30,8 @@ class TestDualReaderCreation:
 
     def test_default_creates_both_readers(self):
         """Default config creates both OTLP push and Prometheus scrape readers."""
-        metrics = create_metrics("dual-test-default", backend="opentelemetry")
+        config = {"opentelemetry": {"endpoint": "http://localhost:4317"}}
+        metrics = create_metrics("dual-test-default", backend="opentelemetry", backend_config=config)
 
         assert metrics.enabled
         assert metrics.backend_name == "opentelemetry"

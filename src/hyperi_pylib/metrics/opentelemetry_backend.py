@@ -382,12 +382,19 @@ class OpenTelemetryBackend(MetricsBackend):
             self.enabled = True
             logger.info(f"OpenTelemetry metrics initialised: readers=[{', '.join(readers_desc)}]")
 
-            # Register graceful shutdown to prevent atexit export errors
-            # (OTel SDK tries to flush on exit — suppress errors when collector is unavailable)
+            # Register graceful shutdown BEFORE OTel SDK's own atexit handler.
+            # Python atexit runs LIFO — registering last means we run first,
+            # shutting down the provider cleanly before the SDK tries to flush.
             import atexit
 
             def _graceful_shutdown():
                 try:
+                    # Shut down each reader individually to suppress export errors
+                    for reader in metric_readers:
+                        try:
+                            reader.shutdown()
+                        except Exception:
+                            pass
                     self._provider.shutdown()
                 except Exception:
                     pass  # Suppress export errors at shutdown (collector may be unavailable)
