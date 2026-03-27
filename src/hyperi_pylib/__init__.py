@@ -1,6 +1,4 @@
-"""
-hyperi-pylib - Enterprise Infrastructure for Python Applications
-=============================================================
+"""hyperi-pylib - Enterprise Infrastructure for Python Applications.
 
 Zero-configuration infrastructure library for containerized Python apps.
 Configuration, logging, metrics, database utilities - all automatic!
@@ -100,7 +98,7 @@ for all production code. The Application framework may return in a future
 version once the design is mature.
 """
 
-__version__ = "2.13.4"  # Managed by semantic-release
+__version__ = "2.25.0"  # Managed by semantic-release
 
 # Import modules (packages) - logger is a module for extensibility
 from . import cli, config, database, harness, health, logger, metrics, runtime, version_check

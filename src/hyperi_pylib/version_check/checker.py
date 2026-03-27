@@ -18,7 +18,6 @@ import uuid
 from dataclasses import dataclass, field
 from datetime import UTC
 from pathlib import Path
-from typing import Optional
 
 logger = logging.getLogger("hyperi.version_check")
 
@@ -167,7 +166,7 @@ def _log_response(config: VersionCheckConfig, resp: VersionCheckResponse) -> Non
 
 def _format_age(published_at: str) -> str:
     """Format an ISO 8601 timestamp into a human-readable age string."""
-    from datetime import datetime, timezone
+    from datetime import datetime
 
     try:
         # Try ISO 8601 with timezone
