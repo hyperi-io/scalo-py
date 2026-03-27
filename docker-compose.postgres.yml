@@ -14,7 +14,7 @@
 
 services:
   postgres:
-    image: postgres:17-alpine
+    image: postgres:17-alpine@sha256:6f30057d31f5861b66f3545d4821f987aacf1dd920765f0acadea0c58ff975b1
     container_name: hyperi-pylib-postgres
     hostname: postgres
     ports:
@@ -34,7 +34,7 @@ services:
 
   # Optional: pgAdmin for debugging
   pgadmin:
-    image: dpage/pgadmin4:latest
+    image: dpage/pgadmin4:latest@sha256:d243a4bcc02d2ee6b447c601692813531d2d0fbca18b583d9f7f9658da835d81
     container_name: hyperi-pylib-pgadmin
     profiles:
       - ui  # Only start with: docker compose -f docker-compose.postgres.yml --profile ui up
