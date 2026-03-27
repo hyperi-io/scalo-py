@@ -1,3 +1,11 @@
+## [2.25.1](https://github.com/hyperi-io/hyperi-pylib/compare/v2.25.0...v2.25.1) (2026-03-27)
+
+
+### Bug Fixes
+
+* remove conflicting .releaserc.json (legacy) ([3df9191](https://github.com/hyperi-io/hyperi-pylib/commit/3df919105e8a1089bfc9469a143acf391317c506))
+* resolve CI quality failures, fix version sync, remove stale config ([0a47f6b](https://github.com/hyperi-io/hyperi-pylib/commit/0a47f6b7a05e8ce4f1def7dd97a91c4d54434a16))
+
 # [2.25.0-dev.6](https://github.com/hyperi-io/hyperi-pylib/compare/v2.25.0-dev.5...v2.25.0-dev.6) (2026-03-24)
 
 
