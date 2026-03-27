@@ -3,11 +3,6 @@
 Following No Mocks Policy: Tests use real logger, no mocks of internal implementation.
 """
 
-import logging
-from pathlib import Path
-
-import pytest
-
 
 class TestLoggerBasics:
     """Test basic logger functionality."""
@@ -70,3 +65,37 @@ class TestLoggerIntegration:
 
         # Just verify it doesn't crash
         logger.debug("Test debug message")
+
+
+class TestConvenienceKwargs:
+    """Test convenience wrappers pass structured kwargs to loguru."""
+
+    def test_info_accepts_kwargs(self):
+        """info() must forward kwargs for structured logging."""
+        from hyperi_pylib.logger.logger import info
+
+        info("Processing request", user_id=123, action="login")
+
+    def test_error_accepts_kwargs(self):
+        """error() must forward kwargs for structured logging."""
+        from hyperi_pylib.logger.logger import error
+
+        error("Operation failed", operation="db_query", exc_info=True)
+
+    def test_warning_accepts_kwargs(self):
+        """warning() must forward kwargs for structured logging."""
+        from hyperi_pylib.logger.logger import warning
+
+        warning("Slow response", endpoint="/api/v1/data", latency_ms=1500)
+
+    def test_debug_accepts_kwargs(self):
+        """debug() must forward kwargs for structured logging."""
+        from hyperi_pylib.logger.logger import debug
+
+        debug("Cache lookup", key="user:42", hit=False)
+
+    def test_success_accepts_kwargs(self):
+        """success() must forward kwargs for structured logging."""
+        from hyperi_pylib.logger.logger import success
+
+        success("Deployed", version="2.25.0", environment="production")
