@@ -75,15 +75,21 @@ plugins:
   - - "@semantic-release/exec"
     - prepareCmd: >-
         python3 -c "from pathlib import Path; import re;
-        Path('VERSION').write_text('${nextRelease.version}\n');
+        v='${nextRelease.version}';
+        Path('VERSION').write_text(v+'\n');
         pp=Path('pyproject.toml'); t=pp.read_text();
-        t=re.sub(r'^version\\s*=\\s*\"[^\"]*\"',
-        'version = \"${nextRelease.version}\"', t, count=1, flags=re.MULTILINE);
-        pp.write_text(t)"
+        t=re.sub(r'^version\s*=\s*\"[^\"]*\"',
+        'version = \"'+v+'\"', t, count=1, flags=re.MULTILINE);
+        pp.write_text(t);
+        ip=Path('src/hyperi_pylib/__init__.py'); s=ip.read_text();
+        s=re.sub(r'^__version__\s*=\s*\"[^\"]*\"',
+        '__version__ = \"'+v+'\"', s, count=1, flags=re.MULTILINE);
+        ip.write_text(s)"
 
   - - "@semantic-release/git"
     - assets:
         - CHANGELOG.md
         - VERSION
         - pyproject.toml
+        - src/hyperi_pylib/__init__.py
       message: "chore: version ${nextRelease.version} [skip ci]\n\n${nextRelease.notes}"

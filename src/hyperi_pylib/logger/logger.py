@@ -544,24 +544,24 @@ if _env_flag("HYPERI_LIB_AUTO_LOGGER_CONFIG") and not _env_flag("HYPERI_LIB_NO_L
 
 
 # Standard logging functions for convenience
-def info(msg):
-    logger.info(msg)
+def info(msg, **kwargs):
+    logger.info(msg, **kwargs)
 
 
-def warning(msg):
-    logger.warning(msg)
+def warning(msg, **kwargs):
+    logger.warning(msg, **kwargs)
 
 
-def error(msg):
-    logger.error(msg)
+def error(msg, **kwargs):
+    logger.error(msg, **kwargs)
 
 
-def success(msg):
-    logger.success(msg)
+def success(msg, **kwargs):
+    logger.success(msg, **kwargs)
 
 
-def debug(msg):
-    logger.debug(msg)
+def debug(msg, **kwargs):
+    logger.debug(msg, **kwargs)
 
 
 def log(msg: str, color: str | None = None, level: str = "INFO"):

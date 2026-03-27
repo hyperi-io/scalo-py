@@ -131,8 +131,6 @@ dev = [
     "boto3>=1.35.0",
     "aiobotocore>=2.15.0",
     "ruff>=0.1.0",
-    "black>=26.3.1",
-    "isort>=5.12.0",
     "ty>=0.0.21",
     "mypy>=1.0.0",
     "bandit[toml]>=1.7.0",
@@ -201,10 +199,7 @@ markers = [
     "smoke: startup smoke tests (mandatory, every push)",
     "slow: tests exceeding 30 seconds",
 ]
-filterwarnings = [
-    "ignore::DeprecationWarning",
-    "ignore::PendingDeprecationWarning",
-]
+filterwarnings = []
 
 [tool.coverage.run]
 source = [
@@ -330,22 +325,8 @@ indent-style = "space"
 skip-magic-trailing-comma = false
 line-ending = "auto"
 
-[tool.black]
-line-length = 120
-target-version = [
-    "py312",
-]
-include = "\\.pyi?$"
-extend-exclude = "/(\n  # directories\n  \\.eggs\n  | \\.git\n  | \\.hg\n  | \\.mypy_cache\n  | \\.tox\n  | \\.venv\n  | build\n  | dist\n)/\n"
-
-[tool.isort]
-profile = "black"
-line_length = 120
-multi_line_output = 3
-include_trailing_comma = true
-force_grid_wrap = 0
-use_parentheses = true
-ensure_newline_before_comments = true
+[tool.ty]
+exclude = ["examples/", "docs/"]
 
 [tool.ty.environment]
 python-version = "3.12"
@@ -366,85 +347,12 @@ targets = [
 ]
 no_tips = true
 
-[tool.semantic_release]
-version_toml = [
-    "pyproject.toml:project.version",
-]
-version_variables = [
-    "src/hyperi_pylib/__init__.py:__version__",
-]
-build_command = "rm -rf dist build src/*.egg-info && python -m build"
-major_on_zero = true
-tag_format = "v{version}"
-commit_message = "chore(release): {version}"
-
-[tool.semantic_release.commit_author]
-env = "GIT_COMMIT_AUTHOR"
-default = "semantic-release <semantic-release>"
-
-[tool.semantic_release.changelog]
-exclude_commit_patterns = []
-
-[tool.semantic_release.changelog.environment]
-keep_trailing_newline = true
-
-[tool.semantic_release.changelog.default_templates]
-changelog_file = "CHANGELOG.md"
-
-[tool.semantic_release.branches.main]
-match = "main"
-prerelease = false
-
-[tool.semantic_release.commit_parser_options]
-allowed_tags = [
-    "feat",
-    "fix",
-    "perf",
-    "refactor",
-    "style",
-    "test",
-    "build",
-    "ci",
-    "docs",
-    "chore",
-]
-minor_tags = [
-    "feat",
-]
-patch_tags = [
-    "fix",
-    "perf",
-]
-
 [tool.mypy]
 python_version = "3.12"
 warn_return_any = false
 warn_unused_configs = true
 disallow_untyped_defs = false
 ignore_missing_imports = true
-
-# HyperCI Configuration
-[tool.hyperci]
-language = "python"  # Auto-detected, but explicit for clarity
-
-[tool.hyperci.quality]
-enabled = true
-level = "standard"
-
-[tool.hyperci.build]
-enabled = true
-strategies = ["native"]  # Add "nuitka" if needed
-
-[tool.hyperci.publish]
-enabled = true
-targets = ["jfrog-pypi"]
-
-# Nuitka configuration (if enabled)
-[tool.hyperci.nuitka]
-enabled = false  # Set to true to enable Nuitka builds
-mode = "package"  # or "app" for standalone binaries
-protection = "recommended"  # Options: "none", "recommended", "data-hiding"
-platforms = ["linux-x64", "linux-arm64"]
 
 # UV package manager configuration
 # Auth via env vars: UV_INDEX_HYPERSEC_JFROG_USERNAME, UV_INDEX_HYPERSEC_JFROG_PASSWORD
