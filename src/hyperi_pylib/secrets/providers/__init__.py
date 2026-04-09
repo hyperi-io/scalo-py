@@ -6,7 +6,7 @@ from .file import FileProvider
 # Optional providers with graceful import fallbacks
 try:
     from .openbao import HTTPX_AVAILABLE, OpenBaoProvider
-except ImportError:
+except (ImportError, AttributeError):
     OpenBaoProvider = None  # type: ignore[assignment,misc]
     HTTPX_AVAILABLE = False
 
