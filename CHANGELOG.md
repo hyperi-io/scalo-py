@@ -1,3 +1,10 @@
+## [2.25.2](https://github.com/hyperi-io/hyperi-pylib/compare/v2.25.1...v2.25.2) (2026-04-09)
+
+
+### Bug Fixes
+
+* prevent AttributeError when importing openbao provider without httpx ([385980c](https://github.com/hyperi-io/hyperi-pylib/commit/385980c302c85ea1d63d996beba10cb5a9684ce3))
+
 ## [2.25.1](https://github.com/hyperi-io/hyperi-pylib/compare/v2.25.0...v2.25.1) (2026-03-27)
 
 
