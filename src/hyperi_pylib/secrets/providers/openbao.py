@@ -1,5 +1,7 @@
 """OpenBao/Vault secret provider with httpx async support."""
 
+from __future__ import annotations
+
 import json
 import logging
 from datetime import UTC, datetime
@@ -77,7 +79,7 @@ class OpenBaoProvider(SecretProvider):
             return self._config.ca_cert
         return True
 
-    async def _get_async_client(self) -> "httpx.AsyncClient":
+    async def _get_async_client(self) -> httpx.AsyncClient:
         """Get or create async HTTP client."""
         if self._client is None:
             verify = self._get_ssl_context()
@@ -89,7 +91,7 @@ class OpenBaoProvider(SecretProvider):
             )
         return self._client
 
-    def _get_sync_client(self) -> "httpx.Client":
+    def _get_sync_client(self) -> httpx.Client:
         """Get or create sync HTTP client."""
         if self._sync_client is None:
             verify = self._get_ssl_context()
@@ -133,7 +135,7 @@ class OpenBaoProvider(SecretProvider):
         else:
             raise AuthenticationError(self.name, f"unsupported auth method: {self._config.auth_method}")
 
-    async def _auth_approle_async(self, client: "httpx.AsyncClient") -> None:
+    async def _auth_approle_async(self, client: httpx.AsyncClient) -> None:
         """Authenticate with AppRole."""
         if not self._config.role_id or not self._config.secret_id:
             raise AuthenticationError(self.name, "AppRole requires role_id and secret_id")
@@ -154,7 +156,7 @@ class OpenBaoProvider(SecretProvider):
         except Exception as e:
             raise AuthenticationError(self.name, f"AppRole auth failed: {e}")
 
-    def _auth_approle_sync(self, client: "httpx.Client") -> None:
+    def _auth_approle_sync(self, client: httpx.Client) -> None:
         """Authenticate with AppRole (sync)."""
         if not self._config.role_id or not self._config.secret_id:
             raise AuthenticationError(self.name, "AppRole requires role_id and secret_id")
@@ -175,7 +177,7 @@ class OpenBaoProvider(SecretProvider):
         except Exception as e:
             raise AuthenticationError(self.name, f"AppRole auth failed: {e}")
 
-    async def _auth_kubernetes_async(self, client: "httpx.AsyncClient") -> None:
+    async def _auth_kubernetes_async(self, client: httpx.AsyncClient) -> None:
         """Authenticate with Kubernetes service account."""
         if not self._config.role:
             raise AuthenticationError(self.name, "Kubernetes auth requires role")
@@ -198,7 +200,7 @@ class OpenBaoProvider(SecretProvider):
         except Exception as e:
             raise AuthenticationError(self.name, f"Kubernetes auth failed: {e}")
 
-    def _auth_kubernetes_sync(self, client: "httpx.Client") -> None:
+    def _auth_kubernetes_sync(self, client: httpx.Client) -> None:
         """Authenticate with Kubernetes service account (sync)."""
         if not self._config.role:
             raise AuthenticationError(self.name, "Kubernetes auth requires role")
