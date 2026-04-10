@@ -1,3 +1,10 @@
+# [2.26.0](https://github.com/hyperi-io/hyperi-pylib/compare/v2.25.2...v2.26.0) (2026-04-10)
+
+
+### Features
+
+* **secrets:** add Ansible Vault provider for SME networks ([9227dae](https://github.com/hyperi-io/hyperi-pylib/commit/9227dae76222606e745217851b272a7850dc99eb))
+
 ## [2.25.2](https://github.com/hyperi-io/hyperi-pylib/compare/v2.25.1...v2.25.2) (2026-04-09)
 
 
