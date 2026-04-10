@@ -14,6 +14,7 @@ class ProviderType(Enum):
     AWS = "aws"
     GCP = "gcp"
     AZURE = "azure"
+    ANSIBLE_VAULT = "ansible_vault"
 
 
 @dataclass
@@ -205,6 +206,23 @@ class AzureConfig:
     """Request timeout in seconds."""
 
 
+@dataclass
+class AnsibleVaultConfig:
+    """Ansible Vault provider configuration.
+
+    Designed primarily for SME networks that need encrypted-at-rest secrets
+    without the operational overhead of a dedicated secrets server. Also suitable
+    for dev/test environments, CI pipelines, or any setup where Ansible Vault is
+    already the team's standard for secret management.
+    """
+
+    password: str | None = None
+    """Resolved vault password (from env var or file)."""
+
+    password_file: str | None = None
+    """Path to file containing the vault password (fallback)."""
+
+
 # Type alias for rotation callbacks
 RotationCallback = Callable[[RotationEvent], None]
 
@@ -219,5 +237,6 @@ __all__ = [
     "AWSConfig",
     "GCPConfig",
     "AzureConfig",
+    "AnsibleVaultConfig",
     "RotationCallback",
 ]

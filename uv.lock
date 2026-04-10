@@ -169,6 +169,35 @@ wheels = [
 ]
 
 [[package]]
+name = "ansible-core"
+version = "2.20.4"
+source = { registry = "https://pypi.org/simple" }
+dependencies = [
+    { name = "cryptography" },
+    { name = "jinja2" },
+    { name = "packaging" },
+    { name = "pyyaml" },
+    { name = "resolvelib" },
+]
+sdist = { url = "https://files.pythonhosted.org/packages/11/7c/57263940ef61d7a829baef6e752556b1434f3a66ae05885c80753efbca50/ansible_core-2.20.4.tar.gz", hash = "sha256:2060c06195ada0cca0ac3128025d1167f567479da465897d818982fbe28bed1f", size = 3334074, upload-time = "2026-03-23T17:39:36.24Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/71/19/fecf85f0f677405c0d4bec0c9f304b9f906f25599a176f4b16db7fa83571/ansible_core-2.20.4-py3-none-any.whl", hash = "sha256:fb3a8f0301aab863f847f70aea9cbd47d635c6a283b441c56cec881b4aedcb04", size = 2426247, upload-time = "2026-03-23T17:39:34.669Z" },
+]
+
+[[package]]
+name = "ansible-vault"
+version = "4.1.0"
+source = { registry = "https://pypi.org/simple" }
+dependencies = [
+    { name = "ansible-core" },
+    { name = "pyyaml" },
+]
+sdist = { url = "https://files.pythonhosted.org/packages/33/60/bd340a38b7d9fd4fcdd2df4a2b21f5e23af0481c5424c07d30668a7d6ed8/ansible_vault-4.1.0.tar.gz", hash = "sha256:7e985a9329e4728961d7a00f62412fa8ec246a4d832ad6e6d158165e0026529b", size = 15876, upload-time = "2025-05-15T11:50:42.647Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/9e/0b/1c4e83665280bde1101862635ee6d69b43886002b30128d2fe82ba63cab7/ansible_vault-4.1.0-py3-none-any.whl", hash = "sha256:ae2e194bb68cc94471d0cdba0705cea9390d9c3dfe6299eeb1d4ee36af602bd9", size = 16062, upload-time = "2025-05-15T11:50:41.435Z" },
+]
+
+[[package]]
 name = "anyio"
 version = "4.12.1"
 source = { registry = "https://pypi.org/simple" }
@@ -1281,7 +1310,7 @@ wheels = [
 
 [[package]]
 name = "hyperi-pylib"
-version = "2.25.1"
+version = "2.25.2"
 source = { editable = "." }
 dependencies = [
     { name = "dulwich" },
@@ -1302,6 +1331,7 @@ cache = [
 ]
 dev = [
     { name = "aiobotocore" },
+    { name = "ansible-vault" },
     { name = "bandit" },
     { name = "boto3" },
     { name = "build" },
@@ -1365,10 +1395,14 @@ presidio = [
 ]
 secrets = [
     { name = "aiobotocore" },
+    { name = "ansible-vault" },
     { name = "azure-identity" },
     { name = "azure-keyvault-secrets" },
     { name = "boto3" },
     { name = "google-cloud-secret-manager" },
+]
+secrets-ansible-vault = [
+    { name = "ansible-vault" },
 ]
 secrets-aws = [
     { name = "aiobotocore" },
@@ -1395,6 +1429,9 @@ requires-dist = [
     { name = "aiobotocore", marker = "extra == 'dev'", specifier = ">=2.15.0" },
     { name = "aiobotocore", marker = "extra == 'secrets'", specifier = ">=2.15.0" },
     { name = "aiobotocore", marker = "extra == 'secrets-aws'", specifier = ">=2.15.0" },
+    { name = "ansible-vault", marker = "extra == 'dev'", specifier = ">=4.0.0" },
+    { name = "ansible-vault", marker = "extra == 'secrets'", specifier = ">=4.0.0" },
+    { name = "ansible-vault", marker = "extra == 'secrets-ansible-vault'", specifier = ">=4.0.0" },
     { name = "azure-identity", marker = "extra == 'secrets'", specifier = ">=1.25.1" },
     { name = "azure-identity", marker = "extra == 'secrets-azure'", specifier = ">=1.25.1" },
     { name = "azure-keyvault-secrets", marker = "extra == 'secrets'", specifier = ">=4.9.0" },
@@ -1459,7 +1496,7 @@ requires-dist = [
     { name = "vulture", marker = "extra == 'dev'", specifier = ">=2.7.0" },
     { name = "wheel", marker = "extra == 'dev'", specifier = ">=0.42.0" },
 ]
-provides-extras = ["cli", "http", "cache", "metrics", "opentelemetry", "expression", "database", "kafka", "presidio", "secrets-vault", "secrets-aws", "secrets-gcp", "secrets-azure", "secrets", "license", "version-check", "enhanced", "dev", "docs"]
+provides-extras = ["cli", "http", "cache", "metrics", "opentelemetry", "expression", "database", "kafka", "presidio", "secrets-ansible-vault", "secrets-vault", "secrets-aws", "secrets-gcp", "secrets-azure", "secrets", "license", "version-check", "enhanced", "dev", "docs"]
 
 [package.metadata.requires-dev]
 dev = [
@@ -3282,6 +3319,15 @@ dependencies = [
 sdist = { url = "https://files.pythonhosted.org/packages/f3/61/d7545dafb7ac2230c70d38d31cbfe4cc64f7144dc41f6e4e4b78ecd9f5bb/requests-toolbelt-1.0.0.tar.gz", hash = "sha256:7681a0a3d047012b5bdc0ee37d7f8f07ebe76ab08caeccfc3921ce23c88d5bc6", size = 206888, upload-time = "2023-05-01T04:11:33.229Z" }
 wheels = [
     { url = "https://files.pythonhosted.org/packages/3f/51/d4db610ef29373b879047326cbf6fa98b6c1969d6f6dc423279de2b1be2c/requests_toolbelt-1.0.0-py2.py3-none-any.whl", hash = "sha256:cccfdd665f0a24fcf4726e690f65639d272bb0637b9b92dfd91a5568ccf6bd06", size = 54481, upload-time = "2023-05-01T04:11:28.427Z" },
+]
+
+[[package]]
+name = "resolvelib"
+version = "1.2.1"
+source = { registry = "https://pypi.org/simple" }
+sdist = { url = "https://files.pythonhosted.org/packages/1d/14/4669927e06631070edb968c78fdb6ce8992e27c9ab2cde4b3993e22ac7af/resolvelib-1.2.1.tar.gz", hash = "sha256:7d08a2022f6e16ce405d60b68c390f054efcfd0477d4b9bd019cc941c28fad1c", size = 24575, upload-time = "2025-10-11T01:07:44.582Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/e2/23/c941a0d0353681ca138489983c4309e0f5095dfd902e1357004f2357ddf2/resolvelib-1.2.1-py3-none-any.whl", hash = "sha256:fb06b66c8da04172d9e72a21d7d06186d8919e32ae5ab5cdf5b9d920be805ac2", size = 18737, upload-time = "2025-10-11T01:07:43.081Z" },
 ]
 
 [[package]]

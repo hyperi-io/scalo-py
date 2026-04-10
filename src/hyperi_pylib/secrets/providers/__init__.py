@@ -30,6 +30,12 @@ except ImportError:
     AZURE_AVAILABLE = False
     AZURE_ASYNC_AVAILABLE = False
 
+try:
+    from .ansible_vault import ANSIBLE_VAULT_AVAILABLE, AnsibleVaultProvider
+except ImportError:
+    AnsibleVaultProvider = None  # type: ignore[assignment,misc]
+    ANSIBLE_VAULT_AVAILABLE = False
+
 __all__ = [
     "SecretProvider",
     "FileProvider",
@@ -37,10 +43,12 @@ __all__ = [
     "AWSProvider",
     "GCPProvider",
     "AzureProvider",
+    "AnsibleVaultProvider",
     "HTTPX_AVAILABLE",
     "BOTO3_AVAILABLE",
     "AIOBOTOCORE_AVAILABLE",
     "GCP_AVAILABLE",
     "AZURE_AVAILABLE",
     "AZURE_ASYNC_AVAILABLE",
+    "ANSIBLE_VAULT_AVAILABLE",
 ]

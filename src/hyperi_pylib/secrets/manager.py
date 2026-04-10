@@ -18,6 +18,7 @@ from .exceptions import (
 from .providers.base import SecretProvider
 from .providers.file import FileProvider
 from .types import (
+    AnsibleVaultConfig,
     AWSConfig,
     AzureConfig,
     CacheConfig,
@@ -157,6 +158,18 @@ class SecretsManager:
             except ImportError:
                 logger.warning("Azure provider not available. Install with: pip install hyperi-pylib[secrets-azure]")
 
+        # Ansible Vault provider
+        if "ansible_vault" in config:
+            try:
+                from .providers.ansible_vault import AnsibleVaultProvider
+
+                av_config = cls._parse_ansible_vault_config(config["ansible_vault"])
+                providers["ansible_vault"] = AnsibleVaultProvider(av_config)
+            except ImportError:
+                logger.warning(
+                    "Ansible Vault provider not available. Install with: pip install hyperi-pylib[secrets-ansible-vault]"
+                )
+
         # Parse sources
         sources: dict[str, SourceConfig] = {}
         for name, source_cfg in config.get("sources", {}).items():
@@ -241,6 +254,16 @@ class SecretsManager:
             client_id=cfg.get("client_id") or os.environ.get("AZURE_CLIENT_ID"),
             client_secret=cfg.get("client_secret") or os.environ.get("AZURE_CLIENT_SECRET"),
             timeout_secs=cfg.get("timeout_secs", 30),
+        )
+
+    @staticmethod
+    def _parse_ansible_vault_config(cfg: dict) -> AnsibleVaultConfig:
+        """Parse Ansible Vault config with env var fallbacks."""
+        return AnsibleVaultConfig(
+            password=cfg.get("password")
+            or os.environ.get("ANSIBLE_VAULT_PASSWORD")
+            or os.environ.get("ANSIBLE_VAULT_PASS"),
+            password_file=cfg.get("password_file"),
         )
 
     async def get(
