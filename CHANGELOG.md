@@ -1,3 +1,16 @@
+# [2.27.0](https://github.com/hyperi-io/hyperi-pylib/compare/v2.26.0...v2.27.0) (2026-04-11)
+
+
+### Bug Fixes
+
+* **secrets:** remove stale quoted forward-ref in from_config return annotation ([fe31f7a](https://github.com/hyperi-io/hyperi-pylib/commit/fe31f7a231c3123ca6ba52336ec1b0d30ffc589f))
+* **tests:** accept exit 0 or 2 in cli_app no_args_shows_help ([032f5da](https://github.com/hyperi-io/hyperi-pylib/commit/032f5da527f2cba36dc6958aeee5dae379cf17d2))
+
+
+### Features
+
+* **secrets:** add list/CRUD/metadata/batch/versioning to provider abstraction ([e4a7db9](https://github.com/hyperi-io/hyperi-pylib/commit/e4a7db9a08bcf84e67f420ec13818c7b6a57dab7))
+
 # [2.26.0](https://github.com/hyperi-io/hyperi-pylib/compare/v2.25.2...v2.26.0) (2026-04-10)
 
 
