@@ -106,7 +106,7 @@ class SecretsManager:
         return self._providers["file"]
 
     @classmethod
-    def from_config(cls, config: dict[str, Any]) -> "SecretsManager":
+    def from_config(cls, config: dict[str, Any]) -> SecretsManager:
         """Create manager from configuration dictionary.
 
         Config structure matches docs/SECRETS.md.
