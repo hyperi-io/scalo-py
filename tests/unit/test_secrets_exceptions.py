@@ -8,8 +8,12 @@ from hyperi_pylib.secrets.exceptions import (
     ProviderError,
     ProviderNotAvailableError,
     ProviderNotConfiguredError,
+    SecretAlreadyExistsError,
     SecretNotFoundError,
+    SecretPermissionError,
     SecretsError,
+    SecretVersionNotFoundError,
+    VersioningNotSupportedError,
 )
 
 
@@ -154,6 +158,10 @@ class TestExceptionCatching:
             ProviderNotConfiguredError("aws"),
             CacheError("disk error"),
             AuthenticationError("vault", "denied"),
+            SecretAlreadyExistsError("test", "file"),
+            SecretPermissionError("vault", "create", "secret/foo"),
+            SecretVersionNotFoundError("test", "v2", "vault"),
+            VersioningNotSupportedError("file"),
         ]
 
         for error in errors:
@@ -163,3 +171,85 @@ class TestExceptionCatching:
                 pass  # All should be caught
             except Exception:
                 pytest.fail(f"Expected {type(error).__name__} to be caught by SecretsError")
+
+
+class TestSecretAlreadyExistsError:
+    """Tests for SecretAlreadyExistsError."""
+
+    def test_create_error(self):
+        err = SecretAlreadyExistsError("api_key", "aws")
+        assert err.name == "api_key"
+        assert err.provider == "aws"
+        assert "already exists" in str(err)
+        assert "api_key" in str(err)
+        assert "aws" in str(err)
+
+    def test_inheritance(self):
+        err = SecretAlreadyExistsError("x", "file")
+        assert isinstance(err, SecretsError)
+        assert isinstance(err, Exception)
+        # Not a SecretNotFoundError — distinct error class
+        assert not isinstance(err, SecretNotFoundError)
+
+
+class TestSecretPermissionError:
+    """Tests for SecretPermissionError."""
+
+    def test_create_error_without_hint(self):
+        err = SecretPermissionError("vault", "create", "secret/foo")
+        assert err.operation == "create"
+        assert err.path == "secret/foo"
+        assert err.hint is None
+        assert err.provider == "vault"
+        assert "permission denied" in str(err).lower()
+        assert "create" in str(err)
+        assert "secret/foo" in str(err)
+
+    def test_create_error_with_hint(self):
+        err = SecretPermissionError(
+            "aws",
+            "update",
+            "prod/api_key",
+            "IAM role needs secretsmanager:UpdateSecret",
+        )
+        assert err.hint == "IAM role needs secretsmanager:UpdateSecret"
+        assert "IAM role" in str(err)
+
+    def test_inheritance(self):
+        err = SecretPermissionError("vault", "delete", "x")
+        # Inherits from ProviderError (has provider attribute, not a 'not found')
+        assert isinstance(err, ProviderError)
+        assert isinstance(err, SecretsError)
+
+
+class TestSecretVersionNotFoundError:
+    """Tests for SecretVersionNotFoundError."""
+
+    def test_create_error(self):
+        err = SecretVersionNotFoundError("api_key", "v3", "vault")
+        assert err.version == "v3"
+        assert err.provider == "vault"
+        # Embeds version in name for clarity
+        assert "v3" in str(err)
+        assert "api_key" in str(err)
+
+    def test_inheritance(self):
+        """Inherits from SecretNotFoundError so existing `except SecretNotFoundError`
+        handlers continue to catch it."""
+        err = SecretVersionNotFoundError("x", "v1", "vault")
+        assert isinstance(err, SecretNotFoundError)
+        assert isinstance(err, SecretsError)
+
+
+class TestVersioningNotSupportedError:
+    """Tests for VersioningNotSupportedError."""
+
+    def test_create_error(self):
+        err = VersioningNotSupportedError("file")
+        assert err.provider == "file"
+        assert "versioned access" in str(err).lower()
+
+    def test_inheritance(self):
+        err = VersioningNotSupportedError("ansible_vault")
+        assert isinstance(err, ProviderError)
+        assert isinstance(err, SecretsError)

@@ -223,6 +223,59 @@ class AnsibleVaultConfig:
     """Path to file containing the vault password (fallback)."""
 
 
+@dataclass
+class SecretMetadata:
+    """Normalised secret metadata across all providers.
+
+    Fields are None when the provider doesn't support them.
+    File-based providers won't have tags or expires_at; cloud providers
+    populate most fields from their native metadata APIs.
+    """
+
+    name: str
+    """Secret name or path."""
+
+    created_at: datetime | None = None
+    """When the secret was created."""
+
+    updated_at: datetime | None = None
+    """When the secret was last modified."""
+
+    expires_at: datetime | None = None
+    """When the secret expires (Azure, AWS rotation)."""
+
+    version: str | None = None
+    """Current version identifier."""
+
+    version_count: int | None = None
+    """Number of versions (versioned providers only)."""
+
+    tags: dict[str, str] | None = None
+    """Provider tags/labels (cloud providers, OpenBao custom metadata)."""
+
+    source: str = "unknown"
+    """Provider name."""
+
+
+@dataclass
+class SecretFilter:
+    """Filter for listing secrets.
+
+    prefix is the primary efficient filter (server-side on most providers).
+    pattern is a client-side post-filter using fnmatch glob syntax.
+    tags filter is server-side on cloud providers, ignored by file-based providers.
+    """
+
+    prefix: str | None = None
+    """Path prefix — server-side filter where supported."""
+
+    tags: dict[str, str] | None = None
+    """Tag/label filter. Server-side on AWS/GCP/Azure/OpenBao. Ignored on file-based."""
+
+    pattern: str | None = None
+    """Glob pattern — client-side post-filter on list results. Use prefix for efficiency."""
+
+
 # Type alias for rotation callbacks
 RotationCallback = Callable[[RotationEvent], None]
 
@@ -238,5 +291,7 @@ __all__ = [
     "GCPConfig",
     "AzureConfig",
     "AnsibleVaultConfig",
+    "SecretMetadata",
+    "SecretFilter",
     "RotationCallback",
 ]

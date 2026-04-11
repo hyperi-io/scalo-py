@@ -2,6 +2,47 @@
 
 ## Active
 
+### Secrets Abstraction Extensions — Plan 4 (Cloud Providers) `[DEFERRED TO WORK VM]`
+
+**Spec:** `docs/superpowers/specs/2026-04-10-secrets-abstraction-extensions-design.md`
+
+**Status:** Plans 1-3 shipped in v2.27.0. Plan 4 deferred — needs cloud creds available on
+`desktop-derek` work VM. Resume there.
+
+- [x] Plan 1: Types (`SecretMetadata`, `SecretFilter`), Exceptions (`SecretAlreadyExistsError`, `SecretPermissionError`, `SecretVersionNotFoundError`, `VersioningNotSupportedError`), ABC (`SecretProvider` Tier 1 methods, `VersionedProvider` mixin)
+- [x] Plan 2: File-based providers (`FileProvider` + `AnsibleVaultProvider` Tier 1 methods — list, metadata, create, update, delete)
+- [x] Plan 3: `SecretsManager` extensions (batch_get, list, get_metadata, CRUD delegation, version capability checks)
+- [ ] **Plan 4:** Cloud providers — OpenBao, AWS, GCP, Azure. Replace `NotImplementedError` stubs with real SDK calls for Tier 1 (list/metadata/CRUD) + Tier 2 (get_version/list_versions).
+
+**Resume on desktop-derek work VM:**
+
+1. `cd /projects/hyperi-pylib && git pull` — pull v2.27.0 (Plans 1-3)
+2. Copy `.env` with cloud creds from `~/secrets/` or `hyperi-infra` to repo root (gitignored)
+3. Verify creds available:
+   - **OpenBao:** `VAULT_ADDR`, `VAULT_TOKEN` (devex `10.66.0.101` is safe for testing)
+   - **AWS:** `AWS_ACCESS_KEY_ID`, `AWS_SECRET_ACCESS_KEY`, or IAM role — or use **LocalStack** / **moto** for offline testing
+   - **GCP:** `GOOGLE_APPLICATION_CREDENTIALS` path to service account JSON
+   - **Azure:** `AZURE_TENANT_ID`, `AZURE_CLIENT_ID`, `AZURE_CLIENT_SECRET`, `AZURE_VAULT_URL`
+4. Implement in this order (easiest → hardest): OpenBao → AWS → GCP → Azure
+5. Each provider needs ~14 methods: `list/get_metadata/create/update/delete` (sync+async) + versioning (`get_version/list_versions`). Stubs currently in `src/hyperi_pylib/secrets/providers/{openbao,aws,gcp,azure}.py`.
+6. AWS: use native `batch_get_secret_value` when implementing `batch_get_async` (see `manager.py:batch_get` — it already delegates).
+7. Write integration tests using existing docker-compose pattern (see `test_secrets_cache.py` for the Postgres fixture example). LocalStack docker-compose for AWS if not using real tenant.
+8. Target: v2.28.0 (minor bump, new capabilities on existing providers).
+
+**Files to modify:**
+
+- `src/hyperi_pylib/secrets/providers/openbao.py` — search for `NotImplementedError`
+- `src/hyperi_pylib/secrets/providers/aws.py`
+- `src/hyperi_pylib/secrets/providers/gcp.py`
+- `src/hyperi_pylib/secrets/providers/azure.py`
+
+**Important design notes from Plans 1-3:**
+
+- Cloud providers inherit from `VersionedProvider` (not `SecretProvider`) — they MUST implement `get_version_async/sync` and `list_versions_async/sync`.
+- File providers inherit from `SecretProvider` — `isinstance(p, VersionedProvider)` check in `SecretsManager.get_version` raises `VersioningNotSupportedError` for them.
+- `SecretFilter.prefix` is the efficient path (server-side on cloud), `pattern` is client-side fnmatch post-filter.
+- Error handling: map provider-specific errors to `SecretNotFoundError`, `SecretAlreadyExistsError`, `SecretPermissionError(provider, operation, path, hint)`, `SecretVersionNotFoundError`.
+
 ### BLOCKER: Fix OTel atexit exit code 1 in CI tests — **2h**
 
 **Status:** Blocking pylib GA release (v2.25.0)

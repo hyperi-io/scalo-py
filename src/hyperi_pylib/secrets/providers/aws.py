@@ -4,9 +4,15 @@ import json
 import logging
 from datetime import UTC, datetime
 
-from ..exceptions import ProviderError, SecretNotFoundError
-from ..types import AWSConfig, SecretValue
-from .base import SecretProvider
+from ..exceptions import (
+    ProviderError,
+    SecretAlreadyExistsError,
+    SecretNotFoundError,
+    SecretPermissionError,
+    SecretVersionNotFoundError,
+)
+from ..types import AWSConfig, SecretFilter, SecretMetadata, SecretValue
+from .base import VersionedProvider
 
 logger = logging.getLogger(__name__)
 
@@ -30,7 +36,7 @@ except ImportError:
     get_aiobotocore_session = None  # type: ignore[assignment]
 
 
-class AWSProvider(SecretProvider):
+class AWSProvider(VersionedProvider):
     """AWS Secrets Manager provider.
 
     Uses boto3 for sync operations and aiobotocore for async operations.
@@ -240,6 +246,50 @@ class AWSProvider(SecretProvider):
             return True
         except Exception:
             return False
+
+    # --- Stubs for new abstract methods (to be implemented) ---
+
+    async def list_async(self, filter: SecretFilter | None = None) -> list[str]:
+        raise NotImplementedError("not yet implemented")
+
+    def list_sync(self, filter: SecretFilter | None = None) -> list[str]:
+        raise NotImplementedError("not yet implemented")
+
+    async def get_metadata_async(self, path: str) -> SecretMetadata:
+        raise NotImplementedError("not yet implemented")
+
+    def get_metadata_sync(self, path: str) -> SecretMetadata:
+        raise NotImplementedError("not yet implemented")
+
+    async def create_async(self, path: str, value: bytes, tags: dict[str, str] | None = None) -> SecretMetadata:
+        raise NotImplementedError("not yet implemented")
+
+    def create_sync(self, path: str, value: bytes, tags: dict[str, str] | None = None) -> SecretMetadata:
+        raise NotImplementedError("not yet implemented")
+
+    async def update_async(self, path: str, value: bytes) -> SecretMetadata:
+        raise NotImplementedError("not yet implemented")
+
+    def update_sync(self, path: str, value: bytes) -> SecretMetadata:
+        raise NotImplementedError("not yet implemented")
+
+    async def delete_async(self, path: str) -> None:
+        raise NotImplementedError("not yet implemented")
+
+    def delete_sync(self, path: str) -> None:
+        raise NotImplementedError("not yet implemented")
+
+    async def get_version_async(self, path: str, version: str, key: str | None = None) -> SecretValue:
+        raise NotImplementedError("not yet implemented")
+
+    def get_version_sync(self, path: str, version: str, key: str | None = None) -> SecretValue:
+        raise NotImplementedError("not yet implemented")
+
+    async def list_versions_async(self, path: str) -> list[SecretMetadata]:
+        raise NotImplementedError("not yet implemented")
+
+    def list_versions_sync(self, path: str) -> list[SecretMetadata]:
+        raise NotImplementedError("not yet implemented")
 
 
 __all__ = ["AWSProvider", "BOTO3_AVAILABLE", "AIOBOTOCORE_AVAILABLE"]

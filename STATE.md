@@ -143,4 +143,38 @@ make build      # Build wheel
 
 ---
 
-**Last Updated:** 2026-03-04
+## Active Work: Secrets Abstraction — Plan 4 (deferred)
+
+**Current state (v2.27.0):** Plans 1-3 shipped. File and Ansible Vault providers have full
+list/CRUD/metadata support. Cloud providers (OpenBao, AWS, GCP, Azure) still have
+`NotImplementedError` stubs for the new methods — reads via `get()`/`get_sync()` still work
+exactly as before.
+
+**Plan 4 (next):** Replace cloud provider stubs with real SDK implementations. **Deferred to
+`desktop-derek` work VM** because it needs cloud creds that aren't on this machine.
+
+**Resume checklist — on desktop-derek:**
+
+1. `git pull` latest main (should be v2.27.0+).
+2. Place cloud creds in `.env` (gitignored): `VAULT_ADDR`, `VAULT_TOKEN`, AWS keys, GCP service account path, Azure SP.
+3. Read `TODO.md` → "Secrets Abstraction Extensions — Plan 4 (Cloud Providers)" for full details.
+4. Read spec: `docs/superpowers/specs/2026-04-10-secrets-abstraction-extensions-design.md`.
+5. Implement in order: **OpenBao → AWS → GCP → Azure** (easiest → hardest).
+6. Target: **v2.28.0** (minor bump).
+
+**Safe dev path for OpenBao:** use devex infra VM at `https://10.66.0.101:8200` — it's the
+internal OpenBao and already trusted.
+
+**Safe dev path for AWS:** use [LocalStack](https://localstack.cloud/) or [moto](https://github.com/getmoto/moto)
+instead of hitting real AWS — they both support Secrets Manager.
+
+**Key design invariants (don't break these):**
+
+- Cloud providers inherit from `VersionedProvider`, file providers from `SecretProvider`.
+- `isinstance(p, VersionedProvider)` is the capability check in `SecretsManager.get_version` / `list_versions`.
+- AWS `batch_get` should use native `batch_get_secret_value` — `SecretsManager.batch_get` already delegates via `hasattr(p, "batch_get_async")`.
+- Map provider errors to: `SecretNotFoundError`, `SecretAlreadyExistsError`, `SecretPermissionError(provider, operation, path, hint)`, `SecretVersionNotFoundError`.
+
+---
+
+**Last Updated:** 2026-04-11

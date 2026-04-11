@@ -1,6 +1,6 @@
 """Secret providers for hyperi-pylib secrets module."""
 
-from .base import SecretProvider
+from .base import SecretProvider, VersionedProvider
 from .file import FileProvider
 
 # Optional providers with graceful import fallbacks
@@ -38,6 +38,7 @@ except ImportError:
 
 __all__ = [
     "SecretProvider",
+    "VersionedProvider",
     "FileProvider",
     "OpenBaoProvider",
     "AWSProvider",
