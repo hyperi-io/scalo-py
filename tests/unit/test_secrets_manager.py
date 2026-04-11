@@ -7,11 +7,22 @@ from unittest.mock import AsyncMock, MagicMock, patch
 import pytest
 
 from hyperi_pylib.secrets.exceptions import (
+    ProviderError,
     ProviderNotConfiguredError,
+    SecretAlreadyExistsError,
     SecretNotFoundError,
+    SecretVersionNotFoundError,
+    VersioningNotSupportedError,
 )
 from hyperi_pylib.secrets.manager import SecretsManager
-from hyperi_pylib.secrets.types import CacheConfig, RotationEvent, SecretValue
+from hyperi_pylib.secrets.providers.base import VersionedProvider
+from hyperi_pylib.secrets.types import (
+    CacheConfig,
+    RotationEvent,
+    SecretFilter,
+    SecretMetadata,
+    SecretValue,
+)
 
 
 class TestSecretsManager:
@@ -344,3 +355,276 @@ class TestSecretsManagerWithMockedProviders:
 
             result = await manager.get("my-secret", provider="aws")
             assert result.decode() == "aws-secret"
+
+
+# =============================================================================
+# Plan 3: SecretsManager extensions
+# =============================================================================
+
+
+class TestSecretsManagerList:
+    """Tests for SecretsManager.list / list_sync."""
+
+    def test_list_sync_delegates_to_file_provider(self, tmp_path):
+        (tmp_path / "a").write_text("1")
+        (tmp_path / "b").write_text("2")
+
+        manager = SecretsManager()
+        result = manager.list_sync(SecretFilter(prefix=str(tmp_path)))
+
+        assert sorted(Path(p).name for p in result) == ["a", "b"]
+
+    @pytest.mark.asyncio
+    async def test_list_async_delegates(self, tmp_path):
+        (tmp_path / "a").write_text("1")
+        manager = SecretsManager()
+        result = await manager.list(SecretFilter(prefix=str(tmp_path)))
+        assert len(result) == 1
+
+    def test_list_unknown_provider_raises(self):
+        manager = SecretsManager()
+        with pytest.raises(ProviderNotConfiguredError):
+            manager.list_sync(SecretFilter(prefix="/tmp"), provider="nonexistent")
+
+    def test_list_defaults_to_file_provider(self, tmp_path):
+        (tmp_path / "a").write_text("1")
+        manager = SecretsManager()
+        result = manager.list_sync(SecretFilter(prefix=str(tmp_path)))
+        assert len(result) == 1
+
+
+class TestSecretsManagerMetadata:
+    """Tests for SecretsManager.get_metadata / get_metadata_sync."""
+
+    def test_get_metadata_sync(self, tmp_path):
+        path = tmp_path / "secret"
+        path.write_text("value")
+
+        manager = SecretsManager()
+        md = manager.get_metadata_sync(str(path))
+
+        assert md.name == str(path)
+        assert md.source == "file"
+        assert md.created_at is not None
+
+    def test_get_metadata_missing_raises(self, tmp_path):
+        manager = SecretsManager()
+        with pytest.raises(SecretNotFoundError):
+            manager.get_metadata_sync(str(tmp_path / "missing"))
+
+    @pytest.mark.asyncio
+    async def test_get_metadata_async(self, tmp_path):
+        path = tmp_path / "secret"
+        path.write_text("value")
+        manager = SecretsManager()
+        md = await manager.get_metadata(str(path))
+        assert md.name == str(path)
+
+
+class TestSecretsManagerCRUD:
+    """Tests for SecretsManager create / update / delete."""
+
+    def test_create_sync(self, tmp_path):
+        path = tmp_path / "new_secret"
+        manager = SecretsManager()
+
+        md = manager.create_sync(str(path), b"value")
+
+        assert path.read_bytes() == b"value"
+        assert md.name == str(path)
+
+    def test_create_sync_already_exists_raises(self, tmp_path):
+        path = tmp_path / "existing"
+        path.write_text("old")
+
+        manager = SecretsManager()
+        with pytest.raises(SecretAlreadyExistsError):
+            manager.create_sync(str(path), b"new")
+
+    def test_update_sync(self, tmp_path):
+        path = tmp_path / "secret"
+        path.write_text("old")
+
+        manager = SecretsManager()
+        md = manager.update_sync(str(path), b"new")
+
+        assert path.read_bytes() == b"new"
+        assert md.name == str(path)
+
+    def test_update_sync_missing_raises(self, tmp_path):
+        manager = SecretsManager()
+        with pytest.raises(SecretNotFoundError):
+            manager.update_sync(str(tmp_path / "missing"), b"v")
+
+    def test_delete_sync(self, tmp_path):
+        path = tmp_path / "secret"
+        path.write_text("v")
+
+        manager = SecretsManager()
+        manager.delete_sync(str(path))
+
+        assert not path.exists()
+
+    def test_delete_sync_missing_raises(self, tmp_path):
+        manager = SecretsManager()
+        with pytest.raises(SecretNotFoundError):
+            manager.delete_sync(str(tmp_path / "missing"))
+
+    @pytest.mark.asyncio
+    async def test_async_crud_roundtrip(self, tmp_path):
+        path = str(tmp_path / "async_secret")
+        manager = SecretsManager()
+
+        await manager.create(path, b"v1")
+        await manager.update(path, b"v2")
+        assert Path(path).read_bytes() == b"v2"
+        await manager.delete(path)
+        assert not Path(path).exists()
+
+
+class TestSecretsManagerBatchGet:
+    """Tests for SecretsManager.batch_get / batch_get_sync."""
+
+    @pytest.mark.asyncio
+    async def test_batch_get_returns_all(self, tmp_path):
+        p1 = tmp_path / "a"
+        p1.write_text("value-a")
+        p2 = tmp_path / "b"
+        p2.write_text("value-b")
+
+        manager = SecretsManager()
+        result = await manager.batch_get([str(p1), str(p2)])
+
+        assert len(result) == 2
+        assert result[str(p1)].decode() == "value-a"
+        assert result[str(p2)].decode() == "value-b"
+
+    @pytest.mark.asyncio
+    async def test_batch_get_omits_failures(self, tmp_path):
+        """Failed fetches are logged and omitted, not raised."""
+        p1 = tmp_path / "exists"
+        p1.write_text("v")
+        p2 = tmp_path / "missing"
+
+        manager = SecretsManager()
+        result = await manager.batch_get([str(p1), str(p2)])
+
+        assert str(p1) in result
+        assert str(p2) not in result
+
+    def test_batch_get_sync(self, tmp_path):
+        p1 = tmp_path / "a"
+        p1.write_text("v1")
+        p2 = tmp_path / "b"
+        p2.write_text("v2")
+
+        manager = SecretsManager()
+        result = manager.batch_get_sync([str(p1), str(p2)])
+
+        assert len(result) == 2
+
+    def test_batch_get_sync_omits_failures(self, tmp_path):
+        p1 = tmp_path / "exists"
+        p1.write_text("v")
+
+        manager = SecretsManager()
+        result = manager.batch_get_sync([str(p1), str(tmp_path / "missing")])
+
+        assert len(result) == 1
+        assert str(p1) in result
+
+    @pytest.mark.asyncio
+    async def test_batch_get_uses_native_aws_batch(self):
+        """AWS provider's native batch_get_async is preferred when present."""
+        mock_provider = MagicMock()
+        mock_provider.name = "aws"
+        mock_provider.batch_get_async = AsyncMock(
+            return_value={
+                "secret1": SecretValue(data=b"v1", fetched_at=datetime.now(UTC), source="aws"),
+                "secret2": SecretValue(data=b"v2", fetched_at=datetime.now(UTC), source="aws"),
+            }
+        )
+
+        manager = SecretsManager()
+        manager._providers["aws"] = mock_provider
+
+        result = await manager.batch_get(["secret1", "secret2"], provider="aws")
+
+        mock_provider.batch_get_async.assert_awaited_once_with(["secret1", "secret2"])
+        assert len(result) == 2
+
+
+class TestSecretsManagerVersioning:
+    """Tests for SecretsManager versioning capability checks."""
+
+    def test_get_version_sync_on_non_versioned_raises(self, tmp_path):
+        """File provider does not inherit from VersionedProvider."""
+        manager = SecretsManager()
+        with pytest.raises(VersioningNotSupportedError) as exc_info:
+            manager.get_version_sync(str(tmp_path / "secret"), "v1")
+        assert exc_info.value.provider == "file"
+
+    def test_list_versions_sync_on_non_versioned_raises(self):
+        manager = SecretsManager()
+        with pytest.raises(VersioningNotSupportedError):
+            manager.list_versions_sync("secret", provider="file")
+
+    @pytest.mark.asyncio
+    async def test_get_version_async_on_non_versioned_raises(self):
+        manager = SecretsManager()
+        with pytest.raises(VersioningNotSupportedError):
+            await manager.get_version("secret", "v1")
+
+    @pytest.mark.asyncio
+    async def test_list_versions_async_on_non_versioned_raises(self):
+        manager = SecretsManager()
+        with pytest.raises(VersioningNotSupportedError):
+            await manager.list_versions("secret")
+
+    @pytest.mark.asyncio
+    async def test_get_version_on_versioned_delegates(self):
+        """When provider IS a VersionedProvider, call is delegated."""
+        # Build a minimal fake versioned provider.
+        mock_provider = MagicMock(spec=VersionedProvider)
+        mock_provider.name = "vault"
+        expected = SecretValue(data=b"v2-value", fetched_at=datetime.now(UTC), source="vault", version="v2")
+        mock_provider.get_version_async = AsyncMock(return_value=expected)
+
+        manager = SecretsManager()
+        manager._providers["vault"] = mock_provider
+
+        result = await manager.get_version("secret/foo", "v2", provider="vault")
+        assert result.decode() == "v2-value"
+        mock_provider.get_version_async.assert_awaited_once_with("secret/foo", "v2", None)
+
+    @pytest.mark.asyncio
+    async def test_list_versions_on_versioned_delegates(self):
+        mock_provider = MagicMock(spec=VersionedProvider)
+        mock_provider.name = "vault"
+        expected = [
+            SecretMetadata(name="secret/foo", version="v2", source="vault"),
+            SecretMetadata(name="secret/foo", version="v1", source="vault"),
+        ]
+        mock_provider.list_versions_async = AsyncMock(return_value=expected)
+
+        manager = SecretsManager()
+        manager._providers["vault"] = mock_provider
+
+        result = await manager.list_versions("secret/foo", provider="vault")
+        assert len(result) == 2
+        assert result[0].version == "v2"
+
+    @pytest.mark.asyncio
+    async def test_get_version_propagates_version_not_found(self):
+        """SecretVersionNotFoundError from the provider bubbles up unchanged."""
+        mock_provider = MagicMock(spec=VersionedProvider)
+        mock_provider.name = "vault"
+        mock_provider.get_version_async = AsyncMock(
+            side_effect=SecretVersionNotFoundError("secret/foo", "v99", "vault")
+        )
+
+        manager = SecretsManager()
+        manager._providers["vault"] = mock_provider
+
+        with pytest.raises(SecretVersionNotFoundError):
+            await manager.get_version("secret/foo", "v99", provider="vault")

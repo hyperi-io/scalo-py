@@ -10,6 +10,8 @@ from hyperi_pylib.secrets.types import (
     OpenBaoConfig,
     ProviderType,
     RotationEvent,
+    SecretFilter,
+    SecretMetadata,
     SecretValue,
     SourceConfig,
 )
@@ -263,3 +265,61 @@ class TestProviderType:
         assert ProviderType.FILE.value == "file"
         assert ProviderType.OPENBAO.value == "openbao"
         assert ProviderType.AWS.value == "aws"
+
+
+class TestSecretMetadata:
+    """Tests for SecretMetadata dataclass."""
+
+    def test_minimal_metadata(self):
+        """All fields beyond name are optional."""
+        md = SecretMetadata(name="api_key")
+        assert md.name == "api_key"
+        assert md.created_at is None
+        assert md.updated_at is None
+        assert md.expires_at is None
+        assert md.version is None
+        assert md.version_count is None
+        assert md.tags is None
+        assert md.source == "unknown"
+
+    def test_full_metadata(self):
+        now = datetime.now(UTC)
+        md = SecretMetadata(
+            name="api_key",
+            created_at=now,
+            updated_at=now,
+            expires_at=now + timedelta(days=30),
+            version="v3",
+            version_count=3,
+            tags={"env": "prod", "team": "platform"},
+            source="aws",
+        )
+        assert md.version == "v3"
+        assert md.version_count == 3
+        assert md.tags == {"env": "prod", "team": "platform"}
+        assert md.source == "aws"
+
+
+class TestSecretFilter:
+    """Tests for SecretFilter dataclass."""
+
+    def test_empty_filter(self):
+        """All fields optional — empty filter is valid."""
+        f = SecretFilter()
+        assert f.prefix is None
+        assert f.tags is None
+        assert f.pattern is None
+
+    def test_prefix_only(self):
+        f = SecretFilter(prefix="secret/myapp/")
+        assert f.prefix == "secret/myapp/"
+
+    def test_tags_filter(self):
+        f = SecretFilter(tags={"env": "prod"})
+        assert f.tags == {"env": "prod"}
+
+    def test_combined_filter(self):
+        f = SecretFilter(prefix="secret/", tags={"team": "platform"}, pattern="*_key")
+        assert f.prefix == "secret/"
+        assert f.tags == {"team": "platform"}
+        assert f.pattern == "*_key"

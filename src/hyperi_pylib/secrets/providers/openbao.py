@@ -7,9 +7,16 @@ import logging
 from datetime import UTC, datetime
 from pathlib import Path
 
-from ..exceptions import AuthenticationError, ProviderError, SecretNotFoundError
-from ..types import OpenBaoConfig, SecretValue
-from .base import SecretProvider
+from ..exceptions import (
+    AuthenticationError,
+    ProviderError,
+    SecretAlreadyExistsError,
+    SecretNotFoundError,
+    SecretPermissionError,
+    SecretVersionNotFoundError,
+)
+from ..types import OpenBaoConfig, SecretFilter, SecretMetadata, SecretValue
+from .base import VersionedProvider
 
 logger = logging.getLogger(__name__)
 
@@ -23,7 +30,7 @@ except ImportError:
     httpx = None  # type: ignore[assignment]
 
 
-class OpenBaoProvider(SecretProvider):
+class OpenBaoProvider(VersionedProvider):
     """OpenBao/Vault secret provider.
 
     Uses httpx for true async HTTP operations (no thread pool).
@@ -422,6 +429,50 @@ class OpenBaoProvider(SecretProvider):
         if self._sync_client:
             self._sync_client.close()
             self._sync_client = None
+
+    # --- Stubs for new abstract methods (to be implemented) ---
+
+    async def list_async(self, filter: SecretFilter | None = None) -> list[str]:
+        raise NotImplementedError("not yet implemented")
+
+    def list_sync(self, filter: SecretFilter | None = None) -> list[str]:
+        raise NotImplementedError("not yet implemented")
+
+    async def get_metadata_async(self, path: str) -> SecretMetadata:
+        raise NotImplementedError("not yet implemented")
+
+    def get_metadata_sync(self, path: str) -> SecretMetadata:
+        raise NotImplementedError("not yet implemented")
+
+    async def create_async(self, path: str, value: bytes, tags: dict[str, str] | None = None) -> SecretMetadata:
+        raise NotImplementedError("not yet implemented")
+
+    def create_sync(self, path: str, value: bytes, tags: dict[str, str] | None = None) -> SecretMetadata:
+        raise NotImplementedError("not yet implemented")
+
+    async def update_async(self, path: str, value: bytes) -> SecretMetadata:
+        raise NotImplementedError("not yet implemented")
+
+    def update_sync(self, path: str, value: bytes) -> SecretMetadata:
+        raise NotImplementedError("not yet implemented")
+
+    async def delete_async(self, path: str) -> None:
+        raise NotImplementedError("not yet implemented")
+
+    def delete_sync(self, path: str) -> None:
+        raise NotImplementedError("not yet implemented")
+
+    async def get_version_async(self, path: str, version: str, key: str | None = None) -> SecretValue:
+        raise NotImplementedError("not yet implemented")
+
+    def get_version_sync(self, path: str, version: str, key: str | None = None) -> SecretValue:
+        raise NotImplementedError("not yet implemented")
+
+    async def list_versions_async(self, path: str) -> list[SecretMetadata]:
+        raise NotImplementedError("not yet implemented")
+
+    def list_versions_sync(self, path: str) -> list[SecretMetadata]:
+        raise NotImplementedError("not yet implemented")
 
 
 __all__ = ["OpenBaoProvider", "HTTPX_AVAILABLE"]

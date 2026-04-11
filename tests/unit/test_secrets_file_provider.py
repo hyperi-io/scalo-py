@@ -1,12 +1,19 @@
 """Unit tests for file provider."""
 
 import json
+import os
 from pathlib import Path
 
 import pytest
 
-from hyperi_pylib.secrets.exceptions import ProviderError, SecretNotFoundError
+from hyperi_pylib.secrets.exceptions import (
+    ProviderError,
+    SecretAlreadyExistsError,
+    SecretNotFoundError,
+    SecretPermissionError,
+)
 from hyperi_pylib.secrets.providers.file import FileProvider
+from hyperi_pylib.secrets.types import SecretFilter
 
 
 class TestFileProvider:
@@ -190,3 +197,224 @@ class TestFileProvider:
 
         assert result.data == b""
         assert result.decode() == ""
+
+
+class TestFileProviderMetadata:
+    """Tests for FileProvider get_metadata."""
+
+    def test_get_metadata_returns_stat_based_info(self, tmp_path):
+        """get_metadata_sync reads timestamps from stat()."""
+        secret_file = tmp_path / "secret.txt"
+        secret_file.write_text("value")
+
+        provider = FileProvider()
+        md = provider.get_metadata_sync(str(secret_file))
+
+        assert md.name == str(secret_file)
+        assert md.created_at is not None
+        assert md.updated_at is not None
+        assert md.source == "file"
+        # File provider has no concept of tags / version_count / expires_at
+        assert md.tags is None
+        assert md.version_count is None
+        assert md.expires_at is None
+
+    def test_get_metadata_missing_file_raises(self, tmp_path):
+        """get_metadata_sync raises SecretNotFoundError for missing files."""
+        provider = FileProvider()
+        with pytest.raises(SecretNotFoundError):
+            provider.get_metadata_sync(str(tmp_path / "does_not_exist"))
+
+    @pytest.mark.asyncio
+    async def test_get_metadata_async_delegates(self, tmp_path):
+        secret_file = tmp_path / "secret.txt"
+        secret_file.write_text("v")
+        provider = FileProvider()
+        md = await provider.get_metadata_async(str(secret_file))
+        assert md.name == str(secret_file)
+
+
+class TestFileProviderList:
+    """Tests for FileProvider list."""
+
+    def test_list_directory_returns_files(self, tmp_path):
+        """list_sync treats prefix as a directory and returns its files."""
+        (tmp_path / "a").write_text("1")
+        (tmp_path / "b").write_text("2")
+        (tmp_path / "c").write_text("3")
+
+        provider = FileProvider()
+        result = provider.list_sync(SecretFilter(prefix=str(tmp_path)))
+
+        assert sorted(Path(p).name for p in result) == ["a", "b", "c"]
+
+    def test_list_pattern_filters_fnmatch(self, tmp_path):
+        """list_sync applies fnmatch pattern as client-side filter."""
+        (tmp_path / "api_key").write_text("1")
+        (tmp_path / "db_password").write_text("2")
+        (tmp_path / "api_token").write_text("3")
+
+        provider = FileProvider()
+        result = provider.list_sync(SecretFilter(prefix=str(tmp_path), pattern="api_*"))
+
+        names = sorted(Path(p).name for p in result)
+        assert names == ["api_key", "api_token"]
+
+    def test_list_no_filter_returns_empty(self, tmp_path):
+        """list_sync without a prefix returns empty (no 'list all' concept)."""
+        (tmp_path / "a").write_text("1")
+        provider = FileProvider()
+        # No filter means no prefix → provider cannot enumerate without a root
+        result = provider.list_sync(None)
+        assert result == []
+
+    def test_list_missing_directory_returns_empty(self, tmp_path):
+        """list_sync returns empty for a non-existent prefix directory."""
+        provider = FileProvider()
+        result = provider.list_sync(SecretFilter(prefix=str(tmp_path / "missing")))
+        assert result == []
+
+    def test_list_tags_ignored(self, tmp_path):
+        """list_sync ignores tags filter (file provider has no tags)."""
+        (tmp_path / "a").write_text("1")
+        provider = FileProvider()
+        result = provider.list_sync(SecretFilter(prefix=str(tmp_path), tags={"env": "prod"}))
+        assert len(result) == 1
+
+    @pytest.mark.asyncio
+    async def test_list_async_delegates(self, tmp_path):
+        (tmp_path / "a").write_text("1")
+        provider = FileProvider()
+        result = await provider.list_async(SecretFilter(prefix=str(tmp_path)))
+        assert len(result) == 1
+
+
+class TestFileProviderCreate:
+    """Tests for FileProvider create."""
+
+    def test_create_new_file(self, tmp_path):
+        """create_sync writes a new file and returns metadata."""
+        path = str(tmp_path / "new_secret")
+        provider = FileProvider()
+
+        md = provider.create_sync(path, b"value")
+
+        assert Path(path).read_bytes() == b"value"
+        assert md.name == path
+        assert md.source == "file"
+
+    def test_create_already_exists_raises(self, tmp_path):
+        """create_sync raises SecretAlreadyExistsError if file exists."""
+        path = tmp_path / "existing"
+        path.write_text("old")
+
+        provider = FileProvider()
+        with pytest.raises(SecretAlreadyExistsError):
+            provider.create_sync(str(path), b"new")
+
+        # Original content should not be overwritten
+        assert path.read_text() == "old"
+
+    def test_create_tags_ignored(self, tmp_path):
+        """create_sync ignores the tags argument (file provider has no tags)."""
+        path = str(tmp_path / "tagged")
+        provider = FileProvider()
+        md = provider.create_sync(path, b"v", tags={"env": "prod"})
+        assert md.tags is None
+
+    def test_create_permission_denied(self, tmp_path):
+        """create_sync raises SecretPermissionError on OSError PermissionError."""
+        # Make tmp_path read-only so we cannot create files inside
+        os.chmod(tmp_path, 0o500)
+        try:
+            provider = FileProvider()
+            with pytest.raises(SecretPermissionError) as exc_info:
+                provider.create_sync(str(tmp_path / "denied"), b"v")
+            assert exc_info.value.operation == "create"
+        finally:
+            os.chmod(tmp_path, 0o700)
+
+    @pytest.mark.asyncio
+    async def test_create_async_delegates(self, tmp_path):
+        path = str(tmp_path / "async_secret")
+        provider = FileProvider()
+        md = await provider.create_async(path, b"v")
+        assert md.name == path
+
+
+class TestFileProviderUpdate:
+    """Tests for FileProvider update."""
+
+    def test_update_existing_file(self, tmp_path):
+        path = tmp_path / "secret"
+        path.write_text("old")
+
+        provider = FileProvider()
+        md = provider.update_sync(str(path), b"new")
+
+        assert path.read_bytes() == b"new"
+        assert md.name == str(path)
+
+    def test_update_missing_raises(self, tmp_path):
+        provider = FileProvider()
+        with pytest.raises(SecretNotFoundError):
+            provider.update_sync(str(tmp_path / "missing"), b"v")
+
+    def test_update_permission_denied(self, tmp_path):
+        path = tmp_path / "readonly"
+        path.write_text("v")
+        os.chmod(path, 0o400)
+        try:
+            provider = FileProvider()
+            with pytest.raises(SecretPermissionError) as exc_info:
+                provider.update_sync(str(path), b"new")
+            assert exc_info.value.operation == "update"
+        finally:
+            os.chmod(path, 0o600)
+
+    @pytest.mark.asyncio
+    async def test_update_async_delegates(self, tmp_path):
+        path = tmp_path / "secret"
+        path.write_text("old")
+        provider = FileProvider()
+        md = await provider.update_async(str(path), b"new")
+        assert md.name == str(path)
+
+
+class TestFileProviderDelete:
+    """Tests for FileProvider delete."""
+
+    def test_delete_existing_file(self, tmp_path):
+        path = tmp_path / "secret"
+        path.write_text("v")
+
+        provider = FileProvider()
+        provider.delete_sync(str(path))
+
+        assert not path.exists()
+
+    def test_delete_missing_raises(self, tmp_path):
+        provider = FileProvider()
+        with pytest.raises(SecretNotFoundError):
+            provider.delete_sync(str(tmp_path / "missing"))
+
+    def test_delete_permission_denied(self, tmp_path):
+        path = tmp_path / "secret"
+        path.write_text("v")
+        # Remove write permission on the parent directory (needed to unlink)
+        os.chmod(tmp_path, 0o500)
+        try:
+            provider = FileProvider()
+            with pytest.raises(SecretPermissionError) as exc_info:
+                provider.delete_sync(str(path))
+            assert exc_info.value.operation == "delete"
+        finally:
+            os.chmod(tmp_path, 0o700)
+
+    @pytest.mark.asyncio
+    async def test_delete_async_delegates(self, tmp_path):
+        path = tmp_path / "secret"
+        path.write_text("v")
+        provider = FileProvider()
+        await provider.delete_async(str(path))
+        assert not path.exists()

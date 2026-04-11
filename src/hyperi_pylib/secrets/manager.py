@@ -1,5 +1,7 @@
 """SecretsManager - main orchestrator for secrets management."""
 
+from __future__ import annotations
+
 import asyncio
 import logging
 import os
@@ -14,8 +16,9 @@ from .exceptions import (
     ProviderNotConfiguredError,
     SecretNotFoundError,
     SecretsError,
+    VersioningNotSupportedError,
 )
-from .providers.base import SecretProvider
+from .providers.base import SecretProvider, VersionedProvider
 from .providers.file import FileProvider
 from .types import (
     AnsibleVaultConfig,
@@ -27,6 +30,8 @@ from .types import (
     ProviderType,
     RotationCallback,
     RotationEvent,
+    SecretFilter,
+    SecretMetadata,
     SecretValue,
     SourceConfig,
 )
@@ -354,6 +359,364 @@ class SecretsManager:
         value = self.get_sync(name_or_path)
         return value.decode(encoding)
 
+    # -------------------------------------------------------------------------
+    # List
+    # -------------------------------------------------------------------------
+
+    async def list(
+        self,
+        filter: SecretFilter | None = None,
+        provider: str | None = None,
+    ) -> list[str]:
+        """List secret names/paths matching filter.
+
+        Args:
+            filter: Optional filter (prefix, tags, pattern).
+            provider: Provider name. Defaults to "file".
+
+        Returns:
+            List of secret names/paths.
+
+        Raises:
+            ProviderNotConfiguredError: Provider not configured.
+            ProviderError: Provider communication failed.
+        """
+        provider_name = provider or "file"
+        p = self._get_provider(provider_name)
+        return await p.list_async(filter)
+
+    def list_sync(
+        self,
+        filter: SecretFilter | None = None,
+        provider: str | None = None,
+    ) -> list[str]:
+        """List secret names/paths matching filter (sync)."""
+        provider_name = provider or "file"
+        p = self._get_provider(provider_name)
+        return p.list_sync(filter)
+
+    # -------------------------------------------------------------------------
+    # Metadata
+    # -------------------------------------------------------------------------
+
+    async def get_metadata(
+        self,
+        path: str,
+        provider: str | None = None,
+    ) -> SecretMetadata:
+        """Get secret metadata without fetching the value.
+
+        Args:
+            path: Secret path/name.
+            provider: Provider name. Defaults to "file".
+
+        Returns:
+            SecretMetadata with available fields populated.
+
+        Raises:
+            SecretNotFoundError: Secret does not exist.
+            ProviderNotConfiguredError: Provider not configured.
+            ProviderError: Provider communication failed.
+        """
+        provider_name = provider or "file"
+        p = self._get_provider(provider_name)
+        return await p.get_metadata_async(path)
+
+    def get_metadata_sync(
+        self,
+        path: str,
+        provider: str | None = None,
+    ) -> SecretMetadata:
+        """Get secret metadata without fetching the value (sync)."""
+        provider_name = provider or "file"
+        p = self._get_provider(provider_name)
+        return p.get_metadata_sync(path)
+
+    # -------------------------------------------------------------------------
+    # Create / Update / Delete
+    # -------------------------------------------------------------------------
+
+    async def create(
+        self,
+        path: str,
+        value: bytes,
+        tags: dict[str, str] | None = None,
+        provider: str | None = None,
+    ) -> SecretMetadata:
+        """Create a new secret.
+
+        Args:
+            path: Secret path/name.
+            value: Secret value as bytes.
+            tags: Optional tags/labels. Ignored by file-based providers.
+            provider: Provider name. Defaults to "file".
+
+        Returns:
+            SecretMetadata of the created secret.
+
+        Raises:
+            SecretAlreadyExistsError: Secret already exists.
+            SecretPermissionError: Caller lacks write permission.
+            ProviderNotConfiguredError: Provider not configured.
+            ProviderError: Write failed.
+        """
+        provider_name = provider or "file"
+        p = self._get_provider(provider_name)
+        return await p.create_async(path, value, tags)
+
+    def create_sync(
+        self,
+        path: str,
+        value: bytes,
+        tags: dict[str, str] | None = None,
+        provider: str | None = None,
+    ) -> SecretMetadata:
+        """Create a new secret (sync)."""
+        provider_name = provider or "file"
+        p = self._get_provider(provider_name)
+        return p.create_sync(path, value, tags)
+
+    async def update(
+        self,
+        path: str,
+        value: bytes,
+        provider: str | None = None,
+    ) -> SecretMetadata:
+        """Update an existing secret's value.
+
+        Args:
+            path: Secret path/name.
+            value: New secret value as bytes.
+            provider: Provider name. Defaults to "file".
+
+        Returns:
+            SecretMetadata of the updated secret.
+
+        Raises:
+            SecretNotFoundError: Secret does not exist.
+            SecretPermissionError: Caller lacks write permission.
+            ProviderNotConfiguredError: Provider not configured.
+            ProviderError: Write failed.
+        """
+        provider_name = provider or "file"
+        p = self._get_provider(provider_name)
+        return await p.update_async(path, value)
+
+    def update_sync(
+        self,
+        path: str,
+        value: bytes,
+        provider: str | None = None,
+    ) -> SecretMetadata:
+        """Update an existing secret's value (sync)."""
+        provider_name = provider or "file"
+        p = self._get_provider(provider_name)
+        return p.update_sync(path, value)
+
+    async def delete(
+        self,
+        path: str,
+        provider: str | None = None,
+    ) -> None:
+        """Delete a secret.
+
+        Args:
+            path: Secret path/name.
+            provider: Provider name. Defaults to "file".
+
+        Raises:
+            SecretNotFoundError: Secret does not exist.
+            SecretPermissionError: Caller lacks write permission.
+            ProviderNotConfiguredError: Provider not configured.
+            ProviderError: Delete failed.
+        """
+        provider_name = provider or "file"
+        p = self._get_provider(provider_name)
+        await p.delete_async(path)
+
+    def delete_sync(
+        self,
+        path: str,
+        provider: str | None = None,
+    ) -> None:
+        """Delete a secret (sync)."""
+        provider_name = provider or "file"
+        p = self._get_provider(provider_name)
+        p.delete_sync(path)
+
+    # -------------------------------------------------------------------------
+    # Batch get
+    # -------------------------------------------------------------------------
+
+    async def batch_get(
+        self,
+        paths: list[str],
+        provider: str | None = None,
+    ) -> dict[str, SecretValue]:
+        """Fetch multiple secrets concurrently.
+
+        Uses native batch API for AWS. Falls back to asyncio.gather for all
+        other providers.
+
+        Args:
+            paths: List of secret paths/names to fetch.
+            provider: Provider name. Defaults to "file".
+
+        Returns:
+            Dict mapping each path to its SecretValue. Paths that fail are
+            omitted and a warning is logged rather than raising.
+
+        Raises:
+            ProviderNotConfiguredError: Provider not configured.
+        """
+        provider_name = provider or "file"
+        p = self._get_provider(provider_name)
+
+        # AWS has a native batch API — delegate to provider if available.
+        if provider_name == "aws" and hasattr(p, "batch_get_async"):
+            return await p.batch_get_async(paths)  # type: ignore[attr-defined]
+
+        # Generic: concurrent gather with per-item error isolation.
+        async def _fetch(path: str) -> tuple[str, SecretValue | None]:
+            try:
+                return path, await p.get_async(path)
+            except (SecretNotFoundError, ProviderError) as e:
+                logger.warning("batch_get: failed to fetch secret", extra={"path": path, "error": str(e)})
+                return path, None
+
+        results_list = await asyncio.gather(*[_fetch(path) for path in paths])
+        return {k: v for k, v in results_list if v is not None}
+
+    def batch_get_sync(
+        self,
+        paths: list[str],
+        provider: str | None = None,
+    ) -> dict[str, SecretValue]:
+        """Fetch multiple secrets (sync). Errors are logged and omitted.
+
+        Args:
+            paths: List of secret paths/names to fetch.
+            provider: Provider name. Defaults to "file".
+
+        Returns:
+            Dict mapping each path to its SecretValue.
+
+        Raises:
+            ProviderNotConfiguredError: Provider not configured.
+        """
+        provider_name = provider or "file"
+        p = self._get_provider(provider_name)
+
+        results: dict[str, SecretValue] = {}
+        for path in paths:
+            try:
+                results[path] = p.get_sync(path)
+            except (SecretNotFoundError, ProviderError) as e:
+                logger.warning("batch_get_sync: failed to fetch secret", extra={"path": path, "error": str(e)})
+        return results
+
+    # -------------------------------------------------------------------------
+    # Versioning (VersionedProvider only)
+    # -------------------------------------------------------------------------
+
+    async def get_version(
+        self,
+        path: str,
+        version: str,
+        key: str | None = None,
+        provider: str | None = None,
+    ) -> SecretValue:
+        """Fetch a specific version of a secret.
+
+        Only available on versioned providers (OpenBao, AWS, GCP, Azure).
+
+        Args:
+            path: Secret path.
+            version: Version identifier (provider-specific format).
+            key: Optional key to extract from structured secret.
+            provider: Provider name. Defaults to "file".
+
+        Returns:
+            SecretValue for the requested version.
+
+        Raises:
+            VersioningNotSupportedError: Provider does not support versioning.
+            SecretVersionNotFoundError: Version does not exist.
+            SecretNotFoundError: Secret does not exist.
+            ProviderNotConfiguredError: Provider not configured.
+            ProviderError: Provider communication failed.
+        """
+        provider_name = provider or "file"
+        p = self._get_provider(provider_name)
+        if not isinstance(p, VersionedProvider):
+            raise VersioningNotSupportedError(provider_name)
+        return await p.get_version_async(path, version, key)
+
+    def get_version_sync(
+        self,
+        path: str,
+        version: str,
+        key: str | None = None,
+        provider: str | None = None,
+    ) -> SecretValue:
+        """Fetch a specific version of a secret (sync)."""
+        provider_name = provider or "file"
+        p = self._get_provider(provider_name)
+        if not isinstance(p, VersionedProvider):
+            raise VersioningNotSupportedError(provider_name)
+        return p.get_version_sync(path, version, key)
+
+    async def list_versions(
+        self,
+        path: str,
+        provider: str | None = None,
+    ) -> list[SecretMetadata]:
+        """List all versions of a secret, newest first.
+
+        Only available on versioned providers (OpenBao, AWS, GCP, Azure).
+
+        Args:
+            path: Secret path.
+            provider: Provider name. Defaults to "file".
+
+        Returns:
+            List of SecretMetadata, one per version.
+
+        Raises:
+            VersioningNotSupportedError: Provider does not support versioning.
+            SecretNotFoundError: Secret does not exist.
+            ProviderNotConfiguredError: Provider not configured.
+            ProviderError: Provider communication failed.
+        """
+        provider_name = provider or "file"
+        p = self._get_provider(provider_name)
+        if not isinstance(p, VersionedProvider):
+            raise VersioningNotSupportedError(provider_name)
+        return await p.list_versions_async(path)
+
+    def list_versions_sync(
+        self,
+        path: str,
+        provider: str | None = None,
+    ) -> list[SecretMetadata]:
+        """List all versions of a secret, newest first (sync)."""
+        provider_name = provider or "file"
+        p = self._get_provider(provider_name)
+        if not isinstance(p, VersionedProvider):
+            raise VersioningNotSupportedError(provider_name)
+        return p.list_versions_sync(path)
+
+    # -------------------------------------------------------------------------
+    # Internal helpers
+    # -------------------------------------------------------------------------
+
+    def _get_provider(self, provider_name: str) -> SecretProvider:
+        """Return named provider or raise ProviderNotConfiguredError."""
+        p = self._providers.get(provider_name)
+        if p is None:
+            raise ProviderNotConfiguredError(provider_name)
+        return p
+
     def _env_fallback_var(self, name: str, source: SourceConfig) -> str | None:
         """Compute the ENV var name to use as fallback for a source.
 
@@ -666,4 +1029,4 @@ class SecretsManager:
             await provider.close()
 
 
-__all__ = ["SecretsManager"]
+__all__ = ["SecretsManager", "SecretFilter", "SecretMetadata"]

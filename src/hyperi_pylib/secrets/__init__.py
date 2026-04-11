@@ -57,8 +57,12 @@ from .exceptions import (
     ProviderError,
     ProviderNotAvailableError,
     ProviderNotConfiguredError,
+    SecretAlreadyExistsError,
     SecretNotFoundError,
+    SecretPermissionError,
     SecretsError,
+    SecretVersionNotFoundError,
+    VersioningNotSupportedError,
 )
 
 # Manager (always available)
@@ -78,6 +82,7 @@ from .providers import (
     GCPProvider,
     OpenBaoProvider,
     SecretProvider,
+    VersionedProvider,
 )
 from .types import (
     AWSConfig,
@@ -88,6 +93,8 @@ from .types import (
     ProviderType,
     RotationCallback,
     RotationEvent,
+    SecretFilter,
+    SecretMetadata,
     SecretValue,
     SourceConfig,
 )
@@ -114,10 +121,17 @@ __all__ = [
     "ProviderNotAvailableError",
     "CacheError",
     "AuthenticationError",
+    "SecretAlreadyExistsError",
+    "SecretPermissionError",
+    "SecretVersionNotFoundError",
+    "VersioningNotSupportedError",
     # Cache
     "DiskCache",
+    "SecretFilter",
+    "SecretMetadata",
     # Providers
     "SecretProvider",
+    "VersionedProvider",
     "FileProvider",
     "OpenBaoProvider",
     "AWSProvider",

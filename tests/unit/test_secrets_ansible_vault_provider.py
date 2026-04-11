@@ -7,14 +7,19 @@ from unittest.mock import patch
 import pytest
 import yaml
 
-from hyperi_pylib.secrets.exceptions import ProviderError, SecretNotFoundError
+from hyperi_pylib.secrets.exceptions import (
+    ProviderError,
+    SecretAlreadyExistsError,
+    SecretNotFoundError,
+    SecretPermissionError,
+)
 from hyperi_pylib.secrets.providers.ansible_vault import (
     ANSIBLE_VAULT_AVAILABLE,
     AnsibleVaultProvider,
     _read_password_file,
     _resolve_password,
 )
-from hyperi_pylib.secrets.types import AnsibleVaultConfig
+from hyperi_pylib.secrets.types import AnsibleVaultConfig, SecretFilter
 
 # Skip entire module if ansible-vault not installed
 pytestmark = pytest.mark.skipif(not ANSIBLE_VAULT_AVAILABLE, reason="ansible-vault not installed")
@@ -374,3 +379,139 @@ class TestReadPasswordFile:
         f.write_text("")
         with pytest.raises(ProviderError, match="password file is empty"):
             _read_password_file(str(f))
+
+
+# =============================================================================
+# Plan 2: AnsibleVault CRUD extensions
+# =============================================================================
+
+
+class TestAnsibleVaultMetadata:
+    """Tests for AnsibleVaultProvider get_metadata."""
+
+    def test_get_metadata_reads_stat_without_decrypting(self, tmp_path):
+        """Metadata is stat-based and doesn't require decryption."""
+        vault_file = _create_vault_file(tmp_path, "value")
+
+        provider = _make_provider()
+        md = provider.get_metadata_sync(str(vault_file))
+
+        assert md.name == str(vault_file)
+        assert md.created_at is not None
+        assert md.updated_at is not None
+        assert md.source == "ansible_vault"
+
+    def test_get_metadata_missing_raises(self, tmp_path):
+        provider = _make_provider()
+        with pytest.raises(SecretNotFoundError):
+            provider.get_metadata_sync(str(tmp_path / "missing.vault"))
+
+    def test_get_metadata_wrong_password_still_works(self, tmp_path):
+        """Metadata only stats the file — password isn't needed."""
+        vault_file = _create_vault_file(tmp_path, "secret")
+        # Use a completely different password
+        provider = AnsibleVaultProvider(AnsibleVaultConfig(password="wrong-password"))
+        md = provider.get_metadata_sync(str(vault_file))
+        assert md.name == str(vault_file)
+
+
+class TestAnsibleVaultList:
+    """Tests for AnsibleVaultProvider list."""
+
+    def test_list_returns_files_without_decrypting(self, tmp_path):
+        _create_vault_file(tmp_path, "a", "a.vault")
+        _create_vault_file(tmp_path, "b", "b.vault")
+
+        provider = _make_provider()
+        result = provider.list_sync(SecretFilter(prefix=str(tmp_path)))
+
+        names = sorted(Path(p).name for p in result)
+        assert names == ["a.vault", "b.vault"]
+
+    def test_list_pattern_filters(self, tmp_path):
+        _create_vault_file(tmp_path, "a", "api_key.vault")
+        _create_vault_file(tmp_path, "b", "db_password.vault")
+
+        provider = _make_provider()
+        result = provider.list_sync(SecretFilter(prefix=str(tmp_path), pattern="api_*"))
+
+        assert len(result) == 1
+        assert result[0].endswith("api_key.vault")
+
+    def test_list_no_prefix_returns_empty(self):
+        provider = _make_provider()
+        assert provider.list_sync(None) == []
+
+
+class TestAnsibleVaultCreate:
+    """Tests for AnsibleVaultProvider create."""
+
+    def test_create_encrypts_and_writes(self, tmp_path):
+        """Created file is vault-encrypted (not plaintext)."""
+        path = tmp_path / "new.vault"
+        provider = _make_provider()
+
+        md = provider.create_sync(str(path), b"super-secret-value")
+
+        assert path.exists()
+        # Must NOT be plaintext
+        assert b"super-secret-value" not in path.read_bytes()
+        # Must be a vault file
+        assert path.read_bytes().startswith(b"$ANSIBLE_VAULT")
+        # Round-trip: we should be able to decrypt it back
+        value = provider.get_sync(str(path))
+        assert value.decode() == "super-secret-value"
+        assert md.name == str(path)
+
+    def test_create_already_exists_raises(self, tmp_path):
+        path = _create_vault_file(tmp_path, "existing")
+        provider = _make_provider()
+        with pytest.raises(SecretAlreadyExistsError):
+            provider.create_sync(str(path), b"new")
+
+    def test_create_permission_denied(self, tmp_path):
+        os.chmod(tmp_path, 0o500)
+        try:
+            provider = _make_provider()
+            with pytest.raises(SecretPermissionError):
+                provider.create_sync(str(tmp_path / "denied.vault"), b"v")
+        finally:
+            os.chmod(tmp_path, 0o700)
+
+
+class TestAnsibleVaultUpdate:
+    """Tests for AnsibleVaultProvider update."""
+
+    def test_update_encrypts_new_value(self, tmp_path):
+        path = _create_vault_file(tmp_path, "old-value")
+        provider = _make_provider()
+
+        provider.update_sync(str(path), b"new-value")
+
+        # Decrypt to verify
+        value = provider.get_sync(str(path))
+        assert value.decode() == "new-value"
+        # Must still be vault format
+        assert path.read_bytes().startswith(b"$ANSIBLE_VAULT")
+
+    def test_update_missing_raises(self, tmp_path):
+        provider = _make_provider()
+        with pytest.raises(SecretNotFoundError):
+            provider.update_sync(str(tmp_path / "missing.vault"), b"v")
+
+
+class TestAnsibleVaultDelete:
+    """Tests for AnsibleVaultProvider delete."""
+
+    def test_delete_removes_file(self, tmp_path):
+        path = _create_vault_file(tmp_path, "v")
+
+        provider = _make_provider()
+        provider.delete_sync(str(path))
+
+        assert not path.exists()
+
+    def test_delete_missing_raises(self, tmp_path):
+        provider = _make_provider()
+        with pytest.raises(SecretNotFoundError):
+            provider.delete_sync(str(tmp_path / "missing.vault"))

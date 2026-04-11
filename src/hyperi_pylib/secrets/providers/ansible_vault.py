@@ -25,6 +25,7 @@ Dependencies:
 
 from __future__ import annotations
 
+import fnmatch
 import logging
 import os
 from datetime import UTC, datetime
@@ -32,8 +33,14 @@ from pathlib import Path
 
 import yaml
 
-from ..exceptions import ProviderError, ProviderNotAvailableError, SecretNotFoundError
-from ..types import AnsibleVaultConfig, SecretValue
+from ..exceptions import (
+    ProviderError,
+    ProviderNotAvailableError,
+    SecretAlreadyExistsError,
+    SecretNotFoundError,
+    SecretPermissionError,
+)
+from ..types import AnsibleVaultConfig, SecretFilter, SecretMetadata, SecretValue
 from .base import SecretProvider
 
 logger = logging.getLogger(__name__)
@@ -157,6 +164,17 @@ class AnsibleVaultProvider(SecretProvider):
         stat = path.stat()
         return f"{stat.st_mtime}:{stat.st_size}"
 
+    def _build_metadata(self, path: Path) -> SecretMetadata:
+        """Build SecretMetadata from file stat."""
+        stat = path.stat()
+        return SecretMetadata(
+            name=str(path),
+            created_at=datetime.fromtimestamp(stat.st_ctime, tz=UTC),
+            updated_at=datetime.fromtimestamp(stat.st_mtime, tz=UTC),
+            version=f"{stat.st_mtime}:{stat.st_size}",
+            source=self.name,
+        )
+
     def _decrypt(self, content: str) -> bytes:
         """Decrypt vault-encrypted content.
 
@@ -177,6 +195,21 @@ class AnsibleVaultProvider(SecretProvider):
             return bytes(decrypted)
         except Exception as e:
             raise ProviderError("ansible_vault", f"decryption failed: {e}")
+
+    def _encrypt(self, data: bytes) -> str:
+        """Encrypt data using Ansible Vault.
+
+        Args:
+            data: Raw bytes to encrypt.
+
+        Returns:
+            Vault-encrypted string.
+        """
+        vault = Vault(self._password)
+        encrypted = vault.dump_raw(data.decode("utf-8") if isinstance(data, bytes) else data)
+        if isinstance(encrypted, bytes):
+            return encrypted.decode("utf-8")
+        return encrypted
 
     def _extract(self, decrypted: bytes, key: str | None) -> bytes:
         """Extract value from decrypted content.
@@ -218,6 +251,8 @@ class AnsibleVaultProvider(SecretProvider):
         # For nested structures, serialize back to YAML
         return yaml.dump(value, default_flow_style=False).encode("utf-8")
 
+    # --- Read ---
+
     async def get_async(self, path: str, key: str | None = None) -> SecretValue:
         """Async get (delegates to sync since file I/O is fast)."""
         return self.get_sync(path, key)
@@ -255,6 +290,121 @@ class AnsibleVaultProvider(SecretProvider):
             version=self._compute_version(file_path),
             source=self.name,
         )
+
+    # --- List ---
+
+    async def list_async(self, filter: SecretFilter | None = None) -> list[str]:
+        """List vault files (async delegates to sync)."""
+        return self.list_sync(filter)
+
+    def list_sync(self, filter: SecretFilter | None = None) -> list[str]:
+        """List vault-encrypted files matching filter.
+
+        prefix is treated as a directory path. Files in that directory are listed.
+        pattern applies fnmatch glob filtering on filenames.
+        tags are ignored (filesystem has no tag concept).
+        """
+        if filter and filter.prefix:
+            base = Path(filter.prefix)
+        else:
+            return []  # No prefix = no directory to list
+
+        if not base.is_dir():
+            return []
+
+        results = [str(p) for p in base.iterdir() if p.is_file()]
+
+        if filter and filter.pattern:
+            results = [r for r in results if fnmatch.fnmatch(Path(r).name, filter.pattern)]
+
+        return sorted(results)
+
+    # --- Metadata ---
+
+    async def get_metadata_async(self, path: str) -> SecretMetadata:
+        """Get file metadata (async delegates to sync)."""
+        return self.get_metadata_sync(path)
+
+    def get_metadata_sync(self, path: str) -> SecretMetadata:
+        """Get file metadata without decrypting contents."""
+        file_path = Path(path)
+
+        if not file_path.exists():
+            raise SecretNotFoundError(path, self.name)
+
+        try:
+            return self._build_metadata(file_path)
+        except OSError as e:
+            raise ProviderError(self.name, f"failed to stat {path}: {e}")
+
+    # --- Create ---
+
+    async def create_async(self, path: str, value: bytes, tags: dict[str, str] | None = None) -> SecretMetadata:
+        """Create vault file (async delegates to sync)."""
+        return self.create_sync(path, value, tags)
+
+    def create_sync(self, path: str, value: bytes, tags: dict[str, str] | None = None) -> SecretMetadata:
+        """Create a new vault-encrypted secret file. Fails if file already exists."""
+        file_path = Path(path)
+
+        if file_path.exists():
+            raise SecretAlreadyExistsError(path, self.name)
+
+        try:
+            encrypted = self._encrypt(value)
+            file_path.parent.mkdir(parents=True, exist_ok=True)
+            file_path.write_text(encrypted)
+        except PermissionError:
+            raise SecretPermissionError(self.name, "create", path, f"check filesystem permissions on '{path}'")
+        except OSError as e:
+            raise ProviderError(self.name, f"failed to create {path}: {e}")
+
+        return self._build_metadata(file_path)
+
+    # --- Update ---
+
+    async def update_async(self, path: str, value: bytes) -> SecretMetadata:
+        """Update vault file (async delegates to sync)."""
+        return self.update_sync(path, value)
+
+    def update_sync(self, path: str, value: bytes) -> SecretMetadata:
+        """Update an existing vault-encrypted secret file. Fails if file doesn't exist."""
+        file_path = Path(path)
+
+        if not file_path.exists():
+            raise SecretNotFoundError(path, self.name)
+
+        try:
+            encrypted = self._encrypt(value)
+            file_path.write_text(encrypted)
+        except PermissionError:
+            raise SecretPermissionError(self.name, "update", path, f"check filesystem permissions on '{path}'")
+        except OSError as e:
+            raise ProviderError(self.name, f"failed to update {path}: {e}")
+
+        return self._build_metadata(file_path)
+
+    # --- Delete ---
+
+    async def delete_async(self, path: str) -> None:
+        """Delete vault file (async delegates to sync)."""
+        self.delete_sync(path)
+
+    def delete_sync(self, path: str) -> None:
+        """Delete a vault-encrypted secret file."""
+        file_path = Path(path)
+
+        if not file_path.exists():
+            raise SecretNotFoundError(path, self.name)
+
+        try:
+            file_path.unlink()
+        except PermissionError:
+            raise SecretPermissionError(self.name, "delete", path, f"check filesystem permissions on '{path}'")
+        except OSError as e:
+            raise ProviderError(self.name, f"failed to delete {path}: {e}")
+
+    # --- Health ---
 
     async def health_check_async(self) -> bool:
         """Check if provider is healthy."""
