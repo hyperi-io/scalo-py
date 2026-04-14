@@ -1,7 +1,7 @@
 """hyperi-pylib - Enterprise Infrastructure for Python Applications.
 
-Zero-configuration infrastructure library for containerized Python apps.
-Configuration, logging, metrics, database utilities - all automatic!
+Zero-configuration infrastructure library for containerised Python apps.
+Configuration, logging, metrics, database utilities - all automatic.
 
 Quick Start
 ===========
