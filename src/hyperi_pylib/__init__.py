@@ -98,7 +98,7 @@ for all production code. The Application framework may return in a future
 version once the design is mature.
 """
 
-__version__ = "2.27.0"  # Managed by semantic-release
+__version__ = "2.27.1"  # Managed by semantic-release
 
 # Import modules (packages) - logger is a module for extensibility
 from . import cli, config, database, harness, health, logger, metrics, runtime, version_check

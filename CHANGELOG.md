@@ -1,3 +1,10 @@
+## [2.27.1](https://github.com/hyperi-io/hyperi-pylib/compare/v2.27.0...v2.27.1) (2026-04-14)
+
+
+### Bug Fixes
+
+* correct docstring spelling to Australian English ([60c1975](https://github.com/hyperi-io/hyperi-pylib/commit/60c19755216ce3eedd329ed4cc6cee2d4bc14745))
+
 # [2.27.0](https://github.com/hyperi-io/hyperi-pylib/compare/v2.26.0...v2.27.0) (2026-04-11)
 
 
