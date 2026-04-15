@@ -1,3 +1,11 @@
+## [2.27.2](https://github.com/hyperi-io/hyperi-pylib/compare/v2.27.1...v2.27.2) (2026-04-15)
+
+
+### Bug Fixes
+
+* trigger CI with updated reusable workflow ([de4cf9a](https://github.com/hyperi-io/hyperi-pylib/commit/de4cf9a1ba015fc37fdd084f18ae853e7eac9dd1))
+* update CI workflow to use latest reusable workflow ([aa82df1](https://github.com/hyperi-io/hyperi-pylib/commit/aa82df1f3b3a592c75bc35b550ae36f133633cc1))
+
 ## [2.27.1](https://github.com/hyperi-io/hyperi-pylib/compare/v2.27.0...v2.27.1) (2026-04-14)
 
 
