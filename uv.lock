@@ -1310,7 +1310,7 @@ wheels = [
 
 [[package]]
 name = "hyperi-pylib"
-version = "2.27.0"
+version = "2.27.1"
 source = { editable = "." }
 dependencies = [
     { name = "dulwich" },
