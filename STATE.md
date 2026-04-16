@@ -6,6 +6,31 @@
 
 ---
 
+## ⚠ Cross-Repo Reminder: hyperi-ai PYTHON.md
+
+`hyperi-ai/standards/languages/PYTHON.md` carries a deliberately
+**drift-safe** "hyperi-pylib" section — it lists capabilities, not API
+surface, so routine pylib changes don't require touching it.
+
+**You only need to revisit that section when pylib gains or loses a
+WHOLE capability.** Examples that would trigger an update:
+
+- New top-level subsystem (e.g., adding a GraphQL client, a job-queue
+  abstraction, a feature-flag SDK).
+- Removal of a subsystem (e.g., deprecating Kafka helpers in favour of
+  something else).
+- A capability being moved out into its own package.
+
+You do NOT need to update PYTHON.md for: function-signature changes,
+new feature extras, version bumps, internal refactors, performance
+work, bug fixes, or new options on existing subsystems.
+
+When in doubt, ask: "would a HyperI Python developer think differently
+about *what tools they reach for* because of this change?" If yes,
+update PYTHON.md's pylib section. If no, leave it alone.
+
+---
+
 ## Session Management
 
 **New session?** Run `/start` to initialise (reads STATE.md, TODO.md, standards)
