@@ -281,17 +281,17 @@ RotationCallback = Callable[[RotationEvent], None]
 
 
 __all__ = [
-    "ProviderType",
-    "SecretValue",
-    "RotationEvent",
-    "CacheConfig",
-    "SourceConfig",
-    "OpenBaoConfig",
     "AWSConfig",
-    "GCPConfig",
-    "AzureConfig",
     "AnsibleVaultConfig",
-    "SecretMetadata",
-    "SecretFilter",
+    "AzureConfig",
+    "CacheConfig",
+    "GCPConfig",
+    "OpenBaoConfig",
+    "ProviderType",
     "RotationCallback",
+    "RotationEvent",
+    "SecretFilter",
+    "SecretMetadata",
+    "SecretValue",
+    "SourceConfig",
 ]

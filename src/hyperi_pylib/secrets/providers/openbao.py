@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+import base64
+import fnmatch
 import json
 import logging
 from datetime import UTC, datetime
@@ -28,6 +30,16 @@ try:
 except ImportError:
     HTTPX_AVAILABLE = False
     httpx = None  # type: ignore[assignment]
+
+
+def _parse_iso_datetime(value: str | None) -> datetime | None:
+    """Parse OpenBao ISO datetime string. Returns None for empty/missing/invalid."""
+    if not value:
+        return None
+    try:
+        return datetime.fromisoformat(value.replace("Z", "+00:00"))
+    except (ValueError, AttributeError):
+        return None
 
 
 class OpenBaoProvider(VersionedProvider):
@@ -430,49 +442,492 @@ class OpenBaoProvider(VersionedProvider):
             self._sync_client.close()
             self._sync_client = None
 
-    # --- Stubs for new abstract methods (to be implemented) ---
+    # --- Helpers for Tier 1+2 ---
+
+    def _normalize_metadata_path(self, path: str) -> str:
+        """Normalize a Vault path to its KV v2 metadata endpoint.
+
+        Examples:
+            "secret/myapp/config" -> "/v1/secret/metadata/myapp/config"
+            "secret/data/myapp"   -> "/v1/secret/metadata/myapp"  (data/ swapped for metadata/)
+            "v1/secret/metadata/x" -> "/v1/secret/metadata/x" (already qualified)
+        """
+        path = path.lstrip("/")
+        if path.startswith("v1/"):
+            return f"/{path}"
+        parts = path.split("/", 1)
+        if len(parts) == 2:
+            mount, rest = parts
+            if rest.startswith("metadata/"):
+                return f"/v1/{mount}/{rest}"
+            if rest.startswith("data/"):
+                return f"/v1/{mount}/metadata/{rest[len('data/') :]}"
+            return f"/v1/{mount}/metadata/{rest}"
+        return f"/v1/{path}"
+
+    def _normalize_list_path(self, prefix: str) -> str:
+        """Normalize a prefix into a KV v2 LIST URL (trailing slash required)."""
+        url = self._normalize_metadata_path(prefix)
+        if not url.endswith("/"):
+            url += "/"
+        return url
+
+    @staticmethod
+    def _encode_value_for_storage(value: bytes) -> dict[str, str]:
+        """Wrap raw bytes for KV v2 storage.
+
+        Stored under key "value" if the value is valid utf-8, else under
+        "value_b64" as base64 (allowing arbitrary binary). Round-trips through
+        ``get_sync(path, key="value")`` or ``key="value_b64"``.
+        """
+        try:
+            return {"value": value.decode("utf-8")}
+        except UnicodeDecodeError:
+            return {"value_b64": base64.b64encode(value).decode("ascii")}
+
+    def _permission_hint(self, operation: str) -> str:
+        """Standard Vault permission hint."""
+        return f"check Vault policy for '{operation}' capability on this path"
+
+    def _parse_metadata_response(self, response_json: dict, name: str) -> SecretMetadata:
+        """Convert a KV v2 GET /metadata/ response into SecretMetadata."""
+        data = response_json.get("data", {}) or {}
+        current_version = data.get("current_version")
+        versions = data.get("versions") or {}
+        return SecretMetadata(
+            name=name,
+            created_at=_parse_iso_datetime(data.get("created_time")),
+            updated_at=_parse_iso_datetime(data.get("updated_time")),
+            version=str(current_version) if current_version is not None else None,
+            version_count=len(versions) if versions else None,
+            tags=data.get("custom_metadata") or None,
+            source=self.name,
+        )
+
+    def _parse_post_response(
+        self, response_json: dict, name: str, tags: dict[str, str] | None = None
+    ) -> SecretMetadata:
+        """Convert a KV v2 POST /data/ response into SecretMetadata.
+
+        POST /data/ returns only the new version's create_time and version
+        number; older versions and aggregate metadata are not echoed back.
+        """
+        data = response_json.get("data", {}) or {}
+        version = data.get("version")
+        created = _parse_iso_datetime(data.get("created_time"))
+        return SecretMetadata(
+            name=name,
+            created_at=created,
+            updated_at=created,
+            version=str(version) if version is not None else None,
+            version_count=int(version) if isinstance(version, int) and version > 0 else None,
+            tags=tags or None,
+            source=self.name,
+        )
+
+    @staticmethod
+    def _is_cas_conflict(body: dict) -> bool:
+        """Detect a KV v2 cas (compare-and-set) conflict in an error body."""
+        errors = body.get("errors") or []
+        return any("check-and-set parameter" in str(e) for e in errors)
+
+    # --- List ---
 
     async def list_async(self, filter: SecretFilter | None = None) -> list[str]:
-        raise NotImplementedError("not yet implemented")
+        """List secrets under a prefix. Requires ``filter.prefix`` to identify the mount.
+
+        ``filter.tags`` is ignored — KV v2 LIST does not filter on custom_metadata
+        server-side. ``filter.pattern`` is applied as a client-side fnmatch.
+        Sub-paths (keys ending in "/") are excluded from results.
+        """
+        if not filter or not filter.prefix:
+            return []
+
+        if not self._token or self._is_token_expired():
+            await self._authenticate_async()
+
+        client = await self._get_async_client()
+        url = self._normalize_list_path(filter.prefix)
+
+        try:
+            response = await client.request("LIST", url)
+        except httpx.HTTPError as e:
+            raise ProviderError(self.name, f"list {filter.prefix} failed: {e}")
+
+        if response.status_code == 404:
+            return []
+        if response.status_code == 403:
+            raise SecretPermissionError(self.name, "list", filter.prefix, self._permission_hint("list"))
+        if response.status_code >= 400:
+            raise ProviderError(self.name, f"list {filter.prefix} failed: HTTP {response.status_code}")
+
+        keys = (response.json().get("data", {}) or {}).get("keys", []) or []
+        results = [k for k in keys if not k.endswith("/")]
+        if filter.pattern:
+            results = [r for r in results if fnmatch.fnmatch(r, filter.pattern)]
+        return sorted(results)
 
     def list_sync(self, filter: SecretFilter | None = None) -> list[str]:
-        raise NotImplementedError("not yet implemented")
+        """List secrets under a prefix (sync). See ``list_async``."""
+        if not filter or not filter.prefix:
+            return []
+
+        if not self._token or self._is_token_expired():
+            self._authenticate_sync()
+
+        client = self._get_sync_client()
+        url = self._normalize_list_path(filter.prefix)
+
+        try:
+            response = client.request("LIST", url)
+        except httpx.HTTPError as e:
+            raise ProviderError(self.name, f"list {filter.prefix} failed: {e}")
+
+        if response.status_code == 404:
+            return []
+        if response.status_code == 403:
+            raise SecretPermissionError(self.name, "list", filter.prefix, self._permission_hint("list"))
+        if response.status_code >= 400:
+            raise ProviderError(self.name, f"list {filter.prefix} failed: HTTP {response.status_code}")
+
+        keys = (response.json().get("data", {}) or {}).get("keys", []) or []
+        results = [k for k in keys if not k.endswith("/")]
+        if filter.pattern:
+            results = [r for r in results if fnmatch.fnmatch(r, filter.pattern)]
+        return sorted(results)
+
+    # --- Metadata ---
 
     async def get_metadata_async(self, path: str) -> SecretMetadata:
-        raise NotImplementedError("not yet implemented")
+        """Get KV v2 metadata for a secret (no value returned)."""
+        if not self._token or self._is_token_expired():
+            await self._authenticate_async()
+        client = await self._get_async_client()
+
+        try:
+            response = await client.get(self._normalize_metadata_path(path))
+        except httpx.HTTPError as e:
+            raise ProviderError(self.name, f"get_metadata {path} failed: {e}")
+
+        if response.status_code == 404:
+            raise SecretNotFoundError(path, self.name)
+        if response.status_code == 403:
+            raise SecretPermissionError(self.name, "read", path, self._permission_hint("read"))
+        if response.status_code >= 400:
+            raise ProviderError(self.name, f"get_metadata {path} failed: HTTP {response.status_code}")
+
+        return self._parse_metadata_response(response.json(), path)
 
     def get_metadata_sync(self, path: str) -> SecretMetadata:
-        raise NotImplementedError("not yet implemented")
+        """Get KV v2 metadata for a secret (sync)."""
+        if not self._token or self._is_token_expired():
+            self._authenticate_sync()
+        client = self._get_sync_client()
+
+        try:
+            response = client.get(self._normalize_metadata_path(path))
+        except httpx.HTTPError as e:
+            raise ProviderError(self.name, f"get_metadata {path} failed: {e}")
+
+        if response.status_code == 404:
+            raise SecretNotFoundError(path, self.name)
+        if response.status_code == 403:
+            raise SecretPermissionError(self.name, "read", path, self._permission_hint("read"))
+        if response.status_code >= 400:
+            raise ProviderError(self.name, f"get_metadata {path} failed: HTTP {response.status_code}")
+
+        return self._parse_metadata_response(response.json(), path)
+
+    # --- Create ---
 
     async def create_async(self, path: str, value: bytes, tags: dict[str, str] | None = None) -> SecretMetadata:
-        raise NotImplementedError("not yet implemented")
+        """Create a new secret. Fails if it already exists (KV v2 cas=0).
+
+        ``value`` is wrapped as ``{"value": <utf-8>}`` (or ``{"value_b64": ...}``
+        for non-utf-8 bytes). ``tags`` are stored as KV v2 ``custom_metadata``
+        via a separate POST to the metadata endpoint.
+        """
+        if not self._token or self._is_token_expired():
+            await self._authenticate_async()
+        client = await self._get_async_client()
+
+        body = {"data": self._encode_value_for_storage(value), "options": {"cas": 0}}
+        try:
+            response = await client.post(self._normalize_kv_path(path), json=body)
+        except httpx.HTTPError as e:
+            raise ProviderError(self.name, f"create {path} failed: {e}")
+
+        if response.status_code == 403:
+            raise SecretPermissionError(self.name, "create", path, self._permission_hint("create"))
+        if response.status_code == 400 and self._is_cas_conflict(response.json()):
+            raise SecretAlreadyExistsError(path, self.name)
+        if response.status_code >= 400:
+            raise ProviderError(self.name, f"create {path} failed: HTTP {response.status_code}")
+
+        metadata = self._parse_post_response(response.json(), path, tags)
+
+        if tags:
+            md_url = self._normalize_metadata_path(path)
+            try:
+                md_response = await client.post(md_url, json={"custom_metadata": tags})
+            except httpx.HTTPError as e:
+                raise ProviderError(self.name, f"create {path} (tags) failed: {e}")
+            if md_response.status_code == 403:
+                raise SecretPermissionError(
+                    self.name, "create", path, self._permission_hint("create (custom_metadata)")
+                )
+            if md_response.status_code >= 400:
+                raise ProviderError(self.name, f"create {path} (tags) failed: HTTP {md_response.status_code}")
+
+        return metadata
 
     def create_sync(self, path: str, value: bytes, tags: dict[str, str] | None = None) -> SecretMetadata:
-        raise NotImplementedError("not yet implemented")
+        """Create a new secret (sync). See ``create_async``."""
+        if not self._token or self._is_token_expired():
+            self._authenticate_sync()
+        client = self._get_sync_client()
+
+        body = {"data": self._encode_value_for_storage(value), "options": {"cas": 0}}
+        try:
+            response = client.post(self._normalize_kv_path(path), json=body)
+        except httpx.HTTPError as e:
+            raise ProviderError(self.name, f"create {path} failed: {e}")
+
+        if response.status_code == 403:
+            raise SecretPermissionError(self.name, "create", path, self._permission_hint("create"))
+        if response.status_code == 400 and self._is_cas_conflict(response.json()):
+            raise SecretAlreadyExistsError(path, self.name)
+        if response.status_code >= 400:
+            raise ProviderError(self.name, f"create {path} failed: HTTP {response.status_code}")
+
+        metadata = self._parse_post_response(response.json(), path, tags)
+
+        if tags:
+            md_url = self._normalize_metadata_path(path)
+            try:
+                md_response = client.post(md_url, json={"custom_metadata": tags})
+            except httpx.HTTPError as e:
+                raise ProviderError(self.name, f"create {path} (tags) failed: {e}")
+            if md_response.status_code == 403:
+                raise SecretPermissionError(
+                    self.name, "create", path, self._permission_hint("create (custom_metadata)")
+                )
+            if md_response.status_code >= 400:
+                raise ProviderError(self.name, f"create {path} (tags) failed: HTTP {md_response.status_code}")
+
+        return metadata
+
+    # --- Update ---
 
     async def update_async(self, path: str, value: bytes) -> SecretMetadata:
-        raise NotImplementedError("not yet implemented")
+        """Update an existing secret (creates a new version). Fails if absent.
+
+        The update is a two-step pre-check + POST: first GET /metadata/ to map
+        absence cleanly to ``SecretNotFoundError`` (KV v2 has no native
+        "must-exist" precondition for write), then POST /data/.
+        """
+        if not self._token or self._is_token_expired():
+            await self._authenticate_async()
+        client = await self._get_async_client()
+
+        # Pre-check existence — maps to SecretNotFoundError if absent.
+        await self.get_metadata_async(path)
+
+        body = {"data": self._encode_value_for_storage(value)}
+        try:
+            response = await client.post(self._normalize_kv_path(path), json=body)
+        except httpx.HTTPError as e:
+            raise ProviderError(self.name, f"update {path} failed: {e}")
+
+        if response.status_code == 403:
+            raise SecretPermissionError(self.name, "update", path, self._permission_hint("update"))
+        if response.status_code >= 400:
+            raise ProviderError(self.name, f"update {path} failed: HTTP {response.status_code}")
+
+        return self._parse_post_response(response.json(), path)
 
     def update_sync(self, path: str, value: bytes) -> SecretMetadata:
-        raise NotImplementedError("not yet implemented")
+        """Update an existing secret (sync). See ``update_async``."""
+        if not self._token or self._is_token_expired():
+            self._authenticate_sync()
+        client = self._get_sync_client()
+
+        self.get_metadata_sync(path)
+
+        body = {"data": self._encode_value_for_storage(value)}
+        try:
+            response = client.post(self._normalize_kv_path(path), json=body)
+        except httpx.HTTPError as e:
+            raise ProviderError(self.name, f"update {path} failed: {e}")
+
+        if response.status_code == 403:
+            raise SecretPermissionError(self.name, "update", path, self._permission_hint("update"))
+        if response.status_code >= 400:
+            raise ProviderError(self.name, f"update {path} failed: HTTP {response.status_code}")
+
+        return self._parse_post_response(response.json(), path)
+
+    # --- Delete ---
 
     async def delete_async(self, path: str) -> None:
-        raise NotImplementedError("not yet implemented")
+        """Delete a secret entirely (DELETE /metadata/ destroys all versions)."""
+        if not self._token or self._is_token_expired():
+            await self._authenticate_async()
+        client = await self._get_async_client()
+
+        # Pre-check existence so callers see SecretNotFoundError, not silent success.
+        await self.get_metadata_async(path)
+
+        url = self._normalize_metadata_path(path)
+        try:
+            response = await client.delete(url)
+        except httpx.HTTPError as e:
+            raise ProviderError(self.name, f"delete {path} failed: {e}")
+
+        if response.status_code == 403:
+            raise SecretPermissionError(self.name, "delete", path, self._permission_hint("delete"))
+        if response.status_code not in (200, 204):
+            raise ProviderError(self.name, f"delete {path} failed: HTTP {response.status_code}")
 
     def delete_sync(self, path: str) -> None:
-        raise NotImplementedError("not yet implemented")
+        """Delete a secret entirely (sync)."""
+        if not self._token or self._is_token_expired():
+            self._authenticate_sync()
+        client = self._get_sync_client()
+
+        self.get_metadata_sync(path)
+
+        url = self._normalize_metadata_path(path)
+        try:
+            response = client.delete(url)
+        except httpx.HTTPError as e:
+            raise ProviderError(self.name, f"delete {path} failed: {e}")
+
+        if response.status_code == 403:
+            raise SecretPermissionError(self.name, "delete", path, self._permission_hint("delete"))
+        if response.status_code not in (200, 204):
+            raise ProviderError(self.name, f"delete {path} failed: HTTP {response.status_code}")
+
+    # --- Versioning ---
 
     async def get_version_async(self, path: str, version: str, key: str | None = None) -> SecretValue:
-        raise NotImplementedError("not yet implemented")
+        """Fetch a specific version of a secret."""
+        if not self._token or self._is_token_expired():
+            await self._authenticate_async()
+        client = await self._get_async_client()
+
+        url = self._normalize_kv_path(path)
+        try:
+            response = await client.get(url, params={"version": version})
+        except httpx.HTTPError as e:
+            raise ProviderError(self.name, f"get_version {path}@{version} failed: {e}")
+
+        if response.status_code == 404:
+            # KV v2 returns 404 for both missing secret and missing version;
+            # disambiguate via metadata (cheap second call only on the failure path).
+            try:
+                await self.get_metadata_async(path)
+            except SecretNotFoundError:
+                raise SecretNotFoundError(path, self.name)
+            raise SecretVersionNotFoundError(path, version, self.name)
+        if response.status_code == 403:
+            raise SecretPermissionError(self.name, "read", path, self._permission_hint("read"))
+        if response.status_code >= 400:
+            raise ProviderError(self.name, f"get_version {path}@{version} failed: HTTP {response.status_code}")
+
+        return self._parse_kv_response(response.json(), path, key)
 
     def get_version_sync(self, path: str, version: str, key: str | None = None) -> SecretValue:
-        raise NotImplementedError("not yet implemented")
+        """Fetch a specific version of a secret (sync)."""
+        if not self._token or self._is_token_expired():
+            self._authenticate_sync()
+        client = self._get_sync_client()
+
+        url = self._normalize_kv_path(path)
+        try:
+            response = client.get(url, params={"version": version})
+        except httpx.HTTPError as e:
+            raise ProviderError(self.name, f"get_version {path}@{version} failed: {e}")
+
+        if response.status_code == 404:
+            try:
+                self.get_metadata_sync(path)
+            except SecretNotFoundError:
+                raise SecretNotFoundError(path, self.name)
+            raise SecretVersionNotFoundError(path, version, self.name)
+        if response.status_code == 403:
+            raise SecretPermissionError(self.name, "read", path, self._permission_hint("read"))
+        if response.status_code >= 400:
+            raise ProviderError(self.name, f"get_version {path}@{version} failed: HTTP {response.status_code}")
+
+        return self._parse_kv_response(response.json(), path, key)
 
     async def list_versions_async(self, path: str) -> list[SecretMetadata]:
-        raise NotImplementedError("not yet implemented")
+        """List all versions of a secret, newest first."""
+        if not self._token or self._is_token_expired():
+            await self._authenticate_async()
+        client = await self._get_async_client()
+
+        try:
+            response = await client.get(self._normalize_metadata_path(path))
+        except httpx.HTTPError as e:
+            raise ProviderError(self.name, f"list_versions {path} failed: {e}")
+
+        if response.status_code == 404:
+            raise SecretNotFoundError(path, self.name)
+        if response.status_code == 403:
+            raise SecretPermissionError(self.name, "read", path, self._permission_hint("read"))
+        if response.status_code >= 400:
+            raise ProviderError(self.name, f"list_versions {path} failed: HTTP {response.status_code}")
+
+        return self._build_version_list(response.json(), path)
 
     def list_versions_sync(self, path: str) -> list[SecretMetadata]:
-        raise NotImplementedError("not yet implemented")
+        """List all versions of a secret, newest first (sync)."""
+        if not self._token or self._is_token_expired():
+            self._authenticate_sync()
+        client = self._get_sync_client()
+
+        try:
+            response = client.get(self._normalize_metadata_path(path))
+        except httpx.HTTPError as e:
+            raise ProviderError(self.name, f"list_versions {path} failed: {e}")
+
+        if response.status_code == 404:
+            raise SecretNotFoundError(path, self.name)
+        if response.status_code == 403:
+            raise SecretPermissionError(self.name, "read", path, self._permission_hint("read"))
+        if response.status_code >= 400:
+            raise ProviderError(self.name, f"list_versions {path} failed: HTTP {response.status_code}")
+
+        return self._build_version_list(response.json(), path)
+
+    def _build_version_list(self, response_json: dict, name: str) -> list[SecretMetadata]:
+        """Turn KV v2 ``data.versions`` dict into a newest-first list of SecretMetadata."""
+        data = response_json.get("data", {}) or {}
+        versions = data.get("versions") or {}
+        tags = data.get("custom_metadata") or None
+
+        items: list[SecretMetadata] = []
+        for v_str, v_meta in versions.items():
+            try:
+                v_int = int(v_str)
+            except (TypeError, ValueError):
+                continue
+            items.append(
+                SecretMetadata(
+                    name=name,
+                    created_at=_parse_iso_datetime(v_meta.get("created_time")),
+                    updated_at=_parse_iso_datetime(v_meta.get("deletion_time"))
+                    or _parse_iso_datetime(v_meta.get("created_time")),
+                    version=str(v_int),
+                    version_count=None,
+                    tags=tags,
+                    source=self.name,
+                )
+            )
+        items.sort(key=lambda m: int(m.version) if m.version else 0, reverse=True)
+        return items
 
 
-__all__ = ["OpenBaoProvider", "HTTPX_AVAILABLE"]
+__all__ = ["HTTPX_AVAILABLE", "OpenBaoProvider"]

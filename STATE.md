@@ -168,30 +168,50 @@ make build      # Build wheel
 
 ---
 
-## Active Work: Secrets Abstraction — Plan 4 (deferred)
+## Architecture: Deployment Contract (`hyperi_pylib.deployment`)
 
-**Current state (v2.27.0):** Plans 1-3 shipped. File and Ansible Vault providers have full
-list/CRUD/metadata support. Cloud providers (OpenBao, AWS, GCP, Azure) still have
-`NotImplementedError` stubs for the new methods — reads via `get()`/`get_sync()` still work
-exactly as before.
+Mirrors `hyperi_rustlib::deployment`: same JSON contract input → matching
+Dockerfile / Helm chart / Compose fragment / ArgoCD ``Application`` output
+across both implementations.
 
-**Plan 4 (next):** Replace cloud provider stubs with real SDK implementations. **Deferred to
-`desktop-derek` work VM** because it needs cloud creds that aren't on this machine.
+**Capability summary:**
 
-**Resume checklist — on desktop-derek:**
+- ``DeploymentContract`` (Pydantic v2 models) — app metadata, ports, secrets,
+  KEDA scaling, native deps, OCI labels.
+- Generators: ``generate_dockerfile``, ``generate_runtime_stage``,
+  ``generate_container_manifest`` (JSON for CI), ``generate_compose_fragment``,
+  ``generate_chart`` (full Helm chart), ``generate_argocd_application``.
+- Cascade helpers: ``image_registry_from_cascade``, ``base_image_from_cascade``,
+  ``argocd_repo_url_from_cascade`` — read from Dynaconf ``deployment.*`` keys.
+- ``DfeApp.deployment_contract()`` hook + ``generate-artefacts`` standard CLI
+  subcommand emit the four artefacts to ``--output-dir``.
+- ``NativeDepsContract.for_pylib_extras`` (Python apps) and
+  ``for_rustlib_features`` (polyglot via PyO3) auto-resolve runtime APT
+  packages.
 
-1. `git pull` latest main (should be v2.27.0+).
-2. Place cloud creds in `.env` (gitignored): `VAULT_ADDR`, `VAULT_TOKEN`, AWS keys, GCP service account path, Azure SP.
-3. Read `TODO.md` → "Secrets Abstraction Extensions — Plan 4 (Cloud Providers)" for full details.
-4. Read spec: `docs/superpowers/specs/2026-04-10-secrets-abstraction-extensions-design.md`.
-5. Implement in order: **OpenBao → AWS → GCP → Azure** (easiest → hardest).
-6. Target: **v2.28.0** (minor bump).
+**Opt-in:** Optional extra ``[deployment]`` adds ``pydantic>=2.13``. Apps that
+don't ship as containers don't pull in Pydantic. Importing the module without
+the extra raises ``ProviderNotAvailableError`` at first use.
 
-**Safe dev path for OpenBao:** use devex infra VM at `https://10.66.0.101:8200` — it's the
-internal OpenBao and already trusted.
+**Cross-language byte parity:** Generators use Python f-strings (not jinja2)
+to match rustlib's ``format!()`` output character-for-character. Parity tests
+land in v2.29.0+ once ``hyperi-rustlib/tests/parity/fixtures/`` ships.
 
-**Safe dev path for AWS:** use [LocalStack](https://localstack.cloud/) or [moto](https://github.com/getmoto/moto)
-instead of hitting real AWS — they both support Secrets Manager.
+**hyperi-ai PYTHON.md:** the deployment subsystem IS a new top-level
+capability — bump the pylib capabilities section in
+``hyperi-ai/standards/languages/PYTHON.md`` next time it's touched.
+
+---
+
+## Active Work: Secrets Abstraction — Plan 4
+
+**Current state:** Plans 1-3 shipped. File and Ansible Vault providers have full
+list/CRUD/metadata support. Cloud providers (OpenBao, AWS, GCP, Azure) are being
+filled in now — see TODO.md for current task progress.
+
+**Spec:** `docs/superpowers/specs/2026-04-10-secrets-abstraction-extensions-design.md`.
+**Implementation order:** OpenBao → AWS → GCP → Azure (easiest → hardest).
+**Target:** v2.28.0 (minor bump — capability addition).
 
 **Key design invariants (don't break these):**
 
@@ -200,6 +220,34 @@ instead of hitting real AWS — they both support Secrets Manager.
 - AWS `batch_get` should use native `batch_get_secret_value` — `SecretsManager.batch_get` already delegates via `hasattr(p, "batch_get_async")`.
 - Map provider errors to: `SecretNotFoundError`, `SecretAlreadyExistsError`, `SecretPermissionError(provider, operation, path, hint)`, `SecretVersionNotFoundError`.
 
+**Test strategy (no creds required for pylib work):**
+
+- Unit tests for OpenBao/Azure use `pytest-httpx` (HTTP/REST wire fakes — already in deps).
+- Unit tests for AWS use `moto` (in-process AWS emulator — add to dev extras).
+- Unit tests for GCP configure HTTP transport via `client_options={"api_endpoint": ...}` then use `pytest-httpx`.
+- OpenBao integration: docker `hashicorp/vault` image via the dual-mode cascade pattern in `tests/conftest.py`.
+- Live AWS/GCP/Azure integration tests skip via existing `@requires_*` markers when CLI/SSO/ADC creds aren't available — release CI runs against docker fakes per HyperI policy.
+
 ---
 
-**Last Updated:** 2026-04-11
+## Cloud test environment notes
+
+- **AWS:** the production / engineering account is now `104771614995` (`hypersec-internet-services`
+  SSO profile). Static `AWS_ACCESS_KEY_ID` env vars from earlier sessions are stale — use
+  `aws sso login --profile hypersec-internet-services` then export creds via
+  `aws configure export-credentials --profile hypersec-internet-services --format env`. The
+  account may not have all the test resources running yet; coordinate before assuming
+  `hyperi-pylib-test` secrets exist.
+- **Azure / M365:** the current Azure tenant and M365 environment are scheduled to be
+  deleted and recreated soon. Anything that depends on tenant ID, vault URL, service
+  principal, or M365-side fixtures (e.g. `HYPERI_TEST_AZURE_VAULT_URL`,
+  `AZURE_TENANT_ID`) will need to be refreshed once the new tenant comes up. Live Azure
+  integration tests will need new vault + a re-seeded test secret post-recreation.
+- **GCP:** `infra-486601` project remains in use; service account JSON at
+  `~/certs/gsuite-admin-sa.json`.
+- **OpenBao:** devex VM at `10.66.0.101:8200` is unreachable from `derek-dragonfly` —
+  use docker `hashicorp/vault` locally instead.
+
+---
+
+**Last Updated:** 2026-04-30

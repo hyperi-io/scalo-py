@@ -6,21 +6,33 @@
 # License:   FSL-1.1-ALv2
 # Copyright: (c) 2026 HYPERI PTY LIMITED
 
-"""HTTP client implementations with automatic retries, timeouts, and metrics."""
+"""HTTP client implementations with automatic retries, timeouts, and metrics.
+
+Uses Stamina for retries — exponential backoff with jitter, structlog/Prometheus
+auto-detection, and ``stamina.set_testing(...)`` for deterministic test runs.
+"""
 
 from __future__ import annotations
 
-import asyncio
-import time
 from typing import Any
 
 import httpx
+import stamina
 
 from hyperi_pylib.logger import logger
 
 # Default configuration
 DEFAULT_TIMEOUT = 30.0  # Solves B113 bandit warnings
 DEFAULT_RETRIES = 3
+
+
+def _is_retryable(exc: BaseException) -> bool:
+    """Retry on transport errors and 5xx server errors. Never retry on 4xx client errors."""
+    if isinstance(exc, httpx.TransportError):
+        return True
+    if isinstance(exc, httpx.HTTPStatusError):
+        return 500 <= exc.response.status_code < 600
+    return False
 
 
 class HttpClient:
@@ -93,7 +105,11 @@ class HttpClient:
         url: str,
         **kwargs: Any,
     ) -> httpx.Response:
-        """Execute HTTP request with retries.
+        """Execute HTTP request with stamina-driven retries.
+
+        Retries on transport errors and 5xx responses with exponential backoff
+        and jitter. 4xx responses surface immediately. Test mode (``stamina.set_testing``)
+        disables backoff for fast unit tests.
 
         Args:
             method: HTTP method (GET, POST, etc.)
@@ -106,26 +122,19 @@ class HttpClient:
         Raises:
             httpx.HTTPError: On non-retryable errors or after retries exhausted
         """
-
-        backoff = 0.5
-        for attempt in range(1, self._retries + 1):
-            try:
+        for attempt in stamina.retry_context(
+            on=_is_retryable,
+            attempts=self._retries,
+            wait_initial=0.5,
+            wait_max=10.0,
+            wait_jitter=1.0,
+        ):
+            with attempt:
                 response = self._client.request(method, url, **kwargs)
                 response.raise_for_status()
                 return response
-            except httpx.HTTPStatusError as exc:
-                status = exc.response.status_code
-                if 500 <= status < 600 and attempt < self._retries:
-                    time.sleep(backoff)
-                    backoff *= 2
-                    continue
-                raise
-            except httpx.TransportError:
-                if attempt < self._retries:
-                    time.sleep(backoff)
-                    backoff *= 2
-                    continue
-                raise
+        # Unreachable: stamina.retry_context always raises on exhaustion
+        raise RuntimeError("retry context exhausted without raising")  # pragma: no cover
 
     def get(self, url: str, **kwargs: Any) -> httpx.Response:
         """Send GET request.
@@ -285,7 +294,9 @@ class AsyncHttpClient:
         url: str,
         **kwargs: Any,
     ) -> httpx.Response:
-        """Execute async HTTP request with retries.
+        """Execute async HTTP request with stamina-driven retries.
+
+        See ``HttpClient._request`` for retry policy.
 
         Args:
             method: HTTP method (GET, POST, etc.)
@@ -298,26 +309,18 @@ class AsyncHttpClient:
         Raises:
             httpx.HTTPError: On non-retryable errors or after retries exhausted
         """
-
-        backoff = 0.5
-        for attempt in range(1, self._retries + 1):
-            try:
+        async for attempt in stamina.retry_context(
+            on=_is_retryable,
+            attempts=self._retries,
+            wait_initial=0.5,
+            wait_max=10.0,
+            wait_jitter=1.0,
+        ):
+            with attempt:
                 response = await self._client.request(method, url, **kwargs)
                 response.raise_for_status()
                 return response
-            except httpx.HTTPStatusError as exc:
-                status = exc.response.status_code
-                if 500 <= status < 600 and attempt < self._retries:
-                    await asyncio.sleep(backoff)
-                    backoff *= 2
-                    continue
-                raise
-            except httpx.TransportError:
-                if attempt < self._retries:
-                    await asyncio.sleep(backoff)
-                    backoff *= 2
-                    continue
-                raise
+        raise RuntimeError("retry context exhausted without raising")  # pragma: no cover
 
     async def get(self, url: str, **kwargs: Any) -> httpx.Response:
         """Send async GET request.

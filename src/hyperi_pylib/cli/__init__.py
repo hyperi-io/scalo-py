@@ -36,27 +36,27 @@ Modules:
 """
 
 __all__ = [
+    "HAS_TYPER",
+    "Argument",
+    "CliError",
+    "CliRunner",
     # DfeApp framework
     "CommonArgs",
-    "CliError",
     "ConfigError",
+    "Context",
     "DfeApp",
+    "Exit",
     "InvalidArgumentError",
     "LoggerError",
+    "Option",
     "ServiceError",
-    "VersionInfo",
-    "run_app",
     # Core Typer exports
     "Typer",
-    "Option",
-    "Argument",
-    "Context",
-    "Exit",
-    "CliRunner",
-    "HAS_TYPER",
+    "VersionInfo",
+    "options",
     # Submodules (import explicitly)
     "output",
-    "options",
+    "run_app",
     "version",
 ]
 

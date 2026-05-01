@@ -43,6 +43,6 @@ Dependencies:
 from .client import AsyncHttpClient, HttpClient
 
 __all__ = [
-    "HttpClient",
     "AsyncHttpClient",
+    "HttpClient",
 ]

@@ -235,6 +235,22 @@ class DfeApp(ABC):
                     ...
         """
 
+    def deployment_contract(self) -> Any:
+        """Return the app's ``DeploymentContract`` for ``generate-artefacts``.
+
+        Override to return a ``hyperi_pylib.deployment.DeploymentContract``
+        instance; ``generate-artefacts`` will then emit Dockerfile,
+        container-manifest.json, argocd-application.yaml, etc. into the
+        output directory.
+
+        Default returns ``None`` — the subcommand will print a warning and
+        emit only ``metrics-manifest.json``. Apps that don't ship as
+        containers can leave it as None.
+
+        Mirrors rustlib's ``DfeApp::deployment_contract()`` trait hook.
+        """
+        return None
+
     def cli(self, args: list[str] | None = None) -> None:
         """Build and run the Typer CLI application.
 
@@ -317,6 +333,13 @@ def _build_typer_app(dfe_app: DfeApp) -> Any:
         args = CommonArgs(config=config, log_level=log_level, verbose=verbose, quiet=quiet)
         dfe_app._common_args = args
         _handle_config_check(dfe_app, args)
+
+    @app.command(name="generate-artefacts")
+    def generate_artefacts(
+        output_dir: str = Option("ci", "--output-dir", "-o", help="Output directory for generated artefacts"),
+    ) -> None:
+        """Generate deployment artefacts (Dockerfile, Helm chart, ArgoCD app) from contract."""
+        _handle_generate_artefacts(dfe_app, output_dir)
 
     # Let app register custom subcommands
     dfe_app.register_commands(app)
@@ -404,6 +427,61 @@ def _handle_config_check(dfe_app: DfeApp, args: CommonArgs) -> None:
     except Exception as exc:
         print_error(f"configuration invalid: {exc}")
         raise Exit(1) from exc
+
+
+def _handle_generate_artefacts(dfe_app: DfeApp, output_dir: str) -> None:
+    """Handle the 'generate-artefacts' subcommand.
+
+    Mirrors rustlib's ``generate_artefacts`` CLI command: writes
+    ``deployment-contract.json``, ``container-manifest.json``,
+    ``Dockerfile.runtime``, and ``argocd-application.yaml`` into ``output_dir``
+    based on the app's ``deployment_contract()`` return value.
+    """
+    from pathlib import Path
+
+    from typer import Exit
+
+    contract = dfe_app.deployment_contract()
+    out = Path(output_dir)
+    out.mkdir(parents=True, exist_ok=True)
+
+    if contract is None:
+        print_error(
+            f"[warn] {type(dfe_app).__name__}.deployment_contract() returned None for "
+            f"`{dfe_app.name}` — no deployment artefacts emitted. Override the method "
+            f"to emit deployment-contract.json, container-manifest.json, "
+            f"Dockerfile.runtime, and argocd-application.yaml."
+        )
+        return
+
+    try:
+        from hyperi_pylib.deployment import (
+            ArgocdConfig,
+            argocd_repo_url_from_cascade,
+            generate_argocd_application,
+            generate_container_manifest,
+            generate_runtime_stage,
+        )
+    except Exception as exc:
+        print_error("deployment subsystem unavailable — install with: pip install 'hyperi-pylib[deployment]'")
+        raise Exit(1) from exc
+
+    (out / "deployment-contract.json").write_text(contract.to_json())
+    (out / "container-manifest.json").write_text(generate_container_manifest(contract))
+    (out / "Dockerfile.runtime").write_text(generate_runtime_stage(contract))
+
+    argo = ArgocdConfig(repo_url=argocd_repo_url_from_cascade(contract.app_name))
+    (out / "argocd-application.yaml").write_text(generate_argocd_application(contract, argo))
+
+    print_success(f"deployment artefacts written to {out}/")
+    if not dfe_app._common_args.quiet:
+        for filename in (
+            "deployment-contract.json",
+            "container-manifest.json",
+            "Dockerfile.runtime",
+            "argocd-application.yaml",
+        ):
+            print(f"  {filename}", file=sys.stderr)
 
 
 def _is_async_overridden(dfe_app: DfeApp) -> bool:

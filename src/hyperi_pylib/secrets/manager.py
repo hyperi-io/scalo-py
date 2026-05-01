@@ -1029,4 +1029,4 @@ class SecretsManager:
             await provider.close()
 
 
-__all__ = ["SecretsManager", "SecretFilter", "SecretMetadata"]
+__all__ = ["SecretFilter", "SecretMetadata", "SecretsManager"]

@@ -54,15 +54,15 @@ try:
     from .streaming import StreamingAnonymizer
 
     __all__ = [
-        "Anonymizer",
-        "AnonymizationStrategy",
-        "StreamingAnonymizer",
         "PRESETS",
+        "AnonymizationStrategy",
+        "Anonymizer",
         "EntityPreset",
-        "anonymize_text",
-        "anonymize_dict",
-        "scan_for_pii",
+        "StreamingAnonymizer",
         "anonymize_config_file",
+        "anonymize_dict",
+        "anonymize_text",
+        "scan_for_pii",
     ]
 
 except ImportError:
@@ -104,13 +104,13 @@ except ImportError:
         raise ImportError("Presidio not installed. Install with: pip install presidio-analyzer presidio-anonymizer")
 
     __all__ = [
-        "Anonymizer",
-        "AnonymizationStrategy",
-        "StreamingAnonymizer",
         "PRESETS",
+        "AnonymizationStrategy",
+        "Anonymizer",
         "EntityPreset",
-        "anonymize_text",
-        "anonymize_dict",
-        "scan_for_pii",
+        "StreamingAnonymizer",
         "anonymize_config_file",
+        "anonymize_dict",
+        "anonymize_text",
+        "scan_for_pii",
     ]

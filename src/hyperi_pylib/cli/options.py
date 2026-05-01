@@ -37,17 +37,17 @@ except ImportError:
     Option = None
 
 __all__ = [
-    "VERBOSE_OPTION",
-    "QUIET_OPTION",
-    "DEBUG_OPTION",
     "CONFIG_OPTION",
-    "ENV_OPTION",
+    "DEBUG_OPTION",
     "DRY_RUN_OPTION",
+    "ENV_OPTION",
     "FORCE_OPTION",
-    "YES_OPTION",
-    "OUTPUT_OPTION",
-    "LOG_LEVEL_OPTION",
     "LOG_FILE_OPTION",
+    "LOG_LEVEL_OPTION",
+    "OUTPUT_OPTION",
+    "QUIET_OPTION",
+    "VERBOSE_OPTION",
+    "YES_OPTION",
 ]
 
 # Standard CLI Options

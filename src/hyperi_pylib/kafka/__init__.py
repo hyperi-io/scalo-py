@@ -50,7 +50,9 @@ from .config import (
     PRODUCER_DEFAULTS,
     config_from_env,
     config_from_file,
+    external_sasl_scram,
     get_default_config,
+    internal_sasl_scram,
     merge_config,
 )
 from .consumer import (
@@ -102,53 +104,55 @@ from .types import (
 )
 
 __all__ = [
+    "ADMIN_DEFAULTS",
+    "CONSUMER_DEFAULTS",
     # Config
     "PRODUCER_DEFAULTS",
-    "CONSUMER_DEFAULTS",
-    "ADMIN_DEFAULTS",
-    "merge_config",
-    "config_from_env",
-    "config_from_file",
-    "get_default_config",
-    # Types
-    "Message",
-    "TopicInfo",
-    "PartitionInfo",
-    "TopicMetadata",
-    "ConsumerGroupInfo",
-    "ConsumerGroupMember",
-    "ConsumerGroupMetadata",
-    "PartitionLag",
-    # Sync clients
-    "KafkaClient",
-    "KafkaConsumer",
-    "KafkaProducer",
+    "AnalysisResult",
     # Async clients
     "AsyncKafkaClient",
     "AsyncKafkaConsumer",
     "AsyncKafkaProducer",
-    # Exceptions
-    "TopicNotFoundError",
+    "ConsumerGroupInfo",
+    "ConsumerGroupMember",
+    "ConsumerGroupMetadata",
     "ConsumerGroupNotFoundError",
-    "KafkaConsumerError",
-    # Sampling
-    "reservoir_sample",
-    "time_bounded_consume",
-    "partition_sample",
-    # Schema
-    "SchemaAnalyser",
-    "AnalysisResult",
     "FieldStats",
-    # Metrics
-    "KafkaMetricsCollector",
-    "create_stats_callback",
-    # Health monitoring
-    "KafkaConsumerHealth",
     "HealthCheckResult",
     "HealthIssue",
-    # Read-only client
-    "ReadOnlyKafkaClient",
     # Admin operations
     "KafkaAdmin",
     "KafkaAdminError",
+    # Sync clients
+    "KafkaClient",
+    "KafkaConsumer",
+    "KafkaConsumerError",
+    # Health monitoring
+    "KafkaConsumerHealth",
+    # Metrics
+    "KafkaMetricsCollector",
+    "KafkaProducer",
+    # Types
+    "Message",
+    "PartitionInfo",
+    "PartitionLag",
+    # Read-only client
+    "ReadOnlyKafkaClient",
+    # Schema
+    "SchemaAnalyser",
+    "TopicInfo",
+    "TopicMetadata",
+    # Exceptions
+    "TopicNotFoundError",
+    "config_from_env",
+    "config_from_file",
+    "create_stats_callback",
+    "external_sasl_scram",
+    "get_default_config",
+    "internal_sasl_scram",
+    "merge_config",
+    "partition_sample",
+    # Sampling
+    "reservoir_sample",
+    "time_bounded_consume",
 ]

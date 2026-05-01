@@ -1082,9 +1082,9 @@ def get_default_loader() -> PostgresConfigLoader:
 
 
 __all__ = [
-    "PostgresConfigLoader",
     "PostgresConfigError",
+    "PostgresConfigLoader",
     "PostgresConfigUnavailable",
-    "load_postgres_config",
     "get_default_loader",
+    "load_postgres_config",
 ]
