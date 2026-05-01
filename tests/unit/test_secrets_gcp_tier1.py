@@ -53,21 +53,14 @@ class TestResourceNames:
         assert provider._secret_name("hyperi-test") == f"projects/{PROJECT}/secrets/hyperi-test"
 
     def test_secret_name_from_full_resource(self, provider):
-        assert (
-            provider._secret_name(f"projects/other/secrets/foo")
-            == "projects/other/secrets/foo"
-        )
+        assert provider._secret_name(f"projects/other/secrets/foo") == "projects/other/secrets/foo"
 
     def test_secret_name_strips_versions_suffix(self, provider):
-        assert (
-            provider._secret_name("projects/other/secrets/foo/versions/3")
-            == "projects/other/secrets/foo"
-        )
+        assert provider._secret_name("projects/other/secrets/foo/versions/3") == "projects/other/secrets/foo"
 
     def test_version_resource_name_short(self, provider):
         assert (
-            provider._version_resource_name("hyperi-test", "5")
-            == f"projects/{PROJECT}/secrets/hyperi-test/versions/5"
+            provider._version_resource_name("hyperi-test", "5") == f"projects/{PROJECT}/secrets/hyperi-test/versions/5"
         )
 
     def test_version_resource_name_latest(self, provider):
@@ -78,10 +71,7 @@ class TestResourceNames:
 
     def test_version_name_legacy_helper_short(self, provider):
         # _version_name (used by get_sync) appends /versions/latest if absent
-        assert (
-            provider._version_name("hyperi-test")
-            == f"projects/{PROJECT}/secrets/hyperi-test/versions/latest"
-        )
+        assert provider._version_name("hyperi-test") == f"projects/{PROJECT}/secrets/hyperi-test/versions/latest"
 
 
 class TestShortName:
@@ -148,7 +138,9 @@ def _fake_secret(name: str, *, labels: dict | None = None, create_time: datetime
     )
 
 
-def _fake_version(name: str, *, create_time: datetime | None = None, destroy_time: datetime | None = None, state: str = "ENABLED"):
+def _fake_version(
+    name: str, *, create_time: datetime | None = None, destroy_time: datetime | None = None, state: str = "ENABLED"
+):
     return SimpleNamespace(
         name=name,
         create_time=create_time or datetime(2025, 2, 1, tzinfo=UTC),

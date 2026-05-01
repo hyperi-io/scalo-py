@@ -43,7 +43,7 @@ try:
     )
 
     deployment_importable = DEPLOYMENT_AVAILABLE
-except Exception:  # noqa: BLE001 — module-level import failure is the skip signal
+except Exception:
     deployment_importable = False
 
 
@@ -252,9 +252,7 @@ class TestGenerateContainerManifest:
         c.native_deps = NativeDepsContract.for_pylib_extras(["kafka"], "ubuntu:24.04")
         manifest = json.loads(generate_container_manifest(c))
         assert len(manifest["runtime_packages"]["apt_repos"]) == 1
-        assert manifest["runtime_packages"]["apt_repos"][0]["url"].startswith(
-            "https://packages.confluent.io"
-        )
+        assert manifest["runtime_packages"]["apt_repos"][0]["url"].startswith("https://packages.confluent.io")
         assert "libssl3" in manifest["runtime_packages"]["apt_packages"]
 
     def test_oci_labels_default_to_app_name(self):
@@ -424,9 +422,7 @@ class TestNativeDepsForPylibExtras:
         assert deps.is_empty()
 
     def test_no_duplicate_packages(self):
-        deps = NativeDepsContract.for_pylib_extras(
-            ["kafka", "http", "secrets-aws"], "ubuntu:24.04"
-        )
+        deps = NativeDepsContract.for_pylib_extras(["kafka", "http", "secrets-aws"], "ubuntu:24.04")
         ssl_count = deps.apt_packages.count("libssl3")
         assert ssl_count == 1
 
@@ -541,9 +537,7 @@ class TestGeneratedYamlParses:
             # apiVersion may be the placeholder string after scrubbing in some
             # templates wrapped in {{- if ... }} — accept either real value or
             # placeholder; the structural check is what matters.
-            assert "kind" in data or "PLACEHOLDER" in str(data), (
-                f"{rel} missing 'kind' field after directive scrub"
-            )
+            assert "kind" in data or "PLACEHOLDER" in str(data), f"{rel} missing 'kind' field after directive scrub"
 
 
 class TestGeneratorDeterminism:
@@ -587,9 +581,7 @@ class TestGeneratorDeterminism:
             "templates/configmap.yaml",
             "templates/secret.yaml",
         ):
-            assert (a / rel).read_text() == (b / rel).read_text(), (
-                f"{rel} differs across two generate_chart() calls"
-            )
+            assert (a / rel).read_text() == (b / rel).read_text(), f"{rel} differs across two generate_chart() calls"
 
 
 class TestContractValidation:
@@ -630,20 +622,20 @@ class TestContractValidation:
                 env_prefix="X",
                 metric_prefix="x",
                 config_mount_path="/etc/x.yaml",
-                wrong_field_name="boom",  # noqa: PIE804 — intentional bogus field
+                wrong_field_name="boom",
             )
 
     def test_extra_fields_rejected_on_keda_contract(self):
         from pydantic import ValidationError
 
         with pytest.raises(ValidationError):
-            KedaContract(unknown=1)  # noqa: PIE804
+            KedaContract(unknown=1)
 
     def test_extra_fields_rejected_on_health_contract(self):
         from pydantic import ValidationError
 
         with pytest.raises(ValidationError):
-            HealthContract(unknown="path")  # noqa: PIE804
+            HealthContract(unknown="path")
 
     def test_minimal_required_fields_only(self):
         """Construction with only required fields must succeed and use defaults everywhere else."""

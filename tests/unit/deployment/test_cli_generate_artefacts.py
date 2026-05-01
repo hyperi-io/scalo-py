@@ -23,7 +23,7 @@ try:
     )
 
     deployment_importable = DEPLOYMENT_AVAILABLE
-except Exception:  # noqa: BLE001
+except Exception:
     deployment_importable = False
 
 
