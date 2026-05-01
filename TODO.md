@@ -2,61 +2,36 @@
 
 ## Active
 
-### Secrets Abstraction Extensions — Plan 4 (Cloud Providers) `[DEFERRED TO WORK VM]`
+### Cross-language byte-parity tests for `hyperi_pylib.deployment` — **deferred until rustlib fixtures land**
 
-**Spec:** `docs/superpowers/specs/2026-04-10-secrets-abstraction-extensions-design.md`
+**Status:** Deployment module shipped in v2.28.0 with snapshot/structural tests
+(61 unit tests). True cross-language parity tests require
+`hyperi-rustlib/tests/parity/fixtures/` which doesn't exist yet — the rustlib
+side will add fixtures in 2.7.0+, then this repo vendors them.
 
-**Status:** Plans 1-3 shipped in v2.27.0. Plan 4 deferred — needs cloud creds available on
-`desktop-derek` work VM. Resume there.
+**Steps once fixtures land:**
 
-- [x] Plan 1: Types (`SecretMetadata`, `SecretFilter`), Exceptions (`SecretAlreadyExistsError`, `SecretPermissionError`, `SecretVersionNotFoundError`, `VersioningNotSupportedError`), ABC (`SecretProvider` Tier 1 methods, `VersionedProvider` mixin)
-- [x] Plan 2: File-based providers (`FileProvider` + `AnsibleVaultProvider` Tier 1 methods — list, metadata, create, update, delete)
-- [x] Plan 3: `SecretsManager` extensions (batch_get, list, get_metadata, CRUD delegation, version capability checks)
-- [ ] **Plan 4:** Cloud providers — OpenBao, AWS, GCP, Azure. Replace `NotImplementedError` stubs with real SDK calls for Tier 1 (list/metadata/CRUD) + Tier 2 (get_version/list_versions).
+1. Vendor `hyperi-rustlib/tests/parity/fixtures/` into
+   `tests/parity/fixtures/` (git-submodule or periodic copy).
+2. Add `tests/parity/test_parity.py` parameterised over each fixture dir:
+   - `expected/Dockerfile`, `expected/Dockerfile.runtime`,
+     `expected/container-manifest.json`, `expected/argocd-application.yaml`
+3. Each generator must produce byte-identical output to the rustlib fixture.
+4. Wire as a CI gate.
 
-**Resume on desktop-derek work VM:**
+### M365 / Azure tenant recreation refresh — **after recreation completes**
 
-1. `cd /projects/hyperi-pylib && git pull` — pull v2.27.0 (Plans 1-3)
-2. Copy `.env` with cloud creds from `~/secrets/` or `hyperi-infra` to repo root (gitignored)
-3. Verify creds available:
-   - **OpenBao:** `VAULT_ADDR`, `VAULT_TOKEN` (devex `10.66.0.101` is safe for testing)
-   - **AWS:** `AWS_ACCESS_KEY_ID`, `AWS_SECRET_ACCESS_KEY`, or IAM role — or use **LocalStack** / **moto** for offline testing
-   - **GCP:** `GOOGLE_APPLICATION_CREDENTIALS` path to service account JSON
-   - **Azure:** `AZURE_TENANT_ID`, `AZURE_CLIENT_ID`, `AZURE_CLIENT_SECRET`, `AZURE_VAULT_URL`
-4. Implement in this order (easiest → hardest): OpenBao → AWS → GCP → Azure
-5. Each provider needs ~14 methods: `list/get_metadata/create/update/delete` (sync+async) + versioning (`get_version/list_versions`). Stubs currently in `src/hyperi_pylib/secrets/providers/{openbao,aws,gcp,azure}.py`.
-6. AWS: use native `batch_get_secret_value` when implementing `batch_get_async` (see `manager.py:batch_get` — it already delegates).
-7. Write integration tests using existing docker-compose pattern (see `test_secrets_cache.py` for the Postgres fixture example). LocalStack docker-compose for AWS if not using real tenant.
-8. Target: v2.28.0 (minor bump, new capabilities on existing providers).
+**Status:** STATE.md notes the current Azure tenant + M365 environment will be
+deleted and recreated. Anything depending on tenant ID, vault URL, service
+principal will break post-recreation.
 
-**Files to modify:**
+**Steps:**
 
-- `src/hyperi_pylib/secrets/providers/openbao.py` — search for `NotImplementedError`
-- `src/hyperi_pylib/secrets/providers/aws.py`
-- `src/hyperi_pylib/secrets/providers/gcp.py`
-- `src/hyperi_pylib/secrets/providers/azure.py`
-
-**Important design notes from Plans 1-3:**
-
-- Cloud providers inherit from `VersionedProvider` (not `SecretProvider`) — they MUST implement `get_version_async/sync` and `list_versions_async/sync`.
-- File providers inherit from `SecretProvider` — `isinstance(p, VersionedProvider)` check in `SecretsManager.get_version` raises `VersioningNotSupportedError` for them.
-- `SecretFilter.prefix` is the efficient path (server-side on cloud), `pattern` is client-side fnmatch post-filter.
-- Error handling: map provider-specific errors to `SecretNotFoundError`, `SecretAlreadyExistsError`, `SecretPermissionError(provider, operation, path, hint)`, `SecretVersionNotFoundError`.
-
-### BLOCKER: Fix OTel atexit exit code 1 in CI tests — **2h**
-
-**Status:** Blocking pylib GA release (v2.25.0)
-
-**Problem:** OTel SDK's `PeriodicExportingMetricReader` tries to flush to `localhost:4317` at process exit. When no OTel collector is running (CI), the error propagates as exit code 1 — even though all 1482 tests pass.
-
-**Root cause:** The OTel OTLP exporter defaults to `http://localhost:4317`. In CI, no collector runs. The SDK's atexit handler flushes and fails, setting exit code 1.
-
-**Fix options:**
-1. Spin up OTel collector container in CI test fixtures (proper fix)
-2. Set `OTEL_EXPORTER_OTLP_ENDPOINT` to empty in CI-only env (but breaks `test_dual_export`)
-3. Fix the OTel backend to catch atexit errors (partial — atexit handler registration order)
-
-**Constraint:** Release CI must use docker services, NEVER local environment services.
+1. Refresh `HYPERI_TEST_AZURE_VAULT_URL`, `AZURE_TENANT_ID`, etc. in test
+   environments.
+2. Re-seed `hyperi-pylib-test` secret in the new vault.
+3. Run `tests/integration/test_secrets_cloud_providers.py::TestAzureProviderIntegration`
+   end-to-end against the new tenant.
 
 ### CI test infrastructure: release CI must use docker — **4h**
 
@@ -400,4 +375,43 @@ Full Kafka client library with corporate defaults (160 unit + 19 integration tes
 
 ---
 
-**Last Updated:** 2026-03-22
+## Completed (2026-05-01) — v2.28.0
+
+### Cloud secrets Tier 1+2 (OpenBao, AWS, GCP, Azure) ✅
+
+Plan 4 of `2026-04-10-secrets-abstraction-extensions-design.md`:
+
+- 56 NotImplementedError stubs replaced (14 × 4 providers)
+- AWS native `batch_get_secret_value` with `hasattr(p, "batch_get_async")` delegation in `SecretsManager`
+- 141 unit tests + 10 OpenBao integration tests against real Vault container
+- moto for AWS unit tests; pytest-httpx for OpenBao; helper-only for GCP/Azure
+- OpenBao docker-compose fixture in `tests/conftest.py` (mirrors Kafka/Postgres cascade)
+
+### `hyperi_pylib.deployment` module ✅
+
+Mirror of `hyperi_rustlib::deployment`:
+
+- Pydantic v2 contract models (DeploymentContract, KedaContract, NativeDepsContract, OciLabels, etc.)
+- 6 generators with f-string templating: Dockerfile, runtime stage, container manifest JSON,
+  Compose fragment, full Helm chart, ArgoCD Application
+- Cascade helpers for image registry / base image / ArgoCD repo URL
+- `DfeApp.deployment_contract()` hook + `generate-artefacts` CLI subcommand
+- 61 unit tests including YAML parse-validation, generator determinism, Pydantic guards
+- Opt-in via `[deployment]` extra (pydantic>=2.13)
+
+### Quality cleanup ✅
+
+- HttpClient retries via stamina decorators (was manual time.sleep loop)
+- Kafka `external_sasl_scram` / `internal_sasl_scram` helpers (HyperI standard)
+- 41 RUF013/RUF022 violations auto-fixed; TEMP ignores removed
+- `tests/**` ruff per-file-ignores added (S101/PT017/PT011/PT012 etc.)
+
+### OTel atexit blocker ✅ (resolved earlier; v2.28.0 confirms)
+
+`conftest.py:18` sets `OTEL_EXPORTER_OTLP_ENDPOINT=""` + atexit handler at
+`opentelemetry_backend.py:402` — sufficient. v2.27.x and v2.28.0 both ship clean
+exit codes from CI test runs.
+
+---
+
+**Last Updated:** 2026-05-01
