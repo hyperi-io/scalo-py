@@ -299,9 +299,9 @@ def smart_run(
     description: str,
     activity_timeout: int = 60,  # 1 minute no activity
     total_timeout: int = 300,  # 5 minutes total
-    failure_patterns: list[str] = None,
-    success_patterns: list[str] = None,
-    progress_patterns: list[str] = None,
+    failure_patterns: list[str] | None = None,
+    success_patterns: list[str] | None = None,
+    progress_patterns: list[str] | None = None,
 ) -> HarnessResult:
     """
     Generic smart timeout for any command with stdout/stderr monitoring
@@ -389,7 +389,12 @@ class FunctionTimeoutMonitor:
         self.progress_callback_called = False
 
     def run_function_with_timeout(
-        self, func: Callable, args: tuple = (), kwargs: dict = None, description: str = "", capture_output: bool = True
+        self,
+        func: Callable,
+        args: tuple = (),
+        kwargs: dict | None = None,
+        description: str = "",
+        capture_output: bool = True,
     ) -> HarnessResult:
         """
         Run Python function with smart timeout monitoring
@@ -423,7 +428,7 @@ class FunctionTimeoutMonitor:
 def smart_run_function(
     func: Callable,
     args: tuple = (),
-    kwargs: dict = None,
+    kwargs: dict | None = None,
     description: str = "",
     activity_timeout: int = 60,
     total_timeout: int = 300,

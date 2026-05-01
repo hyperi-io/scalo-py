@@ -51,13 +51,13 @@ from .profile import ALLOWED_FUNCTIONS, DISALLOWED_FUNCTIONS
 from .transpiler import TranspileError, transpile_to_clickhouse
 
 __all__ = [
+    "ALLOWED_FUNCTIONS",
+    "DISALLOWED_FUNCTIONS",
     "ExpressionError",
     "TranspileError",
     "compile_expression",
     "evaluate",
     "evaluate_condition",
-    "validate",
     "transpile_to_clickhouse",
-    "ALLOWED_FUNCTIONS",
-    "DISALLOWED_FUNCTIONS",
+    "validate",
 ]

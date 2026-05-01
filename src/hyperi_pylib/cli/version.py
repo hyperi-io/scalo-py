@@ -42,8 +42,8 @@ except ImportError:
 
 __all__ = [
     "get_version",
-    "version_option",
     "print_version",
+    "version_option",
 ]
 
 

@@ -41,9 +41,20 @@ from .postgres_loader import (
 from .reloader import ConfigReloader, ReloaderConfig
 
 __all__ = [
+    # Config reloader
+    "ConfigReloader",
+    # Directory config store
+    "DirectoryConfigStore",
     # Config classes and functions
     "MountConfig",
+    "PostgresConfigError",
+    # PostgreSQL config loader
+    "PostgresConfigLoader",
+    "PostgresConfigUnavailable",
+    "ReloaderConfig",
     "detect_environment",
+    # Merge functions
+    "detect_file_type",
     "detect_helm_deployment",
     "detect_standard_mounts",
     "get_api_config",
@@ -52,6 +63,7 @@ __all__ = [
     "get_config",
     "get_container_config",
     "get_database_config",
+    "get_default_loader",
     "get_default_mounts",
     "get_environment",
     "get_logging_config",
@@ -60,24 +72,12 @@ __all__ = [
     "get_standard_env_vars",
     "get_target_config",
     "init_config_directory",
-    "settings",
-    "setup",
-    # Merge functions
-    "detect_file_type",
+    "load_postgres_config",
     "merge_files",
     "merge_gitignore",
     "merge_json",
     "merge_toml",
     "merge_yaml",
-    # Directory config store
-    "DirectoryConfigStore",
-    # PostgreSQL config loader
-    "PostgresConfigLoader",
-    "PostgresConfigError",
-    "PostgresConfigUnavailable",
-    "load_postgres_config",
-    "get_default_loader",
-    # Config reloader
-    "ConfigReloader",
-    "ReloaderConfig",
+    "settings",
+    "setup",
 ]

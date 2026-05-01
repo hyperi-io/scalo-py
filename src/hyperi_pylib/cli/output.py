@@ -29,16 +29,16 @@ import sys
 from typing import Any
 
 __all__ = [
-    "console",
-    "stderr_console",
-    "print_success",
-    "print_error",
-    "print_warning",
-    "print_info",
-    "print_table",
-    "print_json",
-    "print_dict",
     "HAS_RICH",
+    "console",
+    "print_dict",
+    "print_error",
+    "print_info",
+    "print_json",
+    "print_success",
+    "print_table",
+    "print_warning",
+    "stderr_console",
 ]
 
 # Try to import Rich

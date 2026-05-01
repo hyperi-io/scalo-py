@@ -51,20 +51,20 @@ from .prometheus import (
 )
 
 __all__ = [
-    # Primary API
-    "create_metrics",
-    "MetricsManager",
-    "CardinalityTracker",
     # DFE metric groups
     "AppMetrics",
     "BackpressureMetrics",
     "BufferMetrics",
+    "CardinalityTracker",
     "CircuitBreakerMetrics",
     "ConsumerMetrics",
-    "SinkMetrics",
-    # Backward compatibility
-    "PrometheusMetrics",
-    "ProcessMetrics",
     "ContainerMetrics",
     "HTTPMetrics",
+    "MetricsManager",
+    "ProcessMetrics",
+    # Backward compatibility
+    "PrometheusMetrics",
+    "SinkMetrics",
+    # Primary API
+    "create_metrics",
 ]

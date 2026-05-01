@@ -517,3 +517,131 @@ def postgres_dsn_local_only():
     yield dsn
 
     _stop_docker_postgres()
+
+
+# =============================================================================
+# OpenBao / Vault Integration Test Support
+# =============================================================================
+
+OPENBAO_DOCKER_COMPOSE = Path(__file__).parent.parent / "docker-compose.openbao.yml"
+OPENBAO_CONTAINER_NAME = "hyperi-pylib-openbao"
+OPENBAO_PROJECT_NAME = "hyperi-pylib-test"  # Same project as Kafka/Postgres for shared cleanup
+OPENBAO_DEFAULT_ADDR = "http://localhost:8200"
+OPENBAO_DEFAULT_TOKEN = "hyperi-pylib-test-root"  # noqa: S105 — matches docker-compose dev-mode root
+
+_openbao_started_by_tests = False
+
+
+def _is_our_openbao_container_running() -> bool:
+    """Check if our specific test OpenBao container is running."""
+    try:
+        result = subprocess.run(
+            ["docker", "inspect", "-f", "{{.State.Running}}", OPENBAO_CONTAINER_NAME],
+            capture_output=True,
+            text=True,
+            timeout=10,
+        )
+        return result.returncode == 0 and "true" in result.stdout.lower()
+    except (subprocess.SubprocessError, FileNotFoundError):
+        return False
+
+
+def _check_openbao_ready(addr: str, timeout: float = 2.0) -> bool:
+    """Probe Vault /v1/sys/health. Healthy when 200 (sealed/unsealed both fine for our tests)."""
+    try:
+        import urllib.request
+        with urllib.request.urlopen(f"{addr}/v1/sys/health", timeout=timeout):  # noqa: S310 — local-only test fixture
+            return True
+    except Exception:
+        return False
+
+
+def _start_docker_openbao() -> bool:
+    """Start local OpenBao via docker-compose if not running."""
+    global _openbao_started_by_tests
+
+    if not OPENBAO_DOCKER_COMPOSE.exists():
+        return False
+
+    try:
+        if _is_our_openbao_container_running():
+            return True
+
+        if _check_openbao_ready(OPENBAO_DEFAULT_ADDR, timeout=1.0):
+            print("\n  Found existing OpenBao on localhost:8200 (not started by tests)")
+            return True
+
+        print("\n  Starting local Docker OpenBao (hyperi-pylib-test)...")
+        subprocess.run(
+            [
+                "docker", "compose",
+                "-f", str(OPENBAO_DOCKER_COMPOSE),
+                "-p", OPENBAO_PROJECT_NAME,
+                "up", "-d",
+            ],
+            capture_output=True,
+            timeout=60,
+            check=True,
+        )
+
+        for i in range(30):
+            if _check_openbao_ready(OPENBAO_DEFAULT_ADDR, timeout=1.0):
+                print(f"  Docker OpenBao ready after {i + 1}s")
+                _openbao_started_by_tests = True
+                return True
+            time.sleep(1)
+
+        print("  Docker OpenBao failed to start within 30s")
+        return False
+    except (subprocess.SubprocessError, FileNotFoundError) as e:
+        print(f"  Failed to start Docker OpenBao: {e}")
+        return False
+
+
+def _stop_docker_openbao() -> None:
+    """Stop Docker OpenBao if we started it."""
+    global _openbao_started_by_tests
+
+    if not _openbao_started_by_tests or not OPENBAO_DOCKER_COMPOSE.exists():
+        return
+
+    try:
+        print("\n  Stopping Docker OpenBao (hyperi-pylib-test)...")
+        subprocess.run(
+            [
+                "docker", "compose",
+                "-f", str(OPENBAO_DOCKER_COMPOSE),
+                "-p", OPENBAO_PROJECT_NAME,
+                "down", "-v",
+            ],
+            capture_output=True,
+            timeout=30,
+        )
+        _openbao_started_by_tests = False
+        print("  Docker OpenBao stopped and cleaned up")
+    except (subprocess.SubprocessError, FileNotFoundError) as e:
+        print(f"  Failed to stop Docker OpenBao: {e}")
+
+
+@pytest.fixture(scope="session")
+def openbao_endpoint():
+    """OpenBao address + token. Cascade: existing local instance → docker compose → skip.
+
+    Yields a (addr, token) tuple for tests to construct an OpenBaoConfig.
+    Mirrors the Kafka/Postgres fixture pattern at conftest.py:159-202.
+    """
+    if _check_openbao_ready(OPENBAO_DEFAULT_ADDR, timeout=1.0):
+        # Use existing local instance — token may be different; honour env if set
+        token = os.environ.get("OPENBAO_DEV_ROOT_TOKEN", OPENBAO_DEFAULT_TOKEN)
+        yield (OPENBAO_DEFAULT_ADDR, token)
+        return
+
+    if _start_docker_openbao():
+        yield (OPENBAO_DEFAULT_ADDR, OPENBAO_DEFAULT_TOKEN)
+        _stop_docker_openbao()
+        return
+
+    pytest.skip(
+        "OpenBao not available. Set up local Vault on :8200 or "
+        "run: docker compose -f docker-compose.openbao.yml up -d"
+    )

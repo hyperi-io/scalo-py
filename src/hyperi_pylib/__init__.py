@@ -114,27 +114,27 @@ dbconn = database  # Old name
 prometheus = metrics  # Old name
 
 __all__ = [
+    "__version__",
+    "build_database_url",
     # Core modules
     "cli",
     "config",
+    "create_metrics",
     "database",
-    "harness",
-    "health",
-    "logger",
-    "runtime",
-    "metrics",
-    "version_check",
     # Backward compatibility
     "dbconn",
-    "prometheus",
+    "get_database_config",
+    "get_database_url_from_env",
+    "get_environment",
     # Functions
     "get_logging_config",
     "get_mount_config",
-    "get_environment",
     "get_runtime_paths",
-    "create_metrics",
-    "build_database_url",
-    "get_database_config",
-    "get_database_url_from_env",
-    "__version__",
+    "harness",
+    "health",
+    "logger",
+    "metrics",
+    "prometheus",
+    "runtime",
+    "version_check",
 ]

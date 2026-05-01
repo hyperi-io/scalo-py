@@ -158,6 +158,88 @@ def get_default_config(verify_ssl: bool = True) -> dict[str, Any]:
 
 
 # =============================================================================
+# SASL-SCRAM helpers
+# =============================================================================
+#
+# Encodes the org-wide standard: SCRAM-SHA-512 over SASL_SSL for external
+# brokers (Apache Kafka, AutoMQ, MSK, Confluent Cloud all support unchanged),
+# SCRAM-SHA-512 over SASL_PLAINTEXT for in-cluster brokers where TLS is already
+# terminated by the network mesh. Removes per-project hand-rolling of
+# security.protocol + sasl.* fields.
+
+
+def external_sasl_scram(
+    brokers: str,
+    username: str,
+    password: str,
+    *,
+    mechanism: str = "SCRAM-SHA-512",
+    verify_ssl: bool = True,
+) -> dict[str, Any]:
+    """
+    Build a Kafka client config for an external broker using SASL_SSL + SCRAM.
+
+    HyperI default for production-internet-facing brokers — works unchanged
+    against Apache Kafka, AutoMQ, MSK, and Confluent Cloud.
+
+    Args:
+        brokers: Bootstrap servers (e.g. "broker1:9093,broker2:9093")
+        username: SASL username
+        password: SASL password
+        mechanism: SCRAM variant; defaults to ``SCRAM-SHA-512`` (HyperI standard)
+        verify_ssl: TLS certificate verification; default True
+
+    Returns:
+        Configuration dict ready to merge with PRODUCER/CONSUMER/ADMIN_DEFAULTS
+
+    Example:
+        >>> base = external_sasl_scram("kafka.prod:9093", "svc-loader", "***")
+        >>> config = merge_config(base, PRODUCER_DEFAULTS)
+    """
+    config: dict[str, Any] = {
+        "bootstrap.servers": brokers,
+        "security.protocol": "SASL_SSL",
+        "sasl.mechanisms": mechanism,
+        "sasl.username": username,
+        "sasl.password": password,
+    }
+    if not verify_ssl:
+        config["enable.ssl.certificate.verification"] = "false"
+    return config
+
+
+def internal_sasl_scram(
+    brokers: str,
+    username: str,
+    password: str,
+    *,
+    mechanism: str = "SCRAM-SHA-512",
+) -> dict[str, Any]:
+    """
+    Build a Kafka client config for an internal broker using SASL_PLAINTEXT + SCRAM.
+
+    Used when TLS is terminated upstream (mTLS service mesh, in-cluster Kafka)
+    so wire encryption is already provided by the network layer.
+
+    Args:
+        brokers: Bootstrap servers (e.g. "kafka.svc:9092")
+        username: SASL username
+        password: SASL password
+        mechanism: SCRAM variant; defaults to ``SCRAM-SHA-512`` (HyperI standard)
+
+    Returns:
+        Configuration dict ready to merge with PRODUCER/CONSUMER/ADMIN_DEFAULTS
+    """
+    return {
+        "bootstrap.servers": brokers,
+        "security.protocol": "SASL_PLAINTEXT",
+        "sasl.mechanisms": mechanism,
+        "sasl.username": username,
+        "sasl.password": password,
+    }
+
+
+# =============================================================================
 # File-based Configuration
 # =============================================================================
 

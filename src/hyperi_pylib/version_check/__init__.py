@@ -33,7 +33,7 @@ Dependencies:
 from .checker import VersionCheckConfig, VersionCheckResponse, check_on_startup
 
 __all__ = [
-    "check_on_startup",
     "VersionCheckConfig",
     "VersionCheckResponse",
+    "check_on_startup",
 ]

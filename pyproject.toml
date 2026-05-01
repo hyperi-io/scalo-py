@@ -83,6 +83,9 @@ opentelemetry = [
 expression = [
     "common-expression-language>=0.5.6",
 ]
+deployment = [
+    "pydantic>=2.13.0",
+]
 database = []
 kafka = [
     "confluent-kafka>=2.3.0",
@@ -135,6 +138,8 @@ dev = [
     "stamina>=25.1.0",
     "boto3>=1.35.0",
     "aiobotocore>=2.15.0",
+    "moto[secretsmanager]>=5.0.0",
+    "pydantic>=2.13.0",
     "ruff>=0.1.0",
     "ty>=0.0.21",
     "mypy>=1.0.0",
@@ -288,8 +293,6 @@ ignore = [
     "T201",
     # Ruff-specific relaxations
     "RUF012", # mutable-class-default (Pydantic/dataclass patterns)
-    "RUF013", # implicit-optional (TEMP: needs unsafe-fixes)
-    "RUF022", # unsorted-dunder-all (TEMP: needs unsafe-fixes)
     "RUF059", # unused-unpacked-variable
     "RUF001", # ambiguous-unicode-character-string
     "RUF002", # ambiguous-unicode-character-docstring

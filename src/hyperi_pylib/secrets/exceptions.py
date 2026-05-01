@@ -98,15 +98,15 @@ class VersioningNotSupportedError(ProviderError):
 
 
 __all__ = [
-    "SecretsError",
-    "SecretNotFoundError",
-    "ProviderError",
-    "ProviderNotConfiguredError",
-    "ProviderNotAvailableError",
-    "CacheError",
     "AuthenticationError",
+    "CacheError",
+    "ProviderError",
+    "ProviderNotAvailableError",
+    "ProviderNotConfiguredError",
     "SecretAlreadyExistsError",
+    "SecretNotFoundError",
     "SecretPermissionError",
     "SecretVersionNotFoundError",
+    "SecretsError",
     "VersioningNotSupportedError",
 ]

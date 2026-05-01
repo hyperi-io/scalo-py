@@ -83,16 +83,16 @@ except ImportError:
 
 
 __all__ = [
-    # Disk cache (cashews)
-    "cache",
-    "configure_cache",
-    "cached",
-    "get_ttl",
-    "get_cached",
-    "set_cached",
-    "invalidate_source",
     # PostgreSQL cache
     "PostgresCache",
     "PostgresCacheError",
+    # Disk cache (cashews)
+    "cache",
+    "cached",
+    "configure_cache",
     "generate_cache_key",
+    "get_cached",
+    "get_ttl",
+    "invalidate_source",
+    "set_cached",
 ]

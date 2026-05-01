@@ -803,12 +803,12 @@ def _load_dotenv_cascade(dotenv_files: list[str] | None = None) -> None:
 
 
 def get_config(
-    additional_files: list[str] = None,
-    env_prefix: str = None,
+    additional_files: list[str] | None = None,
+    env_prefix: str | None = None,
     load_dotenv: bool = True,
     merge_existing: bool = True,
     dotenv_cascade: bool = False,
-    dotenv_files: list[str] = None,
+    dotenv_files: list[str] | None = None,
 ):
     """
     Get configuration with optional additional file sources.
@@ -1032,7 +1032,7 @@ def get_standard_env_vars() -> dict:
     return env_vars
 
 
-def get_database_config(db_type: str = "postgresql", env_prefix: str = None) -> dict:
+def get_database_config(db_type: str = "postgresql", env_prefix: str | None = None) -> dict:
     """
     Get database configuration from environment variables.
 
@@ -1211,7 +1211,7 @@ def get_logging_config():
     }
 
 
-def get_target_config(target: str = None, targets_file: str = None) -> dict:
+def get_target_config(target: str | None = None, targets_file: str | None = None) -> dict:
     """
     Get target-specific configuration for multi-environment setups.
 
@@ -1293,8 +1293,8 @@ def get_target_config(target: str = None, targets_file: str = None) -> dict:
 
 
 def init_config_directory(
-    app_name: str = None,
-    config_dir: str = None,
+    app_name: str | None = None,
+    config_dir: str | None = None,
     create_subdir=True,
     config_subdir_name: str = "config",
     create_targets: bool = True,
@@ -1396,31 +1396,31 @@ targets:
 
 # Export for direct access
 __all__ = [
-    # Primary config objects (use these!)
-    "settings",  # Default settings object (automatic cascade)
-    "get_settings",  # Get default settings object
-    "get_config",  # Get config with additional files (NEW!)
-    "setup",  # Setup function (compatibility)
-    # Helper functions
-    "get_api_config",
-    "get_logging_config",
-    "get_target_config",
-    "init_config_directory",
+    "APP_NAME",
+    "AUTO_DETECT",
+    "DETECTED_ENV",
     # Constants
     "ENV_PREFIX",
-    "APP_NAME",
+    "MOUNT_CONFIG",
     # Container-aware exports
     "MountConfig",
     "detect_environment",
     "detect_helm_deployment",
     "detect_standard_mounts",
-    "get_default_mounts",
-    "get_mount_config",
-    "get_environment",
+    # Helper functions
+    "get_api_config",
+    "get_config",  # Get config with additional files (NEW!)
     "get_container_config",
-    "get_standard_env_vars",
     "get_database_config",
-    "DETECTED_ENV",
-    "MOUNT_CONFIG",
-    "AUTO_DETECT",
+    "get_default_mounts",
+    "get_environment",
+    "get_logging_config",
+    "get_mount_config",
+    "get_settings",  # Get default settings object
+    "get_standard_env_vars",
+    "get_target_config",
+    "init_config_directory",
+    # Primary config objects (use these!)
+    "settings",  # Default settings object (automatic cascade)
+    "setup",  # Setup function (compatibility)
 ]

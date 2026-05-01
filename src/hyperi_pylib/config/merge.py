@@ -420,10 +420,10 @@ def merge_files(
 
 
 __all__ = [
-    "merge_files",
     "detect_file_type",
-    "merge_json",
-    "merge_yaml",
-    "merge_toml",
+    "merge_files",
     "merge_gitignore",
+    "merge_json",
+    "merge_toml",
+    "merge_yaml",
 ]

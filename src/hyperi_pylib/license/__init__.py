@@ -133,35 +133,35 @@ from .types import (
 )
 
 __all__ = [
+    "License",
+    "LicenseAlreadyInitializedError",
+    "LicenseDecryptionError",
+    "LicenseEncryptionError",
+    # Errors
+    "LicenseError",
+    "LicenseExpiredError",
+    "LicenseFetchError",
+    "LicenseIntegrityError",
+    "LicenseLoadError",
+    "LicenseNotInitializedError",
+    "LicenseOptions",
+    "LicenseParseError",
     # Types
     "LicenseSettings",
-    "LicenseOptions",
+    "LicenseSignatureError",
     "LicenseSource",
     "LicenseSourceInfo",
-    "License",
+    "decrypt_license",
+    # Utility functions
+    "encrypt_license",
+    "get",
+    "get_license",
+    "has_feature",
     # Singleton API
     "init",
     "init_default",
-    "reset",
-    "get",
-    "try_get",
-    "get_license",
-    "verify_integrity",
     "is_default",
-    "has_feature",
-    # Utility functions
-    "encrypt_license",
-    "decrypt_license",
-    # Errors
-    "LicenseError",
-    "LicenseLoadError",
-    "LicenseFetchError",
-    "LicenseDecryptionError",
-    "LicenseEncryptionError",
-    "LicenseParseError",
-    "LicenseSignatureError",
-    "LicenseExpiredError",
-    "LicenseIntegrityError",
-    "LicenseNotInitializedError",
-    "LicenseAlreadyInitializedError",
+    "reset",
+    "try_get",
+    "verify_integrity",
 ]
