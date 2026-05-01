@@ -527,7 +527,7 @@ OPENBAO_DOCKER_COMPOSE = Path(__file__).parent.parent / "docker-compose.openbao.
 OPENBAO_CONTAINER_NAME = "hyperi-pylib-openbao"
 OPENBAO_PROJECT_NAME = "hyperi-pylib-test"  # Same project as Kafka/Postgres for shared cleanup
 OPENBAO_DEFAULT_ADDR = "http://localhost:8200"
-OPENBAO_DEFAULT_TOKEN = "hyperi-pylib-test-root"  # noqa: S105 — matches docker-compose dev-mode root
+OPENBAO_DEFAULT_TOKEN = "hyperi-pylib-test-root"
 
 _openbao_started_by_tests = False
 
@@ -550,6 +550,7 @@ def _check_openbao_ready(addr: str, timeout: float = 2.0) -> bool:
     """Probe Vault /v1/sys/health. Healthy when 200 (sealed/unsealed both fine for our tests)."""
     try:
         import urllib.request
+
         with urllib.request.urlopen(f"{addr}/v1/sys/health", timeout=timeout):  # noqa: S310 — local-only test fixture
             return True
     except Exception:
@@ -574,10 +575,14 @@ def _start_docker_openbao() -> bool:
         print("\n  Starting local Docker OpenBao (hyperi-pylib-test)...")
         subprocess.run(
             [
-                "docker", "compose",
-                "-f", str(OPENBAO_DOCKER_COMPOSE),
-                "-p", OPENBAO_PROJECT_NAME,
-                "up", "-d",
+                "docker",
+                "compose",
+                "-f",
+                str(OPENBAO_DOCKER_COMPOSE),
+                "-p",
+                OPENBAO_PROJECT_NAME,
+                "up",
+                "-d",
             ],
             capture_output=True,
             timeout=60,
@@ -609,10 +614,14 @@ def _stop_docker_openbao() -> None:
         print("\n  Stopping Docker OpenBao (hyperi-pylib-test)...")
         subprocess.run(
             [
-                "docker", "compose",
-                "-f", str(OPENBAO_DOCKER_COMPOSE),
-                "-p", OPENBAO_PROJECT_NAME,
-                "down", "-v",
+                "docker",
+                "compose",
+                "-f",
+                str(OPENBAO_DOCKER_COMPOSE),
+                "-p",
+                OPENBAO_PROJECT_NAME,
+                "down",
+                "-v",
             ],
             capture_output=True,
             timeout=30,
@@ -642,6 +651,5 @@ def openbao_endpoint():
         return
 
     pytest.skip(
-        "OpenBao not available. Set up local Vault on :8200 or "
-        "run: docker compose -f docker-compose.openbao.yml up -d"
+        "OpenBao not available. Set up local Vault on :8200 or run: docker compose -f docker-compose.openbao.yml up -d"
     )

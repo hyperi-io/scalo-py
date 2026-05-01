@@ -31,7 +31,7 @@ from hyperi_pylib.secrets.types import OpenBaoConfig, SecretFilter
 pytestmark = pytest.mark.skipif(not HTTPX_AVAILABLE, reason="httpx not installed")
 
 VAULT_ADDR = "http://vault.test:8200"
-VAULT_TOKEN = "test-token-42"  # noqa: S105
+VAULT_TOKEN = "test-token-42"
 KV_DATA_URL = f"{VAULT_ADDR}/v1/secret/data/myapp"
 KV_META_URL = f"{VAULT_ADDR}/v1/secret/metadata/myapp"
 KV_LIST_URL = f"{VAULT_ADDR}/v1/secret/metadata/myapp/"

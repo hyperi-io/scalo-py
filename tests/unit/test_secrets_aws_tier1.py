@@ -130,7 +130,8 @@ class TestAWSGetMetadataSync:
         assert meta.created_at is not None
         assert meta.tags == {"a": "b"}
         assert meta.version is not None
-        assert meta.version_count is not None and meta.version_count >= 1
+        assert meta.version_count is not None
+        assert meta.version_count >= 1
 
     def test_not_found(self, provider):
         with pytest.raises(SecretNotFoundError):
