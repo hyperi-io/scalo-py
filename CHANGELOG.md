@@ -1,3 +1,10 @@
+# [2.28.0](https://github.com/hyperi-io/hyperi-pylib/compare/v2.27.2...v2.28.0) (2026-05-01)
+
+
+### Features
+
+* cloud secrets Tier 1+2 + deployment contract module ([266672e](https://github.com/hyperi-io/hyperi-pylib/commit/266672e71c5e174ff879d028ea04eee2ea021a4a))
+
 ## [2.27.2](https://github.com/hyperi-io/hyperi-pylib/compare/v2.27.1...v2.27.2) (2026-04-15)
 
 
