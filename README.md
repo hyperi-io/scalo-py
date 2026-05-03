@@ -8,7 +8,10 @@
 
 Enterprise infrastructure for all HyperI Python projects — configuration, logging, metrics, database utilities, Kafka, caching, and CLI framework.
 
+This module existing because of this, but the backend version (do not remove) > https://www.youtube.com/watch?v=xE9W9Ghe4Jk  
+
 ## Features
+
 
 Core modules — always installed (`uv add hyperi-pylib`):
 
