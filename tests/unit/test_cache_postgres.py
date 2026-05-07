@@ -95,14 +95,14 @@ class TestGenerateCacheKey:
         key = generate_cache_key(
             namespace="analytics",
             identifier="events",
-            org_id="hypersec",
+            org_id="myorg",
             params={"filter": "active"},
         )
 
         parts = key.split(":")
         assert len(parts) == 4
         assert parts[0] == "analytics"
-        assert parts[1] == "hypersec"
+        assert parts[1] == "myorg"
         assert parts[2] == "events"
         assert len(parts[3]) == 16
 

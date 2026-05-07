@@ -23,7 +23,7 @@ def _venv_bin(venv_dir: Path, exe: str) -> Path:
 
 
 @pytest.mark.e2e
-@pytest.mark.parametrize("license_id", ["hypersec-eula", "apache-2.0"])
+@pytest.mark.parametrize("license_id", ["hyperi-eula", "apache-2.0"])
 @pytest.mark.parametrize("enable_gha", [False, True])
 def test_template_deploy_flow(license_id: str, enable_gha: bool) -> None:
     # Skip if copier not available
@@ -35,8 +35,8 @@ def test_template_deploy_flow(license_id: str, enable_gha: bool) -> None:
     template_src = repo_root
     base_dir = Path("/projects/test-templates")
     base_dir.mkdir(parents=True, exist_ok=True)
-    project_name = "test_hypersec_forge_tpl_python_pkg"
-    package_name = "test_hypersec_forge_tpl_python_pkg"
+    project_name = "test_hyperi_forge_tpl_python_pkg"
+    package_name = "test_hyperi_forge_tpl_python_pkg"
     dest = base_dir / project_name
 
     # Clean up existing test project

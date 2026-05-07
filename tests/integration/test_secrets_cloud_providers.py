@@ -19,7 +19,7 @@ Configuration via environment variables (or tests/.env.integration file):
     HYPERI_TEST_AWS_REGION=ap-southeast-2
     HYPERI_TEST_AWS_SECRET_NAME=hyperi-pylib-test
     # Credentials: AWS_ACCESS_KEY_ID + AWS_SECRET_ACCESS_KEY + AWS_SESSION_TOKEN
-    # Via SSO: eval $(aws configure export-credentials --profile hypersec-internet-services --format env)
+    # Via SSO: eval $(aws configure export-credentials --profile your-aws-profile --format env)
 
     # GCP Secret Manager
     HYPERI_TEST_GCP_PROJECT_ID=hyperi-dfe
