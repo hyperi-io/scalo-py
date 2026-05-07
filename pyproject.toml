@@ -8,7 +8,7 @@ build-backend = "setuptools.build_meta"
 [project]
 name = "hyperi-pylib"
 version = "2.27.2"
-description = "Enterprise infrastructure for containerized Python applications - configuration, logging, timeouts, database, metrics, and application framework"
+description = "Opinionated, drop-in Python toolkit for production services at scale. The patterns from blog posts as actual code: 8-layer config cascade, structured logging with PII masking, Prometheus + OpenTelemetry, multi-backend secrets (Vault/AWS/GCP/Azure), Kafka helpers, CEL expression engine, FastAPI-friendly."
 readme = "README.md"
 authors = [
     { name = "HyperI Team", email = "dev@hyperi.io" },
@@ -33,18 +33,25 @@ classifiers = [
     "Topic :: System :: Logging",
 ]
 keywords = [
-    "hypersec",
-    "enterprise",
-    "containerization",
+    "observability",
+    "structured-logging",
+    "configuration",
+    "dynaconf",
+    "prometheus",
+    "opentelemetry",
+    "metrics",
+    "tracing",
+    "secrets-management",
+    "vault",
+    "kafka",
+    "cel",
+    "asyncio",
+    "httpx",
+    "fastapi",
     "kubernetes",
     "docker",
-    "logging",
-    "configuration",
-    "prometheus",
-    "metrics",
-    "database",
+    "containerization",
     "application-framework",
-    "fastapi",
 ]
 dependencies = [
     "dynaconf>=3.2.13",
@@ -379,14 +386,8 @@ disallow_untyped_defs = false
 ignore_missing_imports = true
 
 # UV package manager configuration
-# Auth via env vars: UV_INDEX_HYPERSEC_JFROG_USERNAME, UV_INDEX_HYPERSEC_JFROG_PASSWORD
 [tool.uv]
 index-strategy = "unsafe-best-match"
-
-[[tool.uv.index]]
-name = "hypersec-jfrog"
-url = "https://hypersec.jfrog.io/artifactory/api/pypi/hyperi-pypi/simple"
-explicit = true
 
 [[tool.uv.index]]
 name = "pypi"

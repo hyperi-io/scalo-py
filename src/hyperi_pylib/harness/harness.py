@@ -481,44 +481,44 @@ def smart_run_function(
 
 def container_registry_login() -> tuple[bool, str]:
     """
-    Authenticate with Artifactory container registry from .env file.
+    Authenticate with a container registry using credentials from environment.
 
-    Uses JFrog Artifactory as Docker Hub caching proxy for faster pulls
-    and no rate limiting.
+    Useful for CI runs that need to pull from a private or proxied registry
+    (e.g. a Docker Hub proxy to avoid rate limiting).
 
     Returns:
         (success: bool, message: str)
 
     Example .env:
-        ARTIFACTORY_CONTAINER_URL=hypersec.jfrog.io
-        ARTIFACTORY_USERNAME=your-email@hypersec.io
-        ARTIFACTORY_PASSWORD=your-jfrog-password
+        REGISTRY_URL=ghcr.io
+        REGISTRY_USERNAME=your-username
+        REGISTRY_PASSWORD=your-token
     """
-    artifactory_url = os.getenv("ARTIFACTORY_CONTAINER_URL")
-    artifactory_user = os.getenv("ARTIFACTORY_USERNAME")
-    artifactory_pass = os.getenv("ARTIFACTORY_PASSWORD")
+    registry_url = os.getenv("REGISTRY_URL") or os.getenv("ARTIFACTORY_CONTAINER_URL")
+    registry_user = os.getenv("REGISTRY_USERNAME") or os.getenv("ARTIFACTORY_USERNAME")
+    registry_pass = os.getenv("REGISTRY_PASSWORD") or os.getenv("ARTIFACTORY_PASSWORD")
 
-    if not (artifactory_url and artifactory_user and artifactory_pass):
-        return False, "ARTIFACTORY_CONTAINER_URL or credentials not set in .env"
+    if not (registry_url and registry_user and registry_pass):
+        return False, "REGISTRY_URL or credentials not set in environment"
 
     try:
         result = subprocess.run(
-            ["docker", "login", artifactory_url, "-u", artifactory_user, "--password-stdin"],
-            input=artifactory_pass,
+            ["docker", "login", registry_url, "-u", registry_user, "--password-stdin"],
+            input=registry_pass,
             capture_output=True,
             text=True,
             timeout=30,
         )  # nosec B603,B607 - Docker login with controlled inputs
 
         if result.returncode == 0:
-            return True, f"Artifactory container registry authenticated: {artifactory_url}"
+            return True, f"Container registry authenticated: {registry_url}"
         else:
-            return False, f"Artifactory login failed: {result.stderr.strip()}"
+            return False, f"Registry login failed: {result.stderr.strip()}"
 
     except subprocess.TimeoutExpired:
-        return False, "Artifactory login timed out after 30s"
+        return False, "Registry login timed out after 30s"
     except Exception as e:
-        return False, f"Artifactory login error: {e}"
+        return False, f"Registry login error: {e}"
 
 
 def docker_login_from_env() -> tuple[bool, str]:
@@ -608,9 +608,9 @@ def check_registry_throttling(namespace: str) -> tuple[bool, str]:
 
 def check_container_registry_access() -> tuple[bool, dict]:
     """
-    Check container registry access (Artifactory).
+    Check container registry accessibility.
 
-    Tests if registry is accessible and authentication is working.
+    Tests whether the registry is reachable and authentication is working.
 
     Returns:
         (accessible: bool, status: dict)
@@ -625,23 +625,25 @@ def check_container_registry_access() -> tuple[bool, dict]:
         if status.get('throttled'):
             pytest.skip(f"Registry throttled: {status['message']}")
     """
-    artifactory_url = os.getenv("ARTIFACTORY_CONTAINER_URL")
+    registry_url = os.getenv("REGISTRY_URL") or os.getenv("ARTIFACTORY_CONTAINER_URL")
+    probe_image = os.getenv("REGISTRY_PROBE_IMAGE", "library/busybox:latest")
 
-    if not artifactory_url:
-        return False, {"authenticated": False, "message": "ARTIFACTORY_CONTAINER_URL not configured"}
+    if not registry_url:
+        return False, {"authenticated": False, "message": "REGISTRY_URL not configured"}
 
     try:
-        # Test registry access by pulling a small manifest
-        # Using busybox as it's tiny and commonly cached
+        # Test registry access by inspecting a small manifest.
+        # busybox is tiny and commonly cached. Override REGISTRY_PROBE_IMAGE
+        # if your registry uses a non-Docker-Hub layout.
         result = subprocess.run(
-            ["docker", "manifest", "inspect", f"{artifactory_url}/hypersec-docker/library/busybox:latest"],
+            ["docker", "manifest", "inspect", f"{registry_url}/{probe_image}"],
             capture_output=True,
             text=True,
             timeout=15,
         )  # nosec B603,B607 - Docker manifest with controlled URL
 
         if result.returncode == 0:
-            return True, {"authenticated": True, "message": f"Artifactory registry accessible: {artifactory_url}"}
+            return True, {"authenticated": True, "message": f"Container registry accessible: {registry_url}"}
         else:
             # Check if error mentions throttling/rate limiting
             stderr_lower = result.stderr.lower()
@@ -651,7 +653,7 @@ def check_container_registry_access() -> tuple[bool, dict]:
                 return False, {
                     "authenticated": False,
                     "throttled": True,
-                    "message": f"Registry rate limit/throttling detected: {artifactory_url}",
+                    "message": f"Registry rate limit/throttling detected: {registry_url}",
                 }
 
             return False, {"authenticated": False, "message": f"Registry access failed: {result.stderr.strip()}"}

@@ -96,7 +96,7 @@ secrets = SecretsManager.from_config({
             "role_id": "${VAULT_ROLE_ID}",
             "secret_id": "${VAULT_SECRET_ID}"
         },
-        "namespace": "hypersec",  # Optional, for Vault Enterprise
+        "namespace": "myorg",  # Optional, for Vault Enterprise
         "ca_cert": "/etc/ssl/vault-ca.pem"  # Optional
     },
     "sources": {
@@ -328,7 +328,7 @@ secrets:
       method: approle
       role_id: ${VAULT_ROLE_ID}
       secret_id: ${VAULT_SECRET_ID}
-    namespace: hypersec
+    namespace: myorg
     ca_cert: /etc/ssl/vault-ca.pem
     skip_verify: false
 

@@ -1,7 +1,16 @@
-"""hyperi-pylib - Enterprise Infrastructure for Python Applications.
+"""hyperi-pylib - Opinionated, drop-in toolkit for production Python services.
 
-Zero-configuration infrastructure library for containerised Python apps.
-Configuration, logging, metrics, database utilities - all automatic.
+There's plenty of sage advice out there about how to run Python services in
+production at scale — config cascades, structured logging, masking secrets,
+multi-backend secrets management, Prometheus, OpenTelemetry, backpressure,
+graceful shutdown — but almost none of it as code you can just install and use.
+
+This is that code. Opinionated, drop-in, working out of the box. The patterns
+from blog posts as actual library — not a framework you assemble from twelve
+packages and a weekend.
+
+Built as the foundation for HyperI's production Python services. Generic
+enough that you don't need to be at HyperI to use it.
 
 Quick Start
 ===========

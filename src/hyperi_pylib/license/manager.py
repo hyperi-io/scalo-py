@@ -162,12 +162,18 @@ class License:
         # XDG_CONFIG_HOME or ~/.config
         config_home = os.environ.get("XDG_CONFIG_HOME")
         if config_home:
+            paths.append(Path(config_home) / "hyperi" / "license.enc")
+            # Legacy path (pre-rebrand)
             paths.append(Path(config_home) / "hypersec" / "license.enc")
         else:
             home = Path.home()
+            paths.append(home / ".config" / "hyperi" / "license.enc")
+            # Legacy path (pre-rebrand)
             paths.append(home / ".config" / "hypersec" / "license.enc")
 
         # Home directory
+        paths.append(Path.home() / ".hyperi" / "license.enc")
+        # Legacy path (pre-rebrand)
         paths.append(Path.home() / ".hypersec" / "license.enc")
 
         return paths
