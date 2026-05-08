@@ -2,6 +2,20 @@
 
 ## Active
 
+### De-HyperI-isation for OSS adoption (2026-05-07)
+
+**Plan:** [`docs/superpowers/plans/2026-05-07-de-hyperi-isation.md`](docs/superpowers/plans/2026-05-07-de-hyperi-isation.md)
+
+**Why:** pylib is on PyPI and the README now positions it as a generic toolkit, but the source still leaks HyperI-internal naming and defaults — `dfe_*` metric prefix hardcoded in metric groups, `DfeApp` as the headline CLI base class, `DEFAULT_API_URL` pointing at `releases.hyperi.io`, `DEFAULT_IMAGE_REGISTRY` baked to `ghcr.io/hyperi-io`. An OSS adopter sees these and concludes the library isn't really for them.
+
+**Scope:** five phased passes — cosmetic docstring-pass → metric prefix decoupling → `version-check` URL mandatory → `DfeApp` rename to `ServiceApp` (with deprecated alias) → deployment defaults mandatory. Each phase ships independently. All commits are `fix:` (PATCH) or `feat:` (MINOR) per pre-GA discipline.
+
+**Status:** plan written. Phase 1 (cosmetic) ready to execute. Sister plan in [hyperi-rustlib](../hyperi-rustlib/docs/superpowers/plans/2026-05-07-de-hyperi-isation.md).
+
+**Already done in prep (commit `2edb6e8`):** removed JFrog UV index, generalised registry-helper env vars (with `ARTIFACTORY_*` legacy fallback), routed license discovery to `~/.hyperi/` ahead of legacy `~/.hypersec/`, README rewrite with positioning manifesto, `__init__.py` module doc with positioning, sample-namespace strings (`hypersec` → `myorg`).
+
+---
+
 ### Cross-language byte-parity tests for `hyperi_pylib.deployment` — **deferred until rustlib fixtures land**
 
 **Status:** Deployment module shipped in v2.28.0 with snapshot/structural tests
