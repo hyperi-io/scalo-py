@@ -1,5 +1,0 @@
-FROM python:3.11-slim
-WORKDIR /app
-RUN mkdir -p /app/config /app/data /app/logs /run/secrets
-COPY check_mounts.py /app/
-CMD ["python", "check_mounts.py"]
