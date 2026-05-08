@@ -18,6 +18,3 @@ quality:
   python:
     # vulture: library code has extensive public API that looks "unused"
     vulture: warn
-    # pip_audit: pygments 2.19.2 CVE-2026-4539 has no fix version yet.
-    # pygments is a docs-only dev dep (sphinx). Set to warn until patched.
-    pip_audit: warn
