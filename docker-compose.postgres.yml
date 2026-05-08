@@ -14,7 +14,7 @@
 
 services:
   postgres:
-    image: postgres:17-alpine@sha256:6f30057d31f5861b66f3545d4821f987aacf1dd920765f0acadea0c58ff975b1
+    image: postgres:18-alpine
     container_name: hyperi-pylib-postgres
     hostname: postgres
     ports:
@@ -34,7 +34,8 @@ services:
 
   # Optional: pgAdmin for debugging
   pgadmin:
-    image: dpage/pgadmin4:latest@sha256:ff557f69d9808085dc3554f56c1b06a36ac8cddabe4485212920b9604261abdb
+    # Renovate will re-add SHA digest after next pass.
+    image: dpage/pgadmin4:9
     container_name: hyperi-pylib-pgadmin
     profiles:
       - ui  # Only start with: docker compose -f docker-compose.postgres.yml --profile ui up

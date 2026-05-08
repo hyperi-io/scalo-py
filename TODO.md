@@ -2,6 +2,21 @@
 
 ## Active
 
+### Delete dead docker-container tests (2026-05-08)
+
+`tests/integration/test_docker_container.py` has 6 tests whose
+fixtures import `detect_environment` and `get_mount_config` from
+`hyperi_pylib.config` — neither symbol exists. The tests have been
+failing silently in CI for an unknown amount of time.
+
+Either:
+- delete the test file and its 13 fixtures, OR
+- reimplement against the runtime detection module that replaced the
+  removed API.
+
+Recommended: delete. Container detection is exercised through
+`hyperi_pylib.runtime` smoke tests now.
+
 ### De-HyperI-isation for OSS adoption (2026-05-07)
 
 **Plan:** [`docs/superpowers/plans/2026-05-07-de-hyperi-isation.md`](docs/superpowers/plans/2026-05-07-de-hyperi-isation.md)

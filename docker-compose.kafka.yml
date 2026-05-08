@@ -14,7 +14,7 @@
 
 services:
   kafka:
-    image: apache/kafka:3.9.2@sha256:05b4616e0702ef2729327705d54ad6b50ea70b271c4b730fabd2320789fb7b02
+    image: apache/kafka:4.2.0
     container_name: hyperi-pylib-kafka
     hostname: kafka
     ports:
@@ -55,7 +55,8 @@ services:
 
   # Optional: Kafka UI for debugging
   kafka-ui:
-    image: provectuslabs/kafka-ui:latest@sha256:8f2ff02d64b0a7a2b71b6b3b3148b85f66d00ec20ad40c30bdcd415d46d31818
+    # Renovate will re-add SHA digest after next pass.
+    image: provectuslabs/kafka-ui:v0.7
     container_name: hyperi-pylib-kafka-ui
     profiles:
       - ui  # Only start with: docker compose -f docker-compose.kafka.yml --profile ui up
