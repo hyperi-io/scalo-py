@@ -1,5 +1,0 @@
-FROM python:3.11-slim
-WORKDIR /app
-COPY check_env.py /app/
-RUN touch /.dockerenv
-CMD ["python", "check_env.py"]

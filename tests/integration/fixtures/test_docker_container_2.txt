@@ -1,6 +1,0 @@
-FROM python:3.11-slim
-WORKDIR /app
-COPY --from=host {Path.cwd()}/src /app/hyperi-pylib/src
-COPY test_app.py /app/
-RUN touch /.dockerenv
-CMD ["python", "test_app.py"]
