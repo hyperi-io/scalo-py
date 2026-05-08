@@ -22,7 +22,7 @@ from .config import (
     settings,
     setup,
 )
-from .dfe_store import DirectoryConfigStore
+from .directory_store import DirectoryConfigStore
 from .merge import (
     detect_file_type,
     merge_files,
