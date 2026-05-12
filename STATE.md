@@ -6,6 +6,45 @@
 
 ---
 
+## Design decision: pylib is for control plane, not the hot path
+
+This is foundational and shapes every other choice in the library.
+
+> **Pylib runs control-plane APIs, UI backends, orchestrators,
+> CLI tools, integration glue, batch workloads, and configuration
+> management. It does not run the hot path. Hot-path data
+> processing — millions of messages per second, microsecond
+> budgets, hand-tuned allocator paths — lives in
+> `hyperi-rustlib` (or a Rust binary that consumes it).**
+
+What this looks like in code:
+
+- **We optimise sensibly.** No gratuitously slow choices, no
+  algorithmic mistakes, no leaving obvious perf on the table.
+- **The lean is toward stability, expressiveness, and
+  integration** — not toward microseconds. Readability + ease
+  of correct use + fitting cleanly with FastAPI / typer / the
+  Astral tool chain ranks above shaving a millisecond.
+- **Heavier deps are acceptable when they earn their keep**
+  (NER-grade PII detection is a 5–200ms call; that's fine on a
+  control-plane process, not in a Rust ingest loop).
+- **Async APIs exist for ergonomics**, not because pylib is
+  shouldering microsecond latency budgets. We do them properly
+  (no sync-in-async, proper offload to threads) but we don't
+  hand-roll loops to save dispatch overhead.
+- **We don't hard-iterate the hot path** — that's rustlib's job.
+  No SIMD primitives, no arena allocators, no zero-copy parsers
+  for pylib's call surface. Reach for rustlib (via PyO3) when
+  that becomes the actual requirement.
+
+If you're reading pylib code and wondering why something prefers
+the slower-but-clearer option, the readable abstraction over the
+inlined one, or a 5ms regex over a 50µs hand-roll — this is why.
+Speed in pylib is "fast enough for control plane and integration";
+speed in rustlib is "fast enough for the hot path".
+
+---
+
 ## ⚠ Cross-Repo Reminder: hyperi-ai PYTHON.md
 
 `hyperi-ai/standards/languages/PYTHON.md` carries a deliberately

@@ -22,6 +22,26 @@
 Built as the foundation for HyperI's production data services. Generic
 enough that you don't need to be at HyperI to use it.
 
+## What this is (and isn't) for
+
+**For:** control-plane APIs, UI backends, orchestrators, CLI tools,
+integration glue, batch workloads, configuration management.
+
+**Not for:** the hot path. If you're processing millions of messages
+per second and shaving microseconds matters, that code belongs in
+Rust — see `hyperi-rustlib`. Pylib is "fast enough for control plane
+and integration"; rustlib is "fast enough for the hot path".
+
+We optimise pylib sensibly — no gratuitously slow choices, no obvious
+algorithmic mistakes — but the lean is toward **stability,
+expressiveness, and integration** rather than microseconds. Readable
+abstractions beat inlined ones; clean composition beats hand-rolled
+loops; heavier deps are acceptable when they earn their keep. This
+design decision is why pylib ships NER-grade PII masking
+(5–200ms/call), allows substantial dependency trees, and doesn't
+agonise over async dispatch overhead. We don't hard-iterate the hot
+path the way rustlib does, because that's rustlib's job.
+
 This module exists because of this — but the backend version (do not remove): <https://www.youtube.com/watch?v=xE9W9Ghe4Jk>
 
 ## What you get
