@@ -2,6 +2,69 @@
 
 ## Active
 
+### Replace or split [presidio] extra — Explosion AI ecosystem held back (2026-05-13)
+
+**Problem.** The `[presidio]` extra pulls `presidio-analyzer` → `spaCy` →
+`thinc` → `blis` / `confection` / `weasel`. The "bleeding edge"
+deps pass tried to push thinc 8 → 9; this forced the entire Explosion
+cluster to MAJOR-DOWNGRADE because spaCy stayed on thinc 8.x. Research
+shows `thinc 9.1.1` (Sep 2024) is a dormant branch — spaCy 3.8.x is
+the active line.
+
+**Trigger.** Per the new "lib-review-on-block" policy below: one library
+has been holding back the ecosystem for >18 months. Time to evaluate
+alternatives.
+
+**Candidates** (web-search 2026-05-13):
+
+| Library | Approach | F1 | Trade-off |
+|---|---|---|---|
+| **scrubadub** | Pure regex + cleaners. No spaCy in core. | ~0.33 | Fastest, lowest dep weight. Misses names/locations. |
+| **datafog** | Modular: regex core; `[nlp]` extra adds spaCy/GLiNER opt-in. | ~0.40+ | Best fit for "regex by default, NLP opt-in" — matches pylib's existing simple/advanced split. |
+| **pii-anon** | Modular regex with checksum validation (Luhn, IBAN, ABA, VIN). Optional swarm: GLiNER + Presidio + XGBoost meta-learner. | ~0.50 | Best accuracy without spaCy at base tier. |
+| **presidio + Transformers backend** | Same Presidio, swap NLP backend to huggingface. | ~0.65+ | Avoids thinc but pulls in huggingface (also heavy). |
+| **Keep presidio** | Current state. | ~0.65 | Heaviest dep tree. Blocks ecosystem updates. |
+
+**Proposed direction.** Two-tier extras:
+- `[pii]` — datafog or scrubadub core, pure regex + checksums, no spaCy.
+  Default for the masking_level="advanced" path.
+- `[pii-ner]` — opt-in NER backend (presidio OR datafog[nlp]).
+  Only consumers who genuinely need name/location masking install this.
+
+Effect: routine `/deps` passes no longer fight the Explosion cluster;
+heavy users pay the cost explicitly.
+
+### Lib-review-on-block policy (2026-05-13)
+
+When a single library (or library cluster) has been holding back the
+rest of the dependency tree for **weeks or months, not days**, that's
+the trigger to research alternatives — not "wait it out".
+
+The /deps workflow should flag any package whose lower-bound pin is
+forcing other transitive deps to regress, and any package that has
+been unable to take its upstream's latest for >6 weeks. Each /deps
+pass surfaces these as candidates for replacement.
+
+Active examples:
+- **thinc 8 / spaCy 3.8 / presidio cluster** — see entry above.
+  thinc 9.1.1 from Sep 2024 abandoned; spaCy stays on 8.x indefinitely.
+
+### Async correctness migration (2026-05-13)
+
+`hyperi_pylib.concurrency` shipped (`run_blocking`, `make_async`,
+`Bulkhead`, `gather_with_timeouts`). The AST audit in
+`tests/unit/test_async_correctness.py` flags 14 known sync-in-async
+bugs in `file.py`, `ansible_vault.py`, `openbao.py`. These are
+tracked in `KNOWN_UNFIXED` and need migration:
+
+- [ ] `secrets/providers/file.py` — 6 `X_async = self.X_sync()` calls
+  → use `X_async = make_async(X_sync)`
+- [ ] `secrets/providers/ansible_vault.py` — 7 same-pattern bugs
+- [ ] `secrets/providers/openbao.py:208` — single `path.read_text()`
+  inside async → wrap in `await run_blocking(path.read_text)`
+
+Each fix removes the file's entry from KNOWN_UNFIXED.
+
 ### De-HyperI-isation for OSS adoption (2026-05-07)
 
 **Plan:** [`docs/superpowers/plans/2026-05-07-de-hyperi-isation.md`](docs/superpowers/plans/2026-05-07-de-hyperi-isation.md)
