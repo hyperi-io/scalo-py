@@ -59,15 +59,25 @@ dependencies = [
     "tomli-w>=1.0.0",
     "typer>=0.25.0",
     "dulwich>=1.2.0",
+    "anyio>=4.13.0",
+    "asyncer>=0.0.17",
 ]
 
 license = "LicenseRef-FSL-1.1-ALv2"
 
 [project.optional-dependencies]
 cli = []
+# Resilience composition (with_resilience) — retry + circuit breaker.
+# Pulled in automatically by [http], [cache], [secrets-*]; install
+# directly with `pip install hyperi-pylib[resilience]` for standalone use.
+resilience = [
+    "stamina>=26.1.0",
+    "purgatory>=3.0.1",
+]
 http = [
     "httpx>=0.28.0",
     "stamina>=26.1.0",
+    "purgatory>=3.0.1",
 ]
 cache = [
     "cashews>=7.5.0",
