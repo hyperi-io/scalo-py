@@ -376,6 +376,19 @@ ignore_missing_imports = true
 # UV package manager configuration
 [tool.uv]
 index-strategy = "unsafe-best-match"
+# Bleeding-edge policy: force latest majors even when transitive deps
+# specify older lower bounds. Re-evaluate at each /deps pass; remove
+# overrides once the entire transitive tree has caught up.
+override-dependencies = [
+    "protobuf>=7.34.0",
+    "rich>=15.0.0",
+    "importlib_metadata>=9.0.0",
+    "boto3>=1.43.6",
+    "botocore>=1.43.6",
+    # thinc>=9 forces the entire Explosion/spaCy ecosystem to regress
+    # (blis, confection, weasel all major-downgrade). Leave thinc on 8.x
+    # until spaCy ships compatible companions. Revisit each /deps pass.
+]
 
 [[tool.uv.index]]
 name = "pypi"
