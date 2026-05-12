@@ -11,7 +11,7 @@ from typing import Any
 
 from ..config import get_config
 from ..logger import logger
-from .base import MetricsBackend, NoOpMetric
+from .base import MetricsBackend
 
 
 class MetricsManager:
@@ -179,8 +179,6 @@ class MetricsManager:
             >>> requests = metrics.counter("api_requests", "Total requests", ["method", "status"])
             >>> requests.labels(method="GET", status="200").inc()
         """
-        if not self.enabled:
-            return NoOpMetric()
         return self._backend.counter(name, description, labels)
 
     def gauge(self, name: str, description: str, labels: list[str] | None = None) -> Any:
@@ -203,8 +201,6 @@ class MetricsManager:
             >>> queue_size.inc()
             >>> queue_size.dec(5)
         """
-        if not self.enabled:
-            return NoOpMetric()
         return self._backend.gauge(name, description, labels)
 
     def histogram(
@@ -232,8 +228,6 @@ class MetricsManager:
             >>> latency = metrics.histogram("request_latency", "Request latency in seconds")
             >>> latency.observe(0.123)
         """
-        if not self.enabled:
-            return NoOpMetric()
         return self._backend.histogram(name, description, labels, buckets)
 
     @property

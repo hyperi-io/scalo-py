@@ -122,6 +122,7 @@ import psutil
 
 from ..logger import logger
 from ..runtime import RuntimeEnvironment
+from .base import NoOpMetric
 
 # Check if prometheus_client is available
 try:
@@ -793,7 +794,7 @@ class PrometheusMetrics:
             requests.labels(method="POST", status="201").inc(5)
         """
         if not self.enabled:
-            return _NoOpMetric()
+            return NoOpMetric()
 
         if name in self._custom_metrics:
             return self._custom_metrics[name]
@@ -829,7 +830,7 @@ class PrometheusMetrics:
             queue_size.dec(3)  # 40
         """
         if not self.enabled:
-            return _NoOpMetric()
+            return NoOpMetric()
 
         if name in self._custom_metrics:
             return self._custom_metrics[name]
@@ -881,7 +882,7 @@ class PrometheusMetrics:
             )
         """
         if not self.enabled:
-            return _NoOpMetric()
+            return NoOpMetric()
 
         if name in self._custom_metrics:
             return self._custom_metrics[name]
@@ -923,7 +924,7 @@ class PrometheusMetrics:
             response_time.observe(0.123)
         """
         if not self.enabled:
-            return _NoOpMetric()
+            return NoOpMetric()
 
         if name in self._custom_metrics:
             return self._custom_metrics[name]
@@ -962,7 +963,7 @@ class PrometheusMetrics:
             })
         """
         if not self.enabled:
-            return _NoOpMetric()
+            return NoOpMetric()
 
         if name in self._custom_metrics:
             return self._custom_metrics[name]
@@ -987,29 +988,6 @@ class PrometheusMetrics:
             Metric instance or None if not found
         """
         return self._custom_metrics.get(name)
-
-
-class _NoOpMetric:
-    """No-op metric for when prometheus_client is not available."""
-
-    def inc(self, *args, **kwargs):
-        """No-op increment."""
-
-    def dec(self, *args, **kwargs):
-        """No-op decrement."""
-
-    def set(self, *args, **kwargs):
-        """No-op set."""
-
-    def observe(self, *args, **kwargs):
-        """No-op observe."""
-
-    def info(self, *args, **kwargs):
-        """No-op info."""
-
-    def labels(self, *args, **kwargs):
-        """No-op labels."""
-        return self
 
 
 # Convenience function
