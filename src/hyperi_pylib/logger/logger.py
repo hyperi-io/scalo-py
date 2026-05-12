@@ -387,6 +387,12 @@ def setup(
     # Get logging config (lazy import to avoid circular dependency)
     config = _get_logging_config()
 
+    # Fire-and-forget mode by default — sinks run on a background thread, so
+    # logger.info() returns in ~µs even with slow disk/network sinks. Override
+    # with HYPERI_LOG_ENQUEUE=0 for sync semantics (audit logging, unit tests
+    # that assert on captured output, etc.).
+    enqueue = os.environ.get("HYPERI_LOG_ENQUEUE", "1") != "0"
+
     # CI mode: Auto-detect from environment or config, can be overridden by parameter
     # Priority: parameter > config > auto-detect
     if ci_mode is None:
@@ -454,6 +460,7 @@ def setup(
                 level=config.get("level", "INFO"),
                 format=console_format,
                 colorize=False,
+                enqueue=enqueue,
                 filter=_add_emoji_to_record(
                     False,  # No emojis in CI
                     convert_to_text=True,
@@ -472,6 +479,7 @@ def setup(
                 level=config.get("level", "INFO"),
                 format=console_format,
                 colorize=False,
+                enqueue=enqueue,
                 filter=_add_emoji_to_record(
                     False,  # No emojis in CI
                     convert_to_text=True,
@@ -490,6 +498,7 @@ def setup(
                 level=config.get("level", "INFO"),
                 format=console_format,
                 colorize=True,
+                enqueue=enqueue,
                 filter=_add_emoji_to_record(
                     use_emojis,
                     allow_all=allow_all_emojis,
@@ -510,6 +519,7 @@ def setup(
             format=file_format,
             rotation="10 MB",
             retention="7 days",
+            enqueue=enqueue,
             filter=_add_emoji_to_record(
                 False,
                 convert_to_text=True,
