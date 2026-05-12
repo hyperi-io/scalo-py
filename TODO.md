@@ -2,6 +2,49 @@
 
 ## Active
 
+### Telemetry audit — disable across all imported packages (2026-05-13)
+
+**Goal.** No imported package should phone home from a HyperI process by
+default. We're a production-infrastructure library; consumer apps must
+not unwittingly export usage data through pylib's dep tree.
+
+**Approach.** Audit every direct + transitive dep for telemetry. For
+each one with telemetry enabled by default, do one of:
+
+1. Set the disable env var explicitly in `hyperi_pylib` auto-config
+   (analogous to `OTEL_SDK_DISABLED` for the OpenTelemetry SDK).
+2. Document the disable mechanism in pylib's README so consumers can
+   set it in their own startup code.
+3. If neither, evaluate replacement.
+
+**Confirmed status so far (2026-05-13):**
+
+| Package | Telemetry? | Disable mechanism |
+|---|---|---|
+| `datafog` >=4.4 | OFF by default | `DATAFOG_NO_TELEMETRY=1` / `DO_NOT_TRACK=1` (force-off; opt-in via `DATAFOG_TELEMETRY=1`) |
+| `opentelemetry-*` | OFF by default | `OTEL_SDK_DISABLED=1` (already covered in CI bug findings) |
+| `uv`, `ty`, `ruff` (Astral) | OFF | Astral's published policy: no telemetry |
+
+**Still to audit:**
+
+- `presidio-analyzer` / `presidio-anonymizer` (Microsoft)
+- `spacy`, `thinc` (Explosion AI — historically had telemetry mechanism)
+- `mypy`
+- `moto`
+- `boto3` / Azure / GCP SDKs (User-Agent headers vs. anonymous usage telemetry)
+- `pytest` + plugins (`pytest-asyncio`, `pytest-httpx`, `pytest-cov`)
+- `pre-commit`
+- `faker`
+- `pydantic`, `pydantic-settings`
+- Any PyO3/Rust-wrapped crate (`common-expression-language`, `dulwich`)
+- All other transitive deps listed in `uv.lock` (~200 packages)
+
+**Implementation note.** Auto-disable in pylib's environment-setup
+hook (the one that runs at import time) — set the relevant env vars
+before any sub-library reads them. Document the override path
+(`HYPERI_LIB_ALLOW_TELEMETRY=1`) for consumers who explicitly want
+it on for their own deployment.
+
 ### Replace or split [presidio] extra — Explosion AI ecosystem held back (2026-05-13)
 
 **Problem.** The `[presidio]` extra pulls `presidio-analyzer` → `spaCy` →
