@@ -47,6 +47,7 @@ from .config import (
 from .factory import build_scrubber
 from .field_names import FieldNameScrubber
 from .labeler import LabelFn, make_hash_labeler, resolve_labeler
+from .metrics import ScrubMetrics
 from .secrets import SecretsScrubber
 from .types import Scrubber
 
@@ -61,6 +62,7 @@ __all__ = [
     "PiiConfig",
     "PiiValidatorsConfig",
     "ScrubConfig",
+    "ScrubMetrics",
     "Scrubber",
     "SecretsConfig",
     "SecretsScrubber",

@@ -44,6 +44,7 @@ from typing import TYPE_CHECKING, Any
 
 if TYPE_CHECKING:
     from .scrub.labeler import LabelFn
+    from .scrub.metrics import ScrubMetrics
 
 __all__ = [
     "SECRETS_PLUGINS_FULL",
@@ -168,12 +169,15 @@ class SecretsLeakFilter:
         level: str = "full",
         extra_patterns: list[tuple[str, str]] | None = None,
         labeler: "LabelFn | None" = None,
+        metrics: "ScrubMetrics | None" = None,
     ) -> None:
         from .scrub.labeler import _static_label
+        from .scrub.metrics import ScrubMetrics as _ScrubMetrics
 
         self.level = level
         self._enabled = level != "off"
         self._labeler = labeler if labeler is not None else _static_label
+        self._metrics = metrics if metrics is not None else _ScrubMetrics.noop()
 
         if level == "full":
             self._plugins = SECRETS_PLUGINS_FULL
@@ -242,15 +246,21 @@ class SecretsLeakFilter:
         # For types lacking a redaction regex (rare — covers types we
         # haven't given a pattern yet) we fall back to replacing each
         # detect-secrets finding's value directly.
+        # Every finding counts as a match (one match per detect-secrets
+        # plugin hit on this line, regardless of whether we redact).
+        for f in findings:
+            self._metrics.inc_match("L1", _label_slug(f.type))
+
         seen_types = {f.type for f in findings}
         for secret_type in seen_types:
             slug = _label_slug(secret_type)
             regex = self._redaction.get(secret_type)
             if regex is not None:
-                text = regex.sub(
-                    lambda m, slug=slug: self._labeler(slug, m.group(0)),
-                    text,
-                )
+                def _sub(m: re.Match[str], slug: str = slug) -> str:
+                    self._metrics.inc_redaction("L1", slug)
+                    return self._labeler(slug, m.group(0))
+
+                text = regex.sub(_sub, text)
             else:
                 # Fallback: replace each detect-secrets-reported value.
                 type_values = {
@@ -261,6 +271,7 @@ class SecretsLeakFilter:
                 for value in type_values:
                     if len(value) <= 5:
                         continue
+                    self._metrics.inc_redaction("L1", slug)
                     text = text.replace(value, self._labeler(slug, value))
 
         return text
