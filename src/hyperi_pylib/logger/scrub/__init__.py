@@ -46,12 +46,14 @@ from .config import (
 )
 from .factory import build_scrubber
 from .field_names import FieldNameScrubber
+from .labeler import LabelFn, make_hash_labeler, resolve_labeler
 from .secrets import SecretsScrubber
 from .types import Scrubber
 
 __all__ = [
     "FieldNameScrubber",
     "FieldsConfig",
+    "LabelFn",
     "LayeredScrubber",
     "LogLevelsConfig",
     "NationalIdsConfig",
@@ -63,4 +65,6 @@ __all__ = [
     "SecretsConfig",
     "SecretsScrubber",
     "build_scrubber",
+    "make_hash_labeler",
+    "resolve_labeler",
 ]
