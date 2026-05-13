@@ -18,10 +18,12 @@ configuration. No global mutable state.
 
 from __future__ import annotations
 
+import time
 import warnings
 from collections.abc import Sequence
 
 from .config import ScrubConfig
+from .metrics import ScrubMetrics
 from .types import Scrubber
 
 
@@ -72,9 +74,11 @@ class LayeredScrubber:
         self,
         config: ScrubConfig | None = None,
         layers: Sequence[Scrubber] | None = None,
+        metrics: ScrubMetrics | None = None,
     ) -> None:
         self._config = config if config is not None else ScrubConfig()
         self._layers: tuple[Scrubber, ...] = tuple(layers or ())
+        self._metrics = metrics if metrics is not None else ScrubMetrics.noop()
         # Track which layers have raised at least once so we don't
         # warn repeatedly for the same bug.
         self._broken: set[int] = set()
@@ -108,17 +112,22 @@ class LayeredScrubber:
             if i in self._broken:
                 # Skip layers we've already learned are broken
                 continue
+            layer_name = type(layer).__name__
+            start = time.perf_counter()
             try:
                 result = layer.scrub(result)
             except Exception as e:  # noqa: BLE001 — fail-safe per spec §5.1
                 self._broken.add(i)
+                self._metrics.inc_error(layer_name, type(e).__name__)
                 warnings.warn(
-                    f"Scrub layer {type(layer).__name__} raised "
+                    f"Scrub layer {layer_name} raised "
                     f"{type(e).__name__}: {e}. Skipping this layer for "
                     f"the rest of this process. Logging continues.",
                     RuntimeWarning,
                     stacklevel=2,
                 )
+            else:
+                self._metrics.observe_duration(layer_name, time.perf_counter() - start)
 
         # Observe-only mode: discard redactions, return input. Detection
         # metrics still fire (when metrics layer lands in Step 9).

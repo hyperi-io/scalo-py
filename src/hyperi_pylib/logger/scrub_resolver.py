@@ -220,10 +220,20 @@ def _parse_scrub_dict(d: dict[str, Any]) -> ScrubConfig:
             trace=_bool(sub.get("trace"), False),
         )
 
+    def _int(value: Any, default: int) -> int:
+        if value is None:
+            return default
+        try:
+            return int(value)
+        except (TypeError, ValueError):
+            return default
+
     return ScrubConfig(
         enabled=_bool(d.get("enabled"), True),
         observe_only=_bool(d.get("observe_only"), False),
         hash_redaction=_bool(d.get("hash_redaction"), False),
+        metrics_enabled=_bool(d.get("metrics_enabled"), True),
+        metrics_type_cardinality_cap=_int(d.get("metrics_type_cardinality_cap"), 64),
         fields=_fields(d.get("fields")),
         secrets=_secrets(d.get("secrets")),
         pii=_pii(d.get("pii")),

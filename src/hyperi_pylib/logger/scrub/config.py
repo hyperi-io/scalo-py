@@ -148,6 +148,20 @@ class ScrubConfig:
             redactions look like ``[EMAIL_a3f5b2]`` so operators can
             correlate the same value across log lines without
             revealing it (spec §4.4).
+        metrics_enabled: emit per-layer scrub metrics (spec §8). True
+            by default. Operator kill-switch — set False to skip every
+            metric call on ultra-hot paths where the ~1-2µs/layer
+            histogram observation is unacceptable. Independent of
+            ``observe_only`` (which is about whether to redact, not
+            whether to measure).
+        metrics_type_cardinality_cap: soft cap on distinct values for
+            the ``type`` label of ``log_scrub_matches_total`` and
+            ``log_scrub_redactions_total`` within a single scrubber
+            instance. Once the cap is reached, further new ``type``
+            labels are recorded under ``"OVER_CAP"`` and a one-shot
+            warning is emitted. Defaults to 64 — bounded by the
+            current detect-secrets type set (~24) plus headroom for
+            extra_patterns. Set to 0 to disable the cap.
         fields: Layer 2 config.
         secrets: Layer 1 config.
         pii: Layer 3 + Layer 4 config.
@@ -157,6 +171,8 @@ class ScrubConfig:
     enabled: bool = True
     observe_only: bool = False
     hash_redaction: bool = False
+    metrics_enabled: bool = True
+    metrics_type_cardinality_cap: int = 64
     fields: FieldsConfig = field(default_factory=FieldsConfig)
     secrets: SecretsConfig = field(default_factory=SecretsConfig)
     pii: PiiConfig = field(default_factory=PiiConfig)

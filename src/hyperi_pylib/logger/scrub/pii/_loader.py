@@ -27,6 +27,7 @@ from pathlib import Path
 from typing import Any
 
 from ..labeler import LabelFn
+from ..metrics import ScrubMetrics
 from ._base import _Validator
 from ._dynamic import _DynamicValidator
 
@@ -58,6 +59,7 @@ def build_national_id_validators(
     registry: dict[str, dict[str, Any]] | None = None,
     enabled_countries: list[str] | None = None,
     labeler: LabelFn | None = None,
+    metrics: ScrubMetrics | None = None,
 ) -> list[_Validator]:
     """Build validator instances for enabled national-ID entries.
 
@@ -111,7 +113,9 @@ def build_national_id_validators(
                 # Tag with the country.id key for debugging
                 entry_with_key = dict(entry)
                 entry_with_key["_entry_key"] = f"{country}.{id_name}"
-                validators.append(_DynamicValidator(entry_with_key, labeler=labeler))
+                validators.append(
+                    _DynamicValidator(entry_with_key, labeler=labeler, metrics=metrics)
+                )
             except (ValueError, ImportError) as e:
                 warnings.warn(
                     f"national_ids entry {country}.{id_name} not loadable: {e}. "

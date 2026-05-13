@@ -25,6 +25,7 @@ import re
 from typing import ClassVar
 
 from ..labeler import LabelFn, _static_label
+from ..metrics import ScrubMetrics
 
 
 class _Validator:
@@ -48,16 +49,24 @@ class _Validator:
     labeler: LabelFn = staticmethod(_static_label)
     """Label producer. Override per-instance via constructor or assignment."""
 
-    def __init__(self, labeler: LabelFn | None = None) -> None:
-        """Optionally accept a per-instance labeler.
+    metrics: ScrubMetrics
+    """Metric emitter. Defaults to a no-op for bare instantiation."""
+
+    def __init__(
+        self,
+        labeler: LabelFn | None = None,
+        metrics: ScrubMetrics | None = None,
+    ) -> None:
+        """Optionally accept a per-instance labeler and metrics.
 
         Subclasses that don't override ``__init__`` get this signature
         for free — strong-structural validators (credit_card, email,
-        iban, phone) all just call ``super().__init__(labeler=...)``
+        iban, phone) just call ``super().__init__(labeler=...)``
         or rely on this default if instantiated bare.
         """
         if labeler is not None:
             self.labeler = labeler  # type: ignore[method-assign]
+        self.metrics = metrics if metrics is not None else ScrubMetrics.noop()
 
     def validate(self, candidate: str) -> bool:
         """Return True if ``candidate`` is a valid instance of this PII type.
@@ -74,10 +83,15 @@ class _Validator:
 
         def _repl(match: re.Match[str]) -> str:
             candidate = match.group()
+            # Every regex hit counts as a match — observe-only mode and
+            # metric dashboards both want to see the detection rate
+            # before validation/context filtering.
+            self.metrics.inc_match("L3", self.LABEL)
             if self.KEYWORDS and not self._has_keyword_context(text, match.start()):
                 return candidate
             if not self.validate(candidate):
                 return candidate
+            self.metrics.inc_redaction("L3", self.LABEL)
             return self.labeler(self.LABEL, candidate)
 
         return self.PATTERN.sub(_repl, text)

@@ -24,6 +24,7 @@ from __future__ import annotations
 from typing import TYPE_CHECKING
 
 from ..secrets_leak import SecretsLeakFilter
+from .metrics import ScrubMetrics
 
 if TYPE_CHECKING:
     from .labeler import LabelFn
@@ -41,6 +42,7 @@ class SecretsScrubber:
         labeler: redaction-label producer. Defaults to static
             ``[LABEL_REDACTED]``; pass the result of
             :func:`make_hash_labeler` for deterministic-hash mode.
+        metrics: :class:`ScrubMetrics` instance. Defaults to no-op.
     """
 
     # Map config-schema names to SecretsLeakFilter levels.
@@ -55,12 +57,15 @@ class SecretsScrubber:
         patterns: str = "gitleaks",
         extra_patterns: list[tuple[str, str]] | None = None,
         labeler: LabelFn | None = None,
+        metrics: ScrubMetrics | None = None,
     ) -> None:
         level = self._LEVEL_MAP.get(patterns, "full")
+        self._metrics = metrics if metrics is not None else ScrubMetrics.noop()
         self._inner = SecretsLeakFilter(
             level=level,
             extra_patterns=extra_patterns,
             labeler=labeler,
+            metrics=self._metrics,
         )
         self.patterns = patterns
 
