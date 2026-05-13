@@ -111,18 +111,18 @@ class TestLegacyMapping:
     def test_masking_level_advanced(self):
         cfg = _legacy_to_scrub_config(mask_sensitive=True, masking_level="advanced")
         assert cfg.pii.enabled is True
-        assert cfg.pii.nlp is False
 
-    def test_masking_level_advanced_ner(self):
-        cfg = _legacy_to_scrub_config(mask_sensitive=True, masking_level="advanced-ner")
+    def test_masking_level_advanced_ner_deprecated(self):
+        # advanced-ner was the NLP/NER tier — now deprecated, degrades to advanced
+        with pytest.warns(DeprecationWarning, match="NLP/NER scrubbing"):
+            cfg = _legacy_to_scrub_config(mask_sensitive=True, masking_level="advanced-ner")
         assert cfg.pii.enabled is True
-        assert cfg.pii.nlp is True
 
     def test_masking_level_presidio_deprecated(self):
-        with pytest.warns(DeprecationWarning, match="presidio"):
+        # presidio was a legacy alias for advanced-ner — same deprecation path
+        with pytest.warns(DeprecationWarning, match="NLP/NER scrubbing"):
             cfg = _legacy_to_scrub_config(mask_sensitive=True, masking_level="presidio")
-        # maps to advanced-ner
-        assert cfg.pii.nlp is True
+        assert cfg.pii.enabled is True
 
     def test_unknown_masking_level_warns(self):
         with pytest.warns(UserWarning, match="not recognised"):
@@ -156,9 +156,13 @@ class TestSchemaParsing:
         cfg = _parse_scrub_dict({"secrets": {"patterns": "minimal"}})
         assert cfg.secrets.patterns == "minimal"
 
-    def test_pii_nlp_opt_in(self):
-        cfg = _parse_scrub_dict({"pii": {"nlp": True}})
-        assert cfg.pii.nlp is True
+    def test_pii_nlp_key_in_legacy_config_silently_ignored(self):
+        # Legacy configs may still carry `pii.nlp = true`. The resolver
+        # silently drops it (NLP/NER was dropped from scope) and the
+        # rest of the PiiConfig still parses correctly.
+        cfg = _parse_scrub_dict({"pii": {"nlp": True, "enabled": True}})
+        assert cfg.pii.enabled is True
+        assert not hasattr(cfg.pii, "nlp")
 
     def test_national_ids_enabled_list(self):
         cfg = _parse_scrub_dict(

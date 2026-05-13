@@ -102,20 +102,24 @@ class PiiValidatorsConfig:
 
 @dataclass(slots=True)
 class PiiConfig:
-    """Layer 3 — structured PII validators + optional Layer 4 NLP.
+    """Layer 3 — structured PII validators.
 
     Args:
         enabled: master toggle for L3.
         validators: per-validator toggles (see :class:`PiiValidatorsConfig`).
-        nlp: opt-in L4 (NER for PERSON/LOCATION/ORG). Requires
-            ``[pii-ner]`` extra. Default False for cross-language
-            parity (rustlib has no NER).
         token_efficiency: opt-in cache for repeated-match results.
+
+    Note: there is no Layer 4 (NLP/NER). Earlier drafts of the spec
+    described an opt-in spaCy backend for unstructured entities
+    (PERSON / LOCATION / ORG). That layer was dropped — both pylib and
+    rustlib — because the false-positive rate on log content is
+    unacceptable and the cost (5–200ms/call) is incompatible with
+    structured-logging budgets. PII detection in HyperI services is
+    L3 algorithmic + L1 secrets, full stop.
     """
 
     enabled: bool = True
     validators: PiiValidatorsConfig = field(default_factory=PiiValidatorsConfig)
-    nlp: bool = False
     token_efficiency: bool = False
 
 

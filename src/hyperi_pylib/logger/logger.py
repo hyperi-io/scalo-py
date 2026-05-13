@@ -231,9 +231,12 @@ def _add_emoji_to_record(
         convert_to_text: Convert emojis to ASCII text (for machine-readable logs)
         allow_all: Allow all emojis without filtering (pass-through user emojis)
         mask_sensitive: Apply sensitive data masking (default: True)
-        masking_level: Filter level — "simple" (field-name regex),
-            "advanced" (DataFog regex), or "advanced-ner" (DataFog
-            spaCy NER, requires [pii-ner] extra)
+        masking_level: legacy filter selector. ``"simple"`` uses the
+            field-name regex; ``"advanced"`` / ``"advanced-ner"`` emit
+            a deprecation warning and degrade to the field-name path
+            because NLP/NER scrubbing has been dropped from scope.
+            For PII-value detection use ``scrubber=`` with
+            :func:`logger.scrub.build_scrubber`.
         rate_limit_filter: Optional RateLimitFilter instance for suppressing repeated messages
         scrubber: Optional :class:`Scrubber` instance to use instead of
             building one from ``mask_sensitive``/``masking_level``.
@@ -406,13 +409,18 @@ def setup(
             - None (default): Read from config (logging.mask_sensitive_data)
             - True: Enable masking of passwords, tokens, API keys, etc.
             - False: Disable masking (NOT recommended for production)
-        masking_level: Filter level for sensitive data masking
+        masking_level: legacy selector for the field-name filter
             - None (default): Read from config (logging.masking_level)
-            - "simple": Fast regex on field names (default; ships in core)
-            - "advanced": DataFog regex for PII values (emails, phones,
-              SSNs, credit cards, IPs). Requires [pii] extra.
-            - "advanced-ner": DataFog + spaCy NER for names/locations.
-              Requires [pii-ner] extra; 5-200ms per call.
+            - "simple": Fast regex on field names (this is the only
+              path; ships in core)
+            - "advanced" / "advanced-ner": deprecated. NLP/NER
+              scrubbing was dropped from scope. These selectors emit
+              a one-shot deprecation warning and degrade to ``"simple"``.
+
+            For PII-value detection (emails, phones, credit cards,
+            national IDs) use the ``scrubber=`` argument with a
+            :class:`Scrubber` from
+            :func:`hyperi_pylib.logger.scrub.build_scrubber`.
         rate_limit_sec: Rate limit period in seconds for repeated messages
             - None (default): No rate limiting (read from config: logging.rate_limit_sec)
             - 0: Disable rate limiting
