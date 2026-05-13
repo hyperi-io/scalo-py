@@ -27,6 +27,8 @@ import sys
 from loguru import logger as _logger
 
 from .filters import RateLimitFilter, get_sensitive_filter
+from .scrub import Scrubber as _Scrubber
+from .scrub_resolver import resolve_scrubber
 
 
 def _get_logging_config():
@@ -194,6 +196,25 @@ def _is_interactive_console() -> bool:
     return "UTF-8" in locale.upper() or "UTF8" in locale.upper()
 
 
+# Map loguru level names (uppercase per loguru convention) to the
+# attribute names on ScrubConfig.log_levels (lowercase per the spec).
+_LEVEL_NAME_TO_GATE = {
+    "TRACE": "trace",
+    "DEBUG": "debug",
+    "INFO": "info",
+    "SUCCESS": "info",     # loguru's SUCCESS is INFO-grade
+    "WARNING": "warn",
+    "ERROR": "error",
+    "CRITICAL": "error",   # critical maps to error gate
+}
+
+
+def _scrub_level_enabled(level_name: str, log_levels) -> bool:
+    """Return True if scrubbing is enabled for this loguru level."""
+    attr = _LEVEL_NAME_TO_GATE.get(level_name.upper(), "info")
+    return bool(getattr(log_levels, attr, True))
+
+
 def _add_emoji_to_record(
     use_emojis: bool,
     convert_to_text: bool = False,
@@ -201,6 +222,7 @@ def _add_emoji_to_record(
     mask_sensitive: bool = True,
     masking_level: str = "simple",
     rate_limit_filter: RateLimitFilter | None = None,
+    scrubber: _Scrubber | None = None,
 ):
     """Create a filter function that adds emojis or converts them to text.
 
@@ -213,12 +235,27 @@ def _add_emoji_to_record(
             "advanced" (DataFog regex), or "advanced-ner" (DataFog
             spaCy NER, requires [pii-ner] extra)
         rate_limit_filter: Optional RateLimitFilter instance for suppressing repeated messages
+        scrubber: Optional :class:`Scrubber` instance to use instead of
+            building one from ``mask_sensitive``/``masking_level``.
+            When provided, takes precedence over the legacy args.
+            Per spec §5.6, the scrubber's ``config.log_levels`` gate
+            controls which log levels get scrubbed.
 
     Returns:
         Filter function for loguru
     """
-    # Create sensitive data filter instance if needed
-    sensitive_filter = get_sensitive_filter(level=masking_level) if mask_sensitive else None
+    # Build a Scrubber. Either explicit (preferred) or legacy.
+    if scrubber is None:
+        sensitive_filter = get_sensitive_filter(level=masking_level) if mask_sensitive else None
+        # Map loguru level names to ScrubConfig.log_levels attribute names.
+        # Legacy path doesn't honour log-level gating (no log_levels
+        # config in the legacy SensitiveDataFilter).
+        log_levels = None
+    else:
+        sensitive_filter = None
+        # Pull log-level gate from the scrubber's config if it's a
+        # LayeredScrubber; otherwise default to all-on.
+        log_levels = getattr(getattr(scrubber, "config", None), "log_levels", None)
 
     def filter_func(record):
         """Add emoji to record or convert emojis to text based on settings."""
@@ -227,11 +264,21 @@ def _add_emoji_to_record(
         if rate_limit_filter is not None and not rate_limit_filter(record):
             return False  # Suppress this message
 
-        # Apply sensitive data masking (if enabled)
-        if sensitive_filter and isinstance(record["message"], str):
-            # Loguru's record["message"] is the formatted message
-            # We need to mask it before it gets formatted
-            record["message"] = sensitive_filter._mask_sensitive_string(record["message"])
+        # Apply scrubbing. New path: use Scrubber if provided.
+        # Legacy path: fall back to SensitiveDataFilter._mask_sensitive_string.
+        if isinstance(record["message"], str):
+            if scrubber is not None:
+                # Per-log-level gate (spec §5.6).
+                if log_levels is None or _scrub_level_enabled(
+                    record["level"].name, log_levels
+                ):
+                    record["message"] = scrubber.scrub(record["message"])
+            elif sensitive_filter is not None:
+                # Loguru's record["message"] is the formatted message;
+                # we mask it before it gets formatted.
+                record["message"] = sensitive_filter._mask_sensitive_string(
+                    record["message"]
+                )
 
         # Then handle emojis
         if use_emojis:
@@ -340,6 +387,8 @@ def setup(
     rate_limit_sec=None,
     rate_limit_similar=False,
     ci_mode=None,
+    scrubber=None,
+    scrub_config=None,
 ):
     """Setup standard logging with RFC 3339 compliance and CHARS-POLICY.md enforcement
 
@@ -411,18 +460,25 @@ def setup(
     if allow_all_emojis and not use_emojis:
         allow_all_emojis = False  # Can't allow all if emojis disabled
 
-    # Sensitive data masking (default: enabled)
+    # Build a Scrubber per spec §2.3. The resolver honours (in order):
+    # explicit `scrubber=` arg → explicit `scrub_config=` arg → legacy
+    # `mask_sensitive` / `masking_level` args → new `logging.scrub.*`
+    # config keys → legacy `logging.mask_sensitive_data` /
+    # `logging.masking_level` config keys (with deprecation warning) →
+    # defaults. See logger/scrub_resolver.py.
+    resolved_scrubber = resolve_scrubber(
+        scrubber=scrubber,
+        scrub_config=scrub_config,
+        mask_sensitive=mask_sensitive,
+        masking_level=masking_level,
+        config_dict=config,
+    )
+
+    # Sensitive data masking (default: enabled). Retained for backwards
+    # compatibility — _add_emoji_to_record will prefer `resolved_scrubber`
+    # but we keep these flags wired to honour the legacy call signature.
     if mask_sensitive is None:
         mask_sensitive = config.get("mask_sensitive_data", True)
-
-    # Masking level: default to NLP-grade PII detection via DataFog.
-    # Pylib is control-plane, not hot-path, so the 5-200ms NER cost is
-    # acceptable for the coverage win on names / locations / orgs.
-    # Consumers who want regex-only can set `masking_level="advanced"`;
-    # consumers who want field-names-only can set `masking_level="simple"`;
-    # consumers who want it all off can set `mask_sensitive=False`.
-    # If the [pii-ner] extras aren't installed, the filter gracefully
-    # degrades to regex with a warning. See logger.filters.
     if masking_level is None:
         masking_level = config.get("masking_level", "advanced-ner")
 
@@ -468,6 +524,7 @@ def setup(
                     mask_sensitive=mask_sensitive,
                     masking_level=masking_level,
                     rate_limit_filter=rate_limit_filter,
+                    scrubber=resolved_scrubber,
                 ),
             )
         elif ci_mode:
@@ -486,6 +543,7 @@ def setup(
                     mask_sensitive=mask_sensitive,
                     masking_level=masking_level,
                     rate_limit_filter=rate_limit_filter,
+                    scrubber=resolved_scrubber,
                 ),
             )
         else:
@@ -503,6 +561,7 @@ def setup(
                     mask_sensitive=mask_sensitive,
                     masking_level=masking_level,
                     rate_limit_filter=rate_limit_filter,
+                    scrubber=resolved_scrubber,
                 ),
             )
 
@@ -524,6 +583,7 @@ def setup(
                 mask_sensitive=mask_sensitive,
                 masking_level=masking_level,
                 rate_limit_filter=rate_limit_filter,
+                scrubber=resolved_scrubber,
             ),  # Convert emojis to text for machine-readable logs
         )
 
