@@ -9,15 +9,19 @@
 """Layered log-scrubbing.
 
 Defines the contract that every log record passes through before it
-hits a sink. Four layers compose in spec-mandated order:
+hits a sink. Three layers compose in spec-mandated order:
 
 - **L1**: secret artefacts (gitleaks-style — AWS keys, GitHub tokens,
   JWTs, private keys, third-party API keys)
 - **L2**: field-name leaks (``password=...``, ``"token":"..."``)
 - **L3**: PII validators (CC + Luhn, IBAN + mod-97, email, phone,
   AU ABN, AU TFN)
-- **L4**: NLP entity recognition (PERSON, LOCATION, ORG — opt-in
-  via ``[pii-ner]`` extra)
+
+There is no L4. Earlier drafts of the spec included an opt-in NLP/NER
+backend for unstructured entities (PERSON / LOCATION / ORG); it was
+dropped because the false-positive rate on logs was unacceptable and
+the per-call cost (5–200ms) was incompatible with structured-logging
+budgets. Both pylib and rustlib stop at L3.
 
 See ``docs/superpowers/specs/2026-05-13-log-scrub-spec.md`` for the
 full cross-language contract. This module implements the pylib side.

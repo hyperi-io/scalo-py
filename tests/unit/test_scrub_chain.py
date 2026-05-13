@@ -226,8 +226,8 @@ class TestScrubConfigDefaults:
     def test_pii_defaults(self):
         p = ScrubConfig().pii
         assert p.enabled is True
-        assert p.nlp is False
         assert p.token_efficiency is False
+        # No `nlp` attribute — NLP/NER was dropped from scope
 
     def test_pii_validators_all_default_true(self):
         v = ScrubConfig().pii.validators

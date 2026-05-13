@@ -64,6 +64,7 @@ dependencies = [
     "detect-secrets>=1.5.0",
     "phonenumbers>=9.0.0",
     "python-stdnum>=2.2",
+    "regex>=2026.0.0",
 ]
 
 license = "LicenseRef-FSL-1.1-ALv2"
@@ -108,18 +109,12 @@ kafka = [
     "confluent-kafka>=2.14.0",
     "genson>=1.3.0",
 ]
-# PII detection — regex-only (no spaCy, no Explosion AI cluster).
-# Covers EMAIL, PHONE, SSN, CREDIT_CARD, IP_ADDRESS, DATE, ZIP_CODE
-# at <1ms/call. Safe for hot-path log masking.
-pii = [
-    "datafog>=4.4.0",
-]
-# PII detection — with NLP (spaCy NER) for unstructured entities like
-# names and locations. 5-200ms/call depending on model — DO NOT use
-# in hot-path log masking. For batch / compliance / audit only.
-pii-ner = [
-    "datafog[nlp]>=4.4.0",
-]
+# Note: the legacy `pii` and `pii-ner` extras have been removed. PII
+# detection now lives in `hyperi_pylib.logger.scrub` with native
+# regex/algorithmic validators (python-stdnum + phonenumbers + a
+# TOML-driven national-ID registry). NLP/NER is out of scope for both
+# pylib and rustlib log scrubbing — too costly and the false-positive
+# rate on unstructured names/locations is unacceptable for logs.
 secrets-ansible-vault = [
     "ansible-vault>=4.0.0",
 ]

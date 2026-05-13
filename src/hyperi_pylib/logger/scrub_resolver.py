@@ -104,13 +104,12 @@ def _legacy_to_scrub_config(
     Legacy semantics:
 
     - ``mask_sensitive=False`` → entire scrubber disabled
-    - ``masking_level="simple"`` → field-name regex only (no PII layer)
-    - ``masking_level="advanced"`` → adds PII regex layer (DataFog
-      or equivalent — but in the new scrubber this means the
-      structured PII validators)
-    - ``masking_level="advanced-ner"`` → also enables NLP
-    - ``masking_level="presidio"`` → legacy alias for advanced-ner
-      with deprecation warning
+    - ``masking_level="simple"`` → field-name regex only (no L3 PII layer)
+    - ``masking_level="advanced"`` → enables L3 algorithmic PII
+      validators (credit card / IBAN / email / phone / national IDs)
+    - ``masking_level="advanced-ner"`` / ``"presidio"`` → deprecated.
+      NLP/NER scrubbing was dropped from scope. Both emit deprecation
+      warnings and map to ``"advanced"``.
     """
     if mask_sensitive is False:
         return ScrubConfig(enabled=False)
@@ -123,25 +122,23 @@ def _legacy_to_scrub_config(
             pii=PiiConfig(enabled=False),
         )
     if level == "advanced":
-        # Structured PII validators on, no NLP — default ScrubConfig
+        # Structured PII validators on — default ScrubConfig
         return ScrubConfig()
     if level in ("advanced-ner", "presidio"):
-        if level == "presidio":
-            warnings.warn(
-                "masking_level='presidio' is deprecated. Use "
-                "'advanced-ner' to enable NLP-tier PII detection "
-                "(via DataFog spaCy backend in the [pii-ner] extra).",
-                DeprecationWarning,
-                stacklevel=4,
-            )
-        return ScrubConfig(
-            pii=PiiConfig(nlp=True),
+        warnings.warn(
+            f"masking_level={level!r} is deprecated: NLP/NER scrubbing has "
+            "been dropped from hyperi-pylib (false-positive rate on log "
+            "content was unacceptable). Mapping to 'advanced' "
+            "(algorithmic PII validators).",
+            DeprecationWarning,
+            stacklevel=4,
         )
+        return ScrubConfig()
 
     # Unknown level → default scrubber
     warnings.warn(
         f"masking_level={level!r} not recognised — using defaults. "
-        f"Valid: 'simple', 'advanced', 'advanced-ner'.",
+        f"Valid: 'simple', 'advanced'.",
         UserWarning,
         stacklevel=4,
     )
@@ -203,10 +200,11 @@ def _parse_scrub_dict(d: dict[str, Any]) -> ScrubConfig:
 
     def _pii(sub: dict | None) -> PiiConfig:
         sub = sub or {}
+        # `nlp` is silently ignored if present in legacy configs — see
+        # the PiiConfig docstring for why NLP was dropped.
         return PiiConfig(
             enabled=_bool(sub.get("enabled"), True),
             validators=_validators(sub.get("validators")),
-            nlp=_bool(sub.get("nlp"), False),
             token_efficiency=_bool(sub.get("token_efficiency"), False),
         )
 

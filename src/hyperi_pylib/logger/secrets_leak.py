@@ -9,11 +9,20 @@
 """Detect and redact secret artefacts (API keys, tokens, private keys).
 
 Distinct from :class:`SensitiveDataFilter` (which matches *field
-names* like ``password=``) and :class:`DataFogSensitiveDataFilter`
-(which matches *PII values* like emails and SSNs). Secret artefacts
-are a security category: AWS keys, GitHub tokens, JWTs, private
-keys, third-party SaaS API tokens — the things a gitleaks scan
-catches in code commits, applied at log-write time.
+names* like ``password=``). For PII-value detection use the newer
+``hyperi_pylib.logger.scrub`` pipeline (Layer 3 algorithmic
+validators: credit card / IBAN / email / phone / national IDs).
+
+Secret artefacts are a security category: AWS keys, GitHub tokens,
+JWTs, private keys, third-party SaaS API tokens — the things a
+gitleaks scan catches in code commits, applied at log-write time.
+
+This module is the **legacy backend** kept for callers that want
+entropy-based heuristics on top of regex matching. The canonical
+Layer 1 implementation is :class:`GitleaksTomlScrubber` (in
+``logger.scrub.gitleaks_toml``) which compiles rules from the
+vendored upstream ``gitleaks.toml`` and has none of the detect-
+secrets dependency surface.
 
 Backed by Yelp's ``detect-secrets`` library, which ships ~28
 purpose-built detectors. We exclude the high-entropy and keyword

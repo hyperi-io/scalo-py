@@ -35,9 +35,9 @@ def build_scrubber(
     """Build a :class:`LayeredScrubber` per the supplied config.
 
     Composes layers in spec §2.1 order — L1 → L2 → L3 — including only
-    those layers enabled by the config. L4 (NLP) is not wired yet (lands
-    when the DataFog NER backend is exposed under the scrub namespace
-    in a follow-up step).
+    those layers enabled by the config. There is no L4: NLP/NER
+    scrubbing was dropped from scope (false-positive rate on log
+    content was unacceptable; both pylib and rustlib stop at L3).
 
     Args:
         config: scrubber configuration. ``None`` means use the canonical
@@ -115,9 +115,8 @@ def build_scrubber(
             )
         )
 
-    # L4 — NLP (NER). Not yet wired into the scrub namespace; will be
-    # added when the existing DataFogSensitiveDataFilter is migrated
-    # to expose the Scrubber Protocol directly.
+    # No L4 (NLP/NER) — dropped from the spec. See PiiConfig docstring
+    # for why.
 
     # Per spec §8: emit pattern_version metrics at scrubber build time so
     # operators know which pattern set the running service is using. The
@@ -131,7 +130,17 @@ def build_scrubber(
 
 def _emit_pattern_versions(metrics: ScrubMetrics) -> None:
     """Emit `log_scrub_pattern_version{source, version}` per spec §8."""
-    # detect-secrets baseline (will become "gitleaks-toml" after Step 10).
+    # L1 — canonical TOML-driven path (gitleaks.toml vendored from hyperi-ai).
+    try:
+        from .gitleaks_toml import load_gitleaks_rules
+
+        _, meta = load_gitleaks_rules()
+        if isinstance(meta, dict):
+            metrics.set_pattern_version("gitleaks", str(meta.get("version", "unversioned")))
+    except Exception:
+        pass
+
+    # detect-secrets — still available as the entropy/heuristic fallback path.
     try:
         from importlib.metadata import version as _pkg_version
 

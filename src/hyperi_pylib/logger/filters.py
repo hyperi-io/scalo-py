@@ -1,24 +1,24 @@
-"""
-Logging filters for hyperi-pylib logger.
+"""Logging filters for hyperi-pylib logger.
 
-This module provides logging filters for common use cases like masking
-sensitive data in log records and rate-limiting repeated messages.
+This module provides logging filters for sensitive-data masking by
+*field name* and for rate-limiting repeated messages.
 
-**Sensitive data masking (three-tier approach):**
+For PII-value detection (emails, phones, credit cards, national IDs,
+etc.) use the newer ``hyperi_pylib.logger.scrub`` pipeline — that is
+the canonical Layer 3 in the cross-language log-scrub spec. NLP/NER
+scrubbing has been dropped from scope; this module ships only the
+deterministic field-name regex filter.
 
-- **simple** (default): regex on field names — sub-millisecond
-- **advanced**: DataFog regex engine for PII values (emails, phones,
-  CCs, IPs, etc.) — requires ``[pii]`` extra
-- **advanced-ner**: DataFog + spaCy NER for names/locations/orgs —
-  requires ``[pii-ner]`` extra, 5-200ms per call
+**Components:**
 
-Each tier composes with the gitleaks-style ``SecretsLeakFilter``
-(security artefacts) when supplied — see ``logger.secrets_leak``.
+- :class:`SensitiveDataFilter`: regex-on-field-names masker
+  (``password=...``, ``"token":"..."``, bearer tokens, DB URLs).
+- :class:`RateLimitFilter`: suppress repeated log messages from
+  tight loops; reports the suppressed-count on the next message.
 
-**Rate limiting:**
-- RateLimitFilter: Suppress repeated log messages to prevent log spam from tight loops
-
-Use `get_sensitive_filter()` to select the tier.
+Use :func:`get_sensitive_filter` for the legacy three-tier selector —
+``"advanced"`` and ``"advanced-ner"`` emit deprecation warnings and
+return the field-name filter.
 """
 
 import logging
@@ -84,7 +84,7 @@ class SensitiveDataFilter(logging.Filter):
     Applied automatically by default logger. Supports JSON, form data,
     key-value pairs, and database URLs.
 
-    Three composable scrubbing layers (applied in this order):
+    Two composable scrubbing layers (applied in this order):
 
     1. **Secrets-leak detection** (``SecretsLeakFilter``, optional) —
        gitleaks-style: AWS keys, GitHub tokens, JWTs, private keys.
@@ -92,17 +92,17 @@ class SensitiveDataFilter(logging.Filter):
        ``"lite"`` or ``"off"``.
     2. **Field-name regex** (this class) — ``password=...``,
        ``"token":"..."``, bearer tokens, DB URLs.
-    3. **PII detection** (subclasses — DataFog) — emails, phones,
-       SSNs, credit cards, IPs, and optionally names via NER.
+
+    For PII-value detection (emails, phones, credit cards, national
+    IDs, etc.) use the newer ``hyperi_pylib.logger.scrub`` pipeline,
+    which exposes a richer Layer 3 with algorithmic validators
+    (Luhn, mod-97 IBAN, libphonenumber, TOML-driven national IDs).
 
     Custom fields:
         SensitiveDataFilter.add_sensitive_fields({"employee_id", "ssn"})
 
     Disable (not recommended):
         export HYPERI_LIB_LOGGING__MASK_SENSITIVE_DATA=false
-
-    Note: a `DataFog` subclass — `DataFogSensitiveDataFilter` — adds
-    the PII-detection tier when the `[pii]` extra is installed.
     """
 
     # Class-level set for global custom fields
@@ -119,8 +119,8 @@ class SensitiveDataFilter(logging.Filter):
         Args:
             extra_fields: Additional fields to mask (optional)
             secrets_leak: Optional secrets-artefact scrubber applied
-                BEFORE field-name regex. Composable across all
-                SensitiveDataFilter subclasses (e.g. DataFog).
+                BEFORE field-name regex. Composable for callers that
+                want a one-shot field-name + secrets pass.
         """
         super().__init__()
         self._instance_fields = extra_fields or set()
@@ -280,151 +280,37 @@ class SensitiveDataFilter(logging.Filter):
         return masked_data
 
 
-class DataFogSensitiveDataFilter(SensitiveDataFilter):
-    """
-    PII filter backed by DataFog (Apache 2.0, regex + optional NLP).
-
-    Two modes via the ``engine`` argument:
-
-    - ``engine="regex"`` (default) — pure regex, sub-millisecond per
-      call. Catches EMAIL, PHONE, SSN, CREDIT_CARD, IP_ADDRESS, DATE,
-      ZIP_CODE. Ships in the ``[pii]`` extra.
-    - ``engine="nlp"`` — adds spaCy NER for PERSON / LOCATION /
-      ORGANIZATION. 5–200ms per call depending on model. Ships in
-      ``[pii-ner]``. Not for hot-path code; pylib is control-plane,
-      but this tier is still in the seconds-per-call range for big
-      batches — reserve for batch / audit / compliance scans.
-
-    Falls back to the simple regex filter (parent class) if DataFog
-    is not installed.
-
-    Requires: ``pip install hyperi-pylib[pii]`` or ``[pii-ner]``.
-    """
-
-    # DataFog engine names. We accept the friendlier "nlp" alias and
-    # map it to DataFog's canonical "spacy". See `pip install datafog`
-    # docs for the full list (regex, spacy, gliner, smart).
-    _ENGINE_ALIASES = {"nlp": "spacy"}
-
-    def __init__(
-        self,
-        engine: str = "spacy",
-        extra_fields: set[str] | None = None,
-    ):
-        """
-        Initialise the DataFog-backed filter.
-
-        Args:
-            engine: ``"spacy"`` (default — best coverage including
-                names/locations via spaCy NER), ``"regex"`` (faster
-                but misses unstructured entities), ``"gliner"`` (requires
-                ``[pii-ner-advanced]``), or ``"smart"`` (DataFog's
-                auto-pick). The alias ``"nlp"`` maps to ``"spacy"``.
-                The filter gracefully degrades ``spacy → regex →
-                field-name only`` if the required extras aren't
-                installed.
-            extra_fields: Additional fields to mask via the parent
-                regex matcher (in addition to DataFog's detection).
-        """
-        super().__init__(extra_fields=extra_fields)
-        self._engine = self._ENGINE_ALIASES.get(engine, engine)
-        self._datafog_available = False
-        self._sanitize = None
-
-        try:
-            import datafog as _datafog
-
-            self._sanitize = _datafog.sanitize
-            self._datafog_available = True
-        except ImportError:
-            warnings.warn(
-                "DataFog not installed. Install with: pip install hyperi-pylib[pii] "
-                "(regex-only) or pip install hyperi-pylib[pii-ner] (regex + spaCy NER). "
-                "Falling back to field-name regex matcher.",
-                ImportWarning,
-                stacklevel=2,
-            )
-            return
-
-        # Graceful NLP degradation: if engine="spacy" requested but spaCy
-        # isn't installed, downgrade to regex rather than blowing up at
-        # every log call.
-        if self._engine == "spacy":
-            try:
-                import spacy  # noqa: F401
-            except ImportError:
-                warnings.warn(
-                    "engine='spacy' requested but spaCy not installed. Install "
-                    "with: pip install hyperi-pylib[pii-ner]. Downgrading to "
-                    "DataFog regex engine for this filter.",
-                    ImportWarning,
-                    stacklevel=2,
-                )
-                self._engine = "regex"
-
-    def _mask_sensitive_string(self, text: str) -> str:
-        """Mask via DataFog, then apply the parent regex pass for field-names."""
-        if not isinstance(text, str) or not text:
-            return text
-
-        if self._datafog_available:
-            try:
-                text = self._sanitize(text, engine=self._engine)
-            except Exception as e:  # pragma: no cover — fail open, never break logging
-                warnings.warn(
-                    f"DataFog error: {e}. Falling back to regex filter.",
-                    RuntimeWarning,
-                    stacklevel=2,
-                )
-
-        # Always apply parent regex pass — catches field names DataFog misses
-        return super()._mask_sensitive_string(text)
-
-
 def get_sensitive_filter(
     level: str = "simple",
     extra_fields: set[str] | None = None,
 ) -> SensitiveDataFilter:
-    """
-    Get the appropriate sensitive-data filter for the chosen tier.
+    """Return a :class:`SensitiveDataFilter` for the requested tier.
 
-    **Three-tier approach:**
-
-    - **``level="simple"``** (default) — fast regex on field names
-      (`password=`, `"token":`, `api_key:`, bearer tokens, DB URLs).
-      Sub-millisecond per call. Ships in pylib core.
-
-    - **``level="advanced"``** — DataFog regex-only, catches PII
-      *values* (emails, phones, SSNs, credit cards, IPs, dates, zip
-      codes) in addition to field names. <1ms per call. Requires
-      ``[pii]`` extra (~5MB, no NLP). Default for any consumer
-      asking for "advanced".
-
-    - **``level="advanced-ner"``** — DataFog with spaCy NER for
-      PERSON / LOCATION / ORGANIZATION. 5–200ms per call. Requires
-      ``[pii-ner]`` extra (~750MB with default model). Reserve for
-      batch / audit / compliance scans, not interactive control-plane
-      paths.
+    Backwards-compatible shim. The tiering system collapsed when NLP
+    was dropped from the spec — all ``level`` values now resolve to
+    the same field-name regex filter. For PII-value detection (emails,
+    phones, credit cards, etc.) use the newer ``logger.scrub.*``
+    pipeline (see :class:`hyperi_pylib.logger.scrub.LayeredScrubber`).
 
     Args:
-        level: Filter tier — ``"simple"``, ``"advanced"``, or
-            ``"advanced-ner"``.
-        extra_fields: Additional field names to mask.
+        level: kept for backward compatibility. ``"advanced"`` and
+            ``"advanced-ner"`` emit a one-shot deprecation warning and
+            then act like ``"simple"``.
+        extra_fields: additional field names to mask via the regex pass.
 
     Returns:
-        A ``SensitiveDataFilter`` subclass appropriate for the tier.
-
-    Example:
-        >>> # Catch PII values without spaCy
-        >>> filter = get_sensitive_filter(level="advanced")
-        >>>
-        >>> # Catch names + locations too (batch jobs only)
-        >>> filter = get_sensitive_filter(level="advanced-ner")
+        A :class:`SensitiveDataFilter` instance.
     """
-    if level == "advanced":
-        return DataFogSensitiveDataFilter(engine="regex", extra_fields=extra_fields)
-    if level == "advanced-ner":
-        return DataFogSensitiveDataFilter(engine="spacy", extra_fields=extra_fields)
+    if level in ("advanced", "advanced-ner"):
+        warnings.warn(
+            f"get_sensitive_filter(level={level!r}) is deprecated. NLP/NER "
+            "scrubbing was dropped from hyperi-pylib (false-positive rate on "
+            "logs was unacceptable). Use the new ``logger.scrub.*`` pipeline "
+            "for PII-value detection, or pass ``level='simple'`` to silence "
+            "this warning.",
+            DeprecationWarning,
+            stacklevel=2,
+        )
     return SensitiveDataFilter(extra_fields=extra_fields)
 
 

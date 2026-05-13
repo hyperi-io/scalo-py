@@ -38,8 +38,8 @@ PATTERNS_RELATIVE="standards/patterns"
 # Files to vendor. Add as new pattern files land in hyperi-ai.
 FILES=(
     "national_ids.toml"
+    "gitleaks.toml"
     # Future:
-    # "gitleaks.toml"
     # "field_names.toml"
     # "pii_test_fixtures.toml"
 )
