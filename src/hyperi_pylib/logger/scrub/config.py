@@ -47,19 +47,57 @@ class SecretsConfig:
 
 
 @dataclass(slots=True)
-class PiiValidatorsConfig:
-    """Per-validator toggles for Layer 3.
+class NationalIdsConfig:
+    """Layer 3 national-ID validators — per-jurisdiction toggles.
 
-    Each defaults True. Operators disable specific validators when
-    they want to log e.g. emails in support tooling.
+    Country codes are ISO 3166-1 alpha-2, lowercase. Each enabled
+    country loads its national-ID validators from the bundled
+    ``national_ids.toml`` registry (vendored from hyperi-ai).
+
+    The default enables AU only — operators opt-in to additional
+    jurisdictions by listing country codes:
+
+    .. code-block:: yaml
+
+        national_ids:
+          enabled: ["au", "us", "uk"]    # enable AU + US + UK
+
+    Entries within enabled countries are STILL gated on
+    ``enabled = true`` in the TOML registry — listing a country
+    here doesn't activate IDs that haven't been hand-curated.
+    See spec §3.4 for the registry shape.
+    """
+
+    enabled: list[str] = field(default_factory=lambda: ["au"])
+
+
+@dataclass(slots=True)
+class PiiValidatorsConfig:
+    """Layer 3 validator toggles (spec §6).
+
+    Strong-structural validators (jurisdiction-agnostic) are listed
+    individually. Country-specific national IDs are managed as a
+    set via :class:`NationalIdsConfig`.
+
+    Strong-structural — fire from any context:
+
+    - ``credit_card`` — Luhn (ISO/IEC 7812-1)
+    - ``iban`` — mod-97 (ISO 13616)
+    - ``email`` — RFC 5322 subset
+    - ``phone`` — libphonenumber
+
+    Context-required national IDs:
+
+    - ``national_ids.enabled`` — list of country codes. Default
+      ``["au"]`` (ABN, ACN, TFN, Medicare). Adds US/UK/EU
+      jurisdictions by appending their country codes.
     """
 
     credit_card: bool = True
     iban: bool = True
     email: bool = True
     phone: bool = True
-    abn: bool = True
-    tfn: bool = True
+    national_ids: NationalIdsConfig = field(default_factory=NationalIdsConfig)
 
 
 @dataclass(slots=True)

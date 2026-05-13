@@ -38,21 +38,29 @@ from .chain import LayeredScrubber, NoOpScrubber
 from .config import (
     FieldsConfig,
     LogLevelsConfig,
+    NationalIdsConfig,
     PiiConfig,
     PiiValidatorsConfig,
     ScrubConfig,
     SecretsConfig,
 )
+from .factory import build_scrubber
+from .field_names import FieldNameScrubber
+from .secrets import SecretsScrubber
 from .types import Scrubber
 
 __all__ = [
+    "FieldNameScrubber",
     "FieldsConfig",
     "LayeredScrubber",
     "LogLevelsConfig",
+    "NationalIdsConfig",
     "NoOpScrubber",
     "PiiConfig",
     "PiiValidatorsConfig",
     "ScrubConfig",
     "Scrubber",
     "SecretsConfig",
+    "SecretsScrubber",
+    "build_scrubber",
 ]

@@ -25,15 +25,28 @@ import pytest
 
 from hyperi_pylib.logger.scrub import Scrubber
 from hyperi_pylib.logger.scrub.pii import (
-    AbnValidator,
-    AcnValidator,
     CreditCardValidator,
     EmailValidator,
     IbanValidator,
-    MedicareValidator,
     PhoneValidator,
-    TfnValidator,
+    _DynamicValidator,
+    load_registry,
 )
+
+# Shared registry — loaded once per module
+_REGISTRY = load_registry()
+
+
+def _make(key: str) -> _DynamicValidator:
+    """Build a dynamic national-ID validator from the bundled TOML.
+
+    ``key`` is ``"country.id"`` (e.g. ``"au.abn"``). Bypasses the
+    ``enabled`` toggle so tests work regardless of operator config.
+    """
+    country, id_name = key.split(".", 1)
+    entry = dict(_REGISTRY[country][id_name])
+    entry["_entry_key"] = key
+    return _DynamicValidator(entry)
 
 
 # ---------------------------------------------------------------------------
@@ -42,31 +55,26 @@ from hyperi_pylib.logger.scrub.pii import (
 
 
 @pytest.mark.parametrize(
-    "validator_cls",
+    "validator_factory,label",
     [
-        CreditCardValidator,
-        IbanValidator,
-        EmailValidator,
-        PhoneValidator,
-        AbnValidator,
-        AcnValidator,
-        TfnValidator,
-        MedicareValidator,
+        (CreditCardValidator, "CREDIT_CARD"),
+        (IbanValidator, "IBAN"),
+        (EmailValidator, "EMAIL"),
+        (PhoneValidator, "PHONE"),
+        (lambda: _make("au.abn"), "AU_ABN"),
+        (lambda: _make("au.acn"), "AU_ACN"),
+        (lambda: _make("au.tfn"), "AU_TFN"),
+        (lambda: _make("au.medicare"), "AU_MEDICARE"),
     ],
 )
 class TestProtocolSatisfaction:
-    def test_satisfies_scrubber_protocol(self, validator_cls):
-        assert isinstance(validator_cls(), Scrubber)
+    def test_satisfies_scrubber_protocol(self, validator_factory, label):
+        assert isinstance(validator_factory(), Scrubber)
 
-    def test_has_label_and_pattern(self, validator_cls):
-        v = validator_cls()
-        assert v.LABEL
+    def test_has_label_and_pattern(self, validator_factory, label):
+        v = validator_factory()
+        assert v.LABEL == label
         assert v.PATTERN
-
-    def test_repr(self, validator_cls):
-        r = repr(validator_cls())
-        assert validator_cls.__name__ in r
-        assert validator_cls.LABEL in r
 
 
 # ---------------------------------------------------------------------------
@@ -184,7 +192,7 @@ class TestPhone:
 
 class TestAbnContextRequired:
     def setup_method(self):
-        self.v = AbnValidator()
+        self.v = _make("au.abn")
 
     def test_with_abn_keyword_redacts(self):
         out = self.v.scrub("Company ABN: 53 004 085 616 confirmed")
@@ -215,7 +223,7 @@ class TestAbnContextRequired:
 
 class TestAcnContextRequired:
     def setup_method(self):
-        self.v = AcnValidator()
+        self.v = _make("au.acn")
 
     def test_with_keyword_redacts(self):
         # 005 749 986 — valid ACN
@@ -230,7 +238,7 @@ class TestAcnContextRequired:
 
 class TestTfnContextRequired:
     def setup_method(self):
-        self.v = TfnValidator()
+        self.v = _make("au.tfn")
 
     def test_with_keyword_redacts(self):
         # 123 456 782 — valid TFN
@@ -247,7 +255,7 @@ class TestTfnContextRequired:
 
 class TestMedicareContextRequired:
     def setup_method(self):
-        self.v = MedicareValidator()
+        self.v = _make("au.medicare")
 
     def test_with_keyword_redacts(self):
         # 2123 45670 1 — synthetic but checksum-valid example
@@ -279,7 +287,7 @@ class TestCompositeScrubbing:
     def test_email_and_abn_in_same_line(self):
         cc = CreditCardValidator()
         email = EmailValidator()
-        abn = AbnValidator()
+        abn = _make("au.abn")
 
         text = "Alice (alice@example.com) ABN: 53 004 085 616 - paid by 4111-1111-1111-1111"
         out = email.scrub(text)
