@@ -14,7 +14,6 @@ import pytest
 
 from hyperi_pylib.logger.filters import (
     DataFogSensitiveDataFilter,
-    PresidioSensitiveDataFilter,
     SensitiveDataFilter,
     get_sensitive_filter,
 )
@@ -79,11 +78,6 @@ class TestGetSensitiveFilterDispatch:
         # Either spacy (if installed) or regex (graceful degradation
         # when [pii-ner] isn't installed). Both are correct outcomes.
         assert f._engine in {"spacy", "regex"}
-
-    def test_presidio_emits_deprecation_warning(self):
-        with pytest.warns(DeprecationWarning, match="deprecated"):
-            f = get_sensitive_filter(level="presidio")
-        assert isinstance(f, PresidioSensitiveDataFilter)
 
     def test_unknown_level_falls_back_to_simple(self):
         """Unknown level shouldn't crash — silently downgrade to simple."""

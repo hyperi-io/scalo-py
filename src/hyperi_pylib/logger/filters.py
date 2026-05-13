@@ -4,14 +4,21 @@ Logging filters for hyperi-pylib logger.
 This module provides logging filters for common use cases like masking
 sensitive data in log records and rate-limiting repeated messages.
 
-**Sensitive data masking (two-tier approach):**
-- **Tier 1 (default):** Fast regex-based filter (SensitiveDataFilter)
-- **Tier 2 (opt-in):** ML-based Presidio filter (PresidioSensitiveDataFilter)
+**Sensitive data masking (three-tier approach):**
+
+- **simple** (default): regex on field names — sub-millisecond
+- **advanced**: DataFog regex engine for PII values (emails, phones,
+  CCs, IPs, etc.) — requires ``[pii]`` extra
+- **advanced-ner**: DataFog + spaCy NER for names/locations/orgs —
+  requires ``[pii-ner]`` extra, 5-200ms per call
+
+Each tier composes with the gitleaks-style ``SecretsLeakFilter``
+(security artefacts) when supplied — see ``logger.secrets_leak``.
 
 **Rate limiting:**
 - RateLimitFilter: Suppress repeated log messages to prevent log spam from tight loops
 
-Use `get_sensitive_filter()` to automatically select the best available filter.
+Use `get_sensitive_filter()` to select the tier.
 """
 
 import logging
@@ -93,6 +100,9 @@ class SensitiveDataFilter(logging.Filter):
 
     Disable (not recommended):
         export HYPERI_LIB_LOGGING__MASK_SENSITIVE_DATA=false
+
+    Note: a `DataFog` subclass — `DataFogSensitiveDataFilter` — adds
+    the PII-detection tier when the `[pii]` extra is installed.
     """
 
     # Class-level set for global custom fields
@@ -110,7 +120,7 @@ class SensitiveDataFilter(logging.Filter):
             extra_fields: Additional fields to mask (optional)
             secrets_leak: Optional secrets-artefact scrubber applied
                 BEFORE field-name regex. Composable across all
-                SensitiveDataFilter subclasses (DataFog, Presidio).
+                SensitiveDataFilter subclasses (e.g. DataFog).
         """
         super().__init__()
         self._instance_fields = extra_fields or set()
@@ -270,70 +280,6 @@ class SensitiveDataFilter(logging.Filter):
         return masked_data
 
 
-class PresidioSensitiveDataFilter(SensitiveDataFilter):
-    """
-    ML-based filter using Microsoft Presidio (50+ entity types).
-
-    Extends SensitiveDataFilter with better accuracy for PII detection.
-    Falls back to regex if Presidio not installed.
-
-    Requires: pip install hyperi-pylib[presidio]
-
-    Note: Slower than regex (5-50ms vs <1ms). Use for compliance-critical logs.
-    """
-
-    def __init__(self, preset: str = "standard", extra_fields: set[str] | None = None, score_threshold: float = 0.5):
-        """
-        Initialize Presidio-based filter.
-
-        Args:
-            preset: Entity preset ("minimal", "standard", "compliance")
-            extra_fields: Additional regex fields to mask
-            score_threshold: Presidio confidence threshold (0.0-1.0)
-        """
-        super().__init__(extra_fields=extra_fields)
-
-        try:
-            from hyperi_pylib.anonymizer import AnonymizationStrategy, Anonymizer
-
-            self._anonymizer = Anonymizer(
-                preset=preset, strategy=AnonymizationStrategy.REDACT, score_threshold=score_threshold
-            )
-            self._presidio_available = True
-        except ImportError:
-            warnings.warn(
-                "Presidio not installed. Install with: pip install hyperi-pylib[presidio]. "
-                "Falling back to regex-based filter.",
-                ImportWarning,
-                stacklevel=2,
-            )
-            self._presidio_available = False
-
-    def _mask_sensitive_string(self, text: str) -> str:
-        """
-        Mask sensitive data using Presidio + regex fallback.
-
-        Args:
-            text: String to mask
-
-        Returns:
-            String with sensitive data masked
-        """
-        if not isinstance(text, str) or not text:
-            return text
-
-        # Try Presidio first (if available)
-        if self._presidio_available:
-            try:
-                text = self._anonymizer.anonymize(text)
-            except Exception as e:
-                # Fall back to regex on any Presidio error
-                warnings.warn(f"Presidio error: {e}. Falling back to regex filter.", RuntimeWarning, stacklevel=2)
-
-        # Always apply regex patterns (catches Presidio misses + field names)
-        return super()._mask_sensitive_string(text)
-
-
 class DataFogSensitiveDataFilter(SensitiveDataFilter):
     """
     PII filter backed by DataFog (Apache 2.0, regex + optional NLP).
@@ -437,9 +383,7 @@ class DataFogSensitiveDataFilter(SensitiveDataFilter):
 
 def get_sensitive_filter(
     level: str = "simple",
-    preset: str = "standard",
     extra_fields: set[str] | None = None,
-    score_threshold: float = 0.5,
 ) -> SensitiveDataFilter:
     """
     Get the appropriate sensitive-data filter for the chosen tier.
@@ -462,22 +406,10 @@ def get_sensitive_filter(
       batch / audit / compliance scans, not interactive control-plane
       paths.
 
-    Legacy tiers (still available, deprecated):
-
-    - **``level="presidio"``** — Microsoft Presidio + spaCy NER.
-      Same performance ballpark as ``advanced-ner`` but pulls in the
-      Explosion AI cluster (thinc / blis / confection / weasel) that
-      currently blocks pylib dependency updates. Will be removed in
-      a future release; use ``advanced`` or ``advanced-ner`` instead.
-
     Args:
-        level: Filter tier — ``"simple"``, ``"advanced"``,
-            ``"advanced-ner"``, or ``"presidio"`` (deprecated).
-        preset: Presidio preset (``"minimal"`` / ``"standard"`` /
-            ``"compliance"``) — only used when ``level="presidio"``.
+        level: Filter tier — ``"simple"``, ``"advanced"``, or
+            ``"advanced-ner"``.
         extra_fields: Additional field names to mask.
-        score_threshold: Presidio confidence threshold — only used
-            when ``level="presidio"``.
 
     Returns:
         A ``SensitiveDataFilter`` subclass appropriate for the tier.
@@ -493,19 +425,6 @@ def get_sensitive_filter(
         return DataFogSensitiveDataFilter(engine="regex", extra_fields=extra_fields)
     if level == "advanced-ner":
         return DataFogSensitiveDataFilter(engine="spacy", extra_fields=extra_fields)
-    if level == "presidio":
-        warnings.warn(
-            "level='presidio' is deprecated. Use level='advanced' (DataFog regex, "
-            "fast) or level='advanced-ner' (DataFog + spaCy, batch-only). The "
-            "presidio backend will be removed in a future release.",
-            DeprecationWarning,
-            stacklevel=2,
-        )
-        return PresidioSensitiveDataFilter(
-            preset=preset,
-            extra_fields=extra_fields,
-            score_threshold=score_threshold,
-        )
     return SensitiveDataFilter(extra_fields=extra_fields)
 
 

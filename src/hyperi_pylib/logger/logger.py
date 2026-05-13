@@ -200,7 +200,6 @@ def _add_emoji_to_record(
     allow_all: bool = False,
     mask_sensitive: bool = True,
     masking_level: str = "simple",
-    masking_preset: str = "standard",
     rate_limit_filter: RateLimitFilter | None = None,
 ):
     """Create a filter function that adds emojis or converts them to text.
@@ -210,15 +209,16 @@ def _add_emoji_to_record(
         convert_to_text: Convert emojis to ASCII text (for machine-readable logs)
         allow_all: Allow all emojis without filtering (pass-through user emojis)
         mask_sensitive: Apply sensitive data masking (default: True)
-        masking_level: Filter level - "simple" (regex) or "advanced" (Presidio + regex)
-        masking_preset: Presidio preset for advanced mode ("minimal", "standard", "compliance")
+        masking_level: Filter level — "simple" (field-name regex),
+            "advanced" (DataFog regex), or "advanced-ner" (DataFog
+            spaCy NER, requires [pii-ner] extra)
         rate_limit_filter: Optional RateLimitFilter instance for suppressing repeated messages
 
     Returns:
         Filter function for loguru
     """
     # Create sensitive data filter instance if needed
-    sensitive_filter = get_sensitive_filter(level=masking_level, preset=masking_preset) if mask_sensitive else None
+    sensitive_filter = get_sensitive_filter(level=masking_level) if mask_sensitive else None
 
     def filter_func(record):
         """Add emoji to record or convert emojis to text based on settings."""
@@ -337,7 +337,6 @@ def setup(
     allow_all_emojis=False,
     mask_sensitive=None,
     masking_level=None,
-    masking_preset=None,
     rate_limit_sec=None,
     rate_limit_similar=False,
     ci_mode=None,
@@ -360,13 +359,11 @@ def setup(
             - False: Disable masking (NOT recommended for production)
         masking_level: Filter level for sensitive data masking
             - None (default): Read from config (logging.masking_level)
-            - "simple": Fast regex-based filter (default)
-            - "advanced": ML-based Presidio + regex (requires: pip install hyperi-pylib[presidio])
-        masking_preset: Presidio preset for advanced masking
-            - None (default): Read from config (logging.masking_preset)
-            - "minimal": Secrets only (passwords, API keys)
-            - "standard": Secrets + financial + contact (default)
-            - "compliance": Full PII for HIPAA/GDPR/PCI-DSS
+            - "simple": Fast regex on field names (default; ships in core)
+            - "advanced": DataFog regex for PII values (emails, phones,
+              SSNs, credit cards, IPs). Requires [pii] extra.
+            - "advanced-ner": DataFog + spaCy NER for names/locations.
+              Requires [pii-ner] extra; 5-200ms per call.
         rate_limit_sec: Rate limit period in seconds for repeated messages
             - None (default): No rate limiting (read from config: logging.rate_limit_sec)
             - 0: Disable rate limiting
@@ -429,10 +426,6 @@ def setup(
     if masking_level is None:
         masking_level = config.get("masking_level", "advanced-ner")
 
-    # Masking preset (default: standard)
-    if masking_preset is None:
-        masking_preset = config.get("masking_preset", "standard")
-
     # Rate limiting (default: disabled)
     # Read from config if not explicitly set
     if rate_limit_sec is None:
@@ -474,7 +467,6 @@ def setup(
                     allow_all=False,
                     mask_sensitive=mask_sensitive,
                     masking_level=masking_level,
-                    masking_preset=masking_preset,
                     rate_limit_filter=rate_limit_filter,
                 ),
             )
@@ -493,7 +485,6 @@ def setup(
                     allow_all=False,
                     mask_sensitive=mask_sensitive,
                     masking_level=masking_level,
-                    masking_preset=masking_preset,
                     rate_limit_filter=rate_limit_filter,
                 ),
             )
@@ -511,7 +502,6 @@ def setup(
                     allow_all=allow_all_emojis,
                     mask_sensitive=mask_sensitive,
                     masking_level=masking_level,
-                    masking_preset=masking_preset,
                     rate_limit_filter=rate_limit_filter,
                 ),
             )
@@ -533,7 +523,6 @@ def setup(
                 allow_all=False,
                 mask_sensitive=mask_sensitive,
                 masking_level=masking_level,
-                masking_preset=masking_preset,
                 rate_limit_filter=rate_limit_filter,
             ),  # Convert emojis to text for machine-readable logs
         )
