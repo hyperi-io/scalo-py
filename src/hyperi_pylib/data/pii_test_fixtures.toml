@@ -1,0 +1,203 @@
+# HyperI log-scrub: L3 PII validator test fixtures.
+#
+# Canonical input → expected-outcome data for Layer 3 PII validators.
+# Both hyperi-pylib and hyperi-rustlib load this file and run their
+# implementations against it in CI (spec: 2026-05-13 log-scrub §3.5).
+#
+# Cross-language parity: both implementations MUST produce identical
+# redaction output (codepoint-equal) for every sample. CI fails on
+# any drift.
+#
+# Sections per validator type. Two reliability tiers (§9 of the spec):
+#
+# Strong-structural (fires from any context):
+#   credit_card, iban, email, phone
+#
+# Context-required (needs a keyword anchor nearby — §9.2):
+#   au_abn, au_acn, au_tfn, au_medicare
+#
+# Each section uses ``valid`` / ``invalid`` for strong-structural
+# validators; ``valid_with_context`` / ``invalid_in_context`` /
+# ``should_NOT_match`` for context-required ones.
+#
+# All samples are synthetic or ATO/scheme-published test examples.
+# None are real personal information.
+#
+# Non-ASCII coverage is mandatory (spec §10a): every section that can
+# meaningfully take non-ASCII content includes at least one Unicode
+# sample.
+
+[meta]
+version = "1.0.0"
+source = "hyperi-ai/standards/patterns/pii_test_fixtures.toml"
+
+# ---------------------------------------------------------------------
+# Strong-structural validators
+# ---------------------------------------------------------------------
+
+[credit_card]
+# Luhn-checked card numbers (ISO/IEC 7812-1 Annex B).
+# All "valid" samples pass python-stdnum's `luhn.is_valid()`.
+valid = [
+    "4532-1488-0343-6464",          # Visa 16-digit, hyphenated, Luhn-valid
+    "4111 1111 1111 1111",          # Visa canonical test number
+    "4111111111111111",             # Visa, no separators
+    "5500-0000-0000-0004",          # MasterCard 16-digit
+    "5555555555554444",             # MasterCard canonical
+    "378282246310005",              # Amex 15-digit
+    "6011000990139424",             # Discover 16-digit
+]
+invalid = [
+    "4532-1488-0343-6466",          # Luhn checksum fails (off-by-one)
+    "1234-5678-9012-3456",          # Random digits, Luhn fails
+    "abcd-efgh-ijkl-mnop",          # Letters
+    "1234",                         # Too short
+    # NOTE: "0000-0000-0000-0000" omitted because Luhn passes trivially
+    # on all-zeros. Validators can't reject it on checksum alone; the
+    # IIN-range filter would catch it, which we don't currently apply.
+]
+
+[iban]
+# ISO 13616 mod-97 validation. All "valid" samples pass python-stdnum's
+# `iban.is_valid()`. Note: Australia is NOT an IBAN-issuing country
+# (uses BSB+account); no AU sample here.
+valid = [
+    "GB82 WEST 1234 5698 7654 32",     # UK canonical test IBAN
+    "DE89370400440532013000",          # German IBAN, no spaces
+    "FR1420041010050500013M02606",     # French IBAN with check letter
+]
+invalid = [
+    "GB82 WEST 1234 5698 7654 33",     # mod-97 checksum fails
+    "XX00 1234 5678 9012",             # unknown country code
+    "GB82",                            # truncated
+]
+
+[email]
+# RFC 5322 subset; the regex IS the validator (no separate check fn).
+valid = [
+    "alice@example.com",
+    "bob.smith@example.co.uk",
+    "user+tag@example.com",
+    "user.name+tag@sub.domain.example.com",
+    "user-with-hyphen@example-domain.com",
+    "x@y.z",
+    # Non-ASCII (IDN direct form per spec §10a.6)
+    "山田@example.jp",
+    "ünïcödé@example.com",
+    "user@münchen.de",
+]
+invalid = [
+    "not-an-email",
+    "@example.com",                    # missing local
+    "user@",                           # missing domain
+    "user@@example.com",               # double @
+    "user@example",                    # missing TLD
+]
+
+[phone]
+# libphonenumber-grade (Python: ``phonenumbers``; Rust:
+# ``phonenumber`` crate). Both languages call the same parse_and_
+# validate sequence so output is identical.
+valid = [
+    "+61 412 345 678",                 # AU mobile, international form
+    "+1 (415) 555-2671",               # US, international, parenthesised
+    "+44 20 7946 0958",                # UK landline, international
+    "+81 3-1234-5678",                 # Japan, international
+    "+33 1 23 45 67 89",               # France, international
+]
+# libphonenumber rejects bare local numbers without country context.
+# Validators in both languages should NOT match these — too many
+# false positives on bare digit runs in logs.
+should_NOT_match = [
+    "412 345 678",                     # bare AU mobile, no +61
+    "0412 345 678",                    # AU national-form, no country code
+    "415-555-2671",                    # US national-form
+    "1234567890",                      # bare 10 digits
+]
+
+# ---------------------------------------------------------------------
+# Context-required validators (§9.2)
+# ---------------------------------------------------------------------
+
+[au_abn]
+# Australian Business Number — 11 digits, ATO mod-89 weighted checksum.
+context_required = true
+keywords = ["abn", "australian business number"]
+valid_with_context = [
+    "ABN: 53 004 085 616",                       # ATO published example
+    "abn=53004085616",                           # keyword + bare digits
+    "Australian Business Number: 53004085616",   # full keyword phrase
+    "Customer ABN 51824753556 invoice",          # inline
+]
+invalid_in_context = [
+    "ABN: 53 004 085 617",         # checksum fails (one digit off)
+    "ABN: 12345678901",            # random digits, checksum fails
+]
+# Bare valid ABN with no keyword nearby — MUST NOT redact.
+# This is the critical false-positive guard for context-required types.
+should_NOT_match = [
+    "53 004 085 616",                            # bare ABN, no keyword
+    "Request 53004085616 logged",                # 11 digits, looks like ID
+    "transaction id 51824753556 completed",      # "id" is not an ABN keyword
+]
+
+[au_acn]
+# Australian Company Number — 9 digits, ATO weighted-sum checksum.
+context_required = true
+keywords = ["acn", "australian company number"]
+valid_with_context = [
+    "ACN: 004 085 616",
+    "acn=004085616",
+    "Australian Company Number 004085616",
+]
+invalid_in_context = [
+    "ACN: 004 085 617",            # checksum fails
+]
+should_NOT_match = [
+    "004 085 616",                 # bare ACN, no keyword
+    "Reference 004085616 logged",  # 9-digit ID
+]
+
+[au_tfn]
+# Australian Tax File Number — 8 or 9 digits, ATO mod-11 weighted.
+# TFN is highly sensitive; context-required to avoid false positives
+# on bare 9-digit runs.
+context_required = true
+keywords = ["tfn", "tax file number"]
+valid_with_context = [
+    "TFN: 123 456 782",                     # ATO published test TFN
+    "tfn=123456782",
+    "Tax File Number 123456782 verified",
+]
+invalid_in_context = [
+    "TFN: 123 456 783",            # checksum fails (one digit off)
+    "TFN: 123 456 784",            # checksum fails
+    # NOTE: 000000000 omitted — mod-11 weighted sum is 0, which is
+    # divisible by 11, so stdnum reports it as "valid". Validators
+    # can't reject by checksum alone.
+]
+should_NOT_match = [
+    "123 456 782",                 # bare TFN, no keyword
+    "user id 123456782",           # "id" is not a TFN keyword
+]
+
+[au_medicare]
+# Australian Medicare number — 10 or 11 digits, ATO check-digit
+# (custom algorithm in ``au_medicare.py`` since python-stdnum has
+# no module). Valid samples below verified against the local
+# ``_is_valid_medicare()`` implementation.
+context_required = true
+keywords = ["medicare", "medicare card", "medicare number"]
+valid_with_context = [
+    "Medicare card 2428 77813 2",          # 10-digit, formatted
+    "medicare=2428778132",                  # 10-digit, no IRN
+    "Medicare Number 2428778132",
+]
+invalid_in_context = [
+    "Medicare card 2428 77814 2",          # check digit fails (bumped pos 8)
+    "Medicare: 1234567890",                # arbitrary 10-digit
+]
+should_NOT_match = [
+    "2428778132",                          # bare digits, no keyword
+    "Reference number 2428778132 received",  # "number" alone is too generic
+]
