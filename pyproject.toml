@@ -61,6 +61,7 @@ dependencies = [
     "dulwich>=1.2.0",
     "anyio>=4.13.0",
     "asyncer>=0.0.17",
+    "detect-secrets>=1.5.0",
 ]
 
 license = "LicenseRef-FSL-1.1-ALv2"
