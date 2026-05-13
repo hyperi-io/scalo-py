@@ -2,6 +2,72 @@
 
 ## Active
 
+### Log-scrub implementation (2026-05-13)
+
+**Spec** (working master, pylib side):
+`docs/superpowers/specs/2026-05-13-log-scrub-spec.md`
+
+**Cross-language**: byte-identical contract copy at
+`/projects/hyperi-rustlib/docs/superpowers/specs/2026-05-13-log-scrub-spec.md`.
+Will move to `hyperi-ai/standards/specs/` once accepted.
+
+**Companion design discussion**:
+`docs/superpowers/specs/2026-05-13-log-scrub-cross-language.md`
+
+**Workflow rule** (see STATE.md "cross-language spec workflow"):
+spec changes discovered during pylib implementation MUST land in
+hyperi-ai (canonical) AND rustlib's superpowers copy in the same
+change-set. Never let one lag.
+
+**Implementation order** (depending only on each step's predecessor):
+
+1. **Drop Presidio**: `src/hyperi_pylib/anonymizer/` directory,
+   `[presidio]` extra, `PresidioSensitiveDataFilter`,
+   `tests/unit/test_anonymizer.py`. Cleans the deck.
+
+2. **`Scrubber` Protocol + `LayeredScrubber` skeleton** (§2.3 of
+   spec). The discrete-object surface that everything else hangs
+   off. Includes `NoOpScrubber` for test mocking.
+
+3. **PII validators package** (`hyperi_pylib.logger.scrub.pii`):
+   - `_checksums.py` — Luhn, mod-97, weighted-sum helpers
+   - `credit_card.py` — regex + Luhn (ISO/IEC 7812-1)
+   - `iban.py` — regex + mod-97 (ISO 13616-1)
+   - `email.py` — RFC 5322 subset
+   - `phone.py` — regex + `phonenumbers` library
+   - `au_abn.py` — mod-89 weighted (ATO spec)
+   - `au_tfn.py` — mod-11 weighted (ATO spec)
+
+4. **Wire PII validators into LayeredScrubber** (L3).
+
+5. **Config restructure**: `logger.scrub.*` hierarchy per §6 of
+   spec. Backwards-compat aliases for `logging.mask_sensitive_data`
+   and `logging.masking_level` (one release, deprecation warning).
+
+6. **Per-log-level gates** (§5.6).
+
+7. **Observe mode** (§5.5) — detect without redact, emit metrics.
+
+8. **Deterministic-hash redaction** (§4.4) — opt-in via
+   `scrub.hash_redaction: true`, blake3-backed.
+
+9. **Metrics emission** per §8 — `log_scrub_*` counter and gauge
+   metrics, pattern-version tagging at startup.
+
+10. **Migrate L1 from `detect-secrets` to gitleaks TOML** —
+    blocked on `hyperi-ai/standards/patterns/gitleaks.toml` landing.
+
+11. **Author shared test fixtures**
+    `hyperi-ai/standards/patterns/pii_test_fixtures.toml` (with
+    non-ASCII samples per §10a.5).
+
+12. **CI parity gate** (§11): diff contract sections of the two
+    spec copies; run shared fixtures against pylib; export results
+    for rustlib to consume.
+
+Steps 1-9 are unblocked. Step 10 blocks on hyperi-ai. Step 11-12
+need hyperi-ai-side CI setup.
+
 ### Telemetry audit — disable across all imported packages (2026-05-13)
 
 **Goal.** No imported package should phone home from a HyperI process by

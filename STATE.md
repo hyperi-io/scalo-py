@@ -6,6 +6,47 @@
 
 ---
 
+## Design decision: cross-language spec workflow (pylib leads)
+
+When a feature spans pylib + rustlib (log scrubbing, config cascade,
+metrics, deployment contract, etc.), this is how specs and
+implementations stay in sync.
+
+**The spec is canonical at `hyperi-ai/standards/specs/`** once
+accepted. Until it gets there, the working master lives in
+`docs/superpowers/specs/` in each consumer project, with the
+contract sections byte-identical between pylib's and rustlib's
+copies. "Byte-identical" means a `diff` over the contract sections
+returns empty — drift is mechanically detectable.
+
+**Pylib implements first** as the reference implementation. Python's
+cheaper iteration cost means we discover spec gaps faster in pylib
+than in rustlib. When implementation reveals a gap or ambiguity:
+
+1. Fix the canonical spec (in hyperi-ai, or the working master if
+   canonical hasn't landed)
+2. Fix the rustlib copy byte-identically (contract sections)
+3. Adapt the pylib code to the corrected spec — never the other way
+   around
+4. All three changes ship together; never let one lag
+
+**Rustlib references pylib code** once pylib stabilises a feature.
+The pylib code is the cross-language reference for algorithm shape,
+edge cases, and fixture interpretation. The spec is the contract;
+the pylib code is the reference implementation. Same redaction
+labels, same metric names, same config keys, same fixture results —
+verified by CI.
+
+This ordering matters: discovering a spec mistake after rustlib has
+shipped costs more than discovering it during the pylib build. Move
+fast in Python; once stable, port carefully to Rust.
+
+The discipline holds even after rustlib work starts. Disagreements
+are resolved by updating the spec and both implementations, not by
+letting them drift.
+
+---
+
 ## Design decision: pylib is for control plane, not the hot path
 
 This is foundational and shapes every other choice in the library.
