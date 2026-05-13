@@ -21,6 +21,8 @@ import warnings
 from collections import defaultdict
 from typing import Any
 
+from .secrets_leak import SecretsLeakFilter
+
 # Sensitive fields that should be masked in logs
 SENSITIVE_FIELDS: set[str] = {
     # Passwords
@@ -75,6 +77,17 @@ class SensitiveDataFilter(logging.Filter):
     Applied automatically by default logger. Supports JSON, form data,
     key-value pairs, and database URLs.
 
+    Three composable scrubbing layers (applied in this order):
+
+    1. **Secrets-leak detection** (``SecretsLeakFilter``, optional) —
+       gitleaks-style: AWS keys, GitHub tokens, JWTs, private keys.
+       On by default at ``level="full"``; opt-down via config to
+       ``"lite"`` or ``"off"``.
+    2. **Field-name regex** (this class) — ``password=...``,
+       ``"token":"..."``, bearer tokens, DB URLs.
+    3. **PII detection** (subclasses — DataFog) — emails, phones,
+       SSNs, credit cards, IPs, and optionally names via NER.
+
     Custom fields:
         SensitiveDataFilter.add_sensitive_fields({"employee_id", "ssn"})
 
@@ -85,15 +98,23 @@ class SensitiveDataFilter(logging.Filter):
     # Class-level set for global custom fields
     _custom_fields: set[str] = set()
 
-    def __init__(self, extra_fields: set[str] | None = None):
+    def __init__(
+        self,
+        extra_fields: set[str] | None = None,
+        secrets_leak: SecretsLeakFilter | None = None,
+    ):
         """
         Initialize the sensitive data filter.
 
         Args:
             extra_fields: Additional fields to mask (optional)
+            secrets_leak: Optional secrets-artefact scrubber applied
+                BEFORE field-name regex. Composable across all
+                SensitiveDataFilter subclasses (DataFog, Presidio).
         """
         super().__init__()
         self._instance_fields = extra_fields or set()
+        self._secrets_leak = secrets_leak
 
     @classmethod
     def add_sensitive_fields(cls, fields: set[str]) -> None:
@@ -154,6 +175,9 @@ class SensitiveDataFilter(logging.Filter):
         - Key-value pairs: `field: value` or `field=value`
         - Database URLs: `://user:password@host`
 
+        Runs the secrets-leak scrubber first (if configured), then
+        applies the field-name regex pass.
+
         Args:
             text: String to mask
 
@@ -162,6 +186,10 @@ class SensitiveDataFilter(logging.Filter):
         """
         if not isinstance(text, str):
             return text
+
+        # First pass: secrets-artefact scrubber (gitleaks-style)
+        if self._secrets_leak is not None:
+            text = self._secrets_leak.scrub(text)
 
         masked = text
         fields = self._get_all_sensitive_fields()
