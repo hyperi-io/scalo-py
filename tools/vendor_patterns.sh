@@ -39,9 +39,9 @@ PATTERNS_RELATIVE="standards/patterns"
 FILES=(
     "national_ids.toml"
     "gitleaks.toml"
+    "pii_test_fixtures.toml"
     # Future:
     # "field_names.toml"
-    # "pii_test_fixtures.toml"
 )
 
 CHECK_MODE=false
