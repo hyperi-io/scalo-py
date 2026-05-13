@@ -21,7 +21,12 @@ swap.
 
 from __future__ import annotations
 
+from typing import TYPE_CHECKING
+
 from ..secrets_leak import SecretsLeakFilter
+
+if TYPE_CHECKING:
+    from .labeler import LabelFn
 
 
 class SecretsScrubber:
@@ -33,6 +38,9 @@ class SecretsScrubber:
             Mirrors ``ScrubConfig.secrets.patterns`` for consistency.
         extra_patterns: org-specific ``(type_name, regex)`` tuples
             for in-house token formats.
+        labeler: redaction-label producer. Defaults to static
+            ``[LABEL_REDACTED]``; pass the result of
+            :func:`make_hash_labeler` for deterministic-hash mode.
     """
 
     # Map config-schema names to SecretsLeakFilter levels.
@@ -46,9 +54,14 @@ class SecretsScrubber:
         self,
         patterns: str = "gitleaks",
         extra_patterns: list[tuple[str, str]] | None = None,
+        labeler: LabelFn | None = None,
     ) -> None:
         level = self._LEVEL_MAP.get(patterns, "full")
-        self._inner = SecretsLeakFilter(level=level, extra_patterns=extra_patterns)
+        self._inner = SecretsLeakFilter(
+            level=level,
+            extra_patterns=extra_patterns,
+            labeler=labeler,
+        )
         self.patterns = patterns
 
     def scrub(self, text: str) -> str:

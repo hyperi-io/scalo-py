@@ -40,7 +40,10 @@ from __future__ import annotations
 
 import re
 import warnings
-from typing import Any
+from typing import TYPE_CHECKING, Any
+
+if TYPE_CHECKING:
+    from .scrub.labeler import LabelFn
 
 __all__ = [
     "SECRETS_PLUGINS_FULL",
@@ -129,10 +132,14 @@ _REDACTION_REGEX: dict[str, re.Pattern[str]] = {
 }
 
 
+def _label_slug(secret_type: str) -> str:
+    """Convert ``"GitHub Token"`` to ``"GITHUB_TOKEN"`` (no brackets, no suffix)."""
+    return re.sub(r"[^A-Za-z0-9]+", "_", secret_type).strip("_").upper()
+
+
 def _redaction_label(secret_type: str) -> str:
-    """Convert ``"GitHub Token"`` to ``"[GITHUB_TOKEN_REDACTED]"``."""
-    slug = re.sub(r"[^A-Za-z0-9]+", "_", secret_type).strip("_").upper()
-    return f"[{slug}_REDACTED]"
+    """Convert ``"GitHub Token"`` to ``"[GITHUB_TOKEN_REDACTED]"`` (static mode only)."""
+    return f"[{_label_slug(secret_type)}_REDACTED]"
 
 
 class SecretsLeakFilter:
@@ -160,9 +167,13 @@ class SecretsLeakFilter:
         self,
         level: str = "full",
         extra_patterns: list[tuple[str, str]] | None = None,
+        labeler: "LabelFn | None" = None,
     ) -> None:
+        from .scrub.labeler import _static_label
+
         self.level = level
         self._enabled = level != "off"
+        self._labeler = labeler if labeler is not None else _static_label
 
         if level == "full":
             self._plugins = SECRETS_PLUGINS_FULL
@@ -218,23 +229,38 @@ class SecretsLeakFilter:
         if not findings:
             return text
 
-        # Second: redact via per-type regex (precise replacement). For
-        # unknown types we fall back to replacing the secret_value if
-        # it's substantial (>5 chars) — defensive coverage for types we
-        # haven't yet given a redaction regex.
+        # Second: redact via per-type regex first (catches the whole
+        # match — important for multi-line patterns like private keys
+        # where the BEGIN marker is the value detect-secrets returns
+        # but the regex covers the full ``BEGIN...END`` block).
+        #
+        # Each regex.sub() callback computes the label per match so
+        # hash-redaction picks up the actual matched value, not just
+        # the type slug. Static mode returns the same label per type
+        # regardless of value.
+        #
+        # For types lacking a redaction regex (rare — covers types we
+        # haven't given a pattern yet) we fall back to replacing each
+        # detect-secrets finding's value directly.
         seen_types = {f.type for f in findings}
         for secret_type in seen_types:
+            slug = _label_slug(secret_type)
             regex = self._redaction.get(secret_type)
-            label = _redaction_label(secret_type)
             if regex is not None:
-                text = regex.sub(label, text)
-                continue
-            # Fallback: replace each instance's secret_value.
-            for f in findings:
-                if f.type != secret_type:
-                    continue
-                value = f.secret_value
-                if value and len(value) > 5:
-                    text = text.replace(value, label)
+                text = regex.sub(
+                    lambda m, slug=slug: self._labeler(slug, m.group(0)),
+                    text,
+                )
+            else:
+                # Fallback: replace each detect-secrets-reported value.
+                type_values = {
+                    f.secret_value
+                    for f in findings
+                    if f.type == secret_type and f.secret_value
+                }
+                for value in type_values:
+                    if len(value) <= 5:
+                        continue
+                    text = text.replace(value, self._labeler(slug, value))
 
         return text

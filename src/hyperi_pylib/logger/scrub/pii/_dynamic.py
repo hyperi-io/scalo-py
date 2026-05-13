@@ -24,6 +24,7 @@ import re
 from collections.abc import Callable
 from typing import Any
 
+from ..labeler import LabelFn
 from ._base import _Validator
 
 
@@ -51,7 +52,12 @@ class _DynamicValidator(_Validator):
     ``module:attribute`` reference resolved at construction.
     """
 
-    def __init__(self, entry: dict[str, Any]) -> None:
+    def __init__(
+        self,
+        entry: dict[str, Any],
+        labeler: LabelFn | None = None,
+    ) -> None:
+        super().__init__(labeler=labeler)
         self.LABEL: str = entry["redaction_label"]
         self.PATTERN: re.Pattern[str] = re.compile(entry["detection_regex"])
         self.KEYWORDS: tuple[str, ...] = tuple(entry.get("keywords", ()))

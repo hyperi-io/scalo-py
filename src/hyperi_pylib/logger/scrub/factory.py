@@ -21,6 +21,7 @@ from __future__ import annotations
 
 from .chain import LayeredScrubber
 from .config import ScrubConfig
+from .labeler import resolve_labeler
 from .types import Scrubber
 
 __all__ = ["build_scrubber"]
@@ -51,13 +52,20 @@ def build_scrubber(config: ScrubConfig | None = None) -> LayeredScrubber:
     config = config if config is not None else ScrubConfig()
     layers: list[Scrubber] = []
 
+    # Resolve the labeler once — every layer that produces labels shares it
+    # so per-value correlation works across L1 + L3 within a single line.
+    labeler = resolve_labeler(hash_redaction=config.hash_redaction)
+
     # L1 — secret artefacts (gitleaks-style)
     if config.secrets.enabled and config.secrets.patterns != "off":
         from .secrets import SecretsScrubber
 
-        layers.append(SecretsScrubber(patterns=config.secrets.patterns))
+        layers.append(
+            SecretsScrubber(patterns=config.secrets.patterns, labeler=labeler)
+        )
 
-    # L2 — field-name regex
+    # L2 — field-name regex (uses static ***REDACTED***; field name itself
+    # carries the type signal, no correlation value from hashing).
     if config.fields.enabled:
         from .field_names import FieldNameScrubber
 
@@ -77,16 +85,17 @@ def build_scrubber(config: ScrubConfig | None = None) -> LayeredScrubber:
         # Strong-structural first (lower FP risk), TOML-driven national
         # IDs after.
         if v.credit_card:
-            layers.append(CreditCardValidator())
+            layers.append(CreditCardValidator(labeler=labeler))
         if v.iban:
-            layers.append(IbanValidator())
+            layers.append(IbanValidator(labeler=labeler))
         if v.email:
-            layers.append(EmailValidator())
+            layers.append(EmailValidator(labeler=labeler))
         if v.phone:
-            layers.append(PhoneValidator())
+            layers.append(PhoneValidator(labeler=labeler))
         layers.extend(
             build_national_id_validators(
                 enabled_countries=v.national_ids.enabled,
+                labeler=labeler,
             )
         )
 

@@ -24,12 +24,19 @@ from __future__ import annotations
 import re
 from typing import ClassVar
 
+from ..labeler import LabelFn, _static_label
+
 
 class _Validator:
     """Base PII validator. Subclass to add a specific validator.
 
     Implements :class:`Scrubber` Protocol via duck typing — no
     inheritance required at the call site.
+
+    Per spec §4.4, the label format is controlled by an injected
+    :data:`LabelFn`. The default produces ``[LABEL_REDACTED]``; the
+    factory swaps in a deterministic-hash labeler when
+    ``scrub.hash_redaction: true`` is set.
     """
 
     LABEL: ClassVar[str] = ""
@@ -37,6 +44,20 @@ class _Validator:
     KEYWORDS: ClassVar[tuple[str, ...]] = ()
     PROXIMITY: ClassVar[int] = 30
     """How many characters back from the candidate to search for keywords."""
+
+    labeler: LabelFn = staticmethod(_static_label)
+    """Label producer. Override per-instance via constructor or assignment."""
+
+    def __init__(self, labeler: LabelFn | None = None) -> None:
+        """Optionally accept a per-instance labeler.
+
+        Subclasses that don't override ``__init__`` get this signature
+        for free — strong-structural validators (credit_card, email,
+        iban, phone) all just call ``super().__init__(labeler=...)``
+        or rely on this default if instantiated bare.
+        """
+        if labeler is not None:
+            self.labeler = labeler  # type: ignore[method-assign]
 
     def validate(self, candidate: str) -> bool:
         """Return True if ``candidate`` is a valid instance of this PII type.
@@ -57,7 +78,7 @@ class _Validator:
                 return candidate
             if not self.validate(candidate):
                 return candidate
-            return f"[{self.LABEL}_REDACTED]"
+            return self.labeler(self.LABEL, candidate)
 
         return self.PATTERN.sub(_repl, text)
 
