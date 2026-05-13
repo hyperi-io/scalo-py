@@ -63,6 +63,7 @@ dependencies = [
     "asyncer>=0.0.17",
     "detect-secrets>=1.5.0",
     "phonenumbers>=9.0.0",
+    "python-stdnum>=2.2",
 ]
 
 license = "LicenseRef-FSL-1.1-ALv2"
