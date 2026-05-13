@@ -306,42 +306,179 @@ class PresidioSensitiveDataFilter(SensitiveDataFilter):
         return super()._mask_sensitive_string(text)
 
 
+class DataFogSensitiveDataFilter(SensitiveDataFilter):
+    """
+    PII filter backed by DataFog (Apache 2.0, regex + optional NLP).
+
+    Two modes via the ``engine`` argument:
+
+    - ``engine="regex"`` (default) — pure regex, sub-millisecond per
+      call. Catches EMAIL, PHONE, SSN, CREDIT_CARD, IP_ADDRESS, DATE,
+      ZIP_CODE. Ships in the ``[pii]`` extra.
+    - ``engine="nlp"`` — adds spaCy NER for PERSON / LOCATION /
+      ORGANIZATION. 5–200ms per call depending on model. Ships in
+      ``[pii-ner]``. Not for hot-path code; pylib is control-plane,
+      but this tier is still in the seconds-per-call range for big
+      batches — reserve for batch / audit / compliance scans.
+
+    Falls back to the simple regex filter (parent class) if DataFog
+    is not installed.
+
+    Requires: ``pip install hyperi-pylib[pii]`` or ``[pii-ner]``.
+    """
+
+    # DataFog engine names. We accept the friendlier "nlp" alias and
+    # map it to DataFog's canonical "spacy". See `pip install datafog`
+    # docs for the full list (regex, spacy, gliner, smart).
+    _ENGINE_ALIASES = {"nlp": "spacy"}
+
+    def __init__(
+        self,
+        engine: str = "spacy",
+        extra_fields: set[str] | None = None,
+    ):
+        """
+        Initialise the DataFog-backed filter.
+
+        Args:
+            engine: ``"spacy"`` (default — best coverage including
+                names/locations via spaCy NER), ``"regex"`` (faster
+                but misses unstructured entities), ``"gliner"`` (requires
+                ``[pii-ner-advanced]``), or ``"smart"`` (DataFog's
+                auto-pick). The alias ``"nlp"`` maps to ``"spacy"``.
+                The filter gracefully degrades ``spacy → regex →
+                field-name only`` if the required extras aren't
+                installed.
+            extra_fields: Additional fields to mask via the parent
+                regex matcher (in addition to DataFog's detection).
+        """
+        super().__init__(extra_fields=extra_fields)
+        self._engine = self._ENGINE_ALIASES.get(engine, engine)
+        self._datafog_available = False
+        self._sanitize = None
+
+        try:
+            import datafog as _datafog
+
+            self._sanitize = _datafog.sanitize
+            self._datafog_available = True
+        except ImportError:
+            warnings.warn(
+                "DataFog not installed. Install with: pip install hyperi-pylib[pii] "
+                "(regex-only) or pip install hyperi-pylib[pii-ner] (regex + spaCy NER). "
+                "Falling back to field-name regex matcher.",
+                ImportWarning,
+                stacklevel=2,
+            )
+            return
+
+        # Graceful NLP degradation: if engine="spacy" requested but spaCy
+        # isn't installed, downgrade to regex rather than blowing up at
+        # every log call.
+        if self._engine == "spacy":
+            try:
+                import spacy  # noqa: F401
+            except ImportError:
+                warnings.warn(
+                    "engine='spacy' requested but spaCy not installed. Install "
+                    "with: pip install hyperi-pylib[pii-ner]. Downgrading to "
+                    "DataFog regex engine for this filter.",
+                    ImportWarning,
+                    stacklevel=2,
+                )
+                self._engine = "regex"
+
+    def _mask_sensitive_string(self, text: str) -> str:
+        """Mask via DataFog, then apply the parent regex pass for field-names."""
+        if not isinstance(text, str) or not text:
+            return text
+
+        if self._datafog_available:
+            try:
+                text = self._sanitize(text, engine=self._engine)
+            except Exception as e:  # pragma: no cover — fail open, never break logging
+                warnings.warn(
+                    f"DataFog error: {e}. Falling back to regex filter.",
+                    RuntimeWarning,
+                    stacklevel=2,
+                )
+
+        # Always apply parent regex pass — catches field names DataFog misses
+        return super()._mask_sensitive_string(text)
+
+
 def get_sensitive_filter(
-    level: str = "simple", preset: str = "standard", extra_fields: set[str] | None = None, score_threshold: float = 0.5
+    level: str = "simple",
+    preset: str = "standard",
+    extra_fields: set[str] | None = None,
+    score_threshold: float = 0.5,
 ) -> SensitiveDataFilter:
     """
-    Get appropriate sensitive data filter based on configuration.
+    Get the appropriate sensitive-data filter for the chosen tier.
 
-    **Two-tier approach:**
-    - **level="simple"** (default) - Fast regex-based filter
-    - **level="advanced"** - ML-based Presidio filter (falls back to regex if not installed)
+    **Three-tier approach:**
+
+    - **``level="simple"``** (default) — fast regex on field names
+      (`password=`, `"token":`, `api_key:`, bearer tokens, DB URLs).
+      Sub-millisecond per call. Ships in pylib core.
+
+    - **``level="advanced"``** — DataFog regex-only, catches PII
+      *values* (emails, phones, SSNs, credit cards, IPs, dates, zip
+      codes) in addition to field names. <1ms per call. Requires
+      ``[pii]`` extra (~5MB, no NLP). Default for any consumer
+      asking for "advanced".
+
+    - **``level="advanced-ner"``** — DataFog with spaCy NER for
+      PERSON / LOCATION / ORGANIZATION. 5–200ms per call. Requires
+      ``[pii-ner]`` extra (~750MB with default model). Reserve for
+      batch / audit / compliance scans, not interactive control-plane
+      paths.
+
+    Legacy tiers (still available, deprecated):
+
+    - **``level="presidio"``** — Microsoft Presidio + spaCy NER.
+      Same performance ballpark as ``advanced-ner`` but pulls in the
+      Explosion AI cluster (thinc / blis / confection / weasel) that
+      currently blocks pylib dependency updates. Will be removed in
+      a future release; use ``advanced`` or ``advanced-ner`` instead.
 
     Args:
-        level: Filter level ("simple" or "advanced")
-        preset: Presidio preset for advanced mode ("minimal", "standard", "compliance")
-        extra_fields: Additional fields to mask
-        score_threshold: Presidio confidence threshold (advanced mode only)
+        level: Filter tier — ``"simple"``, ``"advanced"``,
+            ``"advanced-ner"``, or ``"presidio"`` (deprecated).
+        preset: Presidio preset (``"minimal"`` / ``"standard"`` /
+            ``"compliance"``) — only used when ``level="presidio"``.
+        extra_fields: Additional field names to mask.
+        score_threshold: Presidio confidence threshold — only used
+            when ``level="presidio"``.
 
     Returns:
-        SensitiveDataFilter or PresidioSensitiveDataFilter instance
+        A ``SensitiveDataFilter`` subclass appropriate for the tier.
 
     Example:
-        >>> from hyperi_pylib.logger.filters import get_sensitive_filter
+        >>> # Catch PII values without spaCy
+        >>> filter = get_sensitive_filter(level="advanced")
         >>>
-        >>> # Simple (fast, regex-only)
-        >>> filter = get_sensitive_filter(level="simple")
-        >>>
-        >>> # Advanced (ML-based, compliance mode)
-        >>> filter = get_sensitive_filter(
-        ...     level="advanced",
-        ...     preset="compliance",
-        ...     score_threshold=0.7
-        ... )
+        >>> # Catch names + locations too (batch jobs only)
+        >>> filter = get_sensitive_filter(level="advanced-ner")
     """
     if level == "advanced":
-        return PresidioSensitiveDataFilter(preset=preset, extra_fields=extra_fields, score_threshold=score_threshold)
-    else:
-        return SensitiveDataFilter(extra_fields=extra_fields)
+        return DataFogSensitiveDataFilter(engine="regex", extra_fields=extra_fields)
+    if level == "advanced-ner":
+        return DataFogSensitiveDataFilter(engine="spacy", extra_fields=extra_fields)
+    if level == "presidio":
+        warnings.warn(
+            "level='presidio' is deprecated. Use level='advanced' (DataFog regex, "
+            "fast) or level='advanced-ner' (DataFog + spaCy, batch-only). The "
+            "presidio backend will be removed in a future release.",
+            DeprecationWarning,
+            stacklevel=2,
+        )
+        return PresidioSensitiveDataFilter(
+            preset=preset,
+            extra_fields=extra_fields,
+            score_threshold=score_threshold,
+        )
+    return SensitiveDataFilter(extra_fields=extra_fields)
 
 
 class RateLimitFilter:
