@@ -29,15 +29,23 @@ import pytest
 
 from hyperi_pylib.logger.scrub import LayeredScrubber, ScrubConfig
 from hyperi_pylib.logger.scrub.pii import (
-    AbnValidator,
     CreditCardValidator,
     EmailValidator,
     IbanValidator,
-    MedicareValidator,
     PhoneValidator,
-    TfnValidator,
+    _DynamicValidator,
+    load_registry,
 )
 from hyperi_pylib.logger.scrub.pii._base import _Validator
+
+_REGISTRY = load_registry()
+
+
+def _make(key: str) -> _DynamicValidator:
+    country, id_name = key.split(".", 1)
+    entry = dict(_REGISTRY[country][id_name])
+    entry["_entry_key"] = key
+    return _DynamicValidator(entry)
 
 
 # ---------------------------------------------------------------------------
@@ -52,9 +60,9 @@ from hyperi_pylib.logger.scrub.pii._base import _Validator
         IbanValidator(),
         EmailValidator(),
         PhoneValidator(),
-        AbnValidator(),
-        TfnValidator(),
-        MedicareValidator(),
+        _make("au.abn"),
+        _make("au.tfn"),
+        _make("au.medicare"),
     ],
 )
 class TestEmptyInputs:
@@ -92,7 +100,7 @@ class TestMultipleMatches:
         assert out.count("[CREDIT_CARD_REDACTED]") == 2
 
     def test_two_abns_with_keyword_both_redacted(self):
-        v = AbnValidator()
+        v = _make("au.abn")
         # Both have "abn" keyword nearby
         out = v.scrub("Company A ABN: 53 004 085 616, Company B abn=53004085616")
         assert "53 004 085 616" not in out
@@ -117,7 +125,7 @@ class TestNonAsciiContent:
         assert "から連絡" in out
 
     def test_abn_with_diacritic_company_name(self):
-        v = AbnValidator()
+        v = _make("au.abn")
         # German umlaut in surrounding text doesn't break detection
         text = "Société Générale ABN: 53 004 085 616 paid"
         out = v.scrub(text)
@@ -154,13 +162,13 @@ class TestNonAsciiContent:
 
 class TestContextBoundary:
     def test_keyword_within_proximity_redacts(self):
-        v = AbnValidator()
+        v = _make("au.abn")
         # Keyword ~10 chars before — well within default 30
         out = v.scrub("ABN: x x x 53 004 085 616")
         assert "53 004 085 616" not in out
 
     def test_keyword_beyond_proximity_does_not_redact(self):
-        v = AbnValidator()
+        v = _make("au.abn")
         # Keyword 60+ chars before the candidate — beyond default 30
         text = "ABN section header: " + ("x " * 30) + "53 004 085 616"
         out = v.scrub(text)
@@ -171,7 +179,7 @@ class TestContextBoundary:
         # (we look BEFORE the candidate, not at the candidate). With
         # the current implementation this case is moot for ABN (digits
         # don't contain "abn") but tests the principle.
-        v = AbnValidator()
+        v = _make("au.abn")
         text = "Random text 53 004 085 616 abn"  # keyword AFTER candidate
         out = v.scrub(text)
         assert "53 004 085 616" in out, f"unexpectedly redacted: {out!r}"
@@ -265,9 +273,9 @@ class TestFailSafe:
         (EmailValidator(), "alice@example.com bob@example.com"),
         (CreditCardValidator(), "4111-1111-1111-1111 and 5555555555554444"),
         (IbanValidator(), "GB82WEST12345698765432"),
-        (AbnValidator(), "ABN: 53 004 085 616"),
-        (TfnValidator(), "TFN: 123 456 782"),
-        (MedicareValidator(), "Medicare 2123 45670 1"),
+        (_make("au.abn"), "ABN: 53 004 085 616"),
+        (_make("au.tfn"), "TFN: 123 456 782"),
+        (_make("au.medicare"), "Medicare 2123 45670 1"),
     ],
 )
 class TestIdempotency:
@@ -297,9 +305,9 @@ class TestLayeredCompositionPii:
             IbanValidator(),
             EmailValidator(),
             PhoneValidator(),
-            AbnValidator(),
-            TfnValidator(),
-            MedicareValidator(),
+            _make("au.abn"),
+            _make("au.tfn"),
+            _make("au.medicare"),
         ]
         chain = LayeredScrubber(config=ScrubConfig(), layers=layers)
         text = (

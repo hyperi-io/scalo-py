@@ -235,8 +235,11 @@ class TestScrubConfigDefaults:
         assert v.iban is True
         assert v.email is True
         assert v.phone is True
-        assert v.abn is True
-        assert v.tfn is True
+
+    def test_national_ids_default_au_only(self):
+        # AU ships pre-curated; other countries are seeded stubs.
+        v = ScrubConfig().pii.validators
+        assert v.national_ids.enabled == ["au"]
 
     def test_log_levels_defaults(self):
         lev = ScrubConfig().log_levels

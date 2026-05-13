@@ -1,0 +1,2031 @@
+# National-ID validator registry — seeded from python-stdnum.
+# Source of truth for L3 PII detection metadata across both
+# pylib and rustlib (see hyperi-ai/standards/specs/log-scrub-spec.md).
+#
+# To regenerate after a python-stdnum release:
+#   python tools/seed_national_ids_from_stdnum.py \
+#       --output standards/patterns/national_ids.toml \
+#       --update-only
+#
+# Hand-curated fields (enabled, context_required, keywords,
+# detection_regex) survive re-seeding.
+
+[ad.nrt]
+stdnum_module = "stdnum.ad.nrt"
+country_code = "AD"
+id_description = "NRT (Número de Registre Tributari, Andorra tax number)."
+redaction_label = "AD_NRT"
+enabled = false
+context_required = true
+keywords = []
+detection_regex = ""
+
+[al.nipt]
+stdnum_module = "stdnum.al.nipt"
+country_code = "AL"
+id_description = "NIPT, NUIS (Numri i Identifikimit për Personin e Tatueshëm, Albanian tax number)."
+redaction_label = "AL_NIPT"
+enabled = false
+context_required = true
+keywords = []
+detection_regex = ""
+
+[ar.cbu]
+stdnum_module = "stdnum.ar.cbu"
+country_code = "AR"
+id_description = "CBU (Clave Bancaria Uniforme, Argentine bank account number)."
+redaction_label = "AR_CBU"
+enabled = false
+context_required = true
+keywords = []
+detection_regex = ""
+
+[ar.cuit]
+stdnum_module = "stdnum.ar.cuit"
+country_code = "AR"
+id_description = "CUIT (Código Único de Identificación Tributaria, Argentinian tax number)."
+redaction_label = "AR_CUIT"
+enabled = false
+context_required = true
+keywords = []
+detection_regex = ""
+
+[ar.dni]
+stdnum_module = "stdnum.ar.dni"
+country_code = "AR"
+id_description = "DNI (Documento Nacional de Identidad, Argentinian national identity nr.)."
+redaction_label = "AR_DNI"
+enabled = false
+context_required = true
+keywords = []
+detection_regex = ""
+
+[at.businessid]
+stdnum_module = "stdnum.at.businessid"
+country_code = "AT"
+id_description = "Austrian Company Register Numbers."
+redaction_label = "AT_BUSINESSID"
+enabled = false
+context_required = true
+keywords = []
+detection_regex = ""
+
+[at.postleitzahl]
+stdnum_module = "stdnum.at.postleitzahl"
+country_code = "AT"
+id_description = "Postleitzahl (Austrian postal code)."
+redaction_label = "AT_POSTLEITZAHL"
+enabled = false
+context_required = true
+keywords = []
+detection_regex = ""
+
+[at.tin]
+stdnum_module = "stdnum.at.tin"
+country_code = "AT"
+id_description = "Abgabenkontonummer (Austrian tax identification number)."
+redaction_label = "AT_TIN"
+enabled = false
+context_required = true
+keywords = []
+detection_regex = ""
+
+[at.uid]
+stdnum_module = "stdnum.at.uid"
+country_code = "AT"
+id_description = "UID (Umsatzsteuer-Identifikationsnummer, Austrian VAT number)."
+redaction_label = "AT_UID"
+enabled = false
+context_required = true
+keywords = []
+detection_regex = ""
+
+[at.vnr]
+stdnum_module = "stdnum.at.vnr"
+country_code = "AT"
+id_description = "VNR, SVNR, VSNR (Versicherungsnummer, Austrian social security number)."
+redaction_label = "AT_VNR"
+enabled = false
+context_required = true
+keywords = []
+detection_regex = ""
+
+[au.abn]
+stdnum_module = "stdnum.au.abn"
+country_code = "AU"
+id_description = "ABN (Australian Business Number)."
+redaction_label = "AU_ABN"
+enabled = true
+context_required = true
+keywords = ["abn", "australian business number"]
+detection_regex = "\\b\\d{2}[ ]?\\d{3}[ ]?\\d{3}[ ]?\\d{3}\\b"
+
+[au.acn]
+stdnum_module = "stdnum.au.acn"
+country_code = "AU"
+id_description = "ACN (Australian Company Number)."
+redaction_label = "AU_ACN"
+enabled = true
+context_required = true
+keywords = ["acn", "australian company number"]
+detection_regex = "\\b\\d{3}[ ]?\\d{3}[ ]?\\d{3}\\b"
+
+[au.medicare]
+local_validator = "hyperi_pylib.logger.scrub.pii.au_medicare:_is_valid_medicare"
+country_code = "AU"
+id_description = "Medicare card number (AU)"
+redaction_label = "AU_MEDICARE"
+enabled = true
+context_required = true
+keywords = ["medicare", "medicare card", "medicare number"]
+detection_regex = "\\b\\d{4}[ ]?\\d{5}[ ]?\\d(?:[ ]?\\d)?\\b"
+
+[au.tfn]
+stdnum_module = "stdnum.au.tfn"
+country_code = "AU"
+id_description = "TFN (Australian Tax File Number)."
+redaction_label = "AU_TFN"
+enabled = true
+context_required = true
+keywords = ["tfn", "tax file number"]
+detection_regex = "\\b\\d{3}[ ]?\\d{3}[ ]?\\d{2,3}\\b"
+
+[az.voen]
+stdnum_module = "stdnum.az.voen"
+country_code = "AZ"
+id_description = "VÖEN (Vergi ödəyicisinin eyniləşdirmə nömrəsi, Azerbaijan tax number)."
+redaction_label = "AZ_VOEN"
+enabled = false
+context_required = true
+keywords = []
+detection_regex = ""
+
+[be.bis]
+stdnum_module = "stdnum.be.bis"
+country_code = "BE"
+id_description = "BIS (Belgian BIS number)."
+redaction_label = "BE_BIS"
+enabled = false
+context_required = true
+keywords = []
+detection_regex = ""
+
+[be.eid]
+stdnum_module = "stdnum.be.eid"
+country_code = "BE"
+id_description = "eID Number (Belgian electronic Identity Card Number)."
+redaction_label = "BE_EID"
+enabled = false
+context_required = true
+keywords = []
+detection_regex = ""
+
+[be.iban]
+stdnum_module = "stdnum.be.iban"
+country_code = "BE"
+id_description = "Belgian IBAN (International Bank Account Number)."
+redaction_label = "BE_IBAN"
+enabled = false
+context_required = true
+keywords = []
+detection_regex = ""
+
+[be.nn]
+stdnum_module = "stdnum.be.nn"
+country_code = "BE"
+id_description = "NN, NISS, RRN (Belgian national number)."
+redaction_label = "BE_NN"
+enabled = false
+context_required = true
+keywords = []
+detection_regex = ""
+
+[be.ogm_vcs]
+stdnum_module = "stdnum.be.ogm_vcs"
+country_code = "BE"
+id_description = "Belgian OGM-VCS."
+redaction_label = "BE_OGM_VCS"
+enabled = false
+context_required = true
+keywords = []
+detection_regex = ""
+
+[be.ssn]
+stdnum_module = "stdnum.be.ssn"
+country_code = "BE"
+id_description = "SSN, INSZ, NISS (Belgian social security number)."
+redaction_label = "BE_SSN"
+enabled = false
+context_required = true
+keywords = []
+detection_regex = ""
+
+[be.vat]
+stdnum_module = "stdnum.be.vat"
+country_code = "BE"
+id_description = "BTW, TVA, NWSt, ondernemingsnummer (Belgian enterprise number)."
+redaction_label = "BE_VAT"
+enabled = false
+context_required = true
+keywords = []
+detection_regex = ""
+
+[bg.egn]
+stdnum_module = "stdnum.bg.egn"
+country_code = "BG"
+id_description = "EGN (ЕГН, Единен граждански номер, Bulgarian personal identity codes)."
+redaction_label = "BG_EGN"
+enabled = false
+context_required = true
+keywords = []
+detection_regex = ""
+
+[bg.pnf]
+stdnum_module = "stdnum.bg.pnf"
+country_code = "BG"
+id_description = "PNF (ЛНЧ, Личен номер на чужденец, Bulgarian number of a foreigner)."
+redaction_label = "BG_PNF"
+enabled = false
+context_required = true
+keywords = []
+detection_regex = ""
+
+[bg.vat]
+stdnum_module = "stdnum.bg.vat"
+country_code = "BG"
+id_description = "VAT (Идентификационен номер по ДДС, Bulgarian VAT number)."
+redaction_label = "BG_VAT"
+enabled = false
+context_required = true
+keywords = []
+detection_regex = ""
+
+[br.cnpj]
+stdnum_module = "stdnum.br.cnpj"
+country_code = "BR"
+id_description = "CNPJ (Cadastro Nacional da Pessoa Jurídica, Brazilian company identifier)."
+redaction_label = "BR_CNPJ"
+enabled = false
+context_required = true
+keywords = []
+detection_regex = ""
+
+[br.cpf]
+stdnum_module = "stdnum.br.cpf"
+country_code = "BR"
+id_description = "CPF (Cadastro de Pessoas Físicas, Brazilian national identifier)."
+redaction_label = "BR_CPF"
+enabled = false
+context_required = true
+keywords = []
+detection_regex = ""
+
+[by.unp]
+stdnum_module = "stdnum.by.unp"
+country_code = "BY"
+id_description = "УНП, UNP (Учетный номер плательщика, the Belarus VAT number)."
+redaction_label = "BY_UNP"
+enabled = false
+context_required = true
+keywords = []
+detection_regex = ""
+
+[ca.bc_phn]
+stdnum_module = "stdnum.ca.bc_phn"
+country_code = "CA"
+id_description = "BC PHN (British Columbia Personal Health Number)."
+redaction_label = "CA_BC_PHN"
+enabled = false
+context_required = true
+keywords = []
+detection_regex = ""
+
+[ca.bn]
+stdnum_module = "stdnum.ca.bn"
+country_code = "CA"
+id_description = "BN (Canadian Business Number)."
+redaction_label = "CA_BN"
+enabled = false
+context_required = true
+keywords = []
+detection_regex = ""
+
+[ca.sin]
+stdnum_module = "stdnum.ca.sin"
+country_code = "CA"
+id_description = "SIN (Canadian Social Insurance Number)."
+redaction_label = "CA_SIN"
+enabled = false
+context_required = true
+keywords = []
+detection_regex = ""
+
+[ch.esr]
+stdnum_module = "stdnum.ch.esr"
+country_code = "CH"
+id_description = "ESR, ISR, QR-reference (reference number on Swiss payment slips)."
+redaction_label = "CH_ESR"
+enabled = false
+context_required = true
+keywords = []
+detection_regex = ""
+
+[ch.ssn]
+stdnum_module = "stdnum.ch.ssn"
+country_code = "CH"
+id_description = "Swiss social security number (\"Sozialversicherungsnummer\")."
+redaction_label = "CH_SSN"
+enabled = false
+context_required = true
+keywords = []
+detection_regex = ""
+
+[ch.uid]
+stdnum_module = "stdnum.ch.uid"
+country_code = "CH"
+id_description = "UID (Unternehmens-Identifikationsnummer, Swiss business identifier)."
+redaction_label = "CH_UID"
+enabled = false
+context_required = true
+keywords = []
+detection_regex = ""
+
+[ch.vat]
+stdnum_module = "stdnum.ch.vat"
+country_code = "CH"
+id_description = "VAT, MWST, TVA, IVA, TPV (Mehrwertsteuernummer, the Swiss VAT number)."
+redaction_label = "CH_VAT"
+enabled = false
+context_required = true
+keywords = []
+detection_regex = ""
+
+[cl.rut]
+stdnum_module = "stdnum.cl.rut"
+country_code = "CL"
+id_description = "RUT (Rol Único Tributario, Chilean national tax number)."
+redaction_label = "CL_RUT"
+enabled = false
+context_required = true
+keywords = []
+detection_regex = ""
+
+[cn.ric]
+stdnum_module = "stdnum.cn.ric"
+country_code = "CN"
+id_description = "RIC No. (Chinese Resident Identity Card Number)."
+redaction_label = "CN_RIC"
+enabled = false
+context_required = true
+keywords = []
+detection_regex = ""
+
+[cn.uscc]
+stdnum_module = "stdnum.cn.uscc"
+country_code = "CN"
+id_description = "USCC (Unified Social Credit Code, 统一社会信用代码, China tax number)."
+redaction_label = "CN_USCC"
+enabled = false
+context_required = true
+keywords = []
+detection_regex = ""
+
+[co.nit]
+stdnum_module = "stdnum.co.nit"
+country_code = "CO"
+id_description = "NIT (Número De Identificación Tributaria, Colombian identity code)."
+redaction_label = "CO_NIT"
+enabled = false
+context_required = true
+keywords = []
+detection_regex = ""
+
+[cr.cpf]
+stdnum_module = "stdnum.cr.cpf"
+country_code = "CR"
+id_description = "CPF (Cédula de Persona Física, Costa Rica physical person ID number)."
+redaction_label = "CR_CPF"
+enabled = false
+context_required = true
+keywords = []
+detection_regex = ""
+
+[cr.cpj]
+stdnum_module = "stdnum.cr.cpj"
+country_code = "CR"
+id_description = "CPJ (Cédula de Persona Jurídica, Costa Rica tax number)."
+redaction_label = "CR_CPJ"
+enabled = false
+context_required = true
+keywords = []
+detection_regex = ""
+
+[cr.cr]
+stdnum_module = "stdnum.cr.cr"
+country_code = "CR"
+id_description = "CR (Cédula de Residencia, Costa Rica foreigners ID number)."
+redaction_label = "CR_CR"
+enabled = false
+context_required = true
+keywords = []
+detection_regex = ""
+
+[cu.ni]
+stdnum_module = "stdnum.cu.ni"
+country_code = "CU"
+id_description = "NI (Número de identidad, Cuban identity card numbers)."
+redaction_label = "CU_NI"
+enabled = false
+context_required = true
+keywords = []
+detection_regex = ""
+
+[cy.vat]
+stdnum_module = "stdnum.cy.vat"
+country_code = "CY"
+id_description = "Αριθμός Εγγραφής Φ.Π.Α. (Cypriot VAT number)."
+redaction_label = "CY_VAT"
+enabled = false
+context_required = true
+keywords = []
+detection_regex = ""
+
+[cz.bankaccount]
+stdnum_module = "stdnum.cz.bankaccount"
+country_code = "CZ"
+id_description = "Czech bank account number."
+redaction_label = "CZ_BANKACCOUNT"
+enabled = false
+context_required = true
+keywords = []
+detection_regex = ""
+
+[cz.dic]
+stdnum_module = "stdnum.cz.dic"
+country_code = "CZ"
+id_description = "DIČ (Daňové identifikační číslo, Czech VAT number)."
+redaction_label = "CZ_DIC"
+enabled = false
+context_required = true
+keywords = []
+detection_regex = ""
+
+[cz.rc]
+stdnum_module = "stdnum.cz.rc"
+country_code = "CZ"
+id_description = "RČ (Rodné číslo, the Czech birth number)."
+redaction_label = "CZ_RC"
+enabled = false
+context_required = true
+keywords = []
+detection_regex = ""
+
+[de.handelsregisternummer]
+stdnum_module = "stdnum.de.handelsregisternummer"
+country_code = "DE"
+id_description = "Handelsregisternummer (German company register number)."
+redaction_label = "DE_HANDELSREGISTERNUMMER"
+enabled = false
+context_required = true
+keywords = []
+detection_regex = ""
+
+[de.idnr]
+stdnum_module = "stdnum.de.idnr"
+country_code = "DE"
+id_description = "IdNr (Steuerliche Identifikationsnummer, German personal tax number)."
+redaction_label = "DE_IDNR"
+enabled = false
+context_required = true
+keywords = []
+detection_regex = ""
+
+[de.leitweg]
+stdnum_module = "stdnum.de.leitweg"
+country_code = "DE"
+id_description = "Leitweg-ID, a buyer reference or routing identifier for electronic invoices."
+redaction_label = "DE_LEITWEG"
+enabled = false
+context_required = true
+keywords = []
+detection_regex = ""
+
+[de.stnr]
+stdnum_module = "stdnum.de.stnr"
+country_code = "DE"
+id_description = "St.-Nr. (Steuernummer, German tax number)."
+redaction_label = "DE_STNR"
+enabled = false
+context_required = true
+keywords = []
+detection_regex = ""
+
+[de.vat]
+stdnum_module = "stdnum.de.vat"
+country_code = "DE"
+id_description = "Ust ID Nr. (Umsatzsteur Identifikationnummer, German VAT number)."
+redaction_label = "DE_VAT"
+enabled = false
+context_required = true
+keywords = []
+detection_regex = ""
+
+[de.wkn]
+stdnum_module = "stdnum.de.wkn"
+country_code = "DE"
+id_description = "Wertpapierkennnummer (German securities identification code)."
+redaction_label = "DE_WKN"
+enabled = false
+context_required = true
+keywords = []
+detection_regex = ""
+
+[dk.cpr]
+stdnum_module = "stdnum.dk.cpr"
+country_code = "DK"
+id_description = "CPR (personnummer, the Danish citizen number)."
+redaction_label = "DK_CPR"
+enabled = false
+context_required = true
+keywords = []
+detection_regex = ""
+
+[dk.cvr]
+stdnum_module = "stdnum.dk.cvr"
+country_code = "DK"
+id_description = "CVR (Momsregistreringsnummer, Danish VAT number)."
+redaction_label = "DK_CVR"
+enabled = false
+context_required = true
+keywords = []
+detection_regex = ""
+
+[do.cedula]
+stdnum_module = "stdnum.do.cedula"
+country_code = "DO"
+id_description = "Cedula (Dominican Republic national identification number)."
+redaction_label = "DO_CEDULA"
+enabled = false
+context_required = true
+keywords = []
+detection_regex = ""
+
+[do.ncf]
+stdnum_module = "stdnum.do.ncf"
+country_code = "DO"
+id_description = "NCF (Números de Comprobante Fiscal, Dominican Republic receipt number)."
+redaction_label = "DO_NCF"
+enabled = false
+context_required = true
+keywords = []
+detection_regex = ""
+
+[do.rnc]
+stdnum_module = "stdnum.do.rnc"
+country_code = "DO"
+id_description = "RNC (Registro Nacional del Contribuyente, Dominican Republic tax number)."
+redaction_label = "DO_RNC"
+enabled = false
+context_required = true
+keywords = []
+detection_regex = ""
+
+[dz.nif]
+stdnum_module = "stdnum.dz.nif"
+country_code = "DZ"
+id_description = "NIF, sometimes N.I.F. (Numéro d'Identification Fiscale, Algeria tax number)."
+redaction_label = "DZ_NIF"
+enabled = false
+context_required = true
+keywords = []
+detection_regex = ""
+
+[ec.ci]
+stdnum_module = "stdnum.ec.ci"
+country_code = "EC"
+id_description = "CI (Cédula de identidad, Ecuadorian personal identity code)."
+redaction_label = "EC_CI"
+enabled = false
+context_required = true
+keywords = []
+detection_regex = ""
+
+[ec.ruc]
+stdnum_module = "stdnum.ec.ruc"
+country_code = "EC"
+id_description = "RUC (Registro Único de Contribuyentes, Ecuadorian company tax number)."
+redaction_label = "EC_RUC"
+enabled = false
+context_required = true
+keywords = []
+detection_regex = ""
+
+[ee.ik]
+stdnum_module = "stdnum.ee.ik"
+country_code = "EE"
+id_description = "Isikukood (Estonian Personal ID number)."
+redaction_label = "EE_IK"
+enabled = false
+context_required = true
+keywords = []
+detection_regex = ""
+
+[ee.kmkr]
+stdnum_module = "stdnum.ee.kmkr"
+country_code = "EE"
+id_description = "KMKR (Käibemaksukohuslase, Estonian VAT number)."
+redaction_label = "EE_KMKR"
+enabled = false
+context_required = true
+keywords = []
+detection_regex = ""
+
+[ee.registrikood]
+stdnum_module = "stdnum.ee.registrikood"
+country_code = "EE"
+id_description = "Registrikood (Estonian organisation registration code)."
+redaction_label = "EE_REGISTRIKOOD"
+enabled = false
+context_required = true
+keywords = []
+detection_regex = ""
+
+[eg.tn]
+stdnum_module = "stdnum.eg.tn"
+country_code = "EG"
+id_description = "Tax Registration Number (الرقم الضريبي, Egypt tax number)."
+redaction_label = "EG_TN"
+enabled = false
+context_required = true
+keywords = []
+detection_regex = ""
+
+[es.cae]
+stdnum_module = "stdnum.es.cae"
+country_code = "ES"
+id_description = "CAE (Código de Actividad y Establecimiento, Spanish activity establishment code)."
+redaction_label = "ES_CAE"
+enabled = false
+context_required = true
+keywords = []
+detection_regex = ""
+
+[es.ccc]
+stdnum_module = "stdnum.es.ccc"
+country_code = "ES"
+id_description = "CCC (Código Cuenta Corriente, Spanish Bank Account Code)"
+redaction_label = "ES_CCC"
+enabled = false
+context_required = true
+keywords = []
+detection_regex = ""
+
+[es.cif]
+stdnum_module = "stdnum.es.cif"
+country_code = "ES"
+id_description = "CIF (Código de Identificación Fiscal, Spanish company tax number)."
+redaction_label = "ES_CIF"
+enabled = false
+context_required = true
+keywords = []
+detection_regex = ""
+
+[es.cups]
+stdnum_module = "stdnum.es.cups"
+country_code = "ES"
+id_description = "CUPS (Código Unificado de Punto de Suministro, Spanish meter point number)."
+redaction_label = "ES_CUPS"
+enabled = false
+context_required = true
+keywords = []
+detection_regex = ""
+
+[es.dni]
+stdnum_module = "stdnum.es.dni"
+country_code = "ES"
+id_description = "DNI (Documento Nacional de Identidad, Spanish personal identity codes)."
+redaction_label = "ES_DNI"
+enabled = false
+context_required = true
+keywords = []
+detection_regex = ""
+
+[es.iban]
+stdnum_module = "stdnum.es.iban"
+country_code = "ES"
+id_description = "Spanish IBAN (International Bank Account Number)."
+redaction_label = "ES_IBAN"
+enabled = false
+context_required = true
+keywords = []
+detection_regex = ""
+
+[es.nie]
+stdnum_module = "stdnum.es.nie"
+country_code = "ES"
+id_description = "NIE (Número de Identificación de Extranjero, Spanish foreigner number)."
+redaction_label = "ES_NIE"
+enabled = false
+context_required = true
+keywords = []
+detection_regex = ""
+
+[es.nif]
+stdnum_module = "stdnum.es.nif"
+country_code = "ES"
+id_description = "NIF (Número de Identificación Fiscal, Spanish VAT number)."
+redaction_label = "ES_NIF"
+enabled = false
+context_required = true
+keywords = []
+detection_regex = ""
+
+[es.postal_code]
+stdnum_module = "stdnum.es.postal_code"
+country_code = "ES"
+id_description = "Postcode (the Spanish postal code)."
+redaction_label = "ES_POSTAL_CODE"
+enabled = false
+context_required = true
+keywords = []
+detection_regex = ""
+
+[es.referenciacatastral]
+stdnum_module = "stdnum.es.referenciacatastral"
+country_code = "ES"
+id_description = "Referencia Catastral (Spanish real estate property id)"
+redaction_label = "ES_REFERENCIACATASTRAL"
+enabled = false
+context_required = true
+keywords = []
+detection_regex = ""
+
+[eu.at_02]
+stdnum_module = "stdnum.eu.at_02"
+country_code = "EU"
+id_description = "SEPA Identifier of the Creditor (AT-02)."
+redaction_label = "EU_AT_02"
+enabled = false
+context_required = true
+keywords = []
+detection_regex = ""
+
+[eu.banknote]
+stdnum_module = "stdnum.eu.banknote"
+country_code = "EU"
+id_description = "Euro banknote serial numbers."
+redaction_label = "EU_BANKNOTE"
+enabled = false
+context_required = true
+keywords = []
+detection_regex = ""
+
+[eu.ecnumber]
+stdnum_module = "stdnum.eu.ecnumber"
+country_code = "EU"
+id_description = "EC Number (European Community number)."
+redaction_label = "EU_ECNUMBER"
+enabled = false
+context_required = true
+keywords = []
+detection_regex = ""
+
+[eu.eic]
+stdnum_module = "stdnum.eu.eic"
+country_code = "EU"
+id_description = "EIC (European Energy Identification Code)."
+redaction_label = "EU_EIC"
+enabled = false
+context_required = true
+keywords = []
+detection_regex = ""
+
+[eu.excise]
+stdnum_module = "stdnum.eu.excise"
+country_code = "EU"
+id_description = "European Excise Number"
+redaction_label = "EU_EXCISE"
+enabled = false
+context_required = true
+keywords = []
+detection_regex = ""
+
+[eu.nace]
+stdnum_module = "stdnum.eu.nace"
+country_code = "EU"
+id_description = "NACE (classification for businesses in the European Union)."
+redaction_label = "EU_NACE"
+enabled = false
+context_required = true
+keywords = []
+detection_regex = ""
+
+[eu.oss]
+stdnum_module = "stdnum.eu.oss"
+country_code = "EU"
+id_description = "OSS (European VAT on e-Commerce - One Stop Shop)."
+redaction_label = "EU_OSS"
+enabled = false
+context_required = true
+keywords = []
+detection_regex = ""
+
+[eu.vat]
+stdnum_module = "stdnum.eu.vat"
+country_code = "EU"
+id_description = "VAT (European Union VAT number)."
+redaction_label = "EU_VAT"
+enabled = false
+context_required = true
+keywords = []
+detection_regex = ""
+
+[fi.alv]
+stdnum_module = "stdnum.fi.alv"
+country_code = "FI"
+id_description = "ALV nro (Arvonlisäveronumero, Finnish VAT number)."
+redaction_label = "FI_ALV"
+enabled = false
+context_required = true
+keywords = []
+detection_regex = ""
+
+[fi.associationid]
+stdnum_module = "stdnum.fi.associationid"
+country_code = "FI"
+id_description = "Finnish Association Identifier."
+redaction_label = "FI_ASSOCIATIONID"
+enabled = false
+context_required = true
+keywords = []
+detection_regex = ""
+
+[fi.hetu]
+stdnum_module = "stdnum.fi.hetu"
+country_code = "FI"
+id_description = "HETU (Henkilötunnus, Finnish personal identity code)."
+redaction_label = "FI_HETU"
+enabled = false
+context_required = true
+keywords = []
+detection_regex = ""
+
+[fi.veronumero]
+stdnum_module = "stdnum.fi.veronumero"
+country_code = "FI"
+id_description = "Veronumero (Finnish individual tax number)."
+redaction_label = "FI_VERONUMERO"
+enabled = false
+context_required = true
+keywords = []
+detection_regex = ""
+
+[fi.ytunnus]
+stdnum_module = "stdnum.fi.ytunnus"
+country_code = "FI"
+id_description = "Y-tunnus (Finnish business identifier)."
+redaction_label = "FI_YTUNNUS"
+enabled = false
+context_required = true
+keywords = []
+detection_regex = ""
+
+[fo.vn]
+stdnum_module = "stdnum.fo.vn"
+country_code = "FO"
+id_description = "V-number (Vinnutal, Faroe Islands tax number)."
+redaction_label = "FO_VN"
+enabled = false
+context_required = true
+keywords = []
+detection_regex = ""
+
+[fr.accise]
+stdnum_module = "stdnum.fr.accise"
+country_code = "FR"
+id_description = "n° d'accise (French number to identify taxpayers of excise taxes)."
+redaction_label = "FR_ACCISE"
+enabled = false
+context_required = true
+keywords = []
+detection_regex = ""
+
+[fr.nif]
+stdnum_module = "stdnum.fr.nif"
+country_code = "FR"
+id_description = "NIF (Numéro d'Immatriculation Fiscale, French tax identification number)."
+redaction_label = "FR_NIF"
+enabled = false
+context_required = true
+keywords = []
+detection_regex = ""
+
+[fr.nir]
+stdnum_module = "stdnum.fr.nir"
+country_code = "FR"
+id_description = "NIR (French personal identification number)."
+redaction_label = "FR_NIR"
+enabled = false
+context_required = true
+keywords = []
+detection_regex = ""
+
+[fr.rcs]
+stdnum_module = "stdnum.fr.rcs"
+country_code = "FR"
+id_description = "RCS (French trade registration number for commercial companies)."
+redaction_label = "FR_RCS"
+enabled = false
+context_required = true
+keywords = []
+detection_regex = ""
+
+[fr.siren]
+stdnum_module = "stdnum.fr.siren"
+country_code = "FR"
+id_description = "SIREN (a French company identification number)."
+redaction_label = "FR_SIREN"
+enabled = false
+context_required = true
+keywords = []
+detection_regex = ""
+
+[fr.siret]
+stdnum_module = "stdnum.fr.siret"
+country_code = "FR"
+id_description = "SIRET (a French company establishment identification number)."
+redaction_label = "FR_SIRET"
+enabled = false
+context_required = true
+keywords = []
+detection_regex = ""
+
+[fr.tva]
+stdnum_module = "stdnum.fr.tva"
+country_code = "FR"
+id_description = "n° TVA (taxe sur la valeur ajoutée, French VAT number)."
+redaction_label = "FR_TVA"
+enabled = false
+context_required = true
+keywords = []
+detection_regex = ""
+
+[gb.nhs]
+stdnum_module = "stdnum.gb.nhs"
+country_code = "GB"
+id_description = "NHS (United Kingdom National Health Service patient identifier)."
+redaction_label = "GB_NHS"
+enabled = false
+context_required = true
+keywords = []
+detection_regex = ""
+
+[gb.sedol]
+stdnum_module = "stdnum.gb.sedol"
+country_code = "GB"
+id_description = "SEDOL number (Stock Exchange Daily Official List number)."
+redaction_label = "GB_SEDOL"
+enabled = false
+context_required = true
+keywords = []
+detection_regex = ""
+
+[gb.upn]
+stdnum_module = "stdnum.gb.upn"
+country_code = "GB"
+id_description = "UPN (English Unique Pupil Number)."
+redaction_label = "GB_UPN"
+enabled = false
+context_required = true
+keywords = []
+detection_regex = ""
+
+[gb.utr]
+stdnum_module = "stdnum.gb.utr"
+country_code = "GB"
+id_description = "UTR (United Kingdom Unique Taxpayer Reference)."
+redaction_label = "GB_UTR"
+enabled = false
+context_required = true
+keywords = []
+detection_regex = ""
+
+[gb.vat]
+stdnum_module = "stdnum.gb.vat"
+country_code = "GB"
+id_description = "VAT (United Kingdom (and Isle of Man) VAT registration number)."
+redaction_label = "GB_VAT"
+enabled = false
+context_required = true
+keywords = []
+detection_regex = ""
+
+[gh.tin]
+stdnum_module = "stdnum.gh.tin"
+country_code = "GH"
+id_description = "TIN (Taxpayer Identification Number, Ghana tax number)."
+redaction_label = "GH_TIN"
+enabled = false
+context_required = true
+keywords = []
+detection_regex = ""
+
+[gn.nifp]
+stdnum_module = "stdnum.gn.nifp"
+country_code = "GN"
+id_description = "NIFp (Numéro d'Identification Fiscale Permanent, Guinea tax number)."
+redaction_label = "GN_NIFP"
+enabled = false
+context_required = true
+keywords = []
+detection_regex = ""
+
+[gr.amka]
+stdnum_module = "stdnum.gr.amka"
+country_code = "GR"
+id_description = "AMKA (Αριθμός Μητρώου Κοινωνικής Ασφάλισης, Greek social security number)."
+redaction_label = "GR_AMKA"
+enabled = false
+context_required = true
+keywords = []
+detection_regex = ""
+
+[gr.vat]
+stdnum_module = "stdnum.gr.vat"
+country_code = "GR"
+id_description = "FPA, ΦΠΑ, ΑΦΜ (Αριθμός Φορολογικού Μητρώου, the Greek VAT number)."
+redaction_label = "GR_VAT"
+enabled = false
+context_required = true
+keywords = []
+detection_regex = ""
+
+[gt.nit]
+stdnum_module = "stdnum.gt.nit"
+country_code = "GT"
+id_description = "NIT (Número de Identificación Tributaria, Guatemala tax number)."
+redaction_label = "GT_NIT"
+enabled = false
+context_required = true
+keywords = []
+detection_regex = ""
+
+[hr.oib]
+stdnum_module = "stdnum.hr.oib"
+country_code = "HR"
+id_description = "OIB (Osobni identifikacijski broj, Croatian identification number)."
+redaction_label = "HR_OIB"
+enabled = false
+context_required = true
+keywords = []
+detection_regex = ""
+
+[hu.anum]
+stdnum_module = "stdnum.hu.anum"
+country_code = "HU"
+id_description = "ANUM (Közösségi adószám, Hungarian VAT number)."
+redaction_label = "HU_ANUM"
+enabled = false
+context_required = true
+keywords = []
+detection_regex = ""
+
+[id.nik]
+stdnum_module = "stdnum.id.nik"
+country_code = "ID"
+id_description = "NIK (Nomor Induk Kependudukan, Indonesian identity number)."
+redaction_label = "ID_NIK"
+enabled = false
+context_required = true
+keywords = []
+detection_regex = ""
+
+[id.npwp]
+stdnum_module = "stdnum.id.npwp"
+country_code = "ID"
+id_description = "NPWP (Nomor Pokok Wajib Pajak, Indonesian VAT Number)."
+redaction_label = "ID_NPWP"
+enabled = false
+context_required = true
+keywords = []
+detection_regex = ""
+
+[ie.pps]
+stdnum_module = "stdnum.ie.pps"
+country_code = "IE"
+id_description = "PPS No (Personal Public Service Number, Irish personal number)."
+redaction_label = "IE_PPS"
+enabled = false
+context_required = true
+keywords = []
+detection_regex = ""
+
+[ie.vat]
+stdnum_module = "stdnum.ie.vat"
+country_code = "IE"
+id_description = "VAT (Irish tax reference number)."
+redaction_label = "IE_VAT"
+enabled = false
+context_required = true
+keywords = []
+detection_regex = ""
+
+[il.hp]
+stdnum_module = "stdnum.il.hp"
+country_code = "IL"
+id_description = "Company Number (מספר חברה, or short ח.פ. Israeli company number)."
+redaction_label = "IL_HP"
+enabled = false
+context_required = true
+keywords = []
+detection_regex = ""
+
+[il.idnr]
+stdnum_module = "stdnum.il.idnr"
+country_code = "IL"
+id_description = "Identity Number (Mispar Zehut, מספר זהות, Israeli identity number)."
+redaction_label = "IL_IDNR"
+enabled = false
+context_required = true
+keywords = []
+detection_regex = ""
+
+[it.aic]
+stdnum_module = "stdnum.it.aic"
+country_code = "IT"
+id_description = "AIC (Italian code for identification of drugs)."
+redaction_label = "IT_AIC"
+enabled = false
+context_required = true
+keywords = []
+detection_regex = ""
+
+[it.codicefiscale]
+stdnum_module = "stdnum.it.codicefiscale"
+country_code = "IT"
+id_description = "Codice Fiscale (Italian tax code for individuals)."
+redaction_label = "IT_CODICEFISCALE"
+enabled = false
+context_required = true
+keywords = []
+detection_regex = ""
+
+[it.iva]
+stdnum_module = "stdnum.it.iva"
+country_code = "IT"
+id_description = "Partita IVA (Italian VAT number)."
+redaction_label = "IT_IVA"
+enabled = false
+context_required = true
+keywords = []
+detection_regex = ""
+
+[jp.cn]
+stdnum_module = "stdnum.jp.cn"
+country_code = "JP"
+id_description = "CN (法人番号, hōjin bangō, Japanese Corporate Number)."
+redaction_label = "JP_CN"
+enabled = false
+context_required = true
+keywords = []
+detection_regex = ""
+
+[jp.in_]
+stdnum_module = "stdnum.jp.in_"
+country_code = "JP"
+id_description = "IN (個人番号, kojin bangō, Japanese Individual Number)."
+redaction_label = "JP_IN_"
+enabled = false
+context_required = true
+keywords = []
+detection_regex = ""
+
+[ke.pin]
+stdnum_module = "stdnum.ke.pin"
+country_code = "KE"
+id_description = "PIN (Personal Identification Number, Kenya tax number)."
+redaction_label = "KE_PIN"
+enabled = false
+context_required = true
+keywords = []
+detection_regex = ""
+
+[kr.brn]
+stdnum_module = "stdnum.kr.brn"
+country_code = "KR"
+id_description = "BRN (사업자 등록 번호, South Korea Business Registration Number)."
+redaction_label = "KR_BRN"
+enabled = false
+context_required = true
+keywords = []
+detection_regex = ""
+
+[kr.rrn]
+stdnum_module = "stdnum.kr.rrn"
+country_code = "KR"
+id_description = "RRN (South Korean resident registration number)."
+redaction_label = "KR_RRN"
+enabled = false
+context_required = true
+keywords = []
+detection_regex = ""
+
+[li.peid]
+stdnum_module = "stdnum.li.peid"
+country_code = "LI"
+id_description = "PEID (Liechtenstein tax code for individuals and entities)."
+redaction_label = "LI_PEID"
+enabled = false
+context_required = true
+keywords = []
+detection_regex = ""
+
+[lt.asmens]
+stdnum_module = "stdnum.lt.asmens"
+country_code = "LT"
+id_description = "Asmens kodas (Lithuanian, personal numbers)."
+redaction_label = "LT_ASMENS"
+enabled = false
+context_required = true
+keywords = []
+detection_regex = ""
+
+[lt.pvm]
+stdnum_module = "stdnum.lt.pvm"
+country_code = "LT"
+id_description = "PVM (Pridėtinės vertės mokestis mokėtojo kodas, Lithuanian VAT number)."
+redaction_label = "LT_PVM"
+enabled = false
+context_required = true
+keywords = []
+detection_regex = ""
+
+[lu.tva]
+stdnum_module = "stdnum.lu.tva"
+country_code = "LU"
+id_description = "TVA (taxe sur la valeur ajoutée, Luxembourgian VAT number)."
+redaction_label = "LU_TVA"
+enabled = false
+context_required = true
+keywords = []
+detection_regex = ""
+
+[lv.pvn]
+stdnum_module = "stdnum.lv.pvn"
+country_code = "LV"
+id_description = "PVN (Pievienotās vērtības nodokļa, Latvian VAT number)."
+redaction_label = "LV_PVN"
+enabled = false
+context_required = true
+keywords = []
+detection_regex = ""
+
+[ma.ice]
+stdnum_module = "stdnum.ma.ice"
+country_code = "MA"
+id_description = "ICE (Identifiant Commun de l’Entreprise, التعريف الموحد للمقاولة, Morocco tax number)."
+redaction_label = "MA_ICE"
+enabled = false
+context_required = true
+keywords = []
+detection_regex = ""
+
+[mc.tva]
+stdnum_module = "stdnum.mc.tva"
+country_code = "MC"
+id_description = "n° TVA (taxe sur la valeur ajoutée, Monacan VAT number)."
+redaction_label = "MC_TVA"
+enabled = false
+context_required = true
+keywords = []
+detection_regex = ""
+
+[md.idno]
+stdnum_module = "stdnum.md.idno"
+country_code = "MD"
+id_description = "IDNO (Moldavian company identification number)."
+redaction_label = "MD_IDNO"
+enabled = false
+context_required = true
+keywords = []
+detection_regex = ""
+
+[me.iban]
+stdnum_module = "stdnum.me.iban"
+country_code = "ME"
+id_description = "Montenegro IBAN (International Bank Account Number)."
+redaction_label = "ME_IBAN"
+enabled = false
+context_required = true
+keywords = []
+detection_regex = ""
+
+[me.pib]
+stdnum_module = "stdnum.me.pib"
+country_code = "ME"
+id_description = "PIB (Poreski Identifikacioni Broj, Montenegro tax number)."
+redaction_label = "ME_PIB"
+enabled = false
+context_required = true
+keywords = []
+detection_regex = ""
+
+[mk.edb]
+stdnum_module = "stdnum.mk.edb"
+country_code = "MK"
+id_description = "ЕДБ (Едниствен Даночен Број, North Macedonia tax number)."
+redaction_label = "MK_EDB"
+enabled = false
+context_required = true
+keywords = []
+detection_regex = ""
+
+[mt.vat]
+stdnum_module = "stdnum.mt.vat"
+country_code = "MT"
+id_description = "VAT (Maltese VAT number)."
+redaction_label = "MT_VAT"
+enabled = false
+context_required = true
+keywords = []
+detection_regex = ""
+
+[mu.nid]
+stdnum_module = "stdnum.mu.nid"
+country_code = "MU"
+id_description = "ID number (Mauritian national identifier)."
+redaction_label = "MU_NID"
+enabled = false
+context_required = true
+keywords = []
+detection_regex = ""
+
+[mx.curp]
+stdnum_module = "stdnum.mx.curp"
+country_code = "MX"
+id_description = "CURP (Clave Única de Registro de Población, Mexican personal ID)."
+redaction_label = "MX_CURP"
+enabled = false
+context_required = true
+keywords = []
+detection_regex = ""
+
+[mx.rfc]
+stdnum_module = "stdnum.mx.rfc"
+country_code = "MX"
+id_description = "RFC (Registro Federal de Contribuyentes, Mexican tax number)."
+redaction_label = "MX_RFC"
+enabled = false
+context_required = true
+keywords = []
+detection_regex = ""
+
+[my.nric]
+stdnum_module = "stdnum.my.nric"
+country_code = "MY"
+id_description = "NRIC No. (Malaysian National Registration Identity Card Number)."
+redaction_label = "MY_NRIC"
+enabled = false
+context_required = true
+keywords = []
+detection_regex = ""
+
+[mz.nuit]
+stdnum_module = "stdnum.mz.nuit"
+country_code = "MZ"
+id_description = "NUIT (Número Único de Identificação Tributaria, Mozambique tax number)."
+redaction_label = "MZ_NUIT"
+enabled = false
+context_required = true
+keywords = []
+detection_regex = ""
+
+[nl.brin]
+stdnum_module = "stdnum.nl.brin"
+country_code = "NL"
+id_description = "BRIN number (the Dutch school identification number)."
+redaction_label = "NL_BRIN"
+enabled = false
+context_required = true
+keywords = []
+detection_regex = ""
+
+[nl.bsn]
+stdnum_module = "stdnum.nl.bsn"
+country_code = "NL"
+id_description = "BSN (Burgerservicenummer, the Dutch citizen identification number)."
+redaction_label = "NL_BSN"
+enabled = false
+context_required = true
+keywords = []
+detection_regex = ""
+
+[nl.btw]
+stdnum_module = "stdnum.nl.btw"
+country_code = "NL"
+id_description = "Btw-identificatienummer (Omzetbelastingnummer, the Dutch VAT number)."
+redaction_label = "NL_BTW"
+enabled = false
+context_required = true
+keywords = []
+detection_regex = ""
+
+[nl.identiteitskaartnummer]
+stdnum_module = "stdnum.nl.identiteitskaartnummer"
+country_code = "NL"
+id_description = "Identiteitskaartnummer, Paspoortnummer (the Dutch passport number)."
+redaction_label = "NL_IDENTITEITSKAARTNUMMER"
+enabled = false
+context_required = true
+keywords = []
+detection_regex = ""
+
+[nl.onderwijsnummer]
+stdnum_module = "stdnum.nl.onderwijsnummer"
+country_code = "NL"
+id_description = "Onderwijsnummer (the Dutch student identification number)."
+redaction_label = "NL_ONDERWIJSNUMMER"
+enabled = false
+context_required = true
+keywords = []
+detection_regex = ""
+
+[nl.postcode]
+stdnum_module = "stdnum.nl.postcode"
+country_code = "NL"
+id_description = "Postcode (the Dutch postal code)."
+redaction_label = "NL_POSTCODE"
+enabled = false
+context_required = true
+keywords = []
+detection_regex = ""
+
+[no.fodselsnummer]
+stdnum_module = "stdnum.no.fodselsnummer"
+country_code = "NO"
+id_description = "Fødselsnummer (Norwegian birth number, the national identity number)."
+redaction_label = "NO_FODSELSNUMMER"
+enabled = false
+context_required = true
+keywords = []
+detection_regex = ""
+
+[no.iban]
+stdnum_module = "stdnum.no.iban"
+country_code = "NO"
+id_description = "Norwegian IBAN (International Bank Account Number)."
+redaction_label = "NO_IBAN"
+enabled = false
+context_required = true
+keywords = []
+detection_regex = ""
+
+[no.kontonr]
+stdnum_module = "stdnum.no.kontonr"
+country_code = "NO"
+id_description = "Konto nr. (Norwegian bank account number)"
+redaction_label = "NO_KONTONR"
+enabled = false
+context_required = true
+keywords = []
+detection_regex = ""
+
+[no.mva]
+stdnum_module = "stdnum.no.mva"
+country_code = "NO"
+id_description = "MVA (Merverdiavgift, Norwegian VAT number)."
+redaction_label = "NO_MVA"
+enabled = false
+context_required = true
+keywords = []
+detection_regex = ""
+
+[no.orgnr]
+stdnum_module = "stdnum.no.orgnr"
+country_code = "NO"
+id_description = "Orgnr (Organisasjonsnummer, Norwegian organisation number)."
+redaction_label = "NO_ORGNR"
+enabled = false
+context_required = true
+keywords = []
+detection_regex = ""
+
+[nz.bankaccount]
+stdnum_module = "stdnum.nz.bankaccount"
+country_code = "NZ"
+id_description = "New Zealand bank account number"
+redaction_label = "NZ_BANKACCOUNT"
+enabled = false
+context_required = true
+keywords = []
+detection_regex = ""
+
+[nz.ird]
+stdnum_module = "stdnum.nz.ird"
+country_code = "NZ"
+id_description = "IRD number (New Zealand Inland Revenue Department (Te Tari Tāke) number)."
+redaction_label = "NZ_IRD"
+enabled = false
+context_required = true
+keywords = []
+detection_regex = ""
+
+[pe.cui]
+stdnum_module = "stdnum.pe.cui"
+country_code = "PE"
+id_description = "CUI (Cédula Única de Identidad, Peruvian identity number)."
+redaction_label = "PE_CUI"
+enabled = false
+context_required = true
+keywords = []
+detection_regex = ""
+
+[pe.ruc]
+stdnum_module = "stdnum.pe.ruc"
+country_code = "PE"
+id_description = "RUC (Registro Único de Contribuyentes, Peruvian company tax number)."
+redaction_label = "PE_RUC"
+enabled = false
+context_required = true
+keywords = []
+detection_regex = ""
+
+[pk.cnic]
+stdnum_module = "stdnum.pk.cnic"
+country_code = "PK"
+id_description = "CNIC number (Pakistani Computerised National Identity Card number)."
+redaction_label = "PK_CNIC"
+enabled = false
+context_required = true
+keywords = []
+detection_regex = ""
+
+[pl.nip]
+stdnum_module = "stdnum.pl.nip"
+country_code = "PL"
+id_description = "NIP (Numer Identyfikacji Podatkowej, Polish VAT number)."
+redaction_label = "PL_NIP"
+enabled = false
+context_required = true
+keywords = []
+detection_regex = ""
+
+[pl.pesel]
+stdnum_module = "stdnum.pl.pesel"
+country_code = "PL"
+id_description = "PESEL (Polish national identification number)."
+redaction_label = "PL_PESEL"
+enabled = false
+context_required = true
+keywords = []
+detection_regex = ""
+
+[pl.regon]
+stdnum_module = "stdnum.pl.regon"
+country_code = "PL"
+id_description = "REGON (Rejestr Gospodarki Narodowej, Polish register of economic units)."
+redaction_label = "PL_REGON"
+enabled = false
+context_required = true
+keywords = []
+detection_regex = ""
+
+[pt.cc]
+stdnum_module = "stdnum.pt.cc"
+country_code = "PT"
+id_description = "CC (Número de Cartão de Cidadão, Portuguese Identity number)."
+redaction_label = "PT_CC"
+enabled = false
+context_required = true
+keywords = []
+detection_regex = ""
+
+[pt.nif]
+stdnum_module = "stdnum.pt.nif"
+country_code = "PT"
+id_description = "NIF (Número de identificação fiscal, Portuguese VAT number)."
+redaction_label = "PT_NIF"
+enabled = false
+context_required = true
+keywords = []
+detection_regex = ""
+
+[py.ruc]
+stdnum_module = "stdnum.py.ruc"
+country_code = "PY"
+id_description = "RUC number (Registro Único de Contribuyentes, Paraguay tax number)."
+redaction_label = "PY_RUC"
+enabled = false
+context_required = true
+keywords = []
+detection_regex = ""
+
+[ro.cf]
+stdnum_module = "stdnum.ro.cf"
+country_code = "RO"
+id_description = "CF (Cod de înregistrare în scopuri de TVA, Romanian VAT number)."
+redaction_label = "RO_CF"
+enabled = false
+context_required = true
+keywords = []
+detection_regex = ""
+
+[ro.cnp]
+stdnum_module = "stdnum.ro.cnp"
+country_code = "RO"
+id_description = "CNP (Cod Numeric Personal, Romanian Numerical Personal Code)."
+redaction_label = "RO_CNP"
+enabled = false
+context_required = true
+keywords = []
+detection_regex = ""
+
+[ro.cui]
+stdnum_module = "stdnum.ro.cui"
+country_code = "RO"
+id_description = "CUI or CIF (Codul Unic de Înregistrare, Romanian company identifier)."
+redaction_label = "RO_CUI"
+enabled = false
+context_required = true
+keywords = []
+detection_regex = ""
+
+[ro.onrc]
+stdnum_module = "stdnum.ro.onrc"
+country_code = "RO"
+id_description = "ONRC (Ordine din Registrul Comerţului, Romanian Trade Register identifier)."
+redaction_label = "RO_ONRC"
+enabled = false
+context_required = true
+keywords = []
+detection_regex = ""
+
+[rs.pib]
+stdnum_module = "stdnum.rs.pib"
+country_code = "RS"
+id_description = "PIB (Poreski Identifikacioni Broj, Serbian tax identification number)."
+redaction_label = "RS_PIB"
+enabled = false
+context_required = true
+keywords = []
+detection_regex = ""
+
+[ru.inn]
+stdnum_module = "stdnum.ru.inn"
+country_code = "RU"
+id_description = "ИНН (Идентификационный номер налогоплательщика, Russian tax identifier)."
+redaction_label = "RU_INN"
+enabled = false
+context_required = true
+keywords = []
+detection_regex = ""
+
+[ru.ogrn]
+stdnum_module = "stdnum.ru.ogrn"
+country_code = "RU"
+id_description = "ОГРН, OGRN, PSRN, ОГРНИП, OGRNIP (Russian Primary State Registration Number)."
+redaction_label = "RU_OGRN"
+enabled = false
+context_required = true
+keywords = []
+detection_regex = ""
+
+[se.orgnr]
+stdnum_module = "stdnum.se.orgnr"
+country_code = "SE"
+id_description = "Orgnr (Organisationsnummer, Swedish company number)."
+redaction_label = "SE_ORGNR"
+enabled = false
+context_required = true
+keywords = []
+detection_regex = ""
+
+[se.personnummer]
+stdnum_module = "stdnum.se.personnummer"
+country_code = "SE"
+id_description = "Personnummer (Swedish personal identity number)."
+redaction_label = "SE_PERSONNUMMER"
+enabled = false
+context_required = true
+keywords = []
+detection_regex = ""
+
+[se.postnummer]
+stdnum_module = "stdnum.se.postnummer"
+country_code = "SE"
+id_description = "Postcode (the Swedish postal code)."
+redaction_label = "SE_POSTNUMMER"
+enabled = false
+context_required = true
+keywords = []
+detection_regex = ""
+
+[se.vat]
+stdnum_module = "stdnum.se.vat"
+country_code = "SE"
+id_description = "VAT (Moms, Mervärdesskatt, Swedish VAT number)."
+redaction_label = "SE_VAT"
+enabled = false
+context_required = true
+keywords = []
+detection_regex = ""
+
+[sg.uen]
+stdnum_module = "stdnum.sg.uen"
+country_code = "SG"
+id_description = "UEN (Singapore's Unique Entity Number)."
+redaction_label = "SG_UEN"
+enabled = false
+context_required = true
+keywords = []
+detection_regex = ""
+
+[si.ddv]
+stdnum_module = "stdnum.si.ddv"
+country_code = "SI"
+id_description = "ID za DDV (Davčna številka, Slovenian VAT number)."
+redaction_label = "SI_DDV"
+enabled = false
+context_required = true
+keywords = []
+detection_regex = ""
+
+[si.emso]
+stdnum_module = "stdnum.si.emso"
+country_code = "SI"
+id_description = "Enotna matična številka občana (Unique Master Citizen Number)."
+redaction_label = "SI_EMSO"
+enabled = false
+context_required = true
+keywords = []
+detection_regex = ""
+
+[si.maticna]
+stdnum_module = "stdnum.si.maticna"
+country_code = "SI"
+id_description = "Matična številka poslovnega registra (Corporate Registration Number)"
+redaction_label = "SI_MATICNA"
+enabled = false
+context_required = true
+keywords = []
+detection_regex = ""
+
+[sk.dph]
+stdnum_module = "stdnum.sk.dph"
+country_code = "SK"
+id_description = "IČ DPH (IČ pre daň z pridanej hodnoty, Slovak VAT number)."
+redaction_label = "SK_DPH"
+enabled = false
+context_required = true
+keywords = []
+detection_regex = ""
+
+[sk.rc]
+stdnum_module = "stdnum.sk.rc"
+country_code = "SK"
+id_description = "RČ (Rodné číslo, the Slovak birth number)."
+redaction_label = "SK_RC"
+enabled = false
+context_required = true
+keywords = []
+detection_regex = ""
+
+[sm.coe]
+stdnum_module = "stdnum.sm.coe"
+country_code = "SM"
+id_description = "COE (Codice operatore economico, San Marino national tax number)."
+redaction_label = "SM_COE"
+enabled = false
+context_required = true
+keywords = []
+detection_regex = ""
+
+[sn.ninea]
+stdnum_module = "stdnum.sn.ninea"
+country_code = "SN"
+id_description = "NINEA (Numéro d'Identification Nationale des Entreprises et Associations, Senegal tax number)."
+redaction_label = "SN_NINEA"
+enabled = false
+context_required = true
+keywords = []
+detection_regex = ""
+
+[sv.nit]
+stdnum_module = "stdnum.sv.nit"
+country_code = "SV"
+id_description = "NIT (Número de Identificación Tributaria, El Salvador tax number)."
+redaction_label = "SV_NIT"
+enabled = false
+context_required = true
+keywords = []
+detection_regex = ""
+
+[th.moa]
+stdnum_module = "stdnum.th.moa"
+country_code = "TH"
+id_description = "MOA (Thailand Memorandum of Association Number)."
+redaction_label = "TH_MOA"
+enabled = false
+context_required = true
+keywords = []
+detection_regex = ""
+
+[th.pin]
+stdnum_module = "stdnum.th.pin"
+country_code = "TH"
+id_description = "PIN (Thailand Personal Identification Number)."
+redaction_label = "TH_PIN"
+enabled = false
+context_required = true
+keywords = []
+detection_regex = ""
+
+[th.tin]
+stdnum_module = "stdnum.th.tin"
+country_code = "TH"
+id_description = "TIN (Thailand Taxpayer Identification Number)."
+redaction_label = "TH_TIN"
+enabled = false
+context_required = true
+keywords = []
+detection_regex = ""
+
+[tn.mf]
+stdnum_module = "stdnum.tn.mf"
+country_code = "TN"
+id_description = "MF (Matricule Fiscal, Tunisia tax number)."
+redaction_label = "TN_MF"
+enabled = false
+context_required = true
+keywords = []
+detection_regex = ""
+
+[tr.tckimlik]
+stdnum_module = "stdnum.tr.tckimlik"
+country_code = "TR"
+id_description = "T.C. Kimlik No. (Turkish personal identification number)"
+redaction_label = "TR_TCKIMLIK"
+enabled = false
+context_required = true
+keywords = []
+detection_regex = ""
+
+[tr.vkn]
+stdnum_module = "stdnum.tr.vkn"
+country_code = "TR"
+id_description = "VKN (Vergi Kimlik Numarası, Turkish tax identification number)."
+redaction_label = "TR_VKN"
+enabled = false
+context_required = true
+keywords = []
+detection_regex = ""
+
+[tw.ubn]
+stdnum_module = "stdnum.tw.ubn"
+country_code = "TW"
+id_description = "UBN (Unified Business Number, 統一編號, Taiwanese tax number)."
+redaction_label = "TW_UBN"
+enabled = false
+context_required = true
+keywords = []
+detection_regex = ""
+
+[ua.edrpou]
+stdnum_module = "stdnum.ua.edrpou"
+country_code = "UA"
+id_description = "ЄДРПОУ, EDRPOU (Identifier for enterprises and organizations in Ukraine)."
+redaction_label = "UA_EDRPOU"
+enabled = false
+context_required = true
+keywords = []
+detection_regex = ""
+
+[ua.rntrc]
+stdnum_module = "stdnum.ua.rntrc"
+country_code = "UA"
+id_description = "РНОКПП, RNTRC (Individual taxpayer registration number in Ukraine)."
+redaction_label = "UA_RNTRC"
+enabled = false
+context_required = true
+keywords = []
+detection_regex = ""
+
+[us.atin]
+stdnum_module = "stdnum.us.atin"
+country_code = "US"
+id_description = "ATIN (U.S. Adoption Taxpayer Identification Number)."
+redaction_label = "US_ATIN"
+enabled = false
+context_required = true
+keywords = []
+detection_regex = ""
+
+[us.ein]
+stdnum_module = "stdnum.us.ein"
+country_code = "US"
+id_description = "EIN (U.S. Employer Identification Number)."
+redaction_label = "US_EIN"
+enabled = false
+context_required = true
+keywords = []
+detection_regex = ""
+
+[us.itin]
+stdnum_module = "stdnum.us.itin"
+country_code = "US"
+id_description = "ITIN (U.S. Individual Taxpayer Identification Number)."
+redaction_label = "US_ITIN"
+enabled = false
+context_required = true
+keywords = []
+detection_regex = ""
+
+[us.ptin]
+stdnum_module = "stdnum.us.ptin"
+country_code = "US"
+id_description = "PTIN (U.S. Preparer Tax Identification Number)."
+redaction_label = "US_PTIN"
+enabled = false
+context_required = true
+keywords = []
+detection_regex = ""
+
+[us.rtn]
+stdnum_module = "stdnum.us.rtn"
+country_code = "US"
+id_description = "RTN (Routing transport number)."
+redaction_label = "US_RTN"
+enabled = false
+context_required = true
+keywords = []
+detection_regex = ""
+
+[us.ssn]
+stdnum_module = "stdnum.us.ssn"
+country_code = "US"
+id_description = "SSN (U.S. Social Security Number)."
+redaction_label = "US_SSN"
+enabled = false
+context_required = true
+keywords = []
+detection_regex = ""
+
+[us.tin]
+stdnum_module = "stdnum.us.tin"
+country_code = "US"
+id_description = "TIN (U.S. Taxpayer Identification Number)."
+redaction_label = "US_TIN"
+enabled = false
+context_required = true
+keywords = []
+detection_regex = ""
+
+[uy.rut]
+stdnum_module = "stdnum.uy.rut"
+country_code = "UY"
+id_description = "RUT (Registro Único Tributario, Uruguay tax number)."
+redaction_label = "UY_RUT"
+enabled = false
+context_required = true
+keywords = []
+detection_regex = ""
+
+[ve.rif]
+stdnum_module = "stdnum.ve.rif"
+country_code = "VE"
+id_description = "RIF (Registro de Identificación Fiscal, Venezuelan VAT number)."
+redaction_label = "VE_RIF"
+enabled = false
+context_required = true
+keywords = []
+detection_regex = ""
+
+[vn.mst]
+stdnum_module = "stdnum.vn.mst"
+country_code = "VN"
+id_description = "MST (Mã số thuế, Vietnam tax number)."
+redaction_label = "VN_MST"
+enabled = false
+context_required = true
+keywords = []
+detection_regex = ""
+
+[za.idnr]
+stdnum_module = "stdnum.za.idnr"
+country_code = "ZA"
+id_description = "ID number (South African Identity Document number)."
+redaction_label = "ZA_IDNR"
+enabled = false
+context_required = true
+keywords = []
+detection_regex = ""
+
+[za.tin]
+stdnum_module = "stdnum.za.tin"
+country_code = "ZA"
+id_description = "TIN (South African Tax Identification Number)."
+redaction_label = "ZA_TIN"
+enabled = false
+context_required = true
+keywords = []
+detection_regex = ""
