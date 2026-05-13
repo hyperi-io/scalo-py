@@ -418,9 +418,16 @@ def setup(
     if mask_sensitive is None:
         mask_sensitive = config.get("mask_sensitive_data", True)
 
-    # Masking level (default: simple)
+    # Masking level: default to NLP-grade PII detection via DataFog.
+    # Pylib is control-plane, not hot-path, so the 5-200ms NER cost is
+    # acceptable for the coverage win on names / locations / orgs.
+    # Consumers who want regex-only can set `masking_level="advanced"`;
+    # consumers who want field-names-only can set `masking_level="simple"`;
+    # consumers who want it all off can set `mask_sensitive=False`.
+    # If the [pii-ner] extras aren't installed, the filter gracefully
+    # degrades to regex with a warning. See logger.filters.
     if masking_level is None:
-        masking_level = config.get("masking_level", "simple")
+        masking_level = config.get("masking_level", "advanced-ner")
 
     # Masking preset (default: standard)
     if masking_preset is None:
