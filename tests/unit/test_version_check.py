@@ -11,7 +11,6 @@
 import json
 import os
 import threading
-import time
 from datetime import UTC
 
 import pytest
@@ -134,13 +133,22 @@ class TestCheckOnStartup:
             api_url="https://test.example.com/api/v1/check",
         )
 
-        check_on_startup(product="test-app", version="1.0.0", config=config)
+        thread = check_on_startup(
+            product="test-app",
+            version="1.0.0",
+            config=config,
+        )
 
-        # Give the daemon thread a moment to complete
-        time.sleep(0.5)
-
-        # Thread should have self-terminated (daemon threads don't outlive main)
-        # Just verify it didn't raise or block
+        # The function returned a live daemon thread — confirm + join
+        # deterministically rather than racing on time.sleep(). Without
+        # the join, a busy test runner can finish the test before the
+        # daemon's HTTP request completes, leaving pytest-httpx's
+        # registered mock response unconsumed at teardown (which
+        # pytest-httpx then reports as an error).
+        assert thread is not None
+        assert thread.daemon is True
+        thread.join(timeout=5.0)
+        assert not thread.is_alive(), "daemon thread did not finish in 5s"
 
     def test_handles_http_error_gracefully(self, httpx_mock):
         """Verify HTTP errors are swallowed gracefully."""
@@ -157,8 +165,10 @@ class TestCheckOnStartup:
         )
 
         # Should not raise
-        check_on_startup(product="test-app", version="1.0.0", config=config)
-        time.sleep(0.5)
+        thread = check_on_startup(product="test-app", version="1.0.0", config=config)
+        assert thread is not None
+        thread.join(timeout=5.0)
+        assert not thread.is_alive(), "daemon thread did not finish in 5s"
 
     def test_handles_connection_error_gracefully(self, httpx_mock):
         """Verify connection errors are swallowed gracefully."""
@@ -176,8 +186,10 @@ class TestCheckOnStartup:
         )
 
         # Should not raise
-        check_on_startup(product="test-app", version="1.0.0", config=config)
-        time.sleep(0.5)
+        thread = check_on_startup(product="test-app", version="1.0.0", config=config)
+        assert thread is not None
+        thread.join(timeout=5.0)
+        assert not thread.is_alive(), "daemon thread did not finish in 5s"
 
 
 class TestLogResponse:
