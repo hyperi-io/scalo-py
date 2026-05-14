@@ -59,7 +59,7 @@ def check_on_startup(
     *,
     deployment: str | None = None,
     config: VersionCheckConfig | None = None,
-) -> None:
+) -> threading.Thread | None:
     """Spawn a daemon thread to check for a newer version.
 
     Returns immediately. The check runs in a self-terminating daemon
@@ -70,6 +70,13 @@ def check_on_startup(
         version: Current version string (e.g., "1.2.0").
         deployment: Optional deployment type (e.g., "k8s", "docker").
         config: Optional configuration override.
+
+    Returns:
+        The spawned :class:`threading.Thread` if a check was kicked
+        off, or ``None`` when the check was skipped (disabled, missing
+        product, missing version). Production callers can discard the
+        return value; tests use it to ``.join()`` deterministically
+        instead of racing on ``time.sleep``.
     """
     cfg = config or VersionCheckConfig()
     cfg.product = product
@@ -79,11 +86,11 @@ def check_on_startup(
 
     if cfg.disabled:
         logger.debug("version check disabled")
-        return
+        return None
 
     if not cfg.product or not cfg.current_version:
         logger.debug("version check skipped: product or version not set")
-        return
+        return None
 
     thread = threading.Thread(
         target=_run_check,
@@ -92,6 +99,7 @@ def check_on_startup(
         daemon=True,
     )
     thread.start()
+    return thread
 
 
 def _run_check(config: VersionCheckConfig) -> None:
