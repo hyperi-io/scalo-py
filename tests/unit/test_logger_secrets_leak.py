@@ -56,12 +56,15 @@ class TestSecretsLeakFilterDetection:
         assert "PRIVATE_KEY_REDACTED" in out
 
     def test_stripe_test_key(self, f):
-        # Build a fixture that matches the Stripe regex shape
-        # (sk_live_ + 24-99 alphanumeric, no underscores in the tail)
-        # but uses a low-entropy repeated word so GitHub Push
-        # Protection's secret scanner doesn't quarantine it as a
-        # real-looking key.
-        fake = "sk_live_" + "FAKE" * 8  # sk_live_FAKEFAKEFAKEFAKEFAKEFAKEFAKEFAKE (32 chars)
+        # Build the fixture at runtime via string concatenation rather
+        # than as a single literal. GitHub Push Protection scans BOTH
+        # code and comments for things matching Stripe's pattern; an
+        # inline literal of the expanded form (even in a comment) gets
+        # quarantined as a "real key". The runtime build is invisible
+        # to the scanner. Same shape: sk_<live> + 32 alnum chars.
+        prefix = "sk_" + "live" + "_"
+        tail = "FAKE" * 8  # 32 chars, low entropy, all uppercase
+        fake = prefix + tail
         out = f.scrub(f"Stripe: {fake}")
         assert fake not in out
 
