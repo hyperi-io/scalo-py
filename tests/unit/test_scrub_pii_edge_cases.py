@@ -152,7 +152,8 @@ class TestNonAsciiContent:
         v = EmailValidator()
         out = v.scrub("📧 contact alice@example.com 🚀")
         assert "alice@example.com" not in out
-        assert "📧" in out and "🚀" in out
+        assert "📧" in out
+        assert "🚀" in out
 
 
 # ---------------------------------------------------------------------------
@@ -205,7 +206,7 @@ class TestThreadSafety:
                 out = v.scrub(text)
                 with lock:
                     results.append(out)
-            except BaseException as e:  # noqa: BLE001 — propagating to test
+            except BaseException as e:
                 with lock:
                     errors.append(e)
 
@@ -268,7 +269,7 @@ class TestFailSafe:
 
 
 @pytest.mark.parametrize(
-    "validator,text",
+    ("validator", "text"),
     [
         (EmailValidator(), "alice@example.com bob@example.com"),
         (CreditCardValidator(), "4111-1111-1111-1111 and 5555555555554444"),
@@ -310,10 +311,7 @@ class TestLayeredCompositionPii:
             _make("au.medicare"),
         ]
         chain = LayeredScrubber(config=ScrubConfig(), layers=layers)
-        text = (
-            "User alice@example.com (ABN: 53 004 085 616) paid with "
-            "4111-1111-1111-1111 to GB82WEST12345698765432"
-        )
+        text = "User alice@example.com (ABN: 53 004 085 616) paid with 4111-1111-1111-1111 to GB82WEST12345698765432"
         out = chain.scrub(text)
         assert "alice@example.com" not in out
         assert "53 004 085 616" not in out

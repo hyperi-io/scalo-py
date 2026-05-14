@@ -38,7 +38,6 @@ from .config import ScrubConfig
 from .factory import build_scrubber
 from .gitleaks_toml import load_gitleaks_rules
 
-
 # Metric names per spec §8 — these strings are the cross-language
 # contract. Both implementations MUST emit identical bytes.
 METRIC_NAMES: tuple[str, ...] = (
@@ -77,7 +76,7 @@ def build_manifest() -> dict[str, Any]:
     scrubber = build_scrubber(cfg)
     l3_labels: list[str] = []
     for layer in scrubber.layers:
-        if hasattr(layer, "LABEL") and getattr(layer, "LABEL"):
+        if hasattr(layer, "LABEL") and layer.LABEL:
             l3_labels.append(layer.LABEL)
     l3_labels.sort()
 
@@ -108,19 +107,14 @@ def build_manifest() -> dict[str, Any]:
         },
         "l3_validators": {
             "labels": l3_labels,
-            "national_ids_default": list(
-                cfg.pii.validators.national_ids.enabled
-            ),
+            "national_ids_default": list(cfg.pii.validators.national_ids.enabled),
         },
         "redaction_label_format": {
             "static": "[<LABEL>_REDACTED]",
             "hash": "[<LABEL>_<6-hex>]",
             "hash_algorithm": "blake2b-keyed-4byte-truncated-to-6-hex",
         },
-        "no_layer_4": (
-            "NLP/NER scrubbing dropped from scope; "
-            "see spec §2 for rationale"
-        ),
+        "no_layer_4": ("NLP/NER scrubbing dropped from scope; see spec §2 for rationale"),
     }
 
 

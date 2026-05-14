@@ -177,8 +177,8 @@ class SecretsLeakFilter:
         self,
         level: str = "full",
         extra_patterns: list[tuple[str, str]] | None = None,
-        labeler: "LabelFn | None" = None,
-        metrics: "ScrubMetrics | None" = None,
+        labeler: LabelFn | None = None,
+        metrics: ScrubMetrics | None = None,
     ) -> None:
         from .scrub.labeler import _static_label
         from .scrub.metrics import ScrubMetrics as _ScrubMetrics
@@ -265,6 +265,7 @@ class SecretsLeakFilter:
             slug = _label_slug(secret_type)
             regex = self._redaction.get(secret_type)
             if regex is not None:
+
                 def _sub(m: re.Match[str], slug: str = slug) -> str:
                     self._metrics.inc_redaction("L1", slug)
                     return self._labeler(slug, m.group(0))
@@ -272,11 +273,7 @@ class SecretsLeakFilter:
                 text = regex.sub(_sub, text)
             else:
                 # Fallback: replace each detect-secrets-reported value.
-                type_values = {
-                    f.secret_value
-                    for f in findings
-                    if f.type == secret_type and f.secret_value
-                }
+                type_values = {f.secret_value for f in findings if f.type == secret_type and f.secret_value}
                 for value in type_values:
                     if len(value) <= 5:
                         continue

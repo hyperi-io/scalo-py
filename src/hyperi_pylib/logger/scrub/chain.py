@@ -116,7 +116,7 @@ class LayeredScrubber:
             start = time.perf_counter()
             try:
                 result = layer.scrub(result)
-            except Exception as e:  # noqa: BLE001 — fail-safe per spec §5.1
+            except Exception as e:
                 self._broken.add(i)
                 self._metrics.inc_error(layer_name, type(e).__name__)
                 warnings.warn(

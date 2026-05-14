@@ -86,13 +86,9 @@ def _resolve_validator(entry: dict[str, Any]) -> Callable[[str], bool]:
         try:
             mod = importlib.import_module(module_name)
         except ImportError as e:
-            raise ValueError(
-                f"national_ids entry refers to missing module {module_name!r}: {e}"
-            ) from e
+            raise ValueError(f"national_ids entry refers to missing module {module_name!r}: {e}") from e
         if not hasattr(mod, "is_valid"):
-            raise ValueError(
-                f"stdnum module {module_name!r} has no is_valid function"
-            )
+            raise ValueError(f"stdnum module {module_name!r} has no is_valid function")
         return mod.is_valid
 
     if "local_validator" in entry:
@@ -100,22 +96,14 @@ def _resolve_validator(entry: dict[str, Any]) -> Callable[[str], bool]:
         try:
             module_name, attr_name = ref.split(":", 1)
         except ValueError as e:
-            raise ValueError(
-                f"local_validator must be 'module:attribute', got {ref!r}"
-            ) from e
+            raise ValueError(f"local_validator must be 'module:attribute', got {ref!r}") from e
         try:
             mod = importlib.import_module(module_name)
         except ImportError as e:
-            raise ValueError(
-                f"local_validator module {module_name!r} not importable: {e}"
-            ) from e
+            raise ValueError(f"local_validator module {module_name!r} not importable: {e}") from e
         fn = getattr(mod, attr_name, None)
         if fn is None or not callable(fn):
-            raise ValueError(
-                f"local_validator {ref!r} not callable or missing"
-            )
+            raise ValueError(f"local_validator {ref!r} not callable or missing")
         return fn
 
-    raise ValueError(
-        "registry entry must have either 'stdnum_module' or 'local_validator'"
-    )
+    raise ValueError("registry entry must have either 'stdnum_module' or 'local_validator'")

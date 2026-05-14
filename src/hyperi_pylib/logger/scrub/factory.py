@@ -57,9 +57,7 @@ def build_scrubber(
     # Operator kill-switch: ScrubConfig.metrics_enabled=False forces noop
     # regardless of what the caller passed in. Honours the hot-path opt-out
     # described in spec §8.
-    if not config.metrics_enabled:
-        metrics = ScrubMetrics.noop()
-    elif metrics is None:
+    if not config.metrics_enabled or metrics is None:
         metrics = ScrubMetrics.noop()
     layers: list[Scrubber] = []
 

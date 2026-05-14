@@ -38,8 +38,8 @@ from .scrub import (
     NationalIdsConfig,
     PiiConfig,
     PiiValidatorsConfig,
-    ScrubConfig,
     Scrubber,
+    ScrubConfig,
     SecretsConfig,
     build_scrubber,
 )
@@ -137,8 +137,7 @@ def _legacy_to_scrub_config(
 
     # Unknown level → default scrubber
     warnings.warn(
-        f"masking_level={level!r} not recognised — using defaults. "
-        f"Valid: 'simple', 'advanced'.",
+        f"masking_level={level!r} not recognised — using defaults. Valid: 'simple', 'advanced'.",
         UserWarning,
         stacklevel=4,
     )

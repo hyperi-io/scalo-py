@@ -25,7 +25,6 @@ from hyperi_pylib.logger.scrub import (
 )
 from hyperi_pylib.logger.scrub.labeler import _static_label
 
-
 # ---------------------------------------------------------------------------
 # Static labeler
 # ---------------------------------------------------------------------------

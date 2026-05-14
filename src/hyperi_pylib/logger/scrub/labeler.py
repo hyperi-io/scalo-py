@@ -35,11 +35,11 @@ import secrets
 from collections.abc import Callable
 from typing import TypeAlias
 
-LabelFn: TypeAlias = Callable[[str, str], str]
+type LabelFn = Callable[[str, str], str]
 """Label-producing function. Takes ``(label, value)``, returns redaction string."""
 
 
-def _static_label(label: str, value: str) -> str:  # noqa: ARG001
+def _static_label(label: str, value: str) -> str:
     """Default: collapse every match for ``label`` to ``[LABEL_REDACTED]``."""
     return f"[{label}_REDACTED]"
 

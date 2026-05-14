@@ -113,13 +113,10 @@ def build_national_id_validators(
                 # Tag with the country.id key for debugging
                 entry_with_key = dict(entry)
                 entry_with_key["_entry_key"] = f"{country}.{id_name}"
-                validators.append(
-                    _DynamicValidator(entry_with_key, labeler=labeler, metrics=metrics)
-                )
+                validators.append(_DynamicValidator(entry_with_key, labeler=labeler, metrics=metrics))
             except (ValueError, ImportError) as e:
                 warnings.warn(
-                    f"national_ids entry {country}.{id_name} not loadable: {e}. "
-                    f"Skipping (non-blocking).",
+                    f"national_ids entry {country}.{id_name} not loadable: {e}. Skipping (non-blocking).",
                     RuntimeWarning,
                     stacklevel=2,
                 )
