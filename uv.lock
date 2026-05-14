@@ -1207,7 +1207,7 @@ wheels = [
 
 [[package]]
 name = "hyperi-pylib"
-version = "2.27.2"
+version = "2.28.1"
 source = { editable = "." }
 dependencies = [
     { name = "anyio" },
