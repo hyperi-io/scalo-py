@@ -56,10 +56,14 @@ class TestSecretsLeakFilterDetection:
         assert "PRIVATE_KEY_REDACTED" in out
 
     def test_stripe_test_key(self, f):
-        # Stripe's documented short example key isn't long enough for the
-        # detect-secrets StripeDetector — use a 32-char realistic test key.
-        out = f.scrub("Stripe: sk_live_abcdefghijklmnop12345678ABCDEFGHIJ")
-        assert "sk_live_abcdefghijklmnop12345678ABCDEFGHIJ" not in out
+        # Build a fixture that matches the Stripe regex shape
+        # (sk_live_ + 24-99 alphanumeric, no underscores in the tail)
+        # but uses a low-entropy repeated word so GitHub Push
+        # Protection's secret scanner doesn't quarantine it as a
+        # real-looking key.
+        fake = "sk_live_" + "FAKE" * 8  # sk_live_FAKEFAKEFAKEFAKEFAKEFAKEFAKEFAKE (32 chars)
+        out = f.scrub(f"Stripe: {fake}")
+        assert fake not in out
 
     def test_clean_text_unchanged(self, f):
         text = "Just a normal log line with no secrets"
