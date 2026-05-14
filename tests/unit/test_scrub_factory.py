@@ -159,30 +159,46 @@ class TestBuildScrubberEndToEnd:
         return build_scrubber()
 
     def test_l1_aws_key_redacted(self, s):
-        out = s.scrub("AWS_ACCESS_KEY=AKIAIOSFODNN7EXAMPLE")
-        assert "AKIAIOSFODNN7EXAMPLE" not in out
+        from common.fake_secrets import aws_access_key
+
+        ak = aws_access_key()
+        out = s.scrub(f"AWS_ACCESS_KEY={ak}")
+        assert ak not in out
 
     def test_l2_password_field_redacted(self, s):
         out = s.scrub("user logged in with password=hunter2")
         assert "hunter2" not in out
 
     def test_l3_email_redacted(self, s):
-        out = s.scrub("contact alice@example.com please")
-        assert "alice@example.com" not in out
+        from common.fake_pii import email
+
+        e = email()
+        out = s.scrub(f"contact {e} please")
+        assert e not in out
 
     def test_l3_credit_card_redacted(self, s):
-        out = s.scrub("paid with 4111-1111-1111-1111")
-        assert "4111-1111-1111-1111" not in out
+        from common.fake_pii import visa_card
+
+        # Use hyphen-separator form (drop-in for original "4111-1111-1111-1111")
+        cc = visa_card().replace(" ", "-")
+        out = s.scrub(f"paid with {cc}")
+        assert cc not in out
 
     def test_l3_context_required_abn_with_keyword_redacted(self, s):
-        out = s.scrub("ABN: 53 004 085 616")
-        assert "53 004 085 616" not in out
+        from common.fake_pii import au_abn_bare, au_abn_with_context
+
+        text = au_abn_with_context()
+        out = s.scrub(text)
+        assert au_abn_bare() not in out
 
     def test_l3_context_required_abn_without_keyword_passes_through(self, s):
+        from common.fake_pii import au_abn_bare
+
         # Bare digit run without context — should NOT redact
-        text = "Request 53004085616 logged"
+        bare = au_abn_bare().replace(" ", "")
+        text = f"Request {bare} logged"
         out = s.scrub(text)
-        assert "53004085616" in out
+        assert bare in out
 
     def test_observe_only_mode(self):
         s = build_scrubber(ScrubConfig(observe_only=True))
@@ -190,8 +206,10 @@ class TestBuildScrubberEndToEnd:
         assert s.scrub(text) == text  # unchanged in observe-only
 
     def test_master_disable(self):
+        from common.fake_pii import email
+
         s = build_scrubber(ScrubConfig(enabled=False))
-        text = "password=hunter2 alice@example.com"
+        text = f"password=hunter2 {email()}"
         assert s.scrub(text) == text
 
 
@@ -205,20 +223,28 @@ class TestSecretsScrubberAdapter:
         assert isinstance(SecretsScrubber(), Scrubber)
 
     def test_scrubs_aws_key(self):
+        from common.fake_secrets import aws_access_key
+
         s = SecretsScrubber()
-        out = s.scrub("AKIAIOSFODNN7EXAMPLE leaked")
-        assert "AKIAIOSFODNN7EXAMPLE" not in out
+        ak = aws_access_key()
+        out = s.scrub(f"{ak} leaked")
+        assert ak not in out
 
     def test_off_mode_passes_through(self):
+        from common.fake_secrets import aws_access_key
+
         s = SecretsScrubber(patterns="off")
-        text = "AKIAIOSFODNN7EXAMPLE leaked"
+        text = f"{aws_access_key()} leaked"
         assert s.scrub(text) == text
 
     def test_minimal_subset(self):
+        from common.fake_secrets import aws_access_key
+
         s = SecretsScrubber(patterns="minimal")
+        ak = aws_access_key()
         # minimal still catches AWS keys
-        out = s.scrub("AKIAIOSFODNN7EXAMPLE")
-        assert "AKIAIOSFODNN7EXAMPLE" not in out
+        out = s.scrub(ak)
+        assert ak not in out
 
     def test_repr_shows_patterns(self):
         s = SecretsScrubber(patterns="minimal")
