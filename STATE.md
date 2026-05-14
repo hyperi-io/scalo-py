@@ -6,6 +6,35 @@
 
 ---
 
+## ⚠ Release discipline — READ FIRST
+
+**A release is NOT complete until the new version is on PyPI.**
+A `git push` (or `hyperi-ci push` without `--release`) only triggers
+the CI build + semantic-release tag. It does **not** publish to PyPI.
+A two-step flow is required, and both steps must be verified:
+
+1. **Publish:** use `hyperi-ci push --release` (combined push + auto-
+   publish if CI passes) OR push first, then `hyperi-ci release vX.Y.Z`
+   on the resulting tag. **Bare `git push` is not a release.**
+2. **Verify on PyPI:** after the publish workflow completes, confirm
+   the new version is live:
+
+   ```bash
+   curl -sSL https://pypi.org/pypi/hyperi-pylib/json \
+       | grep -o '"version":"[^"]*"' | head -1
+   ```
+
+   The reported version MUST match the just-released tag. If it
+   doesn't, the release did NOT land — investigate the workflow
+   run (`hyperi-ci logs --failed`) before declaring done.
+
+**Why this matters:** the local git tag, the GitHub Release, and the
+PyPI artefact are three separate states. Downstream consumers
+(`dfe-engine`, etc.) pin to the PyPI version. A green CI + a tag
+without a published artefact looks complete but isn't.
+
+---
+
 ## Design decision: cross-language spec workflow (pylib leads)
 
 When a feature spans pylib + rustlib (log scrubbing, config cascade,

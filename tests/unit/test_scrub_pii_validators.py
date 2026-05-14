@@ -55,7 +55,7 @@ def _make(key: str) -> _DynamicValidator:
 
 
 @pytest.mark.parametrize(
-    "validator_factory,label",
+    ("validator_factory", "label"),
     [
         (CreditCardValidator, "CREDIT_CARD"),
         (IbanValidator, "IBAN"),
@@ -73,7 +73,7 @@ class TestProtocolSatisfaction:
 
     def test_has_label_and_pattern(self, validator_factory, label):
         v = validator_factory()
-        assert v.LABEL == label
+        assert label == v.LABEL
         assert v.PATTERN
 
 
@@ -208,7 +208,7 @@ class TestAbnContextRequired:
         out = self.v.scrub("abn=53004085616 in file")
         assert "53004085616" not in out
 
-    def test_bare_digits_no_keyword_PASS_THROUGH(self):
+    def test_bare_digits_no_keyword_PASS_THROUGH(self):  # noqa: N802
         # 11-digit run with valid checksum but no context — must NOT match
         text = "Request id 53004085616 processed"
         # "request id" is in the preceding text but no ABN keyword
@@ -230,7 +230,7 @@ class TestAcnContextRequired:
         out = self.v.scrub("Company ACN 005 749 986 registered")
         assert "005 749 986" not in out
 
-    def test_bare_9_digits_no_keyword_PASS_THROUGH(self):
+    def test_bare_9_digits_no_keyword_PASS_THROUGH(self):  # noqa: N802
         text = "Some 9-digit number 005749986 in a log"
         # Different word "log" — not an ACN keyword
         assert "005749986" in self.v.scrub(text)
@@ -246,7 +246,7 @@ class TestTfnContextRequired:
         assert "123 456 782" not in out
         assert "[AU_TFN_REDACTED]" in out
 
-    def test_bare_digits_no_keyword_PASS_THROUGH(self):
+    def test_bare_digits_no_keyword_PASS_THROUGH(self):  # noqa: N802
         # TFN's mod-11 checksum means ~9% of random 9-digit numbers
         # pass — context-requirement is critical here.
         text = "Trace id 123 456 782 logged"
@@ -266,7 +266,7 @@ class TestMedicareContextRequired:
         assert "2123 45670 1" not in out
         assert "[AU_MEDICARE_REDACTED]" in out
 
-    def test_bare_digits_no_keyword_PASS_THROUGH(self):
+    def test_bare_digits_no_keyword_PASS_THROUGH(self):  # noqa: N802
         text = "ID 2123456701 logged"
         assert "2123456701" in self.v.scrub(text)
 

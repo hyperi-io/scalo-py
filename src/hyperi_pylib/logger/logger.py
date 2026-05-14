@@ -202,10 +202,10 @@ _LEVEL_NAME_TO_GATE = {
     "TRACE": "trace",
     "DEBUG": "debug",
     "INFO": "info",
-    "SUCCESS": "info",     # loguru's SUCCESS is INFO-grade
+    "SUCCESS": "info",  # loguru's SUCCESS is INFO-grade
     "WARNING": "warn",
     "ERROR": "error",
-    "CRITICAL": "error",   # critical maps to error gate
+    "CRITICAL": "error",  # critical maps to error gate
 }
 
 
@@ -272,16 +272,12 @@ def _add_emoji_to_record(
         if isinstance(record["message"], str):
             if scrubber is not None:
                 # Per-log-level gate (spec §5.6).
-                if log_levels is None or _scrub_level_enabled(
-                    record["level"].name, log_levels
-                ):
+                if log_levels is None or _scrub_level_enabled(record["level"].name, log_levels):
                     record["message"] = scrubber.scrub(record["message"])
             elif sensitive_filter is not None:
                 # Loguru's record["message"] is the formatted message;
                 # we mask it before it gets formatted.
-                record["message"] = sensitive_filter._mask_sensitive_string(
-                    record["message"]
-                )
+                record["message"] = sensitive_filter._mask_sensitive_string(record["message"])
 
         # Then handle emojis
         if use_emojis:

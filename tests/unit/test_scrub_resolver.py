@@ -25,7 +25,6 @@ from hyperi_pylib.logger.scrub_resolver import (
     resolve_scrubber,
 )
 
-
 # ---------------------------------------------------------------------------
 # Priority order (highest wins)
 # ---------------------------------------------------------------------------
@@ -66,6 +65,7 @@ class TestResolverPriority:
     def test_new_schema_wins_over_legacy_in_config(self):
         # Both new and legacy keys present — new wins, no deprecation warning
         import warnings as _w
+
         with _w.catch_warnings(record=True) as captured:
             _w.simplefilter("always")
             result = resolve_scrubber(
@@ -74,16 +74,12 @@ class TestResolverPriority:
                     "mask_sensitive_data": False,  # legacy — ignored
                 }
             )
-        assert not any(
-            issubclass(w.category, DeprecationWarning) for w in captured
-        )
+        assert not any(issubclass(w.category, DeprecationWarning) for w in captured)
         assert result.config.enabled is True
 
     def test_legacy_config_emits_deprecation(self):
         with pytest.warns(DeprecationWarning, match="deprecated"):
-            resolve_scrubber(
-                config_dict={"mask_sensitive_data": True}
-            )
+            resolve_scrubber(config_dict={"mask_sensitive_data": True})
 
     def test_defaults_when_nothing_provided(self):
         result = resolve_scrubber()
@@ -165,22 +161,16 @@ class TestSchemaParsing:
         assert not hasattr(cfg.pii, "nlp")
 
     def test_national_ids_enabled_list(self):
-        cfg = _parse_scrub_dict(
-            {"pii": {"validators": {"national_ids": {"enabled": ["au", "us"]}}}}
-        )
+        cfg = _parse_scrub_dict({"pii": {"validators": {"national_ids": {"enabled": ["au", "us"]}}}})
         assert cfg.pii.validators.national_ids.enabled == ["au", "us"]
 
     def test_national_ids_csv_string(self):
         # Env-var convenience — comma-separated string converts to list
-        cfg = _parse_scrub_dict(
-            {"pii": {"validators": {"national_ids": {"enabled": "au, us, uk"}}}}
-        )
+        cfg = _parse_scrub_dict({"pii": {"validators": {"national_ids": {"enabled": "au, us, uk"}}}})
         assert cfg.pii.validators.national_ids.enabled == ["au", "us", "uk"]
 
     def test_log_levels_off_trace_on_others(self):
-        cfg = _parse_scrub_dict(
-            {"log_levels": {"trace": False, "debug": True, "info": True}}
-        )
+        cfg = _parse_scrub_dict({"log_levels": {"trace": False, "debug": True, "info": True}})
         assert cfg.log_levels.trace is False
         assert cfg.log_levels.debug is True
         assert cfg.log_levels.info is True

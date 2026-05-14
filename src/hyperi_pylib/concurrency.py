@@ -48,7 +48,7 @@ T = TypeVar("T")
 P = ParamSpec("P")
 
 
-async def run_blocking(
+async def run_blocking[**P, T](
     fn: Callable[P, T],
     *args: P.args,
     abandon_on_cancel: bool = False,
@@ -98,7 +98,7 @@ async def run_blocking(
     )
 
 
-def make_async(
+def make_async[**P, T](
     sync_fn: Callable[P, T],
     *,
     abandon_on_cancel: bool = False,
@@ -175,7 +175,7 @@ class Bulkhead:
         return f"Bulkhead(name={self.name!r}, limit={self.limit})"
 
 
-async def gather_with_timeouts(
+async def gather_with_timeouts[T](
     tasks: dict[str, Callable[[], Awaitable[T]]],
     *,
     per_task_timeout: float,
@@ -213,7 +213,7 @@ async def gather_with_timeouts(
         try:
             async with asyncio.timeout(per_task_timeout):
                 return (name, await fn())
-        except Exception as e:  # noqa: BLE001 — we capture all to return per task
+        except Exception as e:
             return (name, e)
 
     results = await asyncio.gather(*(_run_one(name, fn) for name, fn in tasks.items()))

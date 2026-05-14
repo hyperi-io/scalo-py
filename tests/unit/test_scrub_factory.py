@@ -31,7 +31,6 @@ from hyperi_pylib.logger.scrub import (
     build_scrubber,
 )
 
-
 # ---------------------------------------------------------------------------
 # build_scrubber — composition
 # ---------------------------------------------------------------------------
@@ -97,6 +96,7 @@ class TestBuildScrubberPerValidatorToggles:
 
     def test_disable_all_national_ids(self):
         from hyperi_pylib.logger.scrub import NationalIdsConfig
+
         s = build_scrubber(
             ScrubConfig(
                 secrets=SecretsConfig(enabled=False),
@@ -113,6 +113,7 @@ class TestBuildScrubberPerValidatorToggles:
 
     def test_only_email_enabled(self):
         from hyperi_pylib.logger.scrub import NationalIdsConfig
+
         s = build_scrubber(
             ScrubConfig(
                 secrets=SecretsConfig(enabled=False),

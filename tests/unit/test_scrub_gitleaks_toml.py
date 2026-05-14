@@ -26,7 +26,6 @@ from hyperi_pylib.logger.scrub.gitleaks_toml import (
     load_gitleaks_rules,
 )
 
-
 # ---------------------------------------------------------------------------
 # Registry load
 # ---------------------------------------------------------------------------
@@ -123,11 +122,7 @@ class TestGitleaksTomlScrubberBasic:
         # Upstream private-key regex requires {64,} body between BEGIN
         # and KEY. Realistic PEM bodies are hundreds of base64 chars.
         body_line = "MIIEvQIBADANBgkqhkiG9w0BAQEFAASCBKcwggSjAgEAAoIBAQ" * 4
-        key = (
-            "-----BEGIN RSA PRIVATE KEY-----\n"
-            f"{body_line}\n"
-            "-----END RSA PRIVATE KEY-----"
-        )
+        key = f"-----BEGIN RSA PRIVATE KEY-----\n{body_line}\n-----END RSA PRIVATE KEY-----"
         out = s.scrub(f"key={key}")
         assert body_line not in out
         assert "[PRIVATE_KEY_REDACTED]" in out
@@ -184,7 +179,7 @@ class TestGitleaksTomlScrubberBadRules:
         rules = [
             {"id": "good", "regex": r"\bX\b", "label": "X"},
             {"regex": r"\bY\b", "label": "Y"},  # missing id
-            {"id": "no-regex", "label": "Z"},   # missing regex
+            {"id": "no-regex", "label": "Z"},  # missing regex
         ]
         s = GitleaksTomlScrubber(rules=rules)
         assert s.rule_count == 1
@@ -239,9 +234,7 @@ class TestBuildScrubberUsesTomlByDefault:
     def test_detect_secrets_opt_in_via_config(self):
         from hyperi_pylib.logger.secrets_leak import SecretsLeakFilter
 
-        s = build_scrubber(
-            ScrubConfig(secrets=SecretsConfig(patterns="detect-secrets"))
-        )
+        s = build_scrubber(ScrubConfig(secrets=SecretsConfig(patterns="detect-secrets")))
         l1 = next(
             (layer for layer in s.layers if isinstance(layer, SecretsScrubber)),
             None,

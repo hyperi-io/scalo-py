@@ -24,7 +24,6 @@ from hyperi_pylib.logger.scrub import (
     build_scrubber,
 )
 
-
 # ---------------------------------------------------------------------------
 # Fake metrics backend — records every call for assertion
 # ---------------------------------------------------------------------------
@@ -33,17 +32,17 @@ from hyperi_pylib.logger.scrub import (
 class _FakeMetric:
     """Records labels()/inc()/set()/observe() calls for assertion."""
 
-    def __init__(self, name: str, recorder: "_FakeBackend") -> None:
+    def __init__(self, name: str, recorder: _FakeBackend) -> None:
         self.name = name
         self._recorder = recorder
 
-    def labels(self, **kwargs: object) -> "_FakeMetric":
+    def labels(self, **kwargs: object) -> _FakeMetric:
         # Return a labelled child; record the label set lazily on call.
         return _FakeLabelled(self.name, dict(kwargs), self._recorder)
 
 
 class _FakeLabelled:
-    def __init__(self, name: str, labels: dict, recorder: "_FakeBackend") -> None:
+    def __init__(self, name: str, labels: dict, recorder: _FakeBackend) -> None:
         self.name = name
         self.labels_ = labels
         self._recorder = recorder
@@ -73,8 +72,9 @@ class _FakeBackend:
         self.built[name] = "gauge"
         return _FakeMetric(name, self)
 
-    def histogram(self, name: str, description: str, labels: list[str] | None = None,
-                  buckets: tuple = None) -> _FakeMetric:
+    def histogram(
+        self, name: str, description: str, labels: list[str] | None = None, buckets: tuple = None
+    ) -> _FakeMetric:
         self.built[name] = "histogram"
         return _FakeMetric(name, self)
 
@@ -126,39 +126,40 @@ class TestScrubMetricsWiring:
         backend = _FakeBackend()
         m = ScrubMetrics(backend=backend)
         m.inc_match("L1", "GITHUB_TOKEN")
-        assert ("inc", "log_scrub_matches_total",
-                {"layer": "L1", "type": "GITHUB_TOKEN"}, 1) in backend.events
+        assert ("inc", "log_scrub_matches_total", {"layer": "L1", "type": "GITHUB_TOKEN"}, 1) in backend.events
 
     def test_inc_redaction_records_event(self):
         backend = _FakeBackend()
         m = ScrubMetrics(backend=backend)
         m.inc_redaction("L3", "EMAIL", n=2)
-        assert ("inc", "log_scrub_redactions_total",
-                {"layer": "L3", "type": "EMAIL"}, 2) in backend.events
+        assert ("inc", "log_scrub_redactions_total", {"layer": "L3", "type": "EMAIL"}, 2) in backend.events
 
     def test_inc_error_records_event(self):
         backend = _FakeBackend()
         m = ScrubMetrics(backend=backend)
         m.inc_error("LayeredScrubber", "ValueError")
-        assert ("inc", "log_scrub_errors_total",
-                {"layer": "LayeredScrubber", "error_type": "ValueError"}, 1) in backend.events
+        assert (
+            "inc",
+            "log_scrub_errors_total",
+            {"layer": "LayeredScrubber", "error_type": "ValueError"},
+            1,
+        ) in backend.events
 
     def test_observe_duration(self):
         backend = _FakeBackend()
         m = ScrubMetrics(backend=backend)
         m.observe_duration("L2", 0.005)
-        assert ("observe", "log_scrub_duration_seconds",
-                {"layer": "L2"}, 0.005) in backend.events
+        assert ("observe", "log_scrub_duration_seconds", {"layer": "L2"}, 0.005) in backend.events
 
     def test_set_pattern_version(self):
         backend = _FakeBackend()
         m = ScrubMetrics(backend=backend)
         m.set_pattern_version("gitleaks", "1.5.0")
-        assert ("set", "log_scrub_pattern_version",
-                {"source": "gitleaks", "version": "1.5.0"}, 1) in backend.events
+        assert ("set", "log_scrub_pattern_version", {"source": "gitleaks", "version": "1.5.0"}, 1) in backend.events
 
     def test_backend_exception_swallowed(self):
         """Broken backend must not propagate — scrubber stays alive."""
+
         class _BrokenBackend:
             def counter(self, *a, **k):
                 raise RuntimeError("kaboom")
@@ -201,13 +202,9 @@ class TestFactoryEmitsMetrics:
         s.scrub("contact alice@example.com please")
         events = self._events_by_name(backend)
         # at least one L3 EMAIL match and one redaction
-        emails_matched = [
-            ev for ev in events["log_scrub_matches_total"]
-            if ev[2] == {"layer": "L3", "type": "EMAIL"}
-        ]
+        emails_matched = [ev for ev in events["log_scrub_matches_total"] if ev[2] == {"layer": "L3", "type": "EMAIL"}]
         emails_redacted = [
-            ev for ev in events["log_scrub_redactions_total"]
-            if ev[2] == {"layer": "L3", "type": "EMAIL"}
+            ev for ev in events["log_scrub_redactions_total"] if ev[2] == {"layer": "L3", "type": "EMAIL"}
         ]
         assert len(emails_matched) >= 1
         assert len(emails_redacted) >= 1
@@ -216,24 +213,15 @@ class TestFactoryEmitsMetrics:
         s = build_scrubber(metrics=metrics)
         s.scrub("paid with 4111-1111-1111-1111")
         events = self._events_by_name(backend)
-        cc = [
-            ev for ev in events["log_scrub_redactions_total"]
-            if ev[2] == {"layer": "L3", "type": "CREDIT_CARD"}
-        ]
+        cc = [ev for ev in events["log_scrub_redactions_total"] if ev[2] == {"layer": "L3", "type": "CREDIT_CARD"}]
         assert len(cc) >= 1
 
     def test_abn_redaction_with_context_emits_metrics(self, backend, metrics):
         s = build_scrubber(metrics=metrics)
         s.scrub("ABN: 53 004 085 616")
         events = self._events_by_name(backend)
-        abn_match = [
-            ev for ev in events["log_scrub_matches_total"]
-            if ev[2] == {"layer": "L3", "type": "AU_ABN"}
-        ]
-        abn_red = [
-            ev for ev in events["log_scrub_redactions_total"]
-            if ev[2] == {"layer": "L3", "type": "AU_ABN"}
-        ]
+        abn_match = [ev for ev in events["log_scrub_matches_total"] if ev[2] == {"layer": "L3", "type": "AU_ABN"}]
+        abn_red = [ev for ev in events["log_scrub_redactions_total"] if ev[2] == {"layer": "L3", "type": "AU_ABN"}]
         assert len(abn_match) >= 1
         assert len(abn_red) >= 1
 
@@ -257,14 +245,8 @@ class TestFactoryEmitsMetrics:
         # No "abn" keyword — regex still matches the digit run though
         s.scrub("Request 53004085616 logged")
         events = self._events_by_name(backend)
-        abn_match = [
-            ev for ev in events["log_scrub_matches_total"]
-            if ev[2] == {"layer": "L3", "type": "AU_ABN"}
-        ]
-        abn_red = [
-            ev for ev in events["log_scrub_redactions_total"]
-            if ev[2] == {"layer": "L3", "type": "AU_ABN"}
-        ]
+        abn_match = [ev for ev in events["log_scrub_matches_total"] if ev[2] == {"layer": "L3", "type": "AU_ABN"}]
+        abn_red = [ev for ev in events["log_scrub_redactions_total"] if ev[2] == {"layer": "L3", "type": "AU_ABN"}]
         assert len(abn_match) >= 1
         assert len(abn_red) == 0
 
@@ -274,10 +256,7 @@ class TestFactoryEmitsMetrics:
         events = self._events_by_name(backend)
         # Some L1 metric for an AWS-related key fired (detect-secrets
         # type names vary by version — assert at least one L1 redaction).
-        l1_red = [
-            ev for ev in events["log_scrub_redactions_total"]
-            if ev[2].get("layer") == "L1"
-        ]
+        l1_red = [ev for ev in events["log_scrub_redactions_total"] if ev[2].get("layer") == "L1"]
         assert len(l1_red) >= 1
 
     def test_duration_observed_per_layer(self, backend, metrics):
@@ -303,9 +282,7 @@ class TestFactoryEmitsMetrics:
         s.scrub("payload")
         events = self._events_by_name(backend)
         errors = events["log_scrub_errors_total"]
-        assert any(
-            ev[2] == {"layer": "_Boom", "error_type": "ValueError"} for ev in errors
-        )
+        assert any(ev[2] == {"layer": "_Boom", "error_type": "ValueError"} for ev in errors)
 
     def test_pattern_version_emitted_on_build(self, backend, metrics):
         # build_scrubber calls set_pattern_version() for detect-secrets +
@@ -350,8 +327,7 @@ class TestCardinalityCap:
         for type_ in ("A", "B", "C"):
             m.inc_match("L1", type_)
         # All three recorded under their own type labels.
-        recorded = [ev[2]["type"] for ev in backend.events
-                    if ev[1] == "log_scrub_matches_total"]
+        recorded = [ev[2]["type"] for ev in backend.events if ev[1] == "log_scrub_matches_total"]
         assert sorted(recorded) == ["A", "B", "C"]
 
     def test_cap_collapses_to_over_cap(self):
@@ -362,13 +338,13 @@ class TestCardinalityCap:
         m.inc_match("L1", "B")
         # Third distinct type triggers the cap
         import warnings as _w
+
         with _w.catch_warnings(record=True) as warned:
             _w.simplefilter("always")
             m.inc_match("L1", "C")
         assert any(issubclass(w.category, RuntimeWarning) for w in warned)
 
-        recorded = [ev[2]["type"] for ev in backend.events
-                    if ev[1] == "log_scrub_matches_total"]
+        recorded = [ev[2]["type"] for ev in backend.events if ev[1] == "log_scrub_matches_total"]
         assert recorded.count("A") == 1
         assert recorded.count("B") == 1
         assert recorded.count("OVER_CAP") == 1
@@ -379,14 +355,14 @@ class TestCardinalityCap:
         m = ScrubMetrics(backend=backend, type_cardinality_cap=1)
 
         import warnings as _w
+
         with _w.catch_warnings(record=True) as warned:
             _w.simplefilter("always")
             m.inc_match("L1", "A")  # accepted, under cap
             m.inc_match("L1", "B")  # over cap — warn
             m.inc_match("L1", "C")  # over cap — silent
             m.inc_match("L1", "D")  # over cap — silent
-        cap_warns = [w for w in warned if "OVER_CAP" in str(w.message)
-                     or "cardinality" in str(w.message)]
+        cap_warns = [w for w in warned if "OVER_CAP" in str(w.message) or "cardinality" in str(w.message)]
         assert len(cap_warns) == 1
 
     def test_zero_cap_disables_cap_entirely(self):
@@ -394,8 +370,7 @@ class TestCardinalityCap:
         m = ScrubMetrics(backend=backend, type_cardinality_cap=0)
         for type_ in ("A", "B", "C", "D", "E", "F", "G", "H"):
             m.inc_match("L1", type_)
-        recorded = [ev[2]["type"] for ev in backend.events
-                    if ev[1] == "log_scrub_matches_total"]
+        recorded = [ev[2]["type"] for ev in backend.events if ev[1] == "log_scrub_matches_total"]
         assert set(recorded) == {"A", "B", "C", "D", "E", "F", "G", "H"}
 
     def test_cap_is_shared_across_match_and_redaction(self):
@@ -406,11 +381,11 @@ class TestCardinalityCap:
         # match counter already saw A,B — redaction with NEW type "C"
         # should now overflow.
         import warnings as _w
+
         with _w.catch_warnings(record=True):
             _w.simplefilter("always")
             m.inc_redaction("L1", "C")
-        recorded = [ev[2]["type"] for ev in backend.events
-                    if ev[1] == "log_scrub_redactions_total"]
+        recorded = [ev[2]["type"] for ev in backend.events if ev[1] == "log_scrub_redactions_total"]
         assert recorded == ["OVER_CAP"]
 
 
@@ -421,7 +396,8 @@ class TestMetricsDoNotAffectOutput:
         cfg = ScrubConfig()
         out_no_metrics = build_scrubber(cfg).scrub("alice@example.com")
         out_with_metrics = build_scrubber(
-            cfg, metrics=ScrubMetrics(backend=_FakeBackend()),
+            cfg,
+            metrics=ScrubMetrics(backend=_FakeBackend()),
         ).scrub("alice@example.com")
         assert out_no_metrics == out_with_metrics
 
@@ -434,8 +410,8 @@ class TestMetricsDoNotAffectOutput:
         assert s.scrub(text) == text
         # But the match counter still increments (observe-mode visibility)
         events = [
-            ev for ev in backend.events
-            if ev[1] == "log_scrub_matches_total"
-            and ev[2] == {"layer": "L3", "type": "EMAIL"}
+            ev
+            for ev in backend.events
+            if ev[1] == "log_scrub_matches_total" and ev[2] == {"layer": "L3", "type": "EMAIL"}
         ]
         assert len(events) >= 1

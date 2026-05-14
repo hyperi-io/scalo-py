@@ -26,9 +26,12 @@ paths = [
     '''backup/.*''',
     '''\.env\.backup''',
     '''\.pip/pip\.conf''',
-    '''tests/unit/test_anonymizer\.py''',      # Fake API keys for PII anonymization tests
-    '''tests/unit/test_logger_filters\.py''',  # Fake API keys for log masking tests
-    '''docs/SERVICE-ACCESS\.md''',             # Example credentials in documentation (test environment)
+    '''tests/unit/test_anonymizer\.py''',         # Fake API keys for PII anonymization tests
+    '''tests/unit/test_logger_filters\.py''',     # Fake API keys for log masking tests
+    '''tests/unit/test_logger_secrets_leak\.py''', # Fake API keys for L1 secret-leak scrubber tests
+    '''tests/unit/test_scrub_gitleaks_toml\.py''', # Fake API keys for L1 gitleaks-TOML scrubber tests
+    '''tests/unit/test_scrub_parity_fixtures\.py''', # Fake API keys for L3 parity fixture tests
+    '''docs/SERVICE-ACCESS\.md''',                # Example credentials in documentation (test environment)
 ]
 
 # Regex patterns that are test fixtures (fake secrets for testing)

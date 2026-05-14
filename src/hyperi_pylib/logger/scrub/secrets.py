@@ -34,21 +34,23 @@ if TYPE_CHECKING:
 # Minimal subset of high-signal rule IDs from upstream gitleaks.toml —
 # used when patterns="minimal". Matches the historical SECRETS_PLUGINS_LITE
 # list using the upstream rule IDs.
-_MINIMAL_RULES: frozenset[str] = frozenset({
-    "aws-access-token",
-    "github-pat",
-    "github-fine-grained-pat",
-    "github-app-token",
-    "github-oauth",
-    "gitlab-pat",
-    "gitlab-pat-routable",
-    "stripe-access-token",
-    "jwt",
-    "private-key",
-    "openai-api-key",
-    "slack-bot-token",
-    "slack-user-token",
-})
+_MINIMAL_RULES: frozenset[str] = frozenset(
+    {
+        "aws-access-token",
+        "github-pat",
+        "github-fine-grained-pat",
+        "github-app-token",
+        "github-oauth",
+        "gitlab-pat",
+        "gitlab-pat-routable",
+        "stripe-access-token",
+        "jwt",
+        "private-key",
+        "openai-api-key",
+        "slack-bot-token",
+        "slack-user-token",
+    }
+)
 
 
 class SecretsScrubber:
@@ -100,12 +102,10 @@ class SecretsScrubber:
 
         if patterns in ("gitleaks", "minimal"):
             rule_ids = _MINIMAL_RULES if patterns == "minimal" else None
-            self._inner: GitleaksTomlScrubber | SecretsLeakFilter = (
-                GitleaksTomlScrubber(
-                    labeler=labeler,
-                    metrics=self._metrics,
-                    rule_ids=rule_ids,
-                )
+            self._inner: GitleaksTomlScrubber | SecretsLeakFilter = GitleaksTomlScrubber(
+                labeler=labeler,
+                metrics=self._metrics,
+                rule_ids=rule_ids,
             )
         elif patterns in self._DETECT_SECRETS_LEVEL_MAP:
             level = self._DETECT_SECRETS_LEVEL_MAP[patterns]

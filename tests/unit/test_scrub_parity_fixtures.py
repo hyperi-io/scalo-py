@@ -35,7 +35,6 @@ from hyperi_pylib.logger.scrub import (
     build_scrubber,
 )
 
-
 # ---------------------------------------------------------------------------
 # Load the canonical fixtures
 # ---------------------------------------------------------------------------
@@ -55,8 +54,7 @@ FIXTURES = _load_fixtures()
 # ---------------------------------------------------------------------------
 
 
-def _scrubber_only(*, credit_card=False, iban=False, email=False, phone=False,
-                   national_ids: list[str] | None = None):
+def _scrubber_only(*, credit_card=False, iban=False, email=False, phone=False, national_ids: list[str] | None = None):
     """Build a scrubber with L1 + L2 off and only the requested L3 validator on."""
     return build_scrubber(
         ScrubConfig(
@@ -93,14 +91,12 @@ class TestCreditCardFixtures:
     @pytest.mark.parametrize("sample", FIXTURES["credit_card"]["valid"])
     def test_valid_samples_redact(self, s, sample):
         out = s.scrub(f"payment {sample} authorised")
-        assert _was_redacted(out, sample, "CREDIT_CARD"), \
-            f"valid CC {sample!r} was not redacted: out={out!r}"
+        assert _was_redacted(out, sample, "CREDIT_CARD"), f"valid CC {sample!r} was not redacted: out={out!r}"
 
     @pytest.mark.parametrize("sample", FIXTURES["credit_card"]["invalid"])
     def test_invalid_samples_pass_through(self, s, sample):
         out = s.scrub(f"payment {sample} pending")
-        assert sample in out, \
-            f"invalid CC {sample!r} was wrongly redacted: out={out!r}"
+        assert sample in out, f"invalid CC {sample!r} was wrongly redacted: out={out!r}"
 
 
 class TestIbanFixtures:
@@ -111,16 +107,14 @@ class TestIbanFixtures:
     @pytest.mark.parametrize("sample", FIXTURES["iban"]["valid"])
     def test_valid_samples_redact(self, s, sample):
         out = s.scrub(f"account {sample} debited")
-        assert _was_redacted(out, sample, "IBAN"), \
-            f"valid IBAN {sample!r} was not redacted: out={out!r}"
+        assert _was_redacted(out, sample, "IBAN"), f"valid IBAN {sample!r} was not redacted: out={out!r}"
 
     @pytest.mark.parametrize("sample", FIXTURES["iban"]["invalid"])
     def test_invalid_samples_pass_through(self, s, sample):
         out = s.scrub(f"account {sample} pending")
         # Truncated samples like "GB82" don't match the structural regex
         # and definitely don't validate; pass-through.
-        assert "[IBAN_REDACTED]" not in out, \
-            f"invalid IBAN {sample!r} was wrongly redacted: out={out!r}"
+        assert "[IBAN_REDACTED]" not in out, f"invalid IBAN {sample!r} was wrongly redacted: out={out!r}"
 
 
 class TestEmailFixtures:
@@ -131,14 +125,12 @@ class TestEmailFixtures:
     @pytest.mark.parametrize("sample", FIXTURES["email"]["valid"])
     def test_valid_samples_redact(self, s, sample):
         out = s.scrub(f"contact {sample} re: ticket")
-        assert _was_redacted(out, sample, "EMAIL"), \
-            f"valid email {sample!r} was not redacted: out={out!r}"
+        assert _was_redacted(out, sample, "EMAIL"), f"valid email {sample!r} was not redacted: out={out!r}"
 
     @pytest.mark.parametrize("sample", FIXTURES["email"]["invalid"])
     def test_invalid_samples_pass_through(self, s, sample):
         out = s.scrub(f"input {sample} received")
-        assert "[EMAIL_REDACTED]" not in out, \
-            f"invalid email {sample!r} was wrongly redacted: out={out!r}"
+        assert "[EMAIL_REDACTED]" not in out, f"invalid email {sample!r} was wrongly redacted: out={out!r}"
 
 
 class TestPhoneFixtures:
@@ -149,16 +141,14 @@ class TestPhoneFixtures:
     @pytest.mark.parametrize("sample", FIXTURES["phone"]["valid"])
     def test_valid_samples_redact(self, s, sample):
         out = s.scrub(f"contact phone {sample} listed")
-        assert _was_redacted(out, sample, "PHONE"), \
-            f"valid phone {sample!r} was not redacted: out={out!r}"
+        assert _was_redacted(out, sample, "PHONE"), f"valid phone {sample!r} was not redacted: out={out!r}"
 
     @pytest.mark.parametrize("sample", FIXTURES["phone"]["should_NOT_match"])
     def test_bare_local_numbers_pass_through(self, s, sample):
         out = s.scrub(f"customer {sample} called")
         # libphonenumber rejects bare local numbers without country code.
         # Validator must not redact.
-        assert "[PHONE_REDACTED]" not in out, \
-            f"bare phone {sample!r} was wrongly redacted: out={out!r}"
+        assert "[PHONE_REDACTED]" not in out, f"bare phone {sample!r} was wrongly redacted: out={out!r}"
 
 
 # ---------------------------------------------------------------------------
@@ -182,22 +172,25 @@ class _BaseContextRequiredTest:
             # The sample text contains the keyword + value. The full
             # sample may not be redacted (keyword survives), but the
             # value substring must be gone and the label must appear.
-            assert f"[{self.label}_REDACTED]" in out, \
+            assert f"[{self.label}_REDACTED]" in out, (
                 f"{self.section}: valid+context {sample!r} not redacted: out={out!r}"
+            )
 
     def test_invalid_in_context_pass_through(self, s):
         section = FIXTURES[self.section]
         for sample in section.get("invalid_in_context", []):
             out = s.scrub(sample)
-            assert f"[{self.label}_REDACTED]" not in out, \
+            assert f"[{self.label}_REDACTED]" not in out, (
                 f"{self.section}: invalid+context {sample!r} wrongly redacted: out={out!r}"
+            )
 
     def test_should_not_match(self, s):
         section = FIXTURES[self.section]
         for sample in section.get("should_NOT_match", []):
             out = s.scrub(sample)
-            assert f"[{self.label}_REDACTED]" not in out, \
+            assert f"[{self.label}_REDACTED]" not in out, (
                 f"{self.section}: should_NOT_match {sample!r} wrongly redacted: out={out!r}"
+            )
 
 
 class TestAuAbnFixtures(_BaseContextRequiredTest):

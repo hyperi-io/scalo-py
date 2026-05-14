@@ -17,11 +17,10 @@ from hyperi_pylib.logger.scrub import (
     NoOpScrubber,
     PiiConfig,
     PiiValidatorsConfig,
-    ScrubConfig,
     Scrubber,
+    ScrubConfig,
     SecretsConfig,
 )
-
 
 # ---------------------------------------------------------------------------
 # Protocol satisfaction
@@ -109,15 +108,8 @@ class TestLayeredScrubberComposition:
         assert s.scrub("hello") == "OLLEH"
 
     def test_order_matters(self):
-        # Reverse THEN upper: "hello" → "olleh" → "OLLEH"
-        # (same output by coincidence on alpha input)
-        # Use mixed input to confirm ordering matters semantically:
-        s_upper_first = LayeredScrubber(layers=[_UpperLayer(), _ReverseLayer()])
-        s_reverse_first = LayeredScrubber(layers=[_ReverseLayer(), _UpperLayer()])
-        # Both produce same result here, but layers are applied in
-        # different order — confirmed via spy:
-        spy_a = _UpperLayer()
-        spy_b = _ReverseLayer()
+        # Layers are applied in declaration order — confirmed via a
+        # spy that records its name on every scrub() call.
         order_log = []
 
         class _LoggedLayer:
@@ -185,9 +177,7 @@ class TestLayeredScrubberFailSafe:
             _w.simplefilter("always")
             s.scrub("second call")
         # No new RuntimeWarning emitted for the second call
-        assert not any(
-            issubclass(w.category, RuntimeWarning) for w in captured
-        )
+        assert not any(issubclass(w.category, RuntimeWarning) for w in captured)
         # Layer's scrub() was only called once
         assert broken.calls == 1
 

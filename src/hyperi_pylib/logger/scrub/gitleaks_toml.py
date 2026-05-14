@@ -81,8 +81,7 @@ def load_gitleaks_rules(
                 data = tomllib.load(f)
         except (OSError, tomllib.TOMLDecodeError) as e:
             warnings.warn(
-                f"gitleaks TOML at {path} not loadable: {e}. "
-                f"L1 will have no rules.",
+                f"gitleaks TOML at {path} not loadable: {e}. L1 will have no rules.",
                 RuntimeWarning,
                 stacklevel=2,
             )
@@ -94,8 +93,7 @@ def load_gitleaks_rules(
                 data = tomllib.load(f)
         except (OSError, tomllib.TOMLDecodeError, ModuleNotFoundError) as e:
             warnings.warn(
-                f"bundled gitleaks.toml not loadable: {e}. "
-                f"L1 will have no rules.",
+                f"bundled gitleaks.toml not loadable: {e}. L1 will have no rules.",
                 RuntimeWarning,
                 stacklevel=2,
             )
@@ -104,8 +102,7 @@ def load_gitleaks_rules(
     rules = data.get("rules", []) or []
     if not isinstance(rules, list):
         warnings.warn(
-            "gitleaks.toml [[rules]] must be an array of tables; got "
-            f"{type(rules).__name__}. L1 will have no rules.",
+            f"gitleaks.toml [[rules]] must be an array of tables; got {type(rules).__name__}. L1 will have no rules.",
             RuntimeWarning,
             stacklevel=2,
         )
@@ -133,10 +130,9 @@ def load_gitleaks_rules(
 class _CompiledRule:
     """A compiled gitleaks rule ready to scan log text."""
 
-    __slots__ = ("id", "label", "pattern", "keywords")
+    __slots__ = ("id", "keywords", "label", "pattern")
 
-    def __init__(self, id_: str, label: str, pattern: regex.Pattern[str],
-                 keywords: tuple[str, ...]) -> None:
+    def __init__(self, id_: str, label: str, pattern: regex.Pattern[str], keywords: tuple[str, ...]) -> None:
         self.id = id_
         self.label = label
         self.pattern = pattern
@@ -205,8 +201,7 @@ class GitleaksTomlScrubber:
                 pattern = regex.compile(regex_str, regex.MULTILINE | regex.V1)
             except regex.error as e:
                 warnings.warn(
-                    f"gitleaks rule {rule_id!r} regex did not compile: {e}. "
-                    f"Skipping rule.",
+                    f"gitleaks rule {rule_id!r} regex did not compile: {e}. Skipping rule.",
                     RuntimeWarning,
                     stacklevel=2,
                 )
@@ -216,9 +211,7 @@ class GitleaksTomlScrubber:
             keywords = entry.get("keywords") or ()
             if not isinstance(keywords, (list, tuple)):
                 keywords = ()
-            self._compiled.append(
-                _CompiledRule(rule_id, label, pattern, tuple(str(k) for k in keywords))
-            )
+            self._compiled.append(_CompiledRule(rule_id, label, pattern, tuple(str(k) for k in keywords)))
 
     @property
     def rule_count(self) -> int:
@@ -268,10 +261,7 @@ class GitleaksTomlScrubber:
 
         kept: list[tuple[int, int, _CompiledRule]] = []
         for start, end, rule in candidates:
-            overlaps = any(
-                start < ke and end > ks
-                for ks, ke, _ in kept
-            )
+            overlaps = any(start < ke and end > ks for ks, ke, _ in kept)
             if not overlaps:
                 kept.append((start, end, rule))
         kept.sort(key=lambda k: k[0])

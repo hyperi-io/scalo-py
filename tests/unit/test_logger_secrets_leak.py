@@ -49,9 +49,7 @@ class TestSecretsLeakFilterDetection:
 
     def test_private_key(self, f):
         key = (
-            "-----BEGIN PRIVATE KEY-----\n"
-            "MIIEvQIBADANBgkqhkiG9w0BAQEFAASCBKcwggSjAgEAAoIBAQ\n"
-            "-----END PRIVATE KEY-----"
+            "-----BEGIN PRIVATE KEY-----\nMIIEvQIBADANBgkqhkiG9w0BAQEFAASCBKcwggSjAgEAAoIBAQ\n-----END PRIVATE KEY-----"
         )
         out = f.scrub(f"key={key}")
         assert "MIIEvQIBADANBg" not in out
@@ -71,10 +69,7 @@ class TestSecretsLeakFilterDetection:
         assert f.scrub("") == ""
 
     def test_multiple_secrets_in_one_line(self, f):
-        text = (
-            "Init failed: AKIAIOSFODNN7EXAMPLE and "
-            "ghp_abcdef1234567890abcdef1234567890abcd both rotated"
-        )
+        text = "Init failed: AKIAIOSFODNN7EXAMPLE and ghp_abcdef1234567890abcdef1234567890abcd both rotated"
         out = f.scrub(text)
         assert "AKIAIOSFODNN7EXAMPLE" not in out
         assert "ghp_abcdef1234567890abcdef1234567890abcd" not in out
@@ -140,14 +135,8 @@ class TestSecretsLeakCompositionWithSensitiveFilter:
         secrets = SecretsLeakFilter(level="full")
         f = SensitiveDataFilter(secrets_leak=secrets)
 
-        jwt = (
-            "eyJhbGciOiJIUzI1NiJ9.eyJzdWIiOiIxMjM0NTY3ODkwIn0."
-            "SflKxwRJSMeKKF2QT4fwpMeJf36POk6yJV_adQssw5c"
-        )
-        text = (
-            f"User logged in with password=hunter2 and "
-            f"AWS_KEY=AKIAIOSFODNN7EXAMPLE - JWT {jwt}"
-        )
+        jwt = "eyJhbGciOiJIUzI1NiJ9.eyJzdWIiOiIxMjM0NTY3ODkwIn0.SflKxwRJSMeKKF2QT4fwpMeJf36POk6yJV_adQssw5c"
+        text = f"User logged in with password=hunter2 and AWS_KEY=AKIAIOSFODNN7EXAMPLE - JWT {jwt}"
         out = f._mask_sensitive_string(text)
         # Field-name match strips hunter2
         assert "hunter2" not in out

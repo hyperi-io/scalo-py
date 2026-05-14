@@ -127,9 +127,7 @@ def _scan_async_function(fn: ast.AsyncFunctionDef) -> list[tuple[int, str]]:
             continue
         f = inner.func
         # asyncio.to_thread(...)  OR  X.to_thread(...) (anyio)
-        if _attr_matches_dotted(inner, "asyncio.to_thread") or (
-            isinstance(f, ast.Attribute) and f.attr == "to_thread"
-        ):
+        if _attr_matches_dotted(inner, "asyncio.to_thread") or (isinstance(f, ast.Attribute) and f.attr == "to_thread"):
             for sub in ast.walk(inner):
                 safe.add(id(sub))
             continue
@@ -214,8 +212,7 @@ class TestNoSyncInAsync:
             actual = set(by_file.get(full_path, []))
             if not actual and expected:
                 pytest.fail(
-                    f"{rel_path} is in KNOWN_UNFIXED but has no findings. "
-                    f"Remove the KNOWN_UNFIXED entry — it's fixed!"
+                    f"{rel_path} is in KNOWN_UNFIXED but has no findings. Remove the KNOWN_UNFIXED entry — it's fixed!"
                 )
 
     def test_no_new_sync_in_async(self):
@@ -321,11 +318,9 @@ class TestEventLoopLiveness:
         await probe.stop()
 
         assert result == "done"
-        assert len(probe.ticks) >= 5, (
-            f"loop was blocked by make_async wrapper: only {len(probe.ticks)} ticks fired"
-        )
+        assert len(probe.ticks) >= 5, f"loop was blocked by make_async wrapper: only {len(probe.ticks)} ticks fired"
 
-    async def test_naive_sync_call_DOES_block_the_loop(self):
+    async def test_naive_sync_call_DOES_block_the_loop(self):  # noqa: N802
         """Negative control: directly calling a sync sleep in an async
         function DOES block the loop. This test exists to prove the
         liveness probe is sensitive enough to detect blocking. If this
