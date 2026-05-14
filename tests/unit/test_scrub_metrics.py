@@ -13,6 +13,12 @@ from __future__ import annotations
 from collections import defaultdict
 
 import pytest
+from common.fake_pii import (
+    au_abn_bare,
+    au_abn_with_context,
+    email,
+    visa_card,
+)
 
 from hyperi_pylib.logger.scrub import (
     NationalIdsConfig,
@@ -199,7 +205,7 @@ class TestFactoryEmitsMetrics:
 
     def test_email_redaction_emits_match_and_redaction(self, backend, metrics):
         s = build_scrubber(metrics=metrics)
-        s.scrub("contact alice@example.com please")
+        s.scrub(f"contact {email()} please")
         events = self._events_by_name(backend)
         # at least one L3 EMAIL match and one redaction
         emails_matched = [ev for ev in events["log_scrub_matches_total"] if ev[2] == {"layer": "L3", "type": "EMAIL"}]
@@ -211,14 +217,14 @@ class TestFactoryEmitsMetrics:
 
     def test_credit_card_redaction_emits_metrics(self, backend, metrics):
         s = build_scrubber(metrics=metrics)
-        s.scrub("paid with 4111-1111-1111-1111")
+        s.scrub(f"paid with {visa_card()}")
         events = self._events_by_name(backend)
         cc = [ev for ev in events["log_scrub_redactions_total"] if ev[2] == {"layer": "L3", "type": "CREDIT_CARD"}]
         assert len(cc) >= 1
 
     def test_abn_redaction_with_context_emits_metrics(self, backend, metrics):
         s = build_scrubber(metrics=metrics)
-        s.scrub("ABN: 53 004 085 616")
+        s.scrub(au_abn_with_context())
         events = self._events_by_name(backend)
         abn_match = [ev for ev in events["log_scrub_matches_total"] if ev[2] == {"layer": "L3", "type": "AU_ABN"}]
         abn_red = [ev for ev in events["log_scrub_redactions_total"] if ev[2] == {"layer": "L3", "type": "AU_ABN"}]
@@ -243,7 +249,8 @@ class TestFactoryEmitsMetrics:
             metrics=metrics,
         )
         # No "abn" keyword — regex still matches the digit run though
-        s.scrub("Request 53004085616 logged")
+        # Bare ABN, no keyword → context-required validator must not redact
+        s.scrub(f"Request {au_abn_bare().replace(' ', '')} logged")
         events = self._events_by_name(backend)
         abn_match = [ev for ev in events["log_scrub_matches_total"] if ev[2] == {"layer": "L3", "type": "AU_ABN"}]
         abn_red = [ev for ev in events["log_scrub_redactions_total"] if ev[2] == {"layer": "L3", "type": "AU_ABN"}]
@@ -251,8 +258,10 @@ class TestFactoryEmitsMetrics:
         assert len(abn_red) == 0
 
     def test_aws_key_emits_l1_metrics(self, backend, metrics):
+        from common.fake_secrets import aws_access_key
+
         s = build_scrubber(metrics=metrics)
-        s.scrub("AWS_ACCESS_KEY=AKIAIOSFODNN7EXAMPLE leaked")
+        s.scrub(f"AWS_ACCESS_KEY={aws_access_key()} leaked")
         events = self._events_by_name(backend)
         # Some L1 metric for an AWS-related key fired (detect-secrets
         # type names vary by version — assert at least one L1 redaction).
@@ -305,7 +314,7 @@ class TestMetricsEnabledKillSwitch:
         metrics = ScrubMetrics.from_manager(backend)
         cfg = ScrubConfig(metrics_enabled=False)
         s = build_scrubber(cfg, metrics=metrics)
-        s.scrub("alice@example.com password=hunter2")
+        s.scrub(f"{email()} password=hunter2")
         # No events recorded — the kill-switch dropped the backend.
         assert backend.events == []
 
@@ -314,7 +323,7 @@ class TestMetricsEnabledKillSwitch:
         metrics = ScrubMetrics.from_manager(backend)
         cfg = ScrubConfig(metrics_enabled=True)
         s = build_scrubber(cfg, metrics=metrics)
-        s.scrub("alice@example.com")
+        s.scrub(email())
         assert len(backend.events) > 0
 
 
@@ -394,11 +403,11 @@ class TestMetricsDoNotAffectOutput:
 
     def test_with_metrics_yields_same_output_as_without(self):
         cfg = ScrubConfig()
-        out_no_metrics = build_scrubber(cfg).scrub("alice@example.com")
+        out_no_metrics = build_scrubber(cfg).scrub(email())
         out_with_metrics = build_scrubber(
             cfg,
             metrics=ScrubMetrics(backend=_FakeBackend()),
-        ).scrub("alice@example.com")
+        ).scrub(email())
         assert out_no_metrics == out_with_metrics
 
     def test_observe_only_with_metrics_still_short_circuits(self):
@@ -406,7 +415,7 @@ class TestMetricsDoNotAffectOutput:
         backend = _FakeBackend()
         metrics = ScrubMetrics(backend=backend)
         s = build_scrubber(cfg, metrics=metrics)
-        text = "alice@example.com"
+        text = email()
         assert s.scrub(text) == text
         # But the match counter still increments (observe-mode visibility)
         events = [

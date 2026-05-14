@@ -195,6 +195,7 @@ testpaths = [
 addopts = "-ra -q --strict-markers --log-file=tests/logs/pytest/hyperi-pylib.log --log-file-level=DEBUG"
 pythonpath = [
     "src",
+    "tests",
 ]
 log_cli = true
 log_cli_level = "INFO"

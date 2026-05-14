@@ -92,39 +92,48 @@ class TestGitleaksTomlScrubberBasic:
         assert isinstance(s, Scrubber)
 
     def test_scrubs_aws_key(self):
+        from common.fake_secrets import aws_access_key
+
         s = GitleaksTomlScrubber()
-        out = s.scrub("AKIAIOSFODNN7EXAMPLE leaked")
-        assert "AKIAIOSFODNN7EXAMPLE" not in out
+        ak = aws_access_key()
+        out = s.scrub(f"{ak} leaked")
+        assert ak not in out
         # Label derived from rule id "aws-access-token"
         assert "[AWS_ACCESS_TOKEN_REDACTED]" in out
 
     def test_scrubs_github_token(self):
+        from common.fake_secrets import github_classic_pat
+
         s = GitleaksTomlScrubber()
         # Upstream github-pat regex: ghp_ + 36 alphanumeric chars (exact).
         # Note: the broader ``generic-api-key`` rule may fire first when
         # the token is in a ``key=value`` shape — both outcomes count as
         # a successful redaction. Assert only that the secret is gone.
-        token = "ghp_" + "a" * 36
+        token = github_classic_pat()
         out = s.scrub(f"random text {token} more text")
         assert token not in out
         # Should produce some redaction label
         assert "_REDACTED]" in out
 
     def test_scrubs_jwt(self):
+        from common.fake_secrets import jwt as fake_jwt
+
         s = GitleaksTomlScrubber()
-        jwt = "eyJhbGciOiJIUzI1NiJ9.eyJzdWIiOiIxMjM0NTY3ODkwIn0.dozjgNryP4J3jVmNHl0w5N_XgL0n3I9PlFUP0THsR8U"
-        out = s.scrub(f"Authorization: Bearer {jwt}")
-        assert jwt not in out
+        token = fake_jwt()
+        out = s.scrub(f"Authorization: Bearer {token}")
+        assert token not in out
         assert "[JWT_REDACTED]" in out
 
     def test_scrubs_private_key_block(self):
+        from common.fake_secrets import private_key_block
+
         s = GitleaksTomlScrubber()
         # Upstream private-key regex requires {64,} body between BEGIN
-        # and KEY. Realistic PEM bodies are hundreds of base64 chars.
-        body_line = "MIIEvQIBADANBgkqhkiG9w0BAQEFAASCBKcwggSjAgEAAoIBAQ" * 4
-        key = f"-----BEGIN RSA PRIVATE KEY-----\n{body_line}\n-----END RSA PRIVATE KEY-----"
+        # and END. The factory builds a long-body block to satisfy that.
+        key = private_key_block(body_chars=256)
         out = s.scrub(f"key={key}")
-        assert body_line not in out
+        # The body should be gone (redacted)
+        assert "X" * 256 not in out
         assert "[PRIVATE_KEY_REDACTED]" in out
 
     def test_passes_through_clean_text(self):
@@ -139,27 +148,34 @@ class TestGitleaksTomlScrubberBasic:
 
 class TestGitleaksTomlScrubberRuleFilter:
     def test_rule_ids_filter_restricts_set(self):
+        from common.fake_secrets import aws_access_key, github_classic_pat
+
         s = GitleaksTomlScrubber(rule_ids={"aws-access-token"})
         assert s.rule_count == 1
         # AWS key is caught
-        out = s.scrub("AKIAIOSFODNN7EXAMPLE")
-        assert "AKIAIOSFODNN7EXAMPLE" not in out
+        ak = aws_access_key()
+        out = s.scrub(ak)
+        assert ak not in out
         # GitHub token (different rule) passes through — rule not loaded
-        gh_token = "ghp_" + "a" * 36
+        gh_token = github_classic_pat()
         out2 = s.scrub(gh_token)
         assert gh_token in out2
 
 
 class TestGitleaksTomlScrubberLabeler:
     def test_static_labeler_default(self):
+        from common.fake_secrets import aws_access_key
+
         s = GitleaksTomlScrubber()
-        out = s.scrub("AKIAIOSFODNN7EXAMPLE")
+        out = s.scrub(aws_access_key())
         assert "[AWS_ACCESS_TOKEN_REDACTED]" in out
 
     def test_hash_labeler_yields_per_value_suffix(self):
+        from common.fake_secrets import aws_access_key
+
         labeler = make_hash_labeler(secret_hash_key=b"k")
         s = GitleaksTomlScrubber(labeler=labeler)
-        out = s.scrub("AKIAIOSFODNN7EXAMPLE")
+        out = s.scrub(aws_access_key())
         assert re.search(r"\[AWS_ACCESS_TOKEN_[0-9a-f]{6}\]", out)
 
 
@@ -209,13 +225,15 @@ class TestSecretsScrubberRouting:
         assert isinstance(s._inner, GitleaksTomlScrubber)
 
     def test_off_uses_legacy_noop(self):
+        from common.fake_secrets import aws_access_key
+
         from hyperi_pylib.logger.secrets_leak import SecretsLeakFilter
 
         s = SecretsScrubber(patterns="off")
         # off routes via the detect-secrets level map (level="off")
         assert isinstance(s._inner, SecretsLeakFilter)
         # And acts as a no-op
-        text = "AKIAIOSFODNN7EXAMPLE"
+        text = aws_access_key()
         assert s.scrub(text) == text
 
 
@@ -251,16 +269,22 @@ class TestEndToEndAgainstRealSecrets:
         return build_scrubber()
 
     def test_aws_key_via_toml(self, s):
-        out = s.scrub("AWS_KEY=AKIAIOSFODNN7EXAMPLE")
-        assert "AKIAIOSFODNN7EXAMPLE" not in out
+        from common.fake_secrets import aws_access_key
+
+        ak = aws_access_key()
+        out = s.scrub(f"AWS_KEY={ak}")
+        assert ak not in out
 
     def test_github_token_via_toml(self, s):
-        token = "ghp_" + "a" * 36  # upstream github-pat rule expects 36 chars
+        from common.fake_secrets import github_classic_pat
+
+        token = github_classic_pat()
         out = s.scrub(f"github_token={token}")
         assert token not in out
 
     def test_stripe_test_key_via_toml(self, s):
-        # Upstream stripe-access-token rule uses (sk|pk)_(live|test)_[a-z0-9]+
-        key = "sk_test_" + "a" * 30
+        from common.fake_secrets import stripe_test_key
+
+        key = stripe_test_key()
         out = s.scrub(f"stripe={key}")
         assert key not in out
