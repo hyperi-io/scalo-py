@@ -1,3 +1,41 @@
+# [2.28.0](https://github.com/hyperi-io/hyperi-pylib/compare/v2.27.2...v2.28.0) (2026-05-14)
+
+
+### Bug Fixes
+
+* **concurrency:** add four generic async primitives ([3c53f47](https://github.com/hyperi-io/hyperi-pylib/commit/3c53f476113bd37ebf1166e94f2e588fb466dc9d))
+* **config:** rename dfe_store.py to directory_store.py ([21aed6c](https://github.com/hyperi-io/hyperi-pylib/commit/21aed6c1a01913ad4003a68de9a2daef72575632))
+* correct [tool.ty] schema for ty 0.0.34 — exclude moved under [tool.ty.src] ([3770794](https://github.com/hyperi-io/hyperi-pylib/commit/377079468be756ad6b25cefd8bdde831c0649784))
+* **deps:** add [pii] and [pii-ner] extras backed by datafog ([af8c7f5](https://github.com/hyperi-io/hyperi-pylib/commit/af8c7f5c143cae515d82c7774fdd56ede8ff9b15))
+* **deps:** add detect-secrets to core for security-artefact masking ([3845257](https://github.com/hyperi-io/hyperi-pylib/commit/384525708ab7473113639d9da49815a478a73d5c)), closes [hi#entropy](https://github.com/hi/issues/entropy)
+* **deps:** drop twine, vermin, python-semantic-release; switch to uv_build ([ca97c0c](https://github.com/hyperi-io/hyperi-pylib/commit/ca97c0cec49b4d957b548104d42ae3917e829fa4))
+* **deps:** force majors via uv overrides — protobuf 7, rich 15, importlib_metadata 9 ([5ed789b](https://github.com/hyperi-io/hyperi-pylib/commit/5ed789b6122c90b9e854845e36edf5ec2e244caa))
+* **deps:** update all dependencies to latest, fix 16 CVEs ([66a5538](https://github.com/hyperi-io/hyperi-pylib/commit/66a5538a243ddf6aec029e7313695f79e821bf22)), closes [#6](https://github.com/hyperi-io/hyperi-pylib/issues/6)
+* **logger:** add Scrubber Protocol + LayeredScrubber + ScrubConfig ([e051e64](https://github.com/hyperi-io/hyperi-pylib/commit/e051e64667ed3c17fd00ecc70fa77f157abb41a3))
+* **logger:** add SecretsLeakFilter for security-artefact redaction ([85df8de](https://github.com/hyperi-io/hyperi-pylib/commit/85df8de92f18d257e85c78917915b3d22e56a17b)), closes [hi#signal](https://github.com/hi/issues/signal) [Hi#entropy](https://github.com/Hi/issues/entropy)
+* **logger:** default to DataFog NER tier for PII masking ([86a295c](https://github.com/hyperi-io/hyperi-pylib/commit/86a295c25b04f467ff37422b062975d170608404))
+* **logger:** deterministic-hash redaction labels (opt-in) ([6765741](https://github.com/hyperi-io/hyperi-pylib/commit/676574173d95f49c02cd6559ced4d8a3284e03c2))
+* **logger:** drop Presidio entirely — DataFog covers L3 PII; bespoke validators land next ([786d135](https://github.com/hyperi-io/hyperi-pylib/commit/786d1355e40acd282d2c3c33404aa78d08140ba2))
+* **logger:** enable enqueue=True on all sinks — fire-and-forget by default ([5f7a966](https://github.com/hyperi-io/hyperi-pylib/commit/5f7a9661dc2cf82cde7e951d35c5bc253ec6df90))
+* **logger:** L1 → upstream gitleaks.toml + drop NLP (DataFog) entirely ([d88fef5](https://github.com/hyperi-io/hyperi-pylib/commit/d88fef5131732943cf5d2d176c38252f1de4fc2f)), closes [hi#signal](https://github.com/hi/issues/signal)
+* **logger:** L3 PII validators — python-stdnum + context-required tier ([4620cc1](https://github.com/hyperi-io/hyperi-pylib/commit/4620cc1903caed550313e7722e34aa2e1abda86d))
+* **logger:** parity manifest emitter for cross-language gate ([85c8d3a](https://github.com/hyperi-io/hyperi-pylib/commit/85c8d3abd9b21180dbe5e9b51e84e0c5c8568e73))
+* **logger:** scrub metric emission per spec §8 + operator controls ([636d999](https://github.com/hyperi-io/hyperi-pylib/commit/636d999e4ec60e6ae4753c6b72fcd383a1df0624))
+* **logger:** scrubber resolver + log-level gates + setup() wiring ([bd5fe3a](https://github.com/hyperi-io/hyperi-pylib/commit/bd5fe3a2c7a80e271ae2599b3d84104f590456c1))
+* **logger:** TOML-driven national-ID validators + build_scrubber factory ([1fb34c7](https://github.com/hyperi-io/hyperi-pylib/commit/1fb34c7570365c0c73d0e64cbaf9548a7e576fa4))
+* **metrics:** drop duplicate NoOpMetric and redundant manager checks ([e36c51d](https://github.com/hyperi-io/hyperi-pylib/commit/e36c51d6159ab638b403e44503ec163141fa1ad6))
+* open-source cleanup — drop JFrog refs, hyperi rebrand, pin positioning ([2edb6e8](https://github.com/hyperi-io/hyperi-pylib/commit/2edb6e89bf94b9ef75e4a1d960e3a38289c1890f))
+* **release-prep:** STATE.md release discipline + lint cleanup + gitleaks allowlist ([7d40a48](https://github.com/hyperi-io/hyperi-pylib/commit/7d40a4893d687310e9ed286ab9838f08b82b743d))
+* **tests:** build Stripe fake key at runtime, not as a literal ([8e56d23](https://github.com/hyperi-io/hyperi-pylib/commit/8e56d231e95707517995f7e45d4afd1713624d6a))
+* **tests:** delete dead docker_container tests + 13 fixtures ([64056a0](https://github.com/hyperi-io/hyperi-pylib/commit/64056a0b7fa2fb208be263a5a7c799d137a52c7d))
+* **tests:** use low-entropy fake Stripe key fixture ([03c13dd](https://github.com/hyperi-io/hyperi-pylib/commit/03c13dd03e7ea16556f01f1b9f50440a30e091ba))
+* **version_check:** return Thread handle so tests can join deterministically ([ac73eaf](https://github.com/hyperi-io/hyperi-pylib/commit/ac73eaf22991f5c4c3cab385ed742827c3e49018))
+
+
+### Features
+
+* cloud secrets Tier 1+2 + deployment contract module ([266672e](https://github.com/hyperi-io/hyperi-pylib/commit/266672e71c5e174ff879d028ea04eee2ea021a4a))
+
 ## [2.27.2](https://github.com/hyperi-io/hyperi-pylib/compare/v2.27.1...v2.27.2) (2026-04-15)
 
 
