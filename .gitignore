@@ -269,3 +269,6 @@ coverage/
 
 # AI agent working files (not committed)
 docs/superpowers/
+
+# Git worktrees
+.worktrees/
