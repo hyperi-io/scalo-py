@@ -1,0 +1,14 @@
+apiVersion: hyperi.io/v1
+kind: DeploymentTopology
+metadata:
+  name: minimal
+spec:
+  umbrella:
+    name: hyperi-deployment-minimal
+    description: Minimal smoke-test rollout
+    appVersion: "0.1"
+  apps:
+    - name: dfe-loader
+      version: "^1.18"
+    - name: dfe-receiver
+      version: "^1.15"

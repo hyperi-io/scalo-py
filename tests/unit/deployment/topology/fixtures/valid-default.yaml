@@ -1,0 +1,31 @@
+apiVersion: hyperi.io/v1
+kind: DeploymentTopology
+metadata:
+  name: default
+spec:
+  umbrella:
+    name: hyperi-deployment-default
+    description: HyperI default deployment
+    appVersion: "1.0"
+  apps:
+    - name: dfe-loader
+      version: "^1.18"
+    - name: dfe-receiver
+      version: "^1.15"
+    - name: dfe-archiver
+      version: "^1.7"
+  thirdParty:
+    - name: strimzi-kafka-operator
+      repository: oci://quay.io/strimzi-helm
+      version: "0.45.0"
+      alias: strimzi
+  glue:
+    - name: kafka-cluster
+      file: glue/kafka-cluster.yaml
+  argocd:
+    appOfApps: true
+    appProject: hyperi-platform
+    syncWaves:
+      strimzi-kafka-operator: -20
+      kafka-cluster: -10
+      dfe-loader: 0

@@ -1,0 +1,9 @@
+apiVersion: hyperi.io/v1
+kind: DeploymentTopology
+metadata:
+  name: empty
+spec:
+  umbrella:
+    name: hyperi-deployment-empty
+    description: should fail
+    appVersion: "0.1"
