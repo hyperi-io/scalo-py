@@ -1,3 +1,15 @@
+## [2.28.2](https://github.com/hyperi-io/hyperi-pylib/compare/v2.28.1...v2.28.2) (2026-05-20)
+
+
+### Bug Fixes
+
+* **deployment:** add topology Pydantic models ([e902ca3](https://github.com/hyperi-io/hyperi-pylib/commit/e902ca316fae39af8d90b0c30d7897b2bfd0a30f))
+* **deployment:** add topology subsystem error types ([f03f9ec](https://github.com/hyperi-io/hyperi-pylib/commit/f03f9ec36be23d29bd864281f405b08d983075b6))
+* **deployment:** add topology YAML loader with validation ([698f961](https://github.com/hyperi-io/hyperi-pylib/commit/698f961bcf65c6634c97484fb34c89635b6ebc70))
+* **deployment:** scaffold topology subpackage skeleton ([e180b51](https://github.com/hyperi-io/hyperi-pylib/commit/e180b51e4cc2fc5a5b7c3e2777004a2a1c8dddff))
+* retry publish v2.28.2 (postgres CI fix landed upstream) ([290cf46](https://github.com/hyperi-io/hyperi-pylib/commit/290cf46fc9277d3d4b7c65be071fc13ad51ba84c))
+* trigger publish for v2.28.2 (topology subsystem) ([8f38b40](https://github.com/hyperi-io/hyperi-pylib/commit/8f38b4020b074ec06c5c129165a9da14458cb31f))
+
 # [2.28.0](https://github.com/hyperi-io/hyperi-pylib/compare/v2.27.2...v2.28.0) (2026-05-14)
 
 

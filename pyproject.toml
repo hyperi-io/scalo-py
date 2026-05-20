@@ -4,7 +4,7 @@ build-backend = "uv_build"
 
 [project]
 name = "hyperi-pylib"
-version = "2.28.1"
+version = "2.28.2"
 description = "Opinionated, drop-in Python toolkit for production services at scale. The patterns from blog posts as actual code: 8-layer config cascade, structured logging with PII masking, Prometheus + OpenTelemetry, multi-backend secrets (Vault/AWS/GCP/Azure), Kafka helpers, CEL expression engine, FastAPI-friendly."
 readme = "README.md"
 authors = [
