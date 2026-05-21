@@ -267,11 +267,15 @@ cython_debug/
 out/
 coverage/
 
-# AI agent working files (not committed)
+# Local working files (not committed)
 docs/superpowers/
 .claude/
+hyperi-ai/
+.mcp.json
 CLAUDE.md
 STATE.md
+TODO.md
+.ai-version
 
 # Git worktrees
 .worktrees/
