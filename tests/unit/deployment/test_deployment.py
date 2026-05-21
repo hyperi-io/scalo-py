@@ -379,6 +379,44 @@ class TestGenerateArgocd:
         assert "targetRevision: v1.0.0" in text
         assert 'sync-wave: "5"' in text
 
+    def test_argocd_config_default_uses_wave_apps(self):
+        from hyperi_pylib.deployment import WAVE_APPS
+
+        cfg = ArgocdConfig()
+        assert cfg.sync_wave == WAVE_APPS
+
+    def test_argocd_config_default_has_no_extra_ignore_differences(self):
+        cfg = ArgocdConfig()
+        assert cfg.extra_ignore_differences == []
+
+    def test_generate_argocd_application_emits_default_ignore_differences(self):
+        argo = ArgocdConfig(repo_url="https://github.com/hyperi-io/dfe-loader")
+        yaml = generate_argocd_application(_full_contract(), argo)
+        assert "ignoreDifferences:" in yaml
+        assert "/spec/replicas" in yaml
+        assert "/spec/clusterIP" in yaml
+        assert ".webhooks[].clientConfig.caBundle" in yaml
+
+    def test_generate_argocd_application_appends_extra_ignore_differences(self):
+        argo = ArgocdConfig(
+            repo_url="https://github.com/hyperi-io/dfe-loader",
+            extra_ignore_differences=[
+                "- group: apps\n  kind: Deployment\n  jsonPointers:\n    - /spec/template/spec/containers/0/image",
+            ],
+        )
+        yaml = generate_argocd_application(_full_contract(), argo)
+        assert "/spec/template/spec/containers/0/image" in yaml
+
+    def test_generate_argocd_application_sync_wave_annotation_uses_config_value(self):
+        from hyperi_pylib.deployment.waves import WAVE_TOPICS
+
+        argo = ArgocdConfig(
+            repo_url="https://github.com/hyperi-io/dfe-loader",
+            sync_wave=WAVE_TOPICS,
+        )
+        yaml = generate_argocd_application(_full_contract(), argo)
+        assert 'argocd.argoproj.io/sync-wave: "-5"' in yaml
+
 
 # -----------------------------------------------------------------------------
 # KedaContract.from_config
