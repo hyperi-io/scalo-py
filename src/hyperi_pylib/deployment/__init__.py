@@ -61,6 +61,9 @@ if not DEPLOYMENT_AVAILABLE:
     AptRepoContract = _missing  # type: ignore[assignment]
     NativeDepsContract = _missing  # type: ignore[assignment]
     ArgocdConfig = _missing  # type: ignore[assignment]
+    AppProjectContract = _missing  # type: ignore[assignment]
+    AppProjectDestination = _missing  # type: ignore[assignment]
+    generate_argocd_app_project = _missing  # type: ignore[assignment]
     WAVE_OPERATORS: int = -20
     WAVE_CRDS: int = -10
     WAVE_TOPICS: int = -5
@@ -80,6 +83,11 @@ if not DEPLOYMENT_AVAILABLE:
     DEFAULT_IMAGE_REGISTRY = "ghcr.io/hyperi-io"
     DEFAULT_BASE_IMAGE = "ubuntu:24.04"
 else:
+    from .app_project import (
+        AppProjectContract,
+        AppProjectDestination,
+        generate_argocd_app_project,
+    )
     from .contract import (
         DEFAULT_LICENSE,
         DEFAULT_SCHEMA_VERSION,
@@ -138,6 +146,8 @@ __all__ = [
     "WAVE_OPERATORS",
     "WAVE_POST",
     "WAVE_TOPICS",
+    "AppProjectContract",
+    "AppProjectDestination",
     "AptRepoContract",
     "ArgocdConfig",
     "ContractMismatch",
@@ -154,6 +164,7 @@ __all__ = [
     "SecretGroupContract",
     "argocd_repo_url_from_cascade",
     "base_image_from_cascade",
+    "generate_argocd_app_project",
     "generate_argocd_application",
     "generate_chart",
     "generate_compose_fragment",
