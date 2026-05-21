@@ -61,6 +61,11 @@ if not DEPLOYMENT_AVAILABLE:
     AptRepoContract = _missing  # type: ignore[assignment]
     NativeDepsContract = _missing  # type: ignore[assignment]
     ArgocdConfig = _missing  # type: ignore[assignment]
+    WAVE_OPERATORS: int = -20
+    WAVE_CRDS: int = -10
+    WAVE_TOPICS: int = -5
+    WAVE_APPS: int = 0
+    WAVE_POST: int = 10
     ContractMismatch = _missing  # type: ignore[assignment]
     DeploymentError = _missing  # type: ignore[assignment]
     generate_dockerfile = _missing  # type: ignore[assignment]
@@ -115,12 +120,24 @@ else:
         base_image_from_cascade,
         image_registry_from_cascade,
     )
+    from .waves import (
+        WAVE_APPS,
+        WAVE_CRDS,
+        WAVE_OPERATORS,
+        WAVE_POST,
+        WAVE_TOPICS,
+    )
 
 
 __all__ = [
     "DEFAULT_BASE_IMAGE",
     "DEFAULT_IMAGE_REGISTRY",
     "DEPLOYMENT_AVAILABLE",
+    "WAVE_APPS",
+    "WAVE_CRDS",
+    "WAVE_OPERATORS",
+    "WAVE_POST",
+    "WAVE_TOPICS",
     "AptRepoContract",
     "ArgocdConfig",
     "ContractMismatch",
