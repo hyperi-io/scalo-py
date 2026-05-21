@@ -269,8 +269,8 @@ coverage/
 
 # AI agent working files (not committed)
 docs/superpowers/
-
-
+.claude/
+CLAUDE.md
 STATE.md
 
 # Git worktrees
