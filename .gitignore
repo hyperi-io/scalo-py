@@ -270,5 +270,8 @@ coverage/
 # AI agent working files (not committed)
 docs/superpowers/
 
+
+STATE.md
+
 # Git worktrees
 .worktrees/
