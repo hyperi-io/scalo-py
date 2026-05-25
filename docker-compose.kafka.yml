@@ -14,7 +14,7 @@
 
 services:
   kafka:
-    image: apache/kafka:4.2.0
+    image: apache/kafka:4.3.0
     container_name: hyperi-pylib-kafka
     hostname: kafka
     ports:
