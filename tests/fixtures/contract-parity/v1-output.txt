@@ -1,0 +1,16 @@
+=== dockerfile-labels ===
+LABEL io.hyperi.contract.version="v1"
+LABEL io.hyperi.contract.source-commit="0123456789abcdef0123456789abcdef01234567"
+LABEL io.hyperi.contract.image-ref="ghcr.io/hyperi-io/dfe-loader:v2.7.3"
+=== yaml-annotations-indent-0 ===
+io.hyperi.contract.version: "v1"
+io.hyperi.contract.source-commit: "0123456789abcdef0123456789abcdef01234567"
+io.hyperi.contract.image-ref: "ghcr.io/hyperi-io/dfe-loader:v2.7.3"
+=== yaml-annotations-indent-2 ===
+  io.hyperi.contract.version: "v1"
+  io.hyperi.contract.source-commit: "0123456789abcdef0123456789abcdef01234567"
+  io.hyperi.contract.image-ref: "ghcr.io/hyperi-io/dfe-loader:v2.7.3"
+=== yaml-annotations-indent-4 ===
+    io.hyperi.contract.version: "v1"
+    io.hyperi.contract.source-commit: "0123456789abcdef0123456789abcdef01234567"
+    io.hyperi.contract.image-ref: "ghcr.io/hyperi-io/dfe-loader:v2.7.3"
