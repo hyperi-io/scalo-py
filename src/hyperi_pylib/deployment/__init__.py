@@ -29,6 +29,17 @@ or in ``pyproject.toml``::
 
 from __future__ import annotations
 
+# Contract Identity v1 has no pydantic dependency -- always available
+# whenever the deployment package can be imported. Keep this import
+# outside the pydantic-gated block so consumers can stamp identities
+# even before installing the ``deployment`` extra.
+from .contract_identity import (  # noqa: E402,F401
+    KEY_PREFIX,
+    VERSION,
+    ContractIdentity,
+    IdentityError,
+)
+
 try:
     import pydantic
 
@@ -141,6 +152,8 @@ __all__ = [
     "DEFAULT_BASE_IMAGE",
     "DEFAULT_IMAGE_REGISTRY",
     "DEPLOYMENT_AVAILABLE",
+    "KEY_PREFIX",
+    "VERSION",
     "WAVE_APPS",
     "WAVE_CRDS",
     "WAVE_OPERATORS",
@@ -150,10 +163,12 @@ __all__ = [
     "AppProjectDestination",
     "AptRepoContract",
     "ArgocdConfig",
+    "ContractIdentity",
     "ContractMismatch",
     "DeploymentContract",
     "DeploymentError",
     "HealthContract",
+    "IdentityError",
     "ImageProfile",
     "KedaConfig",
     "KedaContract",
