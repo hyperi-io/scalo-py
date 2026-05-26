@@ -384,7 +384,7 @@ class PostgresConfigLoader:
 
             if self.fallback_mode == "merge" and self.fallback_file.exists():
                 # Load existing config and merge
-                with open(self.fallback_file) as f:
+                with open(self.fallback_file, encoding="utf-8") as f:
                     existing = yaml.safe_load(f) or {}
 
                 # Deep merge: new config overwrites existing
@@ -394,7 +394,7 @@ class PostgresConfigLoader:
                 config_to_write = config
 
             # Write with header comment
-            with open(self.fallback_file, "w") as f:
+            with open(self.fallback_file, "w", encoding="utf-8", newline="\n") as f:
                 f.write("# PostgreSQL config fallback file\n")
                 f.write(f"# Generated at: {time.strftime('%Y-%m-%d %H:%M:%S UTC', time.gmtime())}\n")
                 f.write(f"# Namespace: {self.namespace}\n")
@@ -437,7 +437,7 @@ class PostgresConfigLoader:
             return None
 
         try:
-            with open(self.fallback_file) as f:
+            with open(self.fallback_file, encoding="utf-8") as f:
                 config = yaml.safe_load(f)
 
             if config is None:

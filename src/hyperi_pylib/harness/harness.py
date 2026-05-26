@@ -101,6 +101,8 @@ def run(
             cmd,
             capture_output=True,
             text=True,
+            encoding="utf-8",
+            errors="replace",
             timeout=timeout,
             check=check,
             cwd=cwd,
@@ -120,7 +122,7 @@ def run(
 
     # Log to file if specified
     if log_file:
-        with log_file.open("a") as f:
+        with log_file.open("a", encoding="utf-8") as f:
             f.write(f"\n{'=' * 80}\n")
             if log_label:
                 f.write(f"{log_label}\n")
@@ -207,6 +209,8 @@ class SmartTimeoutMonitor:
                 stdout=subprocess.PIPE,
                 stderr=subprocess.STDOUT,
                 text=True,
+                encoding="utf-8",
+                errors="replace",
                 cwd=working_dir,
                 env=env,
                 bufsize=1,
@@ -507,6 +511,8 @@ def container_registry_login() -> tuple[bool, str]:
             input=registry_pass,
             capture_output=True,
             text=True,
+            encoding="utf-8",
+            errors="replace",
             timeout=30,
         )  # nosec B603,B607 - Docker login with controlled inputs
 
@@ -565,6 +571,8 @@ def check_registry_throttling(namespace: str) -> tuple[bool, str]:
             ["kubectl", "get", "events", "-n", namespace, "--field-selector", "type=Warning"],
             capture_output=True,
             text=True,
+            encoding="utf-8",
+            errors="replace",
             timeout=10,
         )  # nosec B603,B607 - kubectl with controlled namespace
 
@@ -578,6 +586,8 @@ def check_registry_throttling(namespace: str) -> tuple[bool, str]:
             ["kubectl", "get", "pods", "-n", namespace, "-o", "json"],
             capture_output=True,
             text=True,
+            encoding="utf-8",
+            errors="replace",
             timeout=10,
         )  # nosec B603,B607 - kubectl with controlled namespace
 
@@ -639,6 +649,8 @@ def check_container_registry_access() -> tuple[bool, dict]:
             ["docker", "manifest", "inspect", f"{registry_url}/{probe_image}"],
             capture_output=True,
             text=True,
+            encoding="utf-8",
+            errors="replace",
             timeout=15,
         )  # nosec B603,B607 - Docker manifest with controlled URL
 

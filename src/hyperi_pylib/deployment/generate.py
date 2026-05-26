@@ -438,7 +438,7 @@ def generate_chart(
 
 def _write_file(path: Path, content: str) -> None:
     try:
-        path.write_text(content)
+        path.write_text(content, encoding="utf-8", newline="\n")
     except OSError as e:
         raise WriteFileError(str(path), e)
 

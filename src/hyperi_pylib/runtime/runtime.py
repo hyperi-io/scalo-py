@@ -206,7 +206,7 @@ class RuntimeEnvironment:
         # 4. cgroups v1 and v2 (both /proc/1/cgroup and /proc/self/cgroup)
         for cgroup_file in ["/proc/1/cgroup", "/proc/self/cgroup"]:
             try:
-                with open(cgroup_file) as f:
+                with open(cgroup_file, encoding="utf-8") as f:
                     content = f.read()
                     if any(x in content for x in ["docker", "kubepods", "containerd", "crio"]):
                         return True, f"cgroups_{cgroup_file.split('/')[-1]}"
@@ -215,7 +215,7 @@ class RuntimeEnvironment:
 
         # 5. Mountinfo inspection (very reliable)
         try:
-            with open("/proc/self/mountinfo") as f:
+            with open("/proc/self/mountinfo", encoding="utf-8") as f:
                 content = f.read()
                 if any(x in content for x in ["docker", "kubelet", "overlay", "containerd"]):
                     return True, "mountinfo"
@@ -233,7 +233,7 @@ class RuntimeEnvironment:
         # 7. Init process check (PID 1 running non-systemd)
         if os.getpid() == 1:
             try:
-                with open("/proc/1/comm") as f:
+                with open("/proc/1/comm", encoding="utf-8") as f:
                     init_name = f.read().strip()
                     if init_name not in ["systemd", "init", "launchd"]:
                         return True, f"pid1_{init_name}"

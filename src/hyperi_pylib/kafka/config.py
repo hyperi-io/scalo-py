@@ -303,7 +303,7 @@ def config_from_file(
                 f"Unsupported configuration file extension: {ext}. Supported: .properties, .json, .yaml, .yml, .ini"
             )
 
-    content = file_path.read_text()
+    content = file_path.read_text(encoding="utf-8")
 
     if format == "properties":
         return _parse_properties(content)

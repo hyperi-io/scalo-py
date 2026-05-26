@@ -414,7 +414,7 @@ class ContainerMetrics:
     def _read_cgroup_memory_limit(self) -> int | None:
         """Read memory limit from cgroups v2."""
         try:
-            with open("/sys/fs/cgroup/memory.max") as f:
+            with open("/sys/fs/cgroup/memory.max", encoding="utf-8") as f:
                 limit_str = f.read().strip()
 
             if limit_str == "max":
@@ -433,7 +433,7 @@ class ContainerMetrics:
     def _read_cgroup_memory_usage(self) -> int | None:
         """Read current memory usage from cgroups v2."""
         try:
-            with open("/sys/fs/cgroup/memory.current") as f:
+            with open("/sys/fs/cgroup/memory.current", encoding="utf-8") as f:
                 usage_str = f.read().strip()
             return int(usage_str)
         except (FileNotFoundError, ValueError, PermissionError):
@@ -442,7 +442,7 @@ class ContainerMetrics:
     def _read_cgroup_cpu_quota(self) -> float | None:
         """Read CPU quota from cgroups v2."""
         try:
-            with open("/sys/fs/cgroup/cpu.max") as f:
+            with open("/sys/fs/cgroup/cpu.max", encoding="utf-8") as f:
                 cpu_max = f.read().strip()
 
             if cpu_max == "max":
@@ -507,7 +507,7 @@ class ContainerMetrics:
         """Read cpu.stat (cgroups v2)."""
         stats: dict[str, int] = {}
         try:
-            with open("/sys/fs/cgroup/cpu.stat") as f:
+            with open("/sys/fs/cgroup/cpu.stat", encoding="utf-8") as f:
                 for line in f:
                     if " " not in line:
                         continue
@@ -523,7 +523,7 @@ class ContainerMetrics:
     def _read_memory_events_oom_kill(self) -> int | None:
         """Read oom_kill counter from memory.events (cgroups v2)."""
         try:
-            with open("/sys/fs/cgroup/memory.events") as f:
+            with open("/sys/fs/cgroup/memory.events", encoding="utf-8") as f:
                 for line in f:
                     if line.startswith("oom_kill"):
                         _, value = line.strip().split(" ", 1)

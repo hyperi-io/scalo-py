@@ -178,7 +178,7 @@ def _is_container() -> tuple[bool, str]:
     # 4. cgroups v1 and v2
     for cgroup_file in ["/proc/1/cgroup", "/proc/self/cgroup"]:
         try:
-            with open(cgroup_file) as f:
+            with open(cgroup_file, encoding="utf-8") as f:
                 content = f.read()
                 if any(x in content for x in ["docker", "kubepods", "containerd", "crio"]):
                     return True, f"cgroups_{cgroup_file.split('/')[-1]}"
@@ -187,7 +187,7 @@ def _is_container() -> tuple[bool, str]:
 
     # 5. Mountinfo inspection
     try:
-        with open("/proc/self/mountinfo") as f:
+        with open("/proc/self/mountinfo", encoding="utf-8") as f:
             content = f.read()
             if any(x in content for x in ["docker", "kubelet", "overlay", "containerd"]):
                 return True, "mountinfo"
@@ -1267,7 +1267,7 @@ def get_target_config(target: str | None = None, targets_file: str | None = None
         )
 
     # Load targets file
-    with open(targets_path) as f:
+    with open(targets_path, encoding="utf-8") as f:
         targets_data = yaml.safe_load(f) or {}
 
     # Determine target name

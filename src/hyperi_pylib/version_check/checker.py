@@ -227,7 +227,7 @@ def _get_or_create_instance_id() -> str:
 
     # Try to read existing
     try:
-        content = id_path.read_text().strip()
+        content = id_path.read_text(encoding="utf-8").strip()
         if content:
             return content
     except OSError:
@@ -239,7 +239,7 @@ def _get_or_create_instance_id() -> str:
     # Try to persist (best-effort)
     try:
         config_dir.mkdir(parents=True, exist_ok=True)
-        id_path.write_text(instance_id)
+        id_path.write_text(instance_id, encoding="utf-8", newline="\n")
     except OSError:
         pass
 

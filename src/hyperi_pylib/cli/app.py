@@ -466,12 +466,12 @@ def _handle_generate_artefacts(dfe_app: DfeApp, output_dir: str) -> None:
         print_error("deployment subsystem unavailable — install with: pip install 'hyperi-pylib[deployment]'")
         raise Exit(1) from exc
 
-    (out / "deployment-contract.json").write_text(contract.to_json())
-    (out / "container-manifest.json").write_text(generate_container_manifest(contract))
-    (out / "Dockerfile.runtime").write_text(generate_runtime_stage(contract))
+    (out / "deployment-contract.json").write_text(contract.to_json(), encoding="utf-8", newline="\n")
+    (out / "container-manifest.json").write_text(generate_container_manifest(contract), encoding="utf-8", newline="\n")
+    (out / "Dockerfile.runtime").write_text(generate_runtime_stage(contract), encoding="utf-8", newline="\n")
 
     argo = ArgocdConfig(repo_url=argocd_repo_url_from_cascade(contract.app_name))
-    (out / "argocd-application.yaml").write_text(generate_argocd_application(contract, argo))
+    (out / "argocd-application.yaml").write_text(generate_argocd_application(contract, argo), encoding="utf-8", newline="\n")
 
     print_success(f"deployment artefacts written to {out}/")
     if not dfe_app._common_args.quiet:
