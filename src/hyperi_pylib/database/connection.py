@@ -337,27 +337,32 @@ def build_database_url(
     if port:
         netloc = f"{netloc}:{port}"
 
-    # Build query parameters
+    # Build query parameters. Every value passes through quote_plus
+    # so an injected '&' or '?' or '#' in a config value can't smuggle
+    # additional URL components.
     params = []
+
+    def _q(value: object) -> str:
+        return quote_plus(str(value))
 
     # Add database-specific parameters
     if db_type.lower() in ["postgresql", "postgres"]:
         if config.get("sslmode"):
-            params.append(f"sslmode={config['sslmode']}")
+            params.append(f"sslmode={_q(config['sslmode'])}")
         if config.get("connect_timeout"):
-            params.append(f"connect_timeout={config['connect_timeout']}")
+            params.append(f"connect_timeout={_q(config['connect_timeout'])}")
 
     elif db_type.lower() in ["mysql", "mariadb"]:
         if config.get("charset"):
-            params.append(f"charset={config['charset']}")
+            params.append(f"charset={_q(config['charset'])}")
         if config.get("ssl_ca"):
-            params.append(f"ssl_ca={config['ssl_ca']}")
+            params.append(f"ssl_ca={_q(config['ssl_ca'])}")
 
     elif db_type.lower() == "mongodb":
         if config.get("authSource"):
-            params.append(f"authSource={config['authSource']}")
+            params.append(f"authSource={_q(config['authSource'])}")
         if config.get("replicaSet"):
-            params.append(f"replicaSet={config['replicaSet']}")
+            params.append(f"replicaSet={_q(config['replicaSet'])}")
 
     elif db_type.lower() == "redis":
         # Redis URLs are different - redis://[:password]@host:port/db
@@ -368,12 +373,20 @@ def build_database_url(
     # Add any additional kwargs as query parameters
     for key, value in kwargs.items():
         if value is not None:
-            params.append(f"{key}={value}")
+            params.append(f"{_q(key)}={_q(value)}")
 
     query_string = "&".join(params) if params else ""
 
+    # Database name escaping: quote() (not quote_plus -- path component,
+    # not query) to handle names with special chars. The leading slash
+    # is added by urlunparse from the netloc separator; the database
+    # part is just the path component.
+    from urllib.parse import quote as _path_quote
+
+    safe_database = _path_quote(str(database), safe="") if database else ""
+
     # Build the complete URL
-    url_parts = (scheme, netloc, database or "", "", query_string, "")  # params (not used)  # fragment (not used)
+    url_parts = (scheme, netloc, safe_database, "", query_string, "")  # params (not used)  # fragment (not used)
 
     return urlunparse(url_parts)
 
