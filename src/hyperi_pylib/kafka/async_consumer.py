@@ -9,18 +9,18 @@
 """
 Async Kafka consumer wrapper.
 
-Uses ThreadPoolExecutor to provide async interface to
-the synchronous confluent-kafka Consumer.
+Offloads the synchronous confluent-kafka Consumer calls via
+:func:`hyperi_pylib.concurrency.run_blocking` so polling, consuming,
+committing, and close don't block the event loop.
 """
 
 from __future__ import annotations
 
-import asyncio
-from concurrent.futures import ThreadPoolExecutor
 from typing import Any, AsyncIterator
 
 from confluent_kafka import Consumer, KafkaError, TopicPartition
 
+from ..concurrency import run_blocking
 from .config import CONSUMER_DEFAULTS, merge_config
 from .consumer import KafkaConsumerError
 from .types import Message
@@ -30,13 +30,12 @@ class AsyncKafkaConsumer:
     """
     Async Kafka consumer.
 
-    Wraps confluent-kafka Consumer with async methods.
+    Wraps confluent-kafka Consumer with async methods via ``run_blocking``.
 
     Args:
         config: Either bootstrap.servers string or full config dict
         group_id: Consumer group ID
         verify_ssl: If False, disable SSL certificate verification
-        executor: Optional ThreadPoolExecutor
 
     Example:
         async with AsyncKafkaConsumer("localhost:9092", "my-group") as consumer:
@@ -51,7 +50,6 @@ class AsyncKafkaConsumer:
         config: str | dict[str, Any],
         group_id: str,
         verify_ssl: bool = True,
-        executor: ThreadPoolExecutor | None = None,
     ):
         if isinstance(config, str):
             config = {"bootstrap.servers": config}
@@ -61,8 +59,6 @@ class AsyncKafkaConsumer:
 
         self._config = merge_config(config, CONSUMER_DEFAULTS, verify_ssl=verify_ssl)
         self._consumer = Consumer(self._config)
-        self._executor = executor or ThreadPoolExecutor(max_workers=4)
-        self._owns_executor = executor is None
         self._closed = False
 
     async def __aenter__(self) -> AsyncKafkaConsumer:
@@ -74,11 +70,8 @@ class AsyncKafkaConsumer:
     async def close(self) -> None:
         """Close the consumer."""
         if not self._closed:
-            loop = asyncio.get_event_loop()
-            await loop.run_in_executor(self._executor, self._consumer.close)
+            await run_blocking(self._consumer.close)
             self._closed = True
-            if self._owns_executor:
-                self._executor.shutdown(wait=False)
 
     def subscribe(self, topics: str | list[str]) -> None:
         """Subscribe to topics (sync - fast operation)."""
@@ -92,12 +85,7 @@ class AsyncKafkaConsumer:
 
     async def poll(self, timeout: float = 1.0) -> Message | None:
         """Poll for a single message."""
-        loop = asyncio.get_event_loop()
-        return await loop.run_in_executor(
-            self._executor,
-            self._poll_sync,
-            timeout,
-        )
+        return await run_blocking(self._poll_sync, timeout)
 
     def _poll_sync(self, timeout: float) -> Message | None:
         """Sync poll implementation."""
@@ -123,13 +111,7 @@ class AsyncKafkaConsumer:
         timeout: float = 1.0,
     ) -> list[Message]:
         """Consume a batch of messages."""
-        loop = asyncio.get_event_loop()
-        return await loop.run_in_executor(
-            self._executor,
-            self._consume_sync,
-            num_messages,
-            timeout,
-        )
+        return await run_blocking(self._consume_sync, num_messages, timeout)
 
     def _consume_sync(self, num_messages: int, timeout: float) -> list[Message]:
         """Sync consume implementation."""
@@ -159,11 +141,7 @@ class AsyncKafkaConsumer:
         if asynchronous:
             self._consumer.commit(asynchronous=True)
         else:
-            loop = asyncio.get_event_loop()
-            await loop.run_in_executor(
-                self._executor,
-                lambda: self._consumer.commit(asynchronous=False),
-            )
+            await run_blocking(self._consumer.commit)
 
     def __aiter__(self) -> AsyncIterator[Message]:
         return self

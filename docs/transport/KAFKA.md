@@ -295,7 +295,7 @@ async def kafka_ok() -> bool:
     issues = kafka_health.check_health()
     return not any(i.severity == "critical" for i in issues)
 
-health_manager.add_readiness_check("kafka", kafka_ok)
+health_manager.register_ready_check("kafka", kafka_ok)
 ```
 
 Thresholds come from the config cascade (`kafka.health.*` in

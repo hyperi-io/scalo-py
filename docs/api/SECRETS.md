@@ -229,7 +229,7 @@ status = await sm.health_check()
 # {"file": True, "openbao": True, "aws": False}
 ```
 
-Wire this into `health.add_readiness_check(...)` to surface secrets-backend
+Wire this into `health.register_ready_check(...)` to surface secrets-backend
 outages in `/health/ready`.
 
 ---

@@ -282,8 +282,12 @@ class KafkaAdmin:
                 "max.message.bytes": "1048576",
             })
         """
+        # incremental_alter_configs preserves unspecified keys; the
+        # legacy alter_configs reset everything not in the request to
+        # defaults, which silently wiped customised retention / cleanup
+        # policy / etc. set_config supplies the upserts.
         resource = ConfigResource(ResourceType.TOPIC, topic, set_config=config)
-        futures = self._admin.alter_configs([resource], request_timeout=timeout)
+        futures = self._admin.incremental_alter_configs([resource], request_timeout=timeout)
 
         for res, future in futures.items():
             try:

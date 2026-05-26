@@ -127,7 +127,7 @@ health.set_ready()
 async def db_ok() -> bool:
     return await db.execute("SELECT 1") is not None
 
-health.add_readiness_check("postgres", db_ok)
+health.register_ready_check("postgres", db_ok)
 ```
 
 That gives you `/health/live`, `/health/ready`, and `/health/startup`

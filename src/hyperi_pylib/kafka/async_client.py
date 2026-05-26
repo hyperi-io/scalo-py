@@ -9,19 +9,26 @@
 """
 Async Kafka admin client wrapper.
 
-Uses ThreadPoolExecutor to provide async interface to
-the synchronous confluent-kafka AdminClient.
+Offloads the synchronous confluent-kafka AdminClient calls via
+:func:`hyperi_pylib.concurrency.run_blocking` so they don't block
+the event loop. The previous design owned a per-client
+ThreadPoolExecutor; switching to ``run_blocking`` (anyio's worker
+thread pool) keeps the discipline rule in ``concurrency.py:23``
+honest and gives consumers proper cancellation semantics.
+
+Backpressure: confluent-kafka's C client has its own internal queue
++ throttling. If you need explicit concurrency bounding around these
+calls, wrap them in :class:`hyperi_pylib.concurrency.Bulkhead`.
 """
 
 from __future__ import annotations
 
-import asyncio
-from concurrent.futures import ThreadPoolExecutor
 from typing import Any
 
 from confluent_kafka import TopicPartition
 from confluent_kafka.admin import AdminClient
 
+from ..concurrency import run_blocking
 from .config import ADMIN_DEFAULTS, CONSUMER_DEFAULTS, merge_config
 from .types import PartitionInfo, TopicInfo, TopicMetadata
 
@@ -30,12 +37,11 @@ class AsyncKafkaClient:
     """
     Async Kafka admin client.
 
-    Wraps KafkaClient with async methods using ThreadPoolExecutor.
+    Wraps KafkaClient with async methods via ``run_blocking``.
 
     Args:
         config: Either bootstrap.servers string or full config dict
         verify_ssl: If False, disable SSL certificate verification
-        executor: Optional ThreadPoolExecutor (uses default if None)
 
     Example:
         async with AsyncKafkaClient("localhost:9092") as client:
@@ -48,7 +54,6 @@ class AsyncKafkaClient:
         self,
         config: str | dict[str, Any],
         verify_ssl: bool = True,
-        executor: ThreadPoolExecutor | None = None,
     ):
         # Normalize config to dict
         if isinstance(config, str):
@@ -59,8 +64,6 @@ class AsyncKafkaClient:
         self._verify_ssl = verify_ssl
 
         self._admin = AdminClient(self._config)
-        self._executor = executor or ThreadPoolExecutor(max_workers=4)
-        self._owns_executor = executor is None
 
     async def __aenter__(self) -> AsyncKafkaClient:
         return self
@@ -69,18 +72,12 @@ class AsyncKafkaClient:
         await self.close()
 
     async def close(self) -> None:
-        """Close the client."""
-        if self._owns_executor:
-            self._executor.shutdown(wait=False)
+        """Close the client. No-op for the AdminClient -- confluent-kafka
+        manages its own connection pool that's torn down on GC."""
 
     async def list_topics(self, include_internal: bool = False) -> list[TopicInfo]:
         """List all topics in the cluster."""
-        loop = asyncio.get_event_loop()
-        return await loop.run_in_executor(
-            self._executor,
-            self._list_topics_sync,
-            include_internal,
-        )
+        return await run_blocking(self._list_topics_sync, include_internal)
 
     def _list_topics_sync(self, include_internal: bool) -> list[TopicInfo]:
         """Sync implementation of list_topics."""
@@ -105,12 +102,7 @@ class AsyncKafkaClient:
 
     async def describe_topic(self, topic: str) -> TopicMetadata:
         """Get detailed metadata for a topic."""
-        loop = asyncio.get_event_loop()
-        return await loop.run_in_executor(
-            self._executor,
-            self._describe_topic_sync,
-            topic,
-        )
+        return await run_blocking(self._describe_topic_sync, topic)
 
     def _describe_topic_sync(self, topic: str) -> TopicMetadata:
         """Sync implementation of describe_topic."""
@@ -157,12 +149,7 @@ class AsyncKafkaClient:
 
     async def get_watermark_offsets(self, topic: str) -> dict[int, tuple[int, int]]:
         """Get low and high watermarks for all partitions."""
-        loop = asyncio.get_event_loop()
-        return await loop.run_in_executor(
-            self._executor,
-            self._get_watermarks_sync,
-            topic,
-        )
+        return await run_blocking(self._get_watermarks_sync, topic)
 
     def _get_watermarks_sync(self, topic: str) -> dict[int, tuple[int, int]]:
         """Sync implementation of get_watermark_offsets."""

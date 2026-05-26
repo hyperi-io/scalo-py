@@ -15,13 +15,12 @@ the synchronous confluent-kafka Producer.
 
 from __future__ import annotations
 
-import asyncio
 import json
-from concurrent.futures import ThreadPoolExecutor
 from typing import Any
 
 from confluent_kafka import Producer
 
+from ..concurrency import run_blocking
 from .config import PRODUCER_DEFAULTS, merge_config
 
 
@@ -29,12 +28,13 @@ class AsyncKafkaProducer:
     """
     Async Kafka producer.
 
-    Wraps confluent-kafka Producer with async methods.
+    Wraps confluent-kafka Producer with async methods via
+    :func:`hyperi_pylib.concurrency.run_blocking` so producer calls
+    don't block the event loop.
 
     Args:
         config: Either bootstrap.servers string or full config dict
         verify_ssl: If False, disable SSL certificate verification
-        executor: Optional ThreadPoolExecutor
 
     Example:
         async with AsyncKafkaProducer("localhost:9092") as producer:
@@ -46,23 +46,18 @@ class AsyncKafkaProducer:
         self,
         config: str | dict[str, Any],
         verify_ssl: bool = True,
-        executor: ThreadPoolExecutor | None = None,
     ):
         if isinstance(config, str):
             config = {"bootstrap.servers": config}
 
         self._config = merge_config(config, PRODUCER_DEFAULTS, verify_ssl=verify_ssl)
         self._producer = Producer(self._config)
-        self._executor = executor or ThreadPoolExecutor(max_workers=4)
-        self._owns_executor = executor is None
 
     async def __aenter__(self) -> AsyncKafkaProducer:
         return self
 
     async def __aexit__(self, exc_type, exc_val, exc_tb) -> None:
         await self.flush()
-        if self._owns_executor:
-            self._executor.shutdown(wait=False)
 
     async def send(
         self,
@@ -73,16 +68,7 @@ class AsyncKafkaProducer:
         headers: dict[str, str] | None = None,
     ) -> None:
         """Send a message to Kafka."""
-        loop = asyncio.get_event_loop()
-        await loop.run_in_executor(
-            self._executor,
-            self._send_sync,
-            topic,
-            value,
-            key,
-            partition,
-            headers,
-        )
+        await run_blocking(self._send_sync, topic, value, key, partition, headers)
 
     def _send_sync(
         self,
@@ -131,12 +117,7 @@ class AsyncKafkaProducer:
 
     async def flush(self, timeout: float | None = None) -> int:
         """Wait for all messages to be delivered."""
-        loop = asyncio.get_event_loop()
-        return await loop.run_in_executor(
-            self._executor,
-            self._flush_sync,
-            timeout,
-        )
+        return await run_blocking(self._flush_sync, timeout)
 
     def _flush_sync(self, timeout: float | None) -> int:
         """Sync flush implementation."""
@@ -146,9 +127,4 @@ class AsyncKafkaProducer:
 
     async def poll(self, timeout: float = 0) -> int:
         """Poll for delivery callbacks."""
-        loop = asyncio.get_event_loop()
-        return await loop.run_in_executor(
-            self._executor,
-            self._producer.poll,
-            timeout,
-        )
+        return await run_blocking(self._producer.poll, timeout)
