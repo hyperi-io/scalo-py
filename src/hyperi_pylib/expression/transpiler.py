@@ -494,8 +494,19 @@ def _emit(node: Expr, parent_prec: int = 0) -> str:
         left_sql = _emit(node.left, my_prec)
         right_sql = _emit(node.right, my_prec)
 
+        # NULL comparisons need IS NULL / IS NOT NULL semantics in
+        # ClickHouse -- `x = NULL` always returns NULL (never true), and
+        # `x != NULL` likewise. CEL's `x == null` / `x != null` is meant
+        # to test for null-ness, so emit the IS [NOT] NULL form when
+        # either operand is the literal NULL.
+        if node.op == "==" and (left_sql == "NULL" or right_sql == "NULL"):
+            target = right_sql if left_sql == "NULL" else left_sql
+            result = f"{target} IS NULL"
+        elif node.op == "!=" and (left_sql == "NULL" or right_sql == "NULL"):
+            target = right_sql if left_sql == "NULL" else left_sql
+            result = f"{target} IS NOT NULL"
         # 'in' with list: x IN (a, b, c)
-        if node.op == "in" and isinstance(node.right, ListExpr):
+        elif node.op == "in" and isinstance(node.right, ListExpr):
             elems = ", ".join(_emit(e) for e in node.right.elements)
             result = f"{left_sql} IN ({elems})"
         else:

@@ -234,8 +234,17 @@ class TestLiterals:
     def test_false(self):
         assert transpile_to_clickhouse("enabled == false") == "enabled = 0"
 
-    def test_null(self):
-        assert transpile_to_clickhouse("x == null") == "x = NULL"
+    def test_null_eq_emits_is_null(self):
+        # ClickHouse: `x = NULL` always returns NULL (never true); the
+        # IS NULL form is the only working way to test for null-ness.
+        assert transpile_to_clickhouse("x == null") == "x IS NULL"
+
+    def test_null_ne_emits_is_not_null(self):
+        assert transpile_to_clickhouse("x != null") == "x IS NOT NULL"
+
+    def test_null_eq_reversed_emits_is_null(self):
+        # CEL allows null on either side
+        assert transpile_to_clickhouse("null == x") == "x IS NULL"
 
     def test_negative_number(self):
         assert transpile_to_clickhouse("score > -10") == "score > -10"
