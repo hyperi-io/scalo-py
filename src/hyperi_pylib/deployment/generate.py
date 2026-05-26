@@ -577,6 +577,16 @@ def _gen_values_yaml(c: DeploymentContract) -> str:
             f'    threshold: "{c.keda.cpu_threshold}"\n'
             f"\n"
         )
+    else:
+        # Stub keda block so templates dereferencing .Values.keda.enabled don't
+        # nil-pointer when the contract has no KedaContract. The autoscaling
+        # block below carries the actual HPA fallback values.
+        parts.append(
+            "# -- KEDA autoscaling disabled (no KedaContract on this deployment)\n"
+            "keda:\n"
+            "  enabled: false\n"
+            "\n"
+        )
 
     parts.append(
         "# -- Standard HPA fallback (when KEDA is not installed)\n"
@@ -977,7 +987,7 @@ def _gen_keda_scaledobject_yaml(c: DeploymentContract) -> str:
         f"        topic: {{{{ .Values.keda.kafka.topic | default (index .Values.config.kafka.topics 0) | quote }}}}\n"
         f"        lagThreshold: {{{{ .Values.keda.kafka.lagThreshold | quote }}}}\n"
         f"        activationLagThreshold: {{{{ .Values.keda.kafka.activationLagThreshold | quote }}}}\n"
-        f"        saslType: scram_sha512\n"
+        f"        sasl: scram_sha512\n"
         f"        tls: disable\n"
         f"    {{{{- if .Values.keda.cpu.enabled }}}}\n"
         f"    # CPU utilisation (secondary scaler)\n"
@@ -1005,7 +1015,7 @@ def _gen_keda_triggerauth_yaml(c: DeploymentContract) -> str:
         f'    {{{{- include "{app}.labels" . | nindent 4 }}}}\n'
         f"spec:\n"
         f"  secretTargetRef:\n"
-        f"    - parameter: sasl\n"
+        f"    - parameter: username\n"
         f'      name: {{{{ include "{app}.{helper}" . }}}}\n'
         f"      key: {{{{ .Values.kafka.secretKeys.username }}}}\n"
         f"    - parameter: password\n"
