@@ -17,32 +17,40 @@ Quick Start
     runtime = get_runtime_paths()
 
     # Works in ANY environment:
-    config_file = runtime.config_dir / "app.yaml"       # /config/app.yaml (K8s)
-                                                        # ~/.config/myapp/app.yaml (local)
+    config_file = runtime.config_dir / "app.yaml"       # /app/config/app.yaml (container)
+                                                        # ~/.{app}/config/app.yaml (local)
 
-    data_file = runtime.data_dir / "state.db"           # /data/state.db (K8s)
-                                                        # ~/.local/share/myapp/state.db (local)
+    data_file = runtime.data_dir / "state.db"           # /app/data/state.db (container)
+                                                        # ~/.{app}/data/state.db (local)
 
-    temp_file = runtime.temp_dir / "cache.tmp"          # /tmp/cache.tmp (all envs)
+    temp_file = runtime.temp_dir / "cache.tmp"          # /app/tmp/cache.tmp (container)
+                                                        # $TMPDIR/{app}-{uid}/cache.tmp (local)
 
-**Automatic Environment Detection:**
+**Automatic Environment Detection (7-indicator cascade):**
 
-    Environment     Detection Method              Paths Used
-    -----------     ----------------              ----------
-    Kubernetes      /var/run/secrets/...token    /config, /data, /logs
-    Docker          /.dockerenv file             /app/config, /app/data
-    Container       /proc/1/cgroup               /app/* namespace
-    Bare Metal      Default                      ~/.config, ~/.local/share
+    1. K8s service account token (/var/run/secrets/.../token)
+    2. KUBERNETES_SERVICE_HOST env var
+    3. /.dockerenv file
+    4. cgroups v1 + v2 (/proc/1/cgroup, /proc/self/cgroup)
+    5. /proc/self/mountinfo for docker/kubelet/overlay/containerd
+    6. Container env vars (container, DOCKER_CONTAINER, ECS_CONTAINER_METADATA_URI)
+    7. PID 1 init-process name check
+    Falls back to local mode if none match.
 
-**Standard Path Semantics:**
+**Standard Path Semantics (six fields on RuntimePaths):**
 
-    Path           Purpose                 K8s Mount       Local Dev
-    ----           -------                 ---------       ---------
-    config_dir     READ-ONLY config        ConfigMap       ~/.config/{app}
-    secrets_dir    READ-ONLY secrets       Secret          ~/.{app}/secrets
-    data_dir       PERSISTENT data         PVC             ~/.local/share/{app}
-    temp_dir       EPHEMERAL temp          EmptyDir        /tmp/{app}
-    logs_dir       Application logs        stdout/file     ~/.local/share/{app}/logs
+    Field          Purpose                 Container default       Local non-root
+    -----          -------                  -----------------       --------------
+    config_dir     READ-ONLY config         /app/config             ~/.{app}/config
+    data_dir       PERSISTENT data          /app/data               ~/.{app}/data
+    temp_dir       EPHEMERAL scratch        /app/tmp                $TMPDIR/{app}-{uid}
+    log_dir        Application logs         stdout (None)           ~/.{app}/logs
+    cache_dir      Warm cache               /app/cache              ~/.{app}/cache
+    run_dir        PID files, sockets       /run/{app}              None (non-root)
+
+    Secrets are NOT a dedicated path -- they flow through SecretsManager
+    (file/openbao/vault/aws/gcp/azure/ansible-vault) or via env vars when
+    K8s mounts a Secret as envFrom/env. There is no `secrets_dir` field.
 
 **Container Base Path Customization:**
 
@@ -319,11 +327,20 @@ class RuntimeEnvironment:
             cache_dir = Path("/var/cache") / self.app_name
             run_dir = Path("/run") / self.app_name
         else:
-            # User daemon/CLI paths
+            # User daemon/CLI paths. os.getuid() is POSIX-only; on Windows
+            # use os.getlogin() (or a stable fallback) so the temp_dir name
+            # still avoids cross-account collisions without crashing.
+            if hasattr(os, "getuid"):
+                user_tag = str(os.getuid())
+            else:
+                try:
+                    user_tag = os.getlogin()
+                except OSError:
+                    user_tag = os.environ.get("USERNAME") or os.environ.get("USER") or "user"
             app_home = home / f".{self.app_name}"
             config_dir = app_home / "config"
             data_dir = app_home / "data"
-            temp_dir = Path(tempfile.gettempdir()) / f"{self.app_name}-{os.getuid()}"
+            temp_dir = Path(tempfile.gettempdir()) / f"{self.app_name}-{user_tag}"
             log_dir = app_home / "logs"
             cache_dir = app_home / "cache"
             run_dir = None  # Non-root doesn't typically use /run
