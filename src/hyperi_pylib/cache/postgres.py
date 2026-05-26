@@ -49,6 +49,7 @@ from __future__ import annotations
 import asyncio
 import hashlib
 import json
+import re
 from datetime import UTC, datetime, timedelta, timezone
 from typing import TYPE_CHECKING, Any
 
@@ -88,6 +89,12 @@ class PostgresCache:
         metrics: Optional MetricsManager for hit/miss tracking
     """
 
+    # Whitelist for valid SQL identifiers used as the cache table name.
+    # PostgreSQL identifiers: letters, digits, underscores; must start with
+    # a letter or underscore; max 63 chars. We're stricter (no quoted
+    # names) since table_name is interpolated into DDL+DML via f-strings.
+    _TABLE_NAME_PATTERN = re.compile(r"^[A-Za-z_][A-Za-z0-9_]{0,62}$")
+
     def __init__(
         self,
         dsn: str,
@@ -98,6 +105,11 @@ class PostgresCache:
         create_table: bool = True,
         metrics: MetricsManager | None = None,
     ) -> None:
+        if not self._TABLE_NAME_PATTERN.fullmatch(table_name):
+            raise ValueError(
+                f"table_name must match {self._TABLE_NAME_PATTERN.pattern} "
+                f"(SQL-safe identifier); got {table_name!r}"
+            )
         self._dsn = dsn
         self._table_name = table_name
         self._default_ttl_seconds = default_ttl_seconds

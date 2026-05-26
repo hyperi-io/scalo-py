@@ -254,8 +254,14 @@ class AnsibleVaultProvider(SecretProvider):
     # --- Read ---
 
     async def get_async(self, path: str, key: str | None = None) -> SecretValue:
-        """Async get (delegates to sync since file I/O is fast)."""
-        return self.get_sync(path, key)
+        """Async get -- offloads ansible-vault decrypt to a worker thread.
+
+        Vault decrypt is CPU-bound (PBKDF2 + AES-256-CTR); run_blocking
+        keeps the event loop responsive on slow keys / large payloads.
+        """
+        from hyperi_pylib.concurrency import run_blocking
+
+        return await run_blocking(self.get_sync, path, key)
 
     def get_sync(self, path: str, key: str | None = None) -> SecretValue:
         """Read and decrypt secret from an Ansible Vault-encrypted file.
@@ -294,8 +300,10 @@ class AnsibleVaultProvider(SecretProvider):
     # --- List ---
 
     async def list_async(self, filter: SecretFilter | None = None) -> list[str]:
-        """List vault files (async delegates to sync)."""
-        return self.list_sync(filter)
+        """List vault files -- offloads sync filesystem glob to a worker."""
+        from hyperi_pylib.concurrency import run_blocking
+
+        return await run_blocking(self.list_sync, filter)
 
     def list_sync(self, filter: SecretFilter | None = None) -> list[str]:
         """List vault-encrypted files matching filter.

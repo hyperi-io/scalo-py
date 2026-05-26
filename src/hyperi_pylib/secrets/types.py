@@ -11,6 +11,7 @@ class ProviderType(Enum):
 
     FILE = "file"
     OPENBAO = "openbao"
+    VAULT = "vault"  # Alias for OpenBao (HashiCorp Vault is API-compatible)
     AWS = "aws"
     GCP = "gcp"
     AZURE = "azure"

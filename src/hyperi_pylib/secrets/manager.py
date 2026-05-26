@@ -123,13 +123,17 @@ class SecretsManager:
         """
         providers: dict[str, SecretProvider] = {"file": FileProvider()}
 
-        # OpenBao/Vault provider
-        if "openbao" in config:
+        # OpenBao/Vault provider. Config key is "openbao" or its alias
+        # "vault" (HashiCorp Vault speaks the same KV API).
+        ob_config_dict = config.get("openbao") or config.get("vault")
+        if ob_config_dict is not None:
             try:
                 from .providers.openbao import OpenBaoProvider
 
-                ob_config = cls._parse_openbao_config(config["openbao"])
-                providers["openbao"] = OpenBaoProvider(ob_config)
+                ob_config = cls._parse_openbao_config(ob_config_dict)
+                ob_provider = OpenBaoProvider(ob_config)
+                providers["openbao"] = ob_provider
+                providers["vault"] = ob_provider  # Same provider under both keys
             except ImportError:
                 logger.warning("OpenBao provider not available. Install with: pip install hyperi-pylib[secrets-vault]")
 

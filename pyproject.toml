@@ -118,7 +118,9 @@ kafka = [
 secrets-ansible-vault = [
     "ansible-vault>=4.0.0",
 ]
-secrets-vault = []
+secrets-vault = [
+    "httpx>=0.28.0",
+]
 secrets-aws = [
     "boto3>=1.43.0",
     "aiobotocore>=3.6.0",
