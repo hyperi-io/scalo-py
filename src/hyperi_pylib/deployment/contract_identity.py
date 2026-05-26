@@ -36,7 +36,6 @@ from dataclasses import dataclass
 
 from hyperi_pylib.deployment.errors import DeploymentError
 
-
 KEY_PREFIX = "io.hyperi.contract"
 VERSION = "v1"
 
@@ -125,15 +124,9 @@ def _validate_source_commit(value: str) -> None:
 
 def _validate_image_ref(value: str) -> None:
     if value != value.strip() or not value:
-        raise IdentityError(
-            f"image_ref: must be non-empty with no leading/trailing "
-            f"whitespace; got {value!r}"
-        )
+        raise IdentityError(f"image_ref: must be non-empty with no leading/trailing whitespace; got {value!r}")
     if "/" not in value:
-        raise IdentityError(
-            f"image_ref: must include an explicit registry host "
-            f"(no implicit docker.io); got {value!r}"
-        )
+        raise IdentityError(f"image_ref: must include an explicit registry host (no implicit docker.io); got {value!r}")
     host = value.split("/", 1)[0]
     if not ("." in host or ":" in host or host == "localhost"):
         raise IdentityError(

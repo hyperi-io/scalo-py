@@ -31,7 +31,6 @@ from hyperi_pylib.deployment.contract_identity import (
 )
 from hyperi_pylib.deployment.errors import DeploymentError
 
-
 VALID_SHA = "0123456789abcdef0123456789abcdef01234567"
 VALID_REF = "ghcr.io/hyperi-io/dfe-loader:v2.7.3"
 
@@ -244,15 +243,13 @@ def test_detect_falls_back_to_git_rev_parse(tmp_path: Path) -> None:
         errors="replace",
     )
     subprocess.run(
-        ["git", "-c", "user.email=t@e.t", "-c", "user.name=t", "commit",
-         "--allow-empty", "-m", "init", "--quiet"],
+        ["git", "-c", "user.email=t@e.t", "-c", "user.name=t", "commit", "--allow-empty", "-m", "init", "--quiet"],
         cwd=str(tmp_path),
         check=True,
         encoding="utf-8",
         errors="replace",
     )
-    env_no_sha = {k: v for k, v in os.environ.items()
-                  if k not in ("GITHUB_SHA", "CI_COMMIT_SHA")}
+    env_no_sha = {k: v for k, v in os.environ.items() if k not in ("GITHUB_SHA", "CI_COMMIT_SHA")}
     with patch.dict(os.environ, env_no_sha, clear=True):
         prev_cwd = Path.cwd()
         try:
@@ -266,8 +263,7 @@ def test_detect_falls_back_to_git_rev_parse(tmp_path: Path) -> None:
 
 
 def test_detect_raises_when_no_sha_available(tmp_path: Path) -> None:
-    env_no_sha = {k: v for k, v in os.environ.items()
-                  if k not in ("GITHUB_SHA", "CI_COMMIT_SHA")}
+    env_no_sha = {k: v for k, v in os.environ.items() if k not in ("GITHUB_SHA", "CI_COMMIT_SHA")}
     # Use a tempdir that's NOT a git repo so rev-parse fails
     with patch.dict(os.environ, env_no_sha, clear=True):
         prev_cwd = Path.cwd()
@@ -281,6 +277,5 @@ def test_detect_raises_when_no_sha_available(tmp_path: Path) -> None:
 
 def test_detect_rejects_invalid_image_ref() -> None:
     env = {"GITHUB_SHA": VALID_SHA}
-    with patch.dict(os.environ, env, clear=False):
-        with pytest.raises(IdentityError, match="image_ref"):
-            ContractIdentity.detect(image_ref="nginx:1.25")
+    with patch.dict(os.environ, env, clear=False), pytest.raises(IdentityError, match="image_ref"):
+        ContractIdentity.detect(image_ref="nginx:1.25")

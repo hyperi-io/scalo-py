@@ -65,12 +65,8 @@ from hyperi_pylib.deployment.test_support import (
     wait_until,
 )
 
-
 # Pinned ArgoCD upstream tag for Tier B install. Update intentionally.
-ARGOCD_INSTALL_MANIFEST = (
-    "https://raw.githubusercontent.com/argoproj/argo-cd/"
-    "v2.13.1/manifests/install.yaml"
-)
+ARGOCD_INSTALL_MANIFEST = "https://raw.githubusercontent.com/argoproj/argo-cd/v2.13.1/manifests/install.yaml"
 
 # A public canary image used in Tier B helm-install (no registry creds needed).
 PUBLIC_CANARY_IMAGE_REPO = "public.ecr.aws/docker/library/nginx"
@@ -89,9 +85,9 @@ def _mock_binary_script() -> str:
     """
     return (
         "#!/bin/sh\n"
-        "case \"$1\" in\n"
-        "  --help|-h) echo \"mock pylib e2e binary: ok\"; exit 0 ;;\n"
-        "  *) echo \"mock pylib e2e binary\"; exit 0 ;;\n"
+        'case "$1" in\n'
+        '  --help|-h) echo "mock pylib e2e binary: ok"; exit 0 ;;\n'
+        '  *) echo "mock pylib e2e binary"; exit 0 ;;\n'
         "esac\n"
     )
 
@@ -154,8 +150,7 @@ def test_tier_a_dockerfile_builds_and_image_runs() -> None:
     identity = _make_identity()
     tag = f"pylib-e2e:{os.getpid()}"
 
-    with tempfile.TemporaryDirectory() as tdir, \
-         tempfile.TemporaryDirectory() as docker_cfg_dir:
+    with tempfile.TemporaryDirectory() as tdir, tempfile.TemporaryDirectory() as docker_cfg_dir:
         build_dir = Path(tdir)
         dockerfile = (
             "FROM alpine:3.21\n"
@@ -165,14 +160,10 @@ def test_tier_a_dockerfile_builds_and_image_runs() -> None:
             'ENTRYPOINT ["/usr/local/bin/mock-bin"]\n'
         )
         (build_dir / "Dockerfile").write_text(dockerfile, encoding="utf-8", newline="\n")
-        (build_dir / "mock-bin").write_text(
-            _mock_binary_script(), encoding="utf-8", newline="\n"
-        )
+        (build_dir / "mock-bin").write_text(_mock_binary_script(), encoding="utf-8", newline="\n")
         (build_dir / "mock-bin").chmod(0o755)
 
-        (Path(docker_cfg_dir) / "config.json").write_text(
-            docker_empty_creds_json(), encoding="utf-8", newline="\n"
-        )
+        (Path(docker_cfg_dir) / "config.json").write_text(docker_empty_creds_json(), encoding="utf-8", newline="\n")
         build_env = {**os.environ, "DOCKER_CONFIG": docker_cfg_dir}
 
         subprocess.run(
@@ -244,9 +235,16 @@ def test_tier_a_chart_lint_and_template() -> None:
         generate_chart(contract, chart_dir, identity=identity)
 
         rendered = subprocess.run(
-            ["helm", "template", "test-release", str(chart_dir),
-             "--set", "config.kafka.brokers=localhost:9092",
-             "--set", "config.kafka.topics={canary}"],
+            [
+                "helm",
+                "template",
+                "test-release",
+                str(chart_dir),
+                "--set",
+                "config.kafka.brokers=localhost:9092",
+                "--set",
+                "config.kafka.topics={canary}",
+            ],
             check=True,
             capture_output=True,
             encoding="utf-8",
@@ -278,9 +276,7 @@ def test_tier_a_argocd_application_kubeconform() -> None:
     identity = _make_identity()
     app_yaml = generate_argocd_application(contract, argo, identity=identity)
 
-    with tempfile.NamedTemporaryFile(
-        suffix=".yaml", mode="w", encoding="utf-8", newline="\n", delete=False
-    ) as fh:
+    with tempfile.NamedTemporaryFile(suffix=".yaml", mode="w", encoding="utf-8", newline="\n", delete=False) as fh:
         fh.write(app_yaml)
         app_path = fh.name
     try:
@@ -329,8 +325,7 @@ def test_tier_b_helm_install_on_kind() -> None:
 
         kc_path = Path(tdir) / "kubeconfig"
         subprocess.run(
-            ["kind", "create", "cluster", "--name", guard.name,
-             "--kubeconfig", str(kc_path)],
+            ["kind", "create", "cluster", "--name", guard.name, "--kubeconfig", str(kc_path)],
             check=True,
             capture_output=True,
             encoding="utf-8",
@@ -340,11 +335,21 @@ def test_tier_b_helm_install_on_kind() -> None:
         guard.kubeconfig = kc_path
         try:
             subprocess.run(
-                ["helm", "install", contract.app_name, str(chart_dir),
-                 "--kubeconfig", str(kc_path),
-                 "--set", f"image.repository={PUBLIC_CANARY_IMAGE_REPO}",
-                 "--set", f"image.tag={PUBLIC_CANARY_IMAGE_TAG}",
-                 "--wait", "--timeout", "120s"],
+                [
+                    "helm",
+                    "install",
+                    contract.app_name,
+                    str(chart_dir),
+                    "--kubeconfig",
+                    str(kc_path),
+                    "--set",
+                    f"image.repository={PUBLIC_CANARY_IMAGE_REPO}",
+                    "--set",
+                    f"image.tag={PUBLIC_CANARY_IMAGE_TAG}",
+                    "--wait",
+                    "--timeout",
+                    "120s",
+                ],
                 check=True,
                 capture_output=True,
                 encoding="utf-8",
@@ -384,8 +389,7 @@ def test_tier_b_argocd_application_sync_on_kind() -> None:
     with tempfile.TemporaryDirectory() as tdir:
         kc_path = Path(tdir) / "kubeconfig"
         subprocess.run(
-            ["kind", "create", "cluster", "--name", guard.name,
-             "--kubeconfig", str(kc_path)],
+            ["kind", "create", "cluster", "--name", guard.name, "--kubeconfig", str(kc_path)],
             check=True,
             capture_output=True,
             encoding="utf-8",
@@ -395,8 +399,7 @@ def test_tier_b_argocd_application_sync_on_kind() -> None:
         guard.kubeconfig = kc_path
         try:
             subprocess.run(
-                ["kubectl", "create", "namespace", "argocd",
-                 "--kubeconfig", str(kc_path)],
+                ["kubectl", "create", "namespace", "argocd", "--kubeconfig", str(kc_path)],
                 check=True,
                 capture_output=True,
                 encoding="utf-8",
@@ -404,9 +407,7 @@ def test_tier_b_argocd_application_sync_on_kind() -> None:
                 timeout=30,
             )
             subprocess.run(
-                ["kubectl", "apply", "-n", "argocd",
-                 "--kubeconfig", str(kc_path),
-                 "-f", ARGOCD_INSTALL_MANIFEST],
+                ["kubectl", "apply", "-n", "argocd", "--kubeconfig", str(kc_path), "-f", ARGOCD_INSTALL_MANIFEST],
                 check=True,
                 capture_output=True,
                 encoding="utf-8",
@@ -416,9 +417,18 @@ def test_tier_b_argocd_application_sync_on_kind() -> None:
 
             def server_ready() -> bool:
                 r = subprocess.run(
-                    ["kubectl", "get", "deployment", "argocd-server", "-n", "argocd",
-                     "--kubeconfig", str(kc_path),
-                     "-o", "jsonpath={.status.availableReplicas}"],
+                    [
+                        "kubectl",
+                        "get",
+                        "deployment",
+                        "argocd-server",
+                        "-n",
+                        "argocd",
+                        "--kubeconfig",
+                        str(kc_path),
+                        "-o",
+                        "jsonpath={.status.availableReplicas}",
+                    ],
                     capture_output=True,
                     text=True,
                     encoding="utf-8",
@@ -443,9 +453,18 @@ def test_tier_b_argocd_application_sync_on_kind() -> None:
             )
 
             roundtrip = subprocess.run(
-                ["kubectl", "get", "application", contract.app_name, "-n", "argocd",
-                 "--kubeconfig", str(kc_path),
-                 "-o", "jsonpath={.metadata.annotations}"],
+                [
+                    "kubectl",
+                    "get",
+                    "application",
+                    contract.app_name,
+                    "-n",
+                    "argocd",
+                    "--kubeconfig",
+                    str(kc_path),
+                    "-o",
+                    "jsonpath={.metadata.annotations}",
+                ],
                 check=True,
                 capture_output=True,
                 encoding="utf-8",

@@ -33,7 +33,7 @@ from __future__ import annotations
 # whenever the deployment package can be imported. Keep this import
 # outside the pydantic-gated block so consumers can stamp identities
 # even before installing the ``deployment`` extra.
-from .contract_identity import (  # noqa: E402,F401
+from .contract_identity import (
     KEY_PREFIX,
     VERSION,
     ContractIdentity,

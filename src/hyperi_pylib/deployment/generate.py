@@ -267,11 +267,13 @@ def generate_container_manifest(
     }
 
     if identity is not None:
-        manifest["labels"].update({
-            "io.hyperi.contract.version": "v1",
-            "io.hyperi.contract.source-commit": identity.source_commit,
-            "io.hyperi.contract.image-ref": identity.image_ref,
-        })
+        manifest["labels"].update(
+            {
+                "io.hyperi.contract.version": "v1",
+                "io.hyperi.contract.source-commit": identity.source_commit,
+                "io.hyperi.contract.image-ref": identity.image_ref,
+            }
+        )
 
     return json.dumps(manifest, indent=2, sort_keys=False)
 
@@ -451,11 +453,7 @@ def _gen_chart_yaml(
     desc = c.description if c.description else c.app_name
     annotations_block = ""
     if identity is not None:
-        annotations_block = (
-            f"\n"
-            f"annotations:\n"
-            f"{identity.as_yaml_annotations(indent=2)}\n"
-        )
+        annotations_block = f"\nannotations:\n{identity.as_yaml_annotations(indent=2)}\n"
     return (
         f"apiVersion: v2\n"
         f"name: {c.app_name}\n"
