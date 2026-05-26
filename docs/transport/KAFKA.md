@@ -257,7 +257,7 @@ Sampling helpers:
 |----------|----------|
 | `reservoir_sample(messages, k, seed=None)` | Uniform random `k` from a stream of unknown length (Vitter's Algorithm R). |
 | `partition_sample(messages, n_per_partition, seed=None)` | Independent reservoir per partition -- representative across partitions. |
-| `time_bounded_consume(consumer, start_ms, end_ms, limit=None, timeout=1.0)` | Poll until 3 consecutive empty polls or `end_ms` passes; only collects messages in `[start_ms, end_ms]`. Consumer must already be subscribed/assigned. |
+| `time_bounded_consume(consumer, start_time, end_time, limit=None, timeout=1.0)` | Poll until 3 consecutive empty polls or `end_time` passes; only collects messages with timestamps in `[start_time, end_time]` (both millis since epoch). Consumer must already be subscribed/assigned. |
 
 `time_bounded_consume()` reads messages but does **not** seek -- pair
 with `consumer.seek()` or `KafkaAdmin.reset_offsets_to_timestamp()`

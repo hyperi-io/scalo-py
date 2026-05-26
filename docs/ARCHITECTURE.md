@@ -117,7 +117,6 @@ From `src/hyperi_pylib/`:
 
 | Module | Type | Lines (incl. tests) | Public API entry |
 |---|---|---|---|
-| `anonymizer/` | NOT IN SOURCE | — | (legacy doc; PII actually lives in `logger.scrub`) |
 | `cache/` | dir | ~1,200 | `configure_cache`, `@cached`, `PostgresCache` |
 | `cli/` | dir | ~1,500 | `DfeApp`, standard options, common patterns |
 | `concurrency.py` | file | 220 | `run_blocking`, `Bulkhead`, `gather_with_timeouts` |

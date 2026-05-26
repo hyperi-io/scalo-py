@@ -164,7 +164,19 @@ convenient but pulls ~50 MB of cloud SDKs.
 | Extra | Adds | Native deps | Doc |
 |---|---|---|---|
 | `license` | `cryptography`, `httpx` (optional) | none | [api/LICENSE.md](api/LICENSE.md) |
-| `version-check` | (none — uses httpx if available, falls back gracefully) | none | [api/VERSION-CHECK.md](api/VERSION-CHECK.md) |
+| `version-check` | (none -- uses httpx if available, falls back gracefully) | none | [api/VERSION-CHECK.md](api/VERSION-CHECK.md) |
+
+### Marker extras
+
+These extras intentionally pull no extra dependencies. They exist so
+downstream `pyproject.toml` files can document INTENT (this service
+uses the CLI framework / will get the future "enhanced" bundle)
+without committing to a transitive deps tree that may change.
+
+| Extra | Notes | Doc |
+|---|---|---|
+| `cli` | Base install already ships `typer` + `DfeApp`. Listing `hyperi-pylib[cli]` declares CLI dependence without adding deps. | [api/CLI.md](api/CLI.md) |
+| `enhanced` | Reserved. Will bundle a curated "DFE service" feature set once the shape is locked. Currently a no-op marker. | (no doc yet) |
 
 ### Development
 

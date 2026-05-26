@@ -1,8 +1,8 @@
 # Integration
 
 Wiring `hyperi-pylib` into a new Python service from empty
-`pyproject.toml` to running app. Self-contained recipe; deep dives
-live in the subsystem docs.
+`pyproject.toml` to running app. Self-contained recipe; details per subsystem
+live in the subsystem docs (core-pillars/, runtime/, transport/, deployment/, api/).
 
 ---
 
