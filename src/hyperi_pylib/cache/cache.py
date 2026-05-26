@@ -54,7 +54,7 @@ def configure_cache(
         >>> metrics = create_metrics("myapp")
         >>>
         >>> configure_cache(
-        ...     directory="/tmp/app-cache",
+        ...     directory="~/.cache/hyperi-ai/app-cache",
         ...     default_ttl="1h",
         ...     source_ttls={
         ...         "http": "24h",      # Web fetches cached 24 hours

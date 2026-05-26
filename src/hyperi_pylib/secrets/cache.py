@@ -4,7 +4,7 @@ import hashlib
 import json
 import logging
 import os
-import tempfile
+import sys
 from datetime import UTC, datetime
 from pathlib import Path
 
@@ -68,11 +68,13 @@ class DiskCache:
     def _resolve_directory(self, directory: str | None) -> Path:
         """Resolve cache directory.
 
-        Priority:
-        1. Explicit directory parameter
-        2. HYPERI_SECRETS_CACHE_DIR environment variable
-        3. XDG_CACHE_HOME/hs-secrets
-        4. /tmp/hs-secrets-cache
+        Priority (AGENT-RULES Rule 4 compliant -- never /tmp for state):
+
+        1. Explicit ``directory`` parameter
+        2. ``HYPERI_SECRETS_CACHE_DIR`` env var
+        3. ``$XDG_CACHE_HOME/hs-secrets``
+        4. Native Windows: ``%LOCALAPPDATA%/hyperi-ai/secrets-cache``
+        5. Otherwise: ``~/.cache/hyperi-ai/secrets-cache``
         """
         if directory:
             return Path(directory)
@@ -85,7 +87,11 @@ class DiskCache:
         if xdg_cache:
             return Path(xdg_cache) / "hs-secrets"
 
-        return Path(tempfile.gettempdir()) / "hs-secrets-cache"
+        if sys.platform == "win32":
+            base = Path(os.environ.get("LOCALAPPDATA", str(Path.home())))
+            return base / "hyperi-ai" / "secrets-cache"
+
+        return Path.home() / ".cache" / "hyperi-ai" / "secrets-cache"
 
     def _key_to_path(self, secret_name: str) -> Path:
         """Convert secret name to cache file path.

@@ -18,7 +18,7 @@ Disk Cache (single pod):
     >>>
     >>> # Configure at app startup
     >>> configure_cache(
-    ...     directory="/tmp/app-cache",
+    ...     directory="~/.cache/hyperi-ai/app-cache",
     ...     default_ttl="1h",
     ...     source_ttls={"http": "24h", "tavily": "1h", "db": "30m"}
     ... )
