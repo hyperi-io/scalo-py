@@ -89,8 +89,17 @@ class License:
         """
         settings, source_info = cls._load_license(opts)
 
-        # Verify signature if required
-        if opts.verify_signature and not settings.is_default:
+        # Verify signature if required.
+        #
+        # SECURITY: derive "is this a compiled-in default?" from the LOAD
+        # PATH (source_info.source), NOT from the parsed payload's
+        # settings.is_default field. A tampered license file could set
+        # is_default=True to bypass signature checks entirely; deriving
+        # the trust decision from where the bytes came from closes that
+        # gap. AES-256-GCM AEAD already authenticates the ciphertext at
+        # decrypt time -- the Ed25519 signature is defence-in-depth.
+        is_from_default_source = source_info.source == LicenseSource.DEFAULT
+        if opts.verify_signature and not is_from_default_source:
             integrity.verify_signature(settings)
 
         # Check expiration
