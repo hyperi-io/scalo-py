@@ -267,13 +267,13 @@ class SecretFilter:
     """
 
     prefix: str | None = None
-    """Path prefix — server-side filter where supported."""
+    """Path prefix -- server-side filter where supported."""
 
     tags: dict[str, str] | None = None
     """Tag/label filter. Server-side on AWS/GCP/Azure/OpenBao. Ignored on file-based."""
 
     pattern: str | None = None
-    """Glob pattern — client-side post-filter on list results. Use prefix for efficiency."""
+    """Glob pattern -- client-side post-filter on list results. Use prefix for efficiency."""
 
 
 # Type alias for rotation callbacks

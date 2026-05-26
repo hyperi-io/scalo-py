@@ -16,7 +16,7 @@ Quick Start
 
     # Reads: POSTGRES_HOST, POSTGRES_PORT, POSTGRES_USER, POSTGRES_PASSWORD, POSTGRES_DATABASE
     db_url = build_database_url("postgresql")
-    # → postgresql://user:pass@host:5432/dbname
+    # -> postgresql://user:pass@host:5432/dbname
 
     # Use with SQLAlchemy, asyncpg, psycopg2, etc.
     from sqlalchemy import create_engine

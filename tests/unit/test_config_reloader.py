@@ -1,6 +1,6 @@
 #  Project:      hyperi-pylib
 #  File:         test_config_reloader.py
-#  Purpose:      Tests for ConfigReloader — config reload with polling and callbacks
+#  Purpose:      Tests for ConfigReloader -- config reload with polling and callbacks
 #  Language:     Python
 #
 #  License:      FSL-1.1-ALv2
@@ -36,7 +36,7 @@ class CallTracker:
 
 
 # ---------------------------------------------------------------------------
-# reload_now() — callback behaviour
+# reload_now() -- callback behaviour
 # ---------------------------------------------------------------------------
 
 
@@ -68,12 +68,12 @@ class TestReloadNowCallback:
 
 
 # ---------------------------------------------------------------------------
-# reload_now() — validation function
+# reload_now() -- validation function
 # ---------------------------------------------------------------------------
 
 
 class TestReloadNowValidation:
-    """reload_now() respects validate_fn — returns False on validation failure."""
+    """reload_now() respects validate_fn -- returns False on validation failure."""
 
     def test_validation_pass_triggers_callback(self) -> None:
         tracker = CallTracker()
@@ -108,7 +108,7 @@ class TestReloadNowValidation:
 
 
 # ---------------------------------------------------------------------------
-# reload_now() — exception handling
+# reload_now() -- exception handling
 # ---------------------------------------------------------------------------
 
 
@@ -184,7 +184,7 @@ class TestReloadCounters:
 
 
 # ---------------------------------------------------------------------------
-# start() / stop() — async lifecycle
+# start() / stop() -- async lifecycle
 # ---------------------------------------------------------------------------
 
 

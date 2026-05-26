@@ -6,7 +6,7 @@
 #  License:      FSL-1.1-ALv2
 #  Copyright:    (c) 2026 HYPERI PTY LIMITED
 
-"""Tests for DFE metric groups — composable metric structs for DFE apps."""
+"""Tests for DFE metric groups -- composable metric structs for DFE apps."""
 
 import time
 
@@ -30,7 +30,7 @@ def mgr() -> MetricsManager:
 
 
 class TestAppMetrics:
-    """Test AppMetrics group — mandatory for all DFE apps."""
+    """Test AppMetrics group -- mandatory for all DFE apps."""
 
     def test_construction(self, mgr: MetricsManager):
         """AppMetrics registers all mandatory metrics on construction."""
@@ -104,7 +104,7 @@ class TestAppMetrics:
 
 
 class TestBufferMetrics:
-    """Test BufferMetrics group — for receiver, loader, archiver."""
+    """Test BufferMetrics group -- for receiver, loader, archiver."""
 
     def test_construction(self, mgr: MetricsManager):
         """BufferMetrics registers all buffer metrics on construction."""
@@ -138,7 +138,7 @@ class TestBufferMetrics:
 
 
 class TestConsumerMetrics:
-    """Test ConsumerMetrics group — for Kafka consumer apps."""
+    """Test ConsumerMetrics group -- for Kafka consumer apps."""
 
     def test_construction(self, mgr: MetricsManager):
         """ConsumerMetrics registers all consumer metrics on construction."""
@@ -182,7 +182,7 @@ class TestConsumerMetrics:
 
 
 class TestSinkMetrics:
-    """Test SinkMetrics group — for apps with a downstream."""
+    """Test SinkMetrics group -- for apps with a downstream."""
 
     def test_construction(self, mgr: MetricsManager):
         """SinkMetrics registers all sink metrics on construction."""

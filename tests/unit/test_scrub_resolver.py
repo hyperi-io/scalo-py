@@ -1,12 +1,12 @@
 #  Project:   hyperi-pylib
 #  File:      tests/unit/test_scrub_resolver.py
-#  Purpose:   Tests for resolve_scrubber() — config + kwargs → Scrubber
+#  Purpose:   Tests for resolve_scrubber() -- config + kwargs → Scrubber
 #  Language:  Python
 #
 #  License:   FSL-1.1-ALv2
 #  Copyright: (c) 2026 HYPERI PTY LIMITED
 
-"""Tests for the scrubber resolver — priority order, legacy mapping,
+"""Tests for the scrubber resolver -- priority order, legacy mapping,
 new schema parsing."""
 
 from __future__ import annotations
@@ -63,7 +63,7 @@ class TestResolverPriority:
         assert result.config.enabled is False
 
     def test_new_schema_wins_over_legacy_in_config(self):
-        # Both new and legacy keys present — new wins, no deprecation warning
+        # Both new and legacy keys present -- new wins, no deprecation warning
         import warnings as _w
 
         with _w.catch_warnings(record=True) as captured:
@@ -71,7 +71,7 @@ class TestResolverPriority:
             result = resolve_scrubber(
                 config_dict={
                     "scrub": {"enabled": True},
-                    "mask_sensitive_data": False,  # legacy — ignored
+                    "mask_sensitive_data": False,  # legacy -- ignored
                 }
             )
         assert not any(issubclass(w.category, DeprecationWarning) for w in captured)
@@ -109,13 +109,13 @@ class TestLegacyMapping:
         assert cfg.pii.enabled is True
 
     def test_masking_level_advanced_ner_deprecated(self):
-        # advanced-ner was the NLP/NER tier — now deprecated, degrades to advanced
+        # advanced-ner was the NLP/NER tier -- now deprecated, degrades to advanced
         with pytest.warns(DeprecationWarning, match="NLP/NER scrubbing"):
             cfg = _legacy_to_scrub_config(mask_sensitive=True, masking_level="advanced-ner")
         assert cfg.pii.enabled is True
 
     def test_masking_level_presidio_deprecated(self):
-        # presidio was a legacy alias for advanced-ner — same deprecation path
+        # presidio was a legacy alias for advanced-ner -- same deprecation path
         with pytest.warns(DeprecationWarning, match="NLP/NER scrubbing"):
             cfg = _legacy_to_scrub_config(mask_sensitive=True, masking_level="presidio")
         assert cfg.pii.enabled is True
@@ -165,7 +165,7 @@ class TestSchemaParsing:
         assert cfg.pii.validators.national_ids.enabled == ["au", "us"]
 
     def test_national_ids_csv_string(self):
-        # Env-var convenience — comma-separated string converts to list
+        # Env-var convenience -- comma-separated string converts to list
         cfg = _parse_scrub_dict({"pii": {"validators": {"national_ids": {"enabled": "au, us, uk"}}}})
         assert cfg.pii.validators.national_ids.enabled == ["au", "us", "uk"]
 

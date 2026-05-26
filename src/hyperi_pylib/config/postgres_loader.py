@@ -331,7 +331,7 @@ class PostgresConfigLoader:
         Set nested dict value from dot-notation key.
 
         Example: _set_nested({}, "database.host", "localhost")
-                 → {"database": {"host": "localhost"}}
+                 -> {"database": {"host": "localhost"}}
         """
         keys = key.split(".")
         for k in keys[:-1]:

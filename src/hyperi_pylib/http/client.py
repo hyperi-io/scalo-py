@@ -8,7 +8,7 @@
 
 """HTTP client implementations with automatic retries, timeouts, and metrics.
 
-Uses Stamina for retries — exponential backoff with jitter, structlog/Prometheus
+Uses Stamina for retries -- exponential backoff with jitter, structlog/Prometheus
 auto-detection, and ``stamina.set_testing(...)`` for deterministic test runs.
 """
 

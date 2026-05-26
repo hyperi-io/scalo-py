@@ -32,7 +32,7 @@ def _make_record(message: str, level_no: int = 20, name: str = "test.logger") ->
 
 
 class TestDeduplicationWithinWindow:
-    """Identical messages within the period are suppressed — parity with rustlib throttle."""
+    """Identical messages within the period are suppressed -- parity with rustlib throttle."""
 
     def test_first_emission_always_passes(self):
         """First occurrence of any message is never throttled."""
@@ -64,7 +64,7 @@ class TestDeduplicationWithinWindow:
 
 
 class TestSummaryAppend:
-    """Suppressed count is appended to the next emission — parity with rustlib summary field."""
+    """Suppressed count is appended to the next emission -- parity with rustlib summary field."""
 
     def test_summary_appended_after_window_expires(self):
         """After window expiry, the resumed message includes suppression count."""
@@ -137,7 +137,7 @@ class TestSummaryAppend:
         msg = "Heartbeat OK"
 
         f(_make_record(msg))
-        # No suppressions — window expires cleanly
+        # No suppressions -- window expires cleanly
         time.sleep(0.15)
 
         resume = _make_record(msg)
@@ -146,7 +146,7 @@ class TestSummaryAppend:
 
 
 class TestPatternNormalisation:
-    """Variable parts of messages are normalised — parity with rustlib's normalise_numbers."""
+    """Variable parts of messages are normalised -- parity with rustlib's normalise_numbers."""
 
     def test_large_numbers_normalised(self):
         """Messages differing only in large numbers (4+ digits) are treated as identical."""
@@ -201,7 +201,7 @@ class TestPatternNormalisation:
 
 
 class TestDifferentMessagesPassThrough:
-    """Unrelated messages are not throttled by each other — independent tracking."""
+    """Unrelated messages are not throttled by each other -- independent tracking."""
 
     def test_distinct_messages_each_pass_independently(self):
         """Five distinct messages all pass through even with a tight window."""
@@ -225,7 +225,7 @@ class TestDifferentMessagesPassThrough:
         f(_make_record(msg_a))  # msg_a: first pass
         f(_make_record(msg_a))  # msg_a: suppressed
 
-        # msg_b is unrelated — must still pass
+        # msg_b is unrelated -- must still pass
         assert f(_make_record(msg_b)) is True
 
     def test_same_text_different_level_tracked_independently(self):
@@ -244,7 +244,7 @@ class TestDifferentMessagesPassThrough:
 
 
 class TestWindowExpiry:
-    """After the period, the same message is allowed again — window semantics."""
+    """After the period, the same message is allowed again -- window semantics."""
 
     def test_message_allowed_after_window_expires(self):
         """Same message passes again once the period has elapsed."""
@@ -267,7 +267,7 @@ class TestWindowExpiry:
         time.sleep(0.15)
         f(_make_record(msg))  # resumed after expiry
 
-        # Now within a new window — must suppress again
+        # Now within a new window -- must suppress again
         assert f(_make_record(msg)) is False
 
     def test_window_boundary_is_per_message(self):

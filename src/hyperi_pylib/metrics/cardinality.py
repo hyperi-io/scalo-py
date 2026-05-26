@@ -9,7 +9,7 @@
 """
 Label cardinality tracking for Prometheus metrics.
 
-High-cardinality labels — user IDs, request paths, IP addresses — cause Prometheus
+High-cardinality labels -- user IDs, request paths, IP addresses -- cause Prometheus
 scrape explosion: each unique combination becomes a separate time series. This module
 tracks unique label combinations per metric and emits a warning (once per metric)
 when the count exceeds a configurable threshold.

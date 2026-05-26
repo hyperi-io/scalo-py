@@ -179,7 +179,7 @@ def external_sasl_scram(
     """
     Build a Kafka client config for an external broker using SASL_SSL + SCRAM.
 
-    HyperI default for production-internet-facing brokers — works unchanged
+    HyperI default for production-internet-facing brokers -- works unchanged
     against Apache Kafka, AutoMQ, MSK, and Confluent Cloud.
 
     Args:

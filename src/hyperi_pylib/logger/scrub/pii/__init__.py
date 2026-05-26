@@ -6,18 +6,18 @@
 #  License:   FSL-1.1-ALv2
 #  Copyright: (c) 2026 HYPERI PTY LIMITED
 
-"""Layer 3 — structured PII validators.
+"""Layer 3 -- structured PII validators.
 
 Two tiers per spec §9:
 
-**Strong-structural** (fires from any context) — hand-coded classes:
+**Strong-structural** (fires from any context) -- hand-coded classes:
 
 - :class:`CreditCardValidator` (Luhn via stdnum.luhn)
 - :class:`IbanValidator` (mod-97 via stdnum.iban)
 - :class:`EmailValidator` (RFC 5322 subset regex)
 - :class:`PhoneValidator` (libphonenumber via phonenumbers)
 
-**Context-required** (keyword anchor required) — TOML-driven:
+**Context-required** (keyword anchor required) -- TOML-driven:
 
 National-ID validators load from the bundled
 ``hyperi_pylib/data/national_ids.toml`` (vendored from
@@ -26,7 +26,7 @@ Per-country entries with ``enabled = true`` materialise as
 :class:`_DynamicValidator` instances via :func:`build_national_id_validators`.
 
 AU ships pre-active (ABN, ACN, TFN, Medicare). Other countries are
-seeded as stubs (``enabled = false``) — operators opt-in after
+seeded as stubs (``enabled = false``) -- operators opt-in after
 hand-curating ``detection_regex`` and ``keywords``.
 """
 

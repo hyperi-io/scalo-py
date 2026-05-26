@@ -15,7 +15,7 @@ gRPC server). Coverage strategy:
 - **Pure-logic helpers** are tested here (resource-name builders, filter
   translation, metadata mapping, datetime conversion).
 - **Live behaviour** is exercised by ``tests/integration/test_secrets_cloud_providers.py``
-  with the existing ``@requires_gcp`` skip marker — runs against real GCP
+  with the existing ``@requires_gcp`` skip marker -- runs against real GCP
   when ADC creds are present.
 """
 

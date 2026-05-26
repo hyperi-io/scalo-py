@@ -340,7 +340,7 @@ class TestDfeApp:
         assert app._app_metrics is not None
 
     def test_metrics_init_failure_does_not_crash_service(self, monkeypatch):
-        """Metrics init failure is non-fatal — service still runs."""
+        """Metrics init failure is non-fatal -- service still runs."""
         import sys
         import types
 
@@ -368,7 +368,7 @@ class TestDfeApp:
         typer_app = _build_typer_app(app)
         result = runner.invoke(typer_app, ["run"])
 
-        # Service must still run — metrics failure is non-fatal
+        # Service must still run -- metrics failure is non-fatal
         assert result.exit_code == 0
         assert app.ran is True
         assert app._metrics is None

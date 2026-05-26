@@ -1,13 +1,13 @@
 #  Project:      hyperi-pylib
 #  File:         consumer.py
-#  Purpose:      ConsumerMetrics group — for Kafka consumer DFE apps
+#  Purpose:      ConsumerMetrics group -- for Kafka consumer DFE apps
 #  Language:     Python
 #
 #  License:      FSL-1.1-ALv2
 #  Copyright:    (c) 2026 HYPERI PTY LIMITED
 
 """
-ConsumerMetrics — composable metric group for Kafka consumer DFE apps.
+ConsumerMetrics -- composable metric group for Kafka consumer DFE apps.
 
 Mirrors rustlib's dfe_groups::ConsumerMetrics. Tracks consumer lag,
 partition assignment, rebalances, poll timing, and offset commits.

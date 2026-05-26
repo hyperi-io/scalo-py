@@ -116,7 +116,7 @@ class TestOpenTelemetryBackend:
         counter = metrics.counter("otel_http_requests_total", "Requests", labels=["method", "status"])
         assert counter is not None
 
-        # prometheus-client style — must not raise
+        # prometheus-client style -- must not raise
         counter.labels(method="GET", status="200").inc()
         counter.labels(method="POST", status="201").inc(3)
 
@@ -148,7 +148,7 @@ class TestOpenTelemetryBackend:
 
     @otel_required
     def test_gauge_set_is_absolute(self):
-        """Gauge .set() is absolute, not a delta — subsequent reads reflect the set value."""
+        """Gauge .set() is absolute, not a delta -- subsequent reads reflect the set value."""
         from hyperi_pylib.metrics.opentelemetry_backend import OtelGaugeAdapter
 
         metrics = create_metrics("otel-prom-api-3", backend="opentelemetry")
@@ -175,7 +175,7 @@ class TestOpenTelemetryBackend:
         hist = metrics.histogram("otel_request_duration_seconds", "Latency", labels=["method"])
         assert hist is not None
 
-        # prometheus-client style — must not raise
+        # prometheus-client style -- must not raise
         hist.labels(method="GET").observe(0.123)
         hist.labels(method="POST").observe(0.456)
 

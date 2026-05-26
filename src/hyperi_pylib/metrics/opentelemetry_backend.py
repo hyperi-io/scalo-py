@@ -82,7 +82,7 @@ class _BoundHistogram:
 
 
 class OtelCounterAdapter:
-    """Wraps an OTel Counter with prometheus-client–compatible API.
+    """Wraps an OTel Counter with prometheus-client-compatible API.
 
     Translates ``.labels(k=v).inc()`` into ``counter.add(1, attributes={...})``.
     """
@@ -107,7 +107,7 @@ class OtelCounterAdapter:
 
 
 class OtelGaugeAdapter:
-    """Wraps an OTel UpDownCounter with prometheus-client–compatible API.
+    """Wraps an OTel UpDownCounter with prometheus-client-compatible API.
 
     Tracks current per-labelset values to support absolute ``.set()``, since
     OTel UpDownCounter only accepts deltas.
@@ -150,7 +150,7 @@ class OtelGaugeAdapter:
 
 
 class OtelHistogramAdapter:
-    """Wraps an OTel Histogram with prometheus-client–compatible API.
+    """Wraps an OTel Histogram with prometheus-client-compatible API.
 
     Translates ``.labels(k=v).observe(v)`` into ``histogram.record(v, attributes={...})``.
     """
@@ -360,7 +360,7 @@ class OpenTelemetryBackend(MetricsBackend):
                 readers_desc.append("prometheus(/metrics)")
 
             if not metric_readers:
-                logger.error("No metric readers configured — at least one of OTLP or Prometheus required")
+                logger.error("No metric readers configured -- at least one of OTLP or Prometheus required")
                 self.enabled = False
                 return
 
@@ -383,7 +383,7 @@ class OpenTelemetryBackend(MetricsBackend):
             logger.info(f"OpenTelemetry metrics initialised: readers=[{', '.join(readers_desc)}]")
 
             # Register graceful shutdown BEFORE OTel SDK's own atexit handler.
-            # Python atexit runs LIFO — registering last means we run first,
+            # Python atexit runs LIFO -- registering last means we run first,
             # shutting down the provider cleanly before the SDK tries to flush.
             import atexit
 

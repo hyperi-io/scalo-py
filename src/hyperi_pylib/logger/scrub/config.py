@@ -9,7 +9,7 @@
 """Scrubber configuration schema.
 
 Mirrors the canonical YAML in spec §6. Each language maps these keys
-identically — the config is part of the cross-language contract.
+identically -- the config is part of the cross-language contract.
 """
 
 from __future__ import annotations
@@ -19,20 +19,20 @@ from dataclasses import dataclass, field
 
 @dataclass(slots=True)
 class FieldsConfig:
-    """Layer 2 — field-name regex (``password=...``, ``"token":...``)."""
+    """Layer 2 -- field-name regex (``password=...``, ``"token":...``)."""
 
     enabled: bool = True
 
 
 @dataclass(slots=True)
 class SecretsConfig:
-    """Layer 1 — secret artefacts (gitleaks-style).
+    """Layer 1 -- secret artefacts (gitleaks-style).
 
     Args:
         enabled: master toggle for the layer.
-        patterns: rule-set selector — ``"gitleaks"`` (full),
+        patterns: rule-set selector -- ``"gitleaks"`` (full),
             ``"minimal"`` (high-signal subset), or ``"off"``.
-        entropy_filter: opt-in pure-entropy scan. False by default —
+        entropy_filter: opt-in pure-entropy scan. False by default --
             FP-prone on normal log content (UUIDs, hashes, request
             IDs read high-entropy).
         token_efficiency: opt-in cache for repeated-token matches.
@@ -48,13 +48,13 @@ class SecretsConfig:
 
 @dataclass(slots=True)
 class NationalIdsConfig:
-    """Layer 3 national-ID validators — per-jurisdiction toggles.
+    """Layer 3 national-ID validators -- per-jurisdiction toggles.
 
     Country codes are ISO 3166-1 alpha-2, lowercase. Each enabled
     country loads its national-ID validators from the bundled
     ``national_ids.toml`` registry (vendored from hyperi-ai).
 
-    The default enables AU only — operators opt-in to additional
+    The default enables AU only -- operators opt-in to additional
     jurisdictions by listing country codes:
 
     .. code-block:: yaml
@@ -63,7 +63,7 @@ class NationalIdsConfig:
           enabled: ["au", "us", "uk"]    # enable AU + US + UK
 
     Entries within enabled countries are STILL gated on
-    ``enabled = true`` in the TOML registry — listing a country
+    ``enabled = true`` in the TOML registry -- listing a country
     here doesn't activate IDs that haven't been hand-curated.
     See spec §3.4 for the registry shape.
     """
@@ -79,16 +79,16 @@ class PiiValidatorsConfig:
     individually. Country-specific national IDs are managed as a
     set via :class:`NationalIdsConfig`.
 
-    Strong-structural — fire from any context:
+    Strong-structural -- fire from any context:
 
-    - ``credit_card`` — Luhn (ISO/IEC 7812-1)
-    - ``iban`` — mod-97 (ISO 13616)
-    - ``email`` — RFC 5322 subset
-    - ``phone`` — libphonenumber
+    - ``credit_card`` -- Luhn (ISO/IEC 7812-1)
+    - ``iban`` -- mod-97 (ISO 13616)
+    - ``email`` -- RFC 5322 subset
+    - ``phone`` -- libphonenumber
 
     Context-required national IDs:
 
-    - ``national_ids.enabled`` — list of country codes. Default
+    - ``national_ids.enabled`` -- list of country codes. Default
       ``["au"]`` (ABN, ACN, TFN, Medicare). Adds US/UK/EU
       jurisdictions by appending their country codes.
     """
@@ -102,7 +102,7 @@ class PiiValidatorsConfig:
 
 @dataclass(slots=True)
 class PiiConfig:
-    """Layer 3 — structured PII validators.
+    """Layer 3 -- structured PII validators.
 
     Args:
         enabled: master toggle for L3.
@@ -111,9 +111,9 @@ class PiiConfig:
 
     Note: there is no Layer 4 (NLP/NER). Earlier drafts of the spec
     described an opt-in spaCy backend for unstructured entities
-    (PERSON / LOCATION / ORG). That layer was dropped — both pylib and
-    rustlib — because the false-positive rate on log content is
-    unacceptable and the cost (5–200ms/call) is incompatible with
+    (PERSON / LOCATION / ORG). That layer was dropped -- both pylib and
+    rustlib -- because the false-positive rate on log content is
+    unacceptable and the cost (5-200ms/call) is incompatible with
     structured-logging budgets. PII detection in HyperI services is
     L3 algorithmic + L1 secrets, full stop.
     """
@@ -153,7 +153,7 @@ class ScrubConfig:
             correlate the same value across log lines without
             revealing it (spec §4.4).
         metrics_enabled: emit per-layer scrub metrics (spec §8). True
-            by default. Operator kill-switch — set False to skip every
+            by default. Operator kill-switch -- set False to skip every
             metric call on ultra-hot paths where the ~1-2µs/layer
             histogram observation is unacceptable. Independent of
             ``observe_only`` (which is about whether to redact, not
@@ -163,7 +163,7 @@ class ScrubConfig:
             ``log_scrub_redactions_total`` within a single scrubber
             instance. Once the cap is reached, further new ``type``
             labels are recorded under ``"OVER_CAP"`` and a one-shot
-            warning is emitted. Defaults to 64 — bounded by the
+            warning is emitted. Defaults to 64 -- bounded by the
             current detect-secrets type set (~24) plus headroom for
             extra_patterns. Set to 0 to disable the cap.
         fields: Layer 2 config.

@@ -85,7 +85,7 @@ class SecretsManager:
             env_prefix: Optional prefix for automatic ENV fallback lookup.
                 When a provider fetch fails and no explicit env_fallback is set on
                 the source, the manager looks up {PREFIX}_{NAME.upper()} in the
-                environment. E.g. prefix="DFE", name="fred_key" → DFE_FRED_KEY.
+                environment. E.g. prefix="DFE", name="fred_key" -> DFE_FRED_KEY.
                 Without a prefix it looks up NAME.upper() directly.
         """
         # Default to file provider
@@ -572,7 +572,7 @@ class SecretsManager:
         provider_name = provider or "file"
         p = self._get_provider(provider_name)
 
-        # AWS has a native batch API — delegate to provider if available.
+        # AWS has a native batch API -- delegate to provider if available.
         if provider_name == "aws" and hasattr(p, "batch_get_async"):
             return await p.batch_get_async(paths)  # type: ignore[attr-defined]
 

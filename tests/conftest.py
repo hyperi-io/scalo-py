@@ -12,7 +12,7 @@ import pytest
 # Enable DEBUG logging for all tests
 os.environ["LOG_LEVEL"] = "DEBUG"
 
-# Disable OTel OTLP exporter in tests — prevents atexit export errors
+# Disable OTel OTLP exporter in tests -- prevents atexit export errors
 # when no collector is running (causes exit code 1 even with all tests passing).
 # Tests that specifically validate OTLP reader creation pass explicit config.
 os.environ.setdefault("OTEL_EXPORTER_OTLP_ENDPOINT", "")
@@ -551,7 +551,7 @@ def _check_openbao_ready(addr: str, timeout: float = 2.0) -> bool:
     try:
         import urllib.request
 
-        with urllib.request.urlopen(f"{addr}/v1/sys/health", timeout=timeout):  # noqa: S310 — local-only test fixture
+        with urllib.request.urlopen(f"{addr}/v1/sys/health", timeout=timeout):  # noqa: S310 -- local-only test fixture
             return True
     except Exception:
         return False
@@ -640,7 +640,7 @@ def openbao_endpoint():
     Mirrors the Kafka/Postgres fixture pattern at conftest.py:159-202.
     """
     if _check_openbao_ready(OPENBAO_DEFAULT_ADDR, timeout=1.0):
-        # Use existing local instance — token may be different; honour env if set
+        # Use existing local instance -- token may be different; honour env if set
         token = os.environ.get("OPENBAO_DEV_ROOT_TOKEN", OPENBAO_DEFAULT_TOKEN)
         yield (OPENBAO_DEFAULT_ADDR, token)
         return

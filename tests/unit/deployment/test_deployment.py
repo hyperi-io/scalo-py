@@ -10,7 +10,7 @@
 
 Cross-language byte parity with rustlib will be wired in v2.29.0 once
 ``hyperi-rustlib/tests/parity/fixtures/`` lands. For now we verify shape
-and key fragments — enough to catch regressions while the contract is
+and key fragments -- enough to catch regressions while the contract is
 being shaped.
 """
 
@@ -54,7 +54,7 @@ pytestmark = pytest.mark.skipif(
 
 
 # -----------------------------------------------------------------------------
-# Test contract — mirrors rustlib's tests::test_contract() in shape
+# Test contract -- mirrors rustlib's tests::test_contract() in shape
 # -----------------------------------------------------------------------------
 
 
@@ -474,7 +474,7 @@ class TestNativeDepsForPylibExtras:
 
 
 class TestNativeDepsForRustlibFeatures:
-    """Polyglot path — when a Python app re-binds a Rust core via PyO3."""
+    """Polyglot path -- when a Python app re-binds a Rust core via PyO3."""
 
     def test_kafka_feature_adds_confluent(self):
         deps = NativeDepsContract.for_rustlib_features(["transport-kafka"], "ubuntu:24.04")
@@ -496,7 +496,7 @@ class TestGeneratedYamlParses:
 
     Catches structural regressions that substring-only checks miss (mismatched
     indents, unquoted special characters, missing colons). Helm templates use
-    ``{{ }}`` Go-template syntax which is NOT YAML-valid — we strip those
+    ``{{ }}`` Go-template syntax which is NOT YAML-valid -- we strip those
     sections before parsing.
     """
 
@@ -515,7 +515,7 @@ class TestGeneratedYamlParses:
 
     def test_compose_fragment_is_valid_yaml(self):
         text = generate_compose_fragment(_full_contract())
-        # Compose has no Helm placeholders — straight parse
+        # Compose has no Helm placeholders -- straight parse
         import yaml
 
         data = yaml.safe_load(text)
@@ -573,7 +573,7 @@ class TestGeneratedYamlParses:
             # Each template is a dict with apiVersion / kind / metadata
             assert isinstance(data, dict), f"{rel} did not parse to a mapping"
             # apiVersion may be the placeholder string after scrubbing in some
-            # templates wrapped in {{- if ... }} — accept either real value or
+            # templates wrapped in {{- if ... }} -- accept either real value or
             # placeholder; the structural check is what matters.
             assert "kind" in data or "PLACEHOLDER" in str(data), f"{rel} missing 'kind' field after directive scrub"
 
@@ -623,7 +623,7 @@ class TestGeneratorDeterminism:
 
 
 class TestContractValidation:
-    """Pydantic guards — make sure invalid contracts are caught at construction."""
+    """Pydantic guards -- make sure invalid contracts are caught at construction."""
 
     def test_metrics_port_zero_rejected(self):
         from pydantic import ValidationError
@@ -650,7 +650,7 @@ class TestContractValidation:
             )
 
     def test_extra_fields_rejected_on_contract(self):
-        """``extra="forbid"`` — typos in field names must fail loudly."""
+        """``extra="forbid"`` -- typos in field names must fail loudly."""
         from pydantic import ValidationError
 
         with pytest.raises(ValidationError):

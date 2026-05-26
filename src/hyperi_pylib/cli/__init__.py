@@ -1,5 +1,5 @@
 """
-hyperi-pylib CLI framework — Typer-based command-line interface for DFE services.
+hyperi-pylib CLI framework -- Typer-based command-line interface for DFE services.
 
 Two levels of usage:
 
@@ -98,7 +98,7 @@ except ImportError:
 # Import submodules (always available, gracefully handle missing Typer)
 from . import options, output, version
 
-# DfeApp framework (always available — errors are clear if Typer missing)
+# DfeApp framework (always available -- errors are clear if Typer missing)
 from .app import CommonArgs, DfeApp, run_app
 from .error import CliError, ConfigError, InvalidArgumentError, LoggerError, ServiceError
 from .version_info import VersionInfo

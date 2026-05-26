@@ -164,19 +164,19 @@ class TestNonAsciiContent:
 class TestContextBoundary:
     def test_keyword_within_proximity_redacts(self):
         v = _make("au.abn")
-        # Keyword ~10 chars before — well within default 30
+        # Keyword ~10 chars before -- well within default 30
         out = v.scrub("ABN: x x x 53 004 085 616")
         assert "53 004 085 616" not in out
 
     def test_keyword_beyond_proximity_does_not_redact(self):
         v = _make("au.abn")
-        # Keyword 60+ chars before the candidate — beyond default 30
+        # Keyword 60+ chars before the candidate -- beyond default 30
         text = "ABN section header: " + ("x " * 30) + "53 004 085 616"
         out = v.scrub(text)
         assert "53 004 085 616" in out, f"unexpectedly redacted: {out!r}"
 
     def test_keyword_in_candidate_itself_does_not_count(self):
-        # "abn" appears WITHIN the digits — should not satisfy context
+        # "abn" appears WITHIN the digits -- should not satisfy context
         # (we look BEFORE the candidate, not at the candidate). With
         # the current implementation this case is moot for ABN (digits
         # don't contain "abn") but tests the principle.
@@ -244,7 +244,7 @@ class _BrokenValidator(_Validator):
 class TestFailSafe:
     def test_validate_raises_through_to_scrub(self):
         """If a custom validator's validate() raises, the SCRUB call
-        propagates — fail-safe lives at the LayeredScrubber level,
+        propagates -- fail-safe lives at the LayeredScrubber level,
         not per-validator. Validators are expected to be well-behaved.
         """
         v = _BrokenValidator()
@@ -338,7 +338,7 @@ class TestPerformanceSanity:
     def test_long_clean_line_fast(self):
         """A 10KB line with no matches scrubs in well under 100ms via
         the full validator chain. Spec §7 target is <350µs/line for
-        the always-on stack — 100ms is a regression bar, not a target."""
+        the always-on stack -- 100ms is a regression bar, not a target."""
         import time
 
         v = EmailValidator()

@@ -7,7 +7,7 @@
 #  Copyright:    (c) 2026 HYPERI PTY LIMITED
 
 """
-CircuitBreakerMetrics — composable metric group for circuit breaker state.
+CircuitBreakerMetrics -- composable metric group for circuit breaker state.
 
 Mirrors rustlib's dfe_groups::CircuitBreakerMetrics. Tracks circuit breaker
 state (closed/open/half_open) and state transitions per target.
@@ -33,7 +33,7 @@ class CircuitBreakerMetrics:
     Circuit breaker metrics for DFE apps.
 
     Registers:
-        {ns}_circuit_breaker_state gauge (labels: target) — 0=closed, 1=open, 2=half_open
+        {ns}_circuit_breaker_state gauge (labels: target) -- 0=closed, 1=open, 2=half_open
         {ns}_circuit_breaker_transitions_total counter (labels: target, to_state)
     """
 

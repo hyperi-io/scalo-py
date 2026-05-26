@@ -1,13 +1,13 @@
 #  Project:      hyperi-pylib
 #  File:         sink.py
-#  Purpose:      SinkMetrics group — for DFE apps with a downstream
+#  Purpose:      SinkMetrics group -- for DFE apps with a downstream
 #  Language:     Python
 #
 #  License:      FSL-1.1-ALv2
 #  Copyright:    (c) 2026 HYPERI PTY LIMITED
 
 """
-SinkMetrics — composable metric group for DFE apps with downstream sinks.
+SinkMetrics -- composable metric group for DFE apps with downstream sinks.
 
 Mirrors rustlib's dfe_groups::SinkMetrics. Tracks sink write latency,
 errors, bytes sent, and in-flight insert count.

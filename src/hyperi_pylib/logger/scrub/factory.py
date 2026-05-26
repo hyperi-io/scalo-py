@@ -1,6 +1,6 @@
 #  Project:   hyperi-pylib
 #  File:      src/hyperi_pylib/logger/scrub/factory.py
-#  Purpose:   build_scrubber() — factory composing all enabled layers
+#  Purpose:   build_scrubber() -- factory composing all enabled layers
 #  Language:  Python
 #
 #  License:   FSL-1.1-ALv2
@@ -9,7 +9,7 @@
 """Factory for constructing a :class:`LayeredScrubber` from config.
 
 Reads :class:`ScrubConfig`, builds the per-layer scrubber list in
-spec-mandated order (L1 → L2 → L3 → L4), skips disabled layers,
+spec-mandated order (L1 -> L2 -> L3 -> L4), skips disabled layers,
 returns a single composed scrubber.
 
 This is the canonical way for application code to obtain a scrubber.
@@ -34,7 +34,7 @@ def build_scrubber(
 ) -> LayeredScrubber:
     """Build a :class:`LayeredScrubber` per the supplied config.
 
-    Composes layers in spec §2.1 order — L1 → L2 → L3 — including only
+    Composes layers in spec §2.1 order -- L1 -> L2 -> L3 -- including only
     those layers enabled by the config. There is no L4: NLP/NER
     scrubbing was dropped from scope (false-positive rate on log
     content was unacceptable; both pylib and rustlib stop at L3).
@@ -45,7 +45,7 @@ def build_scrubber(
 
     Returns:
         A :class:`LayeredScrubber` ready to call. Always returns an
-        instance — even ``ScrubConfig(enabled=False)`` returns a
+        instance -- even ``ScrubConfig(enabled=False)`` returns a
         scrubber that passes input through.
 
     Example:
@@ -61,11 +61,11 @@ def build_scrubber(
         metrics = ScrubMetrics.noop()
     layers: list[Scrubber] = []
 
-    # Resolve the labeler once — every layer that produces labels shares it
+    # Resolve the labeler once -- every layer that produces labels shares it
     # so per-value correlation works across L1 + L3 within a single line.
     labeler = resolve_labeler(hash_redaction=config.hash_redaction)
 
-    # L1 — secret artefacts (gitleaks-style)
+    # L1 -- secret artefacts (gitleaks-style)
     if config.secrets.enabled and config.secrets.patterns != "off":
         from .secrets import SecretsScrubber
 
@@ -77,14 +77,14 @@ def build_scrubber(
             )
         )
 
-    # L2 — field-name regex (uses static ***REDACTED***; field name itself
+    # L2 -- field-name regex (uses static ***REDACTED***; field name itself
     # carries the type signal, no correlation value from hashing).
     if config.fields.enabled:
         from .field_names import FieldNameScrubber
 
         layers.append(FieldNameScrubber())
 
-    # L3 — structured PII validators
+    # L3 -- structured PII validators
     if config.pii.enabled:
         from .pii import (
             CreditCardValidator,
@@ -113,7 +113,7 @@ def build_scrubber(
             )
         )
 
-    # No L4 (NLP/NER) — dropped from the spec. See PiiConfig docstring
+    # No L4 (NLP/NER) -- dropped from the spec. See PiiConfig docstring
     # for why.
 
     # Per spec §8: emit pattern_version metrics at scrubber build time so
@@ -128,7 +128,7 @@ def build_scrubber(
 
 def _emit_pattern_versions(metrics: ScrubMetrics) -> None:
     """Emit `log_scrub_pattern_version{source, version}` per spec §8."""
-    # L1 — canonical TOML-driven path (gitleaks.toml vendored from hyperi-ai).
+    # L1 -- canonical TOML-driven path (gitleaks.toml vendored from hyperi-ai).
     try:
         from .gitleaks_toml import load_gitleaks_rules
 
@@ -138,7 +138,7 @@ def _emit_pattern_versions(metrics: ScrubMetrics) -> None:
     except Exception:
         pass
 
-    # detect-secrets — still available as the entropy/heuristic fallback path.
+    # detect-secrets -- still available as the entropy/heuristic fallback path.
     try:
         from importlib.metadata import version as _pkg_version
 
@@ -146,7 +146,7 @@ def _emit_pattern_versions(metrics: ScrubMetrics) -> None:
     except Exception:
         pass
 
-    # Bundled national-IDs registry — version stamped in the TOML.
+    # Bundled national-IDs registry -- version stamped in the TOML.
     try:
         from .pii import load_registry
 

@@ -6,7 +6,7 @@
 #  License:      FSL-1.1-ALv2
 #  Copyright:    (c) 2026 HYPERI PTY LIMITED
 
-"""Tests for scaling pressure calculator — weighted composite + gate logic."""
+"""Tests for scaling pressure calculator -- weighted composite + gate logic."""
 
 import threading
 import time
@@ -118,7 +118,7 @@ class TestScalingPressureCalculation:
 
 
 class TestGateLogic:
-    """Test gate logic — circuit open and memory gate."""
+    """Test gate logic -- circuit open and memory gate."""
 
     def test_circuit_open_returns_zero(self):
         """Circuit open gate: always return 0.0 regardless of component values."""
@@ -290,7 +290,7 @@ class TestSnapshot:
     """Test PressureSnapshot frozen data class."""
 
     def test_snapshot_returns_frozen_state(self):
-        """Snapshot is a frozen dataclass — immutable after creation."""
+        """Snapshot is a frozen dataclass -- immutable after creation."""
         sp = ScalingPressure()
         sp.set_component("memory", 0.5)
         sp.set_component("queue", 0.3)

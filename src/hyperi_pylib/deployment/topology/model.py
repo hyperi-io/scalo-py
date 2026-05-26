@@ -23,7 +23,7 @@ _CHART_NAME_RE = re.compile(r"^[a-z][a-z0-9-]{1,51}[a-z0-9]$")
 
 
 class _StrictModel(BaseModel):
-    """Strict base — reject unknown fields so typos surface early."""
+    """Strict base -- reject unknown fields so typos surface early."""
 
     model_config = ConfigDict(extra="forbid", frozen=False)
 
@@ -108,11 +108,11 @@ class GlueEntry(_StrictModel):
 
 
 class UmbrellaMeta(_StrictModel):
-    """Umbrella chart metadata — becomes the top of stitched Chart.yaml."""
+    """Umbrella chart metadata -- becomes the top of stitched Chart.yaml."""
 
     name: str
     description: str
-    appVersion: str = "1.0"  # noqa: N815 — YAML schema requires camelCase
+    appVersion: str = "1.0"  # noqa: N815 -- YAML schema requires camelCase
 
     @field_validator("name")
     @classmethod
@@ -125,7 +125,7 @@ class UmbrellaMeta(_StrictModel):
 class ArgocdHints(_StrictModel):
     """ArgoCD app-of-apps / ApplicationSet hints for this topology."""
 
-    appOfApps: bool = False  # noqa: N815 — YAML schema requires camelCase
+    appOfApps: bool = False  # noqa: N815 -- YAML schema requires camelCase
     appProject: str = "default"  # noqa: N815
     syncWaves: dict[str, int] = Field(default_factory=dict)  # noqa: N815
 
@@ -164,7 +164,7 @@ class TopologySpec(_StrictModel):
 class DeploymentTopology(_StrictModel):
     """Root model for a ``topologies/<name>/topology.yaml`` file."""
 
-    apiVersion: Literal["hyperi.io/v1"] = "hyperi.io/v1"  # noqa: N815 — YAML schema requires camelCase
+    apiVersion: Literal["hyperi.io/v1"] = "hyperi.io/v1"  # noqa: N815 -- YAML schema requires camelCase
     kind: Literal["DeploymentTopology"] = "DeploymentTopology"
     metadata: dict[str, str] = Field(default_factory=dict)
     spec: TopologySpec

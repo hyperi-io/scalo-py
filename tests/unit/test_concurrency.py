@@ -86,7 +86,7 @@ class TestRunBlocking:
         await ticker_task
 
         assert result == "done"
-        # Event loop kept making progress — at least 2 ticks fired during the blocking sleep
+        # Event loop kept making progress -- at least 2 ticks fired during the blocking sleep
         assert len(ticks) == 3
 
 
@@ -202,7 +202,7 @@ class TestBulkhead:
             async with bulkhead:
                 raise RuntimeError("oops")
 
-        # Slot should be free — second acquire returns immediately
+        # Slot should be free -- second acquire returns immediately
         async with asyncio.timeout(0.05):
             async with bulkhead:
                 pass

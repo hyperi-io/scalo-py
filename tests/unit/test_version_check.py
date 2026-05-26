@@ -139,7 +139,7 @@ class TestCheckOnStartup:
             config=config,
         )
 
-        # The function returned a live daemon thread — confirm + join
+        # The function returned a live daemon thread -- confirm + join
         # deterministically rather than racing on time.sleep(). Without
         # the join, a busy test runner can finish the test before the
         # daemon's HTTP request completes, leaving pytest-httpx's

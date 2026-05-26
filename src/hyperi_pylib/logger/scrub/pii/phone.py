@@ -6,10 +6,10 @@
 #  License:   FSL-1.1-ALv2
 #  Copyright: (c) 2026 HYPERI PTY LIMITED
 
-"""Phone validator — strong-structural.
+"""Phone validator -- strong-structural.
 
 Detects phone numbers via libphonenumber-grade parsing. Strong-
-structural per spec §9.1 — but only when libphonenumber confirms the
+structural per spec §9.1 -- but only when libphonenumber confirms the
 candidate. python-stdnum has no phone module; libphonenumber (via
 ``phonenumbers``) is the canonical answer for global phone parsing.
 """
@@ -28,7 +28,7 @@ class PhoneValidator(_Validator):
 
     LABEL = "PHONE"
     # Candidate shape: optional +, then 7-17 digits with possible
-    # separators (space, hyphen, dot, parentheses). Permissive — the
+    # separators (space, hyphen, dot, parentheses). Permissive -- the
     # phonenumbers.is_valid_number() call is the real filter.
     PATTERN = re.compile(
         r"\+?\d[\d \-.()]{6,20}\d",

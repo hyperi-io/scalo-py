@@ -8,7 +8,7 @@
 
 """Unit tests for OpenBao Tier 1 + Tier 2 provider methods.
 
-Uses pytest-httpx to fake KV v2 endpoints at the httpx transport level —
+Uses pytest-httpx to fake KV v2 endpoints at the httpx transport level --
 no mocks, no real Vault required.
 """
 

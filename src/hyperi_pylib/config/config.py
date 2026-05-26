@@ -10,14 +10,14 @@ Configuration Cascade (8 Layers, HyperI Standard)
 
 ALL configuration automatically follows this priority (highest to lowest):
 
-    1. CLI args/switches  → --host=X --port=Y (runtime, apps/CLIs only)
-    2. ENV variables      → MYAPP_DATABASE_HOST=prod.db.com (deployment)
-    3. .env file          → Local secrets (gitignored, never commit)
-    4. PostgreSQL         → Shared org config (OPTIONAL, OVERRIDES files)
-    5. settings.{env}.yaml → Environment-specific (settings.production.yaml)
-    6. settings.yaml      → Project base config (team defaults)
-    7. defaults.yaml      → Safe fallback defaults (local dev)
-    8. Hard-coded         → Last resort in code (fallback values)
+    1. CLI args/switches  -> --host=X --port=Y (runtime, apps/CLIs only)
+    2. ENV variables      -> MYAPP_DATABASE_HOST=prod.db.com (deployment)
+    3. .env file          -> Local secrets (gitignored, never commit)
+    4. PostgreSQL         -> Shared org config (OPTIONAL, OVERRIDES files)
+    5. settings.{env}.yaml -> Environment-specific (settings.production.yaml)
+    6. settings.yaml      -> Project base config (team defaults)
+    7. defaults.yaml      -> Safe fallback defaults (local dev)
+    8. Hard-coded         -> Last resort in code (fallback values)
 
 **.env Cascade Mode (Optional):**
 
@@ -27,10 +27,10 @@ ALL configuration automatically follows this priority (highest to lowest):
     Set HYPERI_DOTENV_CASCADE=true or use get_config(dotenv_cascade=True)
 
     When enabled, loads in order (later overrides earlier):
-        1. ~/.env          → Home directory (global API keys, credentials)
-        2. ./.env          → Project directory (project-specific overrides)
+        1. ~/.env          -> Home directory (global API keys, credentials)
+        2. ./.env          -> Project directory (project-specific overrides)
 
-PostgreSQL config (layer 4) is OPTIONAL — built-for, not built-with.
+PostgreSQL config (layer 4) is OPTIONAL -- built-for, not built-with.
 The YAML file-based approach already provides centralised config management
 (gitops-optimised, stored on S3 for AWS deployments, used across all
 services). The PG option exists for a more complex PG-over-YAML path if
@@ -71,9 +71,9 @@ PostgreSQL config to a local file for use when the database is unavailable.
 
     Config Path              Auto-Generated ENV Key
     -----------              ----------------------
-    database.host         → MYAPP_DATABASE_HOST
-    api.timeout           → MYAPP_API_TIMEOUT
-    cache.redis.enabled   → MYAPP_CACHE_REDIS_ENABLED
+    database.host         -> MYAPP_DATABASE_HOST
+    api.timeout           -> MYAPP_API_TIMEOUT
+    cache.redis.enabled   -> MYAPP_CACHE_REDIS_ENABLED
 
     Prefix customizable via: HYPERI_LIB_ENV_PREFIX=MYAPP
 
@@ -89,10 +89,10 @@ PostgreSQL config to a local file for use when the database is unavailable.
 
     Both .yaml and .yml checked (.yaml first). All found files merged.
 
-    **App name** resolved from: APP_NAME env → HYPERI_LIB_APP_NAME env →
-    auto-detect → default "app".
+    **App name** resolved from: APP_NAME env -> HYPERI_LIB_APP_NAME env ->
+    auto-detect -> default "app".
 
-    **App env** resolved from: APP_ENV → ENVIRONMENT → ENV → "development".
+    **App env** resolved from: APP_ENV -> ENVIRONMENT -> ENV -> "development".
 
 Quick Start
 ===========
@@ -586,11 +586,11 @@ else:
 def _find_config_files(base_name: str) -> list[str]:
     """Find config files across all search locations.
 
-    Searches (in order, all merged — later locations override earlier):
+    Searches (in order, all merged -- later locations override earlier):
     1. Current directory (./)
     2. Project config subdir (./config/)
-    3. Container mount (/config/) — always checked, no-op if absent
-    4. User config (~/.config/{app_name}/) — only when app_name is set
+    3. Container mount (/config/) -- always checked, no-op if absent
+    4. User config (~/.config/{app_name}/) -- only when app_name is set
     5. Mount config dir (from environment detection)
 
     Both .yaml and .yml extensions are checked (.yaml first).
@@ -631,7 +631,7 @@ def _find_config_files(base_name: str) -> list[str]:
 
 # Build settings file list using multi-layer discovery
 # Matches rustlib cascade: defaults.yaml (layer 7), settings.yaml (layer 6),
-# settings.{env}.yaml (layer 5) — all merged, later layers override earlier
+# settings.{env}.yaml (layer 5) -- all merged, later layers override earlier
 settings_files = []
 
 # Layer 7: defaults.yaml (lowest priority file layer)
@@ -675,7 +675,7 @@ settings = Dynaconf(
     settings_files=settings_files if settings_files else [],  # Use discovered files
     load_dotenv=_use_dynaconf_dotenv,  # Load .env file (3rd priority)
     environments=False,  # Single config approach
-    # PRECEDENCE: CLI → ENV → .env → config override → default → hardcoded
+    # PRECEDENCE: CLI -> ENV -> .env -> config override -> default -> hardcoded
 )
 
 
@@ -688,7 +688,7 @@ settings = Dynaconf(
 # management (gitops-optimised, stored on S3 for AWS deployments, used
 # across all services). The PG option exists for a more complex PG-over-YAML
 # path if the ROI justifies it in the future. The cascade is designed so PG
-# can be enabled without code changes — just set HYPERI_CONFIG_DSN.
+# can be enabled without code changes -- just set HYPERI_CONFIG_DSN.
 #
 # If HYPERI_CONFIG_DSN is set, load config from PostgreSQL and merge into settings.
 # This provides a shared configuration store for multi-pod deployments.
@@ -697,14 +697,14 @@ settings = Dynaconf(
 # source of truth for centralised configuration management.
 #
 # 8-Layer Cascade (with PostgreSQL):
-#   1. CLI args           → Runtime override
-#   2. ENV vars           → Deployment/secrets
-#   3. .env file          → Local dev secrets
-#   4. PostgreSQL         → Shared org config (OVERRIDES files)
-#   5. settings.{env}     → Environment-specific local file
-#   6. settings.yaml      → Project base
-#   7. defaults.yaml      → Safe defaults
-#   8. Hard-coded         → Last resort
+#   1. CLI args           -> Runtime override
+#   2. ENV vars           -> Deployment/secrets
+#   3. .env file          -> Local dev secrets
+#   4. PostgreSQL         -> Shared org config (OVERRIDES files)
+#   5. settings.{env}     -> Environment-specific local file
+#   6. settings.yaml      -> Project base
+#   7. defaults.yaml      -> Safe defaults
+#   8. Hard-coded         -> Last resort
 #
 # PostgreSQL config is loaded ONCE at module init and cached.
 # To refresh, call PostgresConfigLoader.clear_cache() and re-import.
@@ -862,7 +862,7 @@ def get_config(
                          Files loaded in order, later files have higher priority
                          Paths can be absolute or relative to config_dir
         env_prefix: Environment variable prefix (default: APP or HYPERI_LIB_ENV_PREFIX)
-                   Example: "TENANT1" → TENANT1_DATABASE_HOST
+                   Example: "TENANT1" -> TENANT1_DATABASE_HOST
         load_dotenv: Load .env file (default: True)
                     Set False for security-sensitive contexts
         merge_existing: Merge with existing settings files (default: True)
@@ -1132,7 +1132,7 @@ def get_logging_config():
     - Default: APP_ (e.g., APP_LOGGING__LEVEL)
     - Configurable via: HYPERI_LIB_ENV_PREFIX (e.g., HYPERI_LIB_ENV_PREFIX=MYAPP)
 
-    Priority order (CLI → ENV → .env → config → default → hardcoded):
+    Priority order (CLI -> ENV -> .env -> config -> default -> hardcoded):
     1. Standard environment variables (LOG_*)
     2. Dynaconf prefixed variables ({ENV_PREFIX}_LOGGING__*)
     3. Config file (logging.*)

@@ -3,7 +3,7 @@
 Designed primarily for SME networks that need encrypted-at-rest secrets without
 the operational overhead of a dedicated secrets server (OpenBao, AWS Secrets
 Manager, etc.). Also suitable for any environment where Ansible Vault is already
-the team's standard for secret management — dev/test environments, CI pipelines,
+the team's standard for secret management -- dev/test environments, CI pipelines,
 or hybrid setups where some secrets live in vault files alongside
 infrastructure-as-code.
 
@@ -95,7 +95,7 @@ def _resolve_password(config: AnsibleVaultConfig) -> str:
         return _read_password_file(config.password_file)
 
     raise ProviderError(
-        "ansible_vault", "no vault password configured — set ANSIBLE_VAULT_PASSWORD or provide password_file"
+        "ansible_vault", "no vault password configured -- set ANSIBLE_VAULT_PASSWORD or provide password_file"
     )
 
 
@@ -231,7 +231,7 @@ class AnsibleVaultProvider(SecretProvider):
         if key is None:
             return decrypted
 
-        # Key requested — must be a YAML dict
+        # Key requested -- must be a YAML dict
         try:
             parsed = yaml.safe_load(decrypted.decode("utf-8"))
         except (yaml.YAMLError, UnicodeDecodeError):

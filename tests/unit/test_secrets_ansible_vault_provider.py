@@ -407,7 +407,7 @@ class TestAnsibleVaultMetadata:
             provider.get_metadata_sync(str(tmp_path / "missing.vault"))
 
     def test_get_metadata_wrong_password_still_works(self, tmp_path):
-        """Metadata only stats the file — password isn't needed."""
+        """Metadata only stats the file -- password isn't needed."""
         vault_file = _create_vault_file(tmp_path, "secret")
         # Use a completely different password
         provider = AnsibleVaultProvider(AnsibleVaultConfig(password="wrong-password"))

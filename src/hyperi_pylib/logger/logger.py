@@ -437,7 +437,7 @@ def setup(
     # Get logging config (lazy import to avoid circular dependency)
     config = _get_logging_config()
 
-    # Fire-and-forget mode by default — sinks run on a background thread, so
+    # Fire-and-forget mode by default -- sinks run on a background thread, so
     # logger.info() returns in ~µs even with slow disk/network sinks. Override
     # with HYPERI_LOG_ENQUEUE=0 for sync semantics (audit logging, unit tests
     # that assert on captured output, etc.).
@@ -465,10 +465,10 @@ def setup(
         allow_all_emojis = False  # Can't allow all if emojis disabled
 
     # Build a Scrubber per spec §2.3. The resolver honours (in order):
-    # explicit `scrubber=` arg → explicit `scrub_config=` arg → legacy
-    # `mask_sensitive` / `masking_level` args → new `logging.scrub.*`
-    # config keys → legacy `logging.mask_sensitive_data` /
-    # `logging.masking_level` config keys (with deprecation warning) →
+    # explicit `scrubber=` arg -> explicit `scrub_config=` arg -> legacy
+    # `mask_sensitive` / `masking_level` args -> new `logging.scrub.*`
+    # config keys -> legacy `logging.mask_sensitive_data` /
+    # `logging.masking_level` config keys (with deprecation warning) ->
     # defaults. See logger/scrub_resolver.py.
     resolved_scrubber = resolve_scrubber(
         scrubber=scrubber,
@@ -479,7 +479,7 @@ def setup(
     )
 
     # Sensitive data masking (default: enabled). Retained for backwards
-    # compatibility — _add_emoji_to_record will prefer `resolved_scrubber`
+    # compatibility -- _add_emoji_to_record will prefer `resolved_scrubber`
     # but we keep these flags wired to honour the legacy call signature.
     if mask_sensitive is None:
         mask_sensitive = config.get("mask_sensitive_data", True)

@@ -8,7 +8,7 @@
 
 """Integration tests for OpenBao Tier 1 + Tier 2 methods.
 
-Uses the ``openbao_endpoint`` fixture from conftest.py — cascade of:
+Uses the ``openbao_endpoint`` fixture from conftest.py -- cascade of:
 1. Existing local Vault on :8200 → use it
 2. ``docker compose -f docker-compose.openbao.yml up -d`` → spawn one
 3. Skip the test class if neither available
@@ -174,7 +174,7 @@ class TestOpenBaoListing:
 
 
 class TestOpenBaoAsyncRoundtrip:
-    """Async path against real Vault — proves the httpx async client wiring."""
+    """Async path against real Vault -- proves the httpx async client wiring."""
 
     async def test_async_create_get_delete(self, provider):
         path = _unique_path("async-rt")

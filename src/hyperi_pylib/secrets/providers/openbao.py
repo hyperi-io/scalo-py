@@ -536,7 +536,7 @@ class OpenBaoProvider(VersionedProvider):
     async def list_async(self, filter: SecretFilter | None = None) -> list[str]:
         """List secrets under a prefix. Requires ``filter.prefix`` to identify the mount.
 
-        ``filter.tags`` is ignored — KV v2 LIST does not filter on custom_metadata
+        ``filter.tags`` is ignored -- KV v2 LIST does not filter on custom_metadata
         server-side. ``filter.pattern`` is applied as a client-side fnmatch.
         Sub-paths (keys ending in "/") are excluded from results.
         """
@@ -730,7 +730,7 @@ class OpenBaoProvider(VersionedProvider):
             await self._authenticate_async()
         client = await self._get_async_client()
 
-        # Pre-check existence — maps to SecretNotFoundError if absent.
+        # Pre-check existence -- maps to SecretNotFoundError if absent.
         await self.get_metadata_async(path)
 
         body = {"data": self._encode_value_for_storage(value)}

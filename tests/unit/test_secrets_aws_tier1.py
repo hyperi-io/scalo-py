@@ -83,7 +83,7 @@ class TestAWSCreateSync:
         meta = provider.create_sync("hyperi-test", b"hunter2")
         assert meta.name == "hyperi-test"
         assert meta.source == "aws"
-        # AWS create_secret returns only ARN/Name/VersionId — created_at fills via describe
+        # AWS create_secret returns only ARN/Name/VersionId -- created_at fills via describe
         assert meta.version is not None
 
     def test_with_tags(self, provider):
@@ -259,7 +259,7 @@ class TestAWSGetVersionSync:
         assert result.data == b"v1"
 
     def test_secret_not_found(self, provider):
-        # AWS validates VersionId length (>=32) before contacting the service —
+        # AWS validates VersionId length (>=32) before contacting the service --
         # use a UUID-shaped string so the not-found path is exercised.
         with pytest.raises(SecretNotFoundError) as exc:
             provider.get_version_sync("missing", "00000000-0000-0000-0000-000000000000")
@@ -290,7 +290,7 @@ class TestAWSListVersionsSync:
 
     @pytest.mark.skip(
         reason="moto raises KeyError instead of ResourceNotFoundException on "
-        "list_secret_version_ids for a missing secret — real AWS returns "
+        "list_secret_version_ids for a missing secret -- real AWS returns "
         "ResourceNotFoundException; covered by live integration tests."
     )
     def test_not_found(self, provider):
@@ -326,7 +326,7 @@ class TestAWSBatchGet:
 
 
 # -------------------------------------------------------------------------
-# Encoding helpers (no AWS calls — don't need the fixture)
+# Encoding helpers (no AWS calls -- don't need the fixture)
 # -------------------------------------------------------------------------
 
 

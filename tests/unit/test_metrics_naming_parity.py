@@ -52,7 +52,7 @@ def _invalid_ids(cases: list[dict]) -> list[str]:
 
 
 # ---------------------------------------------------------------------------
-# Valid cases — both validators must return no warnings
+# Valid cases -- both validators must return no warnings
 # ---------------------------------------------------------------------------
 
 
@@ -72,7 +72,7 @@ def test_valid_dfe_prefix_no_warnings(case: dict) -> None:
 
 
 # ---------------------------------------------------------------------------
-# Invalid cases — at least one validator must return a warning
+# Invalid cases -- at least one validator must return a warning
 # ---------------------------------------------------------------------------
 
 

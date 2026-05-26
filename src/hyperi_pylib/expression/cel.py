@@ -6,11 +6,11 @@
 # License:   FSL-1.1-ALv2
 # Copyright: (c) 2026 HYPERI PTY LIMITED
 
-"""CEL expression evaluation — compile, evaluate, validate.
+"""CEL expression evaluation -- compile, evaluate, validate.
 
 Wraps the ``common-expression-language`` package (which itself wraps the
 Rust ``cel-interpreter`` crate via PyO3). The same Rust implementation
-powers both Python and Rust services — zero behavioural drift.
+powers both Python and Rust services -- zero behavioural drift.
 
 Install::
 
@@ -33,7 +33,7 @@ Usage::
     program.execute({"amount": 15000, "threshold": 10000})  # True
     program.execute({"amount": 500, "threshold": 10000})     # False
 
-    # Boolean condition evaluation (missing fields → False)
+    # Boolean condition evaluation (missing fields -> False)
     result = evaluate_condition('severity == "critical"', {})
     assert result is False
 """
@@ -87,7 +87,7 @@ def _check_profile(expr: str) -> list[str]:
                 f"Excluded for performance: per-element iteration or time functions."
             )
         elif name not in ALLOWED_FUNCTIONS:
-            # Unknown function — CEL will reject it at compile time anyway,
+            # Unknown function -- CEL will reject it at compile time anyway,
             # but we give a better error message here.
             pass  # Let CEL handle unknown functions with its own error
     return errors
@@ -97,7 +97,7 @@ def validate(expr: str) -> list[str]:
     """Validate an expression for syntax and DFE profile compliance.
 
     Returns a list of error strings (empty if valid).
-    Designed for UI pre-submit validation — call this before storing expressions.
+    Designed for UI pre-submit validation -- call this before storing expressions.
 
     Args:
         expr: CEL expression string.
@@ -160,7 +160,7 @@ def evaluate(expr: str, data: dict[str, Any] | None = None) -> Any:
 
     Args:
         expr: CEL expression string.
-        data: Variable context (field name → value).
+        data: Variable context (field name -> value).
 
     Returns:
         The expression result (bool, int, float, string, list, etc.)
@@ -183,7 +183,7 @@ def evaluate_condition(expr: str, data: dict[str, Any]) -> bool:
 
     Args:
         expr: CEL expression that should evaluate to a boolean.
-        data: Variable context (field name → value).
+        data: Variable context (field name -> value).
 
     Returns:
         True if the condition matches, False otherwise (including on

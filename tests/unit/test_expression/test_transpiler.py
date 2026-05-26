@@ -264,12 +264,12 @@ class TestPrecedence:
     """Operator precedence and explicit grouping."""
 
     def test_and_before_or(self):
-        # a || (b && c) — no parens needed because AND > OR
+        # a || (b && c) -- no parens needed because AND > OR
         result = transpile_to_clickhouse("x || y && z")
         assert result == "x OR y AND z"
 
     def test_grouped_or(self):
-        # (a || b) && c — parens preserved
+        # (a || b) && c -- parens preserved
         result = transpile_to_clickhouse("(x || y) && z")
         assert result == "(x OR y) AND z"
 

@@ -16,7 +16,7 @@ Gate logic (evaluated in order):
 2. Memory >= gate threshold -> return 100.0  (scale before OOM)
 3. Otherwise -> weighted sum * 100
 
-Thread-safe via ``threading.Lock`` — multiple async tasks may update
+Thread-safe via ``threading.Lock`` -- multiple async tasks may update
 components concurrently.
 """
 

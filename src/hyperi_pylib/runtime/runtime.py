@@ -56,16 +56,16 @@ Quick Start
     volumes:
       - name: config
         configMap: my-app-config
-        mountPath: /config              # → runtime.config_dir
+        mountPath: /config              # -> runtime.config_dir
 
       - name: data
         persistentVolumeClaim: my-pvc
-        mountPath: /data                # → runtime.data_dir
+        mountPath: /data                # -> runtime.data_dir
 
     # Docker Compose
     volumes:
-      - ./config:/app/config:ro         # → runtime.config_dir
-      - app-data:/app/data              # → runtime.data_dir
+      - ./config:/app/config:ro         # -> runtime.config_dir
+      - app-data:/app/data              # -> runtime.data_dir
 
     # Local Dev
     # No volumes needed!

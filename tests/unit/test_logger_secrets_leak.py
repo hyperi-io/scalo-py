@@ -70,7 +70,7 @@ class TestSecretsLeakFilterDetection:
     def test_stripe_test_key(self, f):
         # Fixture comes from the runtime-constructed factory so no
         # contiguous ``sk_live_<n chars>`` literal ever appears in
-        # source — GitHub Push Protection (and similar scanners) read
+        # source -- GitHub Push Protection (and similar scanners) read
         # source bytes, not Python evaluations, so the factory output
         # is invisible to them. The L1 scrubber still sees the
         # full string at runtime and redacts it normally.
@@ -113,7 +113,7 @@ class TestSecretsLeakLevels:
     def test_off_is_noop(self):
         f = SecretsLeakFilter(level="off")
         assert f._enabled is False
-        # No detection happens — secrets pass through
+        # No detection happens -- secrets pass through
         text = f"AWS key {aws_access_key()}"
         assert f.scrub(text) == text
 
@@ -128,7 +128,7 @@ class TestSecretsLeakLevels:
         assert token not in out
 
     def test_unknown_level_disables(self):
-        """Unknown level value disables — fail safe, not exception."""
+        """Unknown level value disables -- fail safe, not exception."""
         f = SecretsLeakFilter(level="bogus")
         assert f._enabled is False
 
@@ -142,7 +142,7 @@ class TestSecretsLeakExtraPatterns:
             extra_patterns=[("Internal Token", r"\binternal_[0-9a-f]{16}\b")],
         )
         # extra_patterns add redaction regex even when detect-secrets is off?
-        # No — they only fire when detect-secrets reports the matching type.
+        # No -- they only fire when detect-secrets reports the matching type.
         # For pure-regex matching independent of detect-secrets, callers
         # should use SensitiveDataFilter's regex pass instead.
         # Verify the regex is at least compiled.

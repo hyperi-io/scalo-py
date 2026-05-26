@@ -9,7 +9,7 @@
 """Load the bundled ``national_ids.toml`` and build validator instances.
 
 The TOML is bundled in pylib's wheel at
-``hyperi_pylib/data/national_ids.toml`` — vendored from the
+``hyperi_pylib/data/national_ids.toml`` -- vendored from the
 canonical source in
 ``hyperi-ai/standards/patterns/national_ids.toml`` (see spec §3.0
 for vendoring discipline).
@@ -47,7 +47,7 @@ def load_registry(path: Path | None = None) -> dict[str, dict[str, Any]]:
         with path.open("rb") as f:
             return tomllib.load(f)
 
-    # Bundled file — read via importlib.resources so it works whether
+    # Bundled file -- read via importlib.resources so it works whether
     # pylib is installed as a wheel or run from source.
     resource = resources.files("hyperi_pylib") / "data" / "national_ids.toml"
     with resource.open("rb") as f:
@@ -85,7 +85,7 @@ def build_national_id_validators(
     file ships many ``enabled = false`` stubs).
 
     Misconfigured entries (e.g. unimportable stdnum_module) emit a
-    one-time warning and are skipped — never raise to the caller.
+    one-time warning and are skipped -- never raise to the caller.
     Per spec §5.1, broken scrubber components must not break logging.
     """
     if registry is None:

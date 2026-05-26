@@ -64,7 +64,7 @@ class TestNoOpScrubber:
 
 
 # ---------------------------------------------------------------------------
-# LayeredScrubber — composition
+# LayeredScrubber -- composition
 # ---------------------------------------------------------------------------
 
 
@@ -108,7 +108,7 @@ class TestLayeredScrubberComposition:
         assert s.scrub("hello") == "OLLEH"
 
     def test_order_matters(self):
-        # Layers are applied in declaration order — confirmed via a
+        # Layers are applied in declaration order -- confirmed via a
         # spy that records its name on every scrub() call.
         order_log = []
 
@@ -126,7 +126,7 @@ class TestLayeredScrubberComposition:
 
 
 # ---------------------------------------------------------------------------
-# LayeredScrubber — disabled / observe-only
+# LayeredScrubber -- disabled / observe-only
 # ---------------------------------------------------------------------------
 
 
@@ -146,13 +146,13 @@ class TestLayeredScrubberDisabled:
         )
         # In observe-only mode, output equals input
         assert s.scrub("hello") == "hello"
-        # But the layer was still called (smoke check via behaviour —
+        # But the layer was still called (smoke check via behaviour --
         # in full impl, metrics emitted; here we trust the
         # implementation's intent)
 
 
 # ---------------------------------------------------------------------------
-# LayeredScrubber — fail-safe (spec §5.1)
+# LayeredScrubber -- fail-safe (spec §5.1)
 # ---------------------------------------------------------------------------
 
 
@@ -192,7 +192,7 @@ class TestLayeredScrubberFailSafe:
 
 
 # ---------------------------------------------------------------------------
-# ScrubConfig — defaults match spec §6
+# ScrubConfig -- defaults match spec §6
 # ---------------------------------------------------------------------------
 
 
@@ -217,7 +217,7 @@ class TestScrubConfigDefaults:
         p = ScrubConfig().pii
         assert p.enabled is True
         assert p.token_efficiency is False
-        # No `nlp` attribute — NLP/NER was dropped from scope
+        # No `nlp` attribute -- NLP/NER was dropped from scope
 
     def test_pii_validators_all_default_true(self):
         v = ScrubConfig().pii.validators
@@ -253,7 +253,7 @@ class TestScrubConfigDefaults:
 
 
 # ---------------------------------------------------------------------------
-# LayeredScrubber — repr
+# LayeredScrubber -- repr
 # ---------------------------------------------------------------------------
 
 

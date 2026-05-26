@@ -1,6 +1,6 @@
 #  Project:   hyperi-pylib
 #  File:      src/hyperi_pylib/health/__init__.py
-#  Purpose:   Health probe module — HealthManager and FastAPI router factory
+#  Purpose:   Health probe module -- HealthManager and FastAPI router factory
 #  Language:  Python
 #
 #  License:   FSL-1.1-ALv2

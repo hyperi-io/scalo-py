@@ -6,7 +6,7 @@
 # License:   FSL-1.1-ALv2
 # Copyright: (c) 2026 HYPERI PTY LIMITED
 
-"""Container registry resolution — mirrors rustlib's
+"""Container registry resolution -- mirrors rustlib's
 ``hyperi_rustlib::deployment::registry``.
 
 The publish-target registry (where the built image is pushed) and the base
@@ -73,7 +73,7 @@ def argocd_repo_url_from_cascade(app_name: str) -> str:
     """Read the git repo URL for ArgoCD generation from the config cascade.
 
     Reads ``deployment.argocd.repo_url``. Falls back to
-    ``https://github.com/hyperi-io/{app_name}`` — matches the org convention.
+    ``https://github.com/hyperi-io/{app_name}`` -- matches the org convention.
     """
     return _from_settings("deployment.argocd.repo_url") or f"https://github.com/hyperi-io/{app_name}"
 

@@ -6,7 +6,7 @@ represents a config "table" (analogous to a database table). Supports
 in-memory caching with background polling refresh, thread-safe access,
 and optional git-aware writes with audit trail.
 
-Git operations use dulwich (pure-Python git) — no system git binary required.
+Git operations use dulwich (pure-Python git) -- no system git binary required.
 Safe for containers and environments where git is not installed.
 
 Key Features:
@@ -24,14 +24,14 @@ Usage:
     store = DirectoryConfigStore("/config/dfe", refresh_interval=30)
     store.start()
 
-    # Read — root-level table
+    # Read -- root-level table
     config = store.get("dfe-loader")
     host = store.get("dfe-loader", "database.host")
 
-    # Read — subdirectory table (path-like name)
+    # Read -- subdirectory table (path-like name)
     loader = store.get("loaders/dfe-loader", "database.host")
 
-    # Write (if writable) — creates subdirectories automatically
+    # Write (if writable) -- creates subdirectories automatically
     store.set("loaders/dfe-loader", "database.host", "new-host",
               message="Update DB host", author="derek@hyperi.io")
 
@@ -66,7 +66,7 @@ class DirectoryConfigStore:
     (e.g. "loaders/dfe-loader", "monitoring/alerts/thresholds").
 
     Supports in-memory caching with background refresh, thread-safe reads,
-    and git-tracked writes. Git operations use dulwich (pure-Python) — no
+    and git-tracked writes. Git operations use dulwich (pure-Python) -- no
     git binary required.
 
     Args:
@@ -125,7 +125,7 @@ class DirectoryConfigStore:
             f"refresh={self._refresh_interval}s"
         )
 
-    # ── Lifecycle ──────────────────────────────────────────────────────
+    # -- Lifecycle ------------------------------------------------------
 
     def start(self) -> None:
         """Load initial data and start background polling."""
@@ -153,22 +153,22 @@ class DirectoryConfigStore:
         logger.debug("DirectoryConfigStore stopped")
 
     def __enter__(self):
-        """Context manager entry — calls start()."""
+        """Context manager entry -- calls start()."""
         self.start()
         return self
 
     def __exit__(self, *args):
-        """Context manager exit — calls stop()."""
+        """Context manager exit -- calls stop()."""
         self.stop()
 
-    # ── Read ───────────────────────────────────────────────────────────
+    # -- Read -----------------------------------------------------------
 
     def get(self, table: str, key: str | None = None, default: Any = None) -> Any:
         """
         Get config value from a table.
 
         Args:
-            table: Table name — bare name for root files (e.g. "globals"),
+            table: Table name -- bare name for root files (e.g. "globals"),
                    path-like for subdirectories (e.g. "loaders/dfe-loader").
             key: Optional dot-notation key (e.g. "database.host").
                  If None, returns the entire table dict.
@@ -203,7 +203,7 @@ class DirectoryConfigStore:
                     tables.add(self._path_to_table(self._directory, path))
         return sorted(tables)
 
-    # ── Write ──────────────────────────────────────────────────────────
+    # -- Write ----------------------------------------------------------
 
     def set(
         self,
@@ -301,7 +301,7 @@ class DirectoryConfigStore:
         # Notify watchers
         self._notify_watchers(table, data)
 
-    # ── Git ────────────────────────────────────────────────────────────
+    # -- Git ------------------------------------------------------------
 
     @property
     def is_git(self) -> bool:
@@ -381,7 +381,7 @@ class DirectoryConfigStore:
         # Refresh cache after branch switch (files may differ)
         self._refresh_all()
 
-    # ── Watch ──────────────────────────────────────────────────────────
+    # -- Watch ----------------------------------------------------------
 
     def on_change(self, table: str, callback: Callable[[str, dict], None]) -> None:
         """
@@ -399,7 +399,7 @@ class DirectoryConfigStore:
             self._watchers[table] = []
         self._watchers[table].append(callback)
 
-    # ── Internal: Cache & Refresh ──────────────────────────────────────
+    # -- Internal: Cache & Refresh --------------------------------------
 
     def _refresh_loop(self) -> None:
         """Background polling loop."""
@@ -429,10 +429,10 @@ class DirectoryConfigStore:
                     if mtime == cached_mtime:
                         continue
 
-            # File changed or new — reload
+            # File changed or new -- reload
             data = self._load_yaml(path)
             if data is None:
-                # Parse error — keep last good version
+                # Parse error -- keep last good version
                 continue
 
             with self._lock:
@@ -454,7 +454,7 @@ class DirectoryConfigStore:
             except Exception as e:
                 logger.error(f"Config change callback error for '{table}': {e}")
 
-    # ── Internal: Table Name Handling ─────────────────────────────────
+    # -- Internal: Table Name Handling ---------------------------------
 
     @staticmethod
     def _validate_table_name(table: str) -> str:
@@ -500,11 +500,11 @@ class DirectoryConfigStore:
         rel = file_path.relative_to(base_dir)
         return str(rel.with_suffix("")).replace(os.sep, "/")
 
-    # ── Internal: YAML I/O ─────────────────────────────────────────────
+    # -- Internal: YAML I/O ---------------------------------------------
 
     def _table_path(self, table: str) -> Path:
         """Get the YAML file path for a table name (supports subdirectories)."""
-        # Table name uses "/" separators — convert to path components
+        # Table name uses "/" separators -- convert to path components
         path = self._directory / f"{table}.yaml"
         if not path.exists():
             yml_path = self._directory / f"{table}.yml"
@@ -567,7 +567,7 @@ class DirectoryConfigStore:
         except OSError as e:
             raise OSError(f"Failed to write {path}: {e}") from e
 
-    # ── Internal: Nested Key Access ────────────────────────────────────
+    # -- Internal: Nested Key Access ------------------------------------
 
     @staticmethod
     def _get_nested(d: dict, key: str, default: Any = None) -> Any:
@@ -575,7 +575,7 @@ class DirectoryConfigStore:
         Get nested dict value from dot-notation key.
 
         Example: _get_nested({"database": {"host": "localhost"}}, "database.host")
-                 → "localhost"
+                 -> "localhost"
         """
         keys = key.split(".")
         current = d
@@ -593,7 +593,7 @@ class DirectoryConfigStore:
         Set nested dict value from dot-notation key.
 
         Example: _set_nested({}, "database.host", "localhost")
-                 → {"database": {"host": "localhost"}}
+                 -> {"database": {"host": "localhost"}}
         """
         keys = key.split(".")
         for k in keys[:-1]:
@@ -617,7 +617,7 @@ class DirectoryConfigStore:
             raise KeyError(f"Key '{key}' not found")
         del current[keys[-1]]
 
-    # ── Internal: Git (dulwich) ────────────────────────────────────────
+    # -- Internal: Git (dulwich) ----------------------------------------
 
     def _open_git_repo(self) -> bool:
         """Try to open the directory as a dulwich git repo."""

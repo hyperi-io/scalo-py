@@ -10,7 +10,7 @@
 Integration tests for cloud secrets providers against real provider endpoints.
 
 Tests gracefully skip when the required credentials or env vars are not configured.
-Failed tests do NOT block the build — developers without access to specific cloud
+Failed tests do NOT block the build -- developers without access to specific cloud
 accounts simply skip those tests.
 
 Configuration via environment variables (or tests/.env.integration file):
@@ -48,7 +48,7 @@ from pathlib import Path
 
 import pytest
 
-# Load tests/.env.integration if present — per-developer config without env pollution
+# Load tests/.env.integration if present -- per-developer config without env pollution
 _env_file = Path(__file__).parent / ".env.integration"
 if _env_file.exists():
     for _line in _env_file.read_text().splitlines():
@@ -140,7 +140,7 @@ requires_vault = pytest.mark.skipif(
 
 
 # ---------------------------------------------------------------------------
-# Provider imports — skip entire module if secrets extra not installed
+# Provider imports -- skip entire module if secrets extra not installed
 # ---------------------------------------------------------------------------
 
 try:
@@ -172,7 +172,7 @@ except ImportError as _e:
 
 
 class TestAWSProviderIntegration:
-    """Real AWS Secrets Manager tests — skipped when credentials not available."""
+    """Real AWS Secrets Manager tests -- skipped when credentials not available."""
 
     def _provider(self) -> "AWSProvider":
         return AWSProvider(AWSConfig(region=AWS_REGION))
@@ -254,7 +254,7 @@ class TestAWSProviderIntegration:
 
 
 class TestGCPProviderIntegration:
-    """Real GCP Secret Manager tests — skipped when ADC not configured."""
+    """Real GCP Secret Manager tests -- skipped when ADC not configured."""
 
     def _provider(self) -> "GCPProvider":
         return GCPProvider(GCPConfig(project_id=GCP_PROJECT_ID))
@@ -336,7 +336,7 @@ class TestGCPProviderIntegration:
 
 
 class TestAzureProviderIntegration:
-    """Real Azure Key Vault tests — skipped when CLI credentials not configured."""
+    """Real Azure Key Vault tests -- skipped when CLI credentials not configured."""
 
     def _provider(self) -> "AzureProvider":
         return AzureProvider(AzureConfig(vault_url=AZURE_VAULT_URL))
@@ -426,7 +426,7 @@ class TestAzureProviderIntegration:
 
 
 class TestVaultProviderIntegration:
-    """Real OpenBao/Vault tests — skipped when VAULT_ADDR and VAULT_TOKEN not set."""
+    """Real OpenBao/Vault tests -- skipped when VAULT_ADDR and VAULT_TOKEN not set."""
 
     def _provider(self) -> "OpenBaoProvider":
         return OpenBaoProvider(
@@ -496,12 +496,12 @@ class TestVaultProviderIntegration:
 
 
 # ---------------------------------------------------------------------------
-# ENV fallback — no cloud credentials required, always runs
+# ENV fallback -- no cloud credentials required, always runs
 # ---------------------------------------------------------------------------
 
 
 class TestEnvFallbackAlwaysRuns:
-    """ENV fallback tests using the file provider — no cloud credentials required."""
+    """ENV fallback tests using the file provider -- no cloud credentials required."""
 
     @pytest.mark.asyncio
     async def test_async_falls_back_to_env_when_file_missing(self, monkeypatch):

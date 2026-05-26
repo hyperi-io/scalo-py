@@ -97,7 +97,7 @@ class AzureProvider(VersionedProvider):
         return "azure"
 
     def _sync_credential(self):
-        """Return sync credential — explicit service principal or DefaultAzureCredential."""
+        """Return sync credential -- explicit service principal or DefaultAzureCredential."""
         if self._config.tenant_id and self._config.client_id and self._config.client_secret:
             return ClientSecretCredential(
                 tenant_id=self._config.tenant_id,
@@ -116,7 +116,7 @@ class AzureProvider(VersionedProvider):
         return self._sync_client
 
     def _async_credential(self):
-        """Return async credential — explicit service principal or DefaultAzureCredential."""
+        """Return async credential -- explicit service principal or DefaultAzureCredential."""
         if self._config.tenant_id and self._config.client_id and self._config.client_secret:
             return AsyncClientSecretCredential(
                 tenant_id=self._config.tenant_id,

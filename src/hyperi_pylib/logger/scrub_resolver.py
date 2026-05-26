@@ -11,15 +11,15 @@
 
 Resolution priority (highest wins):
 
-1. Explicit ``scrubber=`` kwarg to :func:`setup` — operator chose
+1. Explicit ``scrubber=`` kwarg to :func:`setup` -- operator chose
    exactly which scrubber object to use.
-2. Explicit ``scrub_config=`` kwarg — operator built a
+2. Explicit ``scrub_config=`` kwarg -- operator built a
    :class:`ScrubConfig` and wants the factory to materialise it.
-3. ``logging.scrub.*`` keys in the config dict — new hierarchical
+3. ``logging.scrub.*`` keys in the config dict -- new hierarchical
    schema per spec §6.
 4. ``logging.mask_sensitive_data`` / ``logging.masking_level``
-   legacy keys — emit a deprecation warning, map to ScrubConfig.
-5. Defaults — :class:`ScrubConfig` with all layers enabled.
+   legacy keys -- emit a deprecation warning, map to ScrubConfig.
+5. Defaults -- :class:`ScrubConfig` with all layers enabled.
 
 Returns a :class:`LayeredScrubber` (or whatever the explicit
 ``scrubber=`` was), never ``None``. A disabled scrubber is still a
@@ -71,7 +71,7 @@ def resolve_scrubber(
 
     config = config_dict or {}
 
-    # 4. New schema in config — `logging.scrub.*`
+    # 4. New schema in config -- `logging.scrub.*`
     if "scrub" in config:
         return build_scrubber(_parse_scrub_dict(config["scrub"]))
 
@@ -79,7 +79,7 @@ def resolve_scrubber(
     if "mask_sensitive_data" in config or "masking_level" in config:
         warnings.warn(
             "logging.mask_sensitive_data and logging.masking_level are "
-            "deprecated. Migrate to logging.scrub.* per the spec — old "
+            "deprecated. Migrate to logging.scrub.* per the spec -- old "
             "keys will be removed in a future release.",
             DeprecationWarning,
             stacklevel=3,
@@ -103,11 +103,11 @@ def _legacy_to_scrub_config(
 
     Legacy semantics:
 
-    - ``mask_sensitive=False`` → entire scrubber disabled
-    - ``masking_level="simple"`` → field-name regex only (no L3 PII layer)
-    - ``masking_level="advanced"`` → enables L3 algorithmic PII
+    - ``mask_sensitive=False`` -> entire scrubber disabled
+    - ``masking_level="simple"`` -> field-name regex only (no L3 PII layer)
+    - ``masking_level="advanced"`` -> enables L3 algorithmic PII
       validators (credit card / IBAN / email / phone / national IDs)
-    - ``masking_level="advanced-ner"`` / ``"presidio"`` → deprecated.
+    - ``masking_level="advanced-ner"`` / ``"presidio"`` -> deprecated.
       NLP/NER scrubbing was dropped from scope. Both emit deprecation
       warnings and map to ``"advanced"``.
     """
@@ -117,12 +117,12 @@ def _legacy_to_scrub_config(
     level = (masking_level or "advanced").lower()
 
     if level == "simple":
-        # Field-name only — no PII layer
+        # Field-name only -- no PII layer
         return ScrubConfig(
             pii=PiiConfig(enabled=False),
         )
     if level == "advanced":
-        # Structured PII validators on — default ScrubConfig
+        # Structured PII validators on -- default ScrubConfig
         return ScrubConfig()
     if level in ("advanced-ner", "presidio"):
         warnings.warn(
@@ -135,9 +135,9 @@ def _legacy_to_scrub_config(
         )
         return ScrubConfig()
 
-    # Unknown level → default scrubber
+    # Unknown level -> default scrubber
     warnings.warn(
-        f"masking_level={level!r} not recognised — using defaults. Valid: 'simple', 'advanced'.",
+        f"masking_level={level!r} not recognised -- using defaults. Valid: 'simple', 'advanced'.",
         UserWarning,
         stacklevel=4,
     )
@@ -199,7 +199,7 @@ def _parse_scrub_dict(d: dict[str, Any]) -> ScrubConfig:
 
     def _pii(sub: dict | None) -> PiiConfig:
         sub = sub or {}
-        # `nlp` is silently ignored if present in legacy configs — see
+        # `nlp` is silently ignored if present in legacy configs -- see
         # the PiiConfig docstring for why NLP was dropped.
         return PiiConfig(
             enabled=_bool(sub.get("enabled"), True),

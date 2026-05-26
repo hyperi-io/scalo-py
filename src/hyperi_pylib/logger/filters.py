@@ -4,7 +4,7 @@ This module provides logging filters for sensitive-data masking by
 *field name* and for rate-limiting repeated messages.
 
 For PII-value detection (emails, phones, credit cards, national IDs,
-etc.) use the newer ``hyperi_pylib.logger.scrub`` pipeline — that is
+etc.) use the newer ``hyperi_pylib.logger.scrub`` pipeline -- that is
 the canonical Layer 3 in the cross-language log-scrub spec. NLP/NER
 scrubbing has been dropped from scope; this module ships only the
 deterministic field-name regex filter.
@@ -16,7 +16,7 @@ deterministic field-name regex filter.
 - :class:`RateLimitFilter`: suppress repeated log messages from
   tight loops; reports the suppressed-count on the next message.
 
-Use :func:`get_sensitive_filter` for the legacy three-tier selector —
+Use :func:`get_sensitive_filter` for the legacy three-tier selector --
 ``"advanced"`` and ``"advanced-ner"`` emit deprecation warnings and
 return the field-name filter.
 """
@@ -86,11 +86,11 @@ class SensitiveDataFilter(logging.Filter):
 
     Two composable scrubbing layers (applied in this order):
 
-    1. **Secrets-leak detection** (``SecretsLeakFilter``, optional) —
+    1. **Secrets-leak detection** (``SecretsLeakFilter``, optional) --
        gitleaks-style: AWS keys, GitHub tokens, JWTs, private keys.
        On by default at ``level="full"``; opt-down via config to
        ``"lite"`` or ``"off"``.
-    2. **Field-name regex** (this class) — ``password=...``,
+    2. **Field-name regex** (this class) -- ``password=...``,
        ``"token":"..."``, bearer tokens, DB URLs.
 
     For PII-value detection (emails, phones, credit cards, national
@@ -287,7 +287,7 @@ def get_sensitive_filter(
     """Return a :class:`SensitiveDataFilter` for the requested tier.
 
     Backwards-compatible shim. The tiering system collapsed when NLP
-    was dropped from the spec — all ``level`` values now resolve to
+    was dropped from the spec -- all ``level`` values now resolve to
     the same field-name regex filter. For PII-value detection (emails,
     phones, credit cards, etc.) use the newer ``logger.scrub.*``
     pipeline (see :class:`hyperi_pylib.logger.scrub.LayeredScrubber`).

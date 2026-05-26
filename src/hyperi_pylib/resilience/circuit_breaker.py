@@ -15,7 +15,7 @@ State machine:
     HALF_OPEN -> CLOSED: record_success() called
     HALF_OPEN -> OPEN:   record_failure() called
 
-Thread-safe via ``threading.Lock`` — safe for concurrent access from
+Thread-safe via ``threading.Lock`` -- safe for concurrent access from
 multiple threads or async tasks.
 """
 
@@ -151,10 +151,10 @@ class CircuitBreaker:
         with self._lock:
             current = self._evaluate_state()
             if current == CircuitState.OPEN:
-                raise CircuitBreakerError(f"Circuit breaker '{self._name}' is OPEN — call rejected")
+                raise CircuitBreakerError(f"Circuit breaker '{self._name}' is OPEN -- call rejected")
             if current == CircuitState.HALF_OPEN:
                 if self._half_open_calls >= self._config.half_open_max_calls:
-                    raise CircuitBreakerError(f"Circuit breaker '{self._name}' is HALF_OPEN — max probe calls reached")
+                    raise CircuitBreakerError(f"Circuit breaker '{self._name}' is HALF_OPEN -- max probe calls reached")
                 self._half_open_calls += 1
         return self
 
@@ -169,7 +169,7 @@ class CircuitBreaker:
     # -- Async context manager --
 
     async def __aenter__(self) -> CircuitBreaker:
-        # Delegate to sync — lock acquisition is fast, no I/O
+        # Delegate to sync -- lock acquisition is fast, no I/O
         return self.__enter__()
 
     async def __aexit__(self, exc_type: type | None, exc_val: BaseException | None, exc_tb: object) -> bool:

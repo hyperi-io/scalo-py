@@ -10,12 +10,12 @@
 
 Two tiers tested separately:
 
-- :class:`TestStrongStructural` — CC, IBAN, email, phone. Should fire
+- :class:`TestStrongStructural` -- CC, IBAN, email, phone. Should fire
   from any context.
-- :class:`TestContextRequired` — ABN, ACN, TFN, Medicare. Should
+- :class:`TestContextRequired` -- ABN, ACN, TFN, Medicare. Should
   fire only when keyword anchor is present.
 
-Plus :class:`TestProtocolSatisfaction` — every validator satisfies
+Plus :class:`TestProtocolSatisfaction` -- every validator satisfies
 the :class:`Scrubber` Protocol.
 """
 
@@ -33,7 +33,7 @@ from hyperi_pylib.logger.scrub.pii import (
     load_registry,
 )
 
-# Shared registry — loaded once per module
+# Shared registry -- loaded once per module
 _REGISTRY = load_registry()
 
 
@@ -102,7 +102,7 @@ class TestCreditCard:
         assert "3782 822463 10005" not in out
 
     def test_invalid_luhn_passes_through(self):
-        # Same shape, wrong Luhn — should NOT redact
+        # Same shape, wrong Luhn -- should NOT redact
         text = "Not a card 4111-1111-1111-1112"
         assert self.v.scrub(text) == text
 
@@ -111,7 +111,7 @@ class TestCreditCard:
         assert self.v.scrub(text) == text
 
     def test_fires_without_keyword(self):
-        # Strong-structural — no need for "card=" or similar context
+        # Strong-structural -- no need for "card=" or similar context
         text = "4111 1111 1111 1111"
         assert "[CREDIT_CARD_REDACTED]" in self.v.scrub(text)
 
@@ -121,7 +121,7 @@ class TestIban:
         self.v = IbanValidator()
 
     def test_valid_gb_iban(self):
-        # GB82 WEST 1234 5698 7654 32 — canonical example
+        # GB82 WEST 1234 5698 7654 32 -- canonical example
         out = self.v.scrub("Wire to GB82WEST12345698765432 today")
         assert "GB82WEST12345698765432" not in out
         assert "[IBAN_REDACTED]" in out
@@ -132,7 +132,7 @@ class TestIban:
         assert "DE89370400440532013000" not in out.replace(" ", "")
 
     def test_invalid_checksum_passes_through(self):
-        # GB82 with one digit changed — fails mod-97
+        # GB82 with one digit changed -- fails mod-97
         text = "Not an IBAN: GB82WEST12345698765431"
         assert self.v.scrub(text) == text
 
@@ -151,7 +151,7 @@ class TestEmail:
         assert "alice+work@example.com" not in out
 
     def test_non_ascii_email(self):
-        # IDN-like — Unicode local + ASCII domain (spec §10a.5)
+        # IDN-like -- Unicode local + ASCII domain (spec §10a.5)
         out = self.v.scrub("Sent to françois@example.fr")
         assert "françois@example.fr" not in out
 
@@ -169,7 +169,7 @@ class TestPhone:
         self.v = PhoneValidator()
 
     def test_valid_international(self):
-        # +1 (US) — canonical test number
+        # +1 (US) -- canonical test number
         out = self.v.scrub("Call +1 415 555 2671")
         # Validated via libphonenumber; if it accepts, we redact.
         # phonenumbers should treat +14155552671 as valid.
@@ -209,14 +209,14 @@ class TestAbnContextRequired:
         assert "53004085616" not in out
 
     def test_bare_digits_no_keyword_PASS_THROUGH(self):  # noqa: N802
-        # 11-digit run with valid checksum but no context — must NOT match
+        # 11-digit run with valid checksum but no context -- must NOT match
         text = "Request id 53004085616 processed"
         # "request id" is in the preceding text but no ABN keyword
         result = self.v.scrub(text)
         assert "53004085616" in result, f"Got redacted: {result!r}"
 
     def test_invalid_checksum_with_keyword_passes_through(self):
-        # Keyword present but checksum wrong — no redaction
+        # Keyword present but checksum wrong -- no redaction
         text = "ABN: 53 004 085 617 invalid"
         assert self.v.scrub(text) == text
 
@@ -226,13 +226,13 @@ class TestAcnContextRequired:
         self.v = _make("au.acn")
 
     def test_with_keyword_redacts(self):
-        # 005 749 986 — valid ACN
+        # 005 749 986 -- valid ACN
         out = self.v.scrub("Company ACN 005 749 986 registered")
         assert "005 749 986" not in out
 
     def test_bare_9_digits_no_keyword_PASS_THROUGH(self):  # noqa: N802
         text = "Some 9-digit number 005749986 in a log"
-        # Different word "log" — not an ACN keyword
+        # Different word "log" -- not an ACN keyword
         assert "005749986" in self.v.scrub(text)
 
 
@@ -241,14 +241,14 @@ class TestTfnContextRequired:
         self.v = _make("au.tfn")
 
     def test_with_keyword_redacts(self):
-        # 123 456 782 — valid TFN
+        # 123 456 782 -- valid TFN
         out = self.v.scrub("Employee TFN: 123 456 782 on file")
         assert "123 456 782" not in out
         assert "[AU_TFN_REDACTED]" in out
 
     def test_bare_digits_no_keyword_PASS_THROUGH(self):  # noqa: N802
         # TFN's mod-11 checksum means ~9% of random 9-digit numbers
-        # pass — context-requirement is critical here.
+        # pass -- context-requirement is critical here.
         text = "Trace id 123 456 782 logged"
         assert "123 456 782" in self.v.scrub(text)
 
@@ -258,7 +258,7 @@ class TestMedicareContextRequired:
         self.v = _make("au.medicare")
 
     def test_with_keyword_redacts(self):
-        # 2123 45670 1 — synthetic but checksum-valid example
+        # 2123 45670 1 -- synthetic but checksum-valid example
         # Compute a valid one: weights [1,3,7,9,1,3,7,9]
         # 2*1+1*3+2*7+3*9+4*1+5*3+6*7+7*9 = 2+3+14+27+4+15+42+63 = 170 mod 10 = 0
         # So d[8] = 0 ⇒ "21234567 0" with issue 1 ⇒ "2123 45670 1"

@@ -6,7 +6,7 @@
 # License:   FSL-1.1-ALv2
 # Copyright: (c) 2026 HYPERI PTY LIMITED
 
-"""KEDA autoscaling models — mirrors rustlib's ``hyperi_rustlib::deployment::keda``.
+"""KEDA autoscaling models -- mirrors rustlib's ``hyperi_rustlib::deployment::keda``.
 
 ``KedaConfig`` lives in the app's config cascade so thresholds are
 overridable via env vars (e.g., ``DFE_LOADER__KEDA__KAFKA_LAG_THRESHOLD=5000``).
@@ -77,7 +77,7 @@ class KedaContract(BaseModel):
 
     @classmethod
     def from_config(cls, config: KedaConfig) -> KedaContract:
-        """Build a contract from a KedaConfig — strips the ``enabled`` flag."""
+        """Build a contract from a KedaConfig -- strips the ``enabled`` flag."""
         return cls(
             min_replicas=config.min_replicas,
             max_replicas=config.max_replicas,

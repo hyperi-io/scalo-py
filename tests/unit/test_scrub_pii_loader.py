@@ -86,12 +86,12 @@ class TestBuildNationalIdValidators:
         assert validators == []
 
     def test_all_countries_returns_only_active(self):
-        # No country filter — but only ``enabled = true`` entries materialise
+        # No country filter -- but only ``enabled = true`` entries materialise
         validators = build_national_id_validators(enabled_countries=None)
         assert len(validators) == 4  # only AU entries are active in v1
 
     def test_unknown_country_skipped(self):
-        # Bogus country — gracefully ignored
+        # Bogus country -- gracefully ignored
         validators = build_national_id_validators(enabled_countries=["zz"])
         assert validators == []
 

@@ -6,7 +6,7 @@
 # License:   FSL-1.1-ALv2
 # Copyright: (c) 2026 HYPERI PTY LIMITED
 
-"""Version check implementation — daemon thread, fire-and-forget."""
+"""Version check implementation -- daemon thread, fire-and-forget."""
 
 from __future__ import annotations
 
@@ -24,7 +24,7 @@ logger = logging.getLogger("hyperi.version_check")
 # Default version check API endpoint
 DEFAULT_API_URL = "https://releases.hyperi.io/api/v1/check"
 
-# HTTP timeout (seconds) — short, we don't want to delay anything
+# HTTP timeout (seconds) -- short, we don't want to delay anything
 DEFAULT_TIMEOUT = 5.0
 
 
@@ -159,7 +159,7 @@ def _log_response(config: VersionCheckConfig, resp: VersionCheckResponse) -> Non
         if age:
             parts.append(f"[{age}]")
         if resp.release_url:
-            parts.append(f"— {resp.release_url}")
+            parts.append(f"-- {resp.release_url}")
         logger.info(" ".join(parts))
     else:
         logger.debug(

@@ -20,7 +20,7 @@ def backup(
     verbose: bool = Option(False, "--verbose", "-v", help="Verbose output"),
 ):
     """Backup files from source to destination."""
-    print(f"Backing up {source} → {dest}")
+    print(f"Backing up {source} -> {dest}")
     if compress:
         print("  [Compressing...]")
     if verbose:
@@ -52,7 +52,7 @@ def convert(
     format: str = Option("json", help="Output format: json, parquet, csv"),
 ):
     """Convert data between formats."""
-    print(f"Converting {input_file} → {output} ({format})")
+    print(f"Converting {input_file} -> {output} ({format})")
 
 
 @data_app.command()

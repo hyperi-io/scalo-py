@@ -6,11 +6,11 @@
 # License:   FSL-1.1-ALv2
 # Copyright: (c) 2026 HYPERI PTY LIMITED
 
-"""Runtime native dependency contracts — mirrors rustlib's
+"""Runtime native dependency contracts -- mirrors rustlib's
 ``hyperi_rustlib::deployment::native_deps``.
 
 For Python apps, the equivalent of rustlib's ``for_rustlib_features`` is
-``for_pylib_extras`` — pass the list of pylib optional extras the app uses,
+``for_pylib_extras`` -- pass the list of pylib optional extras the app uses,
 get back the runtime APT packages and any custom repos needed.
 """
 
@@ -97,7 +97,7 @@ class NativeDepsContract(BaseModel):
             add("libssl3")
             add("zlib1g")
 
-        # Cloud secrets backends — boto3/azure/gcp wheels need TLS
+        # Cloud secrets backends -- boto3/azure/gcp wheels need TLS
         if any(e.startswith("secrets") for e in extras):
             add("libssl3")
             add("zlib1g")

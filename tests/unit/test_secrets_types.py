@@ -248,7 +248,7 @@ class TestAWSConfig:
         from common.fake_secrets import aws_access_key
 
         access_key = aws_access_key()
-        # Build the matching-shape secret-key at runtime too — keeps the
+        # Build the matching-shape secret-key at runtime too -- keeps the
         # source bytes free of anything an AWS scanner might fingerprint.
         secret_key = "wJa" + "l" + ("X" * 36) + "KEY"
         config = AWSConfig(
@@ -310,7 +310,7 @@ class TestSecretFilter:
     """Tests for SecretFilter dataclass."""
 
     def test_empty_filter(self):
-        """All fields optional — empty filter is valid."""
+        """All fields optional -- empty filter is valid."""
         f = SecretFilter()
         assert f.prefix is None
         assert f.tags is None

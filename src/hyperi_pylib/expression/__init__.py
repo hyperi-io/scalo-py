@@ -7,7 +7,7 @@
 # Copyright: (c) 2026 HYPERI PTY LIMITED
 
 """
-hyperi-pylib Expression Module — CEL-based expression evaluation.
+hyperi-pylib Expression Module -- CEL-based expression evaluation.
 
 Provides compile, evaluate, and validate functions for CEL expressions,
 restricted to the DFE expression profile (high-performance subset only).
@@ -29,7 +29,7 @@ Usage::
     # One-shot evaluation
     result = evaluate('amount > 10000', {"amount": 15000})
 
-    # Boolean condition (missing fields → False)
+    # Boolean condition (missing fields -> False)
     from hyperi_pylib.expression import evaluate_condition
     result = evaluate_condition('severity == "critical"', {})  # False
 

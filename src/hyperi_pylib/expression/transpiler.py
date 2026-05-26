@@ -37,14 +37,14 @@ from .cel import ExpressionError, validate
 __all__ = ["TranspileError", "transpile_to_clickhouse"]
 
 
-# ── Errors ────────────────────────────────────────────────────────
+# -- Errors --------------------------------------------------------
 
 
 class TranspileError(Exception):
     """Raised when a valid CEL expression cannot be transpiled to SQL."""
 
 
-# ── AST ───────────────────────────────────────────────────────────
+# -- AST -----------------------------------------------------------
 
 
 @dataclass
@@ -115,7 +115,7 @@ class ListExpr:
 Expr = Literal | Ident | BinaryOp | UnaryOp | MethodCall | FunctionCall | Ternary | ListExpr
 
 
-# ── Tokenizer ─────────────────────────────────────────────────────
+# -- Tokenizer -----------------------------------------------------
 
 
 class TT(Enum):
@@ -192,7 +192,7 @@ def _tokenize(expr: str) -> list[Token]:
     return tokens
 
 
-# ── Parser (Pratt) ────────────────────────────────────────────────
+# -- Parser (Pratt) ------------------------------------------------
 
 # Precedence levels (higher = tighter binding).
 _PREC_TERNARY = 1
@@ -397,11 +397,11 @@ def _parse(expr: str) -> Expr:
     return parser.parse()
 
 
-# ── SQL Emitter ───────────────────────────────────────────────────
+# -- SQL Emitter ---------------------------------------------------
 
 _IDENT_RE = re.compile(r"^[a-zA-Z_][a-zA-Z0-9_.]*$")
 
-# Binary operator mapping: CEL → ClickHouse SQL.
+# Binary operator mapping: CEL -> ClickHouse SQL.
 _OP_MAP: dict[str, str] = {
     "==": "=",
     "!=": "!=",
@@ -418,7 +418,7 @@ _OP_MAP: dict[str, str] = {
     "%": "%",
 }
 
-# Function call mapping: CEL function → ClickHouse function name.
+# Function call mapping: CEL function -> ClickHouse function name.
 _FUNC_MAP: dict[str, str] = {
     "size": "length",
     "int": "toInt64",
@@ -535,7 +535,7 @@ def _emit(node: Expr, parent_prec: int = 0) -> str:
         raise TranspileError(f"Unsupported method: {node.method!r}")
 
     if isinstance(node, FunctionCall):
-        # has(x) → x IS NOT NULL
+        # has(x) -> x IS NOT NULL
         if node.name == "has":
             if len(node.args) != 1:
                 raise TranspileError("has() requires exactly 1 argument")
@@ -545,7 +545,7 @@ def _emit(node: Expr, parent_prec: int = 0) -> str:
                 return f"({result})"
             return result
 
-        # Mapped functions: size → length, int → toInt64, etc.
+        # Mapped functions: size -> length, int -> toInt64, etc.
         ch_name = _FUNC_MAP.get(node.name)
         if ch_name is not None:
             args_sql = ", ".join(_emit(a) for a in node.args)
@@ -560,14 +560,14 @@ def _emit(node: Expr, parent_prec: int = 0) -> str:
         return f"if({cond_sql}, {true_sql}, {false_sql})"
 
     if isinstance(node, ListExpr):
-        # Standalone list (not part of 'in') — emit as tuple
+        # Standalone list (not part of 'in') -- emit as tuple
         elems = ", ".join(_emit(e) for e in node.elements)
         return f"({elems})"
 
     raise TranspileError(f"Unsupported AST node: {type(node).__name__}")
 
 
-# ── Public API ────────────────────────────────────────────────────
+# -- Public API ----------------------------------------------------
 
 
 def transpile_to_clickhouse(expr: str) -> str:
