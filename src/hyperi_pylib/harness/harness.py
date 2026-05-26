@@ -521,7 +521,9 @@ class FunctionTimeoutMonitor:
             except Exception as exc:
                 self.exception = exc
 
-        self.function_thread = threading.Thread(target=_runner, daemon=True, name=f"harness:{description or func.__name__}")
+        self.function_thread = threading.Thread(
+            target=_runner, daemon=True, name=f"harness:{description or func.__name__}"
+        )
         self.function_thread.start()
         self.function_thread.join(timeout=self.total_timeout)
         self.monitoring = False

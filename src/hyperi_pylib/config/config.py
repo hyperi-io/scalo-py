@@ -772,8 +772,7 @@ def _load_postgres_config_layer() -> None:
 
             applied, skipped = _set_all(settings, pg_config)
             _debug_log(
-                f"PostgreSQL config loaded: {applied} keys applied, "
-                f"{skipped} skipped (env vars take precedence)"
+                f"PostgreSQL config loaded: {applied} keys applied, {skipped} skipped (env vars take precedence)"
             )
 
     except Exception as e:

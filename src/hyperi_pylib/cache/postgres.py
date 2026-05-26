@@ -107,8 +107,7 @@ class PostgresCache:
     ) -> None:
         if not self._TABLE_NAME_PATTERN.fullmatch(table_name):
             raise ValueError(
-                f"table_name must match {self._TABLE_NAME_PATTERN.pattern} "
-                f"(SQL-safe identifier); got {table_name!r}"
+                f"table_name must match {self._TABLE_NAME_PATTERN.pattern} (SQL-safe identifier); got {table_name!r}"
             )
         self._dsn = dsn
         self._table_name = table_name

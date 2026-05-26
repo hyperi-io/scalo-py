@@ -581,12 +581,7 @@ def _gen_values_yaml(c: DeploymentContract) -> str:
         # Stub keda block so templates dereferencing .Values.keda.enabled don't
         # nil-pointer when the contract has no KedaContract. The autoscaling
         # block below carries the actual HPA fallback values.
-        parts.append(
-            "# -- KEDA autoscaling disabled (no KedaContract on this deployment)\n"
-            "keda:\n"
-            "  enabled: false\n"
-            "\n"
-        )
+        parts.append("# -- KEDA autoscaling disabled (no KedaContract on this deployment)\nkeda:\n  enabled: false\n\n")
 
     parts.append(
         "# -- Standard HPA fallback (when KEDA is not installed)\n"

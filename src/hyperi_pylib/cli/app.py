@@ -471,7 +471,9 @@ def _handle_generate_artefacts(dfe_app: DfeApp, output_dir: str) -> None:
     (out / "Dockerfile.runtime").write_text(generate_runtime_stage(contract), encoding="utf-8", newline="\n")
 
     argo = ArgocdConfig(repo_url=argocd_repo_url_from_cascade(contract.app_name))
-    (out / "argocd-application.yaml").write_text(generate_argocd_application(contract, argo), encoding="utf-8", newline="\n")
+    (out / "argocd-application.yaml").write_text(
+        generate_argocd_application(contract, argo), encoding="utf-8", newline="\n"
+    )
 
     print_success(f"deployment artefacts written to {out}/")
     if not dfe_app._common_args.quiet:

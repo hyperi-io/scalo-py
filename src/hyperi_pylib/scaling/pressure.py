@@ -62,9 +62,7 @@ class ScalingPressureConfig:
         if abs(total - 1.0) > 0.001:
             raise ValueError(f"weights must sum to 1.0 (got {total:.4f}); weights: {weights}")
         if not 0.0 < self.memory_gate_threshold <= 1.0:
-            raise ValueError(
-                f"memory_gate_threshold must be in (0.0, 1.0]; got {self.memory_gate_threshold}"
-            )
+            raise ValueError(f"memory_gate_threshold must be in (0.0, 1.0]; got {self.memory_gate_threshold}")
 
 
 @dataclass(slots=True, frozen=True)
