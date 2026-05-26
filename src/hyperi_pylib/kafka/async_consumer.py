@@ -6,13 +6,7 @@
 # License:   FSL-1.1-ALv2
 # Copyright: (c) 2026 HYPERI PTY LIMITED
 
-"""
-Async Kafka consumer wrapper.
-
-Offloads the synchronous confluent-kafka Consumer calls via
-:func:`hyperi_pylib.concurrency.run_blocking` so polling, consuming,
-committing, and close don't block the event loop.
-"""
+"""Async wrapper around confluent-kafka Consumer via run_blocking."""
 
 from __future__ import annotations
 

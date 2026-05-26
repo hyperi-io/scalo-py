@@ -94,14 +94,10 @@ class CircuitBreaker:
             return self._evaluate_state()
 
     def is_call_permitted(self) -> bool:
-        """Check whether a call would be permitted, WITHOUT reserving a slot.
+        """Advisory check; does NOT reserve a slot.
 
-        Advisory only. Two concurrent callers can both see True for
-        HALF_OPEN and both attempt to proceed -- but only one will get
-        admitted by ``__enter__`` (which holds the lock across the
-        slot-count check + increment). Use the ``with breaker:`` context
-        manager for production code paths, or :meth:`try_acquire_probe`
-        for atomic manual probe reservation.
+        TOCTOU-prone in HALF_OPEN under concurrency. Use ``with breaker:``
+        or :meth:`try_acquire_probe` for atomic admission.
         """
         with self._lock:
             current = self._evaluate_state()
@@ -112,16 +108,11 @@ class CircuitBreaker:
             return False
 
     def try_acquire_probe(self) -> bool:
-        """Atomically reserve a HALF_OPEN probe slot if one is free.
+        """Atomically reserve a HALF_OPEN probe slot.
 
-        Use for manual probe patterns that don't fit the context-manager
-        shape (e.g. async fire-and-forget). On True, the caller has
-        reserved a slot and MUST eventually call :meth:`record_success`
-        or :meth:`record_failure` to release it. On False, the slot
-        wasn't available -- the caller must back off.
-
-        Closed circuits return True without changing counters (no slot
-        accounting in CLOSED). Open circuits return False.
+        On True the caller MUST eventually call :meth:`record_success` or
+        :meth:`record_failure`. CLOSED returns True (no slot accounting);
+        OPEN returns False.
         """
         with self._lock:
             current = self._evaluate_state()

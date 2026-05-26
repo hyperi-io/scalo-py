@@ -130,22 +130,10 @@ def _skip_log_path() -> Path:
 
 
 def skip(tier: str, test_name: str, reason: str) -> None:
-    """Emit a canonical skip line and call :func:`pytest.skip`.
+    """Emit canonical skip line on stderr + best-effort log, then ``pytest.skip``.
 
-    Writes ``HYPERCI-SKIP[contract-e2e][<tier>]: <test_name>: <reason>``
-    to ``sys.stderr`` AND best-effort appends it to the side-channel
-    log file at :func:`_skip_log_path`. Then raises
-    ``pytest.skip.Exception`` via :func:`pytest.skip`, so callers
-    don't need an extra ``return``.
-
-    The side-channel log write is best-effort: any OSError (read-only
-    filesystem, permission denied, missing parent we can't create) is
-    swallowed and the skip still proceeds. The runner-aggregator scan
-    relies on the stderr line, not the log file, so the log being
-    unwritable degrades gracefully.
-
-    Raises:
-        ValueError: if ``tier`` is not ``tier-a`` or ``tier-b``.
+    Aggregator parses stderr; log file is advisory and OSError is swallowed.
+    Raises ``ValueError`` if ``tier`` is not ``tier-a`` or ``tier-b``.
     """
     if tier not in _VALID_TIERS:
         raise ValueError(f"tier must be one of {sorted(_VALID_TIERS)}; got {tier!r}")

@@ -714,23 +714,12 @@ settings = Dynaconf(
 # the fallback file is used instead.
 #
 def _load_postgres_config_layer() -> None:
-    """Load PostgreSQL config layer if enabled.
+    """Load PostgreSQL config layer if HYPERI_CONFIG_DSN is set.
 
-    Cascade priority (highest wins):
-      1. CLI args
-      2. ENV vars (``{PREFIX}_FOO`` and ``{PREFIX}__FOO__BAR``)
-      3. .env file (loaded as env vars by Dynaconf)
-      4. PostgreSQL  <-- this layer
-      5. settings.{env}.yaml
-      6. settings.yaml
-      7. defaults.yaml
-      8. hard-coded defaults
-
-    Dynaconf's ``settings.set()`` puts values at the TOP of the cascade
-    (higher than env), so we must NOT call set() for a key when env vars
-    already provide it. We probe for either single-underscore
-    ``{PREFIX}_KEY`` or double-underscore ``{PREFIX}__KEY__SUBKEY`` env
-    forms before each set; only set when neither form is present.
+    Cascade (highest wins): CLI, env, .env, PostgreSQL (this), settings.{env}.yaml,
+    settings.yaml, defaults.yaml, hardcoded. ``settings.set()`` lands at the top,
+    so we probe ``{PREFIX}_KEY`` and ``{PREFIX}__KEY__SUBKEY`` first and skip
+    keys already supplied by env.
     """
     if not os.getenv("HYPERI_CONFIG_DSN"):
         return

@@ -29,15 +29,13 @@ from typing import Any
 
 @dataclass(slots=True)
 class ScalingPressureConfig:
-    """Configuration for scaling pressure weights and thresholds.
+    """Scaling pressure weights + thresholds. Validates at construction:
 
-    Validates at construction time:
-      - Every weight is in ``[0.0, 1.0]``
-      - Weights sum to ``1.0`` within ``WEIGHT_SUM_TOLERANCE`` (0.001)
-      - ``memory_gate_threshold`` is in ``(0.0, 1.0]``
+    - each weight in ``[0.0, 1.0]``
+    - weights sum to ``1.0`` (tolerance 0.001)
+    - ``memory_gate_threshold`` in ``(0.0, 1.0]``
 
-    Invalid values raise :class:`ValueError` so a misconfigured cascade
-    fails fast at startup rather than emitting nonsense pressure scores.
+    Invalid -> ``ValueError`` at startup, not silent nonsense at runtime.
     """
 
     memory_weight: float = 0.25
@@ -204,9 +202,7 @@ class ScalingPressure:
                 self._update_gauge(result)
                 return result
 
-            # Normal: weighted sum, clamped to [0.0, 100.0] for safety
-            # (component setters already clamp inputs to [0, 1] but the
-            # explicit final clamp guards against accumulated FP drift).
+            # Weighted sum; final clamp guards against FP drift
             cfg = self._config
             weighted = (
                 self._memory * cfg.memory_weight

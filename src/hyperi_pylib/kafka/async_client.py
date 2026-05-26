@@ -6,19 +6,11 @@
 # License:   FSL-1.1-ALv2
 # Copyright: (c) 2026 HYPERI PTY LIMITED
 
-"""
-Async Kafka admin client wrapper.
+"""Async wrapper around confluent-kafka AdminClient.
 
-Offloads the synchronous confluent-kafka AdminClient calls via
-:func:`hyperi_pylib.concurrency.run_blocking` so they don't block
-the event loop. The previous design owned a per-client
-ThreadPoolExecutor; switching to ``run_blocking`` (anyio's worker
-thread pool) keeps the discipline rule in ``concurrency.py:23``
-honest and gives consumers proper cancellation semantics.
-
-Backpressure: confluent-kafka's C client has its own internal queue
-+ throttling. If you need explicit concurrency bounding around these
-calls, wrap them in :class:`hyperi_pylib.concurrency.Bulkhead`.
+Calls go via :func:`hyperi_pylib.concurrency.run_blocking`. Wrap in
+:class:`hyperi_pylib.concurrency.Bulkhead` if you need concurrency
+bounding beyond confluent-kafka's internal throttling.
 """
 
 from __future__ import annotations

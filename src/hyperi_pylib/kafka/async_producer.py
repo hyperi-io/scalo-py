@@ -6,12 +6,7 @@
 # License:   FSL-1.1-ALv2
 # Copyright: (c) 2026 HYPERI PTY LIMITED
 
-"""
-Async Kafka producer wrapper.
-
-Uses ThreadPoolExecutor to provide async interface to
-the synchronous confluent-kafka Producer.
-"""
+"""Async wrapper around confluent-kafka Producer via run_blocking."""
 
 from __future__ import annotations
 

@@ -426,20 +426,11 @@ class KafkaConsumerHealth:
         return issues
 
     def _check_partition_imbalance(self, partitions: dict) -> list[HealthCheckResult]:
-        """Check for uneven partition distribution across this consumer.
+        """Flag per-topic partition imbalance within this consumer's assignment.
 
-        Note on what this CAN'T detect: real cross-consumer imbalance
-        (this consumer holds N partitions while a peer holds M, with
-        M >> N) requires visibility into the whole consumer group, which
-        we don't have from inside a single consumer. The old
-        implementation tried to infer it from this consumer's
-        assignment + total consumer_count, but the math reduced to a
-        constant comparison (consumer_count > ratio) and was broken.
-
-        What this DOES detect: uneven distribution ACROSS TOPICS within
-        a single consumer -- if you're assigned 50 partitions of topic A
-        and 1 partition of topic B, the per-topic load is asymmetric.
-        That's a legitimate operational signal worth flagging.
+        Cross-consumer imbalance needs group-wide visibility we don't have
+        from inside one consumer; this only flags asymmetry across topics
+        (e.g. 50 partitions of A vs 1 of B).
         """
         issues: list[HealthCheckResult] = []
 

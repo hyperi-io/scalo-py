@@ -66,15 +66,9 @@ class DiskCache:
         return self._config
 
     def _resolve_directory(self, directory: str | None) -> Path:
-        """Resolve cache directory.
-
-        Priority (AGENT-RULES Rule 4 compliant -- never /tmp for state):
-
-        1. Explicit ``directory`` parameter
-        2. ``HYPERI_SECRETS_CACHE_DIR`` env var
-        3. ``$XDG_CACHE_HOME/hs-secrets``
-        4. Native Windows: ``%LOCALAPPDATA%/hyperi-ai/secrets-cache``
-        5. Otherwise: ``~/.cache/hyperi-ai/secrets-cache``
+        """Cache dir priority (never /tmp): explicit arg, HYPERI_SECRETS_CACHE_DIR,
+        $XDG_CACHE_HOME/hs-secrets, %LOCALAPPDATA%/hyperi-ai/secrets-cache (Win),
+        ~/.cache/hyperi-ai/secrets-cache.
         """
         if directory:
             return Path(directory)

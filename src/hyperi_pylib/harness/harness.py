@@ -275,13 +275,13 @@ class SmartTimeoutMonitor:
                 self.file_timestamps[str(path)] = path.stat().st_mtime
 
     def _register_activity(self, kind: str) -> None:
-        """Record a fresh activity signal -- resets the inactivity clock."""
+        """Reset the inactivity clock."""
         self.last_activity_time = time.time()
         self.activity_count += 1
         logger.debug(f"activity registered ({kind}); count={self.activity_count}")
 
     def _check_file_activity(self, file_paths: list[str]) -> bool:
-        """Return True if any monitored file's mtime has advanced since last check."""
+        """True if any monitored file's mtime advanced."""
         if not file_paths:
             return False
         changed = False
@@ -297,14 +297,7 @@ class SmartTimeoutMonitor:
         return changed
 
     def _read_output_with_monitoring(self, activity_indicators: ActivityIndicator) -> TerminationReason:
-        """Stream process stdout, watch for failure/success patterns + activity timeouts.
-
-        Returns the :class:`TerminationReason` for why monitoring stopped:
-        COMPLETED on natural exit, FAILURE_DETECTED on a failure pattern hit,
-        SUCCESS_DETECTED on a success pattern hit (we keep reading until exit),
-        ACTIVITY_TIMEOUT after `activity_timeout` seconds of no activity, or
-        TOTAL_TIMEOUT when the wall-clock limit elapses.
-        """
+        """Stream stdout; return reason monitoring stopped."""
         if self.process is None or self.process.stdout is None:
             return TerminationReason.MANUAL_STOP
 

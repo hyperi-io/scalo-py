@@ -49,7 +49,7 @@ class FileProvider(SecretProvider):
     # --- Read ---
 
     async def get_async(self, path: str, key: str | None = None) -> SecretValue:
-        """Async get -- offload the blocking file I/O to a worker thread."""
+        """Async get via run_blocking (file I/O is blocking)."""
         from hyperi_pylib.concurrency import run_blocking
 
         return await run_blocking(self.get_sync, path, key)
@@ -110,7 +110,7 @@ class FileProvider(SecretProvider):
     # --- List ---
 
     async def list_async(self, filter: SecretFilter | None = None) -> list[str]:
-        """List files in directory -- offloads the blocking glob to a worker."""
+        """Async list via run_blocking (glob is blocking)."""
         from hyperi_pylib.concurrency import run_blocking
 
         return await run_blocking(self.list_sync, filter)
