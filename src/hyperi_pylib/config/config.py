@@ -716,8 +716,21 @@ settings = Dynaconf(
 def _load_postgres_config_layer() -> None:
     """Load PostgreSQL config layer if enabled.
 
-    PostgreSQL config OVERRIDES file-based config values. Only ENV vars,
-    .env file, and CLI args have higher priority than PostgreSQL.
+    Cascade priority (highest wins):
+      1. CLI args
+      2. ENV vars (``{PREFIX}_FOO`` and ``{PREFIX}__FOO__BAR``)
+      3. .env file (loaded as env vars by Dynaconf)
+      4. PostgreSQL  <-- this layer
+      5. settings.{env}.yaml
+      6. settings.yaml
+      7. defaults.yaml
+      8. hard-coded defaults
+
+    Dynaconf's ``settings.set()`` puts values at the TOP of the cascade
+    (higher than env), so we must NOT call set() for a key when env vars
+    already provide it. We probe for either single-underscore
+    ``{PREFIX}_KEY`` or double-underscore ``{PREFIX}__KEY__SUBKEY`` env
+    forms before each set; only set when neither form is present.
     """
     if not os.getenv("HYPERI_CONFIG_DSN"):
         return
@@ -729,22 +742,39 @@ def _load_postgres_config_layer() -> None:
         pg_config = loader.load_sync()
 
         if pg_config:
-            # PostgreSQL config OVERRIDES file-based config
-            # We iterate and set all values, overwriting file-based values.
-            # Only ENV vars and .env have higher priority (handled by Dynaconf).
+
+            def _env_var_set_for(full_key: str) -> bool:
+                """Return True if an env var would supply this key."""
+                upper = full_key.upper()
+                # Dynaconf accepts both PREFIX_KEY (single underscore,
+                # flat) and PREFIX__SECTION__KEY (double underscore,
+                # nested). Probe both.
+                flat = f"{ENV_PREFIX}_{upper.replace('.', '_')}"
+                nested = f"{ENV_PREFIX}__{upper.replace('.', '__')}"
+                return flat in os.environ or nested in os.environ
+
             def _set_all(target, source, prefix=""):
+                applied = 0
+                skipped_env = 0
                 for key, value in source.items():
                     full_key = f"{prefix}.{key}" if prefix else key
                     if isinstance(value, dict):
-                        _set_all(target, value, full_key)
-                    else:
-                        # Set value (overrides file-based config)
-                        # Dynaconf will still respect ENV vars which have higher priority
-                        target.set(full_key, value)
+                        sub_applied, sub_skipped = _set_all(target, value, full_key)
+                        applied += sub_applied
+                        skipped_env += sub_skipped
+                        continue
+                    if _env_var_set_for(full_key):
+                        skipped_env += 1
+                        continue
+                    target.set(full_key, value)
+                    applied += 1
+                return applied, skipped_env
 
-            _set_all(settings, pg_config)
-
-            _debug_log(f"PostgreSQL config loaded (overrides files): {len(pg_config)} top-level keys")
+            applied, skipped = _set_all(settings, pg_config)
+            _debug_log(
+                f"PostgreSQL config loaded: {applied} keys applied, "
+                f"{skipped} skipped (env vars take precedence)"
+            )
 
     except Exception as e:
         # Log warning but don't crash - file cascade continues
