@@ -133,9 +133,16 @@ def skip(tier: str, test_name: str, reason: str) -> None:
     """Emit a canonical skip line and call :func:`pytest.skip`.
 
     Writes ``HYPERCI-SKIP[contract-e2e][<tier>]: <test_name>: <reason>``
-    to ``sys.stderr`` AND appends it to the side-channel log file. Then
-    raises ``pytest.skip.Exception`` via :func:`pytest.skip`, so callers
+    to ``sys.stderr`` AND best-effort appends it to the side-channel
+    log file at :func:`_skip_log_path`. Then raises
+    ``pytest.skip.Exception`` via :func:`pytest.skip`, so callers
     don't need an extra ``return``.
+
+    The side-channel log write is best-effort: any OSError (read-only
+    filesystem, permission denied, missing parent we can't create) is
+    swallowed and the skip still proceeds. The runner-aggregator scan
+    relies on the stderr line, not the log file, so the log being
+    unwritable degrades gracefully.
 
     Raises:
         ValueError: if ``tier`` is not ``tier-a`` or ``tier-b``.
@@ -144,10 +151,14 @@ def skip(tier: str, test_name: str, reason: str) -> None:
         raise ValueError(f"tier must be one of {sorted(_VALID_TIERS)}; got {tier!r}")
     line = f"{SKIP_PREFIX}[{tier}]: {test_name}: {reason}"
     print(line, file=sys.stderr, flush=True)
-    log_path = _skip_log_path()
-    log_path.parent.mkdir(parents=True, exist_ok=True)
-    with open(log_path, "a", encoding="utf-8", newline="\n") as fh:
-        fh.write(line + "\n")
+    try:
+        log_path = _skip_log_path()
+        log_path.parent.mkdir(parents=True, exist_ok=True)
+        with open(log_path, "a", encoding="utf-8", newline="\n") as fh:
+            fh.write(line + "\n")
+    except OSError:
+        # Read-only filesystem, missing perms, etc. Skip still proceeds.
+        pass
     pytest.skip(reason)
 
 
