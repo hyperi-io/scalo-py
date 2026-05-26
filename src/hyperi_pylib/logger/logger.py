@@ -438,10 +438,18 @@ def setup(
     config = _get_logging_config()
 
     # Fire-and-forget mode by default -- sinks run on a background thread, so
-    # logger.info() returns in ~µs even with slow disk/network sinks. Override
+    # logger.info() returns in ~us even with slow disk/network sinks. Override
     # with HYPERI_LOG_ENQUEUE=0 for sync semantics (audit logging, unit tests
     # that assert on captured output, etc.).
     enqueue = os.environ.get("HYPERI_LOG_ENQUEUE", "1") != "0"
+
+    # LOG_FORMAT: explicit selector for the console sink format.
+    # Accepted values: "json" (one JSON object per line via loguru
+    # serialize=True), "console" / "text" / "" (default human-readable
+    # console with colours in TTY, plain ASCII in files / CI). The env
+    # var beats the config value beats the auto-detected default.
+    log_format = (os.environ.get("LOG_FORMAT") or config.get("format") or "").strip().lower()
+    serialize_console = log_format == "json"
 
     # CI mode: Auto-detect from environment or config, can be overridden by parameter
     # Priority: parameter > config > auto-detect
@@ -539,6 +547,7 @@ def setup(
                 level=config.get("level", "INFO"),
                 format=console_format,
                 colorize=False,
+                serialize=serialize_console,
                 enqueue=enqueue,
                 filter=_add_emoji_to_record(
                     False,  # No emojis in CI
@@ -551,13 +560,14 @@ def setup(
                 ),
             )
         else:
-            # Normal console: Colors and optional emojis
+            # Normal console: Colors and optional emojis (or JSON when LOG_FORMAT=json)
             console_format = _get_log_format(is_file=False, color_scheme=color_scheme)
             logger.add(
                 sys.stderr,
                 level=config.get("level", "INFO"),
                 format=console_format,
-                colorize=True,
+                colorize=not serialize_console,
+                serialize=serialize_console,
                 enqueue=enqueue,
                 filter=_add_emoji_to_record(
                     use_emojis,
@@ -579,6 +589,7 @@ def setup(
             format=file_format,
             rotation="10 MB",
             retention="7 days",
+            encoding="utf-8",
             enqueue=enqueue,
             filter=_add_emoji_to_record(
                 False,
