@@ -203,6 +203,20 @@ def private_key_block(body_chars: int = 256) -> str:
 
 
 # ---------------------------------------------------------------------------
+# Generic opaque secret -- for key-name / repr redaction tests that don't
+# need a provider pattern, just a sentinel that must not leak.
+# ---------------------------------------------------------------------------
+
+
+def opaque_secret(label: str = "value") -> str:
+    """A unique, non-provider-shaped sentinel built at runtime.
+
+    No literal secret on disk; ``label`` keeps assertion failures readable.
+    """
+    return "FAKE" + "-" + label + "-" + "X" * 12
+
+
+# ---------------------------------------------------------------------------
 # Misc third-party -- extend on demand
 # ---------------------------------------------------------------------------
 

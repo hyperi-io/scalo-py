@@ -10,6 +10,8 @@
 
 from __future__ import annotations
 
+from common.fake_secrets import opaque_secret
+
 from hyperi_pylib.secrets.types import (
     AnsibleVaultConfig,
     AWSConfig,
@@ -18,7 +20,7 @@ from hyperi_pylib.secrets.types import (
     OpenBaoConfig,
 )
 
-SECRET = "LEAK_NEVER_PRINT_THIS_xyzzy"
+SECRET = opaque_secret("cred")
 
 
 def test_openbao_config_token_redacted():

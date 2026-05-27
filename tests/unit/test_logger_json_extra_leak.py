@@ -17,6 +17,7 @@ import re
 import sys
 
 import pytest
+from common.fake_secrets import opaque_secret
 from loguru import logger
 
 from hyperi_pylib.logger.logger import setup
@@ -56,7 +57,7 @@ def _parse_last_json(buf: io.StringIO) -> dict:
 
 
 def test_bind_password_does_not_appear_in_record_extra(json_capture):
-    secret = "LEAK_PASSWORD_xyz123"
+    secret = opaque_secret("password")
     logger.bind(password=secret).info("login")
     rec = _parse_last_json(json_capture)
     extra = rec["record"]["extra"]
@@ -66,24 +67,24 @@ def test_bind_password_does_not_appear_in_record_extra(json_capture):
 
 
 def test_bind_api_key_does_not_appear_in_record_extra(json_capture):
-    secret = "LEAK_API_KEY_xyz"
+    secret = opaque_secret("apikey")
     logger.bind(api_key=secret).info("call")
     rec = _parse_last_json(json_capture)
     assert secret not in json.dumps(rec)
 
 
 def test_bind_token_does_not_appear_in_record_extra(json_capture):
-    secret = "LEAK_TOKEN_xyz"
+    secret = opaque_secret("token")
     logger.bind(token=secret).info("auth")
     rec = _parse_last_json(json_capture)
     assert secret not in json.dumps(rec)
 
 
 def test_bind_authorization_does_not_appear_in_record_extra(json_capture):
-    secret = "Bearer LEAK_AUTH_xyz"
-    logger.bind(authorization=secret).info("request")
+    secret = opaque_secret("auth")
+    logger.bind(authorization=f"Bearer {secret}").info("request")
     rec = _parse_last_json(json_capture)
-    assert "LEAK_AUTH_xyz" not in json.dumps(rec)
+    assert secret not in json.dumps(rec)
 
 
 def test_non_sensitive_extras_pass_through(json_capture):
@@ -98,8 +99,9 @@ def test_non_sensitive_extras_pass_through(json_capture):
 def test_value_scrubber_still_catches_credentials_in_legitimate_fields(json_capture):
     """logger.bind(url=...) with a credentialed URL: key is fine, but the
     URL value contains a credential -- value scrubber must still catch it."""
-    url = "https://api.example.com?api_key=LEAK_URL_xyz"
+    secret = opaque_secret("urltoken")
+    url = f"https://api.example.com?api_key={secret}"
     logger.bind(url=url).info("call upstream")
     rec = _parse_last_json(json_capture)
     text = json.dumps(rec)
-    assert "LEAK_URL_xyz" not in text
+    assert secret not in text

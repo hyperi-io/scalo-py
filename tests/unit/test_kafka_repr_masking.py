@@ -15,8 +15,9 @@ from __future__ import annotations
 from unittest.mock import MagicMock, patch
 
 import pytest
+from common.fake_secrets import opaque_secret
 
-SECRET = "p@ssw0rd-DO-NOT-LEAK"
+SECRET = opaque_secret("kafkapw")
 
 
 def _config_with_creds() -> dict:
