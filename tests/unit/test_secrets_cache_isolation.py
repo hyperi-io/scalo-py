@@ -6,16 +6,7 @@
 #  License:   FSL-1.1-ALv2
 #  Copyright: (c) 2026 HYPERI PTY LIMITED
 
-"""C3 / T3 regression: class-level memory cache caused cross-manager
-secret bleed-through. Two SecretsManager instances pointed at different
-backends (different OpenBao addresses, different tenant namespaces,
-different provider implementations entirely) but sharing a path/key
-returned whichever manager populated first.
-
-This test uses REAL provider objects (FileProvider) writing to
-separate tmpdirs -- no mocking of the cache or the manager internals.
-The test fails iff manager B can read manager A's value through the
-shared class-level cache."""
+"""Two SecretsManager instances must not share cached secrets."""
 
 from __future__ import annotations
 

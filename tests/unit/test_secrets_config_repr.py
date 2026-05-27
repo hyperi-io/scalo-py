@@ -6,12 +6,7 @@
 #  License:   FSL-1.1-ALv2
 #  Copyright: (c) 2026 HYPERI PTY LIMITED
 
-"""C2 / T2 regression: ``repr(<provider>Config(...))`` is the most
-common credential leak surface in Python -- it ends up in tracebacks,
-debug logs, pytest assertion dumps, exception chains, etc. Every
-credential-bearing field on every provider config dataclass must use
-``field(repr=False)`` so that ``repr(cfg)`` never embeds the raw value.
-"""
+"""Provider config repr must not embed credential fields."""
 
 from __future__ import annotations
 

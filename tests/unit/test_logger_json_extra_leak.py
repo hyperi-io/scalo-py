@@ -6,15 +6,7 @@
 #  License:   FSL-1.1-ALv2
 #  Copyright: (c) 2026 HYPERI PTY LIMITED
 
-"""C1 / T1 regression: with LOG_FORMAT=json and the real setup() flow,
-secrets bound via ``logger.bind(password=..., api_key=...)`` must NOT
-appear in the emitted JSON line under ``record.extra``.
-
-Previously the scrubber resolved by config did value-only scrubbing of
-extras, missing the case where the credential IS the value (a token
-string under key ``password`` etc). Now the filter does key-based
-redaction first, regardless of which scrubber backend is active.
-"""
+"""JSON logger + bind(password=...) must not leak under record.extra."""
 
 from __future__ import annotations
 

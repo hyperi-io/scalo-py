@@ -6,18 +6,7 @@
 #  License:   FSL-1.1-ALv2
 #  Copyright: (c) 2026 HYPERI PTY LIMITED
 
-"""C5 / T5 regression: ``stdout.readline()`` blocks past both
-activity and total timeouts when the child process never writes
-output. Previous behaviour: a 3s silent child with activity_timeout=1
-and total_timeout=2 ran to completion (~3s) reporting TOTAL_EXECUTION,
-because the timeout check at top-of-loop never got to run while
-readline was blocked.
-
-Fix uses a background reader thread + Queue.get(timeout=0.1) so the
-main loop polls timeouts on every tick.
-
-These tests spawn REAL Python child processes (no mocks of subprocess)
-to exercise the actual blocking behaviour."""
+"""smart_run must terminate silent children at activity/total timeout."""
 
 from __future__ import annotations
 

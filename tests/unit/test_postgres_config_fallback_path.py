@@ -6,16 +6,7 @@
 #  License:   FSL-1.1-ALv2
 #  Copyright: (c) 2026 HYPERI PTY LIMITED
 
-"""C4 / T4 regression: PostgresConfigLoader's fallback file used to
-default to ``tempfile.gettempdir()`` (typically world-readable). The
-file contains snapshotted application config including potentially
-secret values; defaulting to /tmp meant any other user on the host
-could read it.
-
-Now defaults to ``~/.cache/hyperi-ai/postgres-config-fallback/<ns>.yaml``
-(or the XDG/Windows equivalent), with the parent dir at 0o700 and the
-file at 0o600.
-"""
+"""PG fallback file defaults to ~/.cache, never /tmp; 0o600 perms."""
 
 from __future__ import annotations
 

@@ -14,19 +14,13 @@ from .cache import DiskCache
 
 
 class _CacheKey(NamedTuple):
-    """Structured memory-cache key.
-
-    Hashable + immutable. Replaces the previous string-interpolated
-    ``f"{provider}:{path}:{key}"`` which couldn't round-trip paths or
-    keys containing colons (``split(":", 2)`` was fragile).
-    """
+    """Memory-cache key. Hashable; survives colons in path/key."""
 
     provider: str
     path: str
     key: str  # "" when no sub-key
 
     def to_disk_str(self) -> str:
-        """Stable string form for the disk cache (which keys by filename hash)."""
         return f"{self.provider}:{self.path}:{self.key}"
 from .exceptions import (
     ProviderError,
@@ -112,11 +106,8 @@ class SecretsManager:
         self._rotation_callbacks: list[tuple[RotationCallback, list[str] | None]] = []
         self._refresh_task: asyncio.Task | None = None
         self._refresh_stop_event: asyncio.Event | None = None
-        # Instance-scoped memory cache: avoids cross-tenant leakage between
-        # SecretsManager instances configured against different
-        # vaults/namespaces. Previously this was class-level, so a second
-        # manager fetching the same path got the first manager's cached
-        # value -- a real confidentiality bug for multi-tenant apps.
+        # Instance-scoped; previously class-level which cross-leaked between
+        # managers configured against different tenants/namespaces.
         self._memory_cache: dict[_CacheKey, SecretValue] = {}
         self._memory_cache_lock = threading.Lock()
 

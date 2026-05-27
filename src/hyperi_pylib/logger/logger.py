@@ -271,13 +271,10 @@ def _add_emoji_to_record(
         return text
 
     def _scrub_extra(extra: dict, level_name: str) -> None:
-        """Mutate loguru ``record['extra']`` (logger.bind() context) in place.
+        """Mutate loguru ``record['extra']`` in place.
 
-        Key-based redaction ALWAYS runs first (regardless of which scrubber
-        backend is configured) so ``logger.bind(password=...)`` never lands
-        in JSON output. Then the active value-scrubber runs on remaining
-        non-sensitive values to catch credentials embedded in legitimate
-        fields (e.g. ``bind(url="https://x?token=Y")``).
+        Key-based redaction ALWAYS runs first regardless of scrubber backend;
+        value-scrubbing runs second on non-sensitive keys.
         """
         from .filters import MASK_VALUE, SENSITIVE_FIELDS, SensitiveDataFilter
 

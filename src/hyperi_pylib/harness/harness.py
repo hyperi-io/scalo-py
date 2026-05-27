@@ -299,11 +299,8 @@ class SmartTimeoutMonitor:
     def _read_output_with_monitoring(self, activity_indicators: ActivityIndicator) -> TerminationReason:
         """Stream stdout; return reason monitoring stopped.
 
-        Reads via a background reader thread that pushes lines into a
-        Queue. The main loop polls the queue with a short timeout, so
-        ``activity_timeout`` and ``total_timeout`` are enforced even
-        when the child is silent for long periods. Without the reader
-        thread, ``stdout.readline()`` would block past the timeouts.
+        Reader thread + Queue so timeouts fire even when child is silent
+        (readline() would otherwise block past both deadlines).
         """
         if self.process is None or self.process.stdout is None:
             return TerminationReason.MANUAL_STOP
