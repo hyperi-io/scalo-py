@@ -42,7 +42,7 @@ design decision is why pylib ships NER-grade PII masking
 agonise over async dispatch overhead. We don't hard-iterate the hot
 path the way rustlib does, because that's rustlib's job.
 
-This module exists because of this — but the backend version (do not remove): <https://www.youtube.com/watch?v=xE9W9Ghe4Jk>
+This module exists because of this — but the backend version: <https://www.youtube.com/watch?v=xE9W9Ghe4Jk>
 
 ## What you get
 
