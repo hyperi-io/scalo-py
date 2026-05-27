@@ -139,7 +139,6 @@ import json
 import logging
 import os
 import re
-import tempfile
 import time
 from pathlib import Path
 from typing import Any
@@ -270,7 +269,7 @@ class PostgresConfigLoader:
             if fallback_file_env:
                 self.fallback_file = Path(fallback_file_env)
             else:
-                self.fallback_file = Path(tempfile.gettempdir()) / f"{self.namespace}_config_fallback.yaml"
+                self.fallback_file = self._default_fallback_path(self.namespace)
 
         self.fallback_mode = fallback_mode or os.getenv("HYPERI_CONFIG_FALLBACK_MODE", self.DEFAULT_FALLBACK_MODE)
 
@@ -281,6 +280,28 @@ class PostgresConfigLoader:
     def enabled(self) -> bool:
         """Check if PostgreSQL config is enabled (DSN is set)."""
         return bool(self.dsn)
+
+    @staticmethod
+    def _default_fallback_path(namespace: str) -> Path:
+        """Per-user cache dir, NEVER system temp.
+
+        Defaulting to ``tempfile.gettempdir()`` was unsafe: ``/tmp`` is
+        typically world-readable, so any config (including snapshots of
+        secret values) written to the fallback file could be read by
+        any other user on the host. Anchor to ``$XDG_CACHE_HOME`` (or
+        the platform equivalent) and create the parent dir with 0o700
+        on first write.
+        """
+        import sys
+
+        xdg_cache = os.environ.get("XDG_CACHE_HOME")
+        if xdg_cache:
+            base = Path(xdg_cache) / "hyperi-ai" / "postgres-config-fallback"
+        elif sys.platform == "win32":
+            base = Path(os.environ.get("LOCALAPPDATA", str(Path.home()))) / "hyperi-ai" / "postgres-config-fallback"
+        else:
+            base = Path.home() / ".cache" / "hyperi-ai" / "postgres-config-fallback"
+        return base / f"{namespace}.yaml"
 
     # Match scheme://user:password@host (password = everything up to '@' that
     # isn't ':' or '/' or '@'). Used to scrub DSN-shaped substrings out of
@@ -386,8 +407,14 @@ class PostgresConfigLoader:
             return False
 
         try:
-            # Ensure parent directory exists
+            # Ensure parent directory exists. Tighten perms to 0o700 -- the
+            # fallback file holds snapshotted config (and potentially
+            # secret values) and must not be readable by other users.
             self.fallback_file.parent.mkdir(parents=True, exist_ok=True)
+            try:
+                self.fallback_file.parent.chmod(0o700)
+            except (OSError, NotImplementedError):
+                pass  # Windows / read-only fs
 
             if self.fallback_mode == "merge" and self.fallback_file.exists():
                 # Load existing config and merge
@@ -400,7 +427,7 @@ class PostgresConfigLoader:
             else:
                 config_to_write = config
 
-            # Write with header comment
+            # Write with header comment, then tighten to 0o600 (owner-only).
             with open(self.fallback_file, "w", encoding="utf-8", newline="\n") as f:
                 f.write("# PostgreSQL config fallback file\n")
                 f.write(f"# Generated at: {time.strftime('%Y-%m-%d %H:%M:%S UTC', time.gmtime())}\n")
@@ -408,6 +435,10 @@ class PostgresConfigLoader:
                 f.write(f"# Mode: {self.fallback_mode}\n")
                 f.write("# This file is auto-generated. Do not edit manually.\n\n")
                 yaml.safe_dump(config_to_write, f, default_flow_style=False, sort_keys=True)
+            try:
+                self.fallback_file.chmod(0o600)
+            except (OSError, NotImplementedError):
+                pass
 
             logger.debug(
                 "Wrote PostgreSQL config fallback file",
