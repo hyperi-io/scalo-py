@@ -148,13 +148,9 @@ class SensitiveDataFilter(logging.Filter):
         pairs: list[tuple[re.Pattern, str]] = []
         for field in fields:
             # 1: JSON with quotes ("field":"value")
-            pairs.append(
-                (re.compile(rf'("{field}"\s*:\s*)"([^"]*)"', re.IGNORECASE), rf'\1"{MASK_VALUE}"')
-            )
+            pairs.append((re.compile(rf'("{field}"\s*:\s*)"([^"]*)"', re.IGNORECASE), rf'\1"{MASK_VALUE}"'))
             # 2: JSON without key quotes (field:"value")
-            pairs.append(
-                (re.compile(rf'(\b{field}\s*:\s*)"([^"]*)"', re.IGNORECASE), rf'\1"{MASK_VALUE}"')
-            )
+            pairs.append((re.compile(rf'(\b{field}\s*:\s*)"([^"]*)"', re.IGNORECASE), rf'\1"{MASK_VALUE}"'))
             # 3: Form data / query params
             pairs.append((re.compile(rf"(\b{field})=([^\s&\n]*)", re.IGNORECASE), rf"\1={MASK_VALUE}"))
             # 4: Key-value without quotes (field: value)

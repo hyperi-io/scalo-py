@@ -7,10 +7,10 @@
 #  Copyright: (c) 2026 HYPERI PTY LIMITED
 
 """Async health probes must:
- - run sync checks via ``run_blocking`` so they don't stall the event loop;
- - enforce per-check timeouts so a hung check can't stall the kubelet probe;
- - support async checks natively;
- - serialise concurrent registration safely.
+- run sync checks via ``run_blocking`` so they don't stall the event loop;
+- enforce per-check timeouts so a hung check can't stall the kubelet probe;
+- support async checks natively;
+- serialise concurrent registration safely.
 """
 
 from __future__ import annotations

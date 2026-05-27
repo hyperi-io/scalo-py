@@ -68,9 +68,7 @@ def test_probe_when_open_yields_false():
 
 def test_probe_slot_released_on_exception_no_leak():
     """Two probe slots, first raises, second should still be available."""
-    cb = CircuitBreaker(
-        "test", CircuitBreakerConfig(failure_threshold=1, reset_timeout=0.05, half_open_max_calls=2)
-    )
+    cb = CircuitBreaker("test", CircuitBreakerConfig(failure_threshold=1, reset_timeout=0.05, half_open_max_calls=2))
     cb.record_failure()
     import time
 

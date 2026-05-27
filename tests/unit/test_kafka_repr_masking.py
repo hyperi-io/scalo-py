@@ -34,13 +34,15 @@ def _config_with_creds() -> dict:
 def patched():
     """Patch all confluent_kafka client constructors so we can instantiate
     without a real broker."""
-    with patch("hyperi_pylib.kafka.client.AdminClient", return_value=MagicMock()), \
-         patch("hyperi_pylib.kafka.producer.Producer", return_value=MagicMock()), \
-         patch("hyperi_pylib.kafka.consumer.Consumer", return_value=MagicMock()), \
-         patch("hyperi_pylib.kafka.admin.AdminClient", return_value=MagicMock()), \
-         patch("hyperi_pylib.kafka.async_client.AdminClient", return_value=MagicMock()), \
-         patch("hyperi_pylib.kafka.async_consumer.Consumer", return_value=MagicMock()), \
-         patch("hyperi_pylib.kafka.async_producer.Producer", return_value=MagicMock()):
+    with (
+        patch("hyperi_pylib.kafka.client.AdminClient", return_value=MagicMock()),
+        patch("hyperi_pylib.kafka.producer.Producer", return_value=MagicMock()),
+        patch("hyperi_pylib.kafka.consumer.Consumer", return_value=MagicMock()),
+        patch("hyperi_pylib.kafka.admin.AdminClient", return_value=MagicMock()),
+        patch("hyperi_pylib.kafka.async_client.AdminClient", return_value=MagicMock()),
+        patch("hyperi_pylib.kafka.async_consumer.Consumer", return_value=MagicMock()),
+        patch("hyperi_pylib.kafka.async_producer.Producer", return_value=MagicMock()),
+    ):
         yield
 
 
