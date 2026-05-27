@@ -72,6 +72,11 @@ class KafkaConsumer:
         self._consumer = Consumer(self._config)
         self._closed = False
 
+    def __repr__(self) -> str:
+        from .config import mask_credentials
+
+        return f"KafkaConsumer(config={mask_credentials(self._config)!r})"
+
     def __enter__(self) -> KafkaConsumer:
         return self
 

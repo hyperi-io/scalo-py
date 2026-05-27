@@ -27,6 +27,37 @@ import os
 from pathlib import Path
 from typing import Any, Literal
 
+# librdkafka config keys whose VALUES are credentials. Any repr/dump of
+# a config dict must replace these with a sentinel before emission.
+_CREDENTIAL_KEYS: frozenset[str] = frozenset(
+    {
+        "sasl.password",
+        "sasl.username",
+        "ssl.key.password",
+        "ssl.keystore.password",
+        "ssl.truststore.password",
+        "schema.registry.basic.auth.user.info",
+        "schema.registry.ssl.key.password",
+    }
+)
+
+
+def mask_credentials(config: dict[str, Any]) -> dict[str, Any]:
+    """Return a copy of ``config`` with credential values masked.
+
+    Use when emitting a Kafka client config to logs, repr, or any
+    other surface a human or aggregator might read. The original dict
+    is not mutated.
+    """
+    out: dict[str, Any] = {}
+    for k, v in config.items():
+        if k in _CREDENTIAL_KEYS and v not in (None, ""):
+            out[k] = "***"
+        else:
+            out[k] = v
+    return out
+
+
 # =============================================================================
 # Corporate Defaults
 # =============================================================================

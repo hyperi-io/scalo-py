@@ -57,6 +57,11 @@ class AsyncKafkaClient:
 
         self._admin = AdminClient(self._config)
 
+    def __repr__(self) -> str:
+        from .config import mask_credentials
+
+        return f"AsyncKafkaClient(config={mask_credentials(self._config)!r})"
+
     async def __aenter__(self) -> AsyncKafkaClient:
         return self
 

@@ -72,6 +72,11 @@ class AsyncKafkaProducer:
         self._config = merge_config(config, PRODUCER_DEFAULTS, verify_ssl=verify_ssl)
         self._producer = Producer(self._config)
 
+    def __repr__(self) -> str:
+        from .config import mask_credentials
+
+        return f"AsyncKafkaProducer(config={mask_credentials(self._config)!r})"
+
     async def __aenter__(self) -> AsyncKafkaProducer:
         return self
 

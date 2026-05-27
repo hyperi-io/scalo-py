@@ -55,6 +55,11 @@ class KafkaProducer:
         # Create producer
         self._producer = Producer(self._config)
 
+    def __repr__(self) -> str:
+        from .config import mask_credentials
+
+        return f"KafkaProducer(config={mask_credentials(self._config)!r})"
+
     def __enter__(self) -> KafkaProducer:
         return self
 

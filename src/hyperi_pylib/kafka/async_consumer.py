@@ -55,6 +55,11 @@ class AsyncKafkaConsumer:
         self._consumer = Consumer(self._config)
         self._closed = False
 
+    def __repr__(self) -> str:
+        from .config import mask_credentials
+
+        return f"AsyncKafkaConsumer(config={mask_credentials(self._config)!r})"
+
     async def __aenter__(self) -> AsyncKafkaConsumer:
         return self
 

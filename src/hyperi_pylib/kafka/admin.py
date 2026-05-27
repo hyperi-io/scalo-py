@@ -85,6 +85,11 @@ class KafkaAdmin:
         self._config = merge_config(config, ADMIN_DEFAULTS, verify_ssl=verify_ssl)
         self._admin = AdminClient(self._config)
 
+    def __repr__(self) -> str:
+        from .config import mask_credentials
+
+        return f"KafkaAdmin(config={mask_credentials(self._config)!r})"
+
     def __enter__(self) -> KafkaAdmin:
         return self
 

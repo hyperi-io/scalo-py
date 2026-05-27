@@ -76,6 +76,11 @@ SENSITIVE_FIELDS: set[str] = {
 
 MASK_VALUE = "***REDACTED***"
 
+# Static patterns shared across all SensitiveDataFilter instances.
+# Compiled once at module load instead of per-call to _mask_sensitive_string.
+_DB_URL_RE = re.compile(r"(://[^:/@]*:)([^@]+)(@)")
+_BEARER_RE = re.compile(r"\bbearer\s+([^\s]+)", re.IGNORECASE)
+
 
 class SensitiveDataFilter(logging.Filter):
     """
@@ -125,6 +130,43 @@ class SensitiveDataFilter(logging.Filter):
         super().__init__()
         self._instance_fields = extra_fields or set()
         self._secrets_leak = secrets_leak
+        # Pre-compile per-field patterns once. Cache invalidates when
+        # the global SENSITIVE_FIELDS or _custom_fields set changes,
+        # since _build_field_patterns reads them at call time.
+        self._field_patterns_cache: tuple[set[str], list[tuple[re.Pattern, str]]] | None = None
+
+    def _build_field_patterns(self) -> list[tuple[re.Pattern, str]]:
+        """Return cached (pattern, replacement) pairs for all sensitive fields.
+
+        Rebuilds if the underlying field set changed (e.g. caller invoked
+        ``add_sensitive_fields`` between log lines).
+        """
+        fields = self._get_all_sensitive_fields()
+        if self._field_patterns_cache is not None and self._field_patterns_cache[0] == fields:
+            return self._field_patterns_cache[1]
+
+        pairs: list[tuple[re.Pattern, str]] = []
+        for field in fields:
+            # 1: JSON with quotes ("field":"value")
+            pairs.append(
+                (re.compile(rf'("{field}"\s*:\s*)"([^"]*)"', re.IGNORECASE), rf'\1"{MASK_VALUE}"')
+            )
+            # 2: JSON without key quotes (field:"value")
+            pairs.append(
+                (re.compile(rf'(\b{field}\s*:\s*)"([^"]*)"', re.IGNORECASE), rf'\1"{MASK_VALUE}"')
+            )
+            # 3: Form data / query params
+            pairs.append((re.compile(rf"(\b{field})=([^\s&\n]*)", re.IGNORECASE), rf"\1={MASK_VALUE}"))
+            # 4: Key-value without quotes (field: value)
+            pairs.append(
+                (
+                    re.compile(rf'(\b{field}\s*:\s*)([^\s\n,"}}]+)(?=[\s\n,}}]|$)', re.IGNORECASE),
+                    rf"\1{MASK_VALUE}",
+                )
+            )
+
+        self._field_patterns_cache = (fields, pairs)
+        return pairs
 
     @classmethod
     def add_sensitive_fields(cls, fields: set[str]) -> None:
@@ -201,47 +243,13 @@ class SensitiveDataFilter(logging.Filter):
         if self._secrets_leak is not None:
             text = self._secrets_leak.scrub(text)
 
-        masked = text
-        fields = self._get_all_sensitive_fields()
-
-        # Database connection strings: ://user:password@host or ://:password@host
-        # Pattern matches: postgres://user:secret@localhost and redis://:password@host
-        # Must run before field-specific patterns to avoid double-masking
-        masked = re.sub(
-            r"(://[^:/@]*:)([^@]+)(@)",
-            rf"\1{MASK_VALUE}\3",
-            masked,
-        )
-
-        # Bearer tokens (space-separated): "bearer <token>"
-        # Pattern matches: "bearer eyJhbGci..." or "Bearer eyJhbGci..."
-        masked = re.sub(
-            r"\bbearer\s+([^\s]+)",
-            rf"bearer {MASK_VALUE}",
-            masked,
-            flags=re.IGNORECASE,
-        )
-
-        for field in fields:
-            # Field names with underscores/hyphens don't need escaping
-            # They should be matched literally
-
-            # Pattern 1: JSON with quotes ("field":"value")
-            pattern1 = rf'("{field}"\s*:\s*)"([^"]*)"'
-            masked = re.sub(pattern1, rf'\1"{MASK_VALUE}"', masked, flags=re.IGNORECASE)
-
-            # Pattern 2: JSON without key quotes (field:"value")
-            pattern2 = rf'(\b{field}\s*:\s*)"([^"]*)"'
-            masked = re.sub(pattern2, rf'\1"{MASK_VALUE}"', masked, flags=re.IGNORECASE)
-
-            # Pattern 3: Form data (field=value&) or query params
-            pattern3 = rf"(\b{field})=([^\s&\n]*)"
-            masked = re.sub(pattern3, rf"\1={MASK_VALUE}", masked, flags=re.IGNORECASE)
-
-            # Pattern 4: Key-value in logs without quotes (field: value)
-            # Only match if not already quoted (to avoid double-masking)
-            pattern4 = rf'(\b{field}\s*:\s*)([^\s\n,"}}]+)(?=[\s\n,}}]|$)'
-            masked = re.sub(pattern4, rf"\1{MASK_VALUE}", masked, flags=re.IGNORECASE)
+        # DB URLs: postgres://user:secret@host -> postgres://user:***@host
+        masked = _DB_URL_RE.sub(rf"\1{MASK_VALUE}\3", text)
+        # Bearer tokens
+        masked = _BEARER_RE.sub(f"bearer {MASK_VALUE}", masked)
+        # Per-field patterns (pre-compiled, cached on instance)
+        for pattern, repl in self._build_field_patterns():
+            masked = pattern.sub(repl, masked)
 
         return masked
 
