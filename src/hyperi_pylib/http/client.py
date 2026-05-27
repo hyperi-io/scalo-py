@@ -10,10 +10,35 @@
 
 Uses Stamina for retries -- exponential backoff with jitter, structlog/Prometheus
 auto-detection, and ``stamina.set_testing(...)`` for deterministic test runs.
+
+**Composition with CircuitBreaker** -- when stacking, put the breaker
+OUTSIDE the retry context:
+
+    with breaker:
+        for attempt in stamina.retry_context(...):
+            with attempt:
+                response = client.get(url)
+
+That way the retry budget is consumed inside one breaker call, and a
+fully-failed retry budget counts as ONE failure to the breaker -- not
+N. Reversing the order (retry around breaker) means each rejection
+from an OPEN breaker eats a retry slot, which is wasteful and slow.
+
+**Distributed tracing** -- callers can pass ``traceparent=<header>``
+to inject a W3C trace-context header on a single request, or wire it
+globally via httpx event hooks at construction time (see
+``HttpClient.__init__`` extras).
+
+**Idempotent retries** -- POST/PATCH retries are unsafe by default
+because a retried request may have already landed. To opt in, pass
+``idempotency_key="<uuid>"`` per request; the value is sent as the
+``Idempotency-Key`` header and downstream services that support the
+pattern (Stripe, AWS, etc.) deduplicate on it.
 """
 
 from __future__ import annotations
 
+import uuid
 from typing import Any
 
 import httpx
@@ -33,6 +58,27 @@ def _is_retryable(exc: BaseException) -> bool:
     if isinstance(exc, httpx.HTTPStatusError):
         return 500 <= exc.response.status_code < 600
     return False
+
+
+def _apply_request_headers(
+    kwargs: dict[str, Any],
+    traceparent: str | None,
+    idempotency_key: str | None,
+) -> None:
+    """Inject W3C traceparent + Idempotency-Key headers if provided."""
+    if traceparent is None and idempotency_key is None:
+        return
+    headers = dict(kwargs.get("headers") or {})
+    if traceparent is not None:
+        headers["traceparent"] = traceparent
+    if idempotency_key is not None:
+        headers["Idempotency-Key"] = idempotency_key
+    kwargs["headers"] = headers
+
+
+def new_idempotency_key() -> str:
+    """Generate a random Idempotency-Key (UUIDv4) suitable for POST/PATCH retry safety."""
+    return str(uuid.uuid4())
 
 
 class HttpClient:
@@ -103,17 +149,26 @@ class HttpClient:
         self,
         method: str,
         url: str,
+        *,
+        traceparent: str | None = None,
+        idempotency_key: str | None = None,
         **kwargs: Any,
     ) -> httpx.Response:
         """Execute HTTP request with stamina-driven retries.
 
         Retries on transport errors and 5xx responses with exponential backoff
-        and jitter. 4xx responses surface immediately. Test mode (``stamina.set_testing``)
-        disables backoff for fast unit tests.
+        and jitter. 4xx responses surface immediately.
 
         Args:
             method: HTTP method (GET, POST, etc.)
             url: Request URL (absolute or relative to base_url)
+            traceparent: Optional W3C trace-context header (e.g. propagated
+                from an OTel current span via TraceContextTextMapPropagator).
+                When set, the SAME traceparent goes on every retry.
+            idempotency_key: Optional Idempotency-Key header value for
+                retry-safe POST/PATCH. Use :func:`new_idempotency_key` to
+                generate one. The same key is sent on every retry, so
+                downstream services that honour the pattern deduplicate.
             **kwargs: Additional arguments passed to httpx request
 
         Returns:
@@ -122,6 +177,7 @@ class HttpClient:
         Raises:
             httpx.HTTPError: On non-retryable errors or after retries exhausted
         """
+        _apply_request_headers(kwargs, traceparent, idempotency_key)
         for attempt in stamina.retry_context(
             on=_is_retryable,
             attempts=self._retries,
@@ -292,23 +348,17 @@ class AsyncHttpClient:
         self,
         method: str,
         url: str,
+        *,
+        traceparent: str | None = None,
+        idempotency_key: str | None = None,
         **kwargs: Any,
     ) -> httpx.Response:
         """Execute async HTTP request with stamina-driven retries.
 
-        See ``HttpClient._request`` for retry policy.
-
-        Args:
-            method: HTTP method (GET, POST, etc.)
-            url: Request URL (absolute or relative to base_url)
-            **kwargs: Additional arguments passed to httpx request
-
-        Returns:
-            httpx.Response object
-
-        Raises:
-            httpx.HTTPError: On non-retryable errors or after retries exhausted
+        See ``HttpClient._request`` for retry policy + traceparent /
+        idempotency_key semantics.
         """
+        _apply_request_headers(kwargs, traceparent, idempotency_key)
         async for attempt in stamina.retry_context(
             on=_is_retryable,
             attempts=self._retries,
