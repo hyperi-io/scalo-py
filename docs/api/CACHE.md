@@ -8,9 +8,11 @@ caching, and `PostgresCache` for state shared across many pods.
 pip install hyperi-pylib[cache]
 ```
 
-Pulls in `cashews`, `diskcache`, `msgpack`, and `psycopg`. The disk
-backend is optional — falls back to in-memory cashews if `diskcache` is
-missing.
+Pulls in `cashews`, `msgpack`, and `psycopg`. The disk backend
+(`diskcache`) is NOT pulled by default -- it currently ships with an
+unpatched advisory (CVE-2025-69872, no fix release). Install it
+yourself (`pip install diskcache`) only if you accept that risk;
+otherwise the cache falls back to in-memory cashews automatically.
 
 ---
 
