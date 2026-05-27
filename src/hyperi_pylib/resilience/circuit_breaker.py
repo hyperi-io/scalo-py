@@ -23,8 +23,10 @@ from __future__ import annotations
 
 import threading
 import time
+from contextlib import contextmanager
 from dataclasses import dataclass
 from enum import StrEnum
+from typing import Iterator
 
 
 class CircuitState(StrEnum):
@@ -113,6 +115,9 @@ class CircuitBreaker:
         On True the caller MUST eventually call :meth:`record_success` or
         :meth:`record_failure`. CLOSED returns True (no slot accounting);
         OPEN returns False.
+
+        Prefer :meth:`probe` (context manager) which releases the slot
+        on exit regardless of whether the body raised.
         """
         with self._lock:
             current = self._evaluate_state()
@@ -125,6 +130,31 @@ class CircuitBreaker:
                 return False
             self._half_open_calls += 1
             return True
+
+    @contextmanager
+    def probe(self) -> Iterator[bool]:
+        """Context manager wrapping :meth:`try_acquire_probe`.
+
+        Always records success/failure on exit, even if the body raises
+        before the caller could record manually. Yields the acquired
+        flag so the caller can branch::
+
+            with breaker.probe() as acquired:
+                if not acquired:
+                    return  # backoff
+                response = call_downstream()
+        """
+        acquired = self.try_acquire_probe()
+        if not acquired:
+            yield False
+            return
+        try:
+            yield True
+        except Exception:
+            self.record_failure()
+            raise
+        else:
+            self.record_success()
 
     def record_success(self) -> None:
         """
