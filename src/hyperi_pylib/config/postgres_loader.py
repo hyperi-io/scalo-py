@@ -138,11 +138,11 @@ import asyncio
 import json
 import logging
 import os
+import re
 import tempfile
 import time
 from pathlib import Path
 from typing import Any
-from urllib.parse import urlparse
 
 import yaml
 
@@ -282,14 +282,21 @@ class PostgresConfigLoader:
         """Check if PostgreSQL config is enabled (DSN is set)."""
         return bool(self.dsn)
 
-    def _mask_dsn(self, dsn: str) -> str:
-        """Mask credentials in DSN for logging."""
+    # Match scheme://user:password@host (password = everything up to '@' that
+    # isn't ':' or '/' or '@'). Used to scrub DSN-shaped substrings out of
+    # arbitrary text (e.g. psycopg error messages that embed the DSN).
+    _DSN_CRED_RE = re.compile(r"(\w+://[^:/@\s]+:)([^@\s]+)(@)")
+
+    def _mask_dsn(self, dsn: str | None) -> str:
+        """Mask credentials in a DSN OR any string containing a DSN substring.
+
+        Safe to call on raw psycopg exception messages that embed the
+        connection URL alongside other text. Always returns a string.
+        """
+        if not dsn:
+            return ""
         try:
-            parsed = urlparse(dsn)
-            if parsed.password:
-                masked = dsn.replace(f":{parsed.password}@", ":***@")
-                return masked
-            return dsn
+            return self._DSN_CRED_RE.sub(r"\1***\3", dsn)
         except Exception:
             return "postgresql://***"
 
@@ -581,7 +588,9 @@ class PostgresConfigLoader:
                     },
                 )
                 if not self.optional:
-                    raise PostgresConfigError(f"PostgreSQL config failed: {e}") from e
+                    raise PostgresConfigError(
+                        f"PostgreSQL config failed (host={self._mask_dsn(self.dsn)}): {self._mask_dsn(str(e))}"
+                    ) from None
                 # Try fallback file
                 fallback = self._load_fallback_file()
                 if fallback:
@@ -607,7 +616,8 @@ class PostgresConfigLoader:
             return {}
         else:
             raise PostgresConfigError(
-                f"PostgreSQL config unavailable after {self.retry_attempts} attempts: {last_error}"
+                f"PostgreSQL config unavailable after {self.retry_attempts} attempts "
+                f"(host={self._mask_dsn(self.dsn)}): {self._mask_dsn(str(last_error))}"
             )
 
     async def load_async(self) -> dict[str, Any]:
@@ -712,7 +722,9 @@ class PostgresConfigLoader:
                     },
                 )
                 if not self.optional:
-                    raise PostgresConfigError(f"PostgreSQL config failed: {e}") from e
+                    raise PostgresConfigError(
+                        f"PostgreSQL config failed (host={self._mask_dsn(self.dsn)}): {self._mask_dsn(str(e))}"
+                    ) from None
                 # Try fallback file
                 fallback = self._load_fallback_file()
                 if fallback:
@@ -738,7 +750,8 @@ class PostgresConfigLoader:
             return {}
         else:
             raise PostgresConfigError(
-                f"PostgreSQL config unavailable after {self.retry_attempts} attempts: {last_error}"
+                f"PostgreSQL config unavailable after {self.retry_attempts} attempts "
+                f"(host={self._mask_dsn(self.dsn)}): {self._mask_dsn(str(last_error))}"
             )
 
     def ensure_table(self, with_audit: bool = False) -> bool:

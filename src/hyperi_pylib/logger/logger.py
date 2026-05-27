@@ -260,6 +260,38 @@ def _add_emoji_to_record(
         # LayeredScrubber; otherwise default to all-on.
         log_levels = getattr(getattr(scrubber, "config", None), "log_levels", None)
 
+    def _scrub_str(text: str, level_name: str) -> str:
+        """Run the active scrubbing path against a single string."""
+        if scrubber is not None:
+            if log_levels is None or _scrub_level_enabled(level_name, log_levels):
+                return scrubber.scrub(text)
+            return text
+        if sensitive_filter is not None:
+            return sensitive_filter._mask_sensitive_string(text)
+        return text
+
+    def _scrub_extra(extra: dict, level_name: str) -> None:
+        """Mutate loguru ``record['extra']`` (logger.bind() context) in place."""
+        if sensitive_filter is not None:
+            masked = sensitive_filter._mask_sensitive_dict(extra)
+            extra.clear()
+            extra.update(masked)
+            return
+        if scrubber is not None and (log_levels is None or _scrub_level_enabled(level_name, log_levels)):
+            for k, v in list(extra.items()):
+                if isinstance(v, str):
+                    extra[k] = scrubber.scrub(v)
+
+    def _scrub_exception_chain(exc: BaseException | None, level_name: str) -> None:
+        """Walk exc chain via __cause__/__context__ and scrub string args in place."""
+        seen: set[int] = set()
+        current = exc
+        while current is not None and id(current) not in seen:
+            seen.add(id(current))
+            if current.args:
+                current.args = tuple(_scrub_str(a, level_name) if isinstance(a, str) else a for a in current.args)
+            current = current.__cause__ or current.__context__
+
     def filter_func(record):
         """Add emoji to record or convert emojis to text based on settings."""
         # Apply rate limiting first (before any message modification)
@@ -267,17 +299,21 @@ def _add_emoji_to_record(
         if rate_limit_filter is not None and not rate_limit_filter(record):
             return False  # Suppress this message
 
+        level_name = record["level"].name
+
         # Apply scrubbing. New path: use Scrubber if provided.
         # Legacy path: fall back to SensitiveDataFilter._mask_sensitive_string.
         if isinstance(record["message"], str):
-            if scrubber is not None:
-                # Per-log-level gate (spec §5.6).
-                if log_levels is None or _scrub_level_enabled(record["level"].name, log_levels):
-                    record["message"] = scrubber.scrub(record["message"])
-            elif sensitive_filter is not None:
-                # Loguru's record["message"] is the formatted message;
-                # we mask it before it gets formatted.
-                record["message"] = sensitive_filter._mask_sensitive_string(record["message"])
+            record["message"] = _scrub_str(record["message"], level_name)
+
+        # Scrub bind() context dict (logger.bind(api_key=...))
+        if record.get("extra"):
+            _scrub_extra(record["extra"], level_name)
+
+        # Scrub exception chain args (traceback values logged via logger.exception)
+        exc_info = record.get("exception")
+        if exc_info is not None and getattr(exc_info, "value", None) is not None:
+            _scrub_exception_chain(exc_info.value, level_name)
 
         # Then handle emojis
         if use_emojis:
