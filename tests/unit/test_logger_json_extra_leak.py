@@ -12,32 +12,30 @@ from __future__ import annotations
 
 import io
 import json
-import os
-import re
-import sys
 
 import pytest
 from common.fake_secrets import opaque_secret
 from loguru import logger
 
-from hyperi_pylib.logger.logger import setup
+from hyperi_pylib.logger.logger import _add_emoji_to_record
+from hyperi_pylib.logger.scrub_resolver import resolve_scrubber
 
 
 @pytest.fixture
-def json_capture(monkeypatch):
-    """Replicate prod setup() with LOG_FORMAT=json but capture stderr."""
-    monkeypatch.setenv("LOG_FORMAT", "json")
-    monkeypatch.setenv("HYPERI_LOG_ENQUEUE", "0")
+def json_capture():
+    """JSON sink straight to a buffer with the production scrub filter.
 
+    Avoids the sys.stderr swap (fragile under pytest capture in the full
+    suite); adds a serialize=True sink so we assert on real JSON output.
+    """
     logger.remove()
     buf = io.StringIO()
-    real_stderr = sys.stderr
-    sys.stderr = buf
+    scrubber = resolve_scrubber(mask_sensitive=True, config_dict={})
+    flt = _add_emoji_to_record(use_emojis=False, mask_sensitive=True, scrubber=scrubber)
+    logger.add(buf, serialize=True, filter=flt, enqueue=False, level="DEBUG")
     try:
-        setup(mask_sensitive=True)
         yield buf
     finally:
-        sys.stderr = real_stderr
         logger.remove()
 
 
