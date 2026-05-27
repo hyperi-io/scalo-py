@@ -8,9 +8,26 @@ import os
 import random
 import threading
 from datetime import UTC, datetime
-from typing import Any
+from typing import Any, NamedTuple
 
 from .cache import DiskCache
+
+
+class _CacheKey(NamedTuple):
+    """Structured memory-cache key.
+
+    Hashable + immutable. Replaces the previous string-interpolated
+    ``f"{provider}:{path}:{key}"`` which couldn't round-trip paths or
+    keys containing colons (``split(":", 2)`` was fragile).
+    """
+
+    provider: str
+    path: str
+    key: str  # "" when no sub-key
+
+    def to_disk_str(self) -> str:
+        """Stable string form for the disk cache (which keys by filename hash)."""
+        return f"{self.provider}:{self.path}:{self.key}"
 from .exceptions import (
     ProviderError,
     ProviderNotConfiguredError,
@@ -63,10 +80,6 @@ class SecretsManager:
         api_key = await secrets.get("api_key")
     """
 
-    # Class-level memory cache (like PostgresConfigLoader)
-    _memory_cache: dict[str, SecretValue] = {}
-    _memory_cache_lock = threading.Lock()
-
     def __init__(
         self,
         providers: dict[str, SecretProvider] | None = None,
@@ -99,6 +112,13 @@ class SecretsManager:
         self._rotation_callbacks: list[tuple[RotationCallback, list[str] | None]] = []
         self._refresh_task: asyncio.Task | None = None
         self._refresh_stop_event: asyncio.Event | None = None
+        # Instance-scoped memory cache: avoids cross-tenant leakage between
+        # SecretsManager instances configured against different
+        # vaults/namespaces. Previously this was class-level, so a second
+        # manager fetching the same path got the first manager's cached
+        # value -- a real confidentiality bug for multi-tenant apps.
+        self._memory_cache: dict[_CacheKey, SecretValue] = {}
+        self._memory_cache_lock = threading.Lock()
 
     @property
     def _file_provider(self) -> SecretProvider:
@@ -791,22 +811,23 @@ class SecretsManager:
         key: str | None,
     ) -> SecretValue:
         """Fetch from provider with caching and fallback."""
-        cache_key = f"{provider_name}:{path}:{key or ''}"
+        cache_key = _CacheKey(provider_name, path, key or "")
+        disk_key = cache_key.to_disk_str()
 
         # Check memory cache
         with self._memory_cache_lock:
             if cache_key in self._memory_cache:
                 cached = self._memory_cache[cache_key]
                 if not cached.is_expired(self._cache.config.ttl_secs):
-                    logger.debug("Memory cache hit", extra={"key": cache_key})
+                    logger.debug("Memory cache hit", extra={"key": disk_key})
                     return cached
 
         # Check disk cache
-        cached = self._cache.get(cache_key)
+        cached = self._cache.get(disk_key)
         if cached and not cached.is_expired(self._cache.config.ttl_secs):
             with self._memory_cache_lock:
                 self._memory_cache[cache_key] = cached
-            logger.debug("Disk cache hit", extra={"key": cache_key})
+            logger.debug("Disk cache hit", extra={"key": disk_key})
             return cached
 
         # Fetch from provider
@@ -822,13 +843,13 @@ class SecretsManager:
                 old_value = self._memory_cache.get(cache_key)
                 self._memory_cache[cache_key] = value
 
-            self._cache.set(cache_key, value)
+            self._cache.set(disk_key, value)
 
             # Check for rotation
             if old_value and old_value.version != value.version:
-                self._emit_rotation(cache_key, old_value.version, value.version)
+                self._emit_rotation(disk_key, old_value.version, value.version)
 
-            logger.debug("Provider fetch", extra={"key": cache_key, "provider": provider_name})
+            logger.debug("Provider fetch", extra={"key": disk_key, "provider": provider_name})
             return value
 
         except (SecretNotFoundError, ProviderError) as e:
@@ -839,7 +860,7 @@ class SecretsManager:
             ):
                 logger.warning(
                     "Provider failed, using stale cache",
-                    extra={"provider": provider_name, "error": str(e), "key": cache_key},
+                    extra={"provider": provider_name, "error": str(e), "key": disk_key},
                 )
                 return cached
             raise
@@ -851,7 +872,8 @@ class SecretsManager:
         key: str | None,
     ) -> SecretValue:
         """Fetch from provider with caching and fallback (sync)."""
-        cache_key = f"{provider_name}:{path}:{key or ''}"
+        cache_key = _CacheKey(provider_name, path, key or "")
+        disk_key = cache_key.to_disk_str()
 
         # Check memory cache
         with self._memory_cache_lock:
@@ -861,7 +883,7 @@ class SecretsManager:
                     return cached
 
         # Check disk cache
-        cached = self._cache.get(cache_key)
+        cached = self._cache.get(disk_key)
         if cached and not cached.is_expired(self._cache.config.ttl_secs):
             with self._memory_cache_lock:
                 self._memory_cache[cache_key] = cached
@@ -880,11 +902,11 @@ class SecretsManager:
                 old_value = self._memory_cache.get(cache_key)
                 self._memory_cache[cache_key] = value
 
-            self._cache.set(cache_key, value)
+            self._cache.set(disk_key, value)
 
             # Check for rotation
             if old_value and old_value.version != value.version:
-                self._emit_rotation(cache_key, old_value.version, value.version)
+                self._emit_rotation(disk_key, old_value.version, value.version)
 
             return value
 
@@ -977,13 +999,16 @@ class SecretsManager:
 
         for cache_key in keys:
             try:
-                parts = cache_key.split(":", 2)
-                if len(parts) >= 2:
-                    provider_name, path = parts[0], parts[1]
-                    key = parts[2] if len(parts) > 2 and parts[2] else None
-                    await self._get_from_provider(provider_name, path, key)
+                await self._get_from_provider(
+                    cache_key.provider,
+                    cache_key.path,
+                    cache_key.key or None,
+                )
             except Exception as e:
-                logger.warning("Refresh failed", extra={"key": cache_key, "error": str(e)})
+                logger.warning(
+                    "Refresh failed",
+                    extra={"key": cache_key.to_disk_str(), "error": str(e)},
+                )
 
     async def health_check(self) -> dict[str, bool]:
         """Check health of all configured providers.
