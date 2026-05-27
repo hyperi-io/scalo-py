@@ -297,7 +297,14 @@ class SmartTimeoutMonitor:
         return changed
 
     def _read_output_with_monitoring(self, activity_indicators: ActivityIndicator) -> TerminationReason:
-        """Stream stdout; return reason monitoring stopped."""
+        """Stream stdout; return reason monitoring stopped.
+
+        Reads via a background reader thread that pushes lines into a
+        Queue. The main loop polls the queue with a short timeout, so
+        ``activity_timeout`` and ``total_timeout`` are enforced even
+        when the child is silent for long periods. Without the reader
+        thread, ``stdout.readline()`` would block past the timeouts.
+        """
         if self.process is None or self.process.stdout is None:
             return TerminationReason.MANUAL_STOP
 
@@ -305,24 +312,49 @@ class SmartTimeoutMonitor:
         success_patterns = activity_indicators.success_patterns or []
         progress_patterns = activity_indicators.progress_patterns or []
 
+        from queue import Empty, Queue
+
+        line_queue: Queue[str | None] = Queue()
+        proc_stdout = self.process.stdout  # captured for the reader closure
+
+        def _reader() -> None:
+            try:
+                for line in iter(proc_stdout.readline, ""):
+                    line_queue.put(line)
+            except Exception:
+                pass
+            finally:
+                line_queue.put(None)  # sentinel: EOF
+
+        reader_thread = threading.Thread(target=_reader, daemon=True)
+        reader_thread.start()
+
+        eof_seen = False
         while self.monitoring:
             now = time.time()
             if now - self.start_time > self.total_timeout:
                 return TerminationReason.TOTAL_EXECUTION
             if now - self.last_activity_time > self.activity_timeout:
                 return TerminationReason.NO_ACTIVITY
-            if self.process.poll() is not None:
-                # Drain remaining buffered output
-                remaining = self.process.stdout.read()
-                if remaining:
-                    self.output_buffer.append(remaining)
-                return TerminationReason.COMPLETED
 
-            line = self.process.stdout.readline()
-            if not line:
-                # Avoid a tight spin when there's no output but the process is still running
-                time.sleep(0.05)
+            # Poll the queue with a small timeout so timeout checks above
+            # fire promptly even when no output is arriving.
+            try:
+                item = line_queue.get(timeout=0.1)
+            except Empty:
+                # No line this tick; loop back to check timeouts + process poll.
+                if eof_seen and self.process.poll() is not None:
+                    return TerminationReason.COMPLETED
                 continue
+
+            if item is None:
+                # Reader hit EOF. The process is either done or about to be.
+                eof_seen = True
+                if self.process.poll() is not None:
+                    return TerminationReason.COMPLETED
+                continue
+
+            line = item
             self.output_buffer.append(line.rstrip("\n"))
             self._register_activity("stdout")
 
