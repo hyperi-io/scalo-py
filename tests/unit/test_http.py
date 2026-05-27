@@ -12,8 +12,19 @@ import httpx
 import pytest
 import stamina
 
-# Disable retries for faster tests
-stamina.set_testing(True)
+
+@pytest.fixture(autouse=True)
+def _disable_stamina_retries():
+    """Disable stamina retries for tests in this module only.
+
+    Module-level `set_testing(True)` leaks into the rest of the suite
+    via pytest's shared process. Scope it per-test with autouse + teardown
+    so cross-file tests that DO need retries (resilience composition,
+    HTTP header passthrough) get the default behaviour.
+    """
+    stamina.set_testing(True)
+    yield
+    stamina.set_testing(False)
 
 
 class TestHttpClient:
