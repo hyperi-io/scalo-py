@@ -146,6 +146,8 @@ keep the encapsulation.
 
 For the avoidance of doubt -- the following are DONE, not deferred:
 
+### From first ultrathink review
+
 - **B1, B2** -- Logger scrubs `record.extra` + exception chain args
 - **B3** -- PostgresConfigError DSN masking
 - **B4, B5, S3** -- Async health checks + per-check timeout +
@@ -162,3 +164,48 @@ For the avoidance of doubt -- the following are DONE, not deferred:
 - **S10** -- Kafka client `__repr__` masks SASL/SSL credentials
 - **S11** -- Obsoleted by license subsystem removal (OSS GA)
 - **S12** -- Retry/CircuitBreaker composition documented + tests
+
+### From Codex review (second pass)
+
+- **C1** -- Logger key-masks `record.extra` regardless of scrubber
+  backend (JSON output no longer leaks `bind(password=...)`)
+- **C2** -- Provider config dataclasses (`OpenBaoConfig`, `AWSConfig`,
+  `AzureConfig`, `AnsibleVaultConfig`) use `field(repr=False)` on
+  credential fields
+- **C3** -- `SecretsManager._memory_cache` moved to instance scope
+  (no more cross-tenant secret bleed between managers)
+- **C4** -- PostgreSQL config fallback defaults to `~/.cache/...`,
+  never `/tmp`; parent dir 0o700, file 0o600
+- **C5** -- `smart_run()` honours `activity_timeout` / `total_timeout`
+  on silent children via reader-thread + queue
+- **C6** -- `invalidate_source()` returns `int`, coalesces cashews
+  `None` to `0`
+- **C7** -- `[cache]` extra now pulls `diskcache>=5.6.0`
+- **C8, C9, C11** -- Aspirational docs trimmed: no `/config` admin
+  endpoint, no `/metrics` auto-register, HTTP client doesn't
+  auto-wire Prometheus/structlog
+- **C10** -- OTel OTLP push silent by default; opt-in via config
+  `endpoint:` or `OTEL_EXPORTER_OTLP_ENDPOINT`
+- **C12** -- Explicit `encoding="utf-8"` on remaining text-file
+  operations
+- **C14** -- Structured `_CacheKey` NamedTuple replaces fragile
+  string-split cache key parsing (paired with C3)
+- **C15-light** -- `PostgresCache._pool_checked()` helper narrows
+  `AsyncConnectionPool | None` for type checkers
+
+### Deferred from Codex review (kept on the post-GA list)
+
+- **C13** -- Provider exception sanitiser helper across AWS, Azure,
+  GCP, OpenBao, Ansible Vault. No demonstrated leak; deferred to a
+  focused secrets-provider hardening pass.
+- **C15 (full)** -- `PostgresCache` refactor to use
+  `psycopg.sql.SQL/Identifier` for all interpolated identifiers.
+  Table-name validation already covers the SQL-injection vector;
+  full refactor is ergonomics + tighter typing only.
+- **C16** -- `hyperi-ci check --quick` exits 0 despite type-check
+  errors. Tool-side issue, not pylib. Filed against hyperi-ci.
+- **T9** -- OpenBao/LocalStack/real-cloud integration tests for
+  provider error sanitisation. Needs CI testcontainers infrastructure
+  bundled with the GA-blocking OTel collector docker fixture.
+- **T11** -- AnyIO limiter stats test. Tests AnyIO, not pylib;
+  dropped (no public saturation helper to validate).
