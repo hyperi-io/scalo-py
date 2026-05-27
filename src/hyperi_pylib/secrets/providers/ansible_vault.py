@@ -117,7 +117,7 @@ def _read_password_file(path: str) -> str:
         raise ProviderError("ansible_vault", f"password file not found: {path}")
 
     try:
-        password = file_path.read_text().strip()
+        password = file_path.read_text(encoding="utf-8").strip()
     except OSError as e:
         raise ProviderError("ansible_vault", f"failed to read password file {path}: {e}")
 
@@ -279,7 +279,7 @@ class AnsibleVaultProvider(SecretProvider):
             raise SecretNotFoundError(path, self.name)
 
         try:
-            content = file_path.read_text()
+            content = file_path.read_text(encoding="utf-8")
         except OSError as e:
             raise ProviderError(self.name, f"failed to read {path}: {e}")
 
@@ -357,7 +357,7 @@ class AnsibleVaultProvider(SecretProvider):
         try:
             encrypted = self._encrypt(value)
             file_path.parent.mkdir(parents=True, exist_ok=True)
-            file_path.write_text(encrypted)
+            file_path.write_text(encrypted, encoding="utf-8")
         except PermissionError:
             raise SecretPermissionError(self.name, "create", path, f"check filesystem permissions on '{path}'")
         except OSError as e:
@@ -380,7 +380,7 @@ class AnsibleVaultProvider(SecretProvider):
 
         try:
             encrypted = self._encrypt(value)
-            file_path.write_text(encrypted)
+            file_path.write_text(encrypted, encoding="utf-8")
         except PermissionError:
             raise SecretPermissionError(self.name, "update", path, f"check filesystem permissions on '{path}'")
         except OSError as e:

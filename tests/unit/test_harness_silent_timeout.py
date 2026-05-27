@@ -80,9 +80,7 @@ def test_activity_timeout_resets_on_each_line():
     NO_ACTIVITY."""
     monitor = SmartTimeoutMonitor(activity_timeout=0.8, total_timeout=10.0)
 
-    script = (
-        "import time, sys; time.sleep(0.3); print('hello', flush=True); time.sleep(1.5)"
-    )
+    script = "import time, sys; time.sleep(0.3); print('hello', flush=True); time.sleep(1.5)"
     t0 = time.monotonic()
     result = monitor.run_with_smart_timeout(
         command=[sys.executable, "-c", script],

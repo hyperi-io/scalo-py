@@ -170,7 +170,7 @@ class PostgresCache:
 
     async def _ensure_table(self) -> None:
         """Create cache table and indexes if they don't exist."""
-        async with self._pool.connection() as conn:
+        async with self._pool_checked().connection() as conn:
             await conn.execute(
                 f"""
                 CREATE TABLE IF NOT EXISTS {self._table_name} (
@@ -223,6 +223,12 @@ class PostgresCache:
             self._initialized = False
             logger.debug("PostgreSQL cache closed")
 
+    def _pool_checked(self) -> AsyncConnectionPool:
+        """Return self._pool or raise if not initialised. Narrows type for type-checkers."""
+        if self._pool is None:
+            raise RuntimeError("PostgresCache used before initialize() or after close()")
+        return self._pool
+
     async def __aenter__(self) -> PostgresCache:
         """Async context manager entry."""
         await self.init()
@@ -251,7 +257,7 @@ class PostgresCache:
         """
         self._check_initialized()
 
-        async with self._pool.connection() as conn:
+        async with self._pool_checked().connection() as conn:
             result = await conn.execute(
                 f"""
                 SELECT value, expires_at, namespace FROM {self._table_name}
@@ -293,7 +299,7 @@ class PostgresCache:
     async def _delete_key(self, key: str) -> None:
         """Delete a single key (internal, fire-and-forget)."""
         try:
-            async with self._pool.connection() as conn:
+            async with self._pool_checked().connection() as conn:
                 await conn.execute(
                     f"DELETE FROM {self._table_name} WHERE cache_key = %s",  # nosec B608
                     (key,),
@@ -305,7 +311,7 @@ class PostgresCache:
     async def _increment_hit_count(self, key: str) -> None:
         """Increment hit count for a key (internal, fire-and-forget)."""
         try:
-            async with self._pool.connection() as conn:
+            async with self._pool_checked().connection() as conn:
                 await conn.execute(
                     f"UPDATE {self._table_name} SET hit_count = hit_count + 1 WHERE cache_key = %s",  # nosec B608
                     (key,),
@@ -340,7 +346,7 @@ class PostgresCache:
         value_bytes = msgpack.packb(value, use_bin_type=True)
         size_bytes = len(value_bytes)
 
-        async with self._pool.connection() as conn:
+        async with self._pool_checked().connection() as conn:
             await conn.execute(
                 f"""
                 INSERT INTO {self._table_name}
@@ -371,7 +377,7 @@ class PostgresCache:
         """
         self._check_initialized()
 
-        async with self._pool.connection() as conn:
+        async with self._pool_checked().connection() as conn:
             result = await conn.execute(
                 f"DELETE FROM {self._table_name} WHERE cache_key = %s",  # nosec B608
                 (key,),
@@ -394,7 +400,7 @@ class PostgresCache:
         """
         self._check_initialized()
 
-        async with self._pool.connection() as conn:
+        async with self._pool_checked().connection() as conn:
             result = await conn.execute(
                 f"""
                 SELECT 1 FROM {self._table_name}
@@ -416,7 +422,7 @@ class PostgresCache:
         """
         self._check_initialized()
 
-        async with self._pool.connection() as conn:
+        async with self._pool_checked().connection() as conn:
             result = await conn.execute(
                 f"DELETE FROM {self._table_name} WHERE cache_key LIKE %s",  # nosec B608
                 (f"{prefix}%",),
@@ -443,7 +449,7 @@ class PostgresCache:
         """
         self._check_initialized()
 
-        async with self._pool.connection() as conn:
+        async with self._pool_checked().connection() as conn:
             if org_id:
                 result = await conn.execute(
                     f"DELETE FROM {self._table_name} WHERE namespace = %s AND org_id = %s",  # nosec B608
@@ -478,7 +484,7 @@ class PostgresCache:
         """
         self._check_initialized()
 
-        async with self._pool.connection() as conn:
+        async with self._pool_checked().connection() as conn:
             result = await conn.execute(
                 f"DELETE FROM {self._table_name} WHERE org_id = %s",  # nosec B608
                 (org_id,),
@@ -499,7 +505,7 @@ class PostgresCache:
         """
         self._check_initialized()
 
-        async with self._pool.connection() as conn:
+        async with self._pool_checked().connection() as conn:
             result = await conn.execute(
                 f"DELETE FROM {self._table_name} WHERE expires_at < %s",  # nosec B608
                 (datetime.now(UTC),),
@@ -519,7 +525,7 @@ class PostgresCache:
         """
         self._check_initialized()
 
-        async with self._pool.connection() as conn:
+        async with self._pool_checked().connection() as conn:
             now = datetime.now(UTC)
 
             # Entry count and size (non-expired)

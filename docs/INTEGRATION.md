@@ -58,7 +58,7 @@ Env-var nesting follows the cascade rule: `KAFKA__BROKERS=...` maps to
 needing a settings file.
 
 See [core-pillars/CONFIG.md](core-pillars/CONFIG.md) for the full
-cascade, hot-reload, sensitive masking, and `/config` admin endpoint.
+cascade and sensitive masking.
 
 ---
 

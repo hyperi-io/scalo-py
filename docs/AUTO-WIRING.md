@@ -17,7 +17,7 @@ is now per-module and happens at first use.
 | `config` | First `from hyperi_pylib.config import settings` | Dynaconf cascade construction, `.env` loading, PostgreSQL config source (if `HYPERI_CONFIG_DSN` set), sensitive masking, `RuntimePaths.config_dir` selection |
 | `logger` | First import | Loguru sink installed, JSON/text autodetect (TTY vs not), RFC 3339 format, level from `LOG_LEVEL` env (default INFO), scrub filters loaded from `data/gitleaks.toml` + `data/national_ids.toml`, CI mode autodetect (GitHub Actions / GitLab CI / Jenkins) for ASCII-only output |
 | `runtime` | First `get_runtime_paths()` call | K8s / Docker / BareMetal detection (7 indicators), path-set materialisation, `CONTAINER_BASE_PATH` env override |
-| `metrics` | First `create_metrics(namespace)` call | Backend selection (OTel default, Prometheus fallback if OTel not installed), `/metrics` HTTP endpoint registration, process collector (RSS, CPU, FDs via psutil), cardinality cap |
+| `metrics` | First `create_metrics(namespace)` call | Backend selection (OTel default, Prometheus fallback if OTel not installed), `MetricsManager` content + content-type for an app-served route, process collector (RSS, CPU, FDs via psutil), cardinality cap |
 | `health` | First `HealthManager()` instantiation | Probe handlers ready; `/health/live` is unconditionally 200; `/health/ready` returns 503 until `set_ready()` is called and all registered downstream checks pass |
 | `version_check` | `check_on_startup(product, version)` call | Daemon thread fires-and-forgets a probe to HyperI version API; never blocks, never raises |
 | `secrets` | `SecretsManager.from_config(...)` | Provider class selected from `settings.secrets.provider`; backend extras (`secrets-vault`, `secrets-aws`, etc.) imported lazily |
@@ -28,7 +28,7 @@ is now per-module and happens at first use.
 
 | Concern | You wire | Why not automatic |
 |---|---|---|
-| FastAPI server with `/metrics`, `/health/*`, `/config` routers | `app.include_router(...)` per router | Pylib doesn't own your HTTP framework. FastAPI is the dominant choice; we ship router factories, you mount them |
+| FastAPI server with `/health/*` router | `app.include_router(create_health_router(...))` | Pylib doesn't own your HTTP framework. `/metrics` is served by the app using `MetricsManager.content` + `content_type` (see core-pillars/METRICS.md). No `/config` router ships |
 | Kafka producer flush on shutdown | `producer.flush()` in your signal handler | Producer lifecycle is app-specific; we don't intercept SIGTERM |
 | Cache initialisation | `await cache.init()` (PostgresCache) or `configure_cache(...)` (Cashews SQLite) | Cache backend choice + connection details are app-specific |
 | Circuit breaker around a downstream | `with CircuitBreaker(config): call()` or `@with_resilience` decorator | Failure modes vary per downstream; sensible defaults exist but explicit is better |
@@ -45,7 +45,7 @@ Read top-to-bottom: install the extra in the first column, get every
 | Install | Adds | Automatic |
 |---|---|---|
 | `hyperi-pylib` (base) | `config`, `logger`, `runtime`, `cli`, `health`, `database`, `version_check`, `concurrency`, `harness` | Cascade, structured logs, path detection, version probe |
-| `hyperi-pylib[metrics]` | `metrics` + `prometheus-client` + `psutil` | Above + `/metrics` endpoint + process collector + cardinality cap |
+| `hyperi-pylib[metrics]` | `metrics` + `prometheus-client` + `psutil` | Above + `MetricsManager.content` for app-served `/metrics` route + process collector + cardinality cap |
 | `hyperi-pylib[opentelemetry]` | OTel SDK + exporters | Above + OTel metric backend + OTLP export (dual with Prometheus) |
 | `hyperi-pylib[http]` | `http` + `httpx` + `stamina` + `purgatory` | Above + HTTP client with retry + circuit breaker + metrics integration |
 | `hyperi-pylib[cache]` | `cache` + `cashews` + `psycopg` | Above + `@cached` decorator + SQLite or PostgreSQL backend |

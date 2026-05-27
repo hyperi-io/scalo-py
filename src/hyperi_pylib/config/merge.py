@@ -263,9 +263,9 @@ def merge_gitignore(source: Path, target: Path) -> list[str]:
 
     Works for: .gitignore, .dockerignore, requirements.txt
     """
-    source_lines = source.read_text().splitlines()
+    source_lines = source.read_text(encoding="utf-8").splitlines()
 
-    target_lines = target.read_text().splitlines() if target.exists() else []
+    target_lines = target.read_text(encoding="utf-8").splitlines() if target.exists() else []
 
     # Deduplicate while preserving order
     seen = set(target_lines)
@@ -325,7 +325,7 @@ def merge_files(
         for src in source:
             merge_files(src, target, strategy=strategy, dry_run=False)
         if dry_run:
-            return target.read_text() if target.exists() else None
+            return target.read_text(encoding="utf-8") if target.exists() else None
         return None
 
     source = Path(source)
@@ -377,7 +377,7 @@ def merge_files(
             content = "\n".join(merged_lines) + "\n"
 
         elif strategy == "overwrite":
-            content = source.read_text()
+            content = source.read_text(encoding="utf-8")
 
         else:
             raise ValueError(f"Unknown strategy: {strategy}")

@@ -205,7 +205,7 @@ class OpenBaoProvider(VersionedProvider):
         if not token_path.exists():
             raise AuthenticationError(self.name, f"Service account token not found: {token_path}")
 
-        jwt = token_path.read_text().strip()
+        jwt = token_path.read_text(encoding="utf-8").strip()
         mount = self._config.mount or "kubernetes"
         url = f"/v1/auth/{mount}/login"
 
@@ -228,7 +228,7 @@ class OpenBaoProvider(VersionedProvider):
         if not token_path.exists():
             raise AuthenticationError(self.name, f"Service account token not found: {token_path}")
 
-        jwt = token_path.read_text().strip()
+        jwt = token_path.read_text(encoding="utf-8").strip()
         mount = self._config.mount or "kubernetes"
         url = f"/v1/auth/{mount}/login"
 

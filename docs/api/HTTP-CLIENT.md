@@ -1,10 +1,11 @@
 # HTTP client
 
 Sync and async HTTP clients built on `httpx`, with `stamina`-driven
-retries (exponential backoff + jitter), a 30 s default timeout,
-auto-detected Prometheus metrics, and `structlog` integration. Replaces
-ad-hoc `requests` / `httpx` usage where Bandit's B113 (request without
-timeout) keeps biting.
+retries (exponential backoff + jitter) and a 30 s default timeout.
+Pylib wires `httpx + stamina + loguru`; Prometheus / structlog
+hooks are Stamina-library opt-ins you wire at your own site if
+needed. Replaces ad-hoc `requests` / `httpx` usage where Bandit's
+B113 (request without timeout) keeps biting.
 
 ```
 pip install hyperi-pylib[http]
@@ -31,9 +32,9 @@ data = response.json()
 - Stamina retries cover the cases everyone forgets: transport errors and
   5xx server errors, with exponential backoff and jitter. 4xx errors
   surface immediately — retrying client errors is a bug.
-- Stamina auto-detects `prometheus-client` and `structlog` if present —
-  retry attempts show up on `/metrics` and in the log without extra
-  wiring.
+- Stamina exposes Prometheus / structlog hooks; pylib does not wire
+  them. If you want retry attempts on `/metrics`, follow Stamina's
+  own setup at your site.
 - `stamina.set_testing(True)` disables backoff in tests so suites stay
   fast and deterministic.
 
@@ -143,19 +144,14 @@ finally:
 
 ## Observability
 
-Stamina auto-detects what's installed at import time:
+Pylib wires the HTTP client to `httpx + stamina + loguru` only.
+Stamina has its own Prometheus / structlog integration hooks --
+opt in at your own site if you want retry-attempt metrics or
+structured retry logs. Pylib doesn't auto-wire them.
 
-- **Prometheus**: emits `stamina_retry_total` counters per call. Pick
-  them up via the standard `/metrics` endpoint exposed by
-  `hyperi_pylib.metrics`.
-- **structlog**: each retry attempt logs at WARN with attempt number,
-  wait time, and the exception that triggered the retry. The
-  `hyperi-pylib` logger is structlog-compatible, so this is automatic.
-
-For deeper request-level metrics (latency histograms, status-code
-counters) wire the HTTP middleware from
-[`core-pillars/METRICS.md`](../core-pillars/METRICS.md) — the client
-itself stays focused on transport.
+For request-level metrics (latency histograms, status-code counters)
+wire the HTTP middleware from
+[`core-pillars/METRICS.md`](../core-pillars/METRICS.md).
 
 ---
 

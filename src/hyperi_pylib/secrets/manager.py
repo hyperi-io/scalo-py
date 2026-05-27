@@ -11,17 +11,6 @@ from datetime import UTC, datetime
 from typing import Any, NamedTuple
 
 from .cache import DiskCache
-
-
-class _CacheKey(NamedTuple):
-    """Memory-cache key. Hashable; survives colons in path/key."""
-
-    provider: str
-    path: str
-    key: str  # "" when no sub-key
-
-    def to_disk_str(self) -> str:
-        return f"{self.provider}:{self.path}:{self.key}"
 from .exceptions import (
     ProviderError,
     ProviderNotConfiguredError,
@@ -48,6 +37,17 @@ from .types import (
 )
 
 logger = logging.getLogger(__name__)
+
+
+class _CacheKey(NamedTuple):
+    """Memory-cache key. Hashable; survives colons in path/key."""
+
+    provider: str
+    path: str
+    key: str  # "" when no sub-key
+
+    def to_disk_str(self) -> str:
+        return f"{self.provider}:{self.path}:{self.key}"
 
 
 class SecretsManager:

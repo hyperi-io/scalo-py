@@ -301,7 +301,7 @@ def detect_helm_deployment() -> bool:
     try:
         labels_file = Path("/etc/podinfo/labels")
         if labels_file.exists():
-            labels = labels_file.read_text()
+            labels = labels_file.read_text(encoding="utf-8")
             if "app.kubernetes.io/managed-by=Helm" in labels:
                 return True
     except Exception:  # nosec B110 - Optional K8s label detection
@@ -1389,7 +1389,7 @@ targets:
     # Development environment settings
     example_setting: value
 """
-            targets_file.write_text(targets_template)
+            targets_file.write_text(targets_template, encoding="utf-8")
             _debug_log(f"Created targets template: {targets_file}")
 
     # Create .env template
@@ -1405,7 +1405,7 @@ targets:
 # Application settings
 # {ENV_PREFIX}_SETTING_NAME=value
 """
-            env_file.write_text(env_template)
+            env_file.write_text(env_template, encoding="utf-8")
             _debug_log(f"Created .env template: {env_file}")
 
     _debug_log(f"Config directory '{config_dir}' initialized.")

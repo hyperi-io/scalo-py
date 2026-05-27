@@ -28,14 +28,15 @@ Prometheus backend so metrics keep working.
 
 | Backend | When chosen | Default extras |
 |---------|-------------|----------------|
-| `opentelemetry` | Default, with `[opentelemetry]` extra installed | OTLP push + Prometheus scrape (both on) |
+| `opentelemetry` | Default, with `[opentelemetry]` extra installed | Prometheus scrape on; OTLP push opt-in |
 | `prometheus` | Explicit, or OTel SDK missing | Prometheus scrape only |
 
-The OTel backend attaches BOTH a `PeriodicExportingMetricReader`
-(OTLP push) AND a `PrometheusMetricReader` (scrape) unless you set
-`prometheus_scrape: false` or `endpoint: ""`. Dual export means
-operators can migrate scrape -> push (or vice versa) without code
-changes.
+OTLP push is silent by default -- set `endpoint:` in config or
+`OTEL_EXPORTER_OTLP_ENDPOINT` to enable it. Previously the default
+``http://localhost:4317`` caused tests and local dev to spam
+"Transient error" logs against a collector that wasn't running.
+Prometheus scrape stays on by default; disable with
+`prometheus_scrape: false`.
 
 ---
 

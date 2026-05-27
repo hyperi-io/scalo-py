@@ -313,10 +313,15 @@ class OpenTelemetryBackend(MetricsBackend):
 
         otel_config = config.get("opentelemetry", {}) if config else {}
 
-        # Resolve endpoint: config > env var > default
+        # Resolve endpoint: config > env var > NONE (silent by default).
+        # Previous default of "http://localhost:4317" caused every
+        # default-config process (incl. tests + local dev) to attempt
+        # OTLP push to a collector that usually wasn't running, producing
+        # constant "Transient error" log noise. Opt-in via config or
+        # OTEL_EXPORTER_OTLP_ENDPOINT.
         endpoint = otel_config.get(
             "endpoint",
-            os.environ.get("OTEL_EXPORTER_OTLP_ENDPOINT", "http://localhost:4317"),
+            os.environ.get("OTEL_EXPORTER_OTLP_ENDPOINT", ""),
         )
 
         # Resolve protocol: config > env var > default
