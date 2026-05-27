@@ -60,7 +60,6 @@ flowchart TB
         Expr["expression.evaluate (CEL via PyO3)"]
         Resil["resilience.CircuitBreaker"]
         Conc["concurrency.run_blocking / Bulkhead"]
-        Lic["license.get / has_feature"]
     end
 
     subgraph Transport["Transport"]
@@ -134,7 +133,6 @@ flowchart TB
 - [api/DATABASE.md](api/DATABASE.md) — DB URL builders + PostgreSQL data store
 - [api/RESILIENCE.md](api/RESILIENCE.md) — `CircuitBreaker` Closed/Open/HalfOpen
 - [api/HARNESS.md](api/HARNESS.md) — Subprocess execution with smart timeouts + hang detection
-- [api/LICENSE.md](api/LICENSE.md) — AES-256-GCM + Ed25519 license file management
 - [api/VERSION-CHECK.md](api/VERSION-CHECK.md) — Non-blocking startup version probe
 - [api/SCALING.md](api/SCALING.md) — `ScalingPressure` composite score for KEDA
 - [api/CLI.md](api/CLI.md) — Typer-based CLI framework, `DfeApp`, standard options

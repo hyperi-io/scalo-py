@@ -18,8 +18,8 @@ Three layers, top to bottom:
   metric defaults, probe wiring, and config file locations.
 - **API surface** — composable modules apps wire as needed: HTTP,
   cache, secrets, expression, resilience, concurrency, harness,
-  license, version-check, scaling, CLI, database. Each is independent
-  of the others; pick what you need.
+  version-check, scaling, CLI, database. Each is independent of the
+  others; pick what you need.
 
 Sibling concerns:
 
@@ -53,7 +53,6 @@ flowchart TB
         Resil["resilience"]
         Conc["concurrency"]
         Harn["harness"]
-        Lic["license"]
         VC["version_check"]
         Scal["scaling"]
         CLI["cli"]
@@ -129,7 +128,6 @@ From `src/hyperi_pylib/`:
 | `health/` | dir | ~500 | `HealthManager`, `create_health_router`, probe handlers |
 | `http/` | dir | ~800 | `HttpClient`, `AsyncHttpClient` |
 | `kafka/` | dir | ~2,500 | `KafkaProducer`, `KafkaConsumer`, `AsyncKafka*`, `KafkaAdmin`, `SchemaAnalyser` |
-| `license/` | dir | ~1,200 | `init`, `get`, `has_feature`, `LicenseSettings` |
 | `logger/` | dir | ~4,000 | `logger`, convenience fns, `scrub/` package |
 | `metrics/` | dir | ~3,500 | `create_metrics`, `dfe_groups/*`, `CardinalityTracker`, FastAPI middleware |
 | `resilience/` | dir | ~300 | `CircuitBreaker`, `CircuitBreakerConfig` |

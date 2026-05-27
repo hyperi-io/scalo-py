@@ -54,7 +54,6 @@ Read top-to-bottom: install the extra in the first column, get every
 | `hyperi-pylib[deployment]` | `deployment` + `pydantic` | Above + `DeploymentContract` + generators + `ContractIdentity` + `test_support` |
 | `hyperi-pylib[expression]` | `expression` + `common-expression-language` | Above + CEL evaluation (Python/Rust parity via PyO3) |
 | `hyperi-pylib[resilience]` | `resilience` + `stamina` + `purgatory` | Above + standalone circuit breaker (already pulled in by `http`/`cache`/`secrets-*`) |
-| `hyperi-pylib[license]` | `license` + `cryptography` | Above + AES-256-GCM + Ed25519 license validation |
 
 ---
 
