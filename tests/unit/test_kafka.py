@@ -2734,12 +2734,12 @@ class TestKafkaAdmin:
 
         mock_future = Future()
         mock_future.set_result(None)
-        mock_admin_client_for_admin.return_value.alter_configs.return_value = {"test-topic": mock_future}
+        mock_admin_client_for_admin.return_value.incremental_alter_configs.return_value = {"test-topic": mock_future}
 
         admin = KafkaAdmin("localhost:9092")
         admin.set_retention("test-topic", hours=24)
 
-        mock_admin_client_for_admin.return_value.alter_configs.assert_called_once()
+        mock_admin_client_for_admin.return_value.incremental_alter_configs.assert_called_once()
 
     def test_admin_set_retention_ms(self, mock_admin_client_for_admin):
         """Should set retention.ms directly."""
@@ -2749,12 +2749,12 @@ class TestKafkaAdmin:
 
         mock_future = Future()
         mock_future.set_result(None)
-        mock_admin_client_for_admin.return_value.alter_configs.return_value = {"test-topic": mock_future}
+        mock_admin_client_for_admin.return_value.incremental_alter_configs.return_value = {"test-topic": mock_future}
 
         admin = KafkaAdmin("localhost:9092")
         admin.set_retention("test-topic", ms=86400000)  # 1 day
 
-        mock_admin_client_for_admin.return_value.alter_configs.assert_called_once()
+        mock_admin_client_for_admin.return_value.incremental_alter_configs.assert_called_once()
 
     def test_admin_get_topic_config(self, mock_admin_client_for_admin):
         """Should get topic configuration."""
@@ -2789,12 +2789,12 @@ class TestKafkaAdmin:
 
         mock_future = Future()
         mock_future.set_result(None)
-        mock_admin_client_for_admin.return_value.alter_configs.return_value = {"test-topic": mock_future}
+        mock_admin_client_for_admin.return_value.incremental_alter_configs.return_value = {"test-topic": mock_future}
 
         admin = KafkaAdmin("localhost:9092")
         admin.set_cleanup_policy("test-topic", "compact")
 
-        mock_admin_client_for_admin.return_value.alter_configs.assert_called_once()
+        mock_admin_client_for_admin.return_value.incremental_alter_configs.assert_called_once()
 
     def test_admin_alter_config(self, mock_admin_client_for_admin):
         """Should alter arbitrary topic config."""
@@ -2804,12 +2804,12 @@ class TestKafkaAdmin:
 
         mock_future = Future()
         mock_future.set_result(None)
-        mock_admin_client_for_admin.return_value.alter_configs.return_value = {"test-topic": mock_future}
+        mock_admin_client_for_admin.return_value.incremental_alter_configs.return_value = {"test-topic": mock_future}
 
         admin = KafkaAdmin("localhost:9092")
         admin.alter_config("test-topic", {"max.message.bytes": "1048576"})
 
-        mock_admin_client_for_admin.return_value.alter_configs.assert_called_once()
+        mock_admin_client_for_admin.return_value.incremental_alter_configs.assert_called_once()
 
 
 class TestKafkaAdminExports:

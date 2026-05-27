@@ -38,7 +38,7 @@ from .config import ScrubConfig
 from .factory import build_scrubber
 from .gitleaks_toml import load_gitleaks_rules
 
-# Metric names per spec §8 — these strings are the cross-language
+# Metric names per spec §8 -- these strings are the cross-language
 # contract. Both implementations MUST emit identical bytes.
 METRIC_NAMES: tuple[str, ...] = (
     "log_scrub_matches_total",
@@ -50,7 +50,7 @@ METRIC_NAMES: tuple[str, ...] = (
 )
 
 
-# Top-level ScrubConfig keys per spec §6 — both implementations MUST
+# Top-level ScrubConfig keys per spec §6 -- both implementations MUST
 # accept and honour every key. New keys require a spec amendment in
 # both projects.
 CONFIG_KEYS: tuple[str, ...] = (
@@ -80,7 +80,7 @@ def build_manifest() -> dict[str, Any]:
             l3_labels.append(layer.LABEL)
     l3_labels.sort()
 
-    # Gitleaks rules — the IDs we successfully compiled + the IDs we
+    # Gitleaks rules -- the IDs we successfully compiled + the IDs we
     # skipped (regex incompatibility on this side).
     from .gitleaks_toml import GitleaksTomlScrubber
 
@@ -88,7 +88,7 @@ def build_manifest() -> dict[str, Any]:
     loaded_rule_ids = sorted({r.id for r in gl._compiled})
     skipped_rule_ids = sorted(gl.skipped_rules)
 
-    # Per-rule labels (derived) — also part of the cross-language
+    # Per-rule labels (derived) -- also part of the cross-language
     # output contract.
     rule_labels = sorted({r.label for r in gl._compiled})
 
@@ -119,7 +119,7 @@ def build_manifest() -> dict[str, Any]:
 
 
 def main(argv: list[str] | None = None) -> int:
-    """CLI entry point — emit the manifest as JSON to stdout."""
+    """CLI entry point -- emit the manifest as JSON to stdout."""
     manifest = build_manifest()
     json.dump(manifest, sys.stdout, indent=2, sort_keys=True)
     sys.stdout.write("\n")

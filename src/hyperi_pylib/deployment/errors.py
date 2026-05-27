@@ -6,7 +6,7 @@
 # License:   FSL-1.1-ALv2
 # Copyright: (c) 2026 HYPERI PTY LIMITED
 
-"""Deployment validation and generation error types — mirrors rustlib's
+"""Deployment validation and generation error types -- mirrors rustlib's
 ``hyperi_rustlib::deployment::error``."""
 
 from __future__ import annotations

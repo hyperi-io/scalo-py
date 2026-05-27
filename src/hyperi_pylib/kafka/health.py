@@ -426,36 +426,49 @@ class KafkaConsumerHealth:
         return issues
 
     def _check_partition_imbalance(self, partitions: dict) -> list[HealthCheckResult]:
-        """Check for uneven partition distribution."""
+        """Flag per-topic partition imbalance within this consumer's assignment.
+
+        Cross-consumer imbalance needs group-wide visibility we don't have
+        from inside one consumer; this only flags asymmetry across topics
+        (e.g. 50 partitions of A vs 1 of B).
+        """
         issues: list[HealthCheckResult] = []
 
         if not partitions:
             return issues
 
-        # This check is more relevant for the whole consumer group
-        # Here we can only detect if THIS consumer has many more partitions
-        # than expected (suggesting imbalance)
-        total_partitions = sum(len(parts) for parts in partitions.values())
+        # Per-topic partition counts for this consumer's assignment
+        per_topic = {topic: len(parts) for topic, parts in partitions.items()}
+        if len(per_topic) < 2:
+            return issues  # Single-topic consumer; no cross-topic imbalance possible
 
-        if self.consumer_count > 1 and total_partitions > 0:
-            expected_per_consumer = total_partitions / self.consumer_count
-            # If this consumer has significantly more than expected
-            if total_partitions > expected_per_consumer * self.imbalance_ratio:
-                issues.append(
-                    HealthCheckResult(
-                        issue=HealthIssue.PARTITION_IMBALANCE,
-                        severity="warning",
-                        message=(
-                            f"Partition imbalance: this consumer has {total_partitions} partitions "
-                            f"(expected ~{expected_per_consumer:.0f} with {self.consumer_count} consumers)"
-                        ),
-                        details={
-                            "assigned_partitions": total_partitions,
-                            "expected_per_consumer": expected_per_consumer,
-                            "consumer_count": self.consumer_count,
-                        },
-                    )
+        max_topic_count = max(per_topic.values())
+        min_topic_count = min(per_topic.values())
+        if min_topic_count == 0:
+            return issues  # Trivially zero; not a meaningful imbalance signal
+
+        ratio = max_topic_count / min_topic_count
+        if ratio >= self.imbalance_ratio:
+            heaviest = max(per_topic, key=per_topic.__getitem__)
+            lightest = min(per_topic, key=per_topic.__getitem__)
+            issues.append(
+                HealthCheckResult(
+                    issue=HealthIssue.PARTITION_IMBALANCE,
+                    severity="warning",
+                    message=(
+                        f"Per-topic partition imbalance: {heaviest}={max_topic_count} vs "
+                        f"{lightest}={min_topic_count} (ratio {ratio:.1f}x exceeds "
+                        f"threshold {self.imbalance_ratio}x)"
+                    ),
+                    details={
+                        "per_topic_counts": per_topic,
+                        "max_topic": heaviest,
+                        "min_topic": lightest,
+                        "ratio": ratio,
+                        "threshold": self.imbalance_ratio,
+                    },
                 )
+            )
 
         return issues
 

@@ -188,7 +188,7 @@ class TestSecretAlreadyExistsError:
         err = SecretAlreadyExistsError("x", "file")
         assert isinstance(err, SecretsError)
         assert isinstance(err, Exception)
-        # Not a SecretNotFoundError — distinct error class
+        # Not a SecretNotFoundError -- distinct error class
         assert not isinstance(err, SecretNotFoundError)
 
 

@@ -1,8 +1,8 @@
 # Integration
 
 Wiring `hyperi-pylib` into a new Python service from empty
-`pyproject.toml` to running app. Self-contained recipe; deep dives
-live in the subsystem docs.
+`pyproject.toml` to running app. Self-contained recipe; details per subsystem
+live in the subsystem docs (core-pillars/, runtime/, transport/, deployment/, api/).
 
 ---
 
@@ -58,7 +58,7 @@ Env-var nesting follows the cascade rule: `KAFKA__BROKERS=...` maps to
 needing a settings file.
 
 See [core-pillars/CONFIG.md](core-pillars/CONFIG.md) for the full
-cascade, hot-reload, sensitive masking, and `/config` admin endpoint.
+cascade and sensitive masking.
 
 ---
 
@@ -127,7 +127,7 @@ health.set_ready()
 async def db_ok() -> bool:
     return await db.execute("SELECT 1") is not None
 
-health.add_readiness_check("postgres", db_ok)
+health.register_ready_check("postgres", db_ok)
 ```
 
 That gives you `/health/live`, `/health/ready`, and `/health/startup`

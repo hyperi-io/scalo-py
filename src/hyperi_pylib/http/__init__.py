@@ -40,9 +40,10 @@ Dependencies:
     - stamina>=25.1
 """
 
-from .client import AsyncHttpClient, HttpClient
+from .client import AsyncHttpClient, HttpClient, new_idempotency_key
 
 __all__ = [
     "AsyncHttpClient",
     "HttpClient",
+    "new_idempotency_key",
 ]

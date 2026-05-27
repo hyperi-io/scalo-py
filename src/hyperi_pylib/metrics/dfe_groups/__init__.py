@@ -1,13 +1,13 @@
 #  Project:      hyperi-pylib
 #  File:         __init__.py
-#  Purpose:      DFE metric groups — composable metric structs matching rustlib
+#  Purpose:      DFE metric groups -- composable metric structs matching rustlib
 #  Language:     Python
 #
 #  License:      FSL-1.1-ALv2
 #  Copyright:    (c) 2026 HYPERI PTY LIMITED
 
 """
-DFE metric groups — composable metric structs for DFE pipeline applications.
+DFE metric groups -- composable metric structs for DFE pipeline applications.
 
 Each group is a class that takes a MetricsManager in its constructor,
 creates prefixed metrics, and exposes convenience record/set methods.

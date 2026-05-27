@@ -1,13 +1,19 @@
-"""hyperi-pylib - Opinionated, drop-in toolkit for production Python services.
+"""hyperi-pylib -- Opinionated, drop-in toolkit for production Python services.
 
 There's plenty of sage advice out there about how to run Python services in
-production at scale — config cascades, structured logging, masking secrets,
-multi-backend secrets management, Prometheus, OpenTelemetry, backpressure,
-graceful shutdown — but almost none of it as code you can just install and use.
+production at scale -- config cascades, structured logging with gitleaks-backed
+PII scrubbing, multi-backend secrets management, Prometheus and OpenTelemetry
+side-by-side, Kafka clients that retry properly, K8s health probes wired for
+rolling updates, deployment artefacts (Dockerfile + Helm + ArgoCD) all carrying
+the same identity stamps -- but almost none of it as code you can just
+`pip install` and use.
 
-This is that code. Opinionated, drop-in, working out of the box. The patterns
-from blog posts as actual library — not a framework you assemble from twelve
-packages and a weekend.
+This is that code.
+
+Opinionated, drop-in, working out of the box. The patterns from blog posts,
+watercooler chats and beers with your Google mates as actual library -- not
+a framework you assemble from twenty pip extras and 8 weeks of arguing about
+asyncio.
 
 Built as the foundation for HyperI's production Python services. Generic
 enough that you don't need to be at HyperI to use it.

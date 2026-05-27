@@ -85,6 +85,11 @@ class KafkaAdmin:
         self._config = merge_config(config, ADMIN_DEFAULTS, verify_ssl=verify_ssl)
         self._admin = AdminClient(self._config)
 
+    def __repr__(self) -> str:
+        from .config import mask_credentials
+
+        return f"KafkaAdmin(config={mask_credentials(self._config)!r})"
+
     def __enter__(self) -> KafkaAdmin:
         return self
 
@@ -282,8 +287,12 @@ class KafkaAdmin:
                 "max.message.bytes": "1048576",
             })
         """
+        # incremental_alter_configs preserves unspecified keys; the
+        # legacy alter_configs reset everything not in the request to
+        # defaults, which silently wiped customised retention / cleanup
+        # policy / etc. set_config supplies the upserts.
         resource = ConfigResource(ResourceType.TOPIC, topic, set_config=config)
-        futures = self._admin.alter_configs([resource], request_timeout=timeout)
+        futures = self._admin.incremental_alter_configs([resource], request_timeout=timeout)
 
         for res, future in futures.items():
             try:

@@ -13,7 +13,7 @@ Two distinct concerns under one doc:
    `config_values` directly.
 
 ```
-pip install hyperi-pylib[database]   # builders + psycopg
+pip install hyperi-pylib   # builders only, no DB driver (the [database] extra is a marker for documentation; add psycopg / pymongo / etc. directly)
 ```
 
 ---

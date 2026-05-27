@@ -6,7 +6,7 @@
 #  License:   FSL-1.1-ALv2
 #  Copyright: (c) 2026 HYPERI PTY LIMITED
 
-"""Unit tests for the HealthManager — pure Python health state tracking.
+"""Unit tests for the HealthManager -- pure Python health state tracking.
 
 Tests liveness, readiness, and startup probe logic with registered checks,
 timestamp formatting, and response structure matching rustlib's health probes.

@@ -48,7 +48,6 @@ from hyperi_pylib.deployment import (
 )
 from hyperi_pylib.deployment.contract_identity import ContractIdentity
 
-
 VALID_SHA = "0123456789abcdef0123456789abcdef01234567"
 VALID_REF = "ghcr.io/hyperi-io/dfe-loader:v2.7.3"
 
@@ -125,8 +124,8 @@ def test_runtime_stage_with_identity_emits_three_labels() -> None:
 
 def test_runtime_stage_with_identity_inserts_after_profile_label() -> None:
     out = generate_runtime_stage(_make_contract(), identity=_make_identity())
-    profile_pos = out.index('LABEL io.hyperi.profile=')
-    version_pos = out.index('LABEL io.hyperi.contract.version=')
+    profile_pos = out.index("LABEL io.hyperi.profile=")
+    version_pos = out.index("LABEL io.hyperi.contract.version=")
     assert profile_pos < version_pos, "contract labels must appear after profile label"
 
 
@@ -202,8 +201,7 @@ def test_chart_identity_none_byte_unchanged(tmp_path: Path) -> None:
     out_b = tmp_path / "b"
     generate_chart(_make_contract(), out_a, identity=None)
     generate_chart(_make_contract(), out_b)
-    assert (out_a / "Chart.yaml").read_text(encoding="utf-8") == \
-        (out_b / "Chart.yaml").read_text(encoding="utf-8")
+    assert (out_a / "Chart.yaml").read_text(encoding="utf-8") == (out_b / "Chart.yaml").read_text(encoding="utf-8")
 
 
 # ---------------------------------------------------------------------------
@@ -214,8 +212,7 @@ def test_chart_identity_none_byte_unchanged(tmp_path: Path) -> None:
 def test_argocd_identity_none_unchanged() -> None:
     c = _make_contract()
     argo = _make_argo()
-    assert generate_argocd_application(c, argo, identity=None) == \
-        generate_argocd_application(c, argo)
+    assert generate_argocd_application(c, argo, identity=None) == generate_argocd_application(c, argo)
 
 
 def test_argocd_identity_none_has_no_contract_keys() -> None:
@@ -224,9 +221,7 @@ def test_argocd_identity_none_has_no_contract_keys() -> None:
 
 
 def test_argocd_with_identity_emits_three_annotations_alongside_sync_wave() -> None:
-    out = generate_argocd_application(
-        _make_contract(), _make_argo(), identity=_make_identity()
-    )
+    out = generate_argocd_application(_make_contract(), _make_argo(), identity=_make_identity())
     parsed = yaml.safe_load(out)
     annotations = parsed["metadata"]["annotations"]
     assert annotations["argocd.argoproj.io/sync-wave"] == "0"
@@ -256,8 +251,7 @@ def test_all_surfaces_grep_for_io_hyperi_contract(tmp_path: Path) -> None:
     for name, text in surfaces.items():
         # Each surface must carry all three keys.
         assert len(pattern.findall(text)) >= 3, (
-            f"{name}: expected >=3 occurrences of io.hyperi.contract, "
-            f"got {len(pattern.findall(text))}"
+            f"{name}: expected >=3 occurrences of io.hyperi.contract, got {len(pattern.findall(text))}"
         )
 
     # Chart.yaml separately (writes to disk)

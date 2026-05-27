@@ -568,7 +568,7 @@ class TestSubdirectoryValidation:
 
     def test_strips_absolute_path_prefix(self, nested_store):
         """Leading slashes are stripped, so '/etc/passwd' becomes 'etc/passwd' (not rejected)."""
-        # Should not raise — returns None because table doesn't exist
+        # Should not raise -- returns None because table doesn't exist
         assert nested_store.get("/etc/passwd") is None
 
     def test_rejects_empty_name(self, nested_store):

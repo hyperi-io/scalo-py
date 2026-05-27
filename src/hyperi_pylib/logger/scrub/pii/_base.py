@@ -31,7 +31,7 @@ from ..metrics import ScrubMetrics
 class _Validator:
     """Base PII validator. Subclass to add a specific validator.
 
-    Implements :class:`Scrubber` Protocol via duck typing — no
+    Implements :class:`Scrubber` Protocol via duck typing -- no
     inheritance required at the call site.
 
     Per spec §4.4, the label format is controlled by an injected
@@ -60,7 +60,7 @@ class _Validator:
         """Optionally accept a per-instance labeler and metrics.
 
         Subclasses that don't override ``__init__`` get this signature
-        for free — strong-structural validators (credit_card, email,
+        for free -- strong-structural validators (credit_card, email,
         iban, phone) just call ``super().__init__(labeler=...)``
         or rely on this default if instantiated bare.
         """
@@ -83,7 +83,7 @@ class _Validator:
 
         def _repl(match: re.Match[str]) -> str:
             candidate = match.group()
-            # Every regex hit counts as a match — observe-only mode and
+            # Every regex hit counts as a match -- observe-only mode and
             # metric dashboards both want to see the detection rate
             # before validation/context filtering.
             self.metrics.inc_match("L3", self.LABEL)

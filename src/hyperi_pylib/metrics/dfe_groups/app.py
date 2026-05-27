@@ -1,13 +1,13 @@
 #  Project:      hyperi-pylib
 #  File:         app.py
-#  Purpose:      AppMetrics group — mandatory for all DFE apps
+#  Purpose:      AppMetrics group -- mandatory for all DFE apps
 #  Language:     Python
 #
 #  License:      FSL-1.1-ALv2
 #  Copyright:    (c) 2026 HYPERI PTY LIMITED
 
 """
-AppMetrics — mandatory metric group for all DFE pipeline applications.
+AppMetrics -- mandatory metric group for all DFE pipeline applications.
 
 Mirrors rustlib's dfe_groups::AppMetrics. Registers standard application
 identity, throughput, memory, and config reload metrics.

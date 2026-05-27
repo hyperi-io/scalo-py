@@ -84,6 +84,11 @@ class KafkaClient:
         # Create admin client
         self._admin = AdminClient(self._config)
 
+    def __repr__(self) -> str:
+        from .config import mask_credentials
+
+        return f"KafkaClient(config={mask_credentials(self._config)!r})"
+
     def __enter__(self) -> KafkaClient:
         return self
 

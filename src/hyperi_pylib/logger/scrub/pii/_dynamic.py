@@ -69,7 +69,7 @@ class _DynamicValidator(_Validator):
     def validate(self, candidate: str) -> bool:
         try:
             return bool(self._validate_fn(candidate))
-        except Exception:  # pragma: no cover — stdnum raises for bad input
+        except Exception:  # pragma: no cover -- stdnum raises for bad input
             return False
 
     def __repr__(self) -> str:

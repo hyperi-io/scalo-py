@@ -32,7 +32,7 @@ from hyperi_pylib.logger.scrub import (
 )
 
 # ---------------------------------------------------------------------------
-# build_scrubber — composition
+# build_scrubber -- composition
 # ---------------------------------------------------------------------------
 
 
@@ -45,7 +45,7 @@ class TestBuildScrubberDefaults:
     def test_includes_l1_l2_l3_with_default_config(self):
         s = build_scrubber()
         # Default: 1 L1 secrets + 1 L2 fields + 8 L3 validators = 10
-        # (L4 NLP not wired yet — see factory.py comment)
+        # (L4 NLP not wired yet -- see factory.py comment)
         assert len(s.layers) == 10
 
     def test_none_config_uses_defaults(self):
@@ -152,7 +152,7 @@ class TestBuildScrubberPerValidatorToggles:
 
 
 class TestBuildScrubberEndToEnd:
-    """Real text through a default scrubber — every layer fires."""
+    """Real text through a default scrubber -- every layer fires."""
 
     @pytest.fixture(scope="class")
     def s(self):
@@ -194,7 +194,7 @@ class TestBuildScrubberEndToEnd:
     def test_l3_context_required_abn_without_keyword_passes_through(self, s):
         from common.fake_pii import au_abn_bare
 
-        # Bare digit run without context — should NOT redact
+        # Bare digit run without context -- should NOT redact
         bare = au_abn_bare().replace(" ", "")
         text = f"Request {bare} logged"
         out = s.scrub(text)

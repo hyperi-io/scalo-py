@@ -6,7 +6,7 @@
 #  License:      FSL-1.1-ALv2
 #  Copyright:    (c) 2026 HYPERI PTY LIMITED
 
-"""Tests for circuit breaker — Closed/Open/HalfOpen state machine."""
+"""Tests for circuit breaker -- Closed/Open/HalfOpen state machine."""
 
 import asyncio
 import threading
@@ -90,7 +90,7 @@ class TestClosedToOpenTransition:
         cb.record_failure()
         cb.record_failure()
         cb.record_success()
-        # After success, failures reset — two more failures shouldn't open
+        # After success, failures reset -- two more failures shouldn't open
         cb.record_failure()
         cb.record_failure()
         assert cb.state == CircuitState.CLOSED

@@ -78,7 +78,7 @@ class SecretPermissionError(ProviderError):
         self.hint = hint
         message = f"permission denied: cannot {operation} '{path}'"
         if hint:
-            message += f" — {hint}"
+            message += f" -- {hint}"
         super().__init__(provider, message)
 
 

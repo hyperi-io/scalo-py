@@ -6,10 +6,10 @@
 #  License:   FSL-1.1-ALv2
 #  Copyright: (c) 2026 HYPERI PTY LIMITED
 
-"""Email validator — strong-structural.
+"""Email validator -- strong-structural.
 
 Detects email addresses via a pragmatic RFC 5322 subset. python-stdnum
-has no email module; the structural regex IS the validation — we
+has no email module; the structural regex IS the validation -- we
 trust the pattern (no separate is_valid() call). False-positive rate
 is low for the structural shape.
 """

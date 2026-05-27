@@ -1,6 +1,6 @@
 #  Project:   hyperi-pylib
 #  File:      src/hyperi_pylib/logger/scrub/types.py
-#  Purpose:   Scrubber Protocol — discrete-object contract per spec §2.3
+#  Purpose:   Scrubber Protocol -- discrete-object contract per spec §2.3
 #  Language:  Python
 #
 #  License:   FSL-1.1-ALv2
@@ -8,11 +8,11 @@
 
 """Protocol every scrubber satisfies.
 
-See spec §2.3 — the scrubber is a first-class object/protocol, not a
+See spec §2.3 -- the scrubber is a first-class object/protocol, not a
 free function or global mutable state. Implementations:
 
-- :class:`LayeredScrubber` — the canonical multi-layer scrubber
-- :class:`NoOpScrubber` — pass-through for testing
+- :class:`LayeredScrubber` -- the canonical multi-layer scrubber
+- :class:`NoOpScrubber` -- pass-through for testing
 - Consumer code may implement custom scrubbers for special use cases
   (audit-log channels with relaxed rules, etc.)
 """

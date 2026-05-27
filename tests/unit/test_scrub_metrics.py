@@ -31,7 +31,7 @@ from hyperi_pylib.logger.scrub import (
 )
 
 # ---------------------------------------------------------------------------
-# Fake metrics backend — records every call for assertion
+# Fake metrics backend -- records every call for assertion
 # ---------------------------------------------------------------------------
 
 
@@ -86,7 +86,7 @@ class _FakeBackend:
 
 
 # ---------------------------------------------------------------------------
-# ScrubMetrics — no-op contract
+# ScrubMetrics -- no-op contract
 # ---------------------------------------------------------------------------
 
 
@@ -111,7 +111,7 @@ class TestScrubMetricsNoOp:
 
 
 # ---------------------------------------------------------------------------
-# ScrubMetrics — wired to a fake backend
+# ScrubMetrics -- wired to a fake backend
 # ---------------------------------------------------------------------------
 
 
@@ -164,7 +164,7 @@ class TestScrubMetricsWiring:
         assert ("set", "log_scrub_pattern_version", {"source": "gitleaks", "version": "1.5.0"}, 1) in backend.events
 
     def test_backend_exception_swallowed(self):
-        """Broken backend must not propagate — scrubber stays alive."""
+        """Broken backend must not propagate -- scrubber stays alive."""
 
         class _BrokenBackend:
             def counter(self, *a, **k):
@@ -184,7 +184,7 @@ class TestScrubMetricsWiring:
 
 
 # ---------------------------------------------------------------------------
-# End-to-end — factory wires metrics into all layers
+# End-to-end -- factory wires metrics into all layers
 # ---------------------------------------------------------------------------
 
 
@@ -248,7 +248,7 @@ class TestFactoryEmitsMetrics:
             ),
             metrics=metrics,
         )
-        # No "abn" keyword — regex still matches the digit run though
+        # No "abn" keyword -- regex still matches the digit run though
         # Bare ABN, no keyword → context-required validator must not redact
         s.scrub(f"Request {au_abn_bare().replace(' ', '')} logged")
         events = self._events_by_name(backend)
@@ -264,7 +264,7 @@ class TestFactoryEmitsMetrics:
         s.scrub(f"AWS_ACCESS_KEY={aws_access_key()} leaked")
         events = self._events_by_name(backend)
         # Some L1 metric for an AWS-related key fired (detect-secrets
-        # type names vary by version — assert at least one L1 redaction).
+        # type names vary by version -- assert at least one L1 redaction).
         l1_red = [ev for ev in events["log_scrub_redactions_total"] if ev[2].get("layer") == "L1"]
         assert len(l1_red) >= 1
 
@@ -315,7 +315,7 @@ class TestMetricsEnabledKillSwitch:
         cfg = ScrubConfig(metrics_enabled=False)
         s = build_scrubber(cfg, metrics=metrics)
         s.scrub(f"{email()} password=hunter2")
-        # No events recorded — the kill-switch dropped the backend.
+        # No events recorded -- the kill-switch dropped the backend.
         assert backend.events == []
 
     def test_enabled_true_records_events(self):
@@ -368,9 +368,9 @@ class TestCardinalityCap:
         with _w.catch_warnings(record=True) as warned:
             _w.simplefilter("always")
             m.inc_match("L1", "A")  # accepted, under cap
-            m.inc_match("L1", "B")  # over cap — warn
-            m.inc_match("L1", "C")  # over cap — silent
-            m.inc_match("L1", "D")  # over cap — silent
+            m.inc_match("L1", "B")  # over cap -- warn
+            m.inc_match("L1", "C")  # over cap -- silent
+            m.inc_match("L1", "D")  # over cap -- silent
         cap_warns = [w for w in warned if "OVER_CAP" in str(w.message) or "cardinality" in str(w.message)]
         assert len(cap_warns) == 1
 
@@ -387,7 +387,7 @@ class TestCardinalityCap:
         m = ScrubMetrics(backend=backend, type_cardinality_cap=2)
         m.inc_match("L1", "A")
         m.inc_match("L1", "B")
-        # match counter already saw A,B — redaction with NEW type "C"
+        # match counter already saw A,B -- redaction with NEW type "C"
         # should now overflow.
         import warnings as _w
 

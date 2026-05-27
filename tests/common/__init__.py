@@ -3,7 +3,7 @@
 Importable from any test module via ``from common.X import ...``
 (``tests/`` is on ``pythonpath`` per pyproject.toml).
 
-**Test-fixture hygiene convention** — `fake_secrets` + `fake_pii`:
+**Test-fixture hygiene convention** -- `fake_secrets` + `fake_pii`:
 
 GitHub Push Protection, gitleaks, AWS secret scanning, and similar
 source-byte scanners detect credentials by pattern-matching the bytes
@@ -18,7 +18,7 @@ a string that:
 - Matches a credential / PII regex (so the scrubber's pattern fires), OR
 - Could conceivably be flagged by a future content scanner.
 
-Concrete examples — DO use factories for: AWS keys, GitHub tokens,
+Concrete examples -- DO use factories for: AWS keys, GitHub tokens,
 Stripe keys, JWTs, private-key blocks, credit-card numbers, IBANs,
 phone numbers in international form, and AU national IDs (ABN /
 ACN / TFN / Medicare).

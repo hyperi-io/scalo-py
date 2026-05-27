@@ -25,7 +25,7 @@ the ``regex`` Rust crate which also accepts the superset.
 
 Unused upstream sections (``[allowlist]``, ``[[rules.tags]]``,
 ``[[rules.allowlists]]``, ``title``, ``minVersion``) are tolerated
-silently — the loader reads only the fields it understands.
+silently -- the loader reads only the fields it understands.
 
 The legacy :mod:`hyperi_pylib.logger.secrets_leak` path
 (detect-secrets-backed) remains available for callers that want
@@ -72,7 +72,7 @@ def load_gitleaks_rules(
     Tolerant: a missing or malformed file emits a one-time warning and
     returns ``([], {})`` rather than raising. Unknown rule fields and
     top-level sections (``[allowlist]``, ``[[allowlists]]``, etc.)
-    are ignored — the loader extracts what it needs and leaves the
+    are ignored -- the loader extracts what it needs and leaves the
     rest alone.
     """
     if path is not None:
@@ -143,7 +143,7 @@ class _CompiledRule:
 
 
 class GitleaksTomlScrubber:
-    """L1 — secret artefacts, TOML-driven.
+    """L1 -- secret artefacts, TOML-driven.
 
     Args:
         rules: pre-loaded list of rule dicts from
@@ -186,7 +186,7 @@ class GitleaksTomlScrubber:
                 continue
             rule_id = str(entry.get("id", "")).strip()
             regex_str = entry.get("regex")
-            # Upstream gitleaks rules don't carry a `label` field — we derive
+            # Upstream gitleaks rules don't carry a `label` field -- we derive
             # one from the id (kebab-case -> UPPER_SNAKE_CASE). Hand-authored
             # HyperI rules MAY supply an explicit label override.
             label = str(entry.get("label") or _derive_label(rule_id))
@@ -195,7 +195,7 @@ class GitleaksTomlScrubber:
             if rule_ids is not None and rule_id not in rule_ids:
                 continue
             try:
-                # `regex.MULTILINE | regex.V1` — V1 enables the modern
+                # `regex.MULTILINE | regex.V1` -- V1 enables the modern
                 # behaviour (better Unicode, fewer footguns). Accepts the
                 # mid-expression `(?i)` and `\z` constructs upstream uses.
                 pattern = regex.compile(regex_str, regex.MULTILINE | regex.V1)
@@ -229,7 +229,7 @@ class GitleaksTomlScrubber:
         # more specific rule (e.g. ``private-key``) needs to match.
         #
         # Tie-breaking when matches overlap: prefer the longer match
-        # (more specific). Equal lengths → earlier rule wins (preserves
+        # (more specific). Equal lengths -> earlier rule wins (preserves
         # upstream TOML ordering as a deterministic tiebreaker).
         lowered = text.lower()
         candidates: list[tuple[int, int, _CompiledRule]] = []

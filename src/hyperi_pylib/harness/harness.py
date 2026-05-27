@@ -39,11 +39,14 @@ class TerminationReason(Enum):
 
 @dataclass
 class ActivityIndicator:
-    """Defines what constitutes activity for monitoring"""
+    """Defines what constitutes activity for monitoring."""
 
     log_patterns: list[str] = None  # Regex patterns in logs to detect activity
     file_monitors: list[str] = None  # File paths to monitor for changes
-    output_monitors: list[str] = None  # Output patterns to monitor
+    output_monitors: list[str] = None  # Output patterns to monitor (any kind)
+    failure_patterns: list[str] = None  # Patterns that mean abort + return FAILURE_DETECTED
+    success_patterns: list[str] = None  # Patterns that mean "task done, keep draining"
+    progress_patterns: list[str] = None  # Patterns that reset the inactivity clock
 
     def __post_init__(self):
         if self.log_patterns is None:
@@ -52,6 +55,12 @@ class ActivityIndicator:
             self.file_monitors = []
         if self.output_monitors is None:
             self.output_monitors = []
+        if self.failure_patterns is None:
+            self.failure_patterns = []
+        if self.success_patterns is None:
+            self.success_patterns = []
+        if self.progress_patterns is None:
+            self.progress_patterns = []
 
 
 @dataclass
@@ -101,6 +110,8 @@ def run(
             cmd,
             capture_output=True,
             text=True,
+            encoding="utf-8",
+            errors="replace",
             timeout=timeout,
             check=check,
             cwd=cwd,
@@ -120,7 +131,7 @@ def run(
 
     # Log to file if specified
     if log_file:
-        with log_file.open("a") as f:
+        with log_file.open("a", encoding="utf-8") as f:
             f.write(f"\n{'=' * 80}\n")
             if log_label:
                 f.write(f"{log_label}\n")
@@ -207,6 +218,8 @@ class SmartTimeoutMonitor:
                 stdout=subprocess.PIPE,
                 stderr=subprocess.STDOUT,
                 text=True,
+                encoding="utf-8",
+                errors="replace",
                 cwd=working_dir,
                 env=env,
                 bufsize=1,
@@ -232,7 +245,7 @@ class SmartTimeoutMonitor:
 
             return HarnessResult(
                 success=(timeout_reason == TerminationReason.COMPLETED and return_code == 0),
-                timeout_reason=timeout_reason,
+                termination_reason=timeout_reason,
                 total_duration=total_duration,
                 last_activity_time=time.time() - self.last_activity_time,
                 activity_count=self.activity_count,
@@ -243,7 +256,7 @@ class SmartTimeoutMonitor:
         except Exception as e:
             return HarnessResult(
                 success=False,
-                timeout_reason=TerminationReason.MANUAL_STOP,
+                termination_reason=TerminationReason.MANUAL_STOP,
                 total_duration=time.time() - self.start_time if self.start_time else 0,
                 last_activity_time=0,
                 activity_count=self.activity_count,
@@ -261,6 +274,98 @@ class SmartTimeoutMonitor:
             if path.exists():
                 self.file_timestamps[str(path)] = path.stat().st_mtime
 
+    def _register_activity(self, kind: str) -> None:
+        """Reset the inactivity clock."""
+        self.last_activity_time = time.time()
+        self.activity_count += 1
+        logger.debug(f"activity registered ({kind}); count={self.activity_count}")
+
+    def _check_file_activity(self, file_paths: list[str]) -> bool:
+        """True if any monitored file's mtime advanced."""
+        if not file_paths:
+            return False
+        changed = False
+        for file_path in file_paths:
+            path = Path(file_path)
+            if not path.exists():
+                continue
+            mtime = path.stat().st_mtime
+            previous = self.file_timestamps.get(str(path))
+            if previous is None or mtime > previous:
+                self.file_timestamps[str(path)] = mtime
+                changed = True
+        return changed
+
+    def _read_output_with_monitoring(self, activity_indicators: ActivityIndicator) -> TerminationReason:
+        """Stream stdout; return reason monitoring stopped.
+
+        Reader thread + Queue so timeouts fire even when child is silent
+        (readline() would otherwise block past both deadlines).
+        """
+        if self.process is None or self.process.stdout is None:
+            return TerminationReason.MANUAL_STOP
+
+        failure_patterns = activity_indicators.failure_patterns or []
+        success_patterns = activity_indicators.success_patterns or []
+        progress_patterns = activity_indicators.progress_patterns or []
+
+        from queue import Empty, Queue
+
+        line_queue: Queue[str | None] = Queue()
+        proc_stdout = self.process.stdout  # captured for the reader closure
+
+        def _reader() -> None:
+            try:
+                for line in iter(proc_stdout.readline, ""):
+                    line_queue.put(line)
+            except Exception:
+                pass
+            finally:
+                line_queue.put(None)  # sentinel: EOF
+
+        reader_thread = threading.Thread(target=_reader, daemon=True)
+        reader_thread.start()
+
+        eof_seen = False
+        while self.monitoring:
+            now = time.time()
+            if now - self.start_time > self.total_timeout:
+                return TerminationReason.TOTAL_EXECUTION
+            if now - self.last_activity_time > self.activity_timeout:
+                return TerminationReason.NO_ACTIVITY
+
+            # Poll the queue with a small timeout so timeout checks above
+            # fire promptly even when no output is arriving.
+            try:
+                item = line_queue.get(timeout=0.1)
+            except Empty:
+                # No line this tick; loop back to check timeouts + process poll.
+                if eof_seen and self.process.poll() is not None:
+                    return TerminationReason.COMPLETED
+                continue
+
+            if item is None:
+                # Reader hit EOF. The process is either done or about to be.
+                eof_seen = True
+                if self.process.poll() is not None:
+                    return TerminationReason.COMPLETED
+                continue
+
+            line = item
+            self.output_buffer.append(line.rstrip("\n"))
+            self._register_activity("stdout")
+
+            lowered = line.lower()
+            if any(pattern.lower() in lowered for pattern in failure_patterns):
+                return TerminationReason.FAILURE_DETECTED
+            if any(pattern.lower() in lowered for pattern in success_patterns):
+                # Success pattern reached -- keep draining until process exits
+                pass
+            if progress_patterns and any(pattern.lower() in lowered for pattern in progress_patterns):
+                self._register_activity("progress_pattern")
+
+        return TerminationReason.MANUAL_STOP
+
     def _monitor_activity(self, activity_indicators: ActivityIndicator):
         """Monitor for activity indicators in separate thread"""
 
@@ -273,7 +378,10 @@ class SmartTimeoutMonitor:
 
             # Check total timeout
             if current_time - self.start_time > self.total_timeout:
-                logger.warning(f"⏰ Total execution timeout ({self.total_timeout}s) reached")
+                logger.warning(f"Total execution timeout ({self.total_timeout}s) reached")
+                break
+
+            time.sleep(1.0)
 
     def _terminate_process(self):
         """Terminate the monitored process"""
@@ -352,12 +460,17 @@ def smart_run(
             r"Starting",
         ]
 
-    activity_indicators = ActivityIndicator(output_monitors=failure_patterns + success_patterns + progress_patterns)
+    activity_indicators = ActivityIndicator(
+        output_monitors=failure_patterns + success_patterns + progress_patterns,
+        failure_patterns=failure_patterns,
+        success_patterns=success_patterns,
+        progress_patterns=progress_patterns,
+    )
 
     timeout_manager = SmartTimeoutMonitor(activity_timeout=activity_timeout, total_timeout=total_timeout)
 
     return timeout_manager.run_with_smart_timeout(
-        command=command, activity_indicators=activity_indicators, working_directory=os.getcwd()
+        command=command, activity_indicators=activity_indicators, working_dir=os.getcwd()
     )
 
 
@@ -423,6 +536,55 @@ class FunctionTimeoutMonitor:
         self.progress_callback_called = False
 
         logger.info(f"Starting function: {description}")
+
+        def _runner() -> None:
+            try:
+                self.result = func(*args, **kwargs)
+            except Exception as exc:
+                self.exception = exc
+
+        self.function_thread = threading.Thread(
+            target=_runner, daemon=True, name=f"harness:{description or func.__name__}"
+        )
+        self.function_thread.start()
+        self.function_thread.join(timeout=self.total_timeout)
+        self.monitoring = False
+        total_duration = time.time() - self.start_time
+
+        if self.function_thread.is_alive():
+            # Python can't interrupt a running thread; the thread leaks but at
+            # least the caller sees a deterministic TOTAL_EXECUTION and we don't
+            # block indefinitely.
+            return HarnessResult(
+                success=False,
+                termination_reason=TerminationReason.TOTAL_EXECUTION,
+                total_duration=total_duration,
+                last_activity_time=time.time() - self.last_activity_time,
+                activity_count=self.activity_count,
+                final_output="",
+                error_message=f"function exceeded total_timeout={self.total_timeout}s",
+            )
+
+        if self.exception is not None:
+            return HarnessResult(
+                success=False,
+                termination_reason=TerminationReason.FAILURE_DETECTED,
+                total_duration=total_duration,
+                last_activity_time=time.time() - self.last_activity_time,
+                activity_count=self.activity_count,
+                final_output=repr(self.result) if self.result is not None else "",
+                error_message=str(self.exception),
+            )
+
+        return HarnessResult(
+            success=True,
+            termination_reason=TerminationReason.COMPLETED,
+            total_duration=total_duration,
+            last_activity_time=time.time() - self.last_activity_time,
+            activity_count=self.activity_count,
+            final_output=repr(self.result) if self.result is not None else "",
+            return_code=0,
+        )
 
 
 def smart_run_function(
@@ -507,6 +669,8 @@ def container_registry_login() -> tuple[bool, str]:
             input=registry_pass,
             capture_output=True,
             text=True,
+            encoding="utf-8",
+            errors="replace",
             timeout=30,
         )  # nosec B603,B607 - Docker login with controlled inputs
 
@@ -565,6 +729,8 @@ def check_registry_throttling(namespace: str) -> tuple[bool, str]:
             ["kubectl", "get", "events", "-n", namespace, "--field-selector", "type=Warning"],
             capture_output=True,
             text=True,
+            encoding="utf-8",
+            errors="replace",
             timeout=10,
         )  # nosec B603,B607 - kubectl with controlled namespace
 
@@ -578,6 +744,8 @@ def check_registry_throttling(namespace: str) -> tuple[bool, str]:
             ["kubectl", "get", "pods", "-n", namespace, "-o", "json"],
             capture_output=True,
             text=True,
+            encoding="utf-8",
+            errors="replace",
             timeout=10,
         )  # nosec B603,B607 - kubectl with controlled namespace
 
@@ -639,6 +807,8 @@ def check_container_registry_access() -> tuple[bool, dict]:
             ["docker", "manifest", "inspect", f"{registry_url}/{probe_image}"],
             capture_output=True,
             text=True,
+            encoding="utf-8",
+            errors="replace",
             timeout=15,
         )  # nosec B603,B607 - Docker manifest with controlled URL
 

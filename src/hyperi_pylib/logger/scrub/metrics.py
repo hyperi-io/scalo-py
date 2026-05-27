@@ -11,15 +11,15 @@
 Five metrics, identical names in both pylib and rustlib so operator
 dashboards work across implementations:
 
-- ``log_scrub_matches_total`` — counter, labels ``layer``/``type``
-- ``log_scrub_redactions_total`` — counter, labels ``layer``/``type``
-- ``log_scrub_errors_total`` — counter, labels ``layer``/``error_type``
-- ``log_scrub_skipped_rules_total`` — gauge, labels ``layer``/``rule_id``
-- ``log_scrub_duration_seconds`` — histogram, label ``layer``
+- ``log_scrub_matches_total`` -- counter, labels ``layer``/``type``
+- ``log_scrub_redactions_total`` -- counter, labels ``layer``/``type``
+- ``log_scrub_errors_total`` -- counter, labels ``layer``/``error_type``
+- ``log_scrub_skipped_rules_total`` -- gauge, labels ``layer``/``rule_id``
+- ``log_scrub_duration_seconds`` -- histogram, label ``layer``
 
 Plus a label-set emitted once per scrubber build:
 
-- ``log_scrub_pattern_version`` — labels ``source``/``version``
+- ``log_scrub_pattern_version`` -- labels ``source``/``version``
 
 The scrubber takes a :class:`ScrubMetrics` instance (or its no-op
 default). This keeps it decoupled from any specific metrics-manager
@@ -27,7 +27,7 @@ implementation: tests pass ``ScrubMetrics()`` (no-op) and production
 passes ``ScrubMetrics.from_manager(metrics_manager)``.
 
 Per spec §8: scrub-metric emission is best-effort. Failures here must
-NEVER break logging — every method wraps backend calls and swallows
+NEVER break logging -- every method wraps backend calls and swallows
 exceptions silently. The scrubber's own logging suppression already
 prevents storms from a misbehaving backend.
 """
@@ -58,7 +58,7 @@ class ScrubMetrics:
     Args:
         backend: an object exposing ``counter()``, ``gauge()``, and
             ``histogram()`` methods returning Prometheus-style metric
-            handles. ``None`` (default) yields a no-op instance — every
+            handles. ``None`` (default) yields a no-op instance -- every
             emit is a cheap branch with no side effects.
 
     Example:
@@ -81,7 +81,7 @@ class ScrubMetrics:
         self._duration: _MetricHandle | None = None
         self._pattern_version: _MetricHandle | None = None
 
-        # Cardinality cap for the `type` label. Tracked per instance —
+        # Cardinality cap for the `type` label. Tracked per instance --
         # tests that build fresh scrubbers get fresh caps. The seen set
         # is shared across matches+redactions so they cap together.
         self._type_cap = type_cardinality_cap

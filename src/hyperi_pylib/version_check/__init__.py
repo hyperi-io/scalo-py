@@ -17,13 +17,13 @@ application startup.
 Quick Start:
     >>> from hyperi_pylib.version_check import check_on_startup
     >>>
-    >>> # Fire-and-forget — spawns a daemon thread, returns immediately
+    >>> # Fire-and-forget -- spawns a daemon thread, returns immediately
     >>> check_on_startup(product="dfe-receiver", version="1.2.0")
 
 Configuration:
     Environment variables override defaults:
-    - VERSION_CHECK_DISABLED=true  — disable the check entirely
-    - VERSION_CHECK_URL=https://...  — override the API endpoint
+    - VERSION_CHECK_DISABLED=true  -- disable the check entirely
+    - VERSION_CHECK_URL=https://...  -- override the API endpoint
 
 Dependencies:
     - httpx (optional, from hyperi-pylib[http])

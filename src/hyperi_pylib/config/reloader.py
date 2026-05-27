@@ -7,7 +7,7 @@
 #  Copyright:    (c) 2026 HYPERI PTY LIMITED
 
 """
-Config Reloader — wraps Dynaconf reload with polling and callbacks.
+Config Reloader -- wraps Dynaconf reload with polling and callbacks.
 
 Mirrors rustlib's SharedConfig/ConfigReloader pattern. Provides:
 - Periodic polling (configurable interval, 0 = disabled)

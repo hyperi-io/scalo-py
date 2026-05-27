@@ -50,7 +50,7 @@ FIXTURES = _load_fixtures()
 
 
 # ---------------------------------------------------------------------------
-# Helpers — build a tight scrubber per validator under test
+# Helpers -- build a tight scrubber per validator under test
 # ---------------------------------------------------------------------------
 
 

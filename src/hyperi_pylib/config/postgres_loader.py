@@ -138,11 +138,10 @@ import asyncio
 import json
 import logging
 import os
-import tempfile
+import re
 import time
 from pathlib import Path
 from typing import Any
-from urllib.parse import urlparse
 
 import yaml
 
@@ -270,7 +269,7 @@ class PostgresConfigLoader:
             if fallback_file_env:
                 self.fallback_file = Path(fallback_file_env)
             else:
-                self.fallback_file = Path(tempfile.gettempdir()) / f"{self.namespace}_config_fallback.yaml"
+                self.fallback_file = self._default_fallback_path(self.namespace)
 
         self.fallback_mode = fallback_mode or os.getenv("HYPERI_CONFIG_FALLBACK_MODE", self.DEFAULT_FALLBACK_MODE)
 
@@ -282,14 +281,35 @@ class PostgresConfigLoader:
         """Check if PostgreSQL config is enabled (DSN is set)."""
         return bool(self.dsn)
 
-    def _mask_dsn(self, dsn: str) -> str:
-        """Mask credentials in DSN for logging."""
+    @staticmethod
+    def _default_fallback_path(namespace: str) -> Path:
+        """Per-user cache dir, NEVER /tmp (world-readable holds secrets)."""
+        import sys
+
+        xdg_cache = os.environ.get("XDG_CACHE_HOME")
+        if xdg_cache:
+            base = Path(xdg_cache) / "hyperi-ai" / "postgres-config-fallback"
+        elif sys.platform == "win32":
+            base = Path(os.environ.get("LOCALAPPDATA", str(Path.home()))) / "hyperi-ai" / "postgres-config-fallback"
+        else:
+            base = Path.home() / ".cache" / "hyperi-ai" / "postgres-config-fallback"
+        return base / f"{namespace}.yaml"
+
+    # Match scheme://user:password@host (password = everything up to '@' that
+    # isn't ':' or '/' or '@'). Used to scrub DSN-shaped substrings out of
+    # arbitrary text (e.g. psycopg error messages that embed the DSN).
+    _DSN_CRED_RE = re.compile(r"(\w+://[^:/@\s]+:)([^@\s]+)(@)")
+
+    def _mask_dsn(self, dsn: str | None) -> str:
+        """Mask credentials in a DSN OR any string containing a DSN substring.
+
+        Safe to call on raw psycopg exception messages that embed the
+        connection URL alongside other text. Always returns a string.
+        """
+        if not dsn:
+            return ""
         try:
-            parsed = urlparse(dsn)
-            if parsed.password:
-                masked = dsn.replace(f":{parsed.password}@", ":***@")
-                return masked
-            return dsn
+            return self._DSN_CRED_RE.sub(r"\1***\3", dsn)
         except Exception:
             return "postgresql://***"
 
@@ -331,7 +351,7 @@ class PostgresConfigLoader:
         Set nested dict value from dot-notation key.
 
         Example: _set_nested({}, "database.host", "localhost")
-                 → {"database": {"host": "localhost"}}
+                 -> {"database": {"host": "localhost"}}
         """
         keys = key.split(".")
         for k in keys[:-1]:
@@ -379,12 +399,16 @@ class PostgresConfigLoader:
             return False
 
         try:
-            # Ensure parent directory exists
+            # 0o700 on parent + 0o600 on file: fallback holds secret values.
             self.fallback_file.parent.mkdir(parents=True, exist_ok=True)
+            try:
+                self.fallback_file.parent.chmod(0o700)
+            except (OSError, NotImplementedError):
+                pass
 
             if self.fallback_mode == "merge" and self.fallback_file.exists():
                 # Load existing config and merge
-                with open(self.fallback_file) as f:
+                with open(self.fallback_file, encoding="utf-8") as f:
                     existing = yaml.safe_load(f) or {}
 
                 # Deep merge: new config overwrites existing
@@ -393,14 +417,17 @@ class PostgresConfigLoader:
             else:
                 config_to_write = config
 
-            # Write with header comment
-            with open(self.fallback_file, "w") as f:
+            with open(self.fallback_file, "w", encoding="utf-8", newline="\n") as f:
                 f.write("# PostgreSQL config fallback file\n")
                 f.write(f"# Generated at: {time.strftime('%Y-%m-%d %H:%M:%S UTC', time.gmtime())}\n")
                 f.write(f"# Namespace: {self.namespace}\n")
                 f.write(f"# Mode: {self.fallback_mode}\n")
                 f.write("# This file is auto-generated. Do not edit manually.\n\n")
                 yaml.safe_dump(config_to_write, f, default_flow_style=False, sort_keys=True)
+            try:
+                self.fallback_file.chmod(0o600)
+            except (OSError, NotImplementedError):
+                pass
 
             logger.debug(
                 "Wrote PostgreSQL config fallback file",
@@ -437,7 +464,7 @@ class PostgresConfigLoader:
             return None
 
         try:
-            with open(self.fallback_file) as f:
+            with open(self.fallback_file, encoding="utf-8") as f:
                 config = yaml.safe_load(f)
 
             if config is None:
@@ -581,7 +608,9 @@ class PostgresConfigLoader:
                     },
                 )
                 if not self.optional:
-                    raise PostgresConfigError(f"PostgreSQL config failed: {e}") from e
+                    raise PostgresConfigError(
+                        f"PostgreSQL config failed (host={self._mask_dsn(self.dsn)}): {self._mask_dsn(str(e))}"
+                    ) from None
                 # Try fallback file
                 fallback = self._load_fallback_file()
                 if fallback:
@@ -607,7 +636,8 @@ class PostgresConfigLoader:
             return {}
         else:
             raise PostgresConfigError(
-                f"PostgreSQL config unavailable after {self.retry_attempts} attempts: {last_error}"
+                f"PostgreSQL config unavailable after {self.retry_attempts} attempts "
+                f"(host={self._mask_dsn(self.dsn)}): {self._mask_dsn(str(last_error))}"
             )
 
     async def load_async(self) -> dict[str, Any]:
@@ -712,7 +742,9 @@ class PostgresConfigLoader:
                     },
                 )
                 if not self.optional:
-                    raise PostgresConfigError(f"PostgreSQL config failed: {e}") from e
+                    raise PostgresConfigError(
+                        f"PostgreSQL config failed (host={self._mask_dsn(self.dsn)}): {self._mask_dsn(str(e))}"
+                    ) from None
                 # Try fallback file
                 fallback = self._load_fallback_file()
                 if fallback:
@@ -738,7 +770,8 @@ class PostgresConfigLoader:
             return {}
         else:
             raise PostgresConfigError(
-                f"PostgreSQL config unavailable after {self.retry_attempts} attempts: {last_error}"
+                f"PostgreSQL config unavailable after {self.retry_attempts} attempts "
+                f"(host={self._mask_dsn(self.dsn)}): {self._mask_dsn(str(last_error))}"
             )
 
     def ensure_table(self, with_audit: bool = False) -> bool:

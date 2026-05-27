@@ -16,7 +16,7 @@ Gate logic (evaluated in order):
 2. Memory >= gate threshold -> return 100.0  (scale before OOM)
 3. Otherwise -> weighted sum * 100
 
-Thread-safe via ``threading.Lock`` — multiple async tasks may update
+Thread-safe via ``threading.Lock`` -- multiple async tasks may update
 components concurrently.
 """
 
@@ -29,7 +29,14 @@ from typing import Any
 
 @dataclass(slots=True)
 class ScalingPressureConfig:
-    """Configuration for scaling pressure weights and thresholds."""
+    """Scaling pressure weights + thresholds. Validates at construction:
+
+    - each weight in ``[0.0, 1.0]``
+    - weights sum to ``1.0`` (tolerance 0.001)
+    - ``memory_gate_threshold`` in ``(0.0, 1.0]``
+
+    Invalid -> ``ValueError`` at startup, not silent nonsense at runtime.
+    """
 
     memory_weight: float = 0.25
     queue_depth_weight: float = 0.30
@@ -37,6 +44,23 @@ class ScalingPressureConfig:
     error_rate_weight: float = 0.15
     custom_weight: float = 0.05
     memory_gate_threshold: float = 0.85
+
+    def __post_init__(self) -> None:
+        weights = {
+            "memory_weight": self.memory_weight,
+            "queue_depth_weight": self.queue_depth_weight,
+            "latency_weight": self.latency_weight,
+            "error_rate_weight": self.error_rate_weight,
+            "custom_weight": self.custom_weight,
+        }
+        for name, value in weights.items():
+            if not 0.0 <= value <= 1.0:
+                raise ValueError(f"{name} must be in [0.0, 1.0]; got {value}")
+        total = sum(weights.values())
+        if abs(total - 1.0) > 0.001:
+            raise ValueError(f"weights must sum to 1.0 (got {total:.4f}); weights: {weights}")
+        if not 0.0 < self.memory_gate_threshold <= 1.0:
+            raise ValueError(f"memory_gate_threshold must be in (0.0, 1.0]; got {self.memory_gate_threshold}")
 
 
 @dataclass(slots=True, frozen=True)
@@ -178,7 +202,7 @@ class ScalingPressure:
                 self._update_gauge(result)
                 return result
 
-            # Normal: weighted sum
+            # Weighted sum; final clamp guards against FP drift
             cfg = self._config
             weighted = (
                 self._memory * cfg.memory_weight
@@ -187,7 +211,7 @@ class ScalingPressure:
                 + self._error * cfg.error_rate_weight
                 + self._custom * cfg.custom_weight
             )
-            result = weighted * 100.0
+            result = _clamp(weighted * 100.0, low=0.0, high=100.0)
             self._update_gauge(result)
             return result
 

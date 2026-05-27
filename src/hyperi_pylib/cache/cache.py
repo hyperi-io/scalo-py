@@ -54,7 +54,7 @@ def configure_cache(
         >>> metrics = create_metrics("myapp")
         >>>
         >>> configure_cache(
-        ...     directory="/tmp/app-cache",
+        ...     directory="~/.cache/hyperi-ai/app-cache",
         ...     default_ttl="1h",
         ...     source_ttls={
         ...         "http": "24h",      # Web fetches cached 24 hours
@@ -180,20 +180,10 @@ def cached(
 
 
 async def invalidate_source(source: str) -> int:
-    """Invalidate all cache entries for a source type.
-
-    Args:
-        source: Source type to invalidate (e.g., "http", "tavily")
-
-    Returns:
-        Number of entries deleted
-
-    Usage:
-        >>> await invalidate_source("http")  # Clear all HTTP cache
-        >>> await invalidate_source("tavily")  # Clear all search cache
-    """
+    """Invalidate all cache entries for a source. Returns delete count (0 if backend unknown)."""
     pattern = f"{source}:*"
-    return await cache.delete_match(pattern)
+    deleted = await cache.delete_match(pattern)
+    return deleted if isinstance(deleted, int) else 0
 
 
 async def get_cached(source: str, identifier: str) -> Any | None:

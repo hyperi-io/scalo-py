@@ -1,6 +1,6 @@
 #  Project:   hyperi-pylib
 #  File:      src/hyperi_pylib/concurrency.py
-#  Purpose:   Generic async primitives — the small set every capability uses
+#  Purpose:   Generic async primitives -- the small set every capability uses
 #  Language:  Python
 #
 #  License:   FSL-1.1-ALv2
@@ -10,10 +10,10 @@
 
 Four building blocks that every HyperI capability composes:
 
-- :func:`run_blocking` — sync-to-async bridge (offload to worker thread).
-- :func:`make_async` — generate the async sibling of a sync method.
-- :class:`Bulkhead` — bounded concurrency limit per downstream dependency.
-- :func:`gather_with_timeouts` — parallel exec with per-task timeout.
+- :func:`run_blocking` -- sync-to-async bridge (offload to worker thread).
+- :func:`make_async` -- generate the async sibling of a sync method.
+- :class:`Bulkhead` -- bounded concurrency limit per downstream dependency.
+- :func:`gather_with_timeouts` -- parallel exec with per-task timeout.
 
 Composable resilience (timeout + retry + circuit breaker + bulkhead)
 lives in :mod:`hyperi_pylib.resilience` via ``with_resilience()``.
@@ -25,7 +25,7 @@ Discipline
   That blocks the event loop. Use :func:`make_async` or the audit will
   catch you.
 - Never share a global ``ThreadPoolExecutor`` for many downstream deps.
-  Use one :class:`Bulkhead` per dep — that's what bulkhead means.
+  Use one :class:`Bulkhead` per dep -- that's what bulkhead means.
 """
 
 from __future__ import annotations
@@ -66,7 +66,7 @@ async def run_blocking[**P, T](
         *args: Positional arguments passed to ``fn``.
         abandon_on_cancel: If False (default), the task waits for the
             worker thread to finish even if the calling task is
-            cancelled — Python cannot interrupt a running thread, so
+            cancelled -- Python cannot interrupt a running thread, so
             ignoring the outcome is the safest option. Set True to
             abandon and ignore the result.
         limiter: Optional ``anyio.CapacityLimiter`` to bound concurrency
@@ -109,7 +109,7 @@ def make_async[**P, T](
     Use the dual-API pattern: implement ``X_sync()`` only, then bind
     ``X_async = make_async(X_sync)`` at class level. The async version
     offloads to a worker thread, so it's safe to ``await`` from any
-    async caller — no blocking the event loop.
+    async caller -- no blocking the event loop.
 
     Built on ``asyncer.asyncify`` (which is itself built on AnyIO) for
     type-checker visibility into the wrapped callable's signature.
@@ -117,7 +117,7 @@ def make_async[**P, T](
     Args:
         sync_fn: The sync function to wrap.
         abandon_on_cancel: If True, async cancellation discards the
-            wrapped call's outcome. The thread itself keeps running —
+            wrapped call's outcome. The thread itself keeps running --
             Python cannot interrupt threads. Default False matches
             AnyIO's shield-by-default: the caller waits for the thread
             to finish even if cancelled.
@@ -183,7 +183,7 @@ async def gather_with_timeouts[T](
     """Run async tasks in parallel with a per-task timeout.
 
     Each task gets its own ``asyncio.timeout(per_task_timeout)`` budget.
-    Exceptions (including ``TimeoutError``) are captured per task — one
+    Exceptions (including ``TimeoutError``) are captured per task -- one
     slow check does not fail the others.
 
     Args:

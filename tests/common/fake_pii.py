@@ -29,7 +29,7 @@ expression, not the value.
 from __future__ import annotations
 
 # ---------------------------------------------------------------------------
-# Credit cards — Luhn-valid
+# Credit cards -- Luhn-valid
 # ---------------------------------------------------------------------------
 
 
@@ -53,7 +53,7 @@ def visa_card_compact() -> str:
 
 def mastercard() -> str:
     """A Luhn-valid 16-digit MasterCard-shaped card (canonical test)."""
-    # 5555 5555 5555 4444 — pieces broken so no contiguous full PAN.
+    # 5555 5555 5555 4444 -- pieces broken so no contiguous full PAN.
     return ("5" * 4) + " " + ("5" * 4) + " " + ("5" * 4) + " " + ("4" * 4)
 
 
@@ -63,7 +63,7 @@ def amex_card() -> str:
 
 
 # ---------------------------------------------------------------------------
-# IBAN — mod-97 valid
+# IBAN -- mod-97 valid
 # ---------------------------------------------------------------------------
 
 
@@ -95,7 +95,7 @@ def unicode_email() -> str:
 
 
 # ---------------------------------------------------------------------------
-# Phone — libphonenumber-valid
+# Phone -- libphonenumber-valid
 # ---------------------------------------------------------------------------
 
 
@@ -126,7 +126,7 @@ def au_abn_with_context() -> str:
 
 
 def au_abn_bare() -> str:
-    """A valid AU ABN WITHOUT context — context-required validator
+    """A valid AU ABN WITHOUT context -- context-required validator
     must not redact this."""
     return "53" + " 004 085 616"
 

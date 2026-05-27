@@ -6,19 +6,19 @@ Test organisation for hyperi-pylib following standard testing patterns.
 
 ```
 tests/
-├── conftest.py           # Shared pytest fixtures and configuration
-├── unit/                 # Unit tests (fast, isolated)
-│   ├── test_config*.py   # Configuration tests
-│   ├── test_cache*.py    # Cache tests
-│   ├── test_kafka*.py    # Kafka tests
-│   ├── test_logger*.py   # Logger tests
-│   └── test_*.py         # Other module tests
-├── integration/          # Integration tests (require services)
-│   ├── test_kafka*.py    # Kafka integration (requires Docker)
-│   ├── test_cache*.py    # PostgreSQL cache (requires Docker)
-│   └── test_config*.py   # PostgreSQL config (requires Docker)
-└── e2e/                  # End-to-end tests
-    └── (future tests)
++-- conftest.py           # Shared pytest fixtures and configuration
++-- unit/                 # Unit tests (fast, isolated)
+|   +-- test_config*.py   # Configuration tests
+|   +-- test_cache*.py    # Cache tests
+|   +-- test_kafka*.py    # Kafka tests
+|   +-- test_logger*.py   # Logger tests
+|   +-- test_*.py         # Other module tests
++-- integration/          # Integration tests (require services)
+|   +-- test_kafka*.py    # Kafka integration (requires Docker)
+|   +-- test_cache*.py    # PostgreSQL cache (requires Docker)
+|   +-- test_config*.py   # PostgreSQL config (requires Docker)
++-- e2e/                  # End-to-end tests
+    +-- (future tests)
 ```
 
 ## Test Types

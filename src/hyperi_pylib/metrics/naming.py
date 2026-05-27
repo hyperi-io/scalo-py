@@ -15,7 +15,7 @@ Counters must end in _total.
 Histograms/durations should end in _seconds, _bytes, or _ratio.
 All DFE metrics should be prefixed with dfe_{app}_.
 
-Validation is non-blocking — returns warnings but does not raise.
+Validation is non-blocking -- returns warnings but does not raise.
 """
 
 from ..logger import logger

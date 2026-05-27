@@ -28,12 +28,11 @@ import subprocess
 import sys
 import time
 from dataclasses import dataclass
-from functools import lru_cache
+from functools import cache, lru_cache
 from pathlib import Path
 from typing import Callable
 
 import pytest
-
 
 SKIP_PREFIX = "HYPERCI-SKIP[contract-e2e]"
 """Canonical greppable prefix for runner aggregation."""
@@ -62,7 +61,7 @@ def _shell_ok(args: list[str], timeout: float = 10.0) -> bool:
     return result.returncode == 0
 
 
-@lru_cache(maxsize=None)
+@cache
 def docker_available() -> bool:
     """Docker daemon reachable for build/run."""
     if shutil.which("docker") is None:
@@ -70,7 +69,7 @@ def docker_available() -> bool:
     return _shell_ok(["docker", "info"])
 
 
-@lru_cache(maxsize=None)
+@cache
 def helm_available() -> bool:
     """Helm CLI installed and responsive."""
     if shutil.which("helm") is None:
@@ -78,13 +77,13 @@ def helm_available() -> bool:
     return _shell_ok(["helm", "version"])
 
 
-@lru_cache(maxsize=None)
+@cache
 def kubeconform_available() -> bool:
     """kubeconform CLI present (lint-only, no health probe)."""
     return shutil.which("kubeconform") is not None
 
 
-@lru_cache(maxsize=None)
+@cache
 def kind_available() -> bool:
     """kind CLI installed and responsive."""
     if shutil.which("kind") is None:
@@ -92,7 +91,7 @@ def kind_available() -> bool:
     return _shell_ok(["kind", "version"])
 
 
-@lru_cache(maxsize=None)
+@cache
 def kubectl_available() -> bool:
     """kubectl client installed and responsive (no server required)."""
     if shutil.which("kubectl") is None:
@@ -131,24 +130,23 @@ def _skip_log_path() -> Path:
 
 
 def skip(tier: str, test_name: str, reason: str) -> None:
-    """Emit a canonical skip line and call :func:`pytest.skip`.
+    """Emit canonical skip line on stderr + best-effort log, then ``pytest.skip``.
 
-    Writes ``HYPERCI-SKIP[contract-e2e][<tier>]: <test_name>: <reason>``
-    to ``sys.stderr`` AND appends it to the side-channel log file. Then
-    raises ``pytest.skip.Exception`` via :func:`pytest.skip`, so callers
-    don't need an extra ``return``.
-
-    Raises:
-        ValueError: if ``tier`` is not ``tier-a`` or ``tier-b``.
+    Aggregator parses stderr; log file is advisory and OSError is swallowed.
+    Raises ``ValueError`` if ``tier`` is not ``tier-a`` or ``tier-b``.
     """
     if tier not in _VALID_TIERS:
         raise ValueError(f"tier must be one of {sorted(_VALID_TIERS)}; got {tier!r}")
     line = f"{SKIP_PREFIX}[{tier}]: {test_name}: {reason}"
     print(line, file=sys.stderr, flush=True)
-    log_path = _skip_log_path()
-    log_path.parent.mkdir(parents=True, exist_ok=True)
-    with open(log_path, "a", encoding="utf-8", newline="\n") as fh:
-        fh.write(line + "\n")
+    try:
+        log_path = _skip_log_path()
+        log_path.parent.mkdir(parents=True, exist_ok=True)
+        with open(log_path, "a", encoding="utf-8", newline="\n") as fh:
+            fh.write(line + "\n")
+    except OSError:
+        # Read-only filesystem, missing perms, etc. Skip still proceeds.
+        pass
     pytest.skip(reason)
 
 
@@ -209,10 +207,7 @@ class KindClusterGuard:
 
     def __enter__(self) -> KindClusterGuard:
         if not (kind_available() and kubectl_available() and tier_b_enabled()):
-            raise RuntimeError(
-                "kind cluster prerequisites not met: requires kind, kubectl, "
-                "and HYPERI_E2E_CLUSTER=1"
-            )
+            raise RuntimeError("kind cluster prerequisites not met: requires kind, kubectl, and HYPERI_E2E_CLUSTER=1")
         # Cluster brought up by caller via subprocess; this class only
         # tracks the lifecycle. Test bodies invoke `kind create cluster`
         # with self.name so they can pass --image / --config flags.

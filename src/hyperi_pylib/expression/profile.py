@@ -1,12 +1,12 @@
 # Project:   hyperi-pylib
 # File:      expression/profile.py
-# Purpose:   DFE expression profile — allowed subset of CEL
+# Purpose:   DFE expression profile -- allowed subset of CEL
 # Language:  Python
 #
 # License:   FSL-1.1-ALv2
 # Copyright: (c) 2026 HYPERI PTY LIMITED
 
-"""DFE Expression Profile — the allowed subset of CEL.
+"""DFE Expression Profile -- the allowed subset of CEL.
 
 The DFE profile restricts CEL to high-performance operations only.
 Per-element iteration (map/filter/exists/all) is excluded because
@@ -37,7 +37,7 @@ ALLOWED_FUNCTIONS: frozenset[str] = frozenset(
     }
 )
 
-# Functions explicitly banned — per-element iteration is too expensive.
+# Functions explicitly banned -- per-element iteration is too expensive.
 DISALLOWED_FUNCTIONS: frozenset[str] = frozenset(
     {
         "map",

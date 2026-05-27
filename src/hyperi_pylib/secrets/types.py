@@ -11,6 +11,7 @@ class ProviderType(Enum):
 
     FILE = "file"
     OPENBAO = "openbao"
+    VAULT = "vault"  # Alias for OpenBao (HashiCorp Vault is API-compatible)
     AWS = "aws"
     GCP = "gcp"
     AZURE = "azure"
@@ -121,14 +122,14 @@ class OpenBaoConfig:
     auth_method: str = "token"
     """Authentication method: token, approle, kubernetes."""
 
-    token: str | None = None
-    """Vault token (for token auth)."""
+    token: str | None = field(default=None, repr=False)
+    """Vault token (for token auth). repr=False to prevent repr leak."""
 
-    role_id: str | None = None
-    """AppRole role ID."""
+    role_id: str | None = field(default=None, repr=False)
+    """AppRole role ID. repr=False to prevent repr leak."""
 
-    secret_id: str | None = None
-    """AppRole secret ID."""
+    secret_id: str | None = field(default=None, repr=False)
+    """AppRole secret ID. repr=False to prevent repr leak."""
 
     role: str | None = None
     """Role name (for kubernetes auth)."""
@@ -159,11 +160,12 @@ class AWSConfig:
     region: str = "us-east-1"
     """AWS region."""
 
-    access_key_id: str | None = None
-    """AWS access key ID. None = use default credential chain."""
+    access_key_id: str | None = field(default=None, repr=False)
+    """AWS access key ID. repr=False to prevent repr leak.
+    None = use default credential chain."""
 
-    secret_access_key: str | None = None
-    """AWS secret access key."""
+    secret_access_key: str | None = field(default=None, repr=False)
+    """AWS secret access key. repr=False to prevent repr leak."""
 
     endpoint_url: str | None = None
     """Custom endpoint URL (for LocalStack)."""
@@ -199,8 +201,9 @@ class AzureConfig:
     client_id: str | None = None
     """Service principal client ID. None = DefaultAzureCredential chain."""
 
-    client_secret: str | None = None
-    """Service principal client secret. None = DefaultAzureCredential chain."""
+    client_secret: str | None = field(default=None, repr=False)
+    """Service principal client secret. repr=False to prevent repr leak.
+    None = DefaultAzureCredential chain."""
 
     timeout_secs: int = 30
     """Request timeout in seconds."""
@@ -216,8 +219,8 @@ class AnsibleVaultConfig:
     already the team's standard for secret management.
     """
 
-    password: str | None = None
-    """Resolved vault password (from env var or file)."""
+    password: str | None = field(default=None, repr=False)
+    """Resolved vault password (from env var or file). repr=False to prevent repr leak."""
 
     password_file: str | None = None
     """Path to file containing the vault password (fallback)."""
@@ -267,13 +270,13 @@ class SecretFilter:
     """
 
     prefix: str | None = None
-    """Path prefix — server-side filter where supported."""
+    """Path prefix -- server-side filter where supported."""
 
     tags: dict[str, str] | None = None
     """Tag/label filter. Server-side on AWS/GCP/Azure/OpenBao. Ignored on file-based."""
 
     pattern: str | None = None
-    """Glob pattern — client-side post-filter on list results. Use prefix for efficiency."""
+    """Glob pattern -- client-side post-filter on list results. Use prefix for efficiency."""
 
 
 # Type alias for rotation callbacks

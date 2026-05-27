@@ -6,10 +6,10 @@
 #  License:   FSL-1.1-ALv2
 #  Copyright: (c) 2026 HYPERI PTY LIMITED
 
-"""Credit card validator — strong-structural.
+"""Credit card validator -- strong-structural.
 
 Detects 13-19 digit runs with optional separators and validates via
-Luhn (ISO/IEC 7812-1 Annex B). Strong-structural per spec §9.1 —
+Luhn (ISO/IEC 7812-1 Annex B). Strong-structural per spec §9.1 --
 fires from any context.
 """
 
@@ -38,5 +38,5 @@ class CreditCardValidator(_Validator):
             return False
         try:
             return luhn.is_valid(digits)
-        except Exception:  # pragma: no cover — stdnum is well-tested
+        except Exception:  # pragma: no cover -- stdnum is well-tested
             return False

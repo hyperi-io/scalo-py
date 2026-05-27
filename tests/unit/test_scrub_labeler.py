@@ -6,7 +6,7 @@
 #  License:   FSL-1.1-ALv2
 #  Copyright: (c) 2026 HYPERI PTY LIMITED
 
-"""Tests for the labeler module — static and deterministic-hash redaction."""
+"""Tests for the labeler module -- static and deterministic-hash redaction."""
 
 from __future__ import annotations
 
@@ -117,7 +117,7 @@ class TestResolveLabeler:
 
 
 # ---------------------------------------------------------------------------
-# Factory wiring — end to end
+# Factory wiring -- end to end
 # ---------------------------------------------------------------------------
 
 
@@ -162,7 +162,7 @@ class TestFactoryHashRedaction:
 
     def test_l2_field_redaction_unchanged_by_hash_mode(self):
         # L2 field names use the static ***REDACTED*** mask regardless of
-        # hash_redaction — field name carries the type signal, value-
+        # hash_redaction -- field name carries the type signal, value-
         # correlation isn't useful when the schema is already visible.
         s = build_scrubber(ScrubConfig(hash_redaction=True))
         out = s.scrub("user logged in with password=hunter2")
@@ -170,7 +170,7 @@ class TestFactoryHashRedaction:
         assert "***REDACTED***" in out
 
     def test_observe_only_overrides_hash_redaction(self):
-        # observe_only short-circuits BEFORE labels matter — the input
+        # observe_only short-circuits BEFORE labels matter -- the input
         # passes through unchanged regardless of hash mode.
         s = build_scrubber(ScrubConfig(observe_only=True, hash_redaction=True))
         text = "alice@example.com"

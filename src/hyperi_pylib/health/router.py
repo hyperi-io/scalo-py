@@ -64,23 +64,25 @@ def create_health_router(manager: HealthManager | None = None) -> APIRouter:
 
     @router.get("/health/live")
     async def liveness() -> JSONResponse:
-        """Liveness probe — is the process alive?"""
-        resp = manager.liveness_response()
-        status_code = 200 if manager.is_live() else 503
+        """Liveness probe -- is the process alive?
+
+        Checks run concurrently via ``run_blocking`` with per-check
+        timeout so a single slow check can't stall the kubelet probe.
+        """
+        resp = await manager.liveness_response_async()
+        status_code = 200 if resp["status"] == "alive" else 503
         return JSONResponse(content=resp, status_code=status_code)
 
     @router.get("/health/ready")
     async def readiness() -> JSONResponse:
-        """Readiness probe — can the service handle traffic?"""
-        resp = manager.readiness_response()
-        status_code = 200 if manager.is_ready() else 503
+        resp = await manager.readiness_response_async()
+        status_code = 200 if resp["status"] == "ready" else 503
         return JSONResponse(content=resp, status_code=status_code)
 
     @router.get("/health/startup")
     async def startup() -> JSONResponse:
-        """Startup probe — has initialisation completed?"""
         resp = manager.startup_response()
-        status_code = 200 if manager.is_started() else 503
+        status_code = 200 if resp["status"] == "started" else 503
         return JSONResponse(content=resp, status_code=status_code)
 
     return router

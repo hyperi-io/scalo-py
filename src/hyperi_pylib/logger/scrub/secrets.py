@@ -1,12 +1,12 @@
 #  Project:   hyperi-pylib
 #  File:      src/hyperi_pylib/logger/scrub/secrets.py
-#  Purpose:   Layer 1 — gitleaks-style secret-artefact scrubber
+#  Purpose:   Layer 1 -- gitleaks-style secret-artefact scrubber
 #  Language:  Python
 #
 #  License:   FSL-1.1-ALv2
 #  Copyright: (c) 2026 HYPERI PTY LIMITED
 
-"""Layer 1 — secret-artefact scrubber.
+"""Layer 1 -- secret-artefact scrubber.
 
 Detects gitleaks-style secrets (AWS keys, GitHub tokens, JWTs,
 private keys, third-party SaaS API keys) and exposes them via the
@@ -15,7 +15,7 @@ private keys, third-party SaaS API keys) and exposes them via the
 Currently delegates to the existing :class:`SecretsLeakFilter`
 backed by ``detect-secrets``. Per spec §3.1, this will migrate to
 direct compilation from ``hyperi-ai/standards/patterns/gitleaks.toml``
-in Step 10 — the public API of this class is the same after that
+in Step 10 -- the public API of this class is the same after that
 swap.
 """
 
@@ -31,7 +31,7 @@ if TYPE_CHECKING:
     from .labeler import LabelFn
 
 
-# Minimal subset of high-signal rule IDs from upstream gitleaks.toml —
+# Minimal subset of high-signal rule IDs from upstream gitleaks.toml --
 # used when patterns="minimal". Matches the historical SECRETS_PLUGINS_LITE
 # list using the upstream rule IDs.
 _MINIMAL_RULES: frozenset[str] = frozenset(
@@ -54,27 +54,27 @@ _MINIMAL_RULES: frozenset[str] = frozenset(
 
 
 class SecretsScrubber:
-    """L1 — secret artefacts.
+    """L1 -- secret artefacts.
 
     Two implementations selectable via ``patterns``:
 
-    - ``"gitleaks"`` (default) — TOML-driven, loads the bundled
+    - ``"gitleaks"`` (default) -- TOML-driven, loads the bundled
       ``gitleaks.toml`` (vendored from
       ``hyperi-ai/standards/patterns/gitleaks.toml``). Cross-language
       parity contract per spec §3.2.
-    - ``"minimal"`` — TOML-driven, restricted to a high-signal subset
+    - ``"minimal"`` -- TOML-driven, restricted to a high-signal subset
       (~7 rules) for hot-ish paths.
-    - ``"detect-secrets"`` — legacy path using the ``detect-secrets``
+    - ``"detect-secrets"`` -- legacy path using the ``detect-secrets``
       package, including its entropy heuristics. Kept available for
       callers that want entropy-based detection that the TOML rules
       don't cover.
-    - ``"off"`` — no-op.
+    - ``"off"`` -- no-op.
 
     Args:
         patterns: rule-set selector (see above).
         extra_patterns: org-specific ``(type_name, regex)`` tuples
             for in-house token formats. Currently honoured only by the
-            ``detect-secrets`` path — the TOML path will gain a
+            ``detect-secrets`` path -- the TOML path will gain a
             corresponding ``[[rules]]``-append mechanism in a future
             step.
         labeler: redaction-label producer. Defaults to static
@@ -116,7 +116,7 @@ class SecretsScrubber:
                 metrics=self._metrics,
             )
         else:
-            # Unknown selector — default to the canonical TOML path.
+            # Unknown selector -- default to the canonical TOML path.
             self._inner = GitleaksTomlScrubber(
                 labeler=labeler,
                 metrics=self._metrics,

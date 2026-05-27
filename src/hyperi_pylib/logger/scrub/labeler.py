@@ -12,17 +12,17 @@ Two modes:
 
 - **Static** (default): every match for a given LABEL collapses to the
   same string ``[LABEL_REDACTED]``. Identical PII produces identical
-  output — no operator correlation possible.
+  output -- no operator correlation possible.
 - **Deterministic hash** (opt-in, ``scrub.hash_redaction: true``): each
   unique value gets a short keyed-hash suffix, e.g.
-  ``[EMAIL_a3f5b2]``. Same value → same suffix within a process (or
+  ``[EMAIL_a3f5b2]``. Same value -> same suffix within a process (or
   across processes when ``HYPERI_LOG_SCRUB_HASH_KEY`` is set), letting
   operators correlate events without exposing the value.
 
 Hash algorithm: BLAKE2b keyed with ``secret_hash_key``,
 ``digest_size=4`` (8 hex chars), truncated to 6 hex chars per spec.
 BLAKE2b is in the Python stdlib (``hashlib.blake2b``) and has a Rust
-counterpart in the RustCrypto ``blake2`` crate — chosen over BLAKE3
+counterpart in the RustCrypto ``blake2`` crate -- chosen over BLAKE3
 to avoid a build-time Rust-wheel dep in pylib for what is functionally
 a short-label hash.
 """
@@ -57,7 +57,7 @@ def make_hash_labeler(secret_hash_key: bytes | None = None) -> LabelFn:
     Returns:
         A :data:`LabelFn` that produces ``[LABEL_xxxxxx]`` strings.
 
-    The key is bound into the returned closure — callers may construct
+    The key is bound into the returned closure -- callers may construct
     distinct labelers with distinct keys, but the typical case is one
     labeler per scrubber instance.
     """
@@ -90,7 +90,7 @@ def resolve_labeler(
 ) -> LabelFn:
     """Pick the right labeler given a scrub config.
 
-    Convenience for factory wiring — ``build_scrubber()`` calls this
+    Convenience for factory wiring -- ``build_scrubber()`` calls this
     once and passes the result to every layer that produces labels.
     """
     if hash_redaction:

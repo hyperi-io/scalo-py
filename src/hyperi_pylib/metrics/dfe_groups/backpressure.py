@@ -7,7 +7,7 @@
 #  Copyright:    (c) 2026 HYPERI PTY LIMITED
 
 """
-BackpressureMetrics — composable metric group for backpressure tracking.
+BackpressureMetrics -- composable metric group for backpressure tracking.
 
 Mirrors rustlib's dfe_groups::BackpressureMetrics. Tracks backpressure
 activation events and cumulative pause duration.

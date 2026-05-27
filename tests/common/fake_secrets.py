@@ -11,7 +11,7 @@
 GitHub Push Protection, gitleaks, AWS secret scanning, and other
 source-scanning tools detect credentials by pattern-matching the
 *source bytes* of files. They cannot see strings produced by
-runtime concatenation — they only see the source expression.
+runtime concatenation -- they only see the source expression.
 
 Every helper here returns a string that:
 
@@ -28,7 +28,7 @@ The trick: scanners read files; they don't evaluate Python. So
 match), but produces ``"sk_live_"`` at runtime (which the scrubber's
 regex catches normally).
 
-All helpers are deterministic — same call yields the same string so
+All helpers are deterministic -- same call yields the same string so
 test assertions stay stable. Bodies are low-entropy (all-X, repeated
 ``FAKE``) so even the runtime output isn't realistic enough to trip a
 secondary content-based scanner.
@@ -37,7 +37,7 @@ secondary content-based scanner.
 from __future__ import annotations
 
 # ---------------------------------------------------------------------------
-# AWS — long-lived + session
+# AWS -- long-lived + session
 # ---------------------------------------------------------------------------
 
 
@@ -55,7 +55,7 @@ def aws_session_token() -> str:
 
 
 # ---------------------------------------------------------------------------
-# GitHub — classic PAT, fine-grained PAT, OAuth, server, user
+# GitHub -- classic PAT, fine-grained PAT, OAuth, server, user
 # ---------------------------------------------------------------------------
 
 
@@ -107,7 +107,7 @@ def gitlab_pat() -> str:
 
 
 # ---------------------------------------------------------------------------
-# Stripe — the family that triggers GitHub Push Protection most often
+# Stripe -- the family that triggers GitHub Push Protection most often
 # ---------------------------------------------------------------------------
 
 
@@ -165,7 +165,7 @@ def slack_user_token() -> str:
 
 
 # ---------------------------------------------------------------------------
-# JWT — three base64url segments
+# JWT -- three base64url segments
 # ---------------------------------------------------------------------------
 
 
@@ -185,7 +185,7 @@ def jwt() -> str:
 
 
 # ---------------------------------------------------------------------------
-# Private key — PEM block
+# Private key -- PEM block
 # ---------------------------------------------------------------------------
 
 
@@ -203,7 +203,21 @@ def private_key_block(body_chars: int = 256) -> str:
 
 
 # ---------------------------------------------------------------------------
-# Misc third-party — extend on demand
+# Generic opaque secret -- for key-name / repr redaction tests that don't
+# need a provider pattern, just a sentinel that must not leak.
+# ---------------------------------------------------------------------------
+
+
+def opaque_secret(label: str = "value") -> str:
+    """A unique, non-provider-shaped sentinel built at runtime.
+
+    No literal secret on disk; ``label`` keeps assertion failures readable.
+    """
+    return "FAKE" + "-" + label + "-" + "X" * 12
+
+
+# ---------------------------------------------------------------------------
+# Misc third-party -- extend on demand
 # ---------------------------------------------------------------------------
 
 

@@ -10,14 +10,14 @@ Configuration Cascade (8 Layers, HyperI Standard)
 
 ALL configuration automatically follows this priority (highest to lowest):
 
-    1. CLI args/switches  → --host=X --port=Y (runtime, apps/CLIs only)
-    2. ENV variables      → MYAPP_DATABASE_HOST=prod.db.com (deployment)
-    3. .env file          → Local secrets (gitignored, never commit)
-    4. PostgreSQL         → Shared org config (OPTIONAL, OVERRIDES files)
-    5. settings.{env}.yaml → Environment-specific (settings.production.yaml)
-    6. settings.yaml      → Project base config (team defaults)
-    7. defaults.yaml      → Safe fallback defaults (local dev)
-    8. Hard-coded         → Last resort in code (fallback values)
+    1. CLI args/switches  -> --host=X --port=Y (runtime, apps/CLIs only)
+    2. ENV variables      -> MYAPP_DATABASE_HOST=prod.db.com (deployment)
+    3. .env file          -> Local secrets (gitignored, never commit)
+    4. PostgreSQL         -> Shared org config (OPTIONAL, OVERRIDES files)
+    5. settings.{env}.yaml -> Environment-specific (settings.production.yaml)
+    6. settings.yaml      -> Project base config (team defaults)
+    7. defaults.yaml      -> Safe fallback defaults (local dev)
+    8. Hard-coded         -> Last resort in code (fallback values)
 
 **.env Cascade Mode (Optional):**
 
@@ -27,10 +27,10 @@ ALL configuration automatically follows this priority (highest to lowest):
     Set HYPERI_DOTENV_CASCADE=true or use get_config(dotenv_cascade=True)
 
     When enabled, loads in order (later overrides earlier):
-        1. ~/.env          → Home directory (global API keys, credentials)
-        2. ./.env          → Project directory (project-specific overrides)
+        1. ~/.env          -> Home directory (global API keys, credentials)
+        2. ./.env          -> Project directory (project-specific overrides)
 
-PostgreSQL config (layer 4) is OPTIONAL — built-for, not built-with.
+PostgreSQL config (layer 4) is OPTIONAL -- built-for, not built-with.
 The YAML file-based approach already provides centralised config management
 (gitops-optimised, stored on S3 for AWS deployments, used across all
 services). The PG option exists for a more complex PG-over-YAML path if
@@ -71,9 +71,9 @@ PostgreSQL config to a local file for use when the database is unavailable.
 
     Config Path              Auto-Generated ENV Key
     -----------              ----------------------
-    database.host         → MYAPP_DATABASE_HOST
-    api.timeout           → MYAPP_API_TIMEOUT
-    cache.redis.enabled   → MYAPP_CACHE_REDIS_ENABLED
+    database.host         -> MYAPP_DATABASE_HOST
+    api.timeout           -> MYAPP_API_TIMEOUT
+    cache.redis.enabled   -> MYAPP_CACHE_REDIS_ENABLED
 
     Prefix customizable via: HYPERI_LIB_ENV_PREFIX=MYAPP
 
@@ -89,10 +89,10 @@ PostgreSQL config to a local file for use when the database is unavailable.
 
     Both .yaml and .yml checked (.yaml first). All found files merged.
 
-    **App name** resolved from: APP_NAME env → HYPERI_LIB_APP_NAME env →
-    auto-detect → default "app".
+    **App name** resolved from: APP_NAME env -> HYPERI_LIB_APP_NAME env ->
+    auto-detect -> default "app".
 
-    **App env** resolved from: APP_ENV → ENVIRONMENT → ENV → "development".
+    **App env** resolved from: APP_ENV -> ENVIRONMENT -> ENV -> "development".
 
 Quick Start
 ===========
@@ -178,7 +178,7 @@ def _is_container() -> tuple[bool, str]:
     # 4. cgroups v1 and v2
     for cgroup_file in ["/proc/1/cgroup", "/proc/self/cgroup"]:
         try:
-            with open(cgroup_file) as f:
+            with open(cgroup_file, encoding="utf-8") as f:
                 content = f.read()
                 if any(x in content for x in ["docker", "kubepods", "containerd", "crio"]):
                     return True, f"cgroups_{cgroup_file.split('/')[-1]}"
@@ -187,7 +187,7 @@ def _is_container() -> tuple[bool, str]:
 
     # 5. Mountinfo inspection
     try:
-        with open("/proc/self/mountinfo") as f:
+        with open("/proc/self/mountinfo", encoding="utf-8") as f:
             content = f.read()
             if any(x in content for x in ["docker", "kubelet", "overlay", "containerd"]):
                 return True, "mountinfo"
@@ -301,7 +301,7 @@ def detect_helm_deployment() -> bool:
     try:
         labels_file = Path("/etc/podinfo/labels")
         if labels_file.exists():
-            labels = labels_file.read_text()
+            labels = labels_file.read_text(encoding="utf-8")
             if "app.kubernetes.io/managed-by=Helm" in labels:
                 return True
     except Exception:  # nosec B110 - Optional K8s label detection
@@ -586,11 +586,11 @@ else:
 def _find_config_files(base_name: str) -> list[str]:
     """Find config files across all search locations.
 
-    Searches (in order, all merged — later locations override earlier):
+    Searches (in order, all merged -- later locations override earlier):
     1. Current directory (./)
     2. Project config subdir (./config/)
-    3. Container mount (/config/) — always checked, no-op if absent
-    4. User config (~/.config/{app_name}/) — only when app_name is set
+    3. Container mount (/config/) -- always checked, no-op if absent
+    4. User config (~/.config/{app_name}/) -- only when app_name is set
     5. Mount config dir (from environment detection)
 
     Both .yaml and .yml extensions are checked (.yaml first).
@@ -631,7 +631,7 @@ def _find_config_files(base_name: str) -> list[str]:
 
 # Build settings file list using multi-layer discovery
 # Matches rustlib cascade: defaults.yaml (layer 7), settings.yaml (layer 6),
-# settings.{env}.yaml (layer 5) — all merged, later layers override earlier
+# settings.{env}.yaml (layer 5) -- all merged, later layers override earlier
 settings_files = []
 
 # Layer 7: defaults.yaml (lowest priority file layer)
@@ -675,7 +675,7 @@ settings = Dynaconf(
     settings_files=settings_files if settings_files else [],  # Use discovered files
     load_dotenv=_use_dynaconf_dotenv,  # Load .env file (3rd priority)
     environments=False,  # Single config approach
-    # PRECEDENCE: CLI → ENV → .env → config override → default → hardcoded
+    # PRECEDENCE: CLI -> ENV -> .env -> config override -> default -> hardcoded
 )
 
 
@@ -688,7 +688,7 @@ settings = Dynaconf(
 # management (gitops-optimised, stored on S3 for AWS deployments, used
 # across all services). The PG option exists for a more complex PG-over-YAML
 # path if the ROI justifies it in the future. The cascade is designed so PG
-# can be enabled without code changes — just set HYPERI_CONFIG_DSN.
+# can be enabled without code changes -- just set HYPERI_CONFIG_DSN.
 #
 # If HYPERI_CONFIG_DSN is set, load config from PostgreSQL and merge into settings.
 # This provides a shared configuration store for multi-pod deployments.
@@ -697,14 +697,14 @@ settings = Dynaconf(
 # source of truth for centralised configuration management.
 #
 # 8-Layer Cascade (with PostgreSQL):
-#   1. CLI args           → Runtime override
-#   2. ENV vars           → Deployment/secrets
-#   3. .env file          → Local dev secrets
-#   4. PostgreSQL         → Shared org config (OVERRIDES files)
-#   5. settings.{env}     → Environment-specific local file
-#   6. settings.yaml      → Project base
-#   7. defaults.yaml      → Safe defaults
-#   8. Hard-coded         → Last resort
+#   1. CLI args           -> Runtime override
+#   2. ENV vars           -> Deployment/secrets
+#   3. .env file          -> Local dev secrets
+#   4. PostgreSQL         -> Shared org config (OVERRIDES files)
+#   5. settings.{env}     -> Environment-specific local file
+#   6. settings.yaml      -> Project base
+#   7. defaults.yaml      -> Safe defaults
+#   8. Hard-coded         -> Last resort
 #
 # PostgreSQL config is loaded ONCE at module init and cached.
 # To refresh, call PostgresConfigLoader.clear_cache() and re-import.
@@ -714,10 +714,12 @@ settings = Dynaconf(
 # the fallback file is used instead.
 #
 def _load_postgres_config_layer() -> None:
-    """Load PostgreSQL config layer if enabled.
+    """Load PostgreSQL config layer if HYPERI_CONFIG_DSN is set.
 
-    PostgreSQL config OVERRIDES file-based config values. Only ENV vars,
-    .env file, and CLI args have higher priority than PostgreSQL.
+    Cascade (highest wins): CLI, env, .env, PostgreSQL (this), settings.{env}.yaml,
+    settings.yaml, defaults.yaml, hardcoded. ``settings.set()`` lands at the top,
+    so we probe ``{PREFIX}_KEY`` and ``{PREFIX}__KEY__SUBKEY`` first and skip
+    keys already supplied by env.
     """
     if not os.getenv("HYPERI_CONFIG_DSN"):
         return
@@ -729,22 +731,38 @@ def _load_postgres_config_layer() -> None:
         pg_config = loader.load_sync()
 
         if pg_config:
-            # PostgreSQL config OVERRIDES file-based config
-            # We iterate and set all values, overwriting file-based values.
-            # Only ENV vars and .env have higher priority (handled by Dynaconf).
+
+            def _env_var_set_for(full_key: str) -> bool:
+                """Return True if an env var would supply this key."""
+                upper = full_key.upper()
+                # Dynaconf accepts both PREFIX_KEY (single underscore,
+                # flat) and PREFIX__SECTION__KEY (double underscore,
+                # nested). Probe both.
+                flat = f"{ENV_PREFIX}_{upper.replace('.', '_')}"
+                nested = f"{ENV_PREFIX}__{upper.replace('.', '__')}"
+                return flat in os.environ or nested in os.environ
+
             def _set_all(target, source, prefix=""):
+                applied = 0
+                skipped_env = 0
                 for key, value in source.items():
                     full_key = f"{prefix}.{key}" if prefix else key
                     if isinstance(value, dict):
-                        _set_all(target, value, full_key)
-                    else:
-                        # Set value (overrides file-based config)
-                        # Dynaconf will still respect ENV vars which have higher priority
-                        target.set(full_key, value)
+                        sub_applied, sub_skipped = _set_all(target, value, full_key)
+                        applied += sub_applied
+                        skipped_env += sub_skipped
+                        continue
+                    if _env_var_set_for(full_key):
+                        skipped_env += 1
+                        continue
+                    target.set(full_key, value)
+                    applied += 1
+                return applied, skipped_env
 
-            _set_all(settings, pg_config)
-
-            _debug_log(f"PostgreSQL config loaded (overrides files): {len(pg_config)} top-level keys")
+            applied, skipped = _set_all(settings, pg_config)
+            _debug_log(
+                f"PostgreSQL config loaded: {applied} keys applied, {skipped} skipped (env vars take precedence)"
+            )
 
     except Exception as e:
         # Log warning but don't crash - file cascade continues
@@ -862,7 +880,7 @@ def get_config(
                          Files loaded in order, later files have higher priority
                          Paths can be absolute or relative to config_dir
         env_prefix: Environment variable prefix (default: APP or HYPERI_LIB_ENV_PREFIX)
-                   Example: "TENANT1" → TENANT1_DATABASE_HOST
+                   Example: "TENANT1" -> TENANT1_DATABASE_HOST
         load_dotenv: Load .env file (default: True)
                     Set False for security-sensitive contexts
         merge_existing: Merge with existing settings files (default: True)
@@ -1132,7 +1150,7 @@ def get_logging_config():
     - Default: APP_ (e.g., APP_LOGGING__LEVEL)
     - Configurable via: HYPERI_LIB_ENV_PREFIX (e.g., HYPERI_LIB_ENV_PREFIX=MYAPP)
 
-    Priority order (CLI → ENV → .env → config → default → hardcoded):
+    Priority order (CLI -> ENV -> .env -> config -> default -> hardcoded):
     1. Standard environment variables (LOG_*)
     2. Dynaconf prefixed variables ({ENV_PREFIX}_LOGGING__*)
     3. Config file (logging.*)
@@ -1267,7 +1285,7 @@ def get_target_config(target: str | None = None, targets_file: str | None = None
         )
 
     # Load targets file
-    with open(targets_path) as f:
+    with open(targets_path, encoding="utf-8") as f:
         targets_data = yaml.safe_load(f) or {}
 
     # Determine target name
@@ -1371,7 +1389,7 @@ targets:
     # Development environment settings
     example_setting: value
 """
-            targets_file.write_text(targets_template)
+            targets_file.write_text(targets_template, encoding="utf-8")
             _debug_log(f"Created targets template: {targets_file}")
 
     # Create .env template
@@ -1387,7 +1405,7 @@ targets:
 # Application settings
 # {ENV_PREFIX}_SETTING_NAME=value
 """
-            env_file.write_text(env_template)
+            env_file.write_text(env_template, encoding="utf-8")
             _debug_log(f"Created .env template: {env_file}")
 
     _debug_log(f"Config directory '{config_dir}' initialized.")

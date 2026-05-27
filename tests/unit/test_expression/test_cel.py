@@ -271,7 +271,7 @@ class TestEvaluate:
 
 
 class TestEvaluateCondition:
-    """Boolean condition evaluation — missing fields → False."""
+    """Boolean condition evaluation -- missing fields → False."""
 
     def test_match(self):
         assert evaluate_condition('severity == "critical"', {"severity": "critical"}) is True
@@ -346,7 +346,7 @@ class TestEvaluateCondition:
         assert evaluate_condition("enabled == true", {"enabled": True}) is True
 
     def test_ternary_as_bool(self):
-        # Ternary returning int — coerced to bool (non-zero = True)
+        # Ternary returning int -- coerced to bool (non-zero = True)
         assert evaluate_condition("is_admin ? 95 : 0", {"is_admin": True}) is True
         assert evaluate_condition("is_admin ? 0 : 50", {"is_admin": True}) is False
 

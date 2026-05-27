@@ -14,7 +14,7 @@ names* like ``password=``). For PII-value detection use the newer
 validators: credit card / IBAN / email / phone / national IDs).
 
 Secret artefacts are a security category: AWS keys, GitHub tokens,
-JWTs, private keys, third-party SaaS API tokens — the things a
+JWTs, private keys, third-party SaaS API tokens -- the things a
 gitleaks scan catches in code commits, applied at log-write time.
 
 This module is the **legacy backend** kept for callers that want
@@ -31,14 +31,14 @@ words become "Base64 High Entropy String" findings).
 
 Two cascade levels mirror the PII tier:
 
-- ``"full"`` — all curated detectors (24 types: AWS, Azure, GitHub,
+- ``"full"`` -- all curated detectors (24 types: AWS, Azure, GitHub,
   GitLab, Stripe, Slack, OpenAI, Twilio, SendGrid, JWT, Private Key,
   IBM Cloud, Mailchimp, npm, Artifactory, Discord, Telegram, PyPI,
   Square, public IP, Basic Auth, Cloudant, Softlayer).
-- ``"lite"`` — high-signal-only subset (7 types: AWS, GitHub, GitLab,
+- ``"lite"`` -- high-signal-only subset (7 types: AWS, GitHub, GitLab,
   Stripe, JWT, Private Key, OpenAI). Fastest, lowest false-positive
   rate.
-- ``"off"`` — disabled.
+- ``"off"`` -- disabled.
 
 Redaction is two-step: detect-secrets identifies the *type* of secret
 present; a per-type regex performs the *replacement* (because some
@@ -62,7 +62,7 @@ __all__ = [
 ]
 
 
-# Curated plugin set — full coverage minus the noisy high-entropy and
+# Curated plugin set -- full coverage minus the noisy high-entropy and
 # keyword detectors (which would re-do what SensitiveDataFilter already
 # does for field names and would FP on normal English).
 SECRETS_PLUGINS_FULL: list[dict[str, Any]] = [
@@ -92,7 +92,7 @@ SECRETS_PLUGINS_FULL: list[dict[str, Any]] = [
     {"name": "BasicAuthDetector"},
 ]
 
-# High-signal subset — types where the regex is specific enough to
+# High-signal subset -- types where the regex is specific enough to
 # have near-zero false-positives on prose. Use for hot-ish paths
 # where the full plugin set is too slow.
 SECRETS_PLUGINS_LITE: list[dict[str, Any]] = [
@@ -168,7 +168,7 @@ class SecretsLeakFilter:
             redaction use the regex.
 
     Raises:
-        ImportError caught silently — if detect-secrets is not
+        ImportError caught silently -- if detect-secrets is not
         installed (impossible currently as it's a core dep, but
         defensive), the filter becomes a no-op with a warning.
     """
@@ -231,7 +231,7 @@ class SecretsLeakFilter:
         try:
             with self._transient_settings({"plugins_used": self._plugins}):  # type: ignore[misc]
                 findings = list(self._scan_line(text))  # type: ignore[misc]
-        except Exception as e:  # pragma: no cover — never let logging break
+        except Exception as e:  # pragma: no cover -- never let logging break
             warnings.warn(
                 f"detect-secrets error: {e}. Skipping secret-leak masking.",
                 RuntimeWarning,
@@ -243,7 +243,7 @@ class SecretsLeakFilter:
             return text
 
         # Second: redact via per-type regex first (catches the whole
-        # match — important for multi-line patterns like private keys
+        # match -- important for multi-line patterns like private keys
         # where the BEGIN marker is the value detect-secrets returns
         # but the regex covers the full ``BEGIN...END`` block).
         #
@@ -252,7 +252,7 @@ class SecretsLeakFilter:
         # the type slug. Static mode returns the same label per type
         # regardless of value.
         #
-        # For types lacking a redaction regex (rare — covers types we
+        # For types lacking a redaction regex (rare -- covers types we
         # haven't given a pattern yet) we fall back to replacing each
         # detect-secrets finding's value directly.
         # Every finding counts as a match (one match per detect-secrets

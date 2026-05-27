@@ -94,7 +94,7 @@ def test_fixture_sensitive_fields_present() -> None:
 
     fixture_fields = set(_fixtures["sensitive_field_names"])
     # Fields that the fixture defines but the filter also knows about
-    # (the filter may know more fields than the fixture lists — that is fine)
+    # (the filter may know more fields than the fixture lists -- that is fine)
     covered = fixture_fields & SENSITIVE_FIELDS
     missing = fixture_fields - SENSITIVE_FIELDS
 
@@ -102,4 +102,4 @@ def test_fixture_sensitive_fields_present() -> None:
         f"Fixture declares fields not in SENSITIVE_FIELDS: {missing}\n"
         "Either add them to SENSITIVE_FIELDS or remove them from the fixture."
     )
-    assert len(covered) > 0, "No fixture fields matched SENSITIVE_FIELDS — check both files."
+    assert len(covered) > 0, "No fixture fields matched SENSITIVE_FIELDS -- check both files."

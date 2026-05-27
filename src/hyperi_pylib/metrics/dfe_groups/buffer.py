@@ -1,13 +1,13 @@
 #  Project:      hyperi-pylib
 #  File:         buffer.py
-#  Purpose:      BufferMetrics group — for receiver, loader, archiver
+#  Purpose:      BufferMetrics group -- for receiver, loader, archiver
 #  Language:     Python
 #
 #  License:      FSL-1.1-ALv2
 #  Copyright:    (c) 2026 HYPERI PTY LIMITED
 
 """
-BufferMetrics — composable metric group for buffered DFE apps.
+BufferMetrics -- composable metric group for buffered DFE apps.
 
 Mirrors rustlib's dfe_groups::BufferMetrics. Tracks buffer occupancy,
 flush operations, and flush triggers.

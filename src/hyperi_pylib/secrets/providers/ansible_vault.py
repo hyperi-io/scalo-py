@@ -3,7 +3,7 @@
 Designed primarily for SME networks that need encrypted-at-rest secrets without
 the operational overhead of a dedicated secrets server (OpenBao, AWS Secrets
 Manager, etc.). Also suitable for any environment where Ansible Vault is already
-the team's standard for secret management — dev/test environments, CI pipelines,
+the team's standard for secret management -- dev/test environments, CI pipelines,
 or hybrid setups where some secrets live in vault files alongside
 infrastructure-as-code.
 
@@ -95,7 +95,7 @@ def _resolve_password(config: AnsibleVaultConfig) -> str:
         return _read_password_file(config.password_file)
 
     raise ProviderError(
-        "ansible_vault", "no vault password configured — set ANSIBLE_VAULT_PASSWORD or provide password_file"
+        "ansible_vault", "no vault password configured -- set ANSIBLE_VAULT_PASSWORD or provide password_file"
     )
 
 
@@ -117,7 +117,7 @@ def _read_password_file(path: str) -> str:
         raise ProviderError("ansible_vault", f"password file not found: {path}")
 
     try:
-        password = file_path.read_text().strip()
+        password = file_path.read_text(encoding="utf-8").strip()
     except OSError as e:
         raise ProviderError("ansible_vault", f"failed to read password file {path}: {e}")
 
@@ -231,7 +231,7 @@ class AnsibleVaultProvider(SecretProvider):
         if key is None:
             return decrypted
 
-        # Key requested — must be a YAML dict
+        # Key requested -- must be a YAML dict
         try:
             parsed = yaml.safe_load(decrypted.decode("utf-8"))
         except (yaml.YAMLError, UnicodeDecodeError):
@@ -254,8 +254,10 @@ class AnsibleVaultProvider(SecretProvider):
     # --- Read ---
 
     async def get_async(self, path: str, key: str | None = None) -> SecretValue:
-        """Async get (delegates to sync since file I/O is fast)."""
-        return self.get_sync(path, key)
+        """Async get via run_blocking (PBKDF2 + AES-CTR is CPU-bound)."""
+        from hyperi_pylib.concurrency import run_blocking
+
+        return await run_blocking(self.get_sync, path, key)
 
     def get_sync(self, path: str, key: str | None = None) -> SecretValue:
         """Read and decrypt secret from an Ansible Vault-encrypted file.
@@ -277,7 +279,7 @@ class AnsibleVaultProvider(SecretProvider):
             raise SecretNotFoundError(path, self.name)
 
         try:
-            content = file_path.read_text()
+            content = file_path.read_text(encoding="utf-8")
         except OSError as e:
             raise ProviderError(self.name, f"failed to read {path}: {e}")
 
@@ -294,8 +296,10 @@ class AnsibleVaultProvider(SecretProvider):
     # --- List ---
 
     async def list_async(self, filter: SecretFilter | None = None) -> list[str]:
-        """List vault files (async delegates to sync)."""
-        return self.list_sync(filter)
+        """Async list via run_blocking (glob is blocking)."""
+        from hyperi_pylib.concurrency import run_blocking
+
+        return await run_blocking(self.list_sync, filter)
 
     def list_sync(self, filter: SecretFilter | None = None) -> list[str]:
         """List vault-encrypted files matching filter.
@@ -353,7 +357,7 @@ class AnsibleVaultProvider(SecretProvider):
         try:
             encrypted = self._encrypt(value)
             file_path.parent.mkdir(parents=True, exist_ok=True)
-            file_path.write_text(encrypted)
+            file_path.write_text(encrypted, encoding="utf-8")
         except PermissionError:
             raise SecretPermissionError(self.name, "create", path, f"check filesystem permissions on '{path}'")
         except OSError as e:
@@ -376,7 +380,7 @@ class AnsibleVaultProvider(SecretProvider):
 
         try:
             encrypted = self._encrypt(value)
-            file_path.write_text(encrypted)
+            file_path.write_text(encrypted, encoding="utf-8")
         except PermissionError:
             raise SecretPermissionError(self.name, "update", path, f"check filesystem permissions on '{path}'")
         except OSError as e:

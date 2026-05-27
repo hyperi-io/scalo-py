@@ -107,7 +107,7 @@ class TestGitleaksTomlScrubberBasic:
         s = GitleaksTomlScrubber()
         # Upstream github-pat regex: ghp_ + 36 alphanumeric chars (exact).
         # Note: the broader ``generic-api-key`` rule may fire first when
-        # the token is in a ``key=value`` shape — both outcomes count as
+        # the token is in a ``key=value`` shape -- both outcomes count as
         # a successful redaction. Assert only that the secret is gone.
         token = github_classic_pat()
         out = s.scrub(f"random text {token} more text")
@@ -156,7 +156,7 @@ class TestGitleaksTomlScrubberRuleFilter:
         ak = aws_access_key()
         out = s.scrub(ak)
         assert ak not in out
-        # GitHub token (different rule) passes through — rule not loaded
+        # GitHub token (different rule) passes through -- rule not loaded
         gh_token = github_classic_pat()
         out2 = s.scrub(gh_token)
         assert gh_token in out2

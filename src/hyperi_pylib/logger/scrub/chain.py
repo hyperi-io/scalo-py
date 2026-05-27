@@ -10,7 +10,7 @@
 
 :class:`LayeredScrubber` composes multiple per-layer scrubbers in
 spec-mandated order. :class:`NoOpScrubber` passes input through
-unchanged — for tests and dependency-injection swaps.
+unchanged -- for tests and dependency-injection swaps.
 
 Per spec §2.3, both are discrete objects with explicit per-instance
 configuration. No global mutable state.
@@ -49,11 +49,11 @@ class NoOpScrubber:
 class LayeredScrubber:
     """Compose multiple :class:`Scrubber` layers in spec-mandated order.
 
-    Per spec §2.1, layers run in numeric order L1 → L2 → L3 → L4. Each
+    Per spec §2.1, layers run in numeric order L1 -> L2 -> L3 -> L4. Each
     receives the output of the previous and may further redact.
 
     The order is enforced by the order of ``layers`` passed to the
-    constructor — callers MUST pass them in spec order. A future
+    constructor -- callers MUST pass them in spec order. A future
     refactor may move ordering into the class itself once each layer
     has a stable type.
 
@@ -67,7 +67,7 @@ class LayeredScrubber:
     is skipped for the current call (a one-time warning is emitted)
     and the chain continues with the remaining layers. The original
     text is returned if EVERY layer fails. The scrubber never raises
-    to the caller — broken scrubbing must not break logging itself.
+    to the caller -- broken scrubbing must not break logging itself.
     """
 
     def __init__(
@@ -99,9 +99,9 @@ class LayeredScrubber:
         Per spec §5.1, fails safe: a misbehaving layer is skipped
         with a one-time warning, not propagated to the caller.
 
-        Per spec §5.5, ``observe_only`` mode does not skip layers —
+        Per spec §5.5, ``observe_only`` mode does not skip layers --
         layers run normally and emit detection metrics, but the
-        returned text equals the input. (Metrics not yet wired —
+        returned text equals the input. (Metrics not yet wired --
         see Step 9 of the implementation plan.)
         """
         if not self._config.enabled:

@@ -6,7 +6,7 @@
 # License:   FSL-1.1-ALv2
 # Copyright: (c) 2026 HYPERI PTY LIMITED
 
-"""Deployment contract Pydantic models — mirrors rustlib's
+"""Deployment contract Pydantic models -- mirrors rustlib's
 ``hyperi_rustlib::deployment::contract``.
 
 Apps build a ``DeploymentContract`` from their ``Config`` defaults. Validation
@@ -31,7 +31,7 @@ from .native_deps import NativeDepsContract
 
 
 class ImageProfile(StrEnum):
-    """Container image profile — controls what goes into the generated Dockerfile.
+    """Container image profile -- controls what goes into the generated Dockerfile.
 
     Both profiles use the same linking strategy (dynamic). The difference is
     optimisation level, debug tooling, and image metadata.
@@ -45,10 +45,10 @@ class ImageProfile(StrEnum):
     """
 
     PRODUCTION = "production"
-    """Minimal production image — stripped binary, no debug tools."""
+    """Minimal production image -- stripped binary, no debug tools."""
 
     DEVELOPMENT = "development"
-    """Development image — includes diagnostic tools (bash, strace, tcpdump,
+    """Development image -- includes diagnostic tools (bash, strace, tcpdump,
     procps, dnsutils, net-tools). Same binary, same linking."""
 
 
@@ -149,7 +149,7 @@ class DeploymentContract(BaseModel):
     """Contract schema version. CI checks this and fails if unsupported."""
 
     app_name: str
-    """Application name (e.g., ``dfe-loader``) — matched against ``Chart.yaml`` ``name``."""
+    """Application name (e.g., ``dfe-loader``) -- matched against ``Chart.yaml`` ``name``."""
 
     binary_name: str = ""
     """Binary name (e.g., ``dfe-loader``). Defaults to app_name when empty."""
@@ -208,15 +208,15 @@ class DeploymentContract(BaseModel):
     """
 
     image_profile: ImageProfile = ImageProfile.PRODUCTION
-    """Image profile — production (minimal) or development (debug tools)."""
+    """Image profile -- production (minimal) or development (debug tools)."""
 
     oci_labels: OciLabels = Field(default_factory=OciLabels)
-    """OCI image labels (static — dynamic labels injected by CI at build time)."""
+    """OCI image labels (static -- dynamic labels injected by CI at build time)."""
 
     # ---- Convenience accessors (mirror rustlib's impl block) ---------------
 
     def binary(self) -> str:
-        """Effective binary name — falls back to app_name when binary_name empty."""
+        """Effective binary name -- falls back to app_name when binary_name empty."""
         return self.binary_name if self.binary_name else self.app_name
 
     def config_filename(self) -> str:

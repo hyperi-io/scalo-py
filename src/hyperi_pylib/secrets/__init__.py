@@ -33,7 +33,7 @@ Basic usage:
     secrets = SecretsManager.from_config({"azure": {"vault_url": "https://my-vault.vault.azure.net/"}})
     value = await secrets.get("my-secret", provider="azure")
 
-    # ENV fallback — if provider is unavailable, fall back to environment variable
+    # ENV fallback -- if provider is unavailable, fall back to environment variable
     secrets = SecretsManager.from_config({
         "sources": {"api_key": {"provider": "openbao", "path": "secret/data/myapp", "key": "api_key", "env_fallback": "MY_API_KEY"}},
     })

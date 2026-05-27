@@ -13,7 +13,7 @@ hyperi-rustlib's cli::app module. Apps subclass ``DfeApp`` and get standard
 subcommands (``run``, ``version``, ``config-check``) and common flags
 (``--config``, ``--log-level``, ``--verbose``, ``--quiet``) for free.
 
-**No ``top`` subcommand** — Python services are never on the hot path;
+**No ``top`` subcommand** -- Python services are never on the hot path;
 performance-critical data plane work is handled by Rust services. A TUI
 metrics dashboard adds no value for Python control-plane services.
 
@@ -243,7 +243,7 @@ class DfeApp(ABC):
         container-manifest.json, argocd-application.yaml, etc. into the
         output directory.
 
-        Default returns ``None`` — the subcommand will print a warning and
+        Default returns ``None`` -- the subcommand will print a warning and
         emit only ``metrics-manifest.json``. Apps that don't ship as
         containers can leave it as None.
 
@@ -281,7 +281,7 @@ def _build_typer_app(dfe_app: DfeApp) -> Any:
 
     app = Typer(
         name=dfe_app.name,
-        help=f"{dfe_app.name} — DFE service",
+        help=f"{dfe_app.name} -- DFE service",
         add_completion=False,
         no_args_is_help=True,
     )
@@ -448,7 +448,7 @@ def _handle_generate_artefacts(dfe_app: DfeApp, output_dir: str) -> None:
     if contract is None:
         print_error(
             f"[warn] {type(dfe_app).__name__}.deployment_contract() returned None for "
-            f"`{dfe_app.name}` — no deployment artefacts emitted. Override the method "
+            f"`{dfe_app.name}` -- no deployment artefacts emitted. Override the method "
             f"to emit deployment-contract.json, container-manifest.json, "
             f"Dockerfile.runtime, and argocd-application.yaml."
         )
@@ -463,15 +463,17 @@ def _handle_generate_artefacts(dfe_app: DfeApp, output_dir: str) -> None:
             generate_runtime_stage,
         )
     except Exception as exc:
-        print_error("deployment subsystem unavailable — install with: pip install 'hyperi-pylib[deployment]'")
+        print_error("deployment subsystem unavailable -- install with: pip install 'hyperi-pylib[deployment]'")
         raise Exit(1) from exc
 
-    (out / "deployment-contract.json").write_text(contract.to_json())
-    (out / "container-manifest.json").write_text(generate_container_manifest(contract))
-    (out / "Dockerfile.runtime").write_text(generate_runtime_stage(contract))
+    (out / "deployment-contract.json").write_text(contract.to_json(), encoding="utf-8", newline="\n")
+    (out / "container-manifest.json").write_text(generate_container_manifest(contract), encoding="utf-8", newline="\n")
+    (out / "Dockerfile.runtime").write_text(generate_runtime_stage(contract), encoding="utf-8", newline="\n")
 
     argo = ArgocdConfig(repo_url=argocd_repo_url_from_cascade(contract.app_name))
-    (out / "argocd-application.yaml").write_text(generate_argocd_application(contract, argo))
+    (out / "argocd-application.yaml").write_text(
+        generate_argocd_application(contract, argo), encoding="utf-8", newline="\n"
+    )
 
     print_success(f"deployment artefacts written to {out}/")
     if not dfe_app._common_args.quiet:

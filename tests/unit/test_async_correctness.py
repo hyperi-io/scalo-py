@@ -8,19 +8,19 @@
 
 """Async correctness tests for hyperi-pylib.
 
-Async bugs are opaque — a sync-in-async call won't fail at test time,
+Async bugs are opaque -- a sync-in-async call won't fail at test time,
 it just silently blocks the event loop in production. These tests
 catch them statically (AST walk of every `async def` body) and at
 runtime (event-loop liveness probe during capability calls).
 
 Two test groups:
 
-1. :class:`TestNoSyncInAsync` — AST walk of every async function in
+1. :class:`TestNoSyncInAsync` -- AST walk of every async function in
    ``src/hyperi_pylib/``. Flags blocking-shaped calls that are not
    wrapped in ``run_blocking`` / ``asyncio.to_thread`` /
    ``run_in_executor``.
 
-2. :class:`TestEventLoopLiveness` — runtime probe. While a capability
+2. :class:`TestEventLoopLiveness` -- runtime probe. While a capability
    is doing async work, a ticker on the event loop must keep firing.
    If the ticker stops, the work was blocking.
 
@@ -44,7 +44,7 @@ SRC_ROOT = Path(__file__).parent.parent.parent / "src" / "hyperi_pylib"
 
 
 # ---------------------------------------------------------------------------
-# 1. Static AST walk — catches sync-in-async at test time
+# 1. Static AST walk -- catches sync-in-async at test time
 # ---------------------------------------------------------------------------
 
 
@@ -154,7 +154,7 @@ def _scan_async_function(fn: ast.AsyncFunctionDef) -> list[tuple[int, str]]:
         if label is not None:
             findings.append((node.lineno, label))
 
-    # `with self._lock:` containing an `await` — deadlock risk
+    # `with self._lock:` containing an `await` -- deadlock risk
     for node in ast.walk(fn):
         if not isinstance(node, ast.With):
             continue
@@ -178,7 +178,7 @@ def _scan_async_function(fn: ast.AsyncFunctionDef) -> list[tuple[int, str]]:
 # a tracking note. Add the file:line precisely; the test fails on any
 # UNRECOGNISED finding.
 KNOWN_UNFIXED: dict[str, set[tuple[int, str]]] = {
-    # tracked in TODO.md "Async correctness" — converting to make_async
+    # tracked in TODO.md "Async correctness" -- converting to make_async
     "src/hyperi_pylib/secrets/providers/file.py": set(),
     "src/hyperi_pylib/secrets/providers/ansible_vault.py": set(),
     "src/hyperi_pylib/secrets/providers/openbao.py": set(),
@@ -205,14 +205,14 @@ class TestNoSyncInAsync:
 
     def test_no_known_unfixed_files_are_clean(self):
         """Files declared 'unfixed' in KNOWN_UNFIXED must STILL have findings
-        — otherwise the entry is stale and should be removed."""
+        -- otherwise the entry is stale and should be removed."""
         by_file = _all_findings()
         for rel_path, expected in KNOWN_UNFIXED.items():
             full_path = SRC_ROOT.parent.parent / rel_path
             actual = set(by_file.get(full_path, []))
             if not actual and expected:
                 pytest.fail(
-                    f"{rel_path} is in KNOWN_UNFIXED but has no findings. Remove the KNOWN_UNFIXED entry — it's fixed!"
+                    f"{rel_path} is in KNOWN_UNFIXED but has no findings. Remove the KNOWN_UNFIXED entry -- it's fixed!"
                 )
 
     def test_no_new_sync_in_async(self):
@@ -242,7 +242,7 @@ class TestNoSyncInAsync:
 
 
 # ---------------------------------------------------------------------------
-# 2. Runtime event-loop liveness — async work must not block the loop
+# 2. Runtime event-loop liveness -- async work must not block the loop
 # ---------------------------------------------------------------------------
 
 

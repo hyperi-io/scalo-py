@@ -6,7 +6,7 @@
 #  License:      FSL-1.1-ALv2
 #  Copyright:    (c) 2026 HYPERI PTY LIMITED
 
-"""Tests for CardinalityTracker — warns when metric labels exceed cardinality threshold."""
+"""Tests for CardinalityTracker -- warns when metric labels exceed cardinality threshold."""
 
 import threading
 
@@ -158,7 +158,7 @@ class TestCardinalityWarning:
         assert len(warning_messages) == 1
 
     def test_warning_per_metric_not_shared(self, low_threshold_tracker):
-        """Each metric gets its own independent warning — exceeding threshold on metric_a
+        """Each metric gets its own independent warning -- exceeding threshold on metric_a
         does not suppress the warning for metric_b."""
         messages: list[str] = []
 
@@ -215,7 +215,7 @@ class TestReset:
         first_warnings: list[str] = []
         second_warnings: list[str] = []
 
-        # Exceed threshold — triggers warning
+        # Exceed threshold -- triggers warning
         sink_id = logger.add(lambda msg: first_warnings.append(msg), level="WARNING")
         try:
             for i in range(4):
@@ -225,7 +225,7 @@ class TestReset:
 
         assert any("High cardinality" in m for m in first_warnings)
 
-        # Reset and exceed again — should warn once more
+        # Reset and exceed again -- should warn once more
         low_threshold_tracker.reset()
 
         sink_id = logger.add(lambda msg: second_warnings.append(msg), level="WARNING")
@@ -317,12 +317,12 @@ class TestCustomThreshold:
 
         sink_id = logger.add(lambda msg: messages.append(msg), level="WARNING")
         try:
-            for i in range(5):  # at threshold — no warning
+            for i in range(5):  # at threshold -- no warning
                 ct.track("requests_total", {"id": str(i)})
 
             assert not any("High cardinality" in m for m in messages)
 
-            ct.track("requests_total", {"id": "overflow"})  # one over — triggers warning
+            ct.track("requests_total", {"id": "overflow"})  # one over -- triggers warning
         finally:
             logger.remove(sink_id)
 
@@ -338,7 +338,7 @@ class TestCustomThreshold:
 
         sink_id = logger.add(lambda msg: messages.append(msg), level="WARNING")
         try:
-            for i in range(50):  # at threshold — no warning
+            for i in range(50):  # at threshold -- no warning
                 ct.track("requests_total", {"id": str(i)})
 
             assert not any("High cardinality" in m for m in messages)

@@ -14,7 +14,7 @@ HTTP layer are deferred to the integration suite. Coverage strategy:
 - **Pure-logic helpers** are tested here (value encoding, tag matching,
   metadata mapping, post-filter, error classification).
 - **Live behaviour** is exercised by ``tests/integration/test_secrets_cloud_providers.py``
-  with the existing ``@requires_azure`` skip marker — runs against real Key Vault
+  with the existing ``@requires_azure`` skip marker -- runs against real Key Vault
   when CLI auth is configured. Note: tenant is being recreated, so live tests
   will need a refresh once the new vault URL is available.
 """

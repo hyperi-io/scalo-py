@@ -28,17 +28,9 @@ import pytest
 
 from hyperi_pylib.deployment.contract_identity import ContractIdentity
 
+GOLDEN_PATH = Path(__file__).parent.parent.parent / "fixtures" / "contract-parity" / "v1-output.txt"
 
-GOLDEN_PATH = (
-    Path(__file__).parent.parent.parent
-    / "fixtures"
-    / "contract-parity"
-    / "v1-output.txt"
-)
-
-RUSTLIB_GOLDEN_PATH = Path(
-    "/projects/hyperi-rustlib/tests/fixtures/contract-parity/v1-output.txt"
-)
+RUSTLIB_GOLDEN_PATH = Path("/projects/hyperi-rustlib/tests/fixtures/contract-parity/v1-output.txt")
 
 # Canonical test inputs -- MUST match the golden file's encoded values.
 GOLDEN_SHA = "0123456789abcdef0123456789abcdef01234567"
@@ -73,9 +65,11 @@ def test_dockerfile_labels_match_golden() -> None:
     actual = ident.as_dockerfile_labels()
     expected = golden["dockerfile-labels"]
     if actual != expected:
-        diff = "\n".join(difflib.unified_diff(
-            expected.splitlines(), actual.splitlines(),
-            lineterm="", fromfile="golden", tofile="pylib"))
+        diff = "\n".join(
+            difflib.unified_diff(
+                expected.splitlines(), actual.splitlines(), lineterm="", fromfile="golden", tofile="pylib"
+            )
+        )
         pytest.fail(f"dockerfile-labels drift:\n{diff}")
 
 
@@ -86,9 +80,11 @@ def test_yaml_annotations_match_golden(indent: int) -> None:
     actual = ident.as_yaml_annotations(indent=indent)
     expected = golden[f"yaml-annotations-indent-{indent}"]
     if actual != expected:
-        diff = "\n".join(difflib.unified_diff(
-            expected.splitlines(), actual.splitlines(),
-            lineterm="", fromfile="golden", tofile="pylib"))
+        diff = "\n".join(
+            difflib.unified_diff(
+                expected.splitlines(), actual.splitlines(), lineterm="", fromfile="golden", tofile="pylib"
+            )
+        )
         pytest.fail(f"yaml-annotations-indent-{indent} drift:\n{diff}")
 
 
@@ -105,14 +101,13 @@ def test_vendored_golden_matches_rustlib_when_available() -> None:
     nothing to diff against.
     """
     if not RUSTLIB_GOLDEN_PATH.exists():
-        pytest.skip(
-            f"rustlib golden not at {RUSTLIB_GOLDEN_PATH}; "
-            "vendored pylib copy is the current source of truth"
-        )
+        pytest.skip(f"rustlib golden not at {RUSTLIB_GOLDEN_PATH}; vendored pylib copy is the current source of truth")
     pylib = GOLDEN_PATH.read_text(encoding="utf-8")
     rustlib = RUSTLIB_GOLDEN_PATH.read_text(encoding="utf-8")
     if pylib != rustlib:
-        diff = "\n".join(difflib.unified_diff(
-            rustlib.splitlines(), pylib.splitlines(),
-            lineterm="", fromfile="rustlib", tofile="pylib-vendored"))
+        diff = "\n".join(
+            difflib.unified_diff(
+                rustlib.splitlines(), pylib.splitlines(), lineterm="", fromfile="rustlib", tofile="pylib-vendored"
+            )
+        )
         pytest.fail(f"vendored copy diverged from rustlib upstream:\n{diff}")

@@ -92,7 +92,7 @@ class TestGenerateArtefactsCli:
     def test_writes_all_artefacts(self, tmp_path: Path):
         AppCls = _build_app_class(_sample_contract)
         app = AppCls()
-        # Typer always sys.exit()s in standalone mode — catch the success exit.
+        # Typer always sys.exit()s in standalone mode -- catch the success exit.
         with pytest.raises(SystemExit) as exc_info:
             app.cli(["generate-artefacts", "--output-dir", str(tmp_path)])
         assert exc_info.value.code == 0

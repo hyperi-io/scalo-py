@@ -82,7 +82,7 @@ class _BoundHistogram:
 
 
 class OtelCounterAdapter:
-    """Wraps an OTel Counter with prometheus-client–compatible API.
+    """Wraps an OTel Counter with prometheus-client-compatible API.
 
     Translates ``.labels(k=v).inc()`` into ``counter.add(1, attributes={...})``.
     """
@@ -107,7 +107,7 @@ class OtelCounterAdapter:
 
 
 class OtelGaugeAdapter:
-    """Wraps an OTel UpDownCounter with prometheus-client–compatible API.
+    """Wraps an OTel UpDownCounter with prometheus-client-compatible API.
 
     Tracks current per-labelset values to support absolute ``.set()``, since
     OTel UpDownCounter only accepts deltas.
@@ -150,7 +150,7 @@ class OtelGaugeAdapter:
 
 
 class OtelHistogramAdapter:
-    """Wraps an OTel Histogram with prometheus-client–compatible API.
+    """Wraps an OTel Histogram with prometheus-client-compatible API.
 
     Translates ``.labels(k=v).observe(v)`` into ``histogram.record(v, attributes={...})``.
     """
@@ -313,10 +313,15 @@ class OpenTelemetryBackend(MetricsBackend):
 
         otel_config = config.get("opentelemetry", {}) if config else {}
 
-        # Resolve endpoint: config > env var > default
+        # Resolve endpoint: config > env var > NONE (silent by default).
+        # Previous default of "http://localhost:4317" caused every
+        # default-config process (incl. tests + local dev) to attempt
+        # OTLP push to a collector that usually wasn't running, producing
+        # constant "Transient error" log noise. Opt-in via config or
+        # OTEL_EXPORTER_OTLP_ENDPOINT.
         endpoint = otel_config.get(
             "endpoint",
-            os.environ.get("OTEL_EXPORTER_OTLP_ENDPOINT", "http://localhost:4317"),
+            os.environ.get("OTEL_EXPORTER_OTLP_ENDPOINT", ""),
         )
 
         # Resolve protocol: config > env var > default
@@ -360,7 +365,7 @@ class OpenTelemetryBackend(MetricsBackend):
                 readers_desc.append("prometheus(/metrics)")
 
             if not metric_readers:
-                logger.error("No metric readers configured — at least one of OTLP or Prometheus required")
+                logger.error("No metric readers configured -- at least one of OTLP or Prometheus required")
                 self.enabled = False
                 return
 
@@ -383,7 +388,7 @@ class OpenTelemetryBackend(MetricsBackend):
             logger.info(f"OpenTelemetry metrics initialised: readers=[{', '.join(readers_desc)}]")
 
             # Register graceful shutdown BEFORE OTel SDK's own atexit handler.
-            # Python atexit runs LIFO — registering last means we run first,
+            # Python atexit runs LIFO -- registering last means we run first,
             # shutting down the provider cleanly before the SDK tries to flush.
             import atexit
 

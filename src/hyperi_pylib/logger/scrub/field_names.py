@@ -1,15 +1,15 @@
 #  Project:   hyperi-pylib
 #  File:      src/hyperi_pylib/logger/scrub/field_names.py
-#  Purpose:   Layer 2 — field-name regex scrubber
+#  Purpose:   Layer 2 -- field-name regex scrubber
 #  Language:  Python
 #
 #  License:   FSL-1.1-ALv2
 #  Copyright: (c) 2026 HYPERI PTY LIMITED
 
-"""Layer 2 — field-name regex scrubber.
+"""Layer 2 -- field-name regex scrubber.
 
-Matches the existing ``SensitiveDataFilter`` field-name patterns —
-``password=...``, ``"token":"..."``, bearer tokens, DB URLs — and
+Matches the existing ``SensitiveDataFilter`` field-name patterns --
+``password=...``, ``"token":"..."``, bearer tokens, DB URLs -- and
 exposes them via the :class:`Scrubber` Protocol.
 
 Once the field-name list moves to
@@ -25,7 +25,7 @@ from ..filters import SensitiveDataFilter
 
 
 class FieldNameScrubber:
-    """L2 — field-name regex (``password=hunter2`` → ``password=***REDACTED***``)."""
+    """L2 -- field-name regex (``password=hunter2`` -> ``password=***REDACTED***``)."""
 
     def __init__(self, extra_fields: set[str] | None = None) -> None:
         self._inner = SensitiveDataFilter(extra_fields=extra_fields)

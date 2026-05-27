@@ -27,6 +27,37 @@ import os
 from pathlib import Path
 from typing import Any, Literal
 
+# librdkafka config keys whose VALUES are credentials. Any repr/dump of
+# a config dict must replace these with a sentinel before emission.
+_CREDENTIAL_KEYS: frozenset[str] = frozenset(
+    {
+        "sasl.password",
+        "sasl.username",
+        "ssl.key.password",
+        "ssl.keystore.password",
+        "ssl.truststore.password",
+        "schema.registry.basic.auth.user.info",
+        "schema.registry.ssl.key.password",
+    }
+)
+
+
+def mask_credentials(config: dict[str, Any]) -> dict[str, Any]:
+    """Return a copy of ``config`` with credential values masked.
+
+    Use when emitting a Kafka client config to logs, repr, or any
+    other surface a human or aggregator might read. The original dict
+    is not mutated.
+    """
+    out: dict[str, Any] = {}
+    for k, v in config.items():
+        if k in _CREDENTIAL_KEYS and v not in (None, ""):
+            out[k] = "***"
+        else:
+            out[k] = v
+    return out
+
+
 # =============================================================================
 # Corporate Defaults
 # =============================================================================
@@ -179,7 +210,7 @@ def external_sasl_scram(
     """
     Build a Kafka client config for an external broker using SASL_SSL + SCRAM.
 
-    HyperI default for production-internet-facing brokers — works unchanged
+    HyperI default for production-internet-facing brokers -- works unchanged
     against Apache Kafka, AutoMQ, MSK, and Confluent Cloud.
 
     Args:
@@ -303,7 +334,7 @@ def config_from_file(
                 f"Unsupported configuration file extension: {ext}. Supported: .properties, .json, .yaml, .yml, .ini"
             )
 
-    content = file_path.read_text()
+    content = file_path.read_text(encoding="utf-8")
 
     if format == "properties":
         return _parse_properties(content)
