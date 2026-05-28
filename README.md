@@ -4,7 +4,7 @@
 [![Build Status](https://github.com/hyperi-io/hyperi-pylib/actions/workflows/ci.yml/badge.svg)](https://github.com/hyperi-io/hyperi-pylib/actions)
 [![PyPI](https://img.shields.io/pypi/v/hyperi-pylib?logo=pypi)](https://pypi.org/project/hyperi-pylib/)
 [![Python Version](https://img.shields.io/badge/python-3.12%2B-blue)](https://www.python.org/)
-[![License](https://img.shields.io/badge/license-FSL--1.1--ALv2-blue)](LICENSE)
+[![License](https://img.shields.io/badge/license-BUSL--1.1-blue)](LICENSE)
 <!-- BADGES:END -->
 
 > **There's plenty of sage advice out there about how to run Python services
