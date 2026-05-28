@@ -3,7 +3,7 @@
 #  Purpose:   Cross-language parity tests driven by the shared TOML fixtures
 #  Language:  Python
 #
-#  License:   FSL-1.1-ALv2
+#  License:   BUSL-1.1
 #  Copyright: (c) 2026 HYPERI PTY LIMITED
 
 """Cross-language parity tests for L3 PII validators.

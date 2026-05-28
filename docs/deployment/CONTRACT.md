@@ -72,7 +72,7 @@ variants from one contract.
 | `title` | `""` -> falls back to `app_name` in generators |
 | `description` | `""` |
 | `vendor` | `"HYPERI PTY LIMITED"` (`DEFAULT_VENDOR`) |
-| `licenses` | `"FSL-1.1-ALv2"` (`DEFAULT_LICENSE`) |
+| `licenses` | `"BUSL-1.1"` (`DEFAULT_LICENSE`) |
 
 Dynamic labels (`org.opencontainers.image.source`, `revision`,
 `version`, `created`) are CI-injected via `--build-arg`; the static

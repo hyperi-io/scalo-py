@@ -334,7 +334,7 @@
 
 ### Bug Fixes
 
-* use SPDX-compliant LicenseRef for FSL-1.1-ALv2 license expression ([efd44b2](https://github.com/hyperi-io/hyperi-pylib/commit/efd44b21deaf2306d860890f4aa33c3d63b1020d))
+* use SPDX-compliant LicenseRef for BUSL-1.1 license expression ([efd44b2](https://github.com/hyperi-io/hyperi-pylib/commit/efd44b21deaf2306d860890f4aa33c3d63b1020d))
 
 # [2.18.0](https://github.com/hyperi-io/hyperi-pylib/compare/v2.17.1...v2.18.0) (2026-02-10)
 
@@ -356,7 +356,7 @@
 All imports change from hs_pylib to hyperi_pylib.
 All env vars renamed from HS_*/HYPERSEC_* to HYPERI_*.
 
-- Change license from proprietary EULA to FSL-1.1-ALv2
+- Change license from proprietary EULA to BUSL-1.1
 - Add COMMERCIAL.md, CONTRIBUTING.md, SECURITY.md
 - Rename package directory src/hs_pylib -> src/hyperi_pylib
 - Update all imports, tests, configs, docker-compose files

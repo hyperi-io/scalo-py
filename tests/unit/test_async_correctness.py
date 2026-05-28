@@ -3,7 +3,7 @@
 #  Purpose:   Static + runtime checks that async code does not block the event loop
 #  Language:  Python
 #
-#  License:   FSL-1.1-ALv2
+#  License:   BUSL-1.1
 #  Copyright: (c) 2026 HYPERI PTY LIMITED
 
 """Async correctness tests for hyperi-pylib.

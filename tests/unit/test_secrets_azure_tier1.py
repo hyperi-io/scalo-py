@@ -3,7 +3,7 @@
 # Purpose:   Unit tests for Azure Key Vault Tier 1 + Tier 2 helpers
 # Language:  Python
 #
-# License:   FSL-1.1-ALv2
+# License:   BUSL-1.1
 # Copyright: (c) 2026 HYPERI PTY LIMITED
 
 """Unit tests for Azure Key Vault Tier 1 + Tier 2 helpers.

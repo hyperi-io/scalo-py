@@ -3,7 +3,7 @@
 #  Purpose:   Redaction-label formatting (static + deterministic-hash)
 #  Language:  Python
 #
-#  License:   FSL-1.1-ALv2
+#  License:   BUSL-1.1
 #  Copyright: (c) 2026 HYPERI PTY LIMITED
 
 """Redaction-label formatting per spec §4.

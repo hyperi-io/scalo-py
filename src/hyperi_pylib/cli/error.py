@@ -3,7 +3,7 @@
 # Purpose:   CLI error types for DFE services
 # Language:  Python
 #
-# License:   FSL-1.1-ALv2
+# License:   BUSL-1.1
 # Copyright: (c) 2026 HYPERI PTY LIMITED
 
 """CLI error types for DFE service applications.

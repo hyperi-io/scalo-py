@@ -4,7 +4,7 @@
 #            consumer e2e tests of the deployment contract
 # Language:  Python
 #
-# License:   FSL-1.1-ALv2
+# License:   BUSL-1.1
 # Copyright: (c) 2026 HYPERI PTY LIMITED
 
 """Reusable test infrastructure for the deployment-contract e2e suite.

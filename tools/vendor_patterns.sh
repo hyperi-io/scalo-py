@@ -4,7 +4,7 @@
 #  Purpose:   Vendor canonical pattern TOMLs from hyperi-ai into pylib's data/
 #  Language:  Bash
 #
-#  License:   FSL-1.1-ALv2
+#  License:   BUSL-1.1
 #  Copyright: (c) 2026 HYPERI PTY LIMITED
 #
 # Copies the canonical pattern files from a local hyperi-ai checkout

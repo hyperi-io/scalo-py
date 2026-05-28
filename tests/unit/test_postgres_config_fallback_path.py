@@ -3,7 +3,7 @@
 #  Purpose:   PG fallback file must default to ~/.cache, never /tmp
 #  Language:  Python
 #
-#  License:   FSL-1.1-ALv2
+#  License:   BUSL-1.1
 #  Copyright: (c) 2026 HYPERI PTY LIMITED
 
 """PG fallback file defaults to ~/.cache, never /tmp; 0o600 perms."""

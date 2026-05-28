@@ -3,7 +3,7 @@
 #  Purpose:      SinkMetrics group -- for DFE apps with a downstream
 #  Language:     Python
 #
-#  License:      FSL-1.1-ALv2
+#  License:      BUSL-1.1
 #  Copyright:    (c) 2026 HYPERI PTY LIMITED
 
 """

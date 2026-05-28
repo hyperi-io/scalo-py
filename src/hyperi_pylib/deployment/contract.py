@@ -3,7 +3,7 @@
 # Purpose:   Deployment contract Pydantic models
 # Language:  Python
 #
-# License:   FSL-1.1-ALv2
+# License:   BUSL-1.1
 # Copyright: (c) 2026 HYPERI PTY LIMITED
 
 """Deployment contract Pydantic models -- mirrors rustlib's
@@ -55,7 +55,7 @@ class ImageProfile(StrEnum):
 # ---- Defaults (module-level so they appear in JSON Schema docs) -------------
 
 DEFAULT_VENDOR = "HYPERI PTY LIMITED"
-DEFAULT_LICENSE = "FSL-1.1-ALv2"
+DEFAULT_LICENSE = "BUSL-1.1"
 DEFAULT_SCHEMA_VERSION = 2
 MAX_SUPPORTED_SCHEMA_VERSION = 2
 

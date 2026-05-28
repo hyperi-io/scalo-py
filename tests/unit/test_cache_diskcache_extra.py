@@ -3,7 +3,7 @@
 #  Purpose:   Cache falls back to memory when diskcache absent
 #  Language:  Python
 #
-#  License:   FSL-1.1-ALv2
+#  License:   BUSL-1.1
 #  Copyright: (c) 2026 HYPERI PTY LIMITED
 
 """[cache] does NOT pull diskcache (CVE-2025-69872, no fix). The cache

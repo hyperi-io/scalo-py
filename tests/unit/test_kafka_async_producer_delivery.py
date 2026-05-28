@@ -3,7 +3,7 @@
 #  Purpose:   Verify AsyncKafkaProducer.send_and_wait + BufferError retry
 #  Language:  Python
 #
-#  License:   FSL-1.1-ALv2
+#  License:   BUSL-1.1
 #  Copyright: (c) 2026 HYPERI PTY LIMITED
 
 """B7 regression tests: send_and_wait surfaces delivery acks/failures,

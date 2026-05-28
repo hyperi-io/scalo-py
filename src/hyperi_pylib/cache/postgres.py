@@ -3,7 +3,7 @@
 # Purpose:   PostgreSQL-backed cache for multi-pod deployments
 # Language:  Python
 #
-# License:   FSL-1.1-ALv2
+# License:   BUSL-1.1
 # Copyright: (c) 2026 HYPERI PTY LIMITED
 
 """PostgreSQL-backed cache for shared multi-instance deployments.

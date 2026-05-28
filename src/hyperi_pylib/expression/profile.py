@@ -3,7 +3,7 @@
 # Purpose:   DFE expression profile -- allowed subset of CEL
 # Language:  Python
 #
-# License:   FSL-1.1-ALv2
+# License:   BUSL-1.1
 # Copyright: (c) 2026 HYPERI PTY LIMITED
 
 """DFE Expression Profile -- the allowed subset of CEL.

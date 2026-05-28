@@ -3,7 +3,7 @@
 # Purpose:   CLI integration test for the generate-artefacts subcommand
 # Language:  Python
 #
-# License:   FSL-1.1-ALv2
+# License:   BUSL-1.1
 # Copyright: (c) 2026 HYPERI PTY LIMITED
 
 """Test the generate-artefacts CLI subcommand wired into DfeApp."""

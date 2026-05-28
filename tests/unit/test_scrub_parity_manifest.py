@@ -3,7 +3,7 @@
 #  Purpose:   Lock the cross-language parity manifest shape
 #  Language:  Python
 #
-#  License:   FSL-1.1-ALv2
+#  License:   BUSL-1.1
 #  Copyright: (c) 2026 HYPERI PTY LIMITED
 
 """Tests for the parity manifest emitter.

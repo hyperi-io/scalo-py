@@ -3,7 +3,7 @@
 #  Purpose:   smart_run must enforce timeouts even when child is silent
 #  Language:  Python
 #
-#  License:   FSL-1.1-ALv2
+#  License:   BUSL-1.1
 #  Copyright: (c) 2026 HYPERI PTY LIMITED
 
 """smart_run must terminate silent children at activity/total timeout."""

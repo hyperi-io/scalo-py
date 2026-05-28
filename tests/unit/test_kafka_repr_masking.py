@@ -3,7 +3,7 @@
 #  Purpose:   Verify Kafka client __repr__ masks SASL/SSL credentials
 #  Language:  Python
 #
-#  License:   FSL-1.1-ALv2
+#  License:   BUSL-1.1
 #  Copyright: (c) 2026 HYPERI PTY LIMITED
 
 """S10 regression: any repr(client) must mask sasl.password and similar

@@ -3,7 +3,7 @@
 #  Purpose:   Runtime-constructed fake PII fixtures for scrubber tests
 #  Language:  Python
 #
-#  License:   FSL-1.1-ALv2
+#  License:   BUSL-1.1
 #  Copyright: (c) 2026 HYPERI PTY LIMITED
 
 """Build fake but validator-matching PII strings at runtime.

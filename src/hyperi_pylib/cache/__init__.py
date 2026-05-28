@@ -3,7 +3,7 @@
 # Purpose:   Cache module with disk and PostgreSQL backends
 # Language:  Python
 #
-# License:   FSL-1.1-ALv2
+# License:   BUSL-1.1
 # Copyright: (c) 2026 HYPERI PTY LIMITED
 
 """

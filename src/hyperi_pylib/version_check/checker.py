@@ -3,7 +3,7 @@
 # Purpose:   Non-blocking startup version check implementation
 # Language:  Python
 #
-# License:   FSL-1.1-ALv2
+# License:   BUSL-1.1
 # Copyright: (c) 2026 HYPERI PTY LIMITED
 
 """Version check implementation -- daemon thread, fire-and-forget."""

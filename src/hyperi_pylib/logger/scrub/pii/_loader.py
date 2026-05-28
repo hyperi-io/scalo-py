@@ -3,7 +3,7 @@
 #  Purpose:   Load the bundled national_ids.toml and build validator instances
 #  Language:  Python
 #
-#  License:   FSL-1.1-ALv2
+#  License:   BUSL-1.1
 #  Copyright: (c) 2026 HYPERI PTY LIMITED
 
 """Load the bundled ``national_ids.toml`` and build validator instances.

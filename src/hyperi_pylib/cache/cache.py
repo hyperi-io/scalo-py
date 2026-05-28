@@ -3,7 +3,7 @@
 # Purpose:   Cashews wrapper with disk backend and per-source TTLs
 # Language:  Python
 #
-# License:   FSL-1.1-ALv2
+# License:   BUSL-1.1
 # Copyright: (c) 2026 HYPERI PTY LIMITED
 
 """Cashews wrapper with disk-backed cache and per-source TTL configuration."""

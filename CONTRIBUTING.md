@@ -125,47 +125,27 @@ git config --global user.email "your.email@example.com"
 ## License for Contributions
 
 All contributions to this project are licensed under the Functional Source
-License, Version 1.1, ALv2 Future License (FSL-1.1-ALv2), the same license
+License, Version 1.1, ALv2 Future License (BUSL-1.1), the same license
 that covers the project.
 
 Each version of the software (including your contributions) will automatically
 become available under the Apache License, Version 2.0 on the second
 anniversary of its release.
 
-## Local Development
-
-Requires `hyperi-ci` CLI: `uv tool install hyperi-ci`
-
-```bash
-uv sync                # Install dependencies
-make quality           # Lint, type-check, security audit
-make test              # Run test suite
-make build             # Build wheel
-```
-
-Or run individual checks:
-
-```bash
-uv run pytest tests/unit/ -v
-uv run ruff check .
-uv run ruff format .
-```
-
 ## How to Contribute
 
 1. **Fork the repository** and create your branch from `main`
 2. **Make your changes** following the commit message format above
 3. **Sign off your commits** with the DCO
-4. **Run** `make quality && make test` before submitting
+4. **Test your changes** to ensure they work as expected
 5. **Submit a pull request** with a clear description of what you've done
 
 ### Pull Request Checklist
 
 - [ ] Commits follow the conventional commit format
 - [ ] All commits are signed off (DCO)
-- [ ] `make quality` passes
-- [ ] `make test` passes
-- [ ] Documentation updated if applicable
+- [ ] Tests pass (if applicable)
+- [ ] Documentation is updated (if applicable)
 
 ## CI/CD Workflow
 
@@ -175,9 +155,9 @@ When your pull request is merged to `main`:
 2. Determines the next version number based on commit types
 3. Generates/updates the CHANGELOG
 4. Creates a new GitHub release with release notes
-5. Publishes the package to **public PyPI**
+5. Publishes the package (if applicable)
 
-This happens automatically via `hyperi-ci` — no manual intervention required.
+This happens automatically - no manual intervention required.
 
 ## Questions
 

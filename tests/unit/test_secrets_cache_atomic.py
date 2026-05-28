@@ -3,7 +3,7 @@
 #  Purpose:   Verify atomic write + 0o600 perms + clear() error propagation
 #  Language:  Python
 #
-#  License:   FSL-1.1-ALv2
+#  License:   BUSL-1.1
 #  Copyright: (c) 2026 HYPERI PTY LIMITED
 
 """B6/S2/S6 regression tests: concurrent writers race-free, file perms

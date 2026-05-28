@@ -3,7 +3,7 @@
 # Purpose:   Verify scrubbing covers record["extra"] (bind context) + exception chain
 # Language:  Python
 #
-# License:   FSL-1.1-ALv2
+# License:   BUSL-1.1
 # Copyright: (c) 2026 HYPERI PTY LIMITED
 
 """Scrubbing must cover ``record['extra']`` (logger.bind() context) and
