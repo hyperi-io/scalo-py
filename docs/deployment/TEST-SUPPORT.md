@@ -184,9 +184,8 @@ missing -- never silently passes.
 | `test_tier_b_helm_install_on_kind` | full `helm install` on a kind cluster with a public canary image (`public.ecr.aws/docker/library/nginx:alpine` -- no creds needed) | `helm` + `kind` + `kubectl` + `HYPERI_E2E_CLUSTER=1` |
 | `test_tier_b_argocd_application_sync_on_kind` | `kubectl apply` the generated Application against a kind cluster with ArgoCD installed; round-trip the identity annotations through `kubectl get application -o jsonpath` | `kubectl` + `kind` + `HYPERI_E2E_CLUSTER=1` |
 
-The ArgoCD install manifest is pinned to a specific upstream tag
-(`v2.13.1` at time of writing) -- consumers updating that should
-bump intentionally.
+The ArgoCD install manifest is pinned to a specific upstream tag --
+consumers updating that should bump intentionally.
 
 ---
 

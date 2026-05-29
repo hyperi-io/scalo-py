@@ -250,7 +250,7 @@ Values mirror rustlib's `hyperi_rustlib::deployment::waves` numerically.
 
 ## Identity opt-in (Phase 1)
 
-The five generators that take `identity` default it to `None` so
+The generators that take `identity` default it to `None` so
 existing CI doesn't break on upgrade. Pass an explicit
 `ContractIdentity.detect(image_ref=...)` (or constructed instance) to
 stamp the three `io.hyperi.contract.*` keys. Phase 2 will require

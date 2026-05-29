@@ -1,7 +1,7 @@
 # Post-GA deferred review items
 
-Items identified in the pre-GA ultrathink review (2026-05-27) that were
-classified DEFERRED rather than BLOCKER or SHIP-NICE. Each is genuinely
+Items identified in the pre-GA review that were classified DEFERRED
+rather than BLOCKER or SHIP-NICE. Each is genuinely
 defensible to ship without; they belong on the post-GA improvement
 backlog rather than the release gate.
 

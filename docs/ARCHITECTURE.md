@@ -97,7 +97,7 @@ flowchart TB
 Solid arrows: hard dependency (module on left used by module on right).
 Dotted arrow: optional / conditional.
 
-Three observations:
+Observations:
 
 - Every module above the runtime layer depends on at least one core
   pillar. Apps that just want config + logs install nothing else and
@@ -110,36 +110,34 @@ Three observations:
 
 ---
 
-## Source-of-truth module list
+## Module map
 
-From `src/hyperi_pylib/`:
+Each module under `src/hyperi_pylib/` and what you import from it:
 
-| Module | Type | Lines (incl. tests) | Public API entry |
-|---|---|---|---|
-| `cache/` | dir | ~1,200 | `configure_cache`, `@cached`, `PostgresCache` |
-| `cli/` | dir | ~1,500 | `DfeApp`, standard options, common patterns |
-| `concurrency.py` | file | 220 | `run_blocking`, `Bulkhead`, `gather_with_timeouts` |
-| `config/` | dir | ~3,000 | `settings`, `get_environment`, `get_app_name`, `init_config_directory` |
-| `data/` | dir (data only) | — | TOML/INI files for gitleaks rules + national-ID validators |
-| `database/` | dir | ~400 | `build_database_url`, `parse_database_url` |
-| `deployment/` | dir | ~4,500 | `DeploymentContract`, `generate_*`, `ContractIdentity`, `test_support` |
-| `expression/` | dir | ~600 | `evaluate`, `evaluate_condition`, `validate`, `compile_expression` |
-| `harness/` | dir | ~1,000 | `run`, `smart_run`, `smart_run_function`, `HarnessResult` |
-| `health/` | dir | ~500 | `HealthManager`, `create_health_router`, probe handlers |
-| `http/` | dir | ~800 | `HttpClient`, `AsyncHttpClient` |
-| `kafka/` | dir | ~2,500 | `KafkaProducer`, `KafkaConsumer`, `AsyncKafka*`, `KafkaAdmin`, `SchemaAnalyser` |
-| `logger/` | dir | ~4,000 | `logger`, convenience fns, `scrub/` package |
-| `metrics/` | dir | ~3,500 | `create_metrics`, `dfe_groups/*`, `CardinalityTracker`, FastAPI middleware |
-| `resilience/` | dir | ~300 | `CircuitBreaker`, `CircuitBreakerConfig` |
-| `runtime/` | dir | ~600 | `get_runtime_paths`, `RuntimePaths`, `RuntimeEnvironment` |
-| `scaling/` | dir | ~350 | `ScalingPressure`, `ScalingPressureConfig`, `PressureSnapshot` |
-| `secrets/` | dir | ~2,500 | `SecretsManager`, providers (file/openbao/aws/gcp/azure/ansible-vault) |
-| `version_check/` | dir | ~300 | `check_on_startup`, `VersionCheckConfig` |
+| Module | Public API entry |
+|---|---|
+| `cache` | `configure_cache`, `@cached`, `PostgresCache` |
+| `cli` | `DfeApp`, standard options, common patterns |
+| `concurrency` | `run_blocking`, `Bulkhead`, `gather_with_timeouts` |
+| `config` | `settings`, `get_environment`, `get_app_name`, `init_config_directory` |
+| `data` | data files only — gitleaks rules + national-ID validators |
+| `database` | `build_database_url`, `parse_database_url` |
+| `deployment` | `DeploymentContract`, `generate_*`, `ContractIdentity`, `test_support` |
+| `expression` | `evaluate`, `evaluate_condition`, `validate`, `compile_expression` |
+| `harness` | `run`, `smart_run`, `smart_run_function`, `HarnessResult` |
+| `health` | `HealthManager`, `create_health_router`, probe handlers |
+| `http` | `HttpClient`, `AsyncHttpClient` |
+| `kafka` | `KafkaProducer`, `KafkaConsumer`, `AsyncKafka*`, `KafkaAdmin`, `SchemaAnalyser` |
+| `logger` | `logger`, convenience fns, `scrub/` package |
+| `metrics` | `create_metrics`, `dfe_groups/*`, `CardinalityTracker`, FastAPI middleware |
+| `resilience` | `CircuitBreaker`, `CircuitBreakerConfig` |
+| `runtime` | `get_runtime_paths`, `RuntimePaths`, `RuntimeEnvironment` |
+| `scaling` | `ScalingPressure`, `ScalingPressureConfig`, `PressureSnapshot` |
+| `secrets` | `SecretsManager`, providers (file/openbao/aws/gcp/azure/ansible-vault) |
+| `version_check` | `check_on_startup`, `VersionCheckConfig` |
 
-Total source: ~30k LoC.
-
-The `Application` framework was removed to backlog (see
-`src/hyperi_pylib/__init__.py:101-107`) — use modules directly.
+The `Application` framework was removed to backlog (see the note in
+`src/hyperi_pylib/__init__.py`) — compose modules directly.
 
 ---
 

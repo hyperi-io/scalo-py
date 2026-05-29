@@ -1,6 +1,6 @@
 # Secrets
 
-Unified async/sync secrets API across seven providers — file, OpenBao,
+Unified async/sync secrets API across the supported providers — file, OpenBao,
 HashiCorp Vault (same protocol as OpenBao), AWS Secrets Manager, GCP
 Secret Manager, Azure Key Vault, and Ansible Vault. One `SecretsManager`
 object, one configuration shape, two-tier caching, stale-grace fallback,

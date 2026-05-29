@@ -77,8 +77,8 @@ async def startup():
     health.set_ready()
 ```
 
-That covers config + logger + metrics + health + runtime in
-roughly 20 lines, with no framework in between.
+That covers config + logger + metrics + health + runtime in a
+handful of lines, with no framework in between.
 
 ---
 

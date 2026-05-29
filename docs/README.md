@@ -24,7 +24,7 @@ Python extras pull in which deps.
 | `from hyperi_pylib import health` | `/health/live`, `/health/ready`, `/health/startup` router, downstream-dep registry, K8s-shaped responses | Write probe handlers, manage dependency state |
 | `from hyperi_pylib import runtime` | K8s / Docker / bare-metal autodetect, container-aware paths (config_dir, data_dir, cache_dir, run_dir), `CONTAINER_BASE_PATH` override | Read `/.dockerenv`, parse cgroups, pick path defaults |
 | `from hyperi_pylib import secrets` | OpenBao / Vault / AWS / GCP / Azure / ansible-vault / file providers behind one interface | Pick a provider SDK, wrap each behind a uniform API |
-| `from hyperi_pylib.deployment import DeploymentContract` | Pydantic contract → Dockerfile + Helm chart + ArgoCD Application + container manifest + Compose fragment, all carrying [Contract Identity v1](deployment/IDENTITY.md) labels | Write four generators, keep them in sync, stamp identity by hand |
+| `from hyperi_pylib.deployment import DeploymentContract` | Pydantic contract → Dockerfile + Helm chart + ArgoCD Application + container manifest + Compose fragment, all carrying [Contract Identity v1](deployment/IDENTITY.md) labels | Write the generators yourself, keep them in sync, stamp identity by hand |
 | `from hyperi_pylib.kafka import KafkaProducer, KafkaConsumer` | confluent-kafka clients with idempotent retry, schema sampling, consumer lag health, async wrappers | Configure librdkafka, hand-roll a retry wrapper, write a lag probe |
 
 That's the value proposition. Everything else is "and here's how the
