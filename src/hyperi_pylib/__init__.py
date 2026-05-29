@@ -113,7 +113,12 @@ for all production code. The Application framework may return in a future
 version once the design is mature.
 """
 
-__version__ = "2.28.3"  # Managed by semantic-release
+from importlib.metadata import version as _pkg_version
+
+# Single source of truth: installed package metadata. CI stamps pyproject.toml
+# at build time, so this matches the published tag and never drifts. No
+# hardcoded version, no release-time file rewrite.
+__version__ = _pkg_version("hyperi-pylib")
 
 # Import modules (packages) - logger is a module for extensibility
 from . import cli, config, database, harness, health, logger, metrics, runtime, version_check
