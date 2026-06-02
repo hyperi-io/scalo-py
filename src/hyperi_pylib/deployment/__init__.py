@@ -91,6 +91,8 @@ if not DEPLOYMENT_AVAILABLE:
     generate_compose_fragment = _missing  # type: ignore[assignment]
     generate_chart = _missing  # type: ignore[assignment]
     generate_argocd_application = _missing  # type: ignore[assignment]
+    validate_dockerfile = _missing  # type: ignore[assignment]
+    validate_helm_values = _missing  # type: ignore[assignment]
     image_registry_from_cascade = _missing  # type: ignore[assignment]
     base_image_from_cascade = _missing  # type: ignore[assignment]
     argocd_repo_url_from_cascade = _missing  # type: ignore[assignment]
@@ -143,6 +145,7 @@ else:
         base_image_from_cascade,
         image_registry_from_cascade,
     )
+    from .validate import validate_dockerfile, validate_helm_values
     from .waves import (
         WAVE_APPS,
         WAVE_CRDS,
@@ -192,4 +195,6 @@ __all__ = [
     "generate_dockerfile",
     "generate_runtime_stage",
     "image_registry_from_cascade",
+    "validate_dockerfile",
+    "validate_helm_values",
 ]
