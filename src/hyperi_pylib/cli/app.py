@@ -338,7 +338,7 @@ def _build_typer_app(dfe_app: DfeApp) -> Any:
     def generate_artefacts(
         output_dir: str = Option("ci", "--output-dir", "-o", help="Output directory for generated artefacts"),
     ) -> None:
-        """Generate deployment artefacts (Dockerfile, Helm chart, ArgoCD app) from contract."""
+        """Generate deployment artefacts (contract JSON, container manifest, runtime Dockerfile, ArgoCD app) from contract."""
         _handle_generate_artefacts(dfe_app, output_dir)
 
     # Let app register custom subcommands

@@ -461,6 +461,13 @@ class TestGenerateArgocd:
         assert "/spec/clusterIP" in yaml
         assert ".webhooks[].clientConfig.caBundle" in yaml
 
+    def test_regenerate_header_references_real_command(self):
+        # Issue #23: header must reference the real generate-artefacts command.
+        argo = ArgocdConfig(repo_url="https://github.com/hyperi-io/dfe-loader")
+        yaml = generate_argocd_application(_full_contract(), argo)
+        assert "emit-argocd" not in yaml
+        assert "generate-artefacts" in yaml
+
     def test_generate_argocd_application_appends_extra_ignore_differences(self):
         argo = ArgocdConfig(
             repo_url="https://github.com/hyperi-io/dfe-loader",

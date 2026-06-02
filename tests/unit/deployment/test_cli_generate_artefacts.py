@@ -128,6 +128,13 @@ class TestGenerateArtefactsCli:
         assert "name: test-deploy-app" in argo
         assert "repoURL: https://github.com/hyperi-io/test-deploy-app" in argo
 
+    def test_help_does_not_claim_helm_chart(self, capsys):
+        # Issue #23: generate-artefacts emits no Helm chart; help must not claim one.
+        AppCls = _build_app_class(_sample_contract)
+        with pytest.raises(SystemExit):
+            AppCls().cli(["generate-artefacts", "--help"])
+        assert "Helm" not in capsys.readouterr().out
+
     def test_warns_when_contract_is_none(self, tmp_path: Path, capsys):
         from hyperi_pylib.cli import DfeApp, VersionInfo
 
