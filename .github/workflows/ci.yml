@@ -27,7 +27,7 @@ permissions:
 
 jobs:
   ci:
-    uses: hyperi-io/hyperi-ci/.github/workflows/python-ci.yml@57450e1b8c4c4655259dceb23b91743ff21a283a # v2.6.1
+    uses: hyperi-io/hyperi-ci/.github/workflows/python-ci.yml@main
     with:
       publish-target: oss
       tag: ${{ inputs.tag || '' }}
