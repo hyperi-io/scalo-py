@@ -1,0 +1,40 @@
+{
+  "schema_version": "1",
+  "app_name": "dfe-api",
+  "binary_name": "dfe-api",
+  "base_image": "python:3.12-slim",
+  "image_registry": "ghcr.io/hyperi-io",
+  "image_profile": "production",
+  "runtime_packages": {
+    "apt_repos": [],
+    "apt_packages": []
+  },
+  "expose_ports": [
+    8000
+  ],
+  "healthcheck": {
+    "path": "/healthz",
+    "port": 8000,
+    "interval": "30s",
+    "timeout": "3s",
+    "start_period": "5s",
+    "retries": 3
+  },
+  "entrypoint": [
+    "dfe-api"
+  ],
+  "cmd": [
+    "run"
+  ],
+  "user": "appuser",
+  "uid": 1000,
+  "labels": {
+    "io.hyperi.profile": "production",
+    "io.hyperi.app": "dfe-api",
+    "io.hyperi.metrics_port": "8000",
+    "org.opencontainers.image.title": "dfe-api",
+    "org.opencontainers.image.description": "DFE engine API",
+    "org.opencontainers.image.vendor": "HYPERI PTY LIMITED",
+    "org.opencontainers.image.licenses": "BUSL-1.1"
+  }
+}
