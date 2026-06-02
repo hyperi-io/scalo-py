@@ -100,7 +100,6 @@ def _full_contract() -> DeploymentContract:
         ],
         depends_on=["kafka", "clickhouse"],
         keda=KedaContract(),
-        base_image="ubuntu:24.04",
         native_deps=NativeDepsContract(),
         image_profile=ImageProfile.PRODUCTION,
         oci_labels=OciLabels(),
@@ -142,6 +141,38 @@ class TestContractRoundtrips:
 
 
 # -----------------------------------------------------------------------------
+# Python runtime contract (issue #22)
+# -----------------------------------------------------------------------------
+
+
+class TestPythonRuntimeContract:
+    def _minimal(self) -> DeploymentContract:
+        return DeploymentContract(
+            app_name="a",
+            metrics_port=8000,
+            env_prefix="A",
+            metric_prefix="a",
+            config_mount_path="/etc/a.yaml",
+        )
+
+    def test_default_python_version(self):
+        assert self._minimal().python_version == "3.12"
+
+    def test_base_image_defaults_to_python_slim(self):
+        c = self._minimal()
+        assert c.base_image == ""
+        assert c.effective_base_image() == "python:3.12-slim"
+
+    def test_python_version_drives_base_image(self):
+        c = self._minimal().model_copy(update={"python_version": "3.13"})
+        assert c.effective_base_image() == "python:3.13-slim"
+
+    def test_explicit_base_image_wins(self):
+        c = self._minimal().model_copy(update={"base_image": "python:3.12-bookworm"})
+        assert c.effective_base_image() == "python:3.12-bookworm"
+
+
+# -----------------------------------------------------------------------------
 # Dockerfile
 # -----------------------------------------------------------------------------
 
@@ -149,8 +180,16 @@ class TestContractRoundtrips:
 class TestGenerateDockerfile:
     def test_basic_shape(self):
         df = generate_dockerfile(_full_contract())
-        assert "FROM ubuntu:24.04" in df
-        assert "COPY dfe-loader /usr/local/bin/dfe-loader" in df
+        # Python multi-stage: uv builder + venv runtime.
+        assert "FROM ghcr.io/astral-sh/uv:python3.12-bookworm-slim AS builder" in df
+        assert "uv sync --frozen --no-dev" in df
+        assert "FROM python:3.12-slim AS runtime" in df
+        assert "COPY --from=builder /app /app" in df
+        assert 'ENV PATH="/app/.venv/bin:$PATH"' in df
+        # No Rust cargo layout.
+        assert "/usr/local/bin/dfe-loader" not in df
+        assert "/app/target/release" not in df
+        assert "userdel" not in df
         assert "EXPOSE 9090" in df
         assert "localhost:9090/healthz" in df
         assert 'ENTRYPOINT ["dfe-loader"]' in df
@@ -213,6 +252,26 @@ class TestGenerateDockerfile:
         assert "EXPOSE 9090 8080" in df
 
 
+class TestGenerateBuilderStage:
+    def test_uv_builder_snippet(self):
+        from hyperi_pylib.deployment import generate_builder_stage
+
+        text = generate_builder_stage(_full_contract())
+        assert "FROM ghcr.io/astral-sh/uv:python3.12-bookworm-slim AS builder" in text
+        assert "COPY pyproject.toml uv.lock ./" in text
+        assert "COPY src/ src/" in text
+        assert "uv sync --frozen --no-dev" in text
+        # No baked credentials -- apps inject via --build-arg.
+        assert "ARTIFACTORY" not in text
+        assert "TOKEN" not in text
+
+    def test_builder_image_tracks_python_version(self):
+        from hyperi_pylib.deployment import generate_builder_stage
+
+        c = _full_contract().model_copy(update={"python_version": "3.13"})
+        assert "uv:python3.13-bookworm-slim AS builder" in generate_builder_stage(c)
+
+
 # -----------------------------------------------------------------------------
 # Runtime stage fragment
 # -----------------------------------------------------------------------------
@@ -221,10 +280,15 @@ class TestGenerateDockerfile:
 class TestGenerateRuntimeStage:
     def test_has_runtime_stage_marker(self):
         text = generate_runtime_stage(_full_contract())
-        assert "FROM ubuntu:24.04 AS runtime" in text
-        assert "COPY --from=builder" in text
+        assert "FROM python:3.12-slim AS runtime" in text
+        assert "COPY --from=builder /app /app" in text
+        assert 'ENV PATH="/app/.venv/bin:$PATH"' in text
         assert "ARG OCI_SOURCE=" in text
         assert 'LABEL org.opencontainers.image.source="${OCI_SOURCE}"' in text
+        # No Rust cargo layout, no ubuntu-user removal.
+        assert "/app/target/release" not in text
+        assert "userdel" not in text
+        assert "useradd --create-home --uid 1000 appuser" in text
 
 
 # -----------------------------------------------------------------------------
@@ -238,7 +302,7 @@ class TestGenerateContainerManifest:
         manifest = json.loads(text)
         assert manifest["app_name"] == "dfe-loader"
         assert manifest["binary_name"] == "dfe-loader"
-        assert manifest["base_image"] == "ubuntu:24.04"
+        assert manifest["base_image"] == "python:3.12-slim"
         assert manifest["image_profile"] == "production"
         assert manifest["expose_ports"] == [9090]
         assert manifest["healthcheck"]["path"] == "/healthz"
@@ -687,7 +751,9 @@ class TestContractValidation:
         # Defaults applied
         assert c.schema_version == 2
         assert c.image_registry == "ghcr.io/hyperi-io"
-        assert c.base_image == "ubuntu:24.04"
+        # base_image defaults empty; resolved to python:{python_version}-slim.
+        assert c.base_image == ""
+        assert c.effective_base_image() == "python:3.12-slim"
         assert c.image_profile == ImageProfile.PRODUCTION
         assert c.health.liveness_path == "/healthz"
         assert c.keda is None
@@ -720,8 +786,9 @@ class TestMinimalContractGenerators:
 
     def test_dockerfile_works_on_minimal(self):
         df = generate_dockerfile(self._minimal())
-        assert "FROM ubuntu:24.04" in df
-        assert "COPY minimal-app /usr/local/bin/minimal-app" in df
+        assert "FROM ghcr.io/astral-sh/uv:python3.12-bookworm-slim AS builder" in df
+        assert "FROM python:3.12-slim AS runtime" in df
+        assert "COPY --from=builder /app /app" in df
         assert "EXPOSE 8080" in df
         # No CMD line when entrypoint_args is empty
         assert "\nCMD [" not in df

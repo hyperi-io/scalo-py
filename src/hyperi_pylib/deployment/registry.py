@@ -28,11 +28,11 @@ from __future__ import annotations
 DEFAULT_IMAGE_REGISTRY = "ghcr.io/hyperi-io"
 """Default publish-target registry for HyperI org."""
 
-DEFAULT_BASE_IMAGE = "ubuntu:24.04"
-"""Default base image for the runtime stage.
+DEFAULT_BASE_IMAGE = "python:3.12-slim"
+"""Default runtime base image for Python apps.
 
-Pulled from Docker Hub. To use a curated GHCR base, set
-``deployment.base_image`` in the YAML cascade once that image exists.
+Pulled from Docker Hub. Override per-environment by setting
+``deployment.base_image`` in the YAML cascade.
 """
 
 

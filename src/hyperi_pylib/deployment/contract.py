@@ -6,16 +6,19 @@
 # License:   BUSL-1.1
 # Copyright: (c) 2026 HYPERI PTY LIMITED
 
-"""Deployment contract Pydantic models -- mirrors rustlib's
-``hyperi_rustlib::deployment::contract``.
+"""Deployment contract Pydantic models for Python apps.
 
-Apps build a ``DeploymentContract`` from their ``Config`` defaults. Validation
-functions compare Helm charts and Dockerfiles against these values. Generation
-functions create deployment artefacts (Dockerfile, Helm chart, Compose
-fragment, ArgoCD Application) from scratch.
+pylib is the Tier-2 producer of the HyperI deployment contract (rustlib is
+Tier 1 for Rust services). Apps build a ``DeploymentContract`` from their
+``Config`` defaults; generation functions create Python-native deployment
+artefacts (uv/venv runtime-stage Dockerfile, Helm chart, Compose fragment,
+ArgoCD Application) and validation functions check existing artefacts against
+the contract.
 
-Field names, types, and defaults match rustlib's serde shape exactly so the
-JSON contract is interchangeable across the two implementations.
+The serialised JSON (``deployment-contract.json`` / ``container-manifest.json``)
+stays schema-compatible with rustlib's so CI tooling reads either uniformly;
+the *generation* is Python-specific (uv venv, console-script entrypoint,
+``python:*-slim`` base) -- it does not produce Rust artefacts.
 """
 
 from __future__ import annotations
@@ -196,8 +199,20 @@ class DeploymentContract(BaseModel):
     keda: KedaContract | None = None
     """KEDA autoscaling contract (None if KEDA not used)."""
 
-    base_image: str = "ubuntu:24.04"
-    """Base container image for the runtime stage."""
+    base_image: str = ""
+    """Base container image for the runtime stage.
+
+    Leave empty (the default) to use the language-appropriate
+    ``python:{python_version}-slim``. Set explicitly to override. Read it via
+    :meth:`effective_base_image`.
+    """
+
+    python_version: str = "3.12"
+    """Python version for the runtime/base image (e.g. ``"3.12"``).
+
+    Drives the default base image (``python:{python_version}-slim``) and the
+    uv builder image when ``base_image`` is left empty.
+    """
 
     native_deps: NativeDepsContract = Field(default_factory=NativeDepsContract)
     """Runtime native dependencies for the container image.
@@ -218,6 +233,10 @@ class DeploymentContract(BaseModel):
     def binary(self) -> str:
         """Effective binary name -- falls back to app_name when binary_name empty."""
         return self.binary_name if self.binary_name else self.app_name
+
+    def effective_base_image(self) -> str:
+        """Runtime base image -- explicit ``base_image`` or ``python:{python_version}-slim``."""
+        return self.base_image if self.base_image else f"python:{self.python_version}-slim"
 
     def config_filename(self) -> str:
         """Config file name from the mount path (e.g., ``loader.yaml``)."""

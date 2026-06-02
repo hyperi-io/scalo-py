@@ -6,11 +6,13 @@
 # License:   BUSL-1.1
 # Copyright: (c) 2026 HYPERI PTY LIMITED
 
-"""Deployment contract and artefact generation.
+"""Deployment contract and artefact generation for Python apps.
 
-Mirrors ``hyperi_rustlib::deployment``: the same JSON contract input produces
-matching Dockerfile / Helm chart / Compose fragment / ArgoCD Application
-output across both implementations.
+pylib is the Tier-2 producer of the HyperI deployment contract (rustlib is
+Tier 1 for Rust). The serialised JSON stays schema-compatible across both, but
+artefact *generation* here is Python-native (uv venv runtime stage,
+console-script entrypoint, ``python:*-slim`` base) -- it does not emit Rust
+artefacts.
 
 This subsystem is opt-in via the ``[deployment]`` extra; importing
 ``hyperi_pylib.deployment`` without ``pydantic>=2.13`` raises a clear
@@ -82,6 +84,7 @@ if not DEPLOYMENT_AVAILABLE:
     WAVE_POST: int = 10
     ContractMismatch = _missing  # type: ignore[assignment]
     DeploymentError = _missing  # type: ignore[assignment]
+    generate_builder_stage = _missing  # type: ignore[assignment]
     generate_dockerfile = _missing  # type: ignore[assignment]
     generate_runtime_stage = _missing  # type: ignore[assignment]
     generate_container_manifest = _missing  # type: ignore[assignment]
@@ -92,7 +95,7 @@ if not DEPLOYMENT_AVAILABLE:
     base_image_from_cascade = _missing  # type: ignore[assignment]
     argocd_repo_url_from_cascade = _missing  # type: ignore[assignment]
     DEFAULT_IMAGE_REGISTRY = "ghcr.io/hyperi-io"
-    DEFAULT_BASE_IMAGE = "ubuntu:24.04"
+    DEFAULT_BASE_IMAGE = "python:3.12-slim"
 else:
     from .app_project import (
         AppProjectContract,
@@ -124,6 +127,7 @@ else:
     from .generate import (
         ArgocdConfig,
         generate_argocd_application,
+        generate_builder_stage,
         generate_chart,
         generate_compose_fragment,
         generate_container_manifest,
@@ -181,6 +185,7 @@ __all__ = [
     "base_image_from_cascade",
     "generate_argocd_app_project",
     "generate_argocd_application",
+    "generate_builder_stage",
     "generate_chart",
     "generate_compose_fragment",
     "generate_container_manifest",
