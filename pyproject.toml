@@ -392,6 +392,11 @@ override-dependencies = [
     # thinc>=9 forces the entire Explosion/spaCy ecosystem to regress
     # (blis, confection, weasel all major-downgrade). Leave thinc on 8.x
     # until spaCy ships compatible companions. Revisit each /deps pass.
+    # Security pins (transitive) -- CVE remediation 2026-06-13. Security
+    # fixes are exempt from the release-age cooldown.
+    "aiohttp>=3.14.0",   # CVE-2026-34993, CVE-2026-47265 (Dependabot + pip-audit)
+    "pyjwt>=2.13.0",     # PYSEC-2026-175/177/178/179 (pip-audit)
+    "pip>=26.1.2",       # PYSEC-2026-196 -- build-env installer (pip-audit)
 ]
 
 [[tool.uv.index]]
