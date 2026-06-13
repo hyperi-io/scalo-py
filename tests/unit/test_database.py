@@ -145,5 +145,5 @@ class TestExistingDatabases:
         monkeypatch.setenv("REDIS_DB", "0")
 
         url = build_database_url("redis")
-        # Redis URL format doesn't include port in path by default
-        assert url == "redis://:secret@redis.example.com/0"
+        # Port belongs in the netloc; default 6379 applies when unset
+        assert url == "redis://:secret@redis.example.com:6379/0"

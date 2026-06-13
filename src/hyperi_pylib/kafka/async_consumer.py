@@ -140,7 +140,7 @@ class AsyncKafkaConsumer:
         if asynchronous:
             self._consumer.commit(asynchronous=True)
         else:
-            await run_blocking(self._consumer.commit)
+            await run_blocking(self._consumer.commit, asynchronous=False)
 
     def __aiter__(self) -> AsyncIterator[Message]:
         return self

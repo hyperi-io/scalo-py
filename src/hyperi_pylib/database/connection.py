@@ -218,7 +218,7 @@ def get_database_config(
 
     config.update(
         {
-            "host": os.getenv(f"{env_prefix}_HOST", config.get("host", "localhost")),
+            "host": os.getenv(f"{env_prefix}_HOST") or config.get("host") or "localhost",
             "port": port,
             "user": os.getenv(f"{env_prefix}_USER", config.get("user")),
             "password": os.getenv(f"{env_prefix}_PASSWORD", config.get("password")),
@@ -368,6 +368,8 @@ def build_database_url(
         # Redis URLs are different - redis://[:password]@host:port/db
         if password:
             netloc = f":{quote_plus(password)}@{host}"
+            if port:
+                netloc = f"{netloc}:{port}"
         database = str(config.get("db", 0))
 
     # Add any additional kwargs as query parameters

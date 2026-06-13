@@ -63,6 +63,7 @@ class TestRuntimeEnvironment:
         assert paths.detection_method == "forced"
 
     @pytest.mark.skipif(platform.system() == "Windows", reason="Unix-specific test")
+    @pytest.mark.skipif(platform.system() != "Linux", reason="Linux-specific test")
     def test_local_paths_linux(self):
         """Test local paths on Linux (daemon/CLI conventions)."""
         runtime = RuntimeEnvironment("my-app", force_mode="local")
