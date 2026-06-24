@@ -3,18 +3,18 @@
 # Purpose:   CEL-to-ClickHouse SQL transpilation
 # Language:  Python
 #
-# License:   BUSL-1.1
+# License:   Apache-2.0
 # Copyright: (c) 2026 HYPERI PTY LIMITED
 
 """CEL-to-ClickHouse SQL transpiler.
 
-Converts DFE profile CEL expressions into ClickHouse-compatible SQL
+Converts expression profile CEL expressions into ClickHouse-compatible SQL
 WHERE clauses for query pushdown. The expression is first validated
-via :func:`validate` (CEL syntax + DFE profile), then tokenized,
+via :func:`validate` (CEL syntax + expression profile), then tokenized,
 parsed into an AST, and emitted as ClickHouse SQL.
 
 Safety layers:
-    1. CEL validation gate (syntax + DFE profile)
+    1. CEL validation gate (syntax + expression profile)
     2. String literal escaping (single-quote doubling)
     3. Identifier validation (alphanumeric + dots only)
 
@@ -223,7 +223,7 @@ _BINARY_PREC: dict[str, int] = {
 
 
 class _Parser:
-    """Pratt parser for DFE profile CEL expressions."""
+    """Pratt parser for expression profile CEL expressions."""
 
     def __init__(self, tokens: list[Token]) -> None:
         self._tokens = tokens
@@ -584,7 +584,7 @@ def _emit(node: Expr, parent_prec: int = 0) -> str:
 def transpile_to_clickhouse(expr: str) -> str:
     """Transpile a CEL expression to a ClickHouse SQL WHERE clause.
 
-    The expression is first validated against the DFE profile (syntax +
+    The expression is first validated against the expression profile (syntax +
     allowed functions), then parsed and emitted as ClickHouse SQL.
 
     Args:
@@ -594,7 +594,7 @@ def transpile_to_clickhouse(expr: str) -> str:
         ClickHouse SQL WHERE clause fragment.
 
     Raises:
-        ExpressionError: If expression is invalid or violates DFE profile.
+        ExpressionError: If expression is invalid or violates expression profile.
         TranspileError: If a valid CEL construct cannot be transpiled to SQL.
 
     Examples::
@@ -606,7 +606,7 @@ def transpile_to_clickhouse(expr: str) -> str:
         >>> transpile_to_clickhouse('status in ["active", "pending"]')
         "status IN ('active', 'pending')"
     """
-    # Gate: validate CEL syntax + DFE profile.
+    # Gate: validate CEL syntax + expression profile.
     errors = validate(expr)
     if errors:
         raise ExpressionError(errors)

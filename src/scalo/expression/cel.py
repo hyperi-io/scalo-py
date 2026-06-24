@@ -1,9 +1,9 @@
 # Project:   scalo
 # File:      expression/cel.py
-# Purpose:   CEL expression evaluation wrapper for DFE
+# Purpose:   CEL expression evaluation wrapper
 # Language:  Python
 #
-# License:   BUSL-1.1
+# License:   Apache-2.0
 # Copyright: (c) 2026 HYPERI PTY LIMITED
 
 """CEL expression evaluation -- compile, evaluate, validate.
@@ -74,7 +74,7 @@ _FUNCTION_CALL_RE = re.compile(r"\b([a-zA-Z_]\w*)\s*\(")
 
 
 def _check_profile(expr: str) -> list[str]:
-    """Check expression against the DFE profile. Returns errors."""
+    """Check expression against the expression profile. Returns errors."""
     errors: list[str] = []
     for match in _FUNCTION_CALL_RE.finditer(expr):
         name = match.group(1)
@@ -83,7 +83,7 @@ def _check_profile(expr: str) -> list[str]:
             continue
         if name in DISALLOWED_FUNCTIONS:
             errors.append(
-                f"Function '{name}()' is not allowed in the DFE expression profile. "
+                f"Function '{name}()' is not allowed in the expression profile. "
                 f"Excluded for performance: per-element iteration or time functions."
             )
         elif name not in ALLOWED_FUNCTIONS:
@@ -94,7 +94,7 @@ def _check_profile(expr: str) -> list[str]:
 
 
 def validate(expr: str) -> list[str]:
-    """Validate an expression for syntax and DFE profile compliance.
+    """Validate an expression for syntax and expression profile compliance.
 
     Returns a list of error strings (empty if valid).
     Designed for UI pre-submit validation -- call this before storing expressions.
@@ -110,7 +110,7 @@ def validate(expr: str) -> list[str]:
     if not expr or not expr.strip():
         return ["Expression is empty"]
 
-    # Check DFE profile (disallowed functions)
+    # Check expression profile (disallowed functions)
     profile_errors = _check_profile(expr)
     if profile_errors:
         return profile_errors
@@ -131,7 +131,7 @@ def validate(expr: str) -> list[str]:
 
 
 def compile_expression(expr: str) -> _cel.Program:
-    """Compile a CEL expression, enforcing the DFE profile.
+    """Compile a CEL expression, enforcing the expression profile.
 
     Use this for hot paths where the same expression is evaluated
     against many records. Compile once, call ``program.execute(data)``
@@ -144,7 +144,7 @@ def compile_expression(expr: str) -> _cel.Program:
         Compiled CEL program.
 
     Raises:
-        ExpressionError: If expression is invalid or violates DFE profile.
+        ExpressionError: If expression is invalid or violates expression profile.
     """
     errors = validate(expr)
     if errors:
@@ -166,7 +166,7 @@ def evaluate(expr: str, data: dict[str, Any] | None = None) -> Any:
         The expression result (bool, int, float, string, list, etc.)
 
     Raises:
-        ExpressionError: If expression is invalid or violates DFE profile.
+        ExpressionError: If expression is invalid or violates expression profile.
         RuntimeError: If evaluation fails (missing fields, type mismatch).
     """
     program = compile_expression(expr)

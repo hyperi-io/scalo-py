@@ -1,4 +1,0 @@
-apiVersion: v2
-name: scalo-metrics-test
-version: 0.1.0
-description: Helm chart for scalo Prometheus metrics test

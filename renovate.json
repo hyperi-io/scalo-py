@@ -1,4 +1,26 @@
 {
   "$schema": "https://docs.renovatebot.com/renovate-schema.json",
-  "extends": ["github>hyperi-io/renovate-config"]
+  "extends": ["github>hyperi-io/renovate-config"],
+  "packageRules": [
+    {
+      "description": "OpenTelemetry api + sdk + OTLP/Prometheus exporters release in lockstep (the prometheus exporter's 0.x line pairs with the 1.x api/sdk line); bumping one alone breaks the build.",
+      "matchPackageNames": ["/^opentelemetry-/"],
+      "groupName": "opentelemetry"
+    },
+    {
+      "description": "AWS SDK packages (boto3, botocore, aiobotocore) share a release train and must move together; boto3/botocore also carry bleeding-edge overrides in pyproject [tool.uv].",
+      "matchPackageNames": ["boto3", "botocore", "aiobotocore"],
+      "groupName": "aws-sdk"
+    },
+    {
+      "description": "Azure Key Vault client + identity move together.",
+      "matchPackageNames": ["/^azure-/"],
+      "groupName": "azure"
+    },
+    {
+      "description": "pytest and its plugins (cov, asyncio, httpx) version together to avoid plugin/core API mismatches.",
+      "matchPackageNames": ["pytest", "/^pytest-/"],
+      "groupName": "pytest"
+    }
+  ]
 }

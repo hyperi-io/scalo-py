@@ -3,7 +3,7 @@
 #  Purpose:   Emit a JSON manifest of what this implementation supports
 #  Language:  Python
 #
-#  License:   BUSL-1.1
+#  License:   Apache-2.0
 #  Copyright: (c) 2026 HYPERI PTY LIMITED
 
 """Emit a parity manifest of the scrubber's supported surface.

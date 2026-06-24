@@ -3,7 +3,7 @@
 #  Purpose:   Lock in the "breaker OUTSIDE retry" composition order
 #  Language:  Python
 #
-#  License:   BUSL-1.1
+#  License:   Apache-2.0
 #  Copyright: (c) 2026 HYPERI PTY LIMITED
 
 """S12 documentation-via-test: the recommended composition for

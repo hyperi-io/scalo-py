@@ -3,7 +3,7 @@
 # Purpose:   Deployment contract Pydantic models
 # Language:  Python
 #
-# License:   BUSL-1.1
+# License:   Apache-2.0
 # Copyright: (c) 2026 HYPERI PTY LIMITED
 
 """Deployment contract Pydantic models for Python apps.
@@ -43,8 +43,8 @@ class ImageProfile(StrEnum):
 
     | Profile | Tag | Example |
     |---------|-----|---------|
-    | ``production`` | ``:<version>``, ``:latest`` | ``dfe-loader:1.15.0`` |
-    | ``development`` | ``:<version>-dev``, ``:latest-dev`` | ``dfe-loader:1.15.0-dev`` |
+    | ``production`` | ``:<version>``, ``:latest`` | ``my-loader:1.15.0`` |
+    | ``development`` | ``:<version>-dev``, ``:latest-dev`` | ``my-loader:1.15.0-dev`` |
     """
 
     PRODUCTION = "production"
@@ -58,7 +58,7 @@ class ImageProfile(StrEnum):
 # ---- Defaults (module-level so they appear in JSON Schema docs) -------------
 
 DEFAULT_VENDOR = "HYPERI PTY LIMITED"
-DEFAULT_LICENSE = "BUSL-1.1"
+DEFAULT_LICENSE = "Apache-2.0"
 DEFAULT_SCHEMA_VERSION = 2
 MAX_SUPPORTED_SCHEMA_VERSION = 2
 
@@ -116,7 +116,7 @@ class SecretEnvContract(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
     env_var: str
-    """Full env var name (e.g., ``DFE_LOADER__KAFKA__PASSWORD``)."""
+    """Full env var name (e.g., ``MYAPP__KAFKA__PASSWORD``)."""
 
     key_name: str
     """Key name in values.yaml secretKeys and default values (e.g., ``password``)."""
@@ -152,10 +152,10 @@ class DeploymentContract(BaseModel):
     """Contract schema version. CI checks this and fails if unsupported."""
 
     app_name: str
-    """Application name (e.g., ``dfe-loader``) -- matched against ``Chart.yaml`` ``name``."""
+    """Application name (e.g., ``my-loader``) -- matched against ``Chart.yaml`` ``name``."""
 
     binary_name: str = ""
-    """Binary name (e.g., ``dfe-loader``). Defaults to app_name when empty."""
+    """Binary name (e.g., ``my-loader``). Defaults to app_name when empty."""
 
     description: str = ""
     """One-line description for ``Chart.yaml``."""
@@ -167,7 +167,7 @@ class DeploymentContract(BaseModel):
     """Health probe endpoint paths."""
 
     env_prefix: str
-    """Environment variable prefix (e.g., ``DFE_LOADER``).
+    """Environment variable prefix (e.g., ``MYAPP``).
 
     Used with ``__`` nesting for the Dynaconf config cascade.
     """
@@ -187,7 +187,7 @@ class DeploymentContract(BaseModel):
     """Additional ports beyond metrics (e.g., HTTP data port for receiver)."""
 
     entrypoint_args: list[str] = Field(default_factory=list)
-    """Default ENTRYPOINT args (e.g., ``["--config", "/etc/dfe/loader.yaml"]``)."""
+    """Default ENTRYPOINT args (e.g., ``["--config", "/etc/app/loader.yaml"]``)."""
 
     secrets: list[SecretGroupContract] = Field(default_factory=list)
     """Secret groups injected from K8s Secrets."""
@@ -247,7 +247,7 @@ class DeploymentContract(BaseModel):
         return self.config_mount_path.rsplit("/", 1)[-1]
 
     def config_dir(self) -> str:
-        """Config mount directory (e.g., ``/etc/dfe``)."""
+        """Config mount directory (e.g., ``/etc/app``)."""
         if "/" not in self.config_mount_path:
             return "/etc"
         head = self.config_mount_path.rsplit("/", 1)[0]

@@ -1,15 +1,15 @@
 #  Project:      scalo
 #  File:         sink.py
-#  Purpose:      SinkMetrics group -- for DFE apps with a downstream
+#  Purpose:      SinkMetrics group -- for services with a downstream
 #  Language:     Python
 #
-#  License:      BUSL-1.1
+#  License:      Apache-2.0
 #  Copyright:    (c) 2026 HYPERI PTY LIMITED
 
 """
-SinkMetrics -- composable metric group for DFE apps with downstream sinks.
+SinkMetrics -- composable metric group for services with downstream sinks.
 
-Mirrors rustlib's groups::SinkMetrics. Tracks sink write latency,
+Mirrors scalo-rs's groups::SinkMetrics. Tracks sink write latency,
 errors, bytes sent, and in-flight insert count.
 """
 
@@ -26,13 +26,13 @@ DEFAULT_SINK_DURATION_BUCKETS = (0.001, 0.005, 0.01, 0.025, 0.05, 0.1, 0.25, 0.5
 
 class SinkMetrics:
     """
-    Sink metrics for DFE apps writing to downstream systems.
+    Sink metrics for services writing to downstream systems.
 
-    Registers:
-        {ns}_sink_duration_seconds histogram (labels: backend)
-        {ns}_sink_errors_total counter (labels: backend)
-        {ns}_bytes_sent_total counter (labels: format)
-        {ns}_concurrent_inserts gauge
+    Registers (``{p}`` = optional metric prefix, bare by default):
+        {p}_sink_duration_seconds histogram (labels: backend)
+        {p}_sink_errors_total counter (labels: backend)
+        {p}_bytes_sent_total counter (labels: format)
+        {p}_concurrent_inserts gauge
     """
 
     def __init__(

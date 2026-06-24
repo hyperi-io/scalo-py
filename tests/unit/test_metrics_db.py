@@ -3,7 +3,7 @@
 # Purpose:   Unit tests for scalo.metrics.db module
 # Language:  Python
 #
-# License:   BUSL-1.1
+# License:   Apache-2.0
 # Copyright: (c) 2026 HYPERI PTY LIMITED
 
 """Unit tests for scalo.metrics.db module."""

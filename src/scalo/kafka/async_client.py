@@ -3,7 +3,7 @@
 # Purpose:   Async Kafka admin client wrapper
 # Language:  Python
 #
-# License:   BUSL-1.1
+# License:   Apache-2.0
 # Copyright: (c) 2026 HYPERI PTY LIMITED
 
 """Async wrapper around confluent-kafka AdminClient.

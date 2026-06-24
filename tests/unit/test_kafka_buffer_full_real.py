@@ -3,7 +3,7 @@
 #  Purpose:   Trigger real librdkafka BufferError without a broker
 #  Language:  Python
 #
-#  License:   BUSL-1.1
+#  License:   Apache-2.0
 #  Copyright: (c) 2026 HYPERI PTY LIMITED
 
 """Real librdkafka BufferError + send_and_wait timeout, no broker."""

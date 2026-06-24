@@ -4,7 +4,7 @@
 #            consumer e2e tests of the deployment contract
 # Language:  Python
 #
-# License:   BUSL-1.1
+# License:   Apache-2.0
 # Copyright: (c) 2026 HYPERI PTY LIMITED
 
 """Reusable test infrastructure for the deployment-contract e2e suite.

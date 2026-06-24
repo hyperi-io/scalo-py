@@ -3,7 +3,7 @@
 #  Purpose:      Label cardinality tracking and high-cardinality warning for Prometheus metrics
 #  Language:     Python
 #
-#  License:      BUSL-1.1
+#  License:      Apache-2.0
 #  Copyright:    (c) 2026 HYPERI PTY LIMITED
 
 """
@@ -18,7 +18,7 @@ The tracker is bounded: each metric's seen-set is capped at
 ``2 * max_cardinality`` entries via LRU eviction. This keeps memory
 usage flat over long-running processes even if the warning is ignored.
 
-Matches the cardinality cap described in the DFE Metrics Standard:
+Matches the cardinality cap in the scalo metrics convention:
   max_label_cardinality default = 50
 """
 
@@ -53,7 +53,7 @@ class CardinalityTracker:
 
         Args:
             max_cardinality: Maximum unique label combinations allowed before
-                a warning is logged. Defaults to 50 (DFE Metrics Standard default).
+                a warning is logged. Defaults to 50 (scalo convention default).
                 LRU cap on memory is ``2 * max_cardinality`` per metric.
         """
         self._max_cardinality = max_cardinality
@@ -74,7 +74,7 @@ class CardinalityTracker:
         evicted to keep memory bounded.
 
         Args:
-            metric_name: The full metric name (e.g. "dfe_loader_requests_total").
+            metric_name: The full metric name (e.g. "loader_requests_total").
             labels: The label key-value pairs for this observation.
         """
         label_key = tuple(sorted(labels.items()))

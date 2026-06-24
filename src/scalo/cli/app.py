@@ -3,12 +3,12 @@
 # Purpose:   ServiceApp application framework and lifecycle runner
 # Language:  Python
 #
-# License:   BUSL-1.1
+# License:   Apache-2.0
 # Copyright: (c) 2026 HYPERI PTY LIMITED
 
-"""DFE service application framework.
+"""service application framework.
 
-Provides the standard CLI lifecycle for Python DFE services, mirroring
+Provides the standard CLI lifecycle for Python services, mirroring
 hyperi-rustlib's cli::app module. Apps subclass ``ServiceApp`` and get standard
 subcommands (``run``, ``version``, ``config-check``) and common flags
 (``--config``, ``--log-level``, ``--verbose``, ``--quiet``) for free.
@@ -22,8 +22,8 @@ Example::
     from scalo.cli import ServiceApp, VersionInfo
 
     class MyService(ServiceApp):
-        name = "dfe-control-plane"
-        env_prefix = "DFE_CP"
+        name = "control-plane"
+        env_prefix = "MYAPP"
 
         def version_info(self) -> VersionInfo:
             return VersionInfo(self.name, "1.0.0")
@@ -57,7 +57,7 @@ __all__ = [
 
 @dataclass
 class CommonArgs:
-    """Standard CLI arguments for DFE services.
+    """Standard CLI arguments for services.
 
     Mirrors rustlib's ``CommonArgs`` struct. Populated from Typer callback
     parameters and provides integration methods for logger and config setup.
@@ -117,7 +117,7 @@ class CommonArgs:
         config file path from ``--config``.
 
         Args:
-            env_prefix: Environment variable prefix (e.g. "DFE_CP").
+            env_prefix: Environment variable prefix (e.g. "MYAPP").
 
         Returns:
             Dynaconf settings object.
@@ -142,7 +142,7 @@ class CommonArgs:
 
 
 class ServiceApp(ABC):
-    """Base class for DFE service CLI applications.
+    """Base class for service CLI applications.
 
     Subclass this to get the standard CLI lifecycle for free. The framework
     provides ``run``, ``version``, and ``config-check`` subcommands, plus
@@ -154,8 +154,8 @@ class ServiceApp(ABC):
     Example::
 
         class MyService(ServiceApp):
-            name = "dfe-loader"
-            env_prefix = "DFE_LOADER"
+            name = "my-loader"
+            env_prefix = "MYAPP"
 
             def version_info(self) -> VersionInfo:
                 return VersionInfo(self.name, "1.0.0")
@@ -169,10 +169,10 @@ class ServiceApp(ABC):
     """
 
     name: str
-    """Service name (e.g. 'dfe-control-plane')."""
+    """Service name (e.g. 'control-plane')."""
 
     env_prefix: str
-    """Environment variable prefix for config cascade (e.g. 'DFE_CP')."""
+    """Environment variable prefix for config cascade (e.g. 'MYAPP')."""
 
     def __init_subclass__(cls, **kwargs: Any) -> None:
         super().__init_subclass__(**kwargs)
@@ -266,7 +266,7 @@ class ServiceApp(ABC):
 
 
 def run_app(app: ServiceApp, args: list[str] | None = None) -> None:
-    """Drive the standard DFE service lifecycle.
+    """Drive the standard service lifecycle.
 
     Convenience function equivalent to ``app.cli(args)``.
 
@@ -277,13 +277,13 @@ def run_app(app: ServiceApp, args: list[str] | None = None) -> None:
     app.cli(args)
 
 
-def _build_typer_app(dfe_app: ServiceApp) -> Any:
+def _build_typer_app(service_app: ServiceApp) -> Any:
     """Construct the Typer app with standard subcommands and callback."""
     from typer import Exit, Option, Typer
 
     app = Typer(
-        name=dfe_app.name,
-        help=f"{dfe_app.name} -- DFE service",
+        name=service_app.name,
+        help=f"{service_app.name} -- service",
         add_completion=False,
         no_args_is_help=True,
     )
@@ -315,13 +315,13 @@ def _build_typer_app(dfe_app: ServiceApp) -> Any:
             verbose=verbose,
             quiet=quiet,
         )
-        dfe_app._common_args = args
-        _handle_run(dfe_app, args)
+        service_app._common_args = args
+        _handle_run(service_app, args)
 
     @app.command()
     def version() -> None:
         """Print version information and exit."""
-        info = dfe_app.version_info()
+        info = service_app.version_info()
         print(info)
 
     @app.command(name="config-check")
@@ -333,23 +333,23 @@ def _build_typer_app(dfe_app: ServiceApp) -> Any:
     ) -> None:
         """Validate configuration and exit."""
         args = CommonArgs(config=config, log_level=log_level, verbose=verbose, quiet=quiet)
-        dfe_app._common_args = args
-        _handle_config_check(dfe_app, args)
+        service_app._common_args = args
+        _handle_config_check(service_app, args)
 
     @app.command(name="generate-artefacts")
     def generate_artefacts(
         output_dir: str = Option("ci", "--output-dir", "-o", help="Output directory for generated artefacts"),
     ) -> None:
         """Generate deployment artefacts (contract JSON, container manifest, runtime Dockerfile, ArgoCD app) from contract."""
-        _handle_generate_artefacts(dfe_app, output_dir)
+        _handle_generate_artefacts(service_app, output_dir)
 
     # Let app register custom subcommands
-    dfe_app.register_commands(app)
+    service_app.register_commands(app)
 
     return app
 
 
-def _handle_run(dfe_app: ServiceApp, args: CommonArgs) -> None:
+def _handle_run(service_app: ServiceApp, args: CommonArgs) -> None:
     """Handle the 'run' subcommand lifecycle."""
     from typer import Exit
 
@@ -358,10 +358,10 @@ def _handle_run(dfe_app: ServiceApp, args: CommonArgs) -> None:
 
         from scalo.logger import logger
 
-        info = dfe_app.version_info()
-        logger.info("starting service", service=dfe_app.name, version=info.version)
+        info = service_app.version_info()
+        logger.info("starting service", service=service_app.name, version=info.version)
 
-        config = args.load_config(dfe_app.env_prefix)
+        config = args.load_config(service_app.env_prefix)
         logger.debug("configuration loaded")
 
         # Auto-init metrics if available (metrics extra installed)
@@ -369,28 +369,28 @@ def _handle_run(dfe_app: ServiceApp, args: CommonArgs) -> None:
             from scalo.metrics import create_metrics
             from scalo.metrics.groups import AppMetrics
 
-            ns = dfe_app.name.replace("-", "_")
+            ns = service_app.name.replace("-", "_")
             metrics_manager = create_metrics(ns, backend="prometheus")
             app_metrics = AppMetrics(metrics_manager, info.version, info.commit or "unknown")
-            dfe_app._metrics = metrics_manager
-            dfe_app._app_metrics = app_metrics
+            service_app._metrics = metrics_manager
+            service_app._app_metrics = app_metrics
             logger.debug("metrics auto-initialised", namespace=ns, addr=args.metrics_addr)
         except ImportError:
-            dfe_app._metrics = None
-            dfe_app._app_metrics = None
+            service_app._metrics = None
+            service_app._app_metrics = None
             logger.debug("metrics not available (install scalo[metrics])")
         except Exception as e:
-            dfe_app._metrics = None
-            dfe_app._app_metrics = None
+            service_app._metrics = None
+            service_app._app_metrics = None
             logger.warning("metrics initialisation failed", error=str(e))
 
         # Check if run_service_async is overridden (not the default delegation)
-        uses_async = _is_async_overridden(dfe_app)
+        uses_async = _is_async_overridden(service_app)
 
         if uses_async:
-            asyncio.run(dfe_app.run_service_async(config))
+            asyncio.run(service_app.run_service_async(config))
         else:
-            dfe_app.run_service(config)
+            service_app.run_service(config)
 
     except CliError as exc:
         print_error(str(exc))
@@ -403,13 +403,13 @@ def _handle_run(dfe_app: ServiceApp, args: CommonArgs) -> None:
         raise Exit(1) from exc
 
 
-def _handle_config_check(dfe_app: ServiceApp, args: CommonArgs) -> None:
+def _handle_config_check(service_app: ServiceApp, args: CommonArgs) -> None:
     """Handle the 'config-check' subcommand."""
     from typer import Exit
 
     try:
         args.init_logger()
-        args.load_config(dfe_app.env_prefix)
+        args.load_config(service_app.env_prefix)
 
         print_success("configuration is valid")
 
@@ -417,7 +417,7 @@ def _handle_config_check(dfe_app: ServiceApp, args: CommonArgs) -> None:
             config_path = args.config or "(defaults)"
             print()
             # Key-value summary to stderr (matching rustlib format)
-            _print_kv("service", dfe_app.name)
+            _print_kv("service", service_app.name)
             _print_kv("config", config_path)
             _print_kv("log_level", args.effective_log_level())
             _print_kv("log_format", args.log_format)
@@ -431,7 +431,7 @@ def _handle_config_check(dfe_app: ServiceApp, args: CommonArgs) -> None:
         raise Exit(1) from exc
 
 
-def _handle_generate_artefacts(dfe_app: ServiceApp, output_dir: str) -> None:
+def _handle_generate_artefacts(service_app: ServiceApp, output_dir: str) -> None:
     """Handle the 'generate-artefacts' subcommand.
 
     Mirrors rustlib's ``generate_artefacts`` CLI command: writes
@@ -443,14 +443,14 @@ def _handle_generate_artefacts(dfe_app: ServiceApp, output_dir: str) -> None:
 
     from typer import Exit
 
-    contract = dfe_app.deployment_contract()
+    contract = service_app.deployment_contract()
     out = Path(output_dir)
     out.mkdir(parents=True, exist_ok=True)
 
     if contract is None:
         print_error(
-            f"[warn] {type(dfe_app).__name__}.deployment_contract() returned None for "
-            f"`{dfe_app.name}` -- no deployment artefacts emitted. Override the method "
+            f"[warn] {type(service_app).__name__}.deployment_contract() returned None for "
+            f"`{service_app.name}` -- no deployment artefacts emitted. Override the method "
             f"to emit deployment-contract.json, container-manifest.json, "
             f"Dockerfile.runtime, and argocd-application.yaml."
         )
@@ -478,7 +478,7 @@ def _handle_generate_artefacts(dfe_app: ServiceApp, output_dir: str) -> None:
     )
 
     print_success(f"deployment artefacts written to {out}/")
-    if not dfe_app._common_args.quiet:
+    if not service_app._common_args.quiet:
         for filename in (
             "deployment-contract.json",
             "container-manifest.json",
@@ -488,10 +488,10 @@ def _handle_generate_artefacts(dfe_app: ServiceApp, output_dir: str) -> None:
             print(f"  {filename}", file=sys.stderr)
 
 
-def _is_async_overridden(dfe_app: ServiceApp) -> bool:
+def _is_async_overridden(service_app: ServiceApp) -> bool:
     """Check if run_service_async is overridden from the base ServiceApp default."""
     # If the method's defining class is not ServiceApp, it's been overridden
-    method = type(dfe_app).run_service_async
+    method = type(service_app).run_service_async
     return method is not ServiceApp.run_service_async
 
 

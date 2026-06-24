@@ -1,4 +1,0 @@
-apiVersion: v2
-name: scalo-pod-test
-version: 0.1.0
-description: Helm chart for scalo Pod deployment test

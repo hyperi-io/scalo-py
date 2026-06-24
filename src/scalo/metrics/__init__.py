@@ -28,10 +28,13 @@ Configuration (settings.yaml):
         prometheus_scrape: true  # also expose /metrics (default)
 """
 
+# Configurable metric-name prefix (bare by default, mirrors the env prefix)
+from .._env_compat import metric_prefix, set_metric_prefix
+
 # Primary API (backend-agnostic)
 from .cardinality import CardinalityTracker
 
-# DFE metric groups (composable structs matching rustlib)
+# Metric groups (composable structs matching scalo-rs)
 from .groups import (
     AppMetrics,
     BackpressureMetrics,
@@ -41,6 +44,7 @@ from .groups import (
     SinkMetrics,
 )
 from .manager import MetricsManager, create_metrics
+from .naming import validate_dfe_prefix, validate_metric_name, validate_metric_prefix
 
 # Backward compatibility: Re-export Prometheus-specific classes
 from .prometheus import (
@@ -51,7 +55,7 @@ from .prometheus import (
 )
 
 __all__ = [
-    # DFE metric groups
+    # Metric groups
     "AppMetrics",
     "BackpressureMetrics",
     "BufferMetrics",
@@ -67,4 +71,11 @@ __all__ = [
     "SinkMetrics",
     # Primary API
     "create_metrics",
+    # Configurable metric prefix
+    "metric_prefix",
+    "set_metric_prefix",
+    # Naming validation
+    "validate_dfe_prefix",
+    "validate_metric_name",
+    "validate_metric_prefix",
 ]

@@ -3,7 +3,7 @@
 # Purpose:   Docker build smoke test for generated Python Dockerfiles (issue #22)
 # Language:  Python
 #
-# License:   BUSL-1.1
+# License:   Apache-2.0
 # Copyright: (c) 2026 HYPERI PTY LIMITED
 
 """Build smoke test for the generated Python deployment Dockerfile.

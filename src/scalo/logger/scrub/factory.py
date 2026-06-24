@@ -3,7 +3,7 @@
 #  Purpose:   build_scrubber() -- factory composing all enabled layers
 #  Language:  Python
 #
-#  License:   BUSL-1.1
+#  License:   Apache-2.0
 #  Copyright: (c) 2026 HYPERI PTY LIMITED
 
 """Factory for constructing a :class:`LayeredScrubber` from config.

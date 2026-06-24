@@ -3,7 +3,7 @@
 # Purpose:   Golden-file snapshot + determinism tests for python artefacts
 # Language:  Python
 #
-# License:   BUSL-1.1
+# License:   Apache-2.0
 # Copyright: (c) 2026 HYPERI PTY LIMITED
 
 """Golden snapshots of the generated Python deployment artefacts.

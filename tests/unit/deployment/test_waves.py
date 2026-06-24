@@ -3,7 +3,7 @@
 # Purpose:   Tests for ArgoCD sync-wave constants
 # Language:  Python
 #
-# License:   BUSL-1.1
+# License:   Apache-2.0
 # Copyright: (c) 2026 HYPERI PTY LIMITED
 """Tests for ArgoCD sync-wave constants."""
 

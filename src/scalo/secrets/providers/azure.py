@@ -3,7 +3,7 @@
 # Purpose:   Azure Key Vault secrets provider
 # Language:  Python
 #
-# License:   BUSL-1.1
+# License:   Apache-2.0
 # Copyright: (c) 2026 HYPERI PTY LIMITED
 
 """Azure Key Vault secrets provider."""

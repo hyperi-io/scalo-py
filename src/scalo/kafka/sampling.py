@@ -3,7 +3,7 @@
 # Purpose:   Kafka message sampling utilities
 # Language:  Python
 #
-# License:   BUSL-1.1
+# License:   Apache-2.0
 # Copyright: (c) 2026 HYPERI PTY LIMITED
 
 """

@@ -151,6 +151,4 @@ def version_option(
 
 
 # Pre-configured version option for scalo itself
-VERSION_OPTION = (
-    version_option("scalo", app_name="scalo", python_version=True) if HAS_TYPER else None
-)
+VERSION_OPTION = version_option("scalo", app_name="scalo", python_version=True) if HAS_TYPER else None

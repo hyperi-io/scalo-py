@@ -11,7 +11,7 @@ Safe for containers and environments where git is not installed.
 
 Key Features:
 - Each YAML file in the directory = one config table
-- Subdirectory support: table names are path-like (e.g. "loaders/dfe-loader")
+- Subdirectory support: table names are path-like (e.g. "loaders/edge-loader")
 - In-memory cache with background polling refresh (works on S3/FUSE mounts)
 - Thread-safe reads via RLock
 - Write support with advisory file locking
@@ -21,18 +21,18 @@ Key Features:
 Usage:
     from scalo.config import DirectoryConfigStore
 
-    store = DirectoryConfigStore("/config/dfe", refresh_interval=30)
+    store = DirectoryConfigStore("/config/app", refresh_interval=30)
     store.start()
 
     # Read -- root-level table
-    config = store.get("dfe-loader")
-    host = store.get("dfe-loader", "database.host")
+    config = store.get("edge-loader")
+    host = store.get("edge-loader", "database.host")
 
     # Read -- subdirectory table (path-like name)
-    loader = store.get("loaders/dfe-loader", "database.host")
+    loader = store.get("loaders/edge-loader", "database.host")
 
     # Write (if writable) -- creates subdirectories automatically
-    store.set("loaders/dfe-loader", "database.host", "new-host",
+    store.set("loaders/edge-loader", "database.host", "new-host",
               message="Update DB host", author="derek@hyperi.io")
 
     # Git branch management
@@ -63,7 +63,7 @@ class DirectoryConfigStore:
     Each YAML file in the directory (and subdirectories) is a "table".
     Table names use forward-slash paths: root files are just the stem
     (e.g. "globals"), subdirectory files include the path prefix
-    (e.g. "loaders/dfe-loader", "monitoring/alerts/thresholds").
+    (e.g. "loaders/edge-loader", "monitoring/alerts/thresholds").
 
     Supports in-memory caching with background refresh, thread-safe reads,
     and git-tracked writes. Git operations use dulwich (pure-Python) -- no
@@ -169,7 +169,7 @@ class DirectoryConfigStore:
 
         Args:
             table: Table name -- bare name for root files (e.g. "globals"),
-                   path-like for subdirectories (e.g. "loaders/dfe-loader").
+                   path-like for subdirectories (e.g. "loaders/edge-loader").
             key: Optional dot-notation key (e.g. "database.host").
                  If None, returns the entire table dict.
             default: Value to return if key not found.
@@ -194,7 +194,7 @@ class DirectoryConfigStore:
         Returns:
             Sorted list of table names. Root files return bare names
             (e.g. "globals"), subdirectory files return path-like names
-            (e.g. "loaders/dfe-loader").
+            (e.g. "loaders/edge-loader").
         """
         tables = set()
         for pattern in ("**/*.yaml", "**/*.yml"):
@@ -391,7 +391,7 @@ class DirectoryConfigStore:
         from the background refresh thread.
 
         Args:
-            table: Table name to watch (supports path-like names e.g. "loaders/dfe-loader").
+            table: Table name to watch (supports path-like names e.g. "loaders/edge-loader").
             callback: Function called with (table_name, data) on change.
         """
         table = self._validate_table_name(table)
@@ -495,7 +495,7 @@ class DirectoryConfigStore:
             file_path: Absolute path to a YAML file.
 
         Returns:
-            Table name with forward-slash separators (e.g. "loaders/dfe-loader").
+            Table name with forward-slash separators (e.g. "loaders/edge-loader").
         """
         rel = file_path.relative_to(base_dir)
         return str(rel.with_suffix("")).replace(os.sep, "/")

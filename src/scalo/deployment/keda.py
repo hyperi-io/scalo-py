@@ -3,13 +3,13 @@
 # Purpose:   KEDA autoscaling configuration and contract types
 # Language:  Python
 #
-# License:   BUSL-1.1
+# License:   Apache-2.0
 # Copyright: (c) 2026 HYPERI PTY LIMITED
 
 """KEDA autoscaling models -- mirrors rustlib's ``hyperi_rustlib::deployment::keda``.
 
 ``KedaConfig`` lives in the app's config cascade so thresholds are
-overridable via env vars (e.g., ``DFE_LOADER__KEDA__KAFKA_LAG_THRESHOLD=5000``).
+overridable via env vars (e.g., ``MYAPP__KEDA__KAFKA_LAG_THRESHOLD=5000``).
 
 ``KedaContract`` is the subset validated against Helm ``values.yaml``.
 """

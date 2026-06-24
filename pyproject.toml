@@ -5,7 +5,7 @@ build-backend = "uv_build"
 [project]
 name = "scalo"
 version = "2.28.5"
-description = "Opinionated, drop-in Python toolkit for production services at scale. The patterns from blog posts as actual code: 7-layer config cascade, structured logging with PII masking, Prometheus + OpenTelemetry, multi-backend secrets (Vault/AWS/GCP/Azure), Kafka helpers, CEL expression engine, FastAPI-friendly."
+description = "Batteries-included Python toolkit for control-plane services -- 7-layer config cascade, structured logging with PII masking and secrets filtering, Prometheus + OpenTelemetry, health probes, multi-backend secrets (Vault/AWS/GCP/Azure), Kafka, CEL, FastAPI-friendly. Idiomatic Python; sibling to the scalo crate (scalo-rs)."
 readme = "README.md"
 authors = [
     { name = "HyperI Team", email = "dev@hyperi.io" },
@@ -48,7 +48,6 @@ keywords = [
     "kubernetes",
     "docker",
     "containerization",
-    "application-framework",
 ]
 dependencies = [
     "dynaconf>=3.2.13",
@@ -67,7 +66,8 @@ dependencies = [
     "regex>=2026.0.0",
 ]
 
-license = "LicenseRef-BUSL-1.1-HyperI"
+license = "Apache-2.0"
+license-files = ["LICENSE", "NOTICE"]
 
 [project.optional-dependencies]
 cli = []
@@ -138,7 +138,7 @@ version-check = []
 enhanced = []
 dev = [
     "ansible-vault>=4.0.0",
-    "cryptography>=48.0.0",
+    "cryptography>=48.0.1",
     "pytest>=8.0.0",
     "pytest-cov>=7.0.0",
     "pytest-asyncio>=0.23.0",
@@ -383,14 +383,14 @@ override-dependencies = [
     "importlib_metadata>=9.0.0",
     "boto3>=1.43.6",
     "botocore>=1.43.6",
-    # thinc>=9 forces the entire Explosion/spaCy ecosystem to regress
-    # (blis, confection, weasel all major-downgrade). Leave thinc on 8.x
-    # until spaCy ships compatible companions. Revisit each /deps pass.
     # Security pins (transitive) -- CVE remediation 2026-06-13. Security
     # fixes are exempt from the release-age cooldown.
-    "aiohttp>=3.14.0",   # CVE-2026-34993, CVE-2026-47265 (Dependabot + pip-audit)
-    "pyjwt>=2.13.0",     # PYSEC-2026-175/177/178/179 (pip-audit)
-    "pip>=26.1.2",       # PYSEC-2026-196 -- build-env installer (pip-audit)
+    "aiohttp>=3.14.0",        # CVE-2026-34993, CVE-2026-47265 (Dependabot + pip-audit)
+    "pyjwt>=2.13.0",          # PYSEC-2026-175/177/178/179 (pip-audit)
+    "pip>=26.1.2",            # PYSEC-2026-196 -- build-env installer (pip-audit)
+    "cryptography>=48.0.1",   # GHSA-537c-gmf6-5ccf (pip-audit)
+    "msgpack>=1.2.1",         # GHSA-6v7p-g79w-8964 (pip-audit)
+    "starlette>=1.3.1",       # CVE-2026-54282, CVE-2026-54283 (pip-audit)
 ]
 
 [[tool.uv.index]]

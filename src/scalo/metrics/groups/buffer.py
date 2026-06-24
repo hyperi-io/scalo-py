@@ -3,13 +3,13 @@
 #  Purpose:      BufferMetrics group -- for receiver, loader, archiver
 #  Language:     Python
 #
-#  License:      BUSL-1.1
+#  License:      Apache-2.0
 #  Copyright:    (c) 2026 HYPERI PTY LIMITED
 
 """
-BufferMetrics -- composable metric group for buffered DFE apps.
+BufferMetrics -- composable metric group for buffered services.
 
-Mirrors rustlib's groups::BufferMetrics. Tracks buffer occupancy,
+Mirrors scalo-rs's groups::BufferMetrics. Tracks buffer occupancy,
 flush operations, and flush triggers.
 """
 
@@ -26,14 +26,14 @@ DEFAULT_FLUSH_DURATION_BUCKETS = (0.001, 0.005, 0.01, 0.025, 0.05, 0.1, 0.25, 0.
 
 class BufferMetrics:
     """
-    Buffer metrics for DFE apps with internal buffering.
+    Buffer metrics for services with internal buffering.
 
-    Registers:
-        {ns}_buffer_bytes gauge
-        {ns}_buffer_records gauge
-        {ns}_buffer_flush_total counter
-        {ns}_buffer_flush_duration_seconds histogram
-        {ns}_buffer_flush_trigger_total counter (labels: trigger)
+    Registers (``{p}`` = optional metric prefix, bare by default):
+        {p}_buffer_bytes gauge
+        {p}_buffer_records gauge
+        {p}_buffer_flush_total counter
+        {p}_buffer_flush_duration_seconds histogram
+        {p}_buffer_flush_trigger_total counter (labels: trigger)
     """
 
     def __init__(

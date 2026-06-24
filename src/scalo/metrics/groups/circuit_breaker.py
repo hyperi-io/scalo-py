@@ -1,15 +1,15 @@
 #  Project:      scalo
 #  File:         circuit_breaker.py
-#  Purpose:      CircuitBreakerMetrics group for DFE apps
+#  Purpose:      CircuitBreakerMetrics group for services
 #  Language:     Python
 #
-#  License:      BUSL-1.1
+#  License:      Apache-2.0
 #  Copyright:    (c) 2026 HYPERI PTY LIMITED
 
 """
 CircuitBreakerMetrics -- composable metric group for circuit breaker state.
 
-Mirrors rustlib's groups::CircuitBreakerMetrics. Tracks circuit breaker
+Mirrors scalo-rs's groups::CircuitBreakerMetrics. Tracks circuit breaker
 state (closed/open/half_open) and state transitions per target.
 """
 
@@ -30,11 +30,11 @@ _STATE_VALUES: dict[str, int] = {
 
 class CircuitBreakerMetrics:
     """
-    Circuit breaker metrics for DFE apps.
+    Circuit breaker metrics for any service.
 
-    Registers:
-        {ns}_circuit_breaker_state gauge (labels: target) -- 0=closed, 1=open, 2=half_open
-        {ns}_circuit_breaker_transitions_total counter (labels: target, to_state)
+    Registers (``{p}`` = optional metric prefix, bare by default):
+        {p}_circuit_breaker_state gauge (labels: target) -- 0=closed, 1=open, 2=half_open
+        {p}_circuit_breaker_transitions_total counter (labels: target, to_state)
     """
 
     def __init__(self, mgr: MetricsManager) -> None:

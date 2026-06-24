@@ -334,14 +334,32 @@ class OpenTelemetryBackend(MetricsBackend):
         prometheus_scrape = otel_config.get("prometheus_scrape", True)
         self.auto_convert_names = otel_config.get("auto_convert_names", True)
 
-        # Create resource (app metadata)
+        # Create resource (the identity the app legitimately owns -- service.*).
+        # Topology (pod/namespace/node) is left to the collector's k8sattributes
+        # processor / Prometheus scrape relabeling, NOT self-stamped on metrics.
+        import socket
+
         service_version = otel_config.get("service_version", "1.0.0")
-        resource = Resource.create(
-            {
-                "service.name": app_name,
-                "service.version": service_version,
-            }
-        )
+        resource_attrs: dict[str, Any] = {
+            "service.name": app_name,
+            "service.version": service_version,
+            "service.instance.id": socket.gethostname(),
+        }
+
+        # Optional, opt-in (default OFF): fold k8s Downward-API env into the
+        # resource. The collector's k8sattributes processor does this more
+        # reliably, so this is a convenience only.
+        if otel_config.get("resource_from_downward_api", False):
+            for env_name, attr in (
+                ("POD_NAME", "k8s.pod.name"),
+                ("POD_NAMESPACE", "k8s.namespace.name"),
+                ("NODE_NAME", "k8s.node.name"),
+            ):
+                value = os.getenv(env_name)
+                if value:
+                    resource_attrs[attr] = value
+
+        resource = Resource.create(resource_attrs)
 
         try:
             metric_readers = []

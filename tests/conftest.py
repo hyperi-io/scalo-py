@@ -12,18 +12,22 @@ import pytest
 
 @pytest.fixture(autouse=True)
 def _reset_scalo_env_prefix():
-    """Isolate the process-global env-var prefix between tests.
+    """Isolate the process-global env-var and metric prefixes between tests.
 
     The single scalo env prefix (set via ServiceApp/set_env_prefix or the bare
-    ENV_PREFIX var) is process-global. A CLI/app test that sets it would
-    otherwise leak into later tests, making bare control-var reads miss.
+    ENV_PREFIX var) and the metric prefix (set_metric_prefix / METRIC_PREFIX)
+    are process-global. A CLI/app test that sets either would otherwise leak
+    into later tests, making bare control-var reads or bare metric names miss.
     """
     import scalo._env_compat as _ec
 
     _ec._prefix_override = None
+    _ec._metric_prefix_override = None
     os.environ.pop("ENV_PREFIX", None)
+    os.environ.pop("METRIC_PREFIX", None)
     yield
     _ec._prefix_override = None
+    _ec._metric_prefix_override = None
 
 
 # Enable DEBUG logging for all tests

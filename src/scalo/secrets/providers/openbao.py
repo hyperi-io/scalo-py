@@ -66,9 +66,7 @@ class OpenBaoProvider(VersionedProvider):
         if not HTTPX_AVAILABLE:
             from ..exceptions import ProviderNotAvailableError
 
-            raise ProviderNotAvailableError(
-                "openbao", "httpx", "pip install httpx or pip install scalo[secrets-vault]"
-            )
+            raise ProviderNotAvailableError("openbao", "httpx", "pip install httpx or pip install scalo[secrets-vault]")
 
         self._config = config
         self._token: str | None = config.token

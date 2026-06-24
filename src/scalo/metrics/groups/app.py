@@ -1,15 +1,15 @@
 #  Project:      scalo
 #  File:         app.py
-#  Purpose:      AppMetrics group -- mandatory for all DFE apps
+#  Purpose:      AppMetrics group -- mandatory for all services
 #  Language:     Python
 #
-#  License:      BUSL-1.1
+#  License:      Apache-2.0
 #  Copyright:    (c) 2026 HYPERI PTY LIMITED
 
 """
-AppMetrics -- mandatory metric group for all DFE pipeline applications.
+AppMetrics -- mandatory metric group for all pipeline applications.
 
-Mirrors rustlib's groups::AppMetrics. Registers standard application
+Mirrors scalo-rs's groups::AppMetrics. Registers standard application
 identity, throughput, memory, and config reload metrics.
 """
 
@@ -24,21 +24,23 @@ if TYPE_CHECKING:
 
 class AppMetrics:
     """
-    Mandatory application metrics for DFE apps.
+    Mandatory application metrics for any service.
 
-    Registers:
-        {ns}_info gauge (labels: version, commit, app)
-        {ns}_start_time_seconds gauge
-        {ns}_records_received_total counter
-        {ns}_records_processed_total counter
-        {ns}_records_error_total counter
-        {ns}_bytes_received_total counter
-        {ns}_bytes_written_total counter
-        {ns}_memory_used_bytes gauge
-        {ns}_memory_limit_bytes gauge
-        {ns}_config_reloads_total counter (labels: result)
+    Registers (shown with the optional platform prefix ``{p}_``):
+        {p}_info gauge (labels: version, commit, app)
+        {p}_start_time_seconds gauge
+        {p}_records_received_total counter
+        {p}_records_processed_total counter
+        {p}_records_error_total counter
+        {p}_bytes_received_total counter
+        {p}_bytes_written_total counter
+        {p}_memory_used_bytes gauge
+        {p}_memory_limit_bytes gauge
+        {p}_config_reloads_total counter (labels: result)
 
-    Where {ns} is the MetricsManager's app_name (e.g. dfe_loader).
+    ``{p}`` is the MetricsManager's ``metric_prefix`` -- bare ("") by default,
+    so names are unprefixed unless an app calls ``set_metric_prefix("myapp")``
+    (-> ``myapp_info`` ...). App identity is also carried in the ``app`` label.
     """
 
     def __init__(self, mgr: MetricsManager, version: str, commit: str) -> None:

@@ -3,7 +3,7 @@
 # Purpose:   Test Docker Kafka fallback (forces local Docker even if remote available)
 # Language:  Python
 #
-# License:   BUSL-1.1
+# License:   Apache-2.0
 # Copyright: (c) 2026 HYPERI PTY LIMITED
 
 """

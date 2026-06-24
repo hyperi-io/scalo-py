@@ -3,7 +3,7 @@
 #  Purpose:   Generic async primitives -- the small set every capability uses
 #  Language:  Python
 #
-#  License:   BUSL-1.1
+#  License:   Apache-2.0
 #  Copyright: (c) 2026 HYPERI PTY LIMITED
 
 """Generic async primitives for at-scale Python services.

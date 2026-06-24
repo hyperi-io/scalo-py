@@ -1,12 +1,12 @@
 # Project:   scalo
 # File:      cli/error.py
-# Purpose:   CLI error types for DFE services
+# Purpose:   CLI error types for services
 # Language:  Python
 #
-# License:   BUSL-1.1
+# License:   Apache-2.0
 # Copyright: (c) 2026 HYPERI PTY LIMITED
 
-"""CLI error types for DFE service applications.
+"""CLI error types for service applications.
 
 Mirrors the error hierarchy from hyperi-rustlib's cli::error module.
 Each variant maps to a specific lifecycle failure mode.

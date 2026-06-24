@@ -3,7 +3,7 @@
 # Purpose:   Non-blocking startup version check implementation
 # Language:  Python
 #
-# License:   BUSL-1.1
+# License:   Apache-2.0
 # Copyright: (c) 2026 HYPERI PTY LIMITED
 
 """Version check implementation -- daemon thread, fire-and-forget."""
@@ -75,7 +75,7 @@ def check_on_startup(
     thread that logs the result and exits. Never blocks, never raises.
 
     Args:
-        product: Product identifier (e.g., "dfe-receiver").
+        product: Product identifier (e.g., "my-service").
         version: Current version string (e.g., "1.2.0").
         deployment: Optional deployment type (e.g., "k8s", "docker").
         config: Optional configuration override.

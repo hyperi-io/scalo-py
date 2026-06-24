@@ -1,12 +1,12 @@
 # Project:   scalo
 # File:      cli/version_info.py
-# Purpose:   Structured version metadata for DFE services
+# Purpose:   Structured version metadata for services
 # Language:  Python
 #
-# License:   BUSL-1.1
+# License:   Apache-2.0
 # Copyright: (c) 2026 HYPERI PTY LIMITED
 
-"""Version information for DFE service CLIs.
+"""Version information for service CLIs.
 
 Mirrors hyperi-rustlib's cli::version::VersionInfo with a builder pattern.
 Populated at build time or from package metadata.
@@ -40,7 +40,7 @@ class VersionInfo:
 
     Example::
 
-        info = VersionInfo("dfe-loader", "1.9.7")
+        info = VersionInfo("my-loader", "1.9.7")
         info = info.with_commit("abc1234").with_build_date("2026-03-04")
         print(info)
     """
