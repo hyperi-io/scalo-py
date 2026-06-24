@@ -9,6 +9,23 @@ from pathlib import Path
 
 import pytest
 
+
+@pytest.fixture(autouse=True)
+def _reset_scalo_env_prefix():
+    """Isolate the process-global env-var prefix between tests.
+
+    The single scalo env prefix (set via ServiceApp/set_env_prefix or the bare
+    ENV_PREFIX var) is process-global. A CLI/app test that sets it would
+    otherwise leak into later tests, making bare control-var reads miss.
+    """
+    import scalo._env_compat as _ec
+
+    _ec._prefix_override = None
+    os.environ.pop("ENV_PREFIX", None)
+    yield
+    _ec._prefix_override = None
+
+
 # Enable DEBUG logging for all tests
 os.environ["LOG_LEVEL"] = "DEBUG"
 
@@ -254,14 +271,14 @@ def cleanup_hung_processes():
     """
     Kill hung background processes from previous test runs.
 
-    Uses HYPERI_LIB-specific labels to avoid killing other projects' processes.
+    Uses LIB-specific labels to avoid killing other projects' processes.
     """
-    # Kill processes with HYPERI_LIB test labels
+    # Kill processes with LIB test labels
     scalo_patterns = [
-        "HYPERI_LIB_TEST_HELM",
-        "HYPERI_LIB_TEST_K8S",
-        "HYPERI_LIB_TEST_DOCKER",
-        "HYPERI_LIB_TEST_MINIKUBE",
+        "TEST_HELM",
+        "TEST_K8S",
+        "TEST_DOCKER",
+        "TEST_MINIKUBE",
     ]
 
     for pattern in scalo_patterns:

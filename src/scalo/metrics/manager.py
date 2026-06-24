@@ -6,9 +6,9 @@ Default backend is OpenTelemetry with dual export (OTLP push + Prometheus scrape
 Falls back to Prometheus-only if OTel packages are not installed.
 """
 
-import os
 from typing import Any
 
+from .._env_compat import control_var
 from ..config import get_config
 from ..logger import logger
 from .base import MetricsBackend
@@ -67,7 +67,7 @@ class MetricsManager:
 
         # Determine backend: explicit param > env var > config file > default (opentelemetry)
         if backend is None:
-            backend = os.environ.get("HYPERI_METRICS_BACKEND")
+            backend = control_var("METRICS_BACKEND")
         if backend is None:
             try:
                 config = get_config()
@@ -125,9 +125,7 @@ class MetricsManager:
                 self._actual_backend = "opentelemetry"
                 return OpenTelemetryBackend(app_name=app_name, config=self.backend_config)
             except ImportError:
-                logger.error(
-                    "OpenTelemetry backend not available. Install with: pip install scalo[opentelemetry]"
-                )
+                logger.error("OpenTelemetry backend not available. Install with: pip install scalo[opentelemetry]")
                 logger.warning("Falling back to Prometheus backend")
                 from .prometheus_backend import PrometheusBackend
 

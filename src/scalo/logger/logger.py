@@ -16,7 +16,7 @@ ENV overrides:
     LOG_LEVEL=DEBUG
     LOG_FORMAT=json
     LOG_OUTPUT=stdout
-    HYPERI_LIB_NO_LOGGER_CONFIG=1  # Disable auto-config
+    NO_LOGGER_CONFIG=1  # Disable auto-config
 
 See docs/LOGGING.md for examples and configuration details.
 """
@@ -25,6 +25,8 @@ import os
 import sys
 
 from loguru import logger as _logger
+
+from scalo._env_compat import control_flag, control_var
 
 from .filters import RateLimitFilter, get_sensitive_filter
 from .scrub import Scrubber as _Scrubber
@@ -487,9 +489,9 @@ def setup(
 
     # Fire-and-forget mode by default -- sinks run on a background thread, so
     # logger.info() returns in ~us even with slow disk/network sinks. Override
-    # with HYPERI_LOG_ENQUEUE=0 for sync semantics (audit logging, unit tests
+    # with SCALO_LOG_ENQUEUE=0 for sync semantics (audit logging, unit tests
     # that assert on captured output, etc.).
-    enqueue = os.environ.get("HYPERI_LOG_ENQUEUE", "1") != "0"
+    enqueue = control_var("LOG_ENQUEUE", default="1") != "0"
 
     # LOG_FORMAT: explicit selector for the console sink format.
     # Accepted values: "json" (one JSON object per line via loguru
@@ -660,14 +662,9 @@ def setup(
 # Smart Auto-Configuration (Zero-Config Pattern)
 # ============================================================================
 # Only auto-configure if explicitly requested.
-# Opt-in: set HYPERI_LIB_AUTO_LOGGER_CONFIG=1 (keeps HYPERI_LIB_NO_LOGGER_CONFIG as override)
+# Opt-in: set SCALO_AUTO_LOGGER_CONFIG=1 (keeps SCALO_NO_LOGGER_CONFIG as override)
 
-
-def _env_flag(name: str, default: bool = False) -> bool:
-    return os.getenv(name, str(default)).lower() in ("1", "true", "yes")
-
-
-if _env_flag("HYPERI_LIB_AUTO_LOGGER_CONFIG") and not _env_flag("HYPERI_LIB_NO_LOGGER_CONFIG"):
+if control_flag("AUTO_LOGGER_CONFIG") and not control_flag("NO_LOGGER_CONFIG"):
     # Initialize with smart defaults (auto-detects terminal, RFC 3339, emojis)
     setup()
 

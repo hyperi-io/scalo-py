@@ -10,6 +10,7 @@ import threading
 from datetime import UTC, datetime
 from typing import Any, NamedTuple
 
+from .._env_compat import control_var
 from .cache import DiskCache
 from .exceptions import (
     ProviderError,
@@ -207,21 +208,21 @@ class SecretsManager:
         encryption_key = cls._get_encryption_key(cache_cfg)
         cache_config = CacheConfig(
             enabled=cache_cfg.get("enabled", True),
-            directory=cache_cfg.get("directory") or os.environ.get("HYPERI_SECRETS_CACHE_DIR"),
-            ttl_secs=cache_cfg.get("ttl_secs", int(os.environ.get("HYPERI_SECRETS_CACHE_TTL", "3600"))),
+            directory=cache_cfg.get("directory") or control_var("SECRETS_CACHE_DIR"),
+            ttl_secs=cache_cfg.get("ttl_secs", int(control_var("SECRETS_CACHE_TTL") or "3600")),
             stale_grace_secs=cache_cfg.get("stale_grace_secs", 86400),
             refresh_interval_secs=cache_cfg.get("refresh_interval_secs", 1800),
             refresh_jitter_secs=cache_cfg.get("refresh_jitter_secs", 300),
             encryption_key=encryption_key,
         )
 
-        env_prefix = config.get("env_prefix") or os.environ.get("HYPERI_SECRETS_ENV_PREFIX")
+        env_prefix = config.get("env_prefix") or control_var("SECRETS_ENV_PREFIX")
         return cls(providers=providers, sources=sources, cache_config=cache_config, env_prefix=env_prefix)
 
     @staticmethod
     def _get_encryption_key(cache_cfg: dict) -> bytes | None:
         """Get encryption key from config or environment."""
-        key = cache_cfg.get("encryption_key") or os.environ.get("HYPERI_SECRETS_CACHE_KEY")
+        key = cache_cfg.get("encryption_key") or control_var("SECRETS_CACHE_KEY")
         if key:
             return key.encode("utf-8") if isinstance(key, str) else key
         return None

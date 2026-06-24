@@ -68,7 +68,7 @@ class TestHashLabeler:
         assert l1("EMAIL", "alice@example.com") != l2("EMAIL", "alice@example.com")
 
     def test_env_var_key_used(self, monkeypatch):
-        monkeypatch.setenv("HYPERI_LOG_SCRUB_HASH_KEY", "operator-cross-process-key")
+        monkeypatch.setenv("LOG_SCRUB_HASH_KEY", "operator-cross-process-key")
         labeler = make_hash_labeler()  # None -> read env
         out = labeler("EMAIL", "alice@example.com")
         # Same env, same value -> deterministic
@@ -76,7 +76,7 @@ class TestHashLabeler:
         assert out == again("EMAIL", "alice@example.com")
 
     def test_no_key_uses_per_process_random(self, monkeypatch):
-        monkeypatch.delenv("HYPERI_LOG_SCRUB_HASH_KEY", raising=False)
+        monkeypatch.delenv("LOG_SCRUB_HASH_KEY", raising=False)
         l1 = make_hash_labeler()
         l2 = make_hash_labeler()
         # Independent instances with random keys -> different outputs
@@ -179,11 +179,11 @@ class TestFactoryHashRedaction:
 
 class TestHashRedactionDeterministicAcrossInstances:
     """Same hash key + same value should yield the same label across
-    scrubber instances. Operators set HYPERI_LOG_SCRUB_HASH_KEY for
+    scrubber instances. Operators set LOG_SCRUB_HASH_KEY for
     cross-process correlation."""
 
     def test_explicit_env_key_yields_stable_labels(self, monkeypatch):
-        monkeypatch.setenv("HYPERI_LOG_SCRUB_HASH_KEY", "ops-correlation-key")
+        monkeypatch.setenv("LOG_SCRUB_HASH_KEY", "ops-correlation-key")
 
         s1 = build_scrubber(ScrubConfig(hash_redaction=True))
         s2 = build_scrubber(ScrubConfig(hash_redaction=True))
@@ -193,7 +193,7 @@ class TestHashRedactionDeterministicAcrossInstances:
         assert out1 == out2
 
     def test_no_env_key_yields_unstable_labels(self, monkeypatch):
-        monkeypatch.delenv("HYPERI_LOG_SCRUB_HASH_KEY", raising=False)
+        monkeypatch.delenv("LOG_SCRUB_HASH_KEY", raising=False)
 
         s1 = build_scrubber(ScrubConfig(hash_redaction=True))
         s2 = build_scrubber(ScrubConfig(hash_redaction=True))

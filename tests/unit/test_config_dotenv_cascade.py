@@ -172,7 +172,7 @@ class TestDotenvCascade:
 
         monkeypatch.setenv("HOME", str(fake_home))
         monkeypatch.delenv("DEFAULT_BEHAVIOR_TEST", raising=False)
-        monkeypatch.delenv("HYPERI_DOTENV_CASCADE", raising=False)
+        monkeypatch.delenv("DOTENV_CASCADE", raising=False)
 
         from scalo.config import get_config
 
@@ -186,10 +186,10 @@ class TestDotenvCascade:
 
 
 class TestDotenvCascadeEnvVar:
-    """Tests for HYPERI_DOTENV_CASCADE environment variable."""
+    """Tests for DOTENV_CASCADE environment variable."""
 
     def test_env_var_enables_cascade(self, tmp_path, monkeypatch):
-        """Test HYPERI_DOTENV_CASCADE=true enables cascade at module init."""
+        """Test DOTENV_CASCADE=true enables cascade at module init."""
         # This test verifies the environment variable works
         # Note: Module-level initialization happens at import time,
         # so this is more of a documentation test
@@ -198,8 +198,8 @@ class TestDotenvCascadeEnvVar:
         (fake_home / ".env").write_text("ENV_VAR_CASCADE_TEST=from-home\n")
 
         monkeypatch.setenv("HOME", str(fake_home))
-        monkeypatch.setenv("HYPERI_DOTENV_CASCADE", "true")
+        monkeypatch.setenv("DOTENV_CASCADE", "true")
 
         # The actual cascade would happen at module import time
         # This test documents the expected behavior
-        assert os.environ.get("HYPERI_DOTENV_CASCADE") == "true"
+        assert os.environ.get("DOTENV_CASCADE") == "true"

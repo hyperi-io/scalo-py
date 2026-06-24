@@ -34,6 +34,8 @@ from typing import Callable
 
 import pytest
 
+from .._env_compat import control_var
+
 SKIP_PREFIX = "HYPERCI-SKIP[contract-e2e]"
 """Canonical greppable prefix for runner aggregation."""
 
@@ -105,8 +107,8 @@ def kubectl_available() -> bool:
 
 
 def tier_b_enabled() -> bool:
-    """True iff ``HYPERI_E2E_CLUSTER`` is set to a truthy value."""
-    raw = os.environ.get("HYPERI_E2E_CLUSTER", "").lower()
+    """True iff ``E2E_CLUSTER`` is set to a truthy value."""
+    raw = (control_var("E2E_CLUSTER") or "").lower()
     return raw in ("1", "true", "yes", "on")
 
 
@@ -207,7 +209,7 @@ class KindClusterGuard:
 
     def __enter__(self) -> KindClusterGuard:
         if not (kind_available() and kubectl_available() and tier_b_enabled()):
-            raise RuntimeError("kind cluster prerequisites not met: requires kind, kubectl, and HYPERI_E2E_CLUSTER=1")
+            raise RuntimeError("kind cluster prerequisites not met: requires kind, kubectl, and E2E_CLUSTER=1")
         # Cluster brought up by caller via subprocess; this class only
         # tracks the lifecycle. Test bodies invoke `kind create cluster`
         # with self.name so they can pass --image / --config flags.
@@ -236,7 +238,7 @@ def ensure_kind_cluster(test_name: str) -> KindClusterGuard | None:
     """
     missing: list[str] = []
     if not tier_b_enabled():
-        missing.append("HYPERI_E2E_CLUSTER=1")
+        missing.append("E2E_CLUSTER=1")
     if not kind_available():
         missing.append("kind")
     if not kubectl_available():
