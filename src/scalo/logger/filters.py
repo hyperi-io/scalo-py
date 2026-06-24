@@ -107,7 +107,7 @@ class SensitiveDataFilter(logging.Filter):
         SensitiveDataFilter.add_sensitive_fields({"employee_id", "ssn"})
 
     Disable (not recommended):
-        export HYPERI_LIB_LOGGING__MASK_SENSITIVE_DATA=false
+        export LOGGING__MASK_SENSITIVE_DATA=false
     """
 
     # Class-level set for global custom fields

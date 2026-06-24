@@ -16,7 +16,7 @@ Two modes:
 - **Deterministic hash** (opt-in, ``scrub.hash_redaction: true``): each
   unique value gets a short keyed-hash suffix, e.g.
   ``[EMAIL_a3f5b2]``. Same value -> same suffix within a process (or
-  across processes when ``HYPERI_LOG_SCRUB_HASH_KEY`` is set), letting
+  across processes when ``LOG_SCRUB_HASH_KEY`` is set), letting
   operators correlate events without exposing the value.
 
 Hash algorithm: BLAKE2b keyed with ``secret_hash_key``,
@@ -30,10 +30,11 @@ a short-label hash.
 from __future__ import annotations
 
 import hashlib
-import os
 import secrets
 from collections.abc import Callable
 from typing import TypeAlias
+
+from ..._env_compat import control_var
 
 type LabelFn = Callable[[str, str], str]
 """Label-producing function. Takes ``(label, value)``, returns redaction string."""
@@ -49,7 +50,7 @@ def make_hash_labeler(secret_hash_key: bytes | None = None) -> LabelFn:
 
     Args:
         secret_hash_key: Bytes used to key the BLAKE2b hash. If ``None``,
-            the environment variable ``HYPERI_LOG_SCRUB_HASH_KEY`` is
+            the environment variable ``LOG_SCRUB_HASH_KEY`` is
             consulted; if it is empty/unset, a per-process random key is
             generated. Within a process, the same value always produces
             the same suffix.
@@ -62,7 +63,7 @@ def make_hash_labeler(secret_hash_key: bytes | None = None) -> LabelFn:
     labeler per scrubber instance.
     """
     if secret_hash_key is None:
-        env_key = os.environ.get("HYPERI_LOG_SCRUB_HASH_KEY", "")
+        env_key = control_var("LOG_SCRUB_HASH_KEY") or ""
         if env_key:
             secret_hash_key = env_key.encode("utf-8")
         else:

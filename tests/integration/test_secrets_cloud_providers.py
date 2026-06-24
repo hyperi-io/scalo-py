@@ -16,26 +16,26 @@ accounts simply skip those tests.
 Configuration via environment variables (or tests/.env.integration file):
 
     # AWS Secrets Manager
-    HYPERI_TEST_AWS_REGION=ap-southeast-2
-    HYPERI_TEST_AWS_SECRET_NAME=scalo-test
+    TEST_AWS_REGION=ap-southeast-2
+    TEST_AWS_SECRET_NAME=scalo-test
     # Credentials: AWS_ACCESS_KEY_ID + AWS_SECRET_ACCESS_KEY + AWS_SESSION_TOKEN
     # Via SSO: eval $(aws configure export-credentials --profile your-aws-profile --format env)
 
     # GCP Secret Manager
-    HYPERI_TEST_GCP_PROJECT_ID=hyperi-dfe
-    HYPERI_TEST_GCP_SECRET_NAME=scalo-test
+    TEST_GCP_PROJECT_ID=hyperi-dfe
+    TEST_GCP_SECRET_NAME=scalo-test
     # Credentials: gcloud auth application-default login
 
     # Azure Key Vault
-    HYPERI_TEST_AZURE_VAULT_URL=https://scalo-test.vault.azure.net/
-    HYPERI_TEST_AZURE_SECRET_NAME=scalo-test
+    TEST_AZURE_VAULT_URL=https://scalo-test.vault.azure.net/
+    TEST_AZURE_SECRET_NAME=scalo-test
     # Credentials: az login (ensure AZURE_CLIENT_SECRET is unset if stale)
 
     # OpenBao / Vault
-    HYPERI_TEST_VAULT_ADDR=https://bao.devex.hyperi.io:8200
-    HYPERI_TEST_VAULT_TOKEN=<token>
-    HYPERI_TEST_VAULT_PATH=secret/data/scalo-test
-    HYPERI_TEST_VAULT_KEY=api_key
+    TEST_VAULT_ADDR=https://bao.devex.hyperi.io:8200
+    TEST_VAULT_TOKEN=<token>
+    TEST_VAULT_PATH=secret/data/scalo-test
+    TEST_VAULT_KEY=api_key
 
 Copy tests/.env.integration.example to tests/.env.integration and fill in values.
 
@@ -63,19 +63,19 @@ pytestmark = pytest.mark.integration
 # Test config from env
 # ---------------------------------------------------------------------------
 
-AWS_REGION = os.environ.get("HYPERI_TEST_AWS_REGION", "ap-southeast-2")
-AWS_SECRET_NAME = os.environ.get("HYPERI_TEST_AWS_SECRET_NAME", "scalo-test")
+AWS_REGION = os.environ.get("TEST_AWS_REGION", "ap-southeast-2")
+AWS_SECRET_NAME = os.environ.get("TEST_AWS_SECRET_NAME", "scalo-test")
 
-GCP_PROJECT_ID = os.environ.get("HYPERI_TEST_GCP_PROJECT_ID", "hyperi-dfe")
-GCP_SECRET_NAME = os.environ.get("HYPERI_TEST_GCP_SECRET_NAME", "scalo-test")
+GCP_PROJECT_ID = os.environ.get("TEST_GCP_PROJECT_ID", "hyperi-dfe")
+GCP_SECRET_NAME = os.environ.get("TEST_GCP_SECRET_NAME", "scalo-test")
 
-AZURE_VAULT_URL = os.environ.get("HYPERI_TEST_AZURE_VAULT_URL", "https://scalo-test.vault.azure.net/")
-AZURE_SECRET_NAME = os.environ.get("HYPERI_TEST_AZURE_SECRET_NAME", "scalo-test")
+AZURE_VAULT_URL = os.environ.get("TEST_AZURE_VAULT_URL", "https://scalo-test.vault.azure.net/")
+AZURE_SECRET_NAME = os.environ.get("TEST_AZURE_SECRET_NAME", "scalo-test")
 
-VAULT_ADDR = os.environ.get("HYPERI_TEST_VAULT_ADDR", "")
-VAULT_TOKEN = os.environ.get("HYPERI_TEST_VAULT_TOKEN", "")
-VAULT_PATH = os.environ.get("HYPERI_TEST_VAULT_PATH", "secret/data/scalo-test")
-VAULT_KEY = os.environ.get("HYPERI_TEST_VAULT_KEY", "api_key")
+VAULT_ADDR = os.environ.get("TEST_VAULT_ADDR", "")
+VAULT_TOKEN = os.environ.get("TEST_VAULT_TOKEN", "")
+VAULT_PATH = os.environ.get("TEST_VAULT_PATH", "secret/data/scalo-test")
+VAULT_KEY = os.environ.get("TEST_VAULT_KEY", "api_key")
 
 EXPECTED_API_KEY = "test-value-abc123"
 EXPECTED_OTHER_KEY = "other-value"
@@ -135,7 +135,7 @@ requires_azure = pytest.mark.skipif(
 
 requires_vault = pytest.mark.skipif(
     not _vault_creds_available(),
-    reason="Vault credentials not configured (set HYPERI_TEST_VAULT_ADDR and HYPERI_TEST_VAULT_TOKEN)",
+    reason="Vault credentials not configured (set TEST_VAULT_ADDR and TEST_VAULT_TOKEN)",
 )
 
 
@@ -636,8 +636,8 @@ class TestEnvFallbackAlwaysRuns:
         assert value.source == "env"
 
     def test_auto_fallback_prefix_via_env_var(self, monkeypatch):
-        """env_prefix can also be set via HYPERI_SECRETS_ENV_PREFIX env var."""
-        monkeypatch.setenv("HYPERI_SECRETS_ENV_PREFIX", "APP")
+        """env_prefix can also be set via SECRETS_ENV_PREFIX env var."""
+        monkeypatch.setenv("SECRETS_ENV_PREFIX", "APP")
         monkeypatch.setenv("APP_MY_SECRET", "env-prefix-via-env-var")
         manager = SecretsManager.from_config(
             {

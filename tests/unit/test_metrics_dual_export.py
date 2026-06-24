@@ -123,25 +123,25 @@ class TestPrometheusOutputFromOTel:
 
 
 class TestEnvVarOverrides:
-    """Test that OTEL environment variables and HYPERI_METRICS_BACKEND work."""
+    """Test that OTEL environment variables and METRICS_BACKEND work."""
 
     def test_hyperi_metrics_backend_env_var(self, monkeypatch):
-        """HYPERI_METRICS_BACKEND env var selects backend."""
-        monkeypatch.setenv("HYPERI_METRICS_BACKEND", "prometheus")
+        """METRICS_BACKEND env var selects backend."""
+        monkeypatch.setenv("METRICS_BACKEND", "prometheus")
 
         metrics = create_metrics("env-test-backend")
         assert metrics.backend_name == "prometheus"
 
     def test_hyperi_metrics_backend_otel(self, monkeypatch):
-        """HYPERI_METRICS_BACKEND=opentelemetry selects OTel backend."""
-        monkeypatch.setenv("HYPERI_METRICS_BACKEND", "opentelemetry")
+        """METRICS_BACKEND=opentelemetry selects OTel backend."""
+        monkeypatch.setenv("METRICS_BACKEND", "opentelemetry")
 
         metrics = create_metrics("env-test-otel")
         assert metrics.backend_name == "opentelemetry"
 
     def test_explicit_param_overrides_env_var(self, monkeypatch):
         """Explicit backend param takes priority over env var."""
-        monkeypatch.setenv("HYPERI_METRICS_BACKEND", "opentelemetry")
+        monkeypatch.setenv("METRICS_BACKEND", "opentelemetry")
 
         metrics = create_metrics("env-test-override", backend="prometheus")
         assert metrics.backend_name == "prometheus"

@@ -126,7 +126,9 @@ class CommonArgs:
             ConfigError: If configuration cannot be loaded.
         """
         try:
-            os.environ["HYPERI_LIB_ENV_PREFIX"] = env_prefix
+            from scalo._env_compat import set_env_prefix
+
+            set_env_prefix(env_prefix)
 
             from scalo.config import get_config
 

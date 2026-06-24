@@ -13,18 +13,17 @@ ALL configuration automatically follows this priority (highest to lowest):
     1. CLI args/switches  -> --host=X --port=Y (runtime, apps/CLIs only)
     2. ENV variables      -> MYAPP_DATABASE_HOST=prod.db.com (deployment)
     3. .env file          -> Local secrets (gitignored, never commit)
-    4. PostgreSQL         -> Shared org config (OPTIONAL, OVERRIDES files)
-    5. settings.{env}.yaml -> Environment-specific (settings.production.yaml)
-    6. settings.yaml      -> Project base config (team defaults)
-    7. defaults.yaml      -> Safe fallback defaults (local dev)
-    8. Hard-coded         -> Last resort in code (fallback values)
+    4. settings.{env}.yaml -> Environment-specific (settings.production.yaml)
+    5. settings.yaml      -> Project base config (team defaults)
+    6. defaults.yaml      -> Safe fallback defaults (local dev)
+    7. Hard-coded         -> Last resort in code (fallback values)
 
 **.env Cascade Mode (Optional):**
 
     By default, only ./.env is loaded. Enable cascade mode to aggregate
     multiple .env files (home as base, project as overlay):
 
-    Set HYPERI_DOTENV_CASCADE=true or use get_config(dotenv_cascade=True)
+    Set DOTENV_CASCADE=true or use get_config(dotenv_cascade=True)
 
     When enabled, loads in order (later overrides earlier):
         1. ~/.env          -> Home directory (global API keys, credentials)
@@ -63,7 +62,7 @@ ALL configuration automatically follows this priority (highest to lowest):
     api.timeout           -> MYAPP_API_TIMEOUT
     cache.redis.enabled   -> MYAPP_CACHE_REDIS_ENABLED
 
-    Prefix customizable via: HYPERI_LIB_ENV_PREFIX=MYAPP
+    Prefix customizable via: ENV_PREFIX=MYAPP
 
 **Multi-File Discovery (matches rustlib):**
 
@@ -77,8 +76,7 @@ ALL configuration automatically follows this priority (highest to lowest):
 
     Both .yaml and .yml checked (.yaml first). All found files merged.
 
-    **App name** resolved from: APP_NAME env -> HYPERI_LIB_APP_NAME env ->
-    auto-detect -> default "app".
+    **App name** resolved from: APP_NAME env -> auto-detect -> default "app".
 
     **App env** resolved from: APP_ENV -> ENVIRONMENT -> ENV -> "development".
 
@@ -114,10 +112,12 @@ from typing import Literal
 
 from dynaconf import Dynaconf
 
+from scalo._env_compat import control_flag, control_var, env_prefix
+
 
 def _debug_log(msg: str) -> None:
-    """Log debug message if HYPERI_LIB_DEBUG is set. Uses lazy import to avoid circular dependency."""
-    if os.getenv("HYPERI_LIB_DEBUG") or (os.getenv("LOG_LEVEL") == "DEBUG"):
+    """Log debug message if DEBUG is set. Uses lazy import to avoid circular dependency."""
+    if control_var("DEBUG") or (os.getenv("LOG_LEVEL") == "DEBUG"):
         from scalo.logger import logger
 
         logger.debug(msg)
@@ -454,15 +454,16 @@ def get_default_mounts(environment: str, app_name: str, auto_detect: bool = True
     return config
 
 
-# Configurable environment variable prefix and app name
-# Set HYPERI_LIB_ENV_PREFIX to override (e.g., HYPERI_LIB_ENV_PREFIX=MYAPP)
-# Default: APP (e.g., APP_LOG_LEVEL, APP_DATABASE_URL)
-ENV_PREFIX = os.getenv("HYPERI_LIB_ENV_PREFIX", "APP")
+# Configurable environment-variable prefix for the whole cascade.
+# Bare by default (e.g. LOG_LEVEL, DATABASE_URL). A consuming app supplies its
+# own prefix via ServiceApp(env_prefix=...) / set_env_prefix("DFE") / the bare
+# ENV_PREFIX env var, after which every key reads as <PREFIX>_<KEY>.
+ENV_PREFIX = env_prefix()
 
 
 # Determine app name with proper priority:
 # 1. K8s/Docker standard APP_NAME environment variable
-# 2. HYPERI_LIB_APP_NAME override
+# 2. APP_NAME override
 # 3. Python package name (if detectable)
 # 4. Default to "app"
 def get_app_name() -> str:
@@ -470,7 +471,7 @@ def get_app_name() -> str:
 
     Priority order:
     1. APP_NAME environment variable (K8s/Docker standard)
-    2. HYPERI_LIB_APP_NAME override
+    2. APP_NAME override
     3. Root application package name (not scalo)
     4. Main module name from sys.argv[0]
     5. Default to "app"
@@ -481,7 +482,7 @@ def get_app_name() -> str:
         return app_name
 
     # Priority 2: scalo override
-    app_name = os.getenv("HYPERI_LIB_APP_NAME")
+    app_name = control_var("APP_NAME")
     if app_name:
         return app_name
 
@@ -542,7 +543,7 @@ def get_app_env() -> str:
 APP_ENV = get_app_env()
 
 # Auto-detection settings (can be disabled via env var)
-AUTO_DETECT = os.getenv("HYPERI_LIB_AUTO_DETECT", "true").lower() in ("true", "1", "yes")
+AUTO_DETECT = control_flag("AUTO_DETECT", default=True)
 DETECTED_ENV = detect_environment() if AUTO_DETECT else "bare_metal"
 
 # Get mount configuration based on environment
@@ -625,8 +626,8 @@ settings_files.extend(_find_config_files("settings"))
 settings_files.extend(_find_config_files(f"settings.{APP_ENV}"))
 
 # Check if .env cascade is enabled globally via environment variable
-# HYPERI_DOTENV_CASCADE=true enables loading ~/.env then ./.env
-_DOTENV_CASCADE_ENABLED = os.getenv("HYPERI_DOTENV_CASCADE", "false").lower() in ("true", "1", "yes")
+# DOTENV_CASCADE=true enables loading ~/.env then ./.env
+_DOTENV_CASCADE_ENABLED = control_flag("DOTENV_CASCADE", default=False)
 
 # Pre-load .env files in cascade order if enabled
 _use_dynaconf_dotenv = True
@@ -652,7 +653,8 @@ if _DOTENV_CASCADE_ENABLED:
 
 # Initialize Dynaconf with discovered settings
 settings = Dynaconf(
-    envvar_prefix=ENV_PREFIX,  # Environment variables use {ENV_PREFIX}_ prefix
+    # Bare env vars by default (no prefix); <PREFIX>_<KEY> when an app sets one.
+    envvar_prefix=ENV_PREFIX or False,
     settings_files=settings_files if settings_files else [],  # Use discovered files
     load_dotenv=_use_dynaconf_dotenv,  # Load .env file (3rd priority)
     environments=False,  # Single config approach
@@ -775,7 +777,7 @@ def get_config(
         additional_files: Additional config file paths to merge (list of str)
                          Files loaded in order, later files have higher priority
                          Paths can be absolute or relative to config_dir
-        env_prefix: Environment variable prefix (default: APP or HYPERI_LIB_ENV_PREFIX)
+        env_prefix: Environment variable prefix (default: bare, or the app-supplied prefix)
                    Example: "TENANT1" -> TENANT1_DATABASE_HOST
         load_dotenv: Load .env file (default: True)
                     Set False for security-sensitive contexts
@@ -850,9 +852,9 @@ def get_config(
             else:
                 _debug_log(f"[WARN] Config file not found: {path}")
 
-    # Create new Dynaconf instance
+    # Create new Dynaconf instance (bare env vars when no prefix supplied)
     return Dynaconf(
-        envvar_prefix=prefix,
+        envvar_prefix=prefix or False,
         settings_files=config_files,
         load_dotenv=use_dynaconf_dotenv,
         environments=False,
@@ -1001,7 +1003,7 @@ def get_logging_config():
 
     Environment Variable Prefix:
     - Default: APP_ (e.g., APP_LOGGING__LEVEL)
-    - Configurable via: HYPERI_LIB_ENV_PREFIX (e.g., HYPERI_LIB_ENV_PREFIX=MYAPP)
+    - Configurable via: ENV_PREFIX (e.g., ENV_PREFIX=MYAPP)
 
     Priority order (CLI -> ENV -> .env -> config -> default -> hardcoded):
     1. Standard environment variables (LOG_*)

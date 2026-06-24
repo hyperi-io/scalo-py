@@ -151,6 +151,6 @@ def version_option(
 
 
 # Pre-configured version option for scalo itself
-HYPERI_LIB_VERSION_OPTION = (
+VERSION_OPTION = (
     version_option("scalo", app_name="scalo", python_version=True) if HAS_TYPER else None
 )

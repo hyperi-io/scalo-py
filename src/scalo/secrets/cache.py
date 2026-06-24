@@ -10,6 +10,7 @@ import tempfile
 from datetime import UTC, datetime
 from pathlib import Path
 
+from .._env_compat import control_var
 from .types import CacheConfig, SecretValue
 
 logger = logging.getLogger(__name__)
@@ -78,14 +79,14 @@ class DiskCache:
         return self._config
 
     def _resolve_directory(self, directory: str | None) -> Path:
-        """Cache dir priority (never /tmp): explicit arg, HYPERI_SECRETS_CACHE_DIR,
+        """Cache dir priority (never /tmp): explicit arg, SECRETS_CACHE_DIR,
         $XDG_CACHE_HOME/hs-secrets, %LOCALAPPDATA%/hyperi-ai/secrets-cache (Win),
         ~/.cache/hyperi-ai/secrets-cache.
         """
         if directory:
             return Path(directory)
 
-        env_dir = os.environ.get("HYPERI_SECRETS_CACHE_DIR")
+        env_dir = control_var("SECRETS_CACHE_DIR")
         if env_dir:
             return Path(env_dir)
 

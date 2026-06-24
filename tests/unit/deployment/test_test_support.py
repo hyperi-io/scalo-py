@@ -32,7 +32,7 @@ import pytest
 def test_tier_b_enabled_truthy_values(val: str) -> None:
     from scalo.deployment.test_support import tier_b_enabled
 
-    with patch.dict(os.environ, {"HYPERI_E2E_CLUSTER": val}):
+    with patch.dict(os.environ, {"E2E_CLUSTER": val}):
         assert tier_b_enabled() is True
 
 
@@ -40,14 +40,14 @@ def test_tier_b_enabled_truthy_values(val: str) -> None:
 def test_tier_b_enabled_falsy_values(val: str) -> None:
     from scalo.deployment.test_support import tier_b_enabled
 
-    with patch.dict(os.environ, {"HYPERI_E2E_CLUSTER": val}):
+    with patch.dict(os.environ, {"E2E_CLUSTER": val}):
         assert tier_b_enabled() is False
 
 
 def test_tier_b_enabled_unset() -> None:
     from scalo.deployment.test_support import tier_b_enabled
 
-    env = {k: v for k, v in os.environ.items() if k != "HYPERI_E2E_CLUSTER"}
+    env = {k: v for k, v in os.environ.items() if k != "E2E_CLUSTER"}
     with patch.dict(os.environ, env, clear=True):
         assert tier_b_enabled() is False
 
@@ -279,6 +279,6 @@ def test_ensure_kind_cluster_returns_none_when_prereqs_missing(tmp_path: Path, m
     monkeypatch.setattr(test_support.shutil, "which", lambda _name: None)
     log_path = tmp_path / "skips.log"
     monkeypatch.setattr(test_support, "_skip_log_path", lambda: log_path)
-    env = {k: v for k, v in os.environ.items() if k != "HYPERI_E2E_CLUSTER"}
+    env = {k: v for k, v in os.environ.items() if k != "E2E_CLUSTER"}
     with patch.dict(os.environ, env, clear=True), pytest.raises(pytest.skip.Exception):
         test_support.ensure_kind_cluster("test_x")

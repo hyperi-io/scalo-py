@@ -237,7 +237,7 @@ class TestDiskCache:
     def test_auto_directory_resolution_xdg(self, tmp_path, monkeypatch):
         """Test automatic directory resolution with XDG_CACHE_HOME."""
         monkeypatch.setenv("XDG_CACHE_HOME", str(tmp_path / "xdg-cache"))
-        monkeypatch.delenv("HYPERI_SECRETS_CACHE_DIR", raising=False)
+        monkeypatch.delenv("SECRETS_CACHE_DIR", raising=False)
 
         config = CacheConfig(enabled=True, directory=None)
         cache = DiskCache(config)
@@ -247,9 +247,9 @@ class TestDiskCache:
         assert "hs-secrets" in str(cache._directory)
 
     def test_auto_directory_resolution_env(self, tmp_path, monkeypatch):
-        """Test automatic directory resolution with HYPERI_SECRETS_CACHE_DIR."""
+        """Test automatic directory resolution with SECRETS_CACHE_DIR."""
         custom_dir = tmp_path / "custom-cache"
-        monkeypatch.setenv("HYPERI_SECRETS_CACHE_DIR", str(custom_dir))
+        monkeypatch.setenv("SECRETS_CACHE_DIR", str(custom_dir))
 
         config = CacheConfig(enabled=True, directory=None)
         cache = DiskCache(config)

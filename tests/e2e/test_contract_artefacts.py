@@ -21,7 +21,7 @@ Tier A (default; runs anywhere the tool is present):
 - ``test_tier_a_chart_lint_and_template``
 - ``test_tier_a_argocd_application_kubeconform``
 
-Tier B (env-gated by ``HYPERI_E2E_CLUSTER=1``):
+Tier B (env-gated by ``E2E_CLUSTER=1``):
 
 - ``test_tier_b_helm_install_on_kind``
 - ``test_tier_b_argocd_application_sync_on_kind``

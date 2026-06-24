@@ -69,22 +69,12 @@ class TestAppNameDetection:
     """Test get_app_name() priority matches rustlib."""
 
     def test_app_name_from_env(self, monkeypatch):
-        """APP_NAME takes highest priority."""
+        """APP_NAME (bare, or app-prefixed) takes highest priority."""
         monkeypatch.setenv("APP_NAME", "myapp")
-        monkeypatch.delenv("HYPERI_LIB_APP_NAME", raising=False)
 
         from scalo.config.config import get_app_name
 
         assert get_app_name() == "myapp"
-
-    def test_app_name_from_hyperi_env(self, monkeypatch):
-        """HYPERI_LIB_APP_NAME is second priority."""
-        monkeypatch.delenv("APP_NAME", raising=False)
-        monkeypatch.setenv("HYPERI_LIB_APP_NAME", "hyperi-app")
-
-        from scalo.config.config import get_app_name
-
-        assert get_app_name() == "hyperi-app"
 
 
 class TestLogFormatDefault:
@@ -127,7 +117,7 @@ class TestDotenvCascadeDefault:
 
     def test_dotenv_cascade_disabled_by_default(self, monkeypatch):
         """Home .env loading must be opt-in (matches rustlib load_home_dotenv=false)."""
-        monkeypatch.delenv("HYPERI_DOTENV_CASCADE", raising=False)
+        monkeypatch.delenv("DOTENV_CASCADE", raising=False)
 
         from scalo.config.config import _DOTENV_CASCADE_ENABLED
 
