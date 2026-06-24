@@ -83,11 +83,6 @@ http = [
     "stamina>=26.1.0",
     "purgatory>=3.0.1",
 ]
-cache = [
-    "cashews>=7.5.0",
-    "msgpack>=1.1.0",
-    "psycopg[binary,pool]>=3.3.0",
-]
 metrics = [
     "prometheus-client>=0.25.0",
     "psutil>=7.2.0",

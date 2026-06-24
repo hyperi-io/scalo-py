@@ -87,11 +87,6 @@ class NativeDepsContract(BaseModel):
             add("libssl3")
             add("zlib1g")
 
-        # Cache (psycopg binary wheel needs libpq + libssl)
-        if "cache" in extras:
-            add("libpq5")
-            add("libssl3")
-
         # OpenTelemetry / HTTP both need TLS
         if "opentelemetry" in extras or "http" in extras:
             add("libssl3")

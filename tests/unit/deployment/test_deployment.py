@@ -539,10 +539,6 @@ class TestNativeDepsForPylibExtras:
         deps = NativeDepsContract.for_pylib_extras(["kafka"], "debian:bookworm-slim")
         assert deps.apt_repos[0].codename == "bookworm"
 
-    def test_cache_extra_adds_libpq(self):
-        deps = NativeDepsContract.for_pylib_extras(["cache"], "ubuntu:24.04")
-        assert "libpq5" in deps.apt_packages
-
 
 class TestNativeDepsForRustlibFeatures:
     """Polyglot path -- when a Python app re-binds a Rust core via PyO3."""
@@ -654,7 +650,7 @@ class TestGeneratorDeterminism:
 
     def test_dockerfile_deterministic(self):
         c = _full_contract()
-        c.native_deps = NativeDepsContract.for_pylib_extras(["kafka", "cache"], "ubuntu:24.04")
+        c.native_deps = NativeDepsContract.for_pylib_extras(["kafka", "http"], "ubuntu:24.04")
         assert generate_dockerfile(c) == generate_dockerfile(c)
 
     def test_runtime_stage_deterministic(self):

@@ -30,7 +30,6 @@ is now per-module and happens at first use.
 |---|---|---|
 | FastAPI server with `/health/*` router | `app.include_router(create_health_router(...))` | Pylib doesn't own your HTTP framework. `/metrics` is served by the app using `MetricsManager.content` + `content_type` (see core-pillars/METRICS.md). No `/config` router ships |
 | Kafka producer flush on shutdown | `producer.flush()` in your signal handler | Producer lifecycle is app-specific; we don't intercept SIGTERM |
-| Cache initialisation | `await cache.init()` (PostgresCache) or `configure_cache(...)` (Cashews SQLite) | Cache backend choice + connection details are app-specific |
 | Circuit breaker around a downstream | `with CircuitBreaker(config): call()` or `@with_resilience` decorator | Failure modes vary per downstream; sensible defaults exist but explicit is better |
 | Metric registration | `m.counter(name, help, labels)` per metric | Metrics are app-specific; we provide the framework, not the catalogue |
 | Application class / runtime entry point | Nothing — compose modules directly | The `Application` framework was experimental and deprecated; production code uses the modules directly |
@@ -44,16 +43,15 @@ Read top-to-bottom: install the extra in the first column, get every
 
 | Install | Adds | Automatic |
 |---|---|---|
-| `scalo` (base) | `config`, `logger`, `runtime`, `cli`, `health`, `database`, `version_check`, `concurrency`, `harness` | Cascade, structured logs, path detection, version probe |
+| `scalo` (base) | `config`, `logger`, `runtime`, `cli`, `health`, `version_check`, `concurrency` | Cascade, structured logs, path detection, version probe |
 | `scalo[metrics]` | `metrics` + `prometheus-client` + `psutil` | Above + `MetricsManager.content` for app-served `/metrics` route + process collector + cardinality cap |
 | `scalo[opentelemetry]` | OTel SDK + exporters | Above + OTel metric backend + OTLP export (dual with Prometheus) |
 | `scalo[http]` | `http` + `httpx` + `stamina` + `purgatory` | Above + HTTP client with retry + circuit breaker + metrics integration |
-| `scalo[cache]` | `cache` + `cashews` + `psycopg` | Above + `@cached` decorator + SQLite or PostgreSQL backend |
 | `scalo[kafka]` | `kafka` + `confluent-kafka` + `genson` | Above + producer/consumer/admin + schema sampling + consumer-lag health |
 | `scalo[secrets-{vault,aws,gcp,azure,ansible-vault}]` | `secrets` provider | Above + uniform interface, lazy-loaded provider |
 | `scalo[deployment]` | `deployment` + `pydantic` | Above + `DeploymentContract` + generators + `ContractIdentity` + `test_support` |
 | `scalo[expression]` | `expression` + `common-expression-language` | Above + CEL evaluation (Python/Rust parity via PyO3) |
-| `scalo[resilience]` | `resilience` + `stamina` + `purgatory` | Above + standalone circuit breaker (already pulled in by `http`/`cache`/`secrets-*`) |
+| `scalo[resilience]` | `resilience` + `stamina` + `purgatory` | Above + standalone circuit breaker (already pulled in by `http`/`secrets-*`) |
 
 ---
 

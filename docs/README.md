@@ -55,7 +55,6 @@ flowchart TB
 
     subgraph API["Composable API surface"]
         HTTP["http.HttpClient / AsyncHttpClient"]
-        Cache["cache.PostgresCache + @cached"]
         Secrets["secrets.SecretsManager"]
         Expr["expression.evaluate (CEL via PyO3)"]
         Resil["resilience.CircuitBreaker"]
@@ -126,7 +125,6 @@ flowchart TB
 
 - [api/SECRETS.md](api/SECRETS.md) — OpenBao / Vault / AWS / GCP / Azure / ansible-vault / file
 - [api/HTTP-CLIENT.md](api/HTTP-CLIENT.md) — `HttpClient` + `AsyncHttpClient` with retries + circuit breaker
-- [api/CACHE.md](api/CACHE.md) — Cashews-backed SQLite or PostgreSQL cache, `@cached` decorator
 - [api/CONCURRENCY.md](api/CONCURRENCY.md) — `run_blocking`, `Bulkhead`, `gather_with_timeouts`
 - [api/DIRECTORY-CONFIG.md](api/DIRECTORY-CONFIG.md) — YAML directory store with optional git tracking
 - [api/EXPRESSION.md](api/EXPRESSION.md) — CEL via Rust/PyO3 (Python/Rust evaluation parity)

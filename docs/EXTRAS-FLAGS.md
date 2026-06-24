@@ -49,7 +49,6 @@ flowchart TB
     Base["base install"]
     Resil["resilience"]
     HTTP["http"]
-    Cache["cache"]
     Metrics["metrics"]
     OTel["opentelemetry"]
     Kafka["kafka"]
@@ -66,7 +65,6 @@ flowchart TB
 
     Base --> Resil
     Base --> HTTP
-    Base --> Cache
     Base --> Metrics
     Base --> Kafka
     Base --> Deploy
@@ -74,7 +72,6 @@ flowchart TB
     Base --> Lic
 
     Resil -.transitive.-> HTTP
-    Resil -.transitive.-> Cache
 
     Metrics -.optional pairing.-> OTel
 
@@ -109,9 +106,8 @@ via the prometheus exporter, all from one backend.
 |---|---|---|---|
 | `resilience` | `stamina`, `purgatory` | none | [api/RESILIENCE.md](api/RESILIENCE.md) |
 | `http` | `httpx`, `stamina`, `purgatory` | none | [api/HTTP-CLIENT.md](api/HTTP-CLIENT.md) |
-| `cache` | `cashews`, `msgpack`, `psycopg[binary,pool]` | `libpq-dev` on Linux if not using `psycopg[binary]` (we use `[binary]` so it's bundled) | [api/CACHE.md](api/CACHE.md) |
 
-`http`, `cache`, and every `secrets-*` extra pull `resilience` in
+`http` and every `secrets-*` extra pull `resilience` in
 transitively. Install `resilience` directly only if you want
 standalone circuit breakers without the rest.
 
@@ -226,7 +222,7 @@ dependencies = [
 
 ```toml
 dependencies = [
-    "scalo[kafka,metrics,opentelemetry,cache,http,secrets,deployment,expression,resilience,dev]>=2.28.3",
+    "scalo[kafka,metrics,opentelemetry,http,secrets,deployment,expression,resilience,dev]>=2.28.3",
 ]
 ```
 

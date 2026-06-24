@@ -9,14 +9,11 @@ tests/
 +-- conftest.py           # Shared pytest fixtures and configuration
 +-- unit/                 # Unit tests (fast, isolated)
 |   +-- test_config*.py   # Configuration tests
-|   +-- test_cache*.py    # Cache tests
 |   +-- test_kafka*.py    # Kafka tests
 |   +-- test_logger*.py   # Logger tests
 |   +-- test_*.py         # Other module tests
 +-- integration/          # Integration tests (require services)
 |   +-- test_kafka*.py    # Kafka integration (requires Docker)
-|   +-- test_cache*.py    # PostgreSQL cache (requires Docker)
-|   +-- test_config*.py   # PostgreSQL config (requires Docker)
 +-- e2e/                  # End-to-end tests
     +-- (future tests)
 ```
@@ -45,7 +42,7 @@ Tests that verify components work together correctly with real services.
 - **Scope**: Multiple components interacting
 - **Speed**: 1-10s per test
 - **Dependencies**: Real services via Docker
-- **Example**: Testing PostgreSQL cache, Kafka producer/consumer
+- **Example**: Testing Kafka producer/consumer, secrets backends
 
 **Run integration tests only:**
 
@@ -120,23 +117,21 @@ def test_settings_get_with_default():
 ### Integration Test Example
 
 ```python
-# tests/integration/test_cache.py
+# tests/integration/test_kafka.py
 import pytest
-from scalo.cache import PostgresCache
+from scalo.kafka import KafkaConsumer, KafkaProducer
 
 
-@pytest.mark.asyncio
-async def test_cache_round_trip(postgres_dsn: str):
-    """Test cache set and get with PostgreSQL."""
-    cache = PostgresCache(dsn=postgres_dsn)
-    await cache.init()
+@pytest.mark.integration
+async def test_kafka_round_trip(kafka_brokers: str):
+    """Produce a message and read it back via a real broker."""
+    producer = KafkaProducer(brokers=kafka_brokers)
+    await producer.send("test-topic", {"data": "value"})
+    await producer.flush()
 
-    try:
-        await cache.set("test:key", {"data": "value"}, ttl_seconds=60)
-        result = await cache.get("test:key")
-        assert result == {"data": "value"}
-    finally:
-        await cache.close()
+    consumer = KafkaConsumer(brokers=kafka_brokers, topics=["test-topic"])
+    message = await consumer.poll(timeout=5.0)
+    assert message.value == {"data": "value"}
 ```
 
 ## CI Integration
