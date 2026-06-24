@@ -51,7 +51,7 @@ Core modules — always installed (`uv add scalo`):
 | Module | Description | Third-party deps |
 |---|---|---|
 | `logger` | Structured JSON logging with automatic sensitive-data masking, container-aware output | loguru |
-| `config` | 8-layer cascade (CLI → ENV → .env → PostgreSQL → YAML → defaults), container-aware path resolution | dynaconf, pyyaml, python-dotenv, mergedeep, tomli-w, dulwich |
+| `config` | 7-layer cascade (CLI → ENV → .env → YAML → defaults), container-aware path resolution | dynaconf, pyyaml, python-dotenv, mergedeep, tomli-w, dulwich |
 | `runtime` | Auto-detects K8s / Docker / local, resolves config and data paths accordingly | stdlib only |
 | `cli` | `DfeApp` base class — subclass to get `run` / `version` / `config-check` for free | typer |
 | `version-check` | Optional startup check for new releases (no-op if `httpx` not installed) | httpx (lazy) |
@@ -120,7 +120,7 @@ automatically.
 ```python
 from scalo.config import settings
 
-# Cascade: CLI args → ENV → .env → PostgreSQL → settings.yaml → defaults
+# Cascade: CLI args → ENV → .env → settings.yaml → defaults
 host = settings.database.host
 port = settings.api.port
 ```
@@ -191,7 +191,7 @@ Two-tier caching (memory + disk), stale-cache fallback for backend outages.
 ### CLI Framework (`DfeApp`)
 
 Subclass `DfeApp` to get a standard service-CLI lifecycle (`run`, `version`,
-`config-check`) with no boilerplate. Config flows through the 8-layer cascade
+`config-check`) with no boilerplate. Config flows through the 7-layer cascade
 automatically.
 
 ```python

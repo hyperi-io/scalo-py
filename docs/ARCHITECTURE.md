@@ -169,7 +169,7 @@ What pylib has that rustlib doesn't:
 | HTTP client | `reqwest` + retry | `httpx` + stamina retry |
 | Circuit breaker | `purgatory` (vendored) | `purgatory` (PyPI) |
 | Retry | `stamina` (Rust crate) | `stamina` (Python PyPI) |
-| Config | `figment` 8-layer | `dynaconf` 8-layer |
+| Config | `figment` 7-layer | `dynaconf` 7-layer |
 | Logger | `tracing` | `loguru` |
 | Metrics | `metrics` crate + `prometheus-exporter` | `prometheus-client` + `opentelemetry-*` |
 | CLI | `clap` + `cli/app.rs` | `typer` + `cli/app.py` |

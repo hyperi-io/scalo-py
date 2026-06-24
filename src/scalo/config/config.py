@@ -5,7 +5,7 @@ scalo Config - Enterprise Configuration with Automatic Cascade
 Provides zero-configuration, automatic cascade for Python applications.
 Just import and use - no cascade implementation needed!
 
-Configuration Cascade (8 Layers, HyperI Standard)
+Configuration Cascade (7 Layers, HyperI Standard)
 ====================================================
 
 ALL configuration automatically follows this priority (highest to lowest):
@@ -30,17 +30,6 @@ ALL configuration automatically follows this priority (highest to lowest):
         1. ~/.env          -> Home directory (global API keys, credentials)
         2. ./.env          -> Project directory (project-specific overrides)
 
-PostgreSQL config (layer 4) is OPTIONAL -- built-for, not built-with.
-The YAML file-based approach already provides centralised config management
-(gitops-optimised, stored on S3 for AWS deployments, used across all
-services). The PG option exists for a more complex PG-over-YAML path if
-the ROI justifies it in the future. Enable by setting HYPERI_CONFIG_DSN.
-When enabled, PostgreSQL config OVERRIDES file-based config (layers 5-7).
-Only ENV vars, .env, and CLI args take precedence over PostgreSQL.
-
-Fallback file support: Set HYPERI_CONFIG_FALLBACK_ENABLED=true to write
-PostgreSQL config to a local file for use when the database is unavailable.
-
 **Real-World Example - database.host:**
 
     Priority    Source                      Value               When Used
@@ -48,11 +37,10 @@ PostgreSQL config to a local file for use when the database is unavailable.
     1. CLI      --host prod.db.com          "prod.db.com"       CLI override
     2. ENV      MYAPP_DATABASE_HOST=test    "test.db"           CI/staging
     3. .env     MYAPP_DATABASE_HOST=local   "local.db"          Dev secrets
-    4. PG       config_values table         "pg-host.db.com"    Shared config
-    5. {env}    settings.production.yaml    "prod-rw.db.com"    Prod deploy
-    6. base     settings.yaml               "postgres.svc"      Team default
-    7. defaults defaults.yaml               "localhost"         Safe default
-    8. code     settings.get("db.host", "localhost")           Fallback
+    4. {env}    settings.production.yaml    "prod-rw.db.com"    Prod deploy
+    5. base     settings.yaml               "postgres.svc"      Team default
+    6. defaults defaults.yaml               "localhost"         Safe default
+    7. code     settings.get("db.host", "localhost")           Fallback
 
 **Zero Configuration Required - Automatic Cascade:**
 
@@ -105,13 +93,6 @@ Quick Start
 
     db_host = settings.database.host    # No cascade logic needed!
     api_key = settings.api.key          # ENV > .env > yaml > defaults
-
-    # Or use helper functions
-    from scalo.config import get_database_config
-
-    db = get_database_config("postgresql")
-    # Returns: {host, port, user, password, database}
-    # All from ENV vars: POSTGRES_HOST, POSTGRES_PORT, etc.
 
 Container-Aware Features
 ========================
@@ -675,107 +656,22 @@ settings = Dynaconf(
     settings_files=settings_files if settings_files else [],  # Use discovered files
     load_dotenv=_use_dynaconf_dotenv,  # Load .env file (3rd priority)
     environments=False,  # Single config approach
-    # PRECEDENCE: CLI -> ENV -> .env -> config override -> default -> hardcoded
+    # PRECEDENCE: CLI -> ENV -> .env -> settings files -> default -> hardcoded
 )
 
 
 # =============================================================================
-# PostgreSQL Config Layer (Optional - Layer 4 of 8)
-# Built-For, Not Built-With
+# Configuration Cascade (7 layers, highest wins)
 # =============================================================================
 #
-# Status: The YAML file-based approach already provides centralised config
-# management (gitops-optimised, stored on S3 for AWS deployments, used
-# across all services). The PG option exists for a more complex PG-over-YAML
-# path if the ROI justifies it in the future. The cascade is designed so PG
-# can be enabled without code changes -- just set HYPERI_CONFIG_DSN.
-#
-# If HYPERI_CONFIG_DSN is set, load config from PostgreSQL and merge into settings.
-# This provides a shared configuration store for multi-pod deployments.
-#
-# PostgreSQL config OVERRIDES file-based config, making the database the
-# source of truth for centralised configuration management.
-#
-# 8-Layer Cascade (with PostgreSQL):
-#   1. CLI args           -> Runtime override
-#   2. ENV vars           -> Deployment/secrets
-#   3. .env file          -> Local dev secrets
-#   4. PostgreSQL         -> Shared org config (OVERRIDES files)
-#   5. settings.{env}     -> Environment-specific local file
-#   6. settings.yaml      -> Project base
-#   7. defaults.yaml      -> Safe defaults
-#   8. Hard-coded         -> Last resort
-#
-# PostgreSQL config is loaded ONCE at module init and cached.
-# To refresh, call PostgresConfigLoader.clear_cache() and re-import.
-#
-# Fallback file support: If HYPERI_CONFIG_FALLBACK_ENABLED=true, the PostgreSQL
-# config is written to a local YAML file. If PostgreSQL becomes unavailable,
-# the fallback file is used instead.
-#
-def _load_postgres_config_layer() -> None:
-    """Load PostgreSQL config layer if HYPERI_CONFIG_DSN is set.
-
-    Cascade (highest wins): CLI, env, .env, PostgreSQL (this), settings.{env}.yaml,
-    settings.yaml, defaults.yaml, hardcoded. ``settings.set()`` lands at the top,
-    so we probe ``{PREFIX}_KEY`` and ``{PREFIX}__KEY__SUBKEY`` first and skip
-    keys already supplied by env.
-    """
-    if not os.getenv("HYPERI_CONFIG_DSN"):
-        return
-
-    try:
-        from scalo.config.postgres_loader import PostgresConfigLoader
-
-        loader = PostgresConfigLoader()
-        pg_config = loader.load_sync()
-
-        if pg_config:
-
-            def _env_var_set_for(full_key: str) -> bool:
-                """Return True if an env var would supply this key."""
-                upper = full_key.upper()
-                # Dynaconf accepts both PREFIX_KEY (single underscore,
-                # flat) and PREFIX__SECTION__KEY (double underscore,
-                # nested). Probe both.
-                flat = f"{ENV_PREFIX}_{upper.replace('.', '_')}"
-                nested = f"{ENV_PREFIX}__{upper.replace('.', '__')}"
-                return flat in os.environ or nested in os.environ
-
-            def _set_all(target, source, prefix=""):
-                applied = 0
-                skipped_env = 0
-                for key, value in source.items():
-                    full_key = f"{prefix}.{key}" if prefix else key
-                    if isinstance(value, dict):
-                        sub_applied, sub_skipped = _set_all(target, value, full_key)
-                        applied += sub_applied
-                        skipped_env += sub_skipped
-                        continue
-                    if _env_var_set_for(full_key):
-                        skipped_env += 1
-                        continue
-                    target.set(full_key, value)
-                    applied += 1
-                return applied, skipped_env
-
-            applied, skipped = _set_all(settings, pg_config)
-            _debug_log(
-                f"PostgreSQL config loaded: {applied} keys applied, {skipped} skipped (env vars take precedence)"
-            )
-
-    except Exception as e:
-        # Log warning but don't crash - file cascade continues
-        import logging
-
-        logging.getLogger(__name__).warning(
-            "PostgreSQL config layer failed to load",
-            extra={"error": str(e)},
-        )
-
-
-# Load PostgreSQL config layer at module init (if enabled)
-_load_postgres_config_layer()
+#   1. CLI args            -> Runtime override
+#   2. ENV vars            -> Deployment/secrets
+#   3. .env file           -> Local dev secrets
+#   4. settings.{env}.yaml -> Environment-specific local file
+#   5. settings.yaml       -> Project base
+#   6. defaults.yaml       -> Safe defaults
+#   7. Hard-coded          -> Last resort
+# =============================================================================
 
 
 def get_settings():
@@ -787,7 +683,7 @@ def get_settings():
         settings.get("api.timeout", 30)
 
     Returns:
-        Dynaconf settings object with 8-layer cascade built-in
+        Dynaconf settings object with 7-layer cascade built-in
     """
     return settings
 
@@ -832,7 +728,7 @@ def get_config(
     Get configuration with optional additional file sources.
 
     Creates a NEW Dynaconf instance with custom file sources while
-    preserving the automatic 8-layer cascade behavior.
+    preserving the automatic 7-layer cascade behavior.
 
     **Use Cases:**
 
@@ -1048,49 +944,6 @@ def get_standard_env_vars() -> dict:
                 env_vars[key] = value
 
     return env_vars
-
-
-def get_database_config(db_type: str = "postgresql", env_prefix: str | None = None) -> dict:
-    """
-    Get database configuration from environment variables.
-
-    Args:
-        db_type: Type of database (postgresql, mysql, clickhouse, redis, mongo)
-        env_prefix: Environment variable prefix (default: uppercase db_type)
-
-    Returns:
-        Dictionary with database configuration
-    """
-    if env_prefix is None:
-        env_prefix = db_type.upper()
-
-    # Standard suffixes for database configuration
-    config = {
-        "host": os.getenv(f"{env_prefix}_HOST", "localhost"),
-        "port": os.getenv(f"{env_prefix}_PORT"),
-        "user": os.getenv(f"{env_prefix}_USER") or os.getenv(f"{env_prefix}_USERNAME"),
-        "password": os.getenv(f"{env_prefix}_PASSWORD") or os.getenv(f"{env_prefix}_PASS"),
-        "database": os.getenv(f"{env_prefix}_DATABASE") or os.getenv(f"{env_prefix}_DB"),
-    }
-
-    # Set default ports based on database type
-    if not config["port"]:
-        default_ports = {
-            "postgresql": "5432",
-            "postgres": "5432",
-            "mysql": "3306",
-            "clickhouse": "9000",
-            "redis": "6379",
-            "mongo": "27017",
-            "mongodb": "27017",
-        }
-        config["port"] = default_ports.get(db_type.lower(), "5432")
-
-    # Additional database-specific configuration
-    if db_type.lower() in ["postgresql", "postgres"]:
-        config["sslmode"] = os.getenv(f"{env_prefix}_SSLMODE", "prefer")
-
-    return {k: v for k, v in config.items() if v is not None}
 
 
 def get_container_config() -> dict:
@@ -1429,7 +1282,6 @@ __all__ = [
     "get_api_config",
     "get_config",  # Get config with additional files (NEW!)
     "get_container_config",
-    "get_database_config",
     "get_default_mounts",
     "get_environment",
     "get_logging_config",

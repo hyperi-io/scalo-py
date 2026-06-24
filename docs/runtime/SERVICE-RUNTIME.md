@@ -27,7 +27,7 @@ framework.
 | `Application.api(name=..., port=...)` | `FastAPI()` + `create_health_router(...)` + `create_metrics(...)` |
 | `Application.daemon(name=...)` | `from scalo import logger, config, runtime` + your loop |
 | `Application.cli(name=...)` | `from scalo.cli import DfeApp` (Typer-based) |
-| `app.profile_overrides({...})` | `scalo.config` 8-layer cascade -- env / `settings.<env>.yaml` |
+| `app.profile_overrides({...})` | `scalo.config` 7-layer cascade -- env / `settings.<env>.yaml` |
 | `app.runtime.paths` | `from scalo.runtime import get_runtime_paths` |
 | `app.metrics` | `from scalo.metrics import create_metrics` |
 | `app.health` | `from scalo.health import HealthManager` |
@@ -55,7 +55,7 @@ from scalo.runtime import get_runtime_paths
 # 1. Runtime context -- paths, container detection
 paths = get_runtime_paths("my-service")
 
-# 2. Config -- 8-layer cascade, already loaded at import
+# 2. Config -- 7-layer cascade, already loaded at import
 brokers = settings.get("kafka.brokers", "localhost:9092")
 
 # 3. Logger -- structured, autodetects JSON / TTY
@@ -89,7 +89,7 @@ handful of lines, with no framework in between.
 - **Premature abstraction.** The factory methods (`api` / `daemon` /
   `cli`) bundled decisions -- port, lifecycle, signal handling, FastAPI
   app instance -- that real services need to make themselves.
-- **Profile-override layer duplicated the 8-layer config cascade.**
+- **Profile-override layer duplicated the 7-layer config cascade.**
   `profile_overrides({...})` was a fifth way to override settings on
   top of CLI / env / `.env` / `settings.<env>.yaml` / `settings.yaml` /
   defaults. One way is enough.
