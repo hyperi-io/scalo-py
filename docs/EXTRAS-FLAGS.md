@@ -30,10 +30,8 @@ That gives you:
 - Structured logger with autodetect format + secret scrubbing (`from scalo import logger`)
 - Container-aware runtime paths (`from scalo import runtime`)
 - Health probe router primitives (`from scalo import health`)
-- DB URL builders (`from scalo.database import build_database_url`)
 - CLI framework (`from scalo.cli import DfeApp`)
 - Concurrency primitives (`from scalo import concurrency`)
-- Subprocess harness (`from scalo import harness`)
 - Version-check probe (`from scalo.version_check import check_on_startup`)
 
 Base runtime deps (transitive): dynaconf, loguru, python-dotenv, pyyaml,
@@ -122,7 +120,6 @@ standalone circuit breakers without the rest.
 | Extra | Adds | Native deps | Doc |
 |---|---|---|---|
 | `kafka` | `confluent-kafka`, `genson` | `librdkafka` (bundled in confluent-kafka wheels) | [transport/KAFKA.md](transport/KAFKA.md) |
-| `database` | (none — base utilities only) | per-DB driver if you use one (psycopg/pymongo/redis-py) | [api/DATABASE.md](api/DATABASE.md) |
 
 ### Deployment + identity
 

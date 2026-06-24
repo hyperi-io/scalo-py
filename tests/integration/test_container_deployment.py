@@ -21,7 +21,7 @@ from pathlib import Path
 
 import pytest
 
-from scalo import harness
+from common import harness
 
 
 # Check and warn about missing tools at module import time

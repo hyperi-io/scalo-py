@@ -22,17 +22,15 @@ Quick Start
 ===========
 
     # Install
-    pip install scalo[database,metrics]
+    pip install scalo[metrics]
 
     # Use components directly:
     from scalo import logger, get_runtime_paths, create_metrics
     from scalo.config import settings
-    from scalo.database import build_database_url
 
     logger.info("Service starting")
     runtime = get_runtime_paths()                   # Auto-detects K8s/Docker/local
     metrics = create_metrics(namespace="myapp")     # Auto-collects process metrics
-    db_url = build_database_url("postgresql")       # Reads POSTGRES_* ENV vars
 
 Core Features
 =============
@@ -69,15 +67,7 @@ Core Features
     data = runtime.data_dir / "state.db"            # /data or ~/.local/share
     # Same code works in K8s, Docker, local!
 
-**4. Database URLs (ENV-Based)**
-
-    from scalo import build_database_url
-
-    postgres = build_database_url("postgresql")     # POSTGRES_HOST, POSTGRES_PORT, etc.
-    redis = build_database_url("redis")             # REDIS_HOST, REDIS_PORT, etc.
-    # Automatic connection string construction
-
-**5. Prometheus Metrics**
+**4. Prometheus Metrics**
 
     from scalo import create_metrics
 
@@ -87,7 +77,7 @@ Core Features
     metrics.request_duration.observe(0.123)         # Histogram
     # Auto-collects process/container metrics too!
 
-**6. Kafka Client**
+**5. Kafka Client**
 
     from scalo.kafka import KafkaClient, KafkaConsumer, KafkaProducer
 
@@ -121,36 +111,27 @@ from importlib.metadata import version as _pkg_version
 __version__ = _pkg_version("scalo")
 
 # Import modules (packages) - logger is a module for extensibility
-from . import cli, config, database, harness, health, logger, metrics, runtime, version_check
+from . import cli, config, health, logger, metrics, runtime, version_check
 
 # Import commonly used objects and functions
 from .config import get_environment, get_logging_config, get_mount_config
-from .database import build_database_url, get_database_config, get_database_url_from_env
 from .metrics import create_metrics
 from .runtime import get_runtime_paths
 
 # Backward compatibility aliases
-dbconn = database  # Old name
 prometheus = metrics  # Old name
 
 __all__ = [
     "__version__",
-    "build_database_url",
     # Core modules
     "cli",
     "config",
     "create_metrics",
-    "database",
-    # Backward compatibility
-    "dbconn",
-    "get_database_config",
-    "get_database_url_from_env",
     "get_environment",
     # Functions
     "get_logging_config",
     "get_mount_config",
     "get_runtime_paths",
-    "harness",
     "health",
     "logger",
     "metrics",
