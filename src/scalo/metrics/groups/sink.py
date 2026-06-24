@@ -9,7 +9,7 @@
 """
 SinkMetrics -- composable metric group for DFE apps with downstream sinks.
 
-Mirrors rustlib's dfe_groups::SinkMetrics. Tracks sink write latency,
+Mirrors rustlib's groups::SinkMetrics. Tracks sink write latency,
 errors, bytes sent, and in-flight insert count.
 """
 

@@ -115,7 +115,7 @@ as private. A metrics scraper has to repeatedly poll `state` to infer
 internal counters.
 
 **Why deferred:** the recommended observability path is to wire
-`CircuitBreakerMetrics` (already in `metrics/dfe_groups/circuit_breaker.py`)
+`CircuitBreakerMetrics` (already in `metrics/groups/circuit_breaker.py`)
 into a `MetricsManager`. That gives Prometheus + OTel exporters
 proper counters without exposing internal state via public properties
 that lock in our representation.

@@ -9,7 +9,7 @@
 """
 CircuitBreakerMetrics -- composable metric group for circuit breaker state.
 
-Mirrors rustlib's dfe_groups::CircuitBreakerMetrics. Tracks circuit breaker
+Mirrors rustlib's groups::CircuitBreakerMetrics. Tracks circuit breaker
 state (closed/open/half_open) and state transitions per target.
 """
 

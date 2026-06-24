@@ -119,7 +119,7 @@ Each module under `src/scalo/` and what you import from it:
 | `http` | `HttpClient`, `AsyncHttpClient` |
 | `kafka` | `KafkaProducer`, `KafkaConsumer`, `AsyncKafka*`, `KafkaAdmin`, `SchemaAnalyser` |
 | `logger` | `logger`, convenience fns, `scrub/` package |
-| `metrics` | `create_metrics`, `dfe_groups/*`, `CardinalityTracker`, FastAPI middleware |
+| `metrics` | `create_metrics`, `groups/*`, `CardinalityTracker`, FastAPI middleware |
 | `resilience` | `CircuitBreaker`, `CircuitBreakerConfig` |
 | `runtime` | `get_runtime_paths`, `RuntimePaths`, `RuntimeEnvironment` |
 | `scaling` | `ScalingPressure`, `ScalingPressureConfig`, `PressureSnapshot` |

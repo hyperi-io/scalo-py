@@ -66,7 +66,7 @@ latency.labels(method="GET").observe(0.123)
 
 ## DFE groups
 
-Composable metric structs that mirror rustlib's `dfe_groups`. Wire
+Composable metric structs that mirror rustlib's `groups`. Wire
 the groups your app needs; each registers a fixed set of metrics
 with the standard names and labels HyperI services emit.
 
@@ -81,7 +81,7 @@ with the standard names and labels HyperI services emit.
 
 ```python
 from scalo.metrics import create_metrics
-from scalo.metrics.dfe_groups import (
+from scalo.metrics.groups import (
     AppMetrics, ConsumerMetrics, BufferMetrics, SinkMetrics,
 )
 
