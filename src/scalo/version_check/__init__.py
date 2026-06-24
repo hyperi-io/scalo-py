@@ -1,29 +1,32 @@
 # Project:   scalo
 # File:      version_check/__init__.py
-# Purpose:   Startup version check against HyperI version API
+# Purpose:   Non-blocking startup version check (opt-in)
 # Language:  Python
 #
 # License:   BUSL-1.1
 # Copyright: (c) 2026 HYPERI PTY LIMITED
 
 """
-scalo Version Check - Non-blocking startup version check.
+scalo Version Check - Non-blocking, OPT-IN startup version check.
 
-Calls the HyperI version API on startup to check if a newer version is
-available. The check runs in a self-terminating daemon thread that logs
-the result and exits. It never blocks, never raises, and never affects
-application startup.
+When enabled, calls a configured version API on startup to check whether a
+newer version is available. The check runs in a self-terminating daemon
+thread that logs the result and exits. It never blocks, never raises, and
+never affects application startup.
+
+The check is OPT-IN and ships no default endpoint -- the consuming app
+enables it and supplies its own URL through the config cascade:
+
+    version_check:
+      enabled: true
+      api_url: "https://releases.example.com/api/v1/check"
 
 Quick Start:
     >>> from scalo.version_check import check_on_startup
     >>>
-    >>> # Fire-and-forget -- spawns a daemon thread, returns immediately
-    >>> check_on_startup(product="dfe-receiver", version="1.2.0")
-
-Configuration:
-    Environment variables override defaults:
-    - VERSION_CHECK_DISABLED=true  -- disable the check entirely
-    - VERSION_CHECK_URL=https://...  -- override the API endpoint
+    >>> # Fire-and-forget -- spawns a daemon thread, returns immediately.
+    >>> # No-op unless version_check.enabled and version_check.api_url are set.
+    >>> check_on_startup(product="my-service", version="1.2.0")
 
 Dependencies:
     - httpx (optional, from scalo[http])

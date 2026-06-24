@@ -17,30 +17,39 @@ import pytest
 
 
 class TestVersionCheckConfig:
-    """Test VersionCheckConfig defaults and env overrides."""
+    """Test VersionCheckConfig defaults (opt-in, no default endpoint)."""
 
-    def test_default_config(self):
+    def test_default_config_is_opt_in(self):
         from scalo.version_check.checker import VersionCheckConfig
 
         config = VersionCheckConfig()
-        assert config.api_url == "https://releases.hyperi.io/api/v1/check"
+        # Opt-in: disabled by default, no baked-in endpoint.
+        assert config.enabled is False
+        assert config.api_url is None
         assert config.timeout == 5.0
-        assert not config.disabled
         assert config.product == ""
 
-    def test_disabled_via_env(self, monkeypatch):
-        monkeypatch.setenv("VERSION_CHECK_DISABLED", "true")
+    def test_explicit_config(self):
         from scalo.version_check.checker import VersionCheckConfig
 
-        config = VersionCheckConfig()
-        assert config.disabled
+        config = VersionCheckConfig(enabled=True, api_url="https://x.example.com/check", timeout=2.0)
+        assert config.enabled is True
+        assert config.api_url == "https://x.example.com/check"
+        assert config.timeout == 2.0
 
-    def test_custom_url_via_env(self, monkeypatch):
-        monkeypatch.setenv("VERSION_CHECK_URL", "https://custom.example.com/check")
+    def test_config_from_cascade(self):
+        from scalo.config import settings
         from scalo.version_check.checker import VersionCheckConfig
 
-        config = VersionCheckConfig()
-        assert config.api_url == "https://custom.example.com/check"
+        settings.set("version_check.enabled", True)
+        settings.set("version_check.api_url", "https://cascade.example.com/check")
+        try:
+            config = VersionCheckConfig()
+            assert config.enabled is True
+            assert config.api_url == "https://cascade.example.com/check"
+        finally:
+            settings.set("version_check.enabled", False)
+            settings.set("version_check.api_url", None)
 
 
 class TestVersionCheckResponse:
@@ -91,17 +100,12 @@ class TestInstanceId:
 class TestCheckOnStartup:
     """Test the fire-and-forget check_on_startup function."""
 
-    def test_disabled_returns_immediately(self):
+    def test_not_enabled_returns_none(self):
         from scalo.version_check import check_on_startup
 
-        # Should not raise, not spawn a thread
-        check_on_startup(
-            product="test",
-            version="1.0.0",
-            config=__import__("scalo.version_check.checker", fromlist=["VersionCheckConfig"]).VersionCheckConfig(
-                disabled=True,
-            ),
-        )
+        # Opt-in: the default config is not enabled -> no thread, returns None.
+        result = check_on_startup(product="test", version="1.0.0")
+        assert result is None
 
     def test_empty_product_returns_immediately(self):
         from scalo.version_check import check_on_startup
@@ -130,6 +134,7 @@ class TestCheckOnStartup:
         )
 
         config = VersionCheckConfig(
+            enabled=True,
             api_url="https://test.example.com/api/v1/check",
         )
 
@@ -161,6 +166,7 @@ class TestCheckOnStartup:
         )
 
         config = VersionCheckConfig(
+            enabled=True,
             api_url="https://test.example.com/api/v1/check",
         )
 
@@ -182,6 +188,7 @@ class TestCheckOnStartup:
         from scalo.version_check.checker import VersionCheckConfig, check_on_startup
 
         config = VersionCheckConfig(
+            enabled=True,
             api_url="https://unreachable.example.com/api/v1/check",
         )
 
