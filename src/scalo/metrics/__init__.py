@@ -32,7 +32,7 @@ Configuration (settings.yaml):
 from .cardinality import CardinalityTracker
 
 # DFE metric groups (composable structs matching rustlib)
-from .dfe_groups import (
+from .groups import (
     AppMetrics,
     BackpressureMetrics,
     BufferMetrics,

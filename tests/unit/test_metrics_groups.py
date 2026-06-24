@@ -1,5 +1,5 @@
 #  Project:      scalo
-#  File:         test_metrics_dfe_groups.py
+#  File:         test_metrics_groups.py
 #  Purpose:      Tests for DFE metric groups matching rustlib standard
 #  Language:     Python
 #
@@ -13,7 +13,7 @@ import time
 import pytest
 
 from scalo.metrics import MetricsManager, create_metrics
-from scalo.metrics.dfe_groups import (
+from scalo.metrics.groups import (
     AppMetrics,
     BackpressureMetrics,
     BufferMetrics,
@@ -273,11 +273,11 @@ class TestBackpressureMetrics:
 
 
 class TestDfeGroupsReExports:
-    """Test that dfe_groups module re-exports are accessible from metrics package."""
+    """Test that groups module re-exports are accessible from metrics package."""
 
-    def test_import_from_dfe_groups(self):
-        """All metric group classes are importable from scalo.metrics.dfe_groups."""
-        from scalo.metrics.dfe_groups import (
+    def test_import_from_groups(self):
+        """All metric group classes are importable from scalo.metrics.groups."""
+        from scalo.metrics.groups import (
             AppMetrics,
             BackpressureMetrics,
             BufferMetrics,

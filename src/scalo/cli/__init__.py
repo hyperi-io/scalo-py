@@ -1,15 +1,15 @@
 """
-scalo CLI framework -- Typer-based command-line interface for DFE services.
+scalo CLI framework -- Typer-based command-line interface for services.
 
 Two levels of usage:
 
-**DfeApp framework** (recommended for DFE services)::
+**ServiceApp framework** (recommended; ``DfeApp`` is a deprecated alias)::
 
-    from scalo.cli import DfeApp, VersionInfo
+    from scalo.cli import ServiceApp, VersionInfo
 
-    class MyService(DfeApp):
-        name = "dfe-loader"
-        env_prefix = "DFE_LOADER"
+    class MyService(ServiceApp):
+        name = "my-service"
+        env_prefix = "MYAPP"
 
         def version_info(self) -> VersionInfo:
             return VersionInfo(self.name, "1.0.0")
@@ -27,7 +27,7 @@ Two levels of usage:
     from scalo.cli.options import VERBOSE_OPTION
 
 Modules:
-    - scalo.cli.app - DfeApp framework (DfeApp, CommonArgs, run_app)
+    - scalo.cli.app - ServiceApp framework (ServiceApp, CommonArgs, run_app; DfeApp deprecated alias)
     - scalo.cli.error - CLI error types
     - scalo.cli.version_info - Structured version metadata
     - scalo.cli.output - Output formatting utilities
@@ -46,6 +46,7 @@ __all__ = [
     "Context",
     "DfeApp",
     "Exit",
+    "ServiceApp",
     "InvalidArgumentError",
     "LoggerError",
     "Option",
@@ -98,7 +99,7 @@ except ImportError:
 # Import submodules (always available, gracefully handle missing Typer)
 from . import options, output, version
 
-# DfeApp framework (always available -- errors are clear if Typer missing)
-from .app import CommonArgs, DfeApp, run_app
+# ServiceApp framework (always available -- errors are clear if Typer missing)
+from .app import CommonArgs, DfeApp, ServiceApp, run_app
 from .error import CliError, ConfigError, InvalidArgumentError, LoggerError, ServiceError
 from .version_info import VersionInfo

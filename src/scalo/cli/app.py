@@ -1,6 +1,6 @@
 # Project:   scalo
 # File:      cli/app.py
-# Purpose:   DfeApp application framework and lifecycle runner
+# Purpose:   ServiceApp application framework and lifecycle runner
 # Language:  Python
 #
 # License:   BUSL-1.1
@@ -9,7 +9,7 @@
 """DFE service application framework.
 
 Provides the standard CLI lifecycle for Python DFE services, mirroring
-hyperi-rustlib's cli::app module. Apps subclass ``DfeApp`` and get standard
+hyperi-rustlib's cli::app module. Apps subclass ``ServiceApp`` and get standard
 subcommands (``run``, ``version``, ``config-check``) and common flags
 (``--config``, ``--log-level``, ``--verbose``, ``--quiet``) for free.
 
@@ -19,9 +19,9 @@ metrics dashboard adds no value for Python control-plane services.
 
 Example::
 
-    from scalo.cli import DfeApp, VersionInfo
+    from scalo.cli import ServiceApp, VersionInfo
 
-    class MyService(DfeApp):
+    class MyService(ServiceApp):
         name = "dfe-control-plane"
         env_prefix = "DFE_CP"
 
@@ -50,7 +50,7 @@ from .version_info import VersionInfo
 
 __all__ = [
     "CommonArgs",
-    "DfeApp",
+    "ServiceApp",
     "run_app",
 ]
 
@@ -141,7 +141,7 @@ class CommonArgs:
             raise ConfigError(str(exc)) from exc
 
 
-class DfeApp(ABC):
+class ServiceApp(ABC):
     """Base class for DFE service CLI applications.
 
     Subclass this to get the standard CLI lifecycle for free. The framework
@@ -153,7 +153,7 @@ class DfeApp(ABC):
 
     Example::
 
-        class MyService(DfeApp):
+        class MyService(ServiceApp):
             name = "dfe-loader"
             env_prefix = "DFE_LOADER"
 
@@ -176,10 +176,10 @@ class DfeApp(ABC):
 
     def __init_subclass__(cls, **kwargs: Any) -> None:
         super().__init_subclass__(**kwargs)
-        if not getattr(cls, "name", None) and cls is not DfeApp:
+        if not getattr(cls, "name", None) and cls is not ServiceApp:
             msg = f"{cls.__name__} must define 'name' class attribute"
             raise TypeError(msg)
-        if not getattr(cls, "env_prefix", None) and cls is not DfeApp:
+        if not getattr(cls, "env_prefix", None) and cls is not ServiceApp:
             msg = f"{cls.__name__} must define 'env_prefix' class attribute"
             raise TypeError(msg)
 
@@ -249,7 +249,7 @@ class DfeApp(ABC):
         emit only ``metrics-manifest.json``. Apps that don't ship as
         containers can leave it as None.
 
-        Mirrors rustlib's ``DfeApp::deployment_contract()`` trait hook.
+        Mirrors rustlib's ``ServiceApp::deployment_contract()`` trait hook.
         """
         return None
 
@@ -265,19 +265,19 @@ class DfeApp(ABC):
         typer_app(args, standalone_mode=True)
 
 
-def run_app(app: DfeApp, args: list[str] | None = None) -> None:
+def run_app(app: ServiceApp, args: list[str] | None = None) -> None:
     """Drive the standard DFE service lifecycle.
 
     Convenience function equivalent to ``app.cli(args)``.
 
     Args:
-        app: DfeApp instance.
+        app: ServiceApp instance.
         args: CLI arguments (defaults to sys.argv).
     """
     app.cli(args)
 
 
-def _build_typer_app(dfe_app: DfeApp) -> Any:
+def _build_typer_app(dfe_app: ServiceApp) -> Any:
     """Construct the Typer app with standard subcommands and callback."""
     from typer import Exit, Option, Typer
 
@@ -349,7 +349,7 @@ def _build_typer_app(dfe_app: DfeApp) -> Any:
     return app
 
 
-def _handle_run(dfe_app: DfeApp, args: CommonArgs) -> None:
+def _handle_run(dfe_app: ServiceApp, args: CommonArgs) -> None:
     """Handle the 'run' subcommand lifecycle."""
     from typer import Exit
 
@@ -367,7 +367,7 @@ def _handle_run(dfe_app: DfeApp, args: CommonArgs) -> None:
         # Auto-init metrics if available (metrics extra installed)
         try:
             from scalo.metrics import create_metrics
-            from scalo.metrics.dfe_groups import AppMetrics
+            from scalo.metrics.groups import AppMetrics
 
             ns = dfe_app.name.replace("-", "_")
             metrics_manager = create_metrics(ns, backend="prometheus")
@@ -403,7 +403,7 @@ def _handle_run(dfe_app: DfeApp, args: CommonArgs) -> None:
         raise Exit(1) from exc
 
 
-def _handle_config_check(dfe_app: DfeApp, args: CommonArgs) -> None:
+def _handle_config_check(dfe_app: ServiceApp, args: CommonArgs) -> None:
     """Handle the 'config-check' subcommand."""
     from typer import Exit
 
@@ -431,7 +431,7 @@ def _handle_config_check(dfe_app: DfeApp, args: CommonArgs) -> None:
         raise Exit(1) from exc
 
 
-def _handle_generate_artefacts(dfe_app: DfeApp, output_dir: str) -> None:
+def _handle_generate_artefacts(dfe_app: ServiceApp, output_dir: str) -> None:
     """Handle the 'generate-artefacts' subcommand.
 
     Mirrors rustlib's ``generate_artefacts`` CLI command: writes
@@ -488,13 +488,18 @@ def _handle_generate_artefacts(dfe_app: DfeApp, output_dir: str) -> None:
             print(f"  {filename}", file=sys.stderr)
 
 
-def _is_async_overridden(dfe_app: DfeApp) -> bool:
-    """Check if run_service_async is overridden from the base DfeApp default."""
-    # If the method's defining class is not DfeApp, it's been overridden
+def _is_async_overridden(dfe_app: ServiceApp) -> bool:
+    """Check if run_service_async is overridden from the base ServiceApp default."""
+    # If the method's defining class is not ServiceApp, it's been overridden
     method = type(dfe_app).run_service_async
-    return method is not DfeApp.run_service_async
+    return method is not ServiceApp.run_service_async
 
 
 def _print_kv(key: str, value: str) -> None:
     """Print a key-value pair in rustlib format."""
     print(f"  {key:<16} {value}", file=sys.stderr)
+
+
+# Deprecated alias -- prefer ServiceApp. Kept so existing
+# `class X(DfeApp)` services import unchanged during migration.
+DfeApp = ServiceApp

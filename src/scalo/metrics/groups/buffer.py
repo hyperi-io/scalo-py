@@ -9,7 +9,7 @@
 """
 BufferMetrics -- composable metric group for buffered DFE apps.
 
-Mirrors rustlib's dfe_groups::BufferMetrics. Tracks buffer occupancy,
+Mirrors rustlib's groups::BufferMetrics. Tracks buffer occupancy,
 flush operations, and flush triggers.
 """
 

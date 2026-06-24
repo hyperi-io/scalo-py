@@ -9,7 +9,7 @@
 """
 AppMetrics -- mandatory metric group for all DFE pipeline applications.
 
-Mirrors rustlib's dfe_groups::AppMetrics. Registers standard application
+Mirrors rustlib's groups::AppMetrics. Registers standard application
 identity, throughput, memory, and config reload metrics.
 """
 

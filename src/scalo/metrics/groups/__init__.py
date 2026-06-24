@@ -15,7 +15,7 @@ Apps compose the groups they need.
 
 Example:
     >>> from scalo.metrics import create_metrics
-    >>> from scalo.metrics.dfe_groups import AppMetrics, BufferMetrics
+    >>> from scalo.metrics.groups import AppMetrics, BufferMetrics
     >>>
     >>> mgr = create_metrics("dfe_loader")
     >>> app = AppMetrics(mgr, version="1.0.0", commit="abc123")

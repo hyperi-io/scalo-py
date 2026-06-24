@@ -9,7 +9,7 @@
 """
 ConsumerMetrics -- composable metric group for Kafka consumer DFE apps.
 
-Mirrors rustlib's dfe_groups::ConsumerMetrics. Tracks consumer lag,
+Mirrors rustlib's groups::ConsumerMetrics. Tracks consumer lag,
 partition assignment, rebalances, poll timing, and offset commits.
 """
 

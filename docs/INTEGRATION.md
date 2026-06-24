@@ -101,7 +101,7 @@ Backend default is OpenTelemetry with a Prometheus exporter on
 prevent label explosions.
 
 For Kafka-shaped or processing-shaped services, use the pre-wired
-**DFE metric groups** in `metrics.dfe_groups/` — `AppMetrics`,
+**DFE metric groups** in `metrics.groups/` — `AppMetrics`,
 `ConsumerMetrics`, `BufferMetrics`, `SinkMetrics`, `BackpressureMetrics`,
 `CircuitBreakerMetrics`. They emit the standard HyperI metric names
 and labels.

@@ -9,7 +9,7 @@
 """
 BackpressureMetrics -- composable metric group for backpressure tracking.
 
-Mirrors rustlib's dfe_groups::BackpressureMetrics. Tracks backpressure
+Mirrors rustlib's groups::BackpressureMetrics. Tracks backpressure
 activation events and cumulative pause duration.
 """
 

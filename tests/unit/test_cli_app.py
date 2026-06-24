@@ -354,15 +354,15 @@ class TestDfeApp:
         fake_metrics.create_metrics = broken_create_metrics
         monkeypatch.setitem(sys.modules, "scalo.metrics", fake_metrics)
 
-        # Also ensure AppMetrics import succeeds from dfe_groups
-        fake_dfe_groups = types.ModuleType("scalo.metrics.dfe_groups")
+        # Also ensure AppMetrics import succeeds from groups
+        fake_groups = types.ModuleType("scalo.metrics.groups")
 
         class _FakeAppMetrics:
             def __init__(self, *args, **kwargs):
                 pass
 
-        fake_dfe_groups.AppMetrics = _FakeAppMetrics
-        monkeypatch.setitem(sys.modules, "scalo.metrics.dfe_groups", fake_dfe_groups)
+        fake_groups.AppMetrics = _FakeAppMetrics
+        monkeypatch.setitem(sys.modules, "scalo.metrics.groups", fake_groups)
 
         app = _SyncApp()
         typer_app = _build_typer_app(app)
