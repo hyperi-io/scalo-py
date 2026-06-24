@@ -104,7 +104,6 @@ expression = [
 deployment = [
     "pydantic>=2.13.0",
 ]
-database = []
 kafka = [
     "confluent-kafka>=2.14.0",
     "genson>=1.3.0",

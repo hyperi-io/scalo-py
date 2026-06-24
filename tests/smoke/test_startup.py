@@ -41,11 +41,6 @@ class TestCoreImports:
         except RuntimeError:
             pytest.skip("Runtime paths require writable /app/data (CI container)")
 
-    def test_import_database(self):
-        from scalo.database import build_database_url
-
-        assert callable(build_database_url)
-
     def test_import_cli(self):
         from scalo.cli import DfeApp, VersionInfo
 

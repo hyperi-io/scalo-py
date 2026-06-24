@@ -13,10 +13,9 @@ def test_scalo_import():
 
 def test_submodules_import():
     """Test that all submodules can be imported."""
-    from scalo import config, harness, logger
+    from scalo import config, logger
 
     assert config is not None
-    assert harness is not None
     assert logger is not None
 
 

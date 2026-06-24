@@ -1,12 +1,18 @@
 import os
 
 # scalo is installed as a package
-from scalo import get_database_config, build_database_url
+from scalo import logger
 
-# Get database configuration
-db_config = get_database_config("postgresql")
-db_url = build_database_url("postgresql", **db_config)
+# Read the POSTGRES_* environment variables (the convention scalo apps follow)
+host = os.environ.get("POSTGRES_HOST", "localhost")
+user = os.environ.get("POSTGRES_USER", "postgres")
+password = os.environ.get("POSTGRES_PASSWORD", "")
+port = os.environ.get("POSTGRES_PORT", "5432")
+database = os.environ.get("POSTGRES_DATABASE", "postgres")
 
+db_url = f"postgresql://{user}:{password}@{host}:{port}/{database}"
+
+logger.info("Resolved database connection from environment")
 print(f"Database URL: {db_url}")
-print(f"Host: {db_config['host']}")
-print(f"Database: {db_config['database']}")
+print(f"Host: {host}")
+print(f"Database: {database}")

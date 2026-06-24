@@ -17,8 +17,8 @@ Three layers, top to bottom:
   container-aware paths. Used by core pillars to pick log format,
   metric defaults, probe wiring, and config file locations.
 - **API surface** — composable modules apps wire as needed: HTTP,
-  cache, secrets, expression, resilience, concurrency, harness,
-  version-check, scaling, CLI, database. Each is independent of the
+  cache, secrets, expression, resilience, concurrency,
+  version-check, scaling, CLI. Each is independent of the
   others; pick what you need.
 
 Sibling concerns:
@@ -52,11 +52,9 @@ flowchart TB
         Expr["expression"]
         Resil["resilience"]
         Conc["concurrency"]
-        Harn["harness"]
         VC["version_check"]
         Scal["scaling"]
         CLI["cli"]
-        DB["database"]
     end
 
     subgraph Transport["Transport"]
@@ -73,7 +71,6 @@ flowchart TB
 
     Config --> Cache
     Config --> Secrets
-    Config --> DB
     Config --> Lic
 
     Logger --> Metrics
@@ -121,10 +118,8 @@ Each module under `src/scalo/` and what you import from it:
 | `concurrency` | `run_blocking`, `Bulkhead`, `gather_with_timeouts` |
 | `config` | `settings`, `get_environment`, `get_app_name`, `init_config_directory` |
 | `data` | data files only — gitleaks rules + national-ID validators |
-| `database` | `build_database_url`, `parse_database_url` |
 | `deployment` | `DeploymentContract`, `generate_*`, `ContractIdentity`, `test_support` |
 | `expression` | `evaluate`, `evaluate_condition`, `validate`, `compile_expression` |
-| `harness` | `run`, `smart_run`, `smart_run_function`, `HarnessResult` |
 | `health` | `HealthManager`, `create_health_router`, probe handlers |
 | `http` | `HttpClient`, `AsyncHttpClient` |
 | `kafka` | `KafkaProducer`, `KafkaConsumer`, `AsyncKafka*`, `KafkaAdmin`, `SchemaAnalyser` |
@@ -159,8 +154,6 @@ Rustlib ships several modules pylib does not, by design:
 
 What pylib has that rustlib doesn't:
 
-- `harness/` — subprocess execution with smart hang detection. Useful
-  for CI step orchestration and K8s readiness probe shell-outs.
 - `expression/` CEL bindings via PyO3 to `cel-interpreter` Rust crate
   so Python and Rust services evaluate the same expressions
   byte-identically.

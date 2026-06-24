@@ -20,11 +20,6 @@ replacements = [
         r'app_file\.write_text\(""".*?from scalo import Application, get_mount_config.*?app\.run\(\)\n"""\)',
         'app_file.write_text(self.load_fixture("test_container_deployment_code_3"))',
     ),
-    # Database compose app
-    (
-        r'app_file\.write_text\(""".*?from scalo import get_database_config, build_database_url.*?print\(f"Database: \{db_config\[\'database\'\]\}"\)\n"""\)',
-        'app_file.write_text(self.load_fixture("test_container_deployment_code_5"))',
-    ),
     # K8s pod app
     (
         r'app_code = """.*?k8s_token = Path.*?print\(f"Mount paths: \{mounts\}"\)\n"""',

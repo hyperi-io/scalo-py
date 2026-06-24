@@ -53,9 +53,7 @@ Core modules — always installed (`uv add scalo`):
 | `logger` | Structured JSON logging with automatic sensitive-data masking, container-aware output | loguru |
 | `config` | 8-layer cascade (CLI → ENV → .env → PostgreSQL → YAML → defaults), container-aware path resolution | dynaconf, pyyaml, python-dotenv, mergedeep, tomli-w, dulwich |
 | `runtime` | Auto-detects K8s / Docker / local, resolves config and data paths accordingly | stdlib only |
-| `database` | Connection-URL builders for PostgreSQL, Redis, etc. from standard env vars | stdlib only |
 | `cli` | `DfeApp` base class — subclass to get `run` / `version` / `config-check` for free | typer |
-| `harness` | Activity-based subprocess timeouts, pattern-matched failure detection | stdlib only |
 | `version-check` | Optional startup check for new releases (no-op if `httpx` not installed) | httpx (lazy) |
 
 Optional modules — install via extras:
@@ -73,7 +71,7 @@ Optional modules — install via extras:
 ## Installation
 
 ```bash
-# Core only (logger, config, runtime, database, cli, harness, version-check)
+# Core only (logger, config, runtime, cli, version-check)
 uv add scalo
 
 # With common extras
@@ -129,15 +127,6 @@ port = settings.api.port
 
 ENV key mapping: `settings.database.host` → `MYAPP_DATABASE_HOST` (prefix is
 configurable per app).
-
-### Database URLs
-
-```python
-from scalo import build_database_url
-
-postgres = build_database_url("postgresql")  # reads POSTGRES_HOST, POSTGRES_PORT, etc.
-redis = build_database_url("redis")          # reads REDIS_HOST, REDIS_PORT, etc.
-```
 
 ### Runtime Paths (container-aware)
 

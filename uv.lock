@@ -2944,7 +2944,7 @@ requires-dist = [
     { name = "typer", specifier = ">=0.25.0" },
     { name = "vulture", marker = "extra == 'dev'", specifier = ">=2.16" },
 ]
-provides-extras = ["cli", "resilience", "http", "cache", "metrics", "opentelemetry", "expression", "deployment", "database", "kafka", "secrets-ansible-vault", "secrets-vault", "secrets-aws", "secrets-gcp", "secrets-azure", "secrets", "version-check", "enhanced", "dev", "docs"]
+provides-extras = ["cli", "resilience", "http", "cache", "metrics", "opentelemetry", "expression", "deployment", "kafka", "secrets-ansible-vault", "secrets-vault", "secrets-aws", "secrets-gcp", "secrets-azure", "secrets", "version-check", "enhanced", "dev", "docs"]
 
 [package.metadata.requires-dev]
 dev = [
