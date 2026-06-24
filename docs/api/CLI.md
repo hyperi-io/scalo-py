@@ -82,7 +82,7 @@ if __name__ == "__main__":
 `env_prefix`, `version_info()`, and either `run_service()` (sync) or
 `run_service_async()` (async). The framework: builds the Typer app,
 initialises the logger from `--log-level`/`--log-format`/`--verbose`,
-loads configuration via the 8-layer cascade with the app's
+loads configuration via the 7-layer cascade with the app's
 `env_prefix`, auto-initialises `AppMetrics` if `scalo[metrics]`
 is installed (exposed at `--metrics-addr`), and dispatches to whichever
 of `run_service` / `run_service_async` the subclass overrode.

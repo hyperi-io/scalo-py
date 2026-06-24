@@ -1,8 +1,8 @@
 # Config
 
-Eight-layer configuration cascade backed by Dynaconf. Import `settings`,
+Seven-layer configuration cascade backed by Dynaconf. Import `settings`,
 read it like a dict, and every value resolves through CLI args, env
-vars, `.env`, optional PostgreSQL config source, per-environment YAML,
+vars, `.env`, per-environment YAML,
 base YAML, defaults YAML, and hard-coded fallbacks -- in that order.
 Every pylib-based service shares this cascade so the same `LOG_LEVEL`,
 `MYAPP_DATABASE_HOST`, or `settings.production.yaml` key behaves
@@ -17,16 +17,10 @@ identically across daemons, CLIs, and Kafka consumers.
 | 1 | CLI args | `--host prod.db.com` (Typer/Click) | One-shot runtime override |
 | 2 | Env vars | `MYAPP_DATABASE_HOST=...` | Deployment-injected |
 | 3 | `.env` file | `./.env` (or `~/.env` + `./.env` with `HYPERI_DOTENV_CASCADE=true`) | Local dev secrets, gitignored |
-| 4 | PostgreSQL | `config_values` table (opt-in via `HYPERI_CONFIG_DSN`) | Shared org config |
-| 5 | `settings.{env}.yaml` | Per-environment overlay (e.g. `settings.production.yaml`) | Environment-specific |
-| 6 | `settings.yaml` | Project base | Team defaults |
-| 7 | `defaults.yaml` | Safe fallback | Local dev |
-| 8 | Hard-coded | `settings.get("k", "default")` | Last resort |
-
-Layer 4 (PostgreSQL) is optional, off by default, and OVERRIDES file
-layers when enabled -- only CLI, env, and `.env` win above it. See
-[api/DATABASE.md](../api/DATABASE.md#postgresql-config-source) for
-schema, fallback file caching, and operator runbook.
+| 4 | `settings.{env}.yaml` | Per-environment overlay (e.g. `settings.production.yaml`) | Environment-specific |
+| 5 | `settings.yaml` | Project base | Team defaults |
+| 6 | `defaults.yaml` | Safe fallback | Local dev |
+| 7 | Hard-coded | `settings.get("k", "default")` | Last resort |
 
 ---
 
@@ -128,8 +122,6 @@ These bypass the cascade entirely and tweak pylib's own behaviour:
 | `HYPERI_LIB_APP_NAME` | Service name (used in paths, env prefix) | `app` |
 | `HYPERI_LIB_ENV_PREFIX` | Env var prefix for cascade keys | `APP` |
 | `HYPERI_LIB_DEBUG` | Verbose config-loading debug logs | unset |
-| `HYPERI_CONFIG_DSN` | Enable PostgreSQL layer 4 | unset (disabled) |
-| `HYPERI_CONFIG_FALLBACK_ENABLED` | Cache PG config to local file | `false` |
 | `HYPERI_DOTENV_CASCADE` | Load `~/.env` then `./.env` | `false` |
 | `CONTAINER_BASE_PATH` | Override container mount root | unset |
 | `LOG_LEVEL` | Logger level (also a cascade key) | `INFO` |
@@ -182,11 +174,10 @@ flowchart LR
     Import["import settings"] --> CLI["1. CLI args"]
     CLI --> Env["2. ENV vars"]
     Env --> Dotenv["3. .env file"]
-    Dotenv --> PG["4. PostgreSQL (if HYPERI_CONFIG_DSN)"]
-    PG --> EnvYaml["5. settings.{env}.yaml"]
-    EnvYaml --> BaseYaml["6. settings.yaml"]
-    BaseYaml --> Defaults["7. defaults.yaml"]
-    Defaults --> Code["8. .get() fallback"]
+    Dotenv --> EnvYaml["4. settings.{env}.yaml"]
+    EnvYaml --> BaseYaml["5. settings.yaml"]
+    BaseYaml --> Defaults["6. defaults.yaml"]
+    Defaults --> Code["7. .get() fallback"]
     Code --> Value["resolved value"]
 ```
 
@@ -200,7 +191,6 @@ cascade.
 - [LOGGING.md](LOGGING.md) -- shares the sensitive-field list
 - [METRICS.md](METRICS.md) -- `AppMetrics.record_config_reload`
 - [HEALTH.md](HEALTH.md) -- readiness probe wires into reload errors
-- [api/DATABASE.md](../api/DATABASE.md) -- PostgreSQL config source schema
 - [api/DIRECTORY-CONFIG.md](../api/DIRECTORY-CONFIG.md) -- YAML directory store
 - [runtime/RUNTIME-CONTEXT.md](../runtime/RUNTIME-CONTEXT.md) -- path detection
 - [EXTRAS-FLAGS.md](../EXTRAS-FLAGS.md) -- which extras add which providers

@@ -14,7 +14,7 @@ is now per-module and happens at first use.
 
 | Module | Wired at | What's automatic |
 |---|---|---|
-| `config` | First `from scalo.config import settings` | Dynaconf cascade construction, `.env` loading, PostgreSQL config source (if `HYPERI_CONFIG_DSN` set), sensitive masking, `RuntimePaths.config_dir` selection |
+| `config` | First `from scalo.config import settings` | Dynaconf cascade construction, `.env` loading, sensitive masking, `RuntimePaths.config_dir` selection |
 | `logger` | First import | Loguru sink installed, JSON/text autodetect (TTY vs not), RFC 3339 format, level from `LOG_LEVEL` env (default INFO), scrub filters loaded from `data/gitleaks.toml` + `data/national_ids.toml`, CI mode autodetect (GitHub Actions / GitLab CI / Jenkins) for ASCII-only output |
 | `runtime` | First `get_runtime_paths()` call | K8s / Docker / BareMetal detection (7 indicators), path-set materialisation, `CONTAINER_BASE_PATH` env override |
 | `metrics` | First `create_metrics(namespace)` call | Backend selection (OTel default, Prometheus fallback if OTel not installed), `MetricsManager` content + content-type for an app-served route, process collector (RSS, CPU, FDs via psutil), cardinality cap |
@@ -63,7 +63,7 @@ Read top-to-bottom: install the extra in the first column, get every
 flowchart TB
     Start["Process start"]
     Import["import scalo.{config,logger,runtime}"]
-    Cascade["config: load 8 layers"]
+    Cascade["config: load 7 layers"]
     LogFmt["logger: detect TTY/CI, install sink"]
     RtDetect["runtime: detect K8s/Docker/BareMetal"]
     AppInit["App startup logic"]

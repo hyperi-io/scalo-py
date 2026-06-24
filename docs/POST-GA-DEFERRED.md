@@ -42,9 +42,10 @@ opt in).
 
 ## D3: Config hot-reload / change callbacks
 
-**Issue:** Config loaded once at module import (`config.config:_load_postgres_config_layer()`
-runs at import time). No watcher, no change callback, no
-`refresh()` API. To pick up new values, the app restarts.
+**Issue:** Config loaded once at module import (the `config.config`
+`Dynaconf` settings object is built at import time). No watcher, no
+change callback, no `refresh()` API. To pick up new values, the app
+restarts.
 
 **Why deferred:** static-at-startup config is what every consumer
 service in our deployment expects. Hot-reload is a feature, not a

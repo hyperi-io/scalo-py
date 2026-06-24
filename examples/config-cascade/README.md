@@ -1,6 +1,6 @@
 # Config Cascade Example
 
-Demonstrates scalo's 8-layer configuration cascade system.
+Demonstrates scalo's 7-layer configuration cascade system.
 
 ## Features
 

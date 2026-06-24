@@ -12,7 +12,7 @@ Two questions:
 
 - **Service or tool?** A long-running service (FastAPI, Kafka consumer,
   scheduled worker) versus a one-shot CLI / data-pipeline run.
-- **Which integrations?** Kafka? PostgreSQL config source? AWS / GCP /
+- **Which integrations?** Kafka? AWS / GCP /
   Azure / Vault secrets?
 
 For a typical DFE service that talks to Kafka, exports Prometheus +
@@ -40,7 +40,7 @@ recommended bundles.
 
 ## 2. Config
 
-`scalo.config` exposes a `settings` object built from an 8-layer
+`scalo.config` exposes a `settings` object built from an 7-layer
 cascade (CLI > env > .env > settings.<env>.yaml > settings.yaml >
 defaults.yaml > pylib defaults > hard-coded). Read it like a dict;
 nested keys via dot or `__`.
@@ -54,7 +54,7 @@ batch_size = settings.get("processor.batch_size", 100)
 
 Env-var nesting follows the cascade rule: `KAFKA__BROKERS=...` maps to
 `settings.kafka.brokers`. Cross-cutting envs (`LOG_LEVEL`,
-`HYPERI_CONFIG_DSN`, `CONTAINER_BASE_PATH`) override defaults without
+`HYPERI_DOTENV_CASCADE`, `CONTAINER_BASE_PATH`) override defaults without
 needing a settings file.
 
 See [core-pillars/CONFIG.md](core-pillars/CONFIG.md) for the full

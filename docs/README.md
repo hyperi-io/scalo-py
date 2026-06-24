@@ -1,7 +1,7 @@
 # scalo docs
 
 Shared Python library for HyperI services. Import the modules you need,
-configure them once, and you get an 8-layer config cascade, structured
+configure them once, and you get an 7-layer config cascade, structured
 logs, Prometheus + OTel metrics, K8s health probes, secrets management,
 resilience primitives, a Kafka client, and deployment-artefact
 generation — all opinionated, all production-tested in the DFE stack.
@@ -18,7 +18,7 @@ Python extras pull in which deps.
 
 | Import this | And these come along | No need to |
 |-------------|----------------------|------------|
-| `from scalo import config` | 8-layer cascade, env-var nesting, `.env`, PostgreSQL config source, sensitive masking | Wire dynaconf, write a settings loader |
+| `from scalo import config` | 7-layer cascade, env-var nesting, `.env`, sensitive masking | Wire dynaconf, write a settings loader |
 | `from scalo import logger` | Loguru-backed structured logs, JSON-in-container / human-on-TTY autodetect, RFC 3339 timestamps, gitleaks-based secret scrubbing, rate-limit filter, emoji-to-text for CI | Install loguru, format JSON, hand-roll a scrubber |
 | `from scalo import metrics` | Prometheus + OpenTelemetry dual backend, `MetricsManager` content + content-type for an app-served `/metrics` route, process collector, cardinality cap, DFE metric groups (consumer/sink/buffer/circuit-breaker), HTTP middleware | Stand up an exporter, wire a process collector, hand-roll a cardinality limiter |
 | `from scalo import health` | `/health/live`, `/health/ready`, `/health/startup` router, downstream-dep registry, K8s-shaped responses | Write probe handlers, manage dependency state |
@@ -98,7 +98,7 @@ flowchart TB
 
 ### Core pillars (always available)
 
-- [core-pillars/CONFIG.md](core-pillars/CONFIG.md) — 8-layer cascade, registry, sensitive masking
+- [core-pillars/CONFIG.md](core-pillars/CONFIG.md) — 7-layer cascade, registry, sensitive masking
 - [core-pillars/LOGGING.md](core-pillars/LOGGING.md) — loguru setup, JSON/text autodetect, scrub, rate-limit, CI mode
 - [core-pillars/METRICS.md](core-pillars/METRICS.md) — Prometheus + OTel dual, DFE metric groups, cardinality cap
 - [core-pillars/HEALTH.md](core-pillars/HEALTH.md) — `HealthManager`, `/health/live` / `/ready` / `/startup`
@@ -130,9 +130,7 @@ flowchart TB
 - [api/CONCURRENCY.md](api/CONCURRENCY.md) — `run_blocking`, `Bulkhead`, `gather_with_timeouts`
 - [api/DIRECTORY-CONFIG.md](api/DIRECTORY-CONFIG.md) — YAML directory store with optional git tracking
 - [api/EXPRESSION.md](api/EXPRESSION.md) — CEL via Rust/PyO3 (Python/Rust evaluation parity)
-- [api/DATABASE.md](api/DATABASE.md) — DB URL builders + PostgreSQL data store
 - [api/RESILIENCE.md](api/RESILIENCE.md) — `CircuitBreaker` Closed/Open/HalfOpen
-- [api/HARNESS.md](api/HARNESS.md) — Subprocess execution with smart timeouts + hang detection
 - [api/VERSION-CHECK.md](api/VERSION-CHECK.md) — Non-blocking startup version probe
 - [api/SCALING.md](api/SCALING.md) — `ScalingPressure` composite score for KEDA
 - [api/CLI.md](api/CLI.md) — Typer-based CLI framework, `DfeApp`, standard options

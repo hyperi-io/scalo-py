@@ -26,7 +26,7 @@ store.stop()
 
 ## When to reach for this
 
-`DirectoryConfigStore` complements the standard 8-layer config cascade
+`DirectoryConfigStore` complements the standard 7-layer config cascade
 (see [`../core-pillars/CONFIG.md`](../core-pillars/CONFIG.md)). Use it
 when:
 
