@@ -63,7 +63,6 @@ Optional modules — install via extras:
 | `http` | `http` | httpx, stamina (retry with jitter) |
 | `metrics` | `metrics` | prometheus-client, psutil (auto-collects process/container metrics) |
 | `expression` | `expression` | common-expression-language (CEL via Rust/PyO3) |
-| `cache` | `cache` | cashews, msgpack, psycopg[binary,pool] (PostgreSQL-backed async cache) |
 | `kafka` | `kafka` | confluent-kafka, genson |
 | `opentelemetry` | `opentelemetry` | OpenTelemetry SDK + OTLP + Prometheus exporters |
 | `secrets` | `secrets` | All backends (Vault/OpenBao + AWS + GCP + Azure) |
@@ -90,10 +89,8 @@ uv add "scalo[http,metrics,expression,cache,kafka,opentelemetry,secrets]"
 | `http` | httpx + stamina | ~1 MB |
 | `metrics` | prometheus-client + psutil | ~1 MB |
 | `expression` | CEL via Rust/PyO3 | ~6 MB |
-| `cache` | cashews + msgpack + psycopg[binary,pool] | ~14 MB (psycopg C libs) |
 | `kafka` | confluent-kafka + genson | ~11 MB (C libs) |
 | `opentelemetry` | OpenTelemetry SDK + exporters | ~4 MB |
-| `presidio` | Presidio analyser + anonymiser | ~500 MB (spaCy + ML models) |
 | `secrets` | All secrets backends | — |
 | `secrets-vault` | OpenBao / HashiCorp Vault (uses `http` extra) | convenience marker |
 | `secrets-aws` | AWS Secrets Manager via boto3 | ~100 MB |
@@ -151,21 +148,6 @@ metrics.request_duration.observe(0.123)
 
 Automatic process and container metrics (CPU, memory, FDs, uptime) come for
 free — no extra wiring.
-
-### Cache (PostgreSQL-backed)
-
-```python
-from scalo.cache import PostgresCache, generate_cache_key
-
-cache = PostgresCache(dsn="postgresql://user:pass@host/db")
-await cache.init()
-
-key = generate_cache_key("analytics", "events", org_id="acme")
-await cache.set(key, {"data": [...]}, ttl_seconds=300, namespace="analytics")
-value = await cache.get(key)
-
-await cache.close()
-```
 
 ### Kafka
 

@@ -17,7 +17,7 @@ Three layers, top to bottom:
   container-aware paths. Used by core pillars to pick log format,
   metric defaults, probe wiring, and config file locations.
 - **API surface** — composable modules apps wire as needed: HTTP,
-  cache, secrets, expression, resilience, concurrency,
+  secrets, expression, resilience, concurrency,
   version-check, scaling, CLI. Each is independent of the
   others; pick what you need.
 
@@ -47,7 +47,6 @@ flowchart TB
 
     subgraph API["API surface"]
         HTTP["http"]
-        Cache["cache"]
         Secrets["secrets"]
         Expr["expression"]
         Resil["resilience"]
@@ -69,7 +68,6 @@ flowchart TB
     Rt --> Logger
     Rt --> Health
 
-    Config --> Cache
     Config --> Secrets
     Config --> Lic
 
@@ -77,12 +75,10 @@ flowchart TB
 
     Metrics --> HTTP
     Metrics --> Kafka
-    Metrics --> Cache
     Metrics --> Resil
     Metrics --> Scal
 
     Resil --> HTTP
-    Resil --> Cache
     Resil --> Secrets
 
     Health --> HTTP
@@ -99,8 +95,8 @@ Observations:
 - Every module above the runtime layer depends on at least one core
   pillar. Apps that just want config + logs install nothing else and
   stop here.
-- `resilience` is the only cross-cutting API-surface module: HTTP,
-  cache, and secrets all wrap it (`with_resilience` decorator).
+- `resilience` is the only cross-cutting API-surface module: HTTP
+  and secrets both wrap it (`with_resilience` decorator).
   Stamina + purgatory under the hood.
 - `metrics` is the second cross-cutting one: anything that does I/O
   emits counters/histograms when metrics is installed.
@@ -113,7 +109,6 @@ Each module under `src/scalo/` and what you import from it:
 
 | Module | Public API entry |
 |---|---|
-| `cache` | `configure_cache`, `@cached`, `PostgresCache` |
 | `cli` | `DfeApp`, standard options, common patterns |
 | `concurrency` | `run_blocking`, `Bulkhead`, `gather_with_timeouts` |
 | `config` | `settings`, `get_environment`, `get_app_name`, `init_config_directory` |
@@ -165,7 +160,6 @@ What pylib has that rustlib doesn't:
 | Concept | rustlib | pylib |
 |---|---|---|
 | Runtime entry point | `ServiceRuntime` + `DfeApp` trait | `Application` (deprecated; compose modules directly) |
-| Cache abstraction | `moka` TinyLFU | `cashews` (SQLite or PostgreSQL backend) |
 | HTTP client | `reqwest` + retry | `httpx` + stamina retry |
 | Circuit breaker | `purgatory` (vendored) | `purgatory` (PyPI) |
 | Retry | `stamina` (Rust crate) | `stamina` (Python PyPI) |

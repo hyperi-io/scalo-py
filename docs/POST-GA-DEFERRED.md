@@ -107,22 +107,6 @@ the OpenAPI schema.
 schema, define a `HealthResponse` Pydantic model and add
 `response_model=HealthResponse` to each route decorator. Trivial PR.
 
-## D7: PostgresCache scheduled cleanup integration
-
-**Issue:** `PostgresCache.cleanup_expired()` exists and works but no
-background task auto-runs it. Stale rows accumulate until the caller
-schedules it manually (or the lazy-delete-on-read path catches them
-during `get()`).
-
-**Why deferred:** scheduled background tasks are a deployment-shape
-concern, not a library concern. Pylib doesn't ship an in-process
-scheduler. Consumers either use APScheduler, a separate cron job, a
-Kubernetes CronJob, or the `cleanup_expired()` call from their own
-startup task -- each appropriate for different deployment shapes.
-
-**Post-GA action:** document the four patterns in `docs/api/CACHE.md`
-with copy-paste examples. No code change.
-
 ## D8: CircuitBreaker observability properties
 
 **Issue:** `CircuitBreaker` exposes `state` and `name` publicly but
@@ -140,6 +124,29 @@ that lock in our representation.
 WITHOUT a metrics backend (e.g. a custom health check that
 introspects breaker state), add `@property` accessors. Until then,
 keep the encapsulation.
+
+## D9: local stale-if-error / last-known-good helper in `resilience`
+
+**Context:** the `cache` module (PostgresCache + cashews) was removed --
+no consumer used it, and for *resilience* a shared Postgres-backed cache
+is the wrong shape (it adds Postgres as a new SPOF; to survive "source X
+down" you would then depend on "Postgres up"). The resilience value a
+cache was meant to provide -- serve last-known-good when a dependency is
+briefly unavailable, re-sync on recovery (RFC 5861 stale-if-error) -- is
+already covered for config/registry state by `config.DirectoryConfigStore`
+(in-memory + background refresh + last-known-good).
+
+**Why deferred:** no current live-fetch-from-flaky-remote read path needs
+it. dfe-engine resolves auth groups upstream (Envoy) + in-memory, loads
+config once into memory, and its only per-request remote reads are to
+same-cluster ClickHouse (already locally TTL-cached). Caching authz would
+be a net negative (delayed revocation).
+
+**Post-GA action:** if such a path appears, add a small LOCAL
+`@stale_if_error` / LKG decorator to `resilience` (in-process, no external
+backend), with a bounded jittered TTL and single-flight to avoid the
+auth-cache thundering-herd. Do NOT reintroduce a shared/DB-backed cache
+for resilience.
 
 ---
 
@@ -199,10 +206,6 @@ For the avoidance of doubt -- the following are DONE, not deferred:
 - **C13** -- Provider exception sanitiser helper across AWS, Azure,
   GCP, OpenBao, Ansible Vault. No demonstrated leak; deferred to a
   focused secrets-provider hardening pass.
-- **C15 (full)** -- `PostgresCache` refactor to use
-  `psycopg.sql.SQL/Identifier` for all interpolated identifiers.
-  Table-name validation already covers the SQL-injection vector;
-  full refactor is ergonomics + tighter typing only.
 - **C16** -- `hyperi-ci check --quick` exits 0 despite type-check
   errors. Tool-side issue, not pylib. Filed against hyperi-ci.
 - **T9** -- OpenBao/LocalStack/real-cloud integration tests for

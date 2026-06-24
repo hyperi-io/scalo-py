@@ -100,14 +100,6 @@ class TestOptionalExtras:
         except ImportError:
             pytest.skip("http extra not installed")
 
-    def test_import_cache(self):
-        try:
-            from scalo.cache import PostgresCache
-
-            assert PostgresCache is not None
-        except ImportError:
-            pytest.skip("cache extra not installed")
-
     def test_import_expression(self):
         try:
             from scalo.expression import evaluate
