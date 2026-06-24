@@ -3,7 +3,7 @@
 #  Purpose:   Metric emission for scrub events (spec §8)
 #  Language:  Python
 #
-#  License:   BUSL-1.1
+#  License:   Apache-2.0
 #  Copyright: (c) 2026 HYPERI PTY LIMITED
 
 """Metric emission per spec §8.

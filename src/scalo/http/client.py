@@ -3,7 +3,7 @@
 # Purpose:   HTTP client implementations with retries and observability
 # Language:  Python
 #
-# License:   BUSL-1.1
+# License:   Apache-2.0
 # Copyright: (c) 2026 HYPERI PTY LIMITED
 
 """HTTP client implementations with automatic retries, timeouts, and metrics.

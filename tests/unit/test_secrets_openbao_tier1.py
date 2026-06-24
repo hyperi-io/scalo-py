@@ -3,7 +3,7 @@
 # Purpose:   Unit tests for OpenBao Tier 1 + Tier 2 (versioned) methods
 # Language:  Python
 #
-# License:   BUSL-1.1
+# License:   Apache-2.0
 # Copyright: (c) 2026 HYPERI PTY LIMITED
 
 """Unit tests for OpenBao Tier 1 + Tier 2 provider methods.

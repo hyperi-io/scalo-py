@@ -3,7 +3,7 @@
 #  Purpose:   Resolve a Scrubber instance from setup() args + config dict
 #  Language:  Python
 #
-#  License:   BUSL-1.1
+#  License:   Apache-2.0
 #  Copyright: (c) 2026 HYPERI PTY LIMITED
 
 """Build a :class:`Scrubber` from logger setup arguments + the

@@ -1,12 +1,12 @@
 #  Project:      scalo
 #  File:         test_metrics_groups.py
-#  Purpose:      Tests for DFE metric groups matching rustlib standard
+#  Purpose:      Tests for metric groups matching the scalo-rs standard
 #  Language:     Python
 #
-#  License:      BUSL-1.1
+#  License:      Apache-2.0
 #  Copyright:    (c) 2026 HYPERI PTY LIMITED
 
-"""Tests for DFE metric groups -- composable metric structs for DFE apps."""
+"""Tests for metric groups -- composable metric structs for services."""
 
 import time
 
@@ -26,11 +26,41 @@ from scalo.metrics.groups import (
 @pytest.fixture
 def mgr() -> MetricsManager:
     """Create a fresh MetricsManager with Prometheus backend for testing."""
-    return create_metrics(f"dfe_loader_{int(time.monotonic_ns())}", backend="prometheus", enable_auto_update=False)
+    return create_metrics(f"loader_{int(time.monotonic_ns())}", backend="prometheus", enable_auto_update=False)
+
+
+class TestMetricNamespace:
+    """The metric namespace is bare by default and prefixes all metrics when set."""
+
+    def test_bare_by_default(self):
+        """With no namespace, built-in group metrics are unprefixed."""
+        m = create_metrics(f"loader_{int(time.monotonic_ns())}", backend="prometheus", enable_auto_update=False)
+        AppMetrics(m, version="1.0.0", commit="abc")
+        m.counter("custom_total", "A custom app metric").inc()
+        output = m.metrics_text
+        assert "records_received_total" in output
+        assert "custom_total" in output
+        # No library brand prefix leaks into names.
+        assert "scalo_records_received_total" not in output
+        assert "dfe_records_received_total" not in output
+
+    def test_namespace_prefixes_group_and_custom_metrics(self):
+        """A set namespace prefixes BOTH built-in group metrics and the app's own."""
+        m = create_metrics(
+            f"loader_{int(time.monotonic_ns())}",
+            backend="prometheus",
+            enable_auto_update=False,
+            metric_prefix="myapp",
+        )
+        AppMetrics(m, version="1.0.0", commit="abc")
+        m.counter("custom_total", "A custom app metric").inc()
+        output = m.metrics_text
+        assert "myapp_records_received_total" in output
+        assert "myapp_custom_total" in output
 
 
 class TestAppMetrics:
-    """Test AppMetrics group -- mandatory for all DFE apps."""
+    """Test AppMetrics group -- mandatory for all services."""
 
     def test_construction(self, mgr: MetricsManager):
         """AppMetrics registers all mandatory metrics on construction."""
@@ -272,7 +302,7 @@ class TestBackpressureMetrics:
         assert "backpressure_duration_seconds_total" in output
 
 
-class TestDfeGroupsReExports:
+class TestGroupsReExports:
     """Test that groups module re-exports are accessible from metrics package."""
 
     def test_import_from_groups(self):

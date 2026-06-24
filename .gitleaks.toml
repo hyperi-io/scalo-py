@@ -1,7 +1,7 @@
 # Project:      scalo
 # File:         .gitleaks.toml
 # Purpose:      Gitleaks configuration - allowlist historical false positives
-# License:      BUSL-1.1
+# License:      Apache-2.0
 # Copyright:    (c) 2026 HYPERI PTY LIMITED
 
 [extend]
@@ -13,25 +13,21 @@ useDefault = true
 [allowlist]
 description = "scalo historical false positives"
 
-# Commits containing old backup files with now-rotated credentials
-commits = [
-    "12e97bf5520ca190c8e1f5988f2efef39b7e9258",  # backup/pip.backup/pip.conf
-    "60ee2f9e6202c97833c8073b3ca8ad0e6eb7ab7e",  # .env.backup
-    "15effabd30fc02393326a0ef16d931c3acbe8092",  # .pip/pip.conf
-    "10641cc259be3ea0eec63736d7494dbe5a553b7a",  # .pip/pip.conf
-]
+# NOTE: the sensitive historical docs (docs/SERVICE-ACCESS.md and the
+# docs/superpowers infra/plan notes) were scrubbed from history via
+# git-filter-repo, so no doc-credential allowlist is needed. The entries
+# below are defensive backup-file patterns plus test fixtures that carry
+# deliberately fake secrets for the scrubber tests.
 
 # Paths to ignore (backup files no longer in use, test fixtures with fake secrets)
 paths = [
     '''backup/.*''',
     '''\.env\.backup''',
     '''\.pip/pip\.conf''',
-    '''tests/unit/test_anonymizer\.py''',         # Fake API keys for PII anonymization tests
     '''tests/unit/test_logger_filters\.py''',     # Fake API keys for log masking tests
     '''tests/unit/test_logger_secrets_leak\.py''', # Fake API keys for L1 secret-leak scrubber tests
     '''tests/unit/test_scrub_gitleaks_toml\.py''', # Fake API keys for L1 gitleaks-TOML scrubber tests
     '''tests/unit/test_scrub_parity_fixtures\.py''', # Fake API keys for L3 parity fixture tests
-    '''docs/SERVICE-ACCESS\.md''',                # Example credentials in documentation (test environment)
 ]
 
 # Regex patterns that are test fixtures (fake secrets for testing)

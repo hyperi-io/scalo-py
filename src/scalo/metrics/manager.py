@@ -9,6 +9,7 @@ Falls back to Prometheus-only if OTel packages are not installed.
 from typing import Any
 
 from .._env_compat import control_var
+from .._env_compat import metric_prefix as _resolve_metric_prefix
 from ..config import get_config
 from ..logger import logger
 from .base import MetricsBackend
@@ -50,6 +51,7 @@ class MetricsManager:
         enable_auto_update: bool = True,
         update_interval: int = 5,
         backend_config: dict[str, Any] | None = None,
+        metric_prefix: str | None = None,
     ):
         """
         Initialize metrics manager.
@@ -60,10 +62,18 @@ class MetricsManager:
             enable_auto_update: Start background metric updates (Prometheus only)
             update_interval: Seconds between updates (Prometheus only)
             backend_config: Backend-specific configuration
+            metric_prefix: Platform prefix for scalo's built-in metric groups
+                (e.g. "myapp"). Defaults to the process-wide ``metric_prefix()``
+                (bare "" unless set via ``set_metric_prefix`` / ``METRIC_PREFIX``).
         """
         self.app_name = app_name
         self.update_interval = update_interval
         self.backend_config = backend_config or {}
+        # The metric namespace: a single value (bare "" by default) applied to
+        # every metric this manager creates. Mirrors the env-prefix rule.
+        # Resolution: explicit arg > set_metric_prefix/METRIC_PREFIX > config
+        # metrics.namespace > bare.
+        self.metric_prefix = self._resolve_namespace(metric_prefix).rstrip("_")
 
         # Determine backend: explicit param > env var > config file > default (opentelemetry)
         if backend is None:
@@ -88,6 +98,27 @@ class MetricsManager:
             self.http = self._backend.http
 
         logger.info(f"Metrics initialized: backend={self._actual_backend}, app={app_name}")
+
+    @staticmethod
+    def _resolve_namespace(explicit: str | None) -> str:
+        """Resolve the metric namespace.
+
+        Priority: explicit arg > set_metric_prefix / METRIC_PREFIX env >
+        config ``metrics.namespace`` > bare "".
+        """
+        if explicit is not None:
+            return explicit
+        from_override = _resolve_metric_prefix()
+        if from_override:
+            return from_override
+        try:
+            config = get_config()
+            ns = config.get("metrics", {}).get("namespace", "")
+            if isinstance(ns, str) and ns:
+                return ns
+        except Exception:
+            pass
+        return ""
 
     def _create_backend(
         self,
@@ -159,6 +190,17 @@ class MetricsManager:
         """Check if metrics backend is enabled."""
         return self._backend.enabled
 
+    def _ns(self, name: str) -> str:
+        """Apply the configured metric namespace to ``name``.
+
+        ``"records_received_total"`` -> ``"myapp_records_received_total"`` when
+        the namespace is "myapp"; unchanged when the namespace is bare (""). The
+        single namespace is applied uniformly to every metric created through
+        this manager -- built-in groups and the app's own metrics alike --
+        mirroring the env-prefix rule (see scalo-rs metrics parity).
+        """
+        return f"{self.metric_prefix}_{name}" if self.metric_prefix else name
+
     def counter(self, name: str, description: str, labels: list[str] | None = None) -> Any:
         """
         Create or get a Counter metric.
@@ -177,7 +219,7 @@ class MetricsManager:
             >>> requests = metrics.counter("api_requests", "Total requests", ["method", "status"])
             >>> requests.labels(method="GET", status="200").inc()
         """
-        return self._backend.counter(name, description, labels)
+        return self._backend.counter(self._ns(name), description, labels)
 
     def gauge(self, name: str, description: str, labels: list[str] | None = None) -> Any:
         """
@@ -199,7 +241,7 @@ class MetricsManager:
             >>> queue_size.inc()
             >>> queue_size.dec(5)
         """
-        return self._backend.gauge(name, description, labels)
+        return self._backend.gauge(self._ns(name), description, labels)
 
     def histogram(
         self,
@@ -226,7 +268,7 @@ class MetricsManager:
             >>> latency = metrics.histogram("request_latency", "Request latency in seconds")
             >>> latency.observe(0.123)
         """
-        return self._backend.histogram(name, description, labels, buckets)
+        return self._backend.histogram(self._ns(name), description, labels, buckets)
 
     @property
     def metrics(self) -> bytes:
@@ -293,6 +335,7 @@ def create_metrics(
     enable_auto_update: bool = True,
     update_interval: int = 5,
     backend_config: dict[str, Any] | None = None,
+    metric_prefix: str | None = None,
 ) -> MetricsManager:
     """
     Create metrics manager with sensible defaults.
@@ -327,4 +370,5 @@ def create_metrics(
         enable_auto_update=enable_auto_update,
         update_interval=update_interval,
         backend_config=backend_config,
+        metric_prefix=metric_prefix,
     )

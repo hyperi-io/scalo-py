@@ -3,7 +3,7 @@
 #  Purpose:   E2E: real setup() + JSON output must not leak bind() secrets
 #  Language:  Python
 #
-#  License:   BUSL-1.1
+#  License:   Apache-2.0
 #  Copyright: (c) 2026 HYPERI PTY LIMITED
 
 """JSON logger + bind(password=...) must not leak under record.extra."""

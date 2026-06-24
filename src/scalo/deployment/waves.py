@@ -3,7 +3,7 @@
 # Purpose:   Shared ArgoCD sync-wave constants (mirrors hyperi-rustlib)
 # Language:  Python
 #
-# License:   BUSL-1.1
+# License:   Apache-2.0
 # Copyright: (c) 2026 HYPERI PTY LIMITED
 """ArgoCD sync-wave constants.
 
@@ -36,7 +36,7 @@ WAVE_TOPICS: int = -5
 """Cross-application Kafka topology: KafkaTopic, KafkaUser, etc."""
 
 WAVE_APPS: int = 0
-"""DFE apps themselves. The default for Applications without an
+"""Application services themselves. The default for Applications without an
 explicit sync wave."""
 
 WAVE_POST: int = 10

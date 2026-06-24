@@ -1,15 +1,15 @@
 #  Project:      scalo
 #  File:         backpressure.py
-#  Purpose:      BackpressureMetrics group for DFE apps
+#  Purpose:      BackpressureMetrics group for services
 #  Language:     Python
 #
-#  License:      BUSL-1.1
+#  License:      Apache-2.0
 #  Copyright:    (c) 2026 HYPERI PTY LIMITED
 
 """
 BackpressureMetrics -- composable metric group for backpressure tracking.
 
-Mirrors rustlib's groups::BackpressureMetrics. Tracks backpressure
+Mirrors scalo-rs's groups::BackpressureMetrics. Tracks backpressure
 activation events and cumulative pause duration.
 """
 
@@ -23,11 +23,11 @@ if TYPE_CHECKING:
 
 class BackpressureMetrics:
     """
-    Backpressure metrics for DFE apps.
+    Backpressure metrics for any service.
 
-    Registers:
-        {ns}_backpressure_events_total counter
-        {ns}_backpressure_duration_seconds_total counter
+    Registers (``{p}`` = optional metric prefix, bare by default):
+        {p}_backpressure_events_total counter
+        {p}_backpressure_duration_seconds_total counter
     """
 
     def __init__(self, mgr: MetricsManager) -> None:

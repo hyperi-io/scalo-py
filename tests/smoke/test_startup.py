@@ -3,7 +3,7 @@
 #  Purpose:   Startup smoke test -- catches init panics, broken imports, missing defaults
 #  Language:  Python
 #
-#  License:   BUSL-1.1
+#  License:   Apache-2.0
 #  Copyright: (c) 2026 HYPERI PTY LIMITED
 """Smoke tests for scalo core module imports and basic functionality.
 

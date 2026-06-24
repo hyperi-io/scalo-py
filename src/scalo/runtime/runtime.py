@@ -268,7 +268,7 @@ class RuntimeEnvironment:
 
         Environment Variables:
             CONTAINER_BASE_PATH: Override base path (default: /app)
-                Examples: /mnt, /dfe, /opt/app
+                Examples: /mnt, /srv, /opt/app
 
         Example:
             >>> # Default: /app

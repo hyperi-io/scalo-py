@@ -40,16 +40,16 @@ __all__ = [
     "Argument",
     "CliError",
     "CliRunner",
-    # DfeApp framework
+    # ServiceApp framework
     "CommonArgs",
     "ConfigError",
     "Context",
     "DfeApp",
     "Exit",
-    "ServiceApp",
     "InvalidArgumentError",
     "LoggerError",
     "Option",
+    "ServiceApp",
     "ServiceError",
     # Core Typer exports
     "Typer",

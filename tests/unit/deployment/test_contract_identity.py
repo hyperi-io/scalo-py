@@ -3,7 +3,7 @@
 # Purpose:   Unit tests for the Contract Identity v1 annotation scheme
 # Language:  Python
 #
-# License:   BUSL-1.1
+# License:   Apache-2.0
 # Copyright: (c) 2026 HYPERI PTY LIMITED
 
 """Tests for ``scalo.deployment.contract_identity``.

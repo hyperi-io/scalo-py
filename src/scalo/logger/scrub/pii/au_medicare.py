@@ -3,7 +3,7 @@
 #  Purpose:   AU Medicare check-digit validator (python-stdnum lacks this)
 #  Language:  Python
 #
-#  License:   BUSL-1.1
+#  License:   Apache-2.0
 #  Copyright: (c) 2026 HYPERI PTY LIMITED
 
 """AU Medicare card-number checksum validator.

@@ -3,7 +3,7 @@
 #  Purpose:   Runtime-constructed fake secret fixtures for scrubber tests
 #  Language:  Python
 #
-#  License:   BUSL-1.1
+#  License:   Apache-2.0
 #  Copyright: (c) 2026 HYPERI PTY LIMITED
 
 """Build fake but regex-matching secret strings at runtime.

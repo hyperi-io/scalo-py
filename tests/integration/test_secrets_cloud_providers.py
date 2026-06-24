@@ -3,7 +3,7 @@
 # Purpose:   Integration tests for cloud secrets providers (AWS, GCP, Azure, Vault)
 # Language:  Python
 #
-# License:   BUSL-1.1
+# License:   Apache-2.0
 # Copyright: (c) 2026 HYPERI PTY LIMITED
 
 """

@@ -1,16 +1,16 @@
 # Project:   scalo
 # File:      expression/__init__.py
-# Purpose:   CEL expression evaluation for DFE components
+# Purpose:   CEL expression evaluation for services
 # Language:  Python
 #
-# License:   BUSL-1.1
+# License:   Apache-2.0
 # Copyright: (c) 2026 HYPERI PTY LIMITED
 
 """
 scalo Expression Module -- CEL-based expression evaluation.
 
 Provides compile, evaluate, and validate functions for CEL expressions,
-restricted to the DFE expression profile (high-performance subset only).
+restricted to the expression profile (high-performance subset only).
 
 Both Python and Rust services use the same underlying ``cel-interpreter``
 Rust crate, ensuring identical parsing and evaluation semantics.
@@ -37,7 +37,7 @@ Usage::
     program = compile_expression("score > threshold")
     program.execute({"score": 85, "threshold": 80})  # True
 
-See: dfe-engine/docs/EXPRESSIONS-CEL.md for the full profile specification.
+See: docs/EXPRESSIONS-CEL.md for the full profile specification.
 """
 
 from .cel import (

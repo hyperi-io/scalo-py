@@ -1,15 +1,15 @@
 #  Project:      scalo
 #  File:         consumer.py
-#  Purpose:      ConsumerMetrics group -- for Kafka consumer DFE apps
+#  Purpose:      ConsumerMetrics group -- for Kafka consumer services
 #  Language:     Python
 #
-#  License:      BUSL-1.1
+#  License:      Apache-2.0
 #  Copyright:    (c) 2026 HYPERI PTY LIMITED
 
 """
-ConsumerMetrics -- composable metric group for Kafka consumer DFE apps.
+ConsumerMetrics -- composable metric group for Kafka consumer services.
 
-Mirrors rustlib's groups::ConsumerMetrics. Tracks consumer lag,
+Mirrors scalo-rs's groups::ConsumerMetrics. Tracks consumer lag,
 partition assignment, rebalances, poll timing, and offset commits.
 """
 
@@ -26,14 +26,14 @@ DEFAULT_POLL_DURATION_BUCKETS = (0.001, 0.005, 0.01, 0.025, 0.05, 0.1, 0.25, 0.5
 
 class ConsumerMetrics:
     """
-    Kafka consumer metrics for DFE apps.
+    Kafka consumer metrics for any service.
 
-    Registers:
-        {ns}_consumer_lag gauge (labels: topic, partition)
-        {ns}_consumer_partitions_assigned gauge
-        {ns}_consumer_rebalance_total counter
-        {ns}_consumer_poll_duration_seconds histogram
-        {ns}_offsets_committed_total counter
+    Registers (``{p}`` = optional metric prefix, bare by default):
+        {p}_consumer_lag gauge (labels: topic, partition)
+        {p}_consumer_partitions_assigned gauge
+        {p}_consumer_rebalance_total counter
+        {p}_consumer_poll_duration_seconds histogram
+        {p}_offsets_committed_total counter
     """
 
     def __init__(

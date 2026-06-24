@@ -3,7 +3,7 @@
 #  Purpose:   OTLP push silent by default; only enabled when endpoint set
 #  Language:  Python
 #
-#  License:   BUSL-1.1
+#  License:   Apache-2.0
 #  Copyright: (c) 2026 HYPERI PTY LIMITED
 
 """T6: OTel backend with no endpoint configured must not attach OTLP push."""

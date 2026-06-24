@@ -3,7 +3,7 @@
 #  Purpose:      Verify validate_metric_name and validate_dfe_prefix against shared corpus
 #  Language:     Python
 #
-#  License:      BUSL-1.1
+#  License:      Apache-2.0
 #  Copyright:    (c) 2026 HYPERI PTY LIMITED
 
 """

@@ -4,23 +4,24 @@
 [![Build Status](https://github.com/hyperi-io/scalo-py/actions/workflows/ci.yml/badge.svg)](https://github.com/hyperi-io/scalo-py/actions)
 [![PyPI](https://img.shields.io/pypi/v/scalo?logo=pypi)](https://pypi.org/project/scalo/)
 [![Python Version](https://img.shields.io/badge/python-3.12%2B-blue)](https://www.python.org/)
-[![License](https://img.shields.io/badge/license-BUSL--1.1-blue)](LICENSE)
+[![License](https://img.shields.io/badge/license-Apache--2.0-green)](LICENSE)
 <!-- BADGES:END -->
 
-> **There's plenty of sage advice out there about how to run Python services
-> in production at scale — config cascades, structured logging, masking
-> secrets, multi-backend secrets management, Prometheus, OpenTelemetry,
-> backpressure, graceful shutdown — but almost none of it as code you can
-> just install and use.**
+> There's plenty of sage advice about running services in production at
+> scale -- config cascades, structured logging with PII masking and secrets
+> filtering, multi-backend secrets management, Prometheus, OpenTelemetry,
+> backpressure, graceful shutdown -- but almost none of it as code you can
+> just install and use.
 >
-> **This is that code.**
->
-> Opinionated, drop-in, working out of the box. The patterns from blog posts
-> as actual library — not a framework you assemble from twelve packages and a
-> weekend.
+> This is that code.
 
-Built as the foundation for HyperI's production data services. Generic
-enough that you don't need to be at HyperI to use it.
+Opinionated, drop-in, working out of the box. The patterns from the blog
+posts as an actual library -- not a framework you assemble from twenty
+packages and a weekend.
+
+Same batteries, idiomatic in each language: `pip install scalo` (scalo-py) /
+`cargo add scalo` (scalo-rs). Built as the foundation for HyperI's production
+services; generic enough that you don't need to be at HyperI to use it.
 
 ## What this is (and isn't) for
 
@@ -29,18 +30,18 @@ integration glue, batch workloads, configuration management.
 
 **Not for:** the hot path. If you're processing millions of messages
 per second and shaving microseconds matters, that code belongs in
-Rust — see `hyperi-rustlib`. Pylib is "fast enough for control plane
-and integration"; rustlib is "fast enough for the hot path".
+Rust -- see [scalo-rs](https://github.com/hyperi-io/scalo-rs). scalo-py
+is "fast enough for control plane and integration"; scalo-rs is "fast
+enough for the hot path".
 
-We optimise pylib sensibly — no gratuitously slow choices, no obvious
-algorithmic mistakes — but the lean is toward **stability,
+We optimise scalo-py sensibly -- no gratuitously slow choices, no obvious
+algorithmic mistakes -- but the lean is toward **stability,
 expressiveness, and integration** rather than microseconds. Readable
 abstractions beat inlined ones; clean composition beats hand-rolled
 loops; heavier deps are acceptable when they earn their keep. This
-design decision is why pylib ships NER-grade PII masking
-(5–200ms/call), allows substantial dependency trees, and doesn't
-agonise over async dispatch overhead. We don't hard-iterate the hot
-path the way rustlib does, because that's rustlib's job.
+design decision is why scalo-py allows substantial dependency trees and
+doesn't agonise over async dispatch overhead. We don't hard-iterate the
+hot path the way scalo-rs does, because that's scalo-rs's job.
 
 This module exists because of this — but the backend version: <https://www.youtube.com/watch?v=xE9W9Ghe4Jk>
 
@@ -50,10 +51,10 @@ Core modules — always installed (`uv add scalo`):
 
 | Module | Description | Third-party deps |
 |---|---|---|
-| `logger` | Structured JSON logging with automatic sensitive-data masking, container-aware output | loguru |
+| `logger` | Structured JSON logging with automatic PII masking and secrets filtering, container-aware output | loguru |
 | `config` | 7-layer cascade (CLI → ENV → .env → YAML → defaults), container-aware path resolution | dynaconf, pyyaml, python-dotenv, mergedeep, tomli-w, dulwich |
 | `runtime` | Auto-detects K8s / Docker / local, resolves config and data paths accordingly | stdlib only |
-| `cli` | `DfeApp` base class — subclass to get `run` / `version` / `config-check` for free | typer |
+| `cli` | `ServiceApp` base class -- subclass to get `run` / `version` / `config-check` for free | typer |
 | `version-check` | Optional startup check for new releases (no-op if `httpx` not installed) | httpx (lazy) |
 
 Optional modules — install via extras:
@@ -77,7 +78,7 @@ uv add scalo
 uv add "scalo[http,metrics,kafka]"
 
 # Full stack
-uv add "scalo[http,metrics,expression,cache,kafka,opentelemetry,secrets]"
+uv add "scalo[http,metrics,expression,kafka,opentelemetry,secrets,deployment]"
 ```
 
 > **Package naming:** `scalo` on PyPI, `scalo` for Python imports.
@@ -170,16 +171,16 @@ api_key = await manager.get("stripe/api_key")
 
 Two-tier caching (memory + disk), stale-cache fallback for backend outages.
 
-### CLI Framework (`DfeApp`)
+### CLI Framework (`ServiceApp`)
 
-Subclass `DfeApp` to get a standard service-CLI lifecycle (`run`, `version`,
+Subclass `ServiceApp` to get a standard service-CLI lifecycle (`run`, `version`,
 `config-check`) with no boilerplate. Config flows through the 7-layer cascade
 automatically.
 
 ```python
-from scalo.cli import DfeApp, VersionInfo
+from scalo.cli import ServiceApp, VersionInfo
 
-class MyService(DfeApp):
+class MyService(ServiceApp):
     name = "my-service"
     env_prefix = "MY_SVC"
 
@@ -194,9 +195,8 @@ if __name__ == "__main__":
     MyService().cli()
 ```
 
-> The `Dfe` prefix is internal naming (HyperI's data-services framework).
-> A friendlier alias may land in a future release; the class is intentionally
-> stable for now.
+> `DfeApp` remains as a deprecated alias for `ServiceApp` to ease migration
+> from `hyperi-pylib`; prefer `ServiceApp` in new code.
 
 ## Health Check Endpoints — The Probe Trinity
 
@@ -223,10 +223,13 @@ make build     # build wheel
 
 ## License
 
-[BUSL-1.1](LICENSE) — Business Source License 1.1, transitions to Apache 2.0 after 3 years.
+[Apache-2.0](LICENSE). Third-party attributions are recorded in [NOTICE](NOTICE).
 
 ## Related
 
-- **[hyperi-rustlib](https://github.com/hyperi-io/hyperi-rustlib)** — sister
-  library for Rust services. Same opinions, same patterns, native Rust
-  performance for hot-path workloads.
+- **[scalo-rs](https://github.com/hyperi-io/scalo-rs)** -- sister library for
+  Rust services. Same opinions, same patterns, native Rust performance for
+  hot-path workloads.
+- **[Migrating from hyperi-pylib](docs/MIGRATING-FROM-HYPERI-PYLIB.md)** --
+  `scalo` is the renamed, Apache-2.0 continuation of `hyperi-pylib`; this guide
+  covers the mechanical changes.

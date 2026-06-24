@@ -3,7 +3,7 @@
 # Purpose:   Snapshot tests for the deployment-contract subsystem
 # Language:  Python
 #
-# License:   BUSL-1.1
+# License:   Apache-2.0
 # Copyright: (c) 2026 HYPERI PTY LIMITED
 
 """Snapshot tests for deployment artefact generators.

@@ -3,7 +3,7 @@
 #  Purpose:   Provider config dataclasses must NOT print credentials in repr
 #  Language:  Python
 #
-#  License:   BUSL-1.1
+#  License:   Apache-2.0
 #  Copyright: (c) 2026 HYPERI PTY LIMITED
 
 """Provider config repr must not embed credential fields."""

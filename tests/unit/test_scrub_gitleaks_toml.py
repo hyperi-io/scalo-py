@@ -3,7 +3,7 @@
 #  Purpose:   Tests for the TOML-driven L1 gitleaks scrubber
 #  Language:  Python
 #
-#  License:   BUSL-1.1
+#  License:   Apache-2.0
 #  Copyright: (c) 2026 HYPERI PTY LIMITED
 
 """Tests for ``scalo.logger.scrub.gitleaks_toml``."""

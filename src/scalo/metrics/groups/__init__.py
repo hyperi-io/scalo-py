@@ -1,23 +1,24 @@
 #  Project:      scalo
 #  File:         __init__.py
-#  Purpose:      DFE metric groups -- composable metric structs matching rustlib
+#  Purpose:      Metric groups -- composable metric structs matching scalo-rs
 #  Language:     Python
 #
-#  License:      BUSL-1.1
+#  License:      Apache-2.0
 #  Copyright:    (c) 2026 HYPERI PTY LIMITED
 
 """
-DFE metric groups -- composable metric structs for DFE pipeline applications.
+Metric groups -- composable metric structs for pipeline applications.
 
 Each group is a class that takes a MetricsManager in its constructor,
-creates prefixed metrics, and exposes convenience record/set methods.
-Apps compose the groups they need.
+registers its standard metrics (under the manager's optional ``metric_prefix``,
+bare by default), and exposes convenience record/set methods. Apps compose the
+groups they need.
 
 Example:
     >>> from scalo.metrics import create_metrics
     >>> from scalo.metrics.groups import AppMetrics, BufferMetrics
     >>>
-    >>> mgr = create_metrics("dfe_loader")
+    >>> mgr = create_metrics("loader")  # or create_metrics("loader", metric_prefix="myapp")
     >>> app = AppMetrics(mgr, version="1.0.0", commit="abc123")
     >>> buf = BufferMetrics(mgr)
     >>>

@@ -456,7 +456,7 @@ def get_default_mounts(environment: str, app_name: str, auto_detect: bool = True
 
 # Configurable environment-variable prefix for the whole cascade.
 # Bare by default (e.g. LOG_LEVEL, DATABASE_URL). A consuming app supplies its
-# own prefix via ServiceApp(env_prefix=...) / set_env_prefix("DFE") / the bare
+# own prefix via ServiceApp(env_prefix=...) / set_env_prefix("MYAPP") / the bare
 # ENV_PREFIX env var, after which every key reads as <PREFIX>_<KEY>.
 ENV_PREFIX = env_prefix()
 

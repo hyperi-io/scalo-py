@@ -3,7 +3,7 @@
 # Purpose:   Unit tests for Kafka SASL-SCRAM helper functions
 # Language:  Python
 #
-# License:   BUSL-1.1
+# License:   Apache-2.0
 # Copyright: (c) 2026 HYPERI PTY LIMITED
 
 """Unit tests for kafka.config.external_sasl_scram / internal_sasl_scram."""

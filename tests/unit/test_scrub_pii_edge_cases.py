@@ -3,7 +3,7 @@
 #  Purpose:   Edge cases, non-ASCII, thread-safety, cross-validator scrubbing
 #  Language:  Python
 #
-#  License:   BUSL-1.1
+#  License:   Apache-2.0
 #  Copyright: (c) 2026 HYPERI PTY LIMITED
 
 """Edge cases for L3 PII validators.

@@ -1,29 +1,31 @@
 #  Project:      scalo
 #  File:         naming.py
-#  Purpose:      DFE metric naming validation matching rustlib conventions
+#  Purpose:      Metric naming validation matching scalo-rs conventions
 #  Language:     Python
 #
-#  License:      BUSL-1.1
+#  License:      Apache-2.0
 #  Copyright:    (c) 2026 HYPERI PTY LIMITED
 
 """
-DFE metric naming validation.
+Metric naming validation.
 
-Enforces the naming convention: dfe_{app}_{metric_name}[_{unit}]
+Enforces the naming convention: ``{prefix}_{app}_{metric_name}[_{unit}]``,
+where ``{prefix}`` is the configurable platform prefix (bare "" by default;
+see :func:`scalo.metric_prefix`) and ``{app}`` is optional.
 
 Counters must end in _total.
 Histograms/durations should end in _seconds, _bytes, or _ratio.
-All DFE metrics should be prefixed with dfe_{app}_.
 
 Validation is non-blocking -- returns warnings but does not raise.
 """
 
+from .._env_compat import metric_prefix
 from ..logger import logger
 
 
 def validate_metric_name(name: str, metric_type: str) -> list[str]:
     """
-    Validate metric name follows Prometheus/DFE naming conventions.
+    Validate metric name follows Prometheus naming conventions.
 
     Args:
         name: Full metric name
@@ -52,32 +54,45 @@ def validate_metric_name(name: str, metric_type: str) -> list[str]:
     return warnings
 
 
-def validate_dfe_prefix(name: str, app: str) -> list[str]:
+def validate_metric_prefix(name: str, app: str = "", prefix: str | None = None) -> list[str]:
     """
-    Validate metric name has correct dfe_{app}_ prefix.
+    Validate metric name carries the expected ``{prefix}_{app}_`` prefix.
 
     Args:
         name: Full metric name
-        app: App identifier (e.g. "loader", "receiver"). Empty string for platform metrics.
+        app: App identifier (e.g. "loader"). Empty string for platform-wide metrics.
+        prefix: Platform prefix to expect. Defaults to the active
+            :func:`scalo.metric_prefix` (bare "" unless configured), so by
+            default only the ``{app}_`` portion (if any) is enforced.
 
     Returns:
         List of warning strings. Empty list means valid.
     """
+    if prefix is None:
+        prefix = metric_prefix()
+
     warnings: list[str] = []
 
     if not name:
         warnings.append("Metric name is empty")
         return warnings
 
-    if app:
-        expected_prefix = f"dfe_{app}_"
-    else:
-        expected_prefix = "dfe_"
+    parts = [p for p in (prefix, app) if p]
+    expected_prefix = "_".join(parts) + "_" if parts else ""
 
-    if not name.startswith(expected_prefix):
+    if expected_prefix and not name.startswith(expected_prefix):
         warnings.append(f"Metric '{name}' should start with '{expected_prefix}'")
 
     for w in warnings:
         logger.debug(f"Metric prefix warning: {w}")
 
     return warnings
+
+
+def validate_dfe_prefix(name: str, app: str) -> list[str]:
+    """Deprecated alias for :func:`validate_metric_prefix` (expects a ``dfe_`` prefix).
+
+    Retained for downstream callers migrating from hyperi-pylib; prefer
+    ``validate_metric_prefix`` with an explicit ``prefix`` in new code.
+    """
+    return validate_metric_prefix(name, app, prefix="dfe")
