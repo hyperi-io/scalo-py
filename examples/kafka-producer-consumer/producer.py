@@ -1,6 +1,6 @@
-# Project:   hyperi-pylib
+# Project:   scalo
 # File:      examples/kafka-producer-consumer/producer.py
-# Purpose:   Demonstrate hyperi-pylib Kafka producer
+# Purpose:   Demonstrate scalo Kafka producer
 # Language:  Python
 #
 # License:   BUSL-1.1
@@ -9,7 +9,7 @@
 """
 Kafka Producer Example.
 
-Demonstrates hyperi-pylib's Kafka producer with corporate defaults.
+Demonstrates scalo's Kafka producer with corporate defaults.
 Run with: uv run python producer.py
 
 Requires Kafka running (use docker compose up -d).
@@ -20,8 +20,8 @@ import os
 import time
 from datetime import datetime
 
-from hyperi_pylib.kafka import KafkaProducer
-from hyperi_pylib.logger import error, info, success
+from scalo.kafka import KafkaProducer
+from scalo.logger import error, info, success
 
 BOOTSTRAP_SERVERS = os.environ.get("KAFKA_BOOTSTRAP_SERVERS", "localhost:9092")
 TOPIC = "example-events"
@@ -95,7 +95,7 @@ def produce_messages(count: int = 10) -> None:
 
 def main() -> None:
     """Run the producer demonstration."""
-    print("=== hyperi-pylib Kafka Producer Demo ===\n")
+    print("=== scalo Kafka Producer Demo ===\n")
 
     try:
         produce_messages(10)

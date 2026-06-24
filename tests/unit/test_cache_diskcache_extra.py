@@ -1,4 +1,4 @@
-#  Project:   hyperi-pylib
+#  Project:   scalo
 #  File:      tests/unit/test_cache_diskcache_extra.py
 #  Purpose:   Cache falls back to memory when diskcache absent
 #  Language:  Python
@@ -15,7 +15,7 @@ import sys
 
 import pytest
 
-from hyperi_pylib.cache.cache import cached, configure_cache
+from scalo.cache.cache import cached, configure_cache
 
 
 @pytest.mark.asyncio

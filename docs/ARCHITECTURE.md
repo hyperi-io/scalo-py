@@ -112,7 +112,7 @@ Observations:
 
 ## Module map
 
-Each module under `src/hyperi_pylib/` and what you import from it:
+Each module under `src/scalo/` and what you import from it:
 
 | Module | Public API entry |
 |---|---|
@@ -137,7 +137,7 @@ Each module under `src/hyperi_pylib/` and what you import from it:
 | `version_check` | `check_on_startup`, `VersionCheckConfig` |
 
 The `Application` framework was removed to backlog (see the note in
-`src/hyperi_pylib/__init__.py`) — compose modules directly.
+`src/scalo/__init__.py`) — compose modules directly.
 
 ---
 

@@ -1,4 +1,4 @@
-# Project:   hyperi-pylib
+# Project:   scalo
 # File:      tests/unit/deployment/test_cli_generate_artefacts.py
 # Purpose:   CLI integration test for the generate-artefacts subcommand
 # Language:  Python
@@ -16,7 +16,7 @@ from pathlib import Path
 import pytest
 
 try:
-    from hyperi_pylib.deployment import (
+    from scalo.deployment import (
         DEPLOYMENT_AVAILABLE,
         DeploymentContract,
         HealthContract,
@@ -29,13 +29,13 @@ except Exception:
 
 pytestmark = pytest.mark.skipif(
     not deployment_importable,
-    reason="hyperi_pylib.deployment requires the [deployment] extra",
+    reason="scalo.deployment requires the [deployment] extra",
 )
 
 
 def _build_app_class(contract_factory):
     """Build a one-off DfeApp subclass that returns the given contract factory."""
-    from hyperi_pylib.cli import DfeApp, VersionInfo
+    from scalo.cli import DfeApp, VersionInfo
 
     class _TestApp(DfeApp):
         name = "test-deploy-app"
@@ -71,7 +71,7 @@ class TestGenerateArtefactsHookDefault:
     """Default DfeApp.deployment_contract() returns None."""
 
     def test_default_returns_none(self):
-        from hyperi_pylib.cli import DfeApp, VersionInfo
+        from scalo.cli import DfeApp, VersionInfo
 
         class _Bare(DfeApp):
             name = "bare"
@@ -136,7 +136,7 @@ class TestGenerateArtefactsCli:
         assert "Helm" not in capsys.readouterr().out
 
     def test_warns_when_contract_is_none(self, tmp_path: Path, capsys):
-        from hyperi_pylib.cli import DfeApp, VersionInfo
+        from scalo.cli import DfeApp, VersionInfo
 
         class _NoContract(DfeApp):
             name = "no-contract-app"

@@ -1,4 +1,4 @@
-#  Project:   hyperi-pylib
+#  Project:   scalo
 #  File:      tests/unit/test_scrub_factory.py
 #  Purpose:   Tests for build_scrubber() and the L1+L2 adapter scrubbers
 #  Language:  Python
@@ -18,7 +18,7 @@ from __future__ import annotations
 
 import pytest
 
-from hyperi_pylib.logger.scrub import (
+from scalo.logger.scrub import (
     FieldNameScrubber,
     FieldsConfig,
     LayeredScrubber,
@@ -95,7 +95,7 @@ class TestBuildScrubberPerValidatorToggles:
         assert len(s.layers) == 7
 
     def test_disable_all_national_ids(self):
-        from hyperi_pylib.logger.scrub import NationalIdsConfig
+        from scalo.logger.scrub import NationalIdsConfig
 
         s = build_scrubber(
             ScrubConfig(
@@ -112,7 +112,7 @@ class TestBuildScrubberPerValidatorToggles:
         assert len(s.layers) == 4
 
     def test_only_email_enabled(self):
-        from hyperi_pylib.logger.scrub import NationalIdsConfig
+        from scalo.logger.scrub import NationalIdsConfig
 
         s = build_scrubber(
             ScrubConfig(

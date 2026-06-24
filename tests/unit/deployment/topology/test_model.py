@@ -5,7 +5,7 @@ from __future__ import annotations
 import pytest
 from pydantic import ValidationError
 
-from hyperi_pylib.deployment.topology.model import (
+from scalo.deployment.topology.model import (
     AppEntry,
     ArgocdHints,
     DeploymentTopology,

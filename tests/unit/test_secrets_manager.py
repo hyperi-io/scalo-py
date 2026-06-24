@@ -6,7 +6,7 @@ from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 
-from hyperi_pylib.secrets.exceptions import (
+from scalo.secrets.exceptions import (
     ProviderError,
     ProviderNotConfiguredError,
     SecretAlreadyExistsError,
@@ -14,9 +14,9 @@ from hyperi_pylib.secrets.exceptions import (
     SecretVersionNotFoundError,
     VersioningNotSupportedError,
 )
-from hyperi_pylib.secrets.manager import SecretsManager
-from hyperi_pylib.secrets.providers.base import VersionedProvider
-from hyperi_pylib.secrets.types import (
+from scalo.secrets.manager import SecretsManager
+from scalo.secrets.providers.base import VersionedProvider
+from scalo.secrets.types import (
     CacheConfig,
     RotationEvent,
     SecretFilter,
@@ -295,7 +295,7 @@ class TestSecretsManagerWithMockedProviders:
         # Skip if httpx not available
         pytest.importorskip("httpx")
 
-        from hyperi_pylib.secrets.types import OpenBaoConfig
+        from scalo.secrets.types import OpenBaoConfig
 
         mock_value = SecretValue(
             data=b"vault-secret",
@@ -304,7 +304,7 @@ class TestSecretsManagerWithMockedProviders:
             source="openbao",
         )
 
-        with patch("hyperi_pylib.secrets.providers.openbao.OpenBaoProvider") as MockProvider:
+        with patch("scalo.secrets.providers.openbao.OpenBaoProvider") as MockProvider:
             mock_instance = MagicMock()
             mock_instance.name = "openbao"
             mock_instance.get_async = AsyncMock(return_value=mock_value)
@@ -330,7 +330,7 @@ class TestSecretsManagerWithMockedProviders:
         # Skip if boto3 not available
         pytest.importorskip("boto3")
 
-        from hyperi_pylib.secrets.types import AWSConfig
+        from scalo.secrets.types import AWSConfig
 
         mock_value = SecretValue(
             data=b"aws-secret",
@@ -339,7 +339,7 @@ class TestSecretsManagerWithMockedProviders:
             source="aws",
         )
 
-        with patch("hyperi_pylib.secrets.providers.aws.AWSProvider") as MockProvider:
+        with patch("scalo.secrets.providers.aws.AWSProvider") as MockProvider:
             mock_instance = MagicMock()
             mock_instance.name = "aws"
             mock_instance.get_async = AsyncMock(return_value=mock_value)

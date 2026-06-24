@@ -1,4 +1,4 @@
-#  Project:   hyperi-pylib
+#  Project:   scalo
 #  File:      tests/unit/test_kafka_async_producer_delivery.py
 #  Purpose:   Verify AsyncKafkaProducer.send_and_wait + BufferError retry
 #  Language:  Python
@@ -16,13 +16,13 @@ from unittest.mock import MagicMock, patch
 
 import pytest
 
-from hyperi_pylib.kafka.async_producer import AsyncKafkaProducer, DeliveryReport
+from scalo.kafka.async_producer import AsyncKafkaProducer, DeliveryReport
 
 
 @pytest.fixture
 def mock_producer():
     """Patched confluent_kafka.Producer that returns a controllable mock."""
-    with patch("hyperi_pylib.kafka.async_producer.Producer") as cls:
+    with patch("scalo.kafka.async_producer.Producer") as cls:
         instance = MagicMock()
         cls.return_value = instance
         yield instance

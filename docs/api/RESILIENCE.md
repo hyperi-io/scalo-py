@@ -7,7 +7,7 @@ a service rewritten from Python to Rust trips and recovers identically.
 Ships in the base package.
 
 ```python
-from hyperi_pylib.resilience import (
+from scalo.resilience import (
     CircuitBreaker, CircuitBreakerConfig, CircuitBreakerError, CircuitState,
 )
 ```
@@ -51,7 +51,7 @@ the state is read, not at the `reset_timeout` instant. Reading
 ## Configuration
 
 ```python
-from hyperi_pylib.resilience import CircuitBreakerConfig
+from scalo.resilience import CircuitBreakerConfig
 
 cfg = CircuitBreakerConfig(
     failure_threshold=5,    # consecutive failures before opening
@@ -68,7 +68,7 @@ Defaults match Rust: `failure_threshold=5`, `reset_timeout=30.0`,
 ## Sync usage
 
 ```python
-from hyperi_pylib.resilience import CircuitBreaker, CircuitBreakerError
+from scalo.resilience import CircuitBreaker, CircuitBreakerError
 
 cb = CircuitBreaker("payments")
 
@@ -143,9 +143,9 @@ metrics without actually attempting the call.
 A breaker around a downstream call layered with a `Bulkhead`:
 
 ```python
-from hyperi_pylib.concurrency import Bulkhead
-from hyperi_pylib.resilience import CircuitBreaker
-from hyperi_pylib.http import AsyncHttpClient
+from scalo.concurrency import Bulkhead
+from scalo.resilience import CircuitBreaker
+from scalo.http import AsyncHttpClient
 
 cb = CircuitBreaker("payments")
 bulkhead = Bulkhead("payments", limit=16)

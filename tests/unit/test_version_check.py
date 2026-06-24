@@ -1,4 +1,4 @@
-# Project:   hyperi-pylib
+# Project:   scalo
 # File:      tests/unit/test_version_check.py
 # Purpose:   Unit tests for startup version check
 # Language:  Python
@@ -20,7 +20,7 @@ class TestVersionCheckConfig:
     """Test VersionCheckConfig defaults and env overrides."""
 
     def test_default_config(self):
-        from hyperi_pylib.version_check.checker import VersionCheckConfig
+        from scalo.version_check.checker import VersionCheckConfig
 
         config = VersionCheckConfig()
         assert config.api_url == "https://releases.hyperi.io/api/v1/check"
@@ -30,14 +30,14 @@ class TestVersionCheckConfig:
 
     def test_disabled_via_env(self, monkeypatch):
         monkeypatch.setenv("VERSION_CHECK_DISABLED", "true")
-        from hyperi_pylib.version_check.checker import VersionCheckConfig
+        from scalo.version_check.checker import VersionCheckConfig
 
         config = VersionCheckConfig()
         assert config.disabled
 
     def test_custom_url_via_env(self, monkeypatch):
         monkeypatch.setenv("VERSION_CHECK_URL", "https://custom.example.com/check")
-        from hyperi_pylib.version_check.checker import VersionCheckConfig
+        from scalo.version_check.checker import VersionCheckConfig
 
         config = VersionCheckConfig()
         assert config.api_url == "https://custom.example.com/check"
@@ -47,7 +47,7 @@ class TestVersionCheckResponse:
     """Test VersionCheckResponse dataclass."""
 
     def test_default_response(self):
-        from hyperi_pylib.version_check.checker import VersionCheckResponse
+        from scalo.version_check.checker import VersionCheckResponse
 
         resp = VersionCheckResponse()
         assert resp.latest_version is None
@@ -56,7 +56,7 @@ class TestVersionCheckResponse:
         assert resp.message is None
 
     def test_update_available(self):
-        from hyperi_pylib.version_check.checker import VersionCheckResponse
+        from scalo.version_check.checker import VersionCheckResponse
 
         resp = VersionCheckResponse(
             latest_version="2.0.0",
@@ -73,7 +73,7 @@ class TestInstanceId:
     def test_instance_id_is_uuid(self):
         import uuid as uuid_mod
 
-        from hyperi_pylib.version_check.checker import _get_or_create_instance_id
+        from scalo.version_check.checker import _get_or_create_instance_id
 
         instance_id = _get_or_create_instance_id()
         # Should be a valid UUID
@@ -81,7 +81,7 @@ class TestInstanceId:
         assert parsed.version == 4
 
     def test_instance_id_stable(self):
-        from hyperi_pylib.version_check.checker import _get_or_create_instance_id
+        from scalo.version_check.checker import _get_or_create_instance_id
 
         id1 = _get_or_create_instance_id()
         id2 = _get_or_create_instance_id()
@@ -92,31 +92,31 @@ class TestCheckOnStartup:
     """Test the fire-and-forget check_on_startup function."""
 
     def test_disabled_returns_immediately(self):
-        from hyperi_pylib.version_check import check_on_startup
+        from scalo.version_check import check_on_startup
 
         # Should not raise, not spawn a thread
         check_on_startup(
             product="test",
             version="1.0.0",
-            config=__import__("hyperi_pylib.version_check.checker", fromlist=["VersionCheckConfig"]).VersionCheckConfig(
+            config=__import__("scalo.version_check.checker", fromlist=["VersionCheckConfig"]).VersionCheckConfig(
                 disabled=True,
             ),
         )
 
     def test_empty_product_returns_immediately(self):
-        from hyperi_pylib.version_check import check_on_startup
+        from scalo.version_check import check_on_startup
 
         # Should not raise
         check_on_startup(product="", version="1.0.0")
 
     def test_empty_version_returns_immediately(self):
-        from hyperi_pylib.version_check import check_on_startup
+        from scalo.version_check import check_on_startup
 
         check_on_startup(product="test", version="")
 
     def test_spawns_daemon_thread(self, httpx_mock):
         """Verify check_on_startup spawns a thread and doesn't block."""
-        from hyperi_pylib.version_check.checker import VersionCheckConfig, check_on_startup
+        from scalo.version_check.checker import VersionCheckConfig, check_on_startup
 
         httpx_mock.add_response(
             method="POST",
@@ -152,7 +152,7 @@ class TestCheckOnStartup:
 
     def test_handles_http_error_gracefully(self, httpx_mock):
         """Verify HTTP errors are swallowed gracefully."""
-        from hyperi_pylib.version_check.checker import VersionCheckConfig, check_on_startup
+        from scalo.version_check.checker import VersionCheckConfig, check_on_startup
 
         httpx_mock.add_response(
             method="POST",
@@ -179,7 +179,7 @@ class TestCheckOnStartup:
             url="https://unreachable.example.com/api/v1/check",
         )
 
-        from hyperi_pylib.version_check.checker import VersionCheckConfig, check_on_startup
+        from scalo.version_check.checker import VersionCheckConfig, check_on_startup
 
         config = VersionCheckConfig(
             api_url="https://unreachable.example.com/api/v1/check",
@@ -198,7 +198,7 @@ class TestLogResponse:
     def test_log_update_available_with_age(self, caplog):
         import logging
 
-        from hyperi_pylib.version_check.checker import VersionCheckConfig, VersionCheckResponse, _log_response
+        from scalo.version_check.checker import VersionCheckConfig, VersionCheckResponse, _log_response
 
         config = VersionCheckConfig(product="dfe-loader", current_version="1.8.0")
         resp = VersionCheckResponse(
@@ -219,7 +219,7 @@ class TestLogResponse:
     def test_log_update_available_without_published_at(self, caplog):
         import logging
 
-        from hyperi_pylib.version_check.checker import VersionCheckConfig, VersionCheckResponse, _log_response
+        from scalo.version_check.checker import VersionCheckConfig, VersionCheckResponse, _log_response
 
         config = VersionCheckConfig(product="dfe-loader", current_version="1.8.0")
         resp = VersionCheckResponse(
@@ -236,7 +236,7 @@ class TestLogResponse:
     def test_log_up_to_date(self, caplog):
         import logging
 
-        from hyperi_pylib.version_check.checker import VersionCheckConfig, VersionCheckResponse, _log_response
+        from scalo.version_check.checker import VersionCheckConfig, VersionCheckResponse, _log_response
 
         config = VersionCheckConfig(product="dfe-loader", current_version="1.8.0")
         resp = VersionCheckResponse(
@@ -256,7 +256,7 @@ class TestFormatAge:
     def test_format_age_today(self):
         from datetime import datetime, timezone
 
-        from hyperi_pylib.version_check.checker import _format_age
+        from scalo.version_check.checker import _format_age
 
         now = datetime.now(UTC).strftime("%Y-%m-%dT%H:%M:%SZ")
         assert _format_age(now) == "released today"
@@ -264,7 +264,7 @@ class TestFormatAge:
     def test_format_age_days(self):
         from datetime import datetime, timedelta, timezone
 
-        from hyperi_pylib.version_check.checker import _format_age
+        from scalo.version_check.checker import _format_age
 
         ten_days_ago = (datetime.now(UTC) - timedelta(days=10)).strftime("%Y-%m-%dT%H:%M:%SZ")
         assert _format_age(ten_days_ago) == "released 10 days ago"
@@ -272,7 +272,7 @@ class TestFormatAge:
     def test_format_age_one_day(self):
         from datetime import datetime, timedelta, timezone
 
-        from hyperi_pylib.version_check.checker import _format_age
+        from scalo.version_check.checker import _format_age
 
         yesterday = (datetime.now(UTC) - timedelta(days=1)).strftime("%Y-%m-%dT%H:%M:%SZ")
         assert _format_age(yesterday) == "released 1 day ago"
@@ -280,12 +280,12 @@ class TestFormatAge:
     def test_format_age_months(self):
         from datetime import datetime, timedelta, timezone
 
-        from hyperi_pylib.version_check.checker import _format_age
+        from scalo.version_check.checker import _format_age
 
         three_months_ago = (datetime.now(UTC) - timedelta(days=90)).strftime("%Y-%m-%dT%H:%M:%SZ")
         assert _format_age(three_months_ago) == "released 3 months ago"
 
     def test_format_age_invalid(self):
-        from hyperi_pylib.version_check.checker import _format_age
+        from scalo.version_check.checker import _format_age
 
         assert _format_age("not-a-date") == ""

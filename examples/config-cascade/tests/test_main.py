@@ -1,4 +1,4 @@
-# Project:   hyperi-pylib
+# Project:   scalo
 # File:      examples/config-cascade/tests/test_main.py
 # Purpose:   Tests for config-cascade example
 # Language:  Python

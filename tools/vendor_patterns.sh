@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-#  Project:   hyperi-pylib
+#  Project:   scalo
 #  File:      tools/vendor_patterns.sh
 #  Purpose:   Vendor canonical pattern TOMLs from hyperi-ai into pylib's data/
 #  Language:  Bash
@@ -8,7 +8,7 @@
 #  Copyright: (c) 2026 HYPERI PTY LIMITED
 #
 # Copies the canonical pattern files from a local hyperi-ai checkout
-# into src/hyperi_pylib/data/, where the runtime loads them.
+# into src/scalo/data/, where the runtime loads them.
 #
 # NON-BLOCKING: if hyperi-ai checkout cannot be found, the script
 # prints a warning and exits 0. This is intentional — the build /
@@ -32,7 +32,7 @@ set -uo pipefail
 
 SCRIPT_DIR=$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)
 PYLIB_ROOT=$(dirname "$SCRIPT_DIR")
-DATA_DIR="$PYLIB_ROOT/src/hyperi_pylib/data"
+DATA_DIR="$PYLIB_ROOT/src/scalo/data"
 PATTERNS_RELATIVE="standards/patterns"
 
 # Files to vendor. Add as new pattern files land in hyperi-ai.
@@ -67,7 +67,7 @@ find_checkout() {
 }
 
 warn() {
-    # Match hyperi-pylib's WARN log style for grep-ability
+    # Match scalo's WARN log style for grep-ability
     printf '[WARN] vendor_patterns.sh: %s\n' "$*" >&2
 }
 

@@ -21,20 +21,20 @@ that costs.
 
 ```toml
 [project]
-dependencies = ["hyperi-pylib>=2.28.3"]
+dependencies = ["scalo>=2.28.3"]
 ```
 
 That gives you:
 
-- 8-layer config cascade (`from hyperi_pylib import config`)
-- Structured logger with autodetect format + secret scrubbing (`from hyperi_pylib import logger`)
-- Container-aware runtime paths (`from hyperi_pylib import runtime`)
-- Health probe router primitives (`from hyperi_pylib import health`)
-- DB URL builders (`from hyperi_pylib.database import build_database_url`)
-- CLI framework (`from hyperi_pylib.cli import DfeApp`)
-- Concurrency primitives (`from hyperi_pylib import concurrency`)
-- Subprocess harness (`from hyperi_pylib import harness`)
-- Version-check probe (`from hyperi_pylib.version_check import check_on_startup`)
+- 8-layer config cascade (`from scalo import config`)
+- Structured logger with autodetect format + secret scrubbing (`from scalo import logger`)
+- Container-aware runtime paths (`from scalo import runtime`)
+- Health probe router primitives (`from scalo import health`)
+- DB URL builders (`from scalo.database import build_database_url`)
+- CLI framework (`from scalo.cli import DfeApp`)
+- Concurrency primitives (`from scalo import concurrency`)
+- Subprocess harness (`from scalo import harness`)
+- Version-check probe (`from scalo.version_check import check_on_startup`)
 
 Base runtime deps (transitive): dynaconf, loguru, python-dotenv, pyyaml,
 mergedeep, tomli-w, typer, dulwich, anyio, asyncer, detect-secrets,
@@ -173,7 +173,7 @@ without committing to a transitive deps tree that may change.
 
 | Extra | Notes | Doc |
 |---|---|---|
-| `cli` | Base install already ships `typer` + `DfeApp`. Listing `hyperi-pylib[cli]` declares CLI dependence without adding deps. | [api/CLI.md](api/CLI.md) |
+| `cli` | Base install already ships `typer` + `DfeApp`. Listing `scalo[cli]` declares CLI dependence without adding deps. | [api/CLI.md](api/CLI.md) |
 | `enhanced` | Reserved. Will bundle a curated "DFE service" feature set once the shape is locked. Currently a no-op marker. | (no doc yet) |
 
 ### Development
@@ -190,7 +190,7 @@ without committing to a transitive deps tree that may change.
 ### Tooling CLI / one-shot script
 
 ```toml
-dependencies = ["hyperi-pylib>=2.28.3"]
+dependencies = ["scalo>=2.28.3"]
 ```
 
 Base install only. Config + logger + runtime + CLI framework.
@@ -198,14 +198,14 @@ Base install only. Config + logger + runtime + CLI framework.
 ### FastAPI service (config + logs + metrics)
 
 ```toml
-dependencies = ["hyperi-pylib[metrics,opentelemetry]>=2.28.3"]
+dependencies = ["scalo[metrics,opentelemetry]>=2.28.3"]
 ```
 
 ### Kafka consumer (typical DFE shape)
 
 ```toml
 dependencies = [
-    "hyperi-pylib[kafka,metrics,opentelemetry,resilience,http,deployment]>=2.28.3",
+    "scalo[kafka,metrics,opentelemetry,resilience,http,deployment]>=2.28.3",
 ]
 ```
 
@@ -213,7 +213,7 @@ dependencies = [
 
 ```toml
 dependencies = [
-    "hyperi-pylib[kafka,metrics,opentelemetry,secrets-vault,resilience,http,deployment]>=2.28.3",
+    "scalo[kafka,metrics,opentelemetry,secrets-vault,resilience,http,deployment]>=2.28.3",
 ]
 ```
 
@@ -221,7 +221,7 @@ dependencies = [
 
 ```toml
 dependencies = [
-    "hyperi-pylib[kafka,metrics,opentelemetry,secrets-vault,secrets-aws,resilience,http,deployment]>=2.28.3",
+    "scalo[kafka,metrics,opentelemetry,secrets-vault,secrets-aws,resilience,http,deployment]>=2.28.3",
 ]
 ```
 
@@ -229,7 +229,7 @@ dependencies = [
 
 ```toml
 dependencies = [
-    "hyperi-pylib[kafka,metrics,opentelemetry,cache,http,secrets,deployment,expression,resilience,dev]>=2.28.3",
+    "scalo[kafka,metrics,opentelemetry,cache,http,secrets,deployment,expression,resilience,dev]>=2.28.3",
 ]
 ```
 

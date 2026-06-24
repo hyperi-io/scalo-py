@@ -1,4 +1,4 @@
-#  Project:   hyperi-pylib
+#  Project:   scalo
 #  File:      tests/unit/test_logger_json_extra_leak.py
 #  Purpose:   E2E: real setup() + JSON output must not leak bind() secrets
 #  Language:  Python
@@ -17,8 +17,8 @@ import pytest
 from common.fake_secrets import opaque_secret
 from loguru import logger
 
-from hyperi_pylib.logger.logger import _add_emoji_to_record
-from hyperi_pylib.logger.scrub_resolver import resolve_scrubber
+from scalo.logger.logger import _add_emoji_to_record
+from scalo.logger.scrub_resolver import resolve_scrubber
 
 
 @pytest.fixture

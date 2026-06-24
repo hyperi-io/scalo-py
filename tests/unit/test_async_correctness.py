@@ -1,4 +1,4 @@
-#  Project:   hyperi-pylib
+#  Project:   scalo
 #  File:      tests/unit/test_async_correctness.py
 #  Purpose:   Static + runtime checks that async code does not block the event loop
 #  Language:  Python
@@ -6,7 +6,7 @@
 #  License:   BUSL-1.1
 #  Copyright: (c) 2026 HYPERI PTY LIMITED
 
-"""Async correctness tests for hyperi-pylib.
+"""Async correctness tests for scalo.
 
 Async bugs are opaque -- a sync-in-async call won't fail at test time,
 it just silently blocks the event loop in production. These tests
@@ -16,7 +16,7 @@ runtime (event-loop liveness probe during capability calls).
 Two test groups:
 
 1. :class:`TestNoSyncInAsync` -- AST walk of every async function in
-   ``src/hyperi_pylib/``. Flags blocking-shaped calls that are not
+   ``src/scalo/``. Flags blocking-shaped calls that are not
    wrapped in ``run_blocking`` / ``asyncio.to_thread`` /
    ``run_in_executor``.
 
@@ -38,9 +38,9 @@ from pathlib import Path
 
 import pytest
 
-from hyperi_pylib.concurrency import make_async, run_blocking
+from scalo.concurrency import make_async, run_blocking
 
-SRC_ROOT = Path(__file__).parent.parent.parent / "src" / "hyperi_pylib"
+SRC_ROOT = Path(__file__).parent.parent.parent / "src" / "scalo"
 
 
 # ---------------------------------------------------------------------------
@@ -136,7 +136,7 @@ def _scan_async_function(fn: ast.AsyncFunctionDef) -> list[tuple[int, str]]:
             for sub in ast.walk(inner):
                 safe.add(id(sub))
             continue
-        # run_blocking(...)  (hyperi_pylib.concurrency)
+        # run_blocking(...)  (scalo.concurrency)
         if isinstance(f, ast.Name) and f.id == "run_blocking":
             for sub in ast.walk(inner):
                 safe.add(id(sub))
@@ -179,9 +179,9 @@ def _scan_async_function(fn: ast.AsyncFunctionDef) -> list[tuple[int, str]]:
 # UNRECOGNISED finding.
 KNOWN_UNFIXED: dict[str, set[tuple[int, str]]] = {
     # tracked in TODO.md "Async correctness" -- converting to make_async
-    "src/hyperi_pylib/secrets/providers/file.py": set(),
-    "src/hyperi_pylib/secrets/providers/ansible_vault.py": set(),
-    "src/hyperi_pylib/secrets/providers/openbao.py": set(),
+    "src/scalo/secrets/providers/file.py": set(),
+    "src/scalo/secrets/providers/ansible_vault.py": set(),
+    "src/scalo/secrets/providers/openbao.py": set(),
 }
 
 
@@ -236,7 +236,7 @@ class TestNoSyncInAsync:
             lines.append(
                 "Fix: wrap in `await run_blocking(fn, ...)` or use "
                 "`make_async(sync_fn)` to generate the async sibling. "
-                "See hyperi_pylib.concurrency."
+                "See scalo.concurrency."
             )
             pytest.fail("\n".join(lines))
 

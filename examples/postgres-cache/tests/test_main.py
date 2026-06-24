@@ -1,4 +1,4 @@
-# Project:   hyperi-pylib
+# Project:   scalo
 # File:      examples/postgres-cache/tests/test_main.py
 # Purpose:   Tests for postgres-cache example
 # Language:  Python
@@ -14,7 +14,7 @@ Integration tests require PostgreSQL (skipped if not available).
 
 import pytest
 
-from hyperi_pylib.cache import generate_cache_key
+from scalo.cache import generate_cache_key
 
 
 class TestKeyGeneration:
@@ -49,7 +49,7 @@ class TestImports:
 
     def test_postgres_cache_import(self) -> None:
         """Should be able to import PostgresCache."""
-        from hyperi_pylib.cache import PostgresCache
+        from scalo.cache import PostgresCache
 
         assert PostgresCache is not None
 
@@ -74,7 +74,7 @@ class TestIntegration:
     @pytest.mark.asyncio
     async def test_cache_round_trip(self) -> None:
         """Should be able to set and get a value."""
-        from hyperi_pylib.cache import PostgresCache
+        from scalo.cache import PostgresCache
 
         cache = PostgresCache(dsn="postgresql://postgres:postgres@localhost:5432/cache_example")
         await cache.init()

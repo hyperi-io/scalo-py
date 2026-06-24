@@ -1,4 +1,4 @@
-# Project:   hyperi-pylib
+# Project:   scalo
 # File:      examples/fastapi-metrics/tests/__init__.py
 # Purpose:   Test package for fastapi-metrics example
 # Language:  Python

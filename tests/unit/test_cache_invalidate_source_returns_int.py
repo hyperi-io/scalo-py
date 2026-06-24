@@ -1,4 +1,4 @@
-#  Project:   hyperi-pylib
+#  Project:   scalo
 #  File:      tests/unit/test_cache_invalidate_source_returns_int.py
 #  Purpose:   invalidate_source must return int (count), never None
 #  Language:  Python
@@ -13,7 +13,7 @@ from __future__ import annotations
 
 import pytest
 
-from hyperi_pylib.cache.cache import cache, cached, invalidate_source
+from scalo.cache.cache import cache, cached, invalidate_source
 
 
 @pytest.fixture(autouse=True)

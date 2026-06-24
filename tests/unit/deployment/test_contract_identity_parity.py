@@ -1,4 +1,4 @@
-# Project:   hyperi-pylib
+# Project:   scalo
 # File:      tests/unit/deployment/test_contract_identity_parity.py
 # Purpose:   Verify ContractIdentity byte-equivalence against the shared
 #            cross-language golden fixture
@@ -26,7 +26,7 @@ from pathlib import Path
 
 import pytest
 
-from hyperi_pylib.deployment.contract_identity import ContractIdentity
+from scalo.deployment.contract_identity import ContractIdentity
 
 GOLDEN_PATH = Path(__file__).parent.parent.parent / "fixtures" / "contract-parity" / "v1-output.txt"
 

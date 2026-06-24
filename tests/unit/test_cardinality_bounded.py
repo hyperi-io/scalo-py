@@ -1,4 +1,4 @@
-#  Project:   hyperi-pylib
+#  Project:   scalo
 #  File:      tests/unit/test_cardinality_bounded.py
 #  Purpose:   Verify CardinalityTracker bounds memory via LRU eviction
 #  Language:  Python
@@ -15,7 +15,7 @@ from __future__ import annotations
 import pytest
 from loguru import logger
 
-from hyperi_pylib.metrics.cardinality import CardinalityTracker
+from scalo.metrics.cardinality import CardinalityTracker
 
 
 def test_warning_still_fires_above_threshold():

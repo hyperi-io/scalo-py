@@ -12,7 +12,7 @@ exits cleanly within the K8s `terminationGracePeriodSeconds` budget.
 ```python
 import signal
 import asyncio
-from hyperi_pylib.concurrency import gather_with_timeouts
+from scalo.concurrency import gather_with_timeouts
 
 shutdown_event = asyncio.Event()
 
@@ -102,7 +102,7 @@ own timeout. One slow downstream doesn't extend the total drain;
 exceptions are captured per-task and returned alongside results.
 
 ```python
-from hyperi_pylib.concurrency import gather_with_timeouts
+from scalo.concurrency import gather_with_timeouts
 
 results = await gather_with_timeouts(
     {

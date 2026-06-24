@@ -1,4 +1,4 @@
-#  Project:   hyperi-pylib
+#  Project:   scalo
 #  File:      tests/unit/test_http_traceparent_idempotency.py
 #  Purpose:   Verify HttpClient injects traceparent + Idempotency-Key on retries
 #  Language:  Python
@@ -19,7 +19,7 @@ import uuid
 import httpx
 import pytest
 
-from hyperi_pylib.http.client import AsyncHttpClient, HttpClient, new_idempotency_key
+from scalo.http.client import AsyncHttpClient, HttpClient, new_idempotency_key
 
 
 def _flaky_transport(seen_headers: list[dict[str, str]]):

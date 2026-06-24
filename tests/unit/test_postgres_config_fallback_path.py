@@ -1,4 +1,4 @@
-#  Project:   hyperi-pylib
+#  Project:   scalo
 #  File:      tests/unit/test_postgres_config_fallback_path.py
 #  Purpose:   PG fallback file must default to ~/.cache, never /tmp
 #  Language:  Python
@@ -18,7 +18,7 @@ from unittest.mock import patch
 
 import pytest
 
-from hyperi_pylib.config.postgres_loader import PostgresConfigLoader
+from scalo.config.postgres_loader import PostgresConfigLoader
 
 
 def test_default_fallback_path_is_under_home_cache(monkeypatch):

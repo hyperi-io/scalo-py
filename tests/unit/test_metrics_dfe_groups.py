@@ -1,4 +1,4 @@
-#  Project:      hyperi-pylib
+#  Project:      scalo
 #  File:         test_metrics_dfe_groups.py
 #  Purpose:      Tests for DFE metric groups matching rustlib standard
 #  Language:     Python
@@ -12,8 +12,8 @@ import time
 
 import pytest
 
-from hyperi_pylib.metrics import MetricsManager, create_metrics
-from hyperi_pylib.metrics.dfe_groups import (
+from scalo.metrics import MetricsManager, create_metrics
+from scalo.metrics.dfe_groups import (
     AppMetrics,
     BackpressureMetrics,
     BufferMetrics,
@@ -276,8 +276,8 @@ class TestDfeGroupsReExports:
     """Test that dfe_groups module re-exports are accessible from metrics package."""
 
     def test_import_from_dfe_groups(self):
-        """All metric group classes are importable from hyperi_pylib.metrics.dfe_groups."""
-        from hyperi_pylib.metrics.dfe_groups import (
+        """All metric group classes are importable from scalo.metrics.dfe_groups."""
+        from scalo.metrics.dfe_groups import (
             AppMetrics,
             BackpressureMetrics,
             BufferMetrics,
@@ -294,8 +294,8 @@ class TestDfeGroupsReExports:
         assert BackpressureMetrics is not None
 
     def test_import_from_metrics_package(self):
-        """Metric group classes are importable from hyperi_pylib.metrics."""
-        from hyperi_pylib.metrics import (
+        """Metric group classes are importable from scalo.metrics."""
+        from scalo.metrics import (
             AppMetrics,
             BackpressureMetrics,
             BufferMetrics,

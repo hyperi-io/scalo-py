@@ -1,4 +1,4 @@
-# hyperi-pylib Local Kafka for Integration Testing
+# scalo Local Kafka for Integration Testing
 # =============================================
 # Lightweight Kafka using KRaft mode (no ZooKeeper required)
 # Uses official Apache Kafka image (apache/kafka)
@@ -15,7 +15,7 @@
 services:
   kafka:
     image: apache/kafka:4.3.0
-    container_name: hyperi-pylib-kafka
+    container_name: scalo-kafka
     hostname: kafka
     ports:
       - "9092:9092"
@@ -57,7 +57,7 @@ services:
   kafka-ui:
     # Renovate will re-add SHA digest after next pass.
     image: provectuslabs/kafka-ui:v0.7
-    container_name: hyperi-pylib-kafka-ui
+    container_name: scalo-kafka-ui
     profiles:
       - ui  # Only start with: docker compose -f docker-compose.kafka.yml --profile ui up
     ports:

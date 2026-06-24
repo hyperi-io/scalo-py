@@ -1,4 +1,4 @@
-# Project:   hyperi-pylib
+# Project:   scalo
 # File:      examples/kafka-producer-consumer/docker-compose.yml
 # Purpose:   Kafka for producer/consumer example (KRaft mode, no Zookeeper)
 # Language:  YAML

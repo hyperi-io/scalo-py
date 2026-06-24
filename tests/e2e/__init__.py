@@ -1,1 +1,1 @@
-"""End-to-end tests for hyperi_pylib applications."""
+"""End-to-end tests for scalo applications."""

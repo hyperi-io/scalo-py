@@ -1,4 +1,4 @@
-# hyperi-pylib pip-audit ignores
+# scalo pip-audit ignores
 # Format: one CVE/GHSA ID per line
 
 # diskcache 5.6.3 - pickle deserialization (no fix released)

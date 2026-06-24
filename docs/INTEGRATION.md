@@ -1,6 +1,6 @@
 # Integration
 
-Wiring `hyperi-pylib` into a new Python service from empty
+Wiring `scalo` into a new Python service from empty
 `pyproject.toml` to running app. Self-contained recipe; details per subsystem
 live in the subsystem docs (core-pillars/, runtime/, transport/, deployment/, api/).
 
@@ -21,14 +21,14 @@ OTel metrics, uses Vault secrets, and ships container artefacts:
 ```toml
 [project]
 dependencies = [
-    "hyperi-pylib[kafka,metrics,opentelemetry,secrets-vault,deployment,resilience,http]>=2.28.3",
+    "scalo[kafka,metrics,opentelemetry,secrets-vault,deployment,resilience,http]>=2.28.3",
 ]
 ```
 
 For a tooling CLI that just reads config and writes logs:
 
 ```toml
-dependencies = ["hyperi-pylib>=2.28.3"]
+dependencies = ["scalo>=2.28.3"]
 ```
 
 `config` and `logger` ship in the base package — nothing extra needed.
@@ -40,13 +40,13 @@ recommended bundles.
 
 ## 2. Config
 
-`hyperi_pylib.config` exposes a `settings` object built from an 8-layer
+`scalo.config` exposes a `settings` object built from an 8-layer
 cascade (CLI > env > .env > settings.<env>.yaml > settings.yaml >
 defaults.yaml > pylib defaults > hard-coded). Read it like a dict;
 nested keys via dot or `__`.
 
 ```python
-from hyperi_pylib.config import settings
+from scalo.config import settings
 
 brokers = settings.get("kafka.brokers", "localhost:9092")
 batch_size = settings.get("processor.batch_size", 100)
@@ -65,7 +65,7 @@ cascade and sensitive masking.
 ## 3. Logger
 
 ```python
-from hyperi_pylib.logger import logger, info, error
+from scalo.logger import logger, info, error
 
 info("Service starting", version="2.28.3")
 logger.bind(component="kafka_consumer").info("subscribed", topic="events")
@@ -89,7 +89,7 @@ limiting, CI mode, and the emoji-to-text conversion.
 ## 4. Metrics
 
 ```python
-from hyperi_pylib.metrics import create_metrics
+from scalo.metrics import create_metrics
 
 m = create_metrics(namespace="my_service")
 requests = m.counter("requests_total", "Total requests", ["method", "status"])
@@ -114,7 +114,7 @@ See [core-pillars/METRICS.md](core-pillars/METRICS.md).
 
 ```python
 from fastapi import FastAPI
-from hyperi_pylib.health import HealthManager, create_health_router
+from scalo.health import HealthManager, create_health_router
 
 health = HealthManager()
 app = FastAPI()
@@ -140,7 +140,7 @@ See [core-pillars/HEALTH.md](core-pillars/HEALTH.md).
 ## 6. Runtime context
 
 ```python
-from hyperi_pylib.runtime import get_runtime_paths
+from scalo.runtime import get_runtime_paths
 
 paths = get_runtime_paths()
 config_file = paths.config_dir / "app.yaml"   # /config in K8s, ~/.config locally
@@ -159,7 +159,7 @@ See [runtime/RUNTIME-CONTEXT.md](runtime/RUNTIME-CONTEXT.md).
 ## 7. Secrets
 
 ```python
-from hyperi_pylib.secrets import SecretsManager
+from scalo.secrets import SecretsManager
 
 sm = SecretsManager.from_config(settings.get("secrets"))
 api_key = await sm.get_string("third-party/api-key")
@@ -178,7 +178,7 @@ See [api/SECRETS.md](api/SECRETS.md).
 ## 8. Kafka (if you need it)
 
 ```python
-from hyperi_pylib.kafka import KafkaProducer, KafkaConsumer
+from scalo.kafka import KafkaProducer, KafkaConsumer
 
 producer = KafkaProducer({"bootstrap.servers": settings.get("kafka.brokers")})
 producer.send("events", key=b"k", value=b'{"event":"x"}')
@@ -209,7 +209,7 @@ See [transport/KAFKA.md](transport/KAFKA.md).
 Define the contract once, generate every artefact:
 
 ```python
-from hyperi_pylib.deployment import (
+from scalo.deployment import (
     DeploymentContract, HealthContract, OciLabels,
     generate_dockerfile, generate_chart, generate_argocd_application,
     ContractIdentity, ArgocdConfig,
@@ -275,7 +275,7 @@ hyperi-ci check --quick  # quality + unit tests only
 
 ## Checklist for a new service
 
-- [ ] `pyproject.toml` lists `hyperi-pylib` with the right extras
+- [ ] `pyproject.toml` lists `scalo` with the right extras
 - [ ] `settings.yaml` in the repo for static config; env vars for
       per-environment override
 - [ ] Logger imported at the top of `main`

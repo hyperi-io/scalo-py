@@ -1,4 +1,4 @@
-#  Project:   hyperi-pylib
+#  Project:   scalo
 #  File:      tests/unit/test_harness_silent_timeout.py
 #  Purpose:   smart_run must enforce timeouts even when child is silent
 #  Language:  Python
@@ -13,7 +13,7 @@ from __future__ import annotations
 import sys
 import time
 
-from hyperi_pylib.harness.harness import (
+from scalo.harness.harness import (
     ActivityIndicator,
     SmartTimeoutMonitor,
     TerminationReason,

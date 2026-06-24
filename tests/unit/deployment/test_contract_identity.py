@@ -1,4 +1,4 @@
-# Project:   hyperi-pylib
+# Project:   scalo
 # File:      tests/unit/deployment/test_contract_identity.py
 # Purpose:   Unit tests for the Contract Identity v1 annotation scheme
 # Language:  Python
@@ -6,7 +6,7 @@
 # License:   BUSL-1.1
 # Copyright: (c) 2026 HYPERI PTY LIMITED
 
-"""Tests for ``hyperi_pylib.deployment.contract_identity``.
+"""Tests for ``scalo.deployment.contract_identity``.
 
 Covers validators, the auto-detect classmethod, and the two serialisers
 (``as_dockerfile_labels``, ``as_yaml_annotations``). These tests define
@@ -23,13 +23,13 @@ from unittest.mock import patch
 
 import pytest
 
-from hyperi_pylib.deployment.contract_identity import (
+from scalo.deployment.contract_identity import (
     KEY_PREFIX,
     VERSION,
     ContractIdentity,
     IdentityError,
 )
-from hyperi_pylib.deployment.errors import DeploymentError
+from scalo.deployment.errors import DeploymentError
 
 VALID_SHA = "0123456789abcdef0123456789abcdef01234567"
 VALID_REF = "ghcr.io/hyperi-io/dfe-loader:v2.7.3"

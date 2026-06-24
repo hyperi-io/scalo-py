@@ -1,5 +1,5 @@
 """
-Unit tests for hyperi_pylib.config.merge module.
+Unit tests for scalo.config.merge module.
 
 Tests config file merging with:
 - Valid data for all supported file types
@@ -15,7 +15,7 @@ from pathlib import Path
 import pytest
 import yaml
 
-from hyperi_pylib.config.merge import (
+from scalo.config.merge import (
     detect_file_type,
     merge_files,
     merge_gitignore,

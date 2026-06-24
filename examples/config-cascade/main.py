@@ -1,6 +1,6 @@
-# Project:   hyperi-pylib
+# Project:   scalo
 # File:      examples/config-cascade/main.py
-# Purpose:   Demonstrate hyperi-pylib configuration cascade
+# Purpose:   Demonstrate scalo configuration cascade
 # Language:  Python
 #
 # License:   BUSL-1.1
@@ -9,15 +9,15 @@
 """
 Config Cascade Example.
 
-Demonstrates hyperi-pylib's 8-layer configuration cascade system.
+Demonstrates scalo's 8-layer configuration cascade system.
 Run with: uv run python main.py
 """
 
 import os
 from pathlib import Path
 
-from hyperi_pylib.config import get_settings, settings
-from hyperi_pylib.logger import info
+from scalo.config import get_settings, settings
+from scalo.logger import info
 
 
 def show_database_config() -> dict:
@@ -107,7 +107,7 @@ def main() -> None:
     """Run the configuration demonstration."""
     info("Config cascade example starting")
 
-    print("=== hyperi-pylib Configuration Cascade Demo ===\n")
+    print("=== scalo Configuration Cascade Demo ===\n")
 
     print("=== Current Configuration ===")
     config = get_all_config()

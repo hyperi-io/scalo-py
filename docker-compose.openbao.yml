@@ -1,4 +1,4 @@
-# Project:   hyperi-pylib
+# Project:   scalo
 # File:      docker-compose.openbao.yml
 # Purpose:   Local OpenBao for integration tests
 # Language:  YAML
@@ -13,13 +13,13 @@
 services:
   openbao:
     image: openbao/openbao:2
-    container_name: hyperi-pylib-openbao
+    container_name: scalo-openbao
     ports:
       - "8200:8200"
     cap_add:
       - IPC_LOCK
     environment:
-      BAO_DEV_ROOT_TOKEN_ID: hyperi-pylib-test-root
+      BAO_DEV_ROOT_TOKEN_ID: scalo-test-root
       BAO_DEV_LISTEN_ADDRESS: 0.0.0.0:8200
       BAO_ADDR: http://0.0.0.0:8200
     healthcheck:

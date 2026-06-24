@@ -1,6 +1,6 @@
-#  Project:   hyperi-pylib
+#  Project:   scalo
 #  File:      tests/unit/test_concurrency.py
-#  Purpose:   Unit tests for hyperi_pylib.concurrency
+#  Purpose:   Unit tests for scalo.concurrency
 #  Language:  Python
 #
 #  License:   BUSL-1.1
@@ -16,7 +16,7 @@ import time
 
 import pytest
 
-from hyperi_pylib.concurrency import (
+from scalo.concurrency import (
     Bulkhead,
     gather_with_timeouts,
     make_async,

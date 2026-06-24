@@ -1,4 +1,4 @@
-#  Project:   hyperi-pylib
+#  Project:   scalo
 #  File:      tests/unit/test_secrets_config_repr.py
 #  Purpose:   Provider config dataclasses must NOT print credentials in repr
 #  Language:  Python
@@ -12,7 +12,7 @@ from __future__ import annotations
 
 from common.fake_secrets import opaque_secret
 
-from hyperi_pylib.secrets.types import (
+from scalo.secrets.types import (
     AnsibleVaultConfig,
     AWSConfig,
     AzureConfig,

@@ -14,7 +14,7 @@ is now per-module and happens at first use.
 
 | Module | Wired at | What's automatic |
 |---|---|---|
-| `config` | First `from hyperi_pylib.config import settings` | Dynaconf cascade construction, `.env` loading, PostgreSQL config source (if `HYPERI_CONFIG_DSN` set), sensitive masking, `RuntimePaths.config_dir` selection |
+| `config` | First `from scalo.config import settings` | Dynaconf cascade construction, `.env` loading, PostgreSQL config source (if `HYPERI_CONFIG_DSN` set), sensitive masking, `RuntimePaths.config_dir` selection |
 | `logger` | First import | Loguru sink installed, JSON/text autodetect (TTY vs not), RFC 3339 format, level from `LOG_LEVEL` env (default INFO), scrub filters loaded from `data/gitleaks.toml` + `data/national_ids.toml`, CI mode autodetect (GitHub Actions / GitLab CI / Jenkins) for ASCII-only output |
 | `runtime` | First `get_runtime_paths()` call | K8s / Docker / BareMetal detection (7 indicators), path-set materialisation, `CONTAINER_BASE_PATH` env override |
 | `metrics` | First `create_metrics(namespace)` call | Backend selection (OTel default, Prometheus fallback if OTel not installed), `MetricsManager` content + content-type for an app-served route, process collector (RSS, CPU, FDs via psutil), cardinality cap |
@@ -44,16 +44,16 @@ Read top-to-bottom: install the extra in the first column, get every
 
 | Install | Adds | Automatic |
 |---|---|---|
-| `hyperi-pylib` (base) | `config`, `logger`, `runtime`, `cli`, `health`, `database`, `version_check`, `concurrency`, `harness` | Cascade, structured logs, path detection, version probe |
-| `hyperi-pylib[metrics]` | `metrics` + `prometheus-client` + `psutil` | Above + `MetricsManager.content` for app-served `/metrics` route + process collector + cardinality cap |
-| `hyperi-pylib[opentelemetry]` | OTel SDK + exporters | Above + OTel metric backend + OTLP export (dual with Prometheus) |
-| `hyperi-pylib[http]` | `http` + `httpx` + `stamina` + `purgatory` | Above + HTTP client with retry + circuit breaker + metrics integration |
-| `hyperi-pylib[cache]` | `cache` + `cashews` + `psycopg` | Above + `@cached` decorator + SQLite or PostgreSQL backend |
-| `hyperi-pylib[kafka]` | `kafka` + `confluent-kafka` + `genson` | Above + producer/consumer/admin + schema sampling + consumer-lag health |
-| `hyperi-pylib[secrets-{vault,aws,gcp,azure,ansible-vault}]` | `secrets` provider | Above + uniform interface, lazy-loaded provider |
-| `hyperi-pylib[deployment]` | `deployment` + `pydantic` | Above + `DeploymentContract` + generators + `ContractIdentity` + `test_support` |
-| `hyperi-pylib[expression]` | `expression` + `common-expression-language` | Above + CEL evaluation (Python/Rust parity via PyO3) |
-| `hyperi-pylib[resilience]` | `resilience` + `stamina` + `purgatory` | Above + standalone circuit breaker (already pulled in by `http`/`cache`/`secrets-*`) |
+| `scalo` (base) | `config`, `logger`, `runtime`, `cli`, `health`, `database`, `version_check`, `concurrency`, `harness` | Cascade, structured logs, path detection, version probe |
+| `scalo[metrics]` | `metrics` + `prometheus-client` + `psutil` | Above + `MetricsManager.content` for app-served `/metrics` route + process collector + cardinality cap |
+| `scalo[opentelemetry]` | OTel SDK + exporters | Above + OTel metric backend + OTLP export (dual with Prometheus) |
+| `scalo[http]` | `http` + `httpx` + `stamina` + `purgatory` | Above + HTTP client with retry + circuit breaker + metrics integration |
+| `scalo[cache]` | `cache` + `cashews` + `psycopg` | Above + `@cached` decorator + SQLite or PostgreSQL backend |
+| `scalo[kafka]` | `kafka` + `confluent-kafka` + `genson` | Above + producer/consumer/admin + schema sampling + consumer-lag health |
+| `scalo[secrets-{vault,aws,gcp,azure,ansible-vault}]` | `secrets` provider | Above + uniform interface, lazy-loaded provider |
+| `scalo[deployment]` | `deployment` + `pydantic` | Above + `DeploymentContract` + generators + `ContractIdentity` + `test_support` |
+| `scalo[expression]` | `expression` + `common-expression-language` | Above + CEL evaluation (Python/Rust parity via PyO3) |
+| `scalo[resilience]` | `resilience` + `stamina` + `purgatory` | Above + standalone circuit breaker (already pulled in by `http`/`cache`/`secrets-*`) |
 
 ---
 
@@ -62,7 +62,7 @@ Read top-to-bottom: install the extra in the first column, get every
 ```mermaid
 flowchart TB
     Start["Process start"]
-    Import["import hyperi_pylib.{config,logger,runtime}"]
+    Import["import scalo.{config,logger,runtime}"]
     Cascade["config: load 8 layers"]
     LogFmt["logger: detect TTY/CI, install sink"]
     RtDetect["runtime: detect K8s/Docker/BareMetal"]
@@ -98,7 +98,7 @@ flowchart TB
 Three points:
 
 - The import-time work is cheap (no I/O except cascade file reads).
-  Apps can `import hyperi_pylib.config` from a `__init__.py` without
+  Apps can `import scalo.config` from a `__init__.py` without
   startup latency surprises.
 - `set_ready()` is explicit, not inferred. Until you call it, `/readyz`
   returns 503 — which is the desired K8s rolling-update behaviour.

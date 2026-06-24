@@ -7,7 +7,7 @@ failure patterns — and terminating early when monitoring goes quiet.
 Ships in the base package; uses only stdlib.
 
 ```python
-from hyperi_pylib.harness import (
+from scalo.harness import (
     run, smart_run, smart_run_function,
     ActivityIndicator, SmartTimeoutMonitor, FunctionTimeoutMonitor,
     HarnessResult, TerminationReason,
@@ -19,7 +19,7 @@ from hyperi_pylib.harness import (
 ## Quick start
 
 ```python
-from hyperi_pylib.harness import smart_run
+from scalo.harness import smart_run
 
 result = smart_run(
     ["pytest", "tests/"],
@@ -53,7 +53,7 @@ Use cases:
 ## `run()` — straightforward subprocess
 
 ```python
-from hyperi_pylib.harness import run
+from scalo.harness import run
 
 result = run(
     ["docker", "build", "-t", "myapp", "."],
@@ -83,7 +83,7 @@ saves a few lines in test helpers.
 ## `smart_run()` — activity-aware subprocess
 
 ```python
-from hyperi_pylib.harness import smart_run
+from scalo.harness import smart_run
 
 result = smart_run(
     ["pytest", "-v", "tests/integration/"],
@@ -119,7 +119,7 @@ gracefully, then `kill()`d after 5 seconds if it ignores `SIGTERM`.
 ## `smart_run_function()` — same idea, for Python functions
 
 ```python
-from hyperi_pylib.harness import smart_run_function
+from scalo.harness import smart_run_function
 
 def run_baseline():
     from dfe_ai.vector.parser.vrl import generate
@@ -144,7 +144,7 @@ default) collects stdout/stderr written from inside the function. The
 ## `ActivityIndicator` — explicit activity definitions
 
 ```python
-from hyperi_pylib.harness import ActivityIndicator, SmartTimeoutMonitor
+from scalo.harness import ActivityIndicator, SmartTimeoutMonitor
 
 indicators = ActivityIndicator(
     log_patterns=[r"PROGRESS:", r"step \d+/"],

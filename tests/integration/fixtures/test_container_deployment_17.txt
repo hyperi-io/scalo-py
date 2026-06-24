@@ -5,11 +5,11 @@ WORKDIR /app
 # Install uv
 RUN pip install --no-cache-dir uv
 
-# Copy pyproject.toml and hyperi-pylib source
+# Copy pyproject.toml and scalo source
 COPY pyproject.toml /app/
-COPY src/hyperi-pylib /app/src/hyperi-pylib
+COPY src/scalo /app/src/scalo
 
-# Install hyperi-pylib with api and metrics extras
+# Install scalo with api and metrics extras
 RUN cd /app && uv pip install --system -e '.[api,metrics]'
 
 # Copy application

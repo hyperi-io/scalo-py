@@ -1,6 +1,6 @@
-# Project:   hyperi-pylib
+# Project:   scalo
 # File:      examples/kafka-producer-consumer/pyproject.toml
-# Purpose:   Example project demonstrating hyperi-pylib Kafka client
+# Purpose:   Example project demonstrating scalo Kafka client
 # Language:  Python
 #
 # License:   BUSL-1.1
@@ -9,10 +9,10 @@
 [project]
 name = "kafka-producer-consumer-example"
 version = "0.1.0"
-description = "Example demonstrating hyperi-pylib Kafka producer and consumer"
+description = "Example demonstrating scalo Kafka producer and consumer"
 requires-python = ">=3.12"
 dependencies = [
-    "hyperi-pylib>=2.14.0",
+    "scalo>=2.14.0",
     "confluent-kafka>=2.6.0",
 ]
 

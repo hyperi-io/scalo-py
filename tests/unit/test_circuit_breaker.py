@@ -1,4 +1,4 @@
-#  Project:      hyperi-pylib
+#  Project:      scalo
 #  File:         tests/unit/test_circuit_breaker.py
 #  Purpose:      Tests for circuit breaker matching rustlib state machine
 #  Language:     Python
@@ -14,7 +14,7 @@ import time
 
 import pytest
 
-from hyperi_pylib.resilience import CircuitBreaker, CircuitBreakerConfig, CircuitBreakerError, CircuitState
+from scalo.resilience import CircuitBreaker, CircuitBreakerConfig, CircuitBreakerError, CircuitState
 
 
 class TestCircuitBreakerConfig:

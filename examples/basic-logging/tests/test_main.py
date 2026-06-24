@@ -1,4 +1,4 @@
-# Project:   hyperi-pylib
+# Project:   scalo
 # File:      examples/basic-logging/tests/test_main.py
 # Purpose:   Tests for basic-logging example
 # Language:  Python

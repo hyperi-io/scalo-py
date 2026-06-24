@@ -1,4 +1,4 @@
-# hyperi-pylib docs
+# scalo docs
 
 Shared Python library for HyperI services. Import the modules you need,
 configure them once, and you get an 8-layer config cascade, structured
@@ -18,14 +18,14 @@ Python extras pull in which deps.
 
 | Import this | And these come along | No need to |
 |-------------|----------------------|------------|
-| `from hyperi_pylib import config` | 8-layer cascade, env-var nesting, `.env`, PostgreSQL config source, sensitive masking | Wire dynaconf, write a settings loader |
-| `from hyperi_pylib import logger` | Loguru-backed structured logs, JSON-in-container / human-on-TTY autodetect, RFC 3339 timestamps, gitleaks-based secret scrubbing, rate-limit filter, emoji-to-text for CI | Install loguru, format JSON, hand-roll a scrubber |
-| `from hyperi_pylib import metrics` | Prometheus + OpenTelemetry dual backend, `MetricsManager` content + content-type for an app-served `/metrics` route, process collector, cardinality cap, DFE metric groups (consumer/sink/buffer/circuit-breaker), HTTP middleware | Stand up an exporter, wire a process collector, hand-roll a cardinality limiter |
-| `from hyperi_pylib import health` | `/health/live`, `/health/ready`, `/health/startup` router, downstream-dep registry, K8s-shaped responses | Write probe handlers, manage dependency state |
-| `from hyperi_pylib import runtime` | K8s / Docker / bare-metal autodetect, container-aware paths (config_dir, data_dir, cache_dir, run_dir), `CONTAINER_BASE_PATH` override | Read `/.dockerenv`, parse cgroups, pick path defaults |
-| `from hyperi_pylib import secrets` | OpenBao / Vault / AWS / GCP / Azure / ansible-vault / file providers behind one interface | Pick a provider SDK, wrap each behind a uniform API |
-| `from hyperi_pylib.deployment import DeploymentContract` | Pydantic contract → Dockerfile + Helm chart + ArgoCD Application + container manifest + Compose fragment, all carrying [Contract Identity v1](deployment/IDENTITY.md) labels | Write the generators yourself, keep them in sync, stamp identity by hand |
-| `from hyperi_pylib.kafka import KafkaProducer, KafkaConsumer` | confluent-kafka clients with idempotent retry, schema sampling, consumer lag health, async wrappers | Configure librdkafka, hand-roll a retry wrapper, write a lag probe |
+| `from scalo import config` | 8-layer cascade, env-var nesting, `.env`, PostgreSQL config source, sensitive masking | Wire dynaconf, write a settings loader |
+| `from scalo import logger` | Loguru-backed structured logs, JSON-in-container / human-on-TTY autodetect, RFC 3339 timestamps, gitleaks-based secret scrubbing, rate-limit filter, emoji-to-text for CI | Install loguru, format JSON, hand-roll a scrubber |
+| `from scalo import metrics` | Prometheus + OpenTelemetry dual backend, `MetricsManager` content + content-type for an app-served `/metrics` route, process collector, cardinality cap, DFE metric groups (consumer/sink/buffer/circuit-breaker), HTTP middleware | Stand up an exporter, wire a process collector, hand-roll a cardinality limiter |
+| `from scalo import health` | `/health/live`, `/health/ready`, `/health/startup` router, downstream-dep registry, K8s-shaped responses | Write probe handlers, manage dependency state |
+| `from scalo import runtime` | K8s / Docker / bare-metal autodetect, container-aware paths (config_dir, data_dir, cache_dir, run_dir), `CONTAINER_BASE_PATH` override | Read `/.dockerenv`, parse cgroups, pick path defaults |
+| `from scalo import secrets` | OpenBao / Vault / AWS / GCP / Azure / ansible-vault / file providers behind one interface | Pick a provider SDK, wrap each behind a uniform API |
+| `from scalo.deployment import DeploymentContract` | Pydantic contract → Dockerfile + Helm chart + ArgoCD Application + container manifest + Compose fragment, all carrying [Contract Identity v1](deployment/IDENTITY.md) labels | Write the generators yourself, keep them in sync, stamp identity by hand |
+| `from scalo.kafka import KafkaProducer, KafkaConsumer` | confluent-kafka clients with idempotent retry, schema sampling, consumer lag health, async wrappers | Configure librdkafka, hand-roll a retry wrapper, write a lag probe |
 
 That's the value proposition. Everything else is "and here's how the
 pieces work".
@@ -145,6 +145,6 @@ flowchart TB
 
 ## Project facts
 
-- **Package:** [hyperi-pylib](https://pypi.org/project/hyperi-pylib/) (PyPI)
+- **Package:** [scalo](https://pypi.org/project/scalo/) (PyPI)
 - **Python:** ≥3.12
 - **Sibling lib:** [hyperi-rustlib](https://github.com/hyperi-io/hyperi-rustlib) (Rust equivalent; same subdir layout where the concept maps 1:1)

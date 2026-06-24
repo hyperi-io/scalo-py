@@ -9,7 +9,7 @@ and the standard DFE metric catalogue. The same code path serves
 time.
 
 ```python
-from hyperi_pylib.metrics import create_metrics
+from scalo.metrics import create_metrics
 
 m = create_metrics("my_service")
 requests = m.counter("requests_total", "Total requests", ["method", "status"])
@@ -80,8 +80,8 @@ with the standard names and labels HyperI services emit.
 | `CircuitBreakerMetrics` | `circuit_breaker_state` (gauge: 0=closed, 1=open, 2=half_open), `circuit_breaker_transitions_total` | Apps with circuit-protected downstreams |
 
 ```python
-from hyperi_pylib.metrics import create_metrics
-from hyperi_pylib.metrics.dfe_groups import (
+from scalo.metrics import create_metrics
+from scalo.metrics.dfe_groups import (
     AppMetrics, ConsumerMetrics, BufferMetrics, SinkMetrics,
 )
 
@@ -110,7 +110,7 @@ This prevents the classic Prometheus blow-up where a user ID or
 request path becomes a label and the time-series count explodes.
 
 ```python
-from hyperi_pylib.metrics import CardinalityTracker
+from scalo.metrics import CardinalityTracker
 
 tracker = CardinalityTracker(max_cardinality=50)
 tracker.track("requests_total", {"method": "GET", "status": "200"})
@@ -147,7 +147,7 @@ the OTel SDK's own hook (LIFO order) to flush pending metrics; see
 
 ```python
 from fastapi import FastAPI, Response
-from hyperi_pylib.metrics import create_metrics
+from scalo.metrics import create_metrics
 
 app = FastAPI()
 m = create_metrics("my_service")

@@ -1,6 +1,6 @@
 # Kafka
 
-`hyperi_pylib.kafka` wraps the `confluent-kafka` Python client (librdkafka
+`scalo.kafka` wraps the `confluent-kafka` Python client (librdkafka
 under the hood) with corporate defaults, a simplified API, optional async
 wrappers, schema-sampling helpers, and a consumer-lag health probe that
 does not require JMX. Defaults are at-least-once
@@ -29,7 +29,7 @@ What you get over raw librdkafka:
 ### KafkaProducer
 
 ```python
-from hyperi_pylib.kafka import KafkaProducer
+from scalo.kafka import KafkaProducer
 
 with KafkaProducer("localhost:9092") as producer:
     producer.send("events", value={"event": "user_created", "user_id": 123})
@@ -61,7 +61,7 @@ assign (manual partitions). Auto-commit is **off**, you commit
 explicitly.
 
 ```python
-from hyperi_pylib.kafka import KafkaConsumer
+from scalo.kafka import KafkaConsumer
 
 with KafkaConsumer("localhost:9092", group_id="my-service") as consumer:
     consumer.subscribe("events")           # or ["events", "audit"]
@@ -92,7 +92,7 @@ Two admin classes with different scopes:
   (earliest / latest / timestamp / datetime).
 
 ```python
-from hyperi_pylib.kafka import KafkaAdmin
+from scalo.kafka import KafkaAdmin
 from datetime import datetime, timezone
 
 admin = KafkaAdmin("localhost:9092")
@@ -123,7 +123,7 @@ wrappers that push blocking librdkafka calls into a `ThreadPoolExecutor`
 executor unless one is supplied, shutting it down on `__aexit__`.
 
 ```python
-from hyperi_pylib.kafka import AsyncKafkaProducer, AsyncKafkaConsumer
+from scalo.kafka import AsyncKafkaProducer, AsyncKafkaConsumer
 
 async with AsyncKafkaProducer("localhost:9092") as producer:
     await producer.send("events", {"event": "x"})
@@ -228,7 +228,7 @@ For "what's in this topic?" discovery -- inferring a JSON schema and
 field statistics from a sample of messages.
 
 ```python
-from hyperi_pylib.kafka import (
+from scalo.kafka import (
     KafkaConsumer, SchemaAnalyser,
     partition_sample, time_bounded_consume, reservoir_sample,
 )
@@ -274,10 +274,10 @@ partition imbalance, broker disconnects, fetch errors. Warnings are
 rate-limited (default 60s) so a stuck consumer does not flood logs.
 
 ```python
-from hyperi_pylib.kafka import (
+from scalo.kafka import (
     KafkaConsumerHealth, KafkaMetricsCollector, create_stats_callback,
 )
-from hyperi_pylib.health import HealthManager
+from scalo.health import HealthManager
 
 collector = KafkaMetricsCollector()
 kafka_health = KafkaConsumerHealth.from_config(collector, consumer_count=3)
@@ -325,7 +325,7 @@ metrics scraper or monitoring tool runs with admin credentials and you
 want a hard guarantee it cannot mutate data.
 
 ```python
-from hyperi_pylib.kafka import ReadOnlyKafkaClient, config_from_env
+from scalo.kafka import ReadOnlyKafkaClient, config_from_env
 
 with ReadOnlyKafkaClient(config_from_env()) as client:
     for topic in client.list_topics():

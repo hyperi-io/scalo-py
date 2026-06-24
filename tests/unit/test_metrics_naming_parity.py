@@ -1,4 +1,4 @@
-#  Project:      hyperi-pylib
+#  Project:      scalo
 #  File:         test_metrics_naming_parity.py
 #  Purpose:      Verify validate_metric_name and validate_dfe_prefix against shared corpus
 #  Language:     Python
@@ -22,7 +22,7 @@ from pathlib import Path
 import pytest
 import yaml
 
-from hyperi_pylib.metrics.naming import validate_dfe_prefix, validate_metric_name
+from scalo.metrics.naming import validate_dfe_prefix, validate_metric_name
 
 # Path to the shared fixture file inside the hyperi-ai submodule
 _FIXTURES_PATH = Path(__file__).parents[2] / "hyperi-ai" / "test-fixtures" / "metrics-naming.yaml"

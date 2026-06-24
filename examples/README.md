@@ -1,6 +1,6 @@
-# hyperi-pylib Examples
+# scalo Examples
 
-Standalone example projects demonstrating hyperi-pylib features.
+Standalone example projects demonstrating scalo features.
 
 Each example is a complete, runnable project with its own `pyproject.toml`, tests, and documentation.
 
@@ -37,7 +37,7 @@ All examples follow this structure:
 
 ```
 <example-name>/
-├── pyproject.toml      # Project config with hyperi-pylib dependency
+├── pyproject.toml      # Project config with scalo dependency
 ├── README.md           # Documentation
 ├── main.py             # Main example code
 ├── tests/
@@ -52,9 +52,9 @@ All examples follow this structure:
 - [uv](https://github.com/astral-sh/uv) package manager (recommended)
 - Docker (for postgres-cache and kafka examples)
 
-## Installing hyperi-pylib
+## Installing scalo
 
-Examples install hyperi-pylib from PyPI. For local development against the library source:
+Examples install scalo from PyPI. For local development against the library source:
 
 ```bash
 # From the example directory
@@ -93,7 +93,7 @@ Some examples require external services:
 When adding new examples:
 
 1. Create a new directory under `examples/`
-2. Include `pyproject.toml` with hyperi-pylib dependency
+2. Include `pyproject.toml` with scalo dependency
 3. Include `README.md` with quick start and explanation
 4. Include `main.py` as the entry point
 5. Include `tests/test_main.py` with basic tests
@@ -101,5 +101,5 @@ When adding new examples:
 
 ## See Also
 
-- [hyperi-pylib Documentation](../docs/)
-- [hyperi-pylib API Reference](../src/hyperi_pylib/)
+- [scalo Documentation](../docs/)
+- [scalo API Reference](../src/scalo/)

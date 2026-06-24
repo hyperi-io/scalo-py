@@ -1,4 +1,4 @@
-# Project:   hyperi-pylib
+# Project:   scalo
 # File:      examples/config-cascade/tests/__init__.py
 # Purpose:   Test package for config-cascade example
 # Language:  Python

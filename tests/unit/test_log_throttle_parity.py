@@ -1,4 +1,4 @@
-#  Project:      hyperi-pylib
+#  Project:      scalo
 #  File:         test_log_throttle_parity.py
 #  Purpose:      Verify RateLimitFilter behaviour matches rustlib's log throttle pattern
 #  Language:     Python
@@ -9,7 +9,7 @@
 """
 Parity tests for log throttle alignment with hyperi-rustlib.
 
-These tests verify that hyperi-pylib's RateLimitFilter behaviour matches
+These tests verify that scalo's RateLimitFilter behaviour matches
 hyperi-rustlib's log throttle implementation per the unified spec.
 
 Rustlib pattern: identical (or normalised) messages within a window are suppressed;
@@ -18,7 +18,7 @@ the next emission after the window appends a "(suppressed N similar)" summary.
 
 import time
 
-from hyperi_pylib.logger.filters import RateLimitFilter
+from scalo.logger.filters import RateLimitFilter
 
 
 def _make_record(message: str, level_no: int = 20, name: str = "test.logger") -> dict:

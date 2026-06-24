@@ -6,8 +6,8 @@ from pathlib import Path
 
 import pytest
 
-from hyperi_pylib.secrets.cache import DiskCache
-from hyperi_pylib.secrets.types import CacheConfig, SecretValue
+from scalo.secrets.cache import DiskCache
+from scalo.secrets.types import CacheConfig, SecretValue
 
 
 class TestDiskCache:

@@ -1,4 +1,4 @@
-#  Project:   hyperi-pylib
+#  Project:   scalo
 #  File:      tests/unit/test_scrub_pii_edge_cases.py
 #  Purpose:   Edge cases, non-ASCII, thread-safety, cross-validator scrubbing
 #  Language:  Python
@@ -27,8 +27,8 @@ import threading
 
 import pytest
 
-from hyperi_pylib.logger.scrub import LayeredScrubber, ScrubConfig
-from hyperi_pylib.logger.scrub.pii import (
+from scalo.logger.scrub import LayeredScrubber, ScrubConfig
+from scalo.logger.scrub.pii import (
     CreditCardValidator,
     EmailValidator,
     IbanValidator,
@@ -36,7 +36,7 @@ from hyperi_pylib.logger.scrub.pii import (
     _DynamicValidator,
     load_registry,
 )
-from hyperi_pylib.logger.scrub.pii._base import _Validator
+from scalo.logger.scrub.pii._base import _Validator
 
 _REGISTRY = load_registry()
 

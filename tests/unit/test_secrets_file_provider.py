@@ -6,14 +6,14 @@ from pathlib import Path
 
 import pytest
 
-from hyperi_pylib.secrets.exceptions import (
+from scalo.secrets.exceptions import (
     ProviderError,
     SecretAlreadyExistsError,
     SecretNotFoundError,
     SecretPermissionError,
 )
-from hyperi_pylib.secrets.providers.file import FileProvider
-from hyperi_pylib.secrets.types import SecretFilter
+from scalo.secrets.providers.file import FileProvider
+from scalo.secrets.types import SecretFilter
 
 
 class TestFileProvider:

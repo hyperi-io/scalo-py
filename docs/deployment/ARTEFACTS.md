@@ -6,7 +6,7 @@ templated) so it stays byte-equivalent with rustlib's `format!()`
 output across the two implementations.
 
 ```python
-from hyperi_pylib.deployment import (
+from scalo.deployment import (
     generate_dockerfile,
     generate_runtime_stage,
     generate_container_manifest,

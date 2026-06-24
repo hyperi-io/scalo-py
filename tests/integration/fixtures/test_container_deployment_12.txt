@@ -1,6 +1,6 @@
 apiVersion: v2
-name: hyperi-pylib-test
-description: A Helm chart for testing hyperi-pylib
+name: scalo-test
+description: A Helm chart for testing scalo
 type: application
 version: 0.1.0
 appVersion: "1.0"

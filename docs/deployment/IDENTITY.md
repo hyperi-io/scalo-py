@@ -12,7 +12,7 @@ Import surface -- no pydantic dependency, importable as soon as the
 deployment package is available:
 
 ```python
-from hyperi_pylib.deployment import (
+from scalo.deployment import (
     KEY_PREFIX,        # "io.hyperi.contract"
     VERSION,           # "v1"
     ContractIdentity,

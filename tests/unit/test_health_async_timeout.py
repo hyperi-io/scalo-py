@@ -1,4 +1,4 @@
-#  Project:   hyperi-pylib
+#  Project:   scalo
 #  File:      tests/unit/test_health_async_timeout.py
 #  Purpose:   Verify async probes apply per-check timeout + offload sync checks
 #  Language:  Python
@@ -21,7 +21,7 @@ import time
 
 import pytest
 
-from hyperi_pylib.health.manager import HealthManager
+from scalo.health.manager import HealthManager
 
 
 @pytest.mark.asyncio

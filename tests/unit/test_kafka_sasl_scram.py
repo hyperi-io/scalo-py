@@ -1,4 +1,4 @@
-# Project:   hyperi-pylib
+# Project:   scalo
 # File:      tests/unit/test_kafka_sasl_scram.py
 # Purpose:   Unit tests for Kafka SASL-SCRAM helper functions
 # Language:  Python
@@ -12,7 +12,7 @@ from __future__ import annotations
 
 import pytest
 
-from hyperi_pylib.kafka import (
+from scalo.kafka import (
     CONSUMER_DEFAULTS,
     PRODUCER_DEFAULTS,
     external_sasl_scram,
@@ -85,14 +85,14 @@ class TestInternalSaslScram:
 
 
 class TestExportedFromPackage:
-    """Verify both helpers are reachable from ``hyperi_pylib.kafka``."""
+    """Verify both helpers are reachable from ``scalo.kafka``."""
 
     def test_external_importable(self):
-        from hyperi_pylib.kafka import external_sasl_scram as ext
+        from scalo.kafka import external_sasl_scram as ext
 
         assert callable(ext)
 
     def test_internal_importable(self):
-        from hyperi_pylib.kafka import internal_sasl_scram as itn
+        from scalo.kafka import internal_sasl_scram as itn
 
         assert callable(itn)

@@ -1,4 +1,4 @@
-#  Project:   hyperi-pylib
+#  Project:   scalo
 #  File:      tests/unit/test_secrets_cache_atomic.py
 #  Purpose:   Verify atomic write + 0o600 perms + clear() error propagation
 #  Language:  Python
@@ -20,8 +20,8 @@ from datetime import UTC, datetime
 
 import pytest
 
-from hyperi_pylib.secrets.cache import DiskCache
-from hyperi_pylib.secrets.types import CacheConfig, SecretValue
+from scalo.secrets.cache import DiskCache
+from scalo.secrets.types import CacheConfig, SecretValue
 
 
 @pytest.fixture

@@ -1,4 +1,4 @@
-#  Project:   hyperi-pylib
+#  Project:   scalo
 #  File:      tests/common/fake_secrets.py
 #  Purpose:   Runtime-constructed fake secret fixtures for scrubber tests
 #  Language:  Python

@@ -1,4 +1,4 @@
-#  Project:      hyperi-pylib
+#  Project:      scalo
 #  File:         test_config_reloader.py
 #  Purpose:      Tests for ConfigReloader -- config reload with polling and callbacks
 #  Language:     Python
@@ -14,7 +14,7 @@ import sys
 
 import pytest
 
-from hyperi_pylib.config.reloader import ConfigReloader, ReloaderConfig
+from scalo.config.reloader import ConfigReloader, ReloaderConfig
 
 # ---------------------------------------------------------------------------
 # Helpers
@@ -53,7 +53,7 @@ class TestReloadNowCallback:
         assert tracker.call_count == 1
 
     def test_on_reload_receives_settings_object(self) -> None:
-        from hyperi_pylib.config import settings
+        from scalo.config import settings
 
         tracker = CallTracker()
         reloader = ConfigReloader(on_reload=tracker)

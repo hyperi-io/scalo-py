@@ -1,6 +1,6 @@
-# Project:   hyperi-pylib
+# Project:   scalo
 # File:      examples/basic-logging/main.py
-# Purpose:   Demonstrate hyperi-pylib structured logging
+# Purpose:   Demonstrate scalo structured logging
 # Language:  Python
 #
 # License:   BUSL-1.1
@@ -9,11 +9,11 @@
 """
 Basic Logging Example.
 
-Demonstrates hyperi-pylib's structured logging with automatic environment detection.
+Demonstrates scalo's structured logging with automatic environment detection.
 Run with: uv run python main.py
 """
 
-from hyperi_pylib.logger import debug, error, info, logger, success, warning
+from scalo.logger import debug, error, info, logger, success, warning
 
 
 def process_user(user_id: int, action: str) -> bool:

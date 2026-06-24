@@ -1,4 +1,4 @@
-#  Project:      hyperi-pylib
+#  Project:      scalo
 #  File:         test_metrics_naming.py
 #  Purpose:      Tests for DFE metric naming validation
 #  Language:     Python
@@ -8,7 +8,7 @@
 
 """Tests for DFE metric naming validation."""
 
-from hyperi_pylib.metrics.naming import validate_dfe_prefix, validate_metric_name
+from scalo.metrics.naming import validate_dfe_prefix, validate_metric_name
 
 
 class TestValidateMetricName:

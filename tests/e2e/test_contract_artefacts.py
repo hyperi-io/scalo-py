@@ -1,4 +1,4 @@
-# Project:   hyperi-pylib
+# Project:   scalo
 # File:      tests/e2e/test_contract_artefacts.py
 # Purpose:   TEMPLATE -- end-to-end tests for the deployment-contract artefacts
 # Language:  Python
@@ -10,7 +10,7 @@
 
 This file is BOTH:
 
-1. A self-test for hyperi-pylib's own deployment subsystem (a small mock
+1. A self-test for scalo's own deployment subsystem (a small mock
    binary stands in for a real app entrypoint).
 2. A TEMPLATE that Python DFE consumers copy into their own
    ``tests/e2e/`` to get the same coverage shape against their app.
@@ -42,7 +42,7 @@ from pathlib import Path
 import pytest
 import yaml
 
-from hyperi_pylib.deployment import (
+from scalo.deployment import (
     ArgocdConfig,
     ContractIdentity,
     DeploymentContract,
@@ -54,7 +54,7 @@ from hyperi_pylib.deployment import (
     generate_argocd_application,
     generate_chart,
 )
-from hyperi_pylib.deployment.test_support import (
+from scalo.deployment.test_support import (
     docker_available,
     docker_empty_creds_json,
     ensure_kind_cluster,

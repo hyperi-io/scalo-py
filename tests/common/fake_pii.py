@@ -1,4 +1,4 @@
-#  Project:   hyperi-pylib
+#  Project:   scalo
 #  File:      tests/common/fake_pii.py
 #  Purpose:   Runtime-constructed fake PII fixtures for scrubber tests
 #  Language:  Python
@@ -146,7 +146,7 @@ def au_acn_with_context() -> str:
 def au_medicare_with_context() -> str:
     """A valid AU Medicare number with the required keyword anchor.
 
-    Verified to pass ``hyperi_pylib.logger.scrub.pii.au_medicare._is_valid_medicare``.
+    Verified to pass ``scalo.logger.scrub.pii.au_medicare._is_valid_medicare``.
     """
     digits = "2428" + " 77813 2"
     return "Medicare " + "card " + digits

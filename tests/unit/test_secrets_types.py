@@ -4,7 +4,7 @@ from datetime import UTC, datetime, timedelta
 
 import pytest
 
-from hyperi_pylib.secrets.types import (
+from scalo.secrets.types import (
     AWSConfig,
     CacheConfig,
     OpenBaoConfig,

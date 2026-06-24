@@ -1,4 +1,4 @@
-#  Project:   hyperi-pylib
+#  Project:   scalo
 #  File:      tests/unit/test_scrub_parity_fixtures.py
 #  Purpose:   Cross-language parity tests driven by the shared TOML fixtures
 #  Language:  Python
@@ -8,7 +8,7 @@
 
 """Cross-language parity tests for L3 PII validators.
 
-Reads ``hyperi_pylib/data/pii_test_fixtures.toml`` (vendored byte-
+Reads ``scalo/data/pii_test_fixtures.toml`` (vendored byte-
 identical from
 ``hyperi-ai/standards/patterns/pii_test_fixtures.toml``) and verifies
 that pylib's validators redact every ``valid`` sample, never redact
@@ -26,7 +26,7 @@ from importlib import resources
 
 import pytest
 
-from hyperi_pylib.logger.scrub import (
+from scalo.logger.scrub import (
     NationalIdsConfig,
     PiiConfig,
     PiiValidatorsConfig,
@@ -41,7 +41,7 @@ from hyperi_pylib.logger.scrub import (
 
 
 def _load_fixtures() -> dict:
-    resource = resources.files("hyperi_pylib") / "data" / "pii_test_fixtures.toml"
+    resource = resources.files("scalo") / "data" / "pii_test_fixtures.toml"
     with resource.open("rb") as f:
         return tomllib.load(f)
 

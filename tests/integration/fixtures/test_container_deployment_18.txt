@@ -1,4 +1,4 @@
 apiVersion: v2
-name: hyperi-pylib-api-test
+name: scalo-api-test
 version: 0.1.0
-description: Helm chart for hyperi-pylib API deployment test
+description: Helm chart for scalo API deployment test

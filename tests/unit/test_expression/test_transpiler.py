@@ -1,4 +1,4 @@
-# Project:   hyperi-pylib
+# Project:   scalo
 # File:      tests/test_expression/test_transpiler.py
 # Purpose:   Tests for CEL-to-ClickHouse SQL transpiler
 # Language:  Python
@@ -10,7 +10,7 @@
 
 import pytest
 
-from hyperi_pylib.expression import (
+from scalo.expression import (
     ExpressionError,
     TranspileError,
     transpile_to_clickhouse,

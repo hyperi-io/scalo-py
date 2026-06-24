@@ -1,4 +1,4 @@
-#  Project:   hyperi-pylib
+#  Project:   scalo
 #  File:      tests/unit/test_kafka_repr_masking.py
 #  Purpose:   Verify Kafka client __repr__ masks SASL/SSL credentials
 #  Language:  Python
@@ -36,19 +36,19 @@ def patched():
     """Patch all confluent_kafka client constructors so we can instantiate
     without a real broker."""
     with (
-        patch("hyperi_pylib.kafka.client.AdminClient", return_value=MagicMock()),
-        patch("hyperi_pylib.kafka.producer.Producer", return_value=MagicMock()),
-        patch("hyperi_pylib.kafka.consumer.Consumer", return_value=MagicMock()),
-        patch("hyperi_pylib.kafka.admin.AdminClient", return_value=MagicMock()),
-        patch("hyperi_pylib.kafka.async_client.AdminClient", return_value=MagicMock()),
-        patch("hyperi_pylib.kafka.async_consumer.Consumer", return_value=MagicMock()),
-        patch("hyperi_pylib.kafka.async_producer.Producer", return_value=MagicMock()),
+        patch("scalo.kafka.client.AdminClient", return_value=MagicMock()),
+        patch("scalo.kafka.producer.Producer", return_value=MagicMock()),
+        patch("scalo.kafka.consumer.Consumer", return_value=MagicMock()),
+        patch("scalo.kafka.admin.AdminClient", return_value=MagicMock()),
+        patch("scalo.kafka.async_client.AdminClient", return_value=MagicMock()),
+        patch("scalo.kafka.async_consumer.Consumer", return_value=MagicMock()),
+        patch("scalo.kafka.async_producer.Producer", return_value=MagicMock()),
     ):
         yield
 
 
 def test_kafka_client_repr_masks_creds(patched):
-    from hyperi_pylib.kafka.client import KafkaClient
+    from scalo.kafka.client import KafkaClient
 
     r = repr(KafkaClient(_config_with_creds()))
     assert SECRET not in r
@@ -56,49 +56,49 @@ def test_kafka_client_repr_masks_creds(patched):
 
 
 def test_kafka_producer_repr_masks_creds(patched):
-    from hyperi_pylib.kafka.producer import KafkaProducer
+    from scalo.kafka.producer import KafkaProducer
 
     r = repr(KafkaProducer(_config_with_creds()))
     assert SECRET not in r
 
 
 def test_kafka_consumer_repr_masks_creds(patched):
-    from hyperi_pylib.kafka.consumer import KafkaConsumer
+    from scalo.kafka.consumer import KafkaConsumer
 
     r = repr(KafkaConsumer(_config_with_creds(), group_id="g"))
     assert SECRET not in r
 
 
 def test_kafka_admin_repr_masks_creds(patched):
-    from hyperi_pylib.kafka.admin import KafkaAdmin
+    from scalo.kafka.admin import KafkaAdmin
 
     r = repr(KafkaAdmin(_config_with_creds()))
     assert SECRET not in r
 
 
 def test_async_kafka_client_repr_masks_creds(patched):
-    from hyperi_pylib.kafka.async_client import AsyncKafkaClient
+    from scalo.kafka.async_client import AsyncKafkaClient
 
     r = repr(AsyncKafkaClient(_config_with_creds()))
     assert SECRET not in r
 
 
 def test_async_kafka_consumer_repr_masks_creds(patched):
-    from hyperi_pylib.kafka.async_consumer import AsyncKafkaConsumer
+    from scalo.kafka.async_consumer import AsyncKafkaConsumer
 
     r = repr(AsyncKafkaConsumer(_config_with_creds(), group_id="g"))
     assert SECRET not in r
 
 
 def test_async_kafka_producer_repr_masks_creds(patched):
-    from hyperi_pylib.kafka.async_producer import AsyncKafkaProducer
+    from scalo.kafka.async_producer import AsyncKafkaProducer
 
     r = repr(AsyncKafkaProducer(_config_with_creds()))
     assert SECRET not in r
 
 
 def test_mask_credentials_keeps_non_cred_keys():
-    from hyperi_pylib.kafka.config import mask_credentials
+    from scalo.kafka.config import mask_credentials
 
     cfg = {
         "bootstrap.servers": "host:9092",

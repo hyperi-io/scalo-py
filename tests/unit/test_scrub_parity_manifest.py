@@ -1,4 +1,4 @@
-#  Project:   hyperi-pylib
+#  Project:   scalo
 #  File:      tests/unit/test_scrub_parity_manifest.py
 #  Purpose:   Lock the cross-language parity manifest shape
 #  Language:  Python
@@ -22,7 +22,7 @@ import sys
 
 import pytest
 
-from hyperi_pylib.logger.scrub.parity_manifest import (
+from scalo.logger.scrub.parity_manifest import (
     CONFIG_KEYS,
     METRIC_NAMES,
     build_manifest,
@@ -50,7 +50,7 @@ class TestManifestShape:
         }
 
     def test_implementation_self_identifies(self, m):
-        assert m["implementation"] == "hyperi-pylib"
+        assert m["implementation"] == "scalo"
         assert m["language"] == "python"
 
     def test_spec_version_is_pinned(self, m):
@@ -131,18 +131,18 @@ class TestManifestJsonRoundTrip:
         s = json.dumps(m, sort_keys=True)
         # And deserialisable
         back = json.loads(s)
-        assert back["implementation"] == "hyperi-pylib"
+        assert back["implementation"] == "scalo"
 
     def test_cli_entrypoint_emits_json(self):
         """``python -m ...parity_manifest`` produces valid JSON on stdout."""
         result = subprocess.run(
-            [sys.executable, "-m", "hyperi_pylib.logger.scrub.parity_manifest"],
+            [sys.executable, "-m", "scalo.logger.scrub.parity_manifest"],
             capture_output=True,
             text=True,
             check=True,
         )
         manifest = json.loads(result.stdout)
-        assert manifest["implementation"] == "hyperi-pylib"
+        assert manifest["implementation"] == "scalo"
         assert "metric_names" in manifest
 
 

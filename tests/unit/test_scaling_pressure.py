@@ -1,4 +1,4 @@
-#  Project:      hyperi-pylib
+#  Project:      scalo
 #  File:         test_scaling_pressure.py
 #  Purpose:      Tests for scaling pressure calculator matching rustlib
 #  Language:     Python
@@ -13,8 +13,8 @@ import time
 
 import pytest
 
-from hyperi_pylib.scaling import ScalingPressure, ScalingPressureConfig
-from hyperi_pylib.scaling.pressure import PressureSnapshot
+from scalo.scaling import ScalingPressure, ScalingPressureConfig
+from scalo.scaling.pressure import PressureSnapshot
 
 
 class TestScalingPressureConfig:
@@ -400,7 +400,7 @@ class TestRegisterGauge:
 
     def test_register_gauge_with_metrics_manager(self):
         """register_gauge creates a scaling_pressure gauge on MetricsManager."""
-        from hyperi_pylib.metrics import MetricsManager, create_metrics
+        from scalo.metrics import MetricsManager, create_metrics
 
         mgr = create_metrics(f"test_scaling_{int(time.monotonic_ns())}", backend="prometheus", enable_auto_update=False)
         sp = ScalingPressure()
@@ -415,7 +415,7 @@ class TestRegisterGauge:
 
     def test_register_gauge_updates_on_calculate(self):
         """Gauge value updates each time calculate() is called."""
-        from hyperi_pylib.metrics import create_metrics
+        from scalo.metrics import create_metrics
 
         mgr = create_metrics(f"test_scaling_{int(time.monotonic_ns())}", backend="prometheus", enable_auto_update=False)
         sp = ScalingPressure()
@@ -445,14 +445,14 @@ class TestImports:
     """Test public API imports."""
 
     def test_import_from_scaling_package(self):
-        """ScalingPressure and config are importable from hyperi_pylib.scaling."""
-        from hyperi_pylib.scaling import ScalingPressure, ScalingPressureConfig
+        """ScalingPressure and config are importable from scalo.scaling."""
+        from scalo.scaling import ScalingPressure, ScalingPressureConfig
 
         assert ScalingPressure is not None
         assert ScalingPressureConfig is not None
 
     def test_import_snapshot_from_pressure_module(self):
-        """PressureSnapshot is importable from hyperi_pylib.scaling.pressure."""
-        from hyperi_pylib.scaling.pressure import PressureSnapshot
+        """PressureSnapshot is importable from scalo.scaling.pressure."""
+        from scalo.scaling.pressure import PressureSnapshot
 
         assert PressureSnapshot is not None

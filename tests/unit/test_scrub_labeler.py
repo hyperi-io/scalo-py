@@ -1,4 +1,4 @@
-#  Project:   hyperi-pylib
+#  Project:   scalo
 #  File:      tests/unit/test_scrub_labeler.py
 #  Purpose:   Tests for redaction-label formatting (static + deterministic-hash)
 #  Language:  Python
@@ -14,7 +14,7 @@ import re
 
 import pytest
 
-from hyperi_pylib.logger.scrub import (
+from scalo.logger.scrub import (
     PiiConfig,
     PiiValidatorsConfig,
     ScrubConfig,
@@ -23,7 +23,7 @@ from hyperi_pylib.logger.scrub import (
     make_hash_labeler,
     resolve_labeler,
 )
-from hyperi_pylib.logger.scrub.labeler import _static_label
+from scalo.logger.scrub.labeler import _static_label
 
 # ---------------------------------------------------------------------------
 # Static labeler

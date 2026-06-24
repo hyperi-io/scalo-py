@@ -1,4 +1,4 @@
-# Project:   hyperi-pylib
+# Project:   scalo
 # File:      examples/kafka-producer-consumer/tests/test_main.py
 # Purpose:   Tests for kafka-producer-consumer example
 # Language:  Python
@@ -20,19 +20,19 @@ class TestImports:
 
     def test_kafka_producer_import(self) -> None:
         """Should be able to import KafkaProducer."""
-        from hyperi_pylib.kafka import KafkaProducer
+        from scalo.kafka import KafkaProducer
 
         assert KafkaProducer is not None
 
     def test_kafka_consumer_import(self) -> None:
         """Should be able to import KafkaConsumer."""
-        from hyperi_pylib.kafka import KafkaConsumer
+        from scalo.kafka import KafkaConsumer
 
         assert KafkaConsumer is not None
 
     def test_kafka_client_import(self) -> None:
         """Should be able to import KafkaClient."""
-        from hyperi_pylib.kafka import KafkaClient
+        from scalo.kafka import KafkaClient
 
         assert KafkaClient is not None
 
@@ -99,7 +99,7 @@ class TestIntegration:
 
     def test_producer_creates_successfully(self) -> None:
         """Should be able to create a producer."""
-        from hyperi_pylib.kafka import KafkaProducer
+        from scalo.kafka import KafkaProducer
 
         producer = KafkaProducer(
             {
@@ -110,7 +110,7 @@ class TestIntegration:
 
     def test_consumer_creates_successfully(self) -> None:
         """Should be able to create a consumer."""
-        from hyperi_pylib.kafka import KafkaConsumer
+        from scalo.kafka import KafkaConsumer
 
         consumer = KafkaConsumer(
             {

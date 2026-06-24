@@ -4,7 +4,7 @@ Container vs bare-metal detection and container-aware path resolution.
 One import, identical code in K8s, Docker, and local development.
 
 ```python
-from hyperi_pylib.runtime import get_runtime_paths
+from scalo.runtime import get_runtime_paths
 
 paths = get_runtime_paths("my-app")
 config_file = paths.config_dir / "app.yaml"   # /app/config in container, ~/.my-app/config locally
@@ -80,7 +80,7 @@ class RuntimePaths:
 when you need a guaranteed cache path.
 
 There is no `secrets_dir` field on `RuntimePaths`. Secrets live behind
-`hyperi_pylib.secrets.SecretsManager` -- file-backed providers can
+`scalo.secrets.SecretsManager` -- file-backed providers can
 point at `config_dir / "secrets"` or a K8s `Secret` mount path of your
 choosing.
 
@@ -183,7 +183,7 @@ this for you.
 `force_mode` bypasses detection entirely:
 
 ```python
-from hyperi_pylib.runtime import RuntimeEnvironment
+from scalo.runtime import RuntimeEnvironment
 
 # Container layout, regardless of host
 paths = RuntimeEnvironment("my-app", force_mode="container").detect_runtime()

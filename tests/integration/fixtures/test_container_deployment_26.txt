@@ -1,4 +1,4 @@
 apiVersion: v2
-name: hyperi-pylib-pod-test
+name: scalo-pod-test
 version: 0.1.0
-description: Helm chart for hyperi-pylib Pod deployment test
+description: Helm chart for scalo Pod deployment test

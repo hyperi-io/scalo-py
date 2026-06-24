@@ -7,19 +7,19 @@ from unittest.mock import patch
 import pytest
 import yaml
 
-from hyperi_pylib.secrets.exceptions import (
+from scalo.secrets.exceptions import (
     ProviderError,
     SecretAlreadyExistsError,
     SecretNotFoundError,
     SecretPermissionError,
 )
-from hyperi_pylib.secrets.providers.ansible_vault import (
+from scalo.secrets.providers.ansible_vault import (
     ANSIBLE_VAULT_AVAILABLE,
     AnsibleVaultProvider,
     _read_password_file,
     _resolve_password,
 )
-from hyperi_pylib.secrets.types import AnsibleVaultConfig, SecretFilter
+from scalo.secrets.types import AnsibleVaultConfig, SecretFilter
 
 # Skip entire module if ansible-vault not installed
 pytestmark = pytest.mark.skipif(not ANSIBLE_VAULT_AVAILABLE, reason="ansible-vault not installed")

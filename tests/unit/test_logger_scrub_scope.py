@@ -1,4 +1,4 @@
-# Project:   hyperi-pylib
+# Project:   scalo
 # File:      tests/unit/test_logger_scrub_scope.py
 # Purpose:   Verify scrubbing covers record["extra"] (bind context) + exception chain
 # Language:  Python
@@ -18,7 +18,7 @@ import io
 import pytest
 from loguru import logger
 
-from hyperi_pylib.logger.logger import setup as setup_logger
+from scalo.logger.logger import setup as setup_logger
 
 
 @pytest.fixture(autouse=True)
@@ -33,8 +33,8 @@ def _capture_sink() -> io.StringIO:
     setup_logger(mask_sensitive=True, masking_level="simple")
     # Replace the auto-configured sinks with our capture buffer
     logger.remove()
-    from hyperi_pylib.logger.filters import SensitiveDataFilter
-    from hyperi_pylib.logger.logger import _add_emoji_to_record
+    from scalo.logger.filters import SensitiveDataFilter
+    from scalo.logger.logger import _add_emoji_to_record
 
     flt = _add_emoji_to_record(
         use_emojis=False,
@@ -73,7 +73,7 @@ def test_exception_args_runtime_secret_url_scrubbed_from_str():
         raise RuntimeError(msg)
     except RuntimeError as e:
         # Simulate the filter pass that loguru would run before sink-out
-        from hyperi_pylib.logger.filters import SensitiveDataFilter
+        from scalo.logger.filters import SensitiveDataFilter
 
         flt = SensitiveDataFilter()
         e.args = tuple(flt._mask_sensitive_string(a) if isinstance(a, str) else a for a in e.args)
@@ -95,7 +95,7 @@ def test_exception_chain_cause_args_scrubbed_via_filter_helper():
         except ValueError as inner:
             raise RuntimeError(outer_msg) from inner
     except RuntimeError as e:
-        from hyperi_pylib.logger.filters import SensitiveDataFilter
+        from scalo.logger.filters import SensitiveDataFilter
 
         flt = SensitiveDataFilter()
 

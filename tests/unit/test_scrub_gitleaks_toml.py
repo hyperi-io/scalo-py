@@ -1,4 +1,4 @@
-#  Project:   hyperi-pylib
+#  Project:   scalo
 #  File:      tests/unit/test_scrub_gitleaks_toml.py
 #  Purpose:   Tests for the TOML-driven L1 gitleaks scrubber
 #  Language:  Python
@@ -6,7 +6,7 @@
 #  License:   BUSL-1.1
 #  Copyright: (c) 2026 HYPERI PTY LIMITED
 
-"""Tests for ``hyperi_pylib.logger.scrub.gitleaks_toml``."""
+"""Tests for ``scalo.logger.scrub.gitleaks_toml``."""
 
 from __future__ import annotations
 
@@ -14,14 +14,14 @@ import re
 
 import pytest
 
-from hyperi_pylib.logger.scrub import (
+from scalo.logger.scrub import (
     ScrubConfig,
     SecretsConfig,
     SecretsScrubber,
     build_scrubber,
     make_hash_labeler,
 )
-from hyperi_pylib.logger.scrub.gitleaks_toml import (
+from scalo.logger.scrub.gitleaks_toml import (
     GitleaksTomlScrubber,
     load_gitleaks_rules,
 )
@@ -86,7 +86,7 @@ class TestGitleaksTomlScrubberBasic:
         assert s.rule_count >= 200, f"too few rules compiled: {s.rule_count}"
 
     def test_satisfies_scrubber_protocol(self):
-        from hyperi_pylib.logger.scrub import Scrubber
+        from scalo.logger.scrub import Scrubber
 
         s = GitleaksTomlScrubber()
         assert isinstance(s, Scrubber)
@@ -215,7 +215,7 @@ class TestSecretsScrubberRouting:
         assert s._inner.rule_count <= 15
 
     def test_detect_secrets_routes_to_legacy(self):
-        from hyperi_pylib.logger.secrets_leak import SecretsLeakFilter
+        from scalo.logger.secrets_leak import SecretsLeakFilter
 
         s = SecretsScrubber(patterns="detect-secrets")
         assert isinstance(s._inner, SecretsLeakFilter)
@@ -227,7 +227,7 @@ class TestSecretsScrubberRouting:
     def test_off_uses_legacy_noop(self):
         from common.fake_secrets import aws_access_key
 
-        from hyperi_pylib.logger.secrets_leak import SecretsLeakFilter
+        from scalo.logger.secrets_leak import SecretsLeakFilter
 
         s = SecretsScrubber(patterns="off")
         # off routes via the detect-secrets level map (level="off")
@@ -250,7 +250,7 @@ class TestBuildScrubberUsesTomlByDefault:
         assert isinstance(l1._inner, GitleaksTomlScrubber)
 
     def test_detect_secrets_opt_in_via_config(self):
-        from hyperi_pylib.logger.secrets_leak import SecretsLeakFilter
+        from scalo.logger.secrets_leak import SecretsLeakFilter
 
         s = build_scrubber(ScrubConfig(secrets=SecretsConfig(patterns="detect-secrets")))
         l1 = next(

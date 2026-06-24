@@ -1,4 +1,4 @@
-# Project:   hyperi-pylib
+# Project:   scalo
 # File:      tests/unit/deployment/test_waves.py
 # Purpose:   Tests for ArgoCD sync-wave constants
 # Language:  Python
@@ -9,7 +9,7 @@
 
 from __future__ import annotations
 
-from hyperi_pylib.deployment.waves import (
+from scalo.deployment.waves import (
     WAVE_APPS,
     WAVE_CRDS,
     WAVE_OPERATORS,

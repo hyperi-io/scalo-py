@@ -10,7 +10,7 @@ Import surface (gated on the `[deployment]` extra; importing without
 `pydantic>=2.13` defers and raises `ProviderNotAvailableError`):
 
 ```python
-from hyperi_pylib.deployment import (
+from scalo.deployment import (
     DeploymentContract, HealthContract, OciLabels,
     PortContract, SecretGroupContract, SecretEnvContract,
     ImageProfile,

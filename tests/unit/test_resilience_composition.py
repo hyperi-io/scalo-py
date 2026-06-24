@@ -1,4 +1,4 @@
-#  Project:   hyperi-pylib
+#  Project:   scalo
 #  File:      tests/unit/test_resilience_composition.py
 #  Purpose:   Lock in the "breaker OUTSIDE retry" composition order
 #  Language:  Python
@@ -15,7 +15,7 @@ from __future__ import annotations
 
 import stamina
 
-from hyperi_pylib.resilience.circuit_breaker import (
+from scalo.resilience.circuit_breaker import (
     CircuitBreaker,
     CircuitBreakerConfig,
     CircuitState,

@@ -1,4 +1,4 @@
-#  Project:   hyperi-pylib
+#  Project:   scalo
 #  File:      tests/unit/test_health_router.py
 #  Purpose:   Unit tests for health FastAPI router factory
 #  Language:  Python
@@ -21,8 +21,8 @@ import pytest
 from fastapi import FastAPI
 from fastapi.testclient import TestClient
 
-from hyperi_pylib.health.manager import HealthManager
-from hyperi_pylib.health.router import create_health_router
+from scalo.health.manager import HealthManager
+from scalo.health.router import create_health_router
 
 
 @pytest.fixture

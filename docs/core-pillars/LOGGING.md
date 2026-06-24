@@ -8,7 +8,7 @@ detected runtime (TTY, container, or CI). No `logging.basicConfig`,
 no `dictConfig`, no per-service boilerplate.
 
 ```python
-from hyperi_pylib.logger import logger, info, error
+from scalo.logger import logger, info, error
 
 info("service started", version="2.28.3")
 logger.bind(component="kafka_consumer").info("subscribed", topic="events")
@@ -115,8 +115,8 @@ arg, explicit `scrub_config=` arg, legacy `mask_sensitive`/
 `logging.mask_sensitive_data` config keys, then defaults.
 
 ```python
-from hyperi_pylib.logger import setup
-from hyperi_pylib.logger.scrub import ScrubConfig, build_scrubber
+from scalo.logger import setup
+from scalo.logger.scrub import ScrubConfig, build_scrubber
 
 scrubber = build_scrubber(ScrubConfig(
     hash_redaction=True,    # ***REDACTED:a3f2*** lets you correlate without leaking
@@ -136,7 +136,7 @@ field set as a backwards-compatible shim. Add custom fields with
 reports the suppressed count when logging resumes:
 
 ```python
-from hyperi_pylib.logger import setup
+from scalo.logger import setup
 
 setup(rate_limit_sec=30, rate_limit_similar=True)
 

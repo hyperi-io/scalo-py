@@ -7,11 +7,11 @@ object, one configuration shape, two-tier caching, stale-grace fallback,
 background refresh, and rotation callbacks.
 
 ```
-pip install hyperi-pylib[secrets-vault]        # OpenBao / Vault
-pip install hyperi-pylib[secrets-aws]          # AWS Secrets Manager
-pip install hyperi-pylib[secrets-gcp]          # GCP Secret Manager
-pip install hyperi-pylib[secrets-azure]        # Azure Key Vault
-pip install hyperi-pylib[secrets-ansible-vault]  # Ansible Vault
+pip install scalo[secrets-vault]        # OpenBao / Vault
+pip install scalo[secrets-aws]          # AWS Secrets Manager
+pip install scalo[secrets-gcp]          # GCP Secret Manager
+pip install scalo[secrets-azure]        # Azure Key Vault
+pip install scalo[secrets-ansible-vault]  # Ansible Vault
 ```
 
 File provider is always available — no extra install needed.
@@ -21,7 +21,7 @@ File provider is always available — no extra install needed.
 ## Quick start
 
 ```python
-from hyperi_pylib.secrets import SecretsManager
+from scalo.secrets import SecretsManager
 
 sm = SecretsManager.from_config({
     "openbao": {"address": "https://vault:8200", "auth": {"method": "token"}},
@@ -189,7 +189,7 @@ Writes raise `SecretAlreadyExistsError`, `SecretPermissionError`, or
 ## Listing and filtering
 
 ```python
-from hyperi_pylib.secrets import SecretFilter
+from scalo.secrets import SecretFilter
 
 paths = await sm.list(
     filter=SecretFilter(prefix="prod/", tags={"team": "data"}),

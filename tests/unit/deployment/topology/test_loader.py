@@ -6,12 +6,12 @@ from pathlib import Path
 
 import pytest
 
-from hyperi_pylib.deployment.topology.errors import (
+from scalo.deployment.topology.errors import (
     TopologyError,
     TopologyValidationError,
 )
-from hyperi_pylib.deployment.topology.loader import load_topology
-from hyperi_pylib.deployment.topology.model import DeploymentTopology
+from scalo.deployment.topology.loader import load_topology
+from scalo.deployment.topology.model import DeploymentTopology
 
 FIXTURES = Path(__file__).parent / "fixtures"
 

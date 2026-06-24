@@ -1,6 +1,6 @@
 # Kafka Producer/Consumer Example
 
-Demonstrates hyperi-pylib's Kafka client library with corporate defaults.
+Demonstrates scalo's Kafka client library with corporate defaults.
 
 ## Features
 
@@ -37,7 +37,7 @@ docker compose down -v
 ### Producer (`producer.py`)
 
 ```python
-from hyperi_pylib.kafka import KafkaProducer
+from scalo.kafka import KafkaProducer
 
 producer = KafkaProducer({"bootstrap.servers": "localhost:9092"})
 producer.produce("my-topic", key="key1", value={"event": "created"})
@@ -47,7 +47,7 @@ producer.flush()
 ### Consumer (`consumer.py`)
 
 ```python
-from hyperi_pylib.kafka import KafkaConsumer
+from scalo.kafka import KafkaConsumer
 
 consumer = KafkaConsumer({
     "bootstrap.servers": "localhost:9092",
@@ -62,7 +62,7 @@ for message in consumer:
 ### Admin Client
 
 ```python
-from hyperi_pylib.kafka import KafkaClient
+from scalo.kafka import KafkaClient
 
 client = KafkaClient({"bootstrap.servers": "localhost:9092"})
 topics = client.list_topics()
@@ -70,7 +70,7 @@ topics = client.list_topics()
 
 ## Corporate Defaults
 
-The hyperi-pylib Kafka clients include production-ready defaults:
+The scalo Kafka clients include production-ready defaults:
 
 **Producer:**
 
@@ -108,5 +108,5 @@ services:
 
 ## See Also
 
-- [hyperi-pylib Kafka Documentation](../../src/hyperi_pylib/kafka/__init__.py)
+- [scalo Kafka Documentation](../../src/scalo/kafka/__init__.py)
 - [Kafka Client Tests](../../tests/integration/test_kafka_*.py)
