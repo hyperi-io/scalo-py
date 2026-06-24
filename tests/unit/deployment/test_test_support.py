@@ -62,7 +62,7 @@ def test_skip_log_path_linux_uses_xdg_cache(tmp_path: Path) -> None:
 
     with patch.object(Path, "home", return_value=tmp_path), patch.object(test_support.sys, "platform", "linux"):
         p = test_support._skip_log_path()
-    assert p == tmp_path / ".cache" / "hyperi-ai" / "contract-e2e-skips.log"
+    assert p == tmp_path / ".cache" / "scalo" / "contract-e2e-skips.log"
 
 
 def test_skip_log_path_darwin_uses_home_cache(tmp_path: Path) -> None:
@@ -70,7 +70,7 @@ def test_skip_log_path_darwin_uses_home_cache(tmp_path: Path) -> None:
 
     with patch.object(Path, "home", return_value=tmp_path), patch.object(test_support.sys, "platform", "darwin"):
         p = test_support._skip_log_path()
-    assert p == tmp_path / ".cache" / "hyperi-ai" / "contract-e2e-skips.log"
+    assert p == tmp_path / ".cache" / "scalo" / "contract-e2e-skips.log"
 
 
 def test_skip_log_path_windows_uses_localappdata(tmp_path: Path) -> None:
@@ -82,7 +82,7 @@ def test_skip_log_path_windows_uses_localappdata(tmp_path: Path) -> None:
         patch.object(test_support.sys, "platform", "win32"),
     ):
         p = test_support._skip_log_path()
-    assert p == Path(fake_appdata) / "hyperi-ai" / "Cache" / "contract-e2e-skips.log"
+    assert p == Path(fake_appdata) / "scalo" / "Cache" / "contract-e2e-skips.log"
 
 
 def test_skip_log_path_never_in_tmp() -> None:

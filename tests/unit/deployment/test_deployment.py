@@ -753,7 +753,7 @@ class TestContractValidation:
         )
         # Defaults applied
         assert c.schema_version == 2
-        assert c.image_registry == "ghcr.io/hyperi-io"
+        assert c.image_registry == "localhost:5000"
         # base_image defaults empty; resolved to python:{python_version}-slim.
         assert c.base_image == ""
         assert c.effective_base_image() == "python:3.12-slim"

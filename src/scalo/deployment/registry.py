@@ -17,16 +17,17 @@ being hardcoded in each app's contract source.
 Cascade keys::
 
     deployment:
-      image_registry: ghcr.io/hyperi-io        # default: ghcr.io/hyperi-io
+      image_registry: localhost:5000        # default: localhost:5000
       base_image: ubuntu:24.04                 # default: ubuntu:24.04
       argocd:
-        repo_url: https://github.com/hyperi-io/<app>  # default: derived
+        repo_url: https://github.com/your-org/<app>  # default: derived
 """
 
 from __future__ import annotations
 
-DEFAULT_IMAGE_REGISTRY = "ghcr.io/hyperi-io"
-"""Default publish-target registry for HyperI org."""
+DEFAULT_IMAGE_REGISTRY = "localhost:5000"
+"""Neutral default registry. Parameterise per app via the
+``deployment.image_registry`` cascade key (e.g., ``ghcr.io/your-org``)."""
 
 DEFAULT_BASE_IMAGE = "python:3.12-slim"
 """Default runtime base image for Python apps.
@@ -73,9 +74,9 @@ def argocd_repo_url_from_cascade(app_name: str) -> str:
     """Read the git repo URL for ArgoCD generation from the config cascade.
 
     Reads ``deployment.argocd.repo_url``. Falls back to
-    ``https://github.com/hyperi-io/{app_name}`` -- matches the org convention.
+    ``https://github.com/your-org/{app_name}`` -- matches the org convention.
     """
-    return _from_settings("deployment.argocd.repo_url") or f"https://github.com/hyperi-io/{app_name}"
+    return _from_settings("deployment.argocd.repo_url") or f"https://github.com/your-org/{app_name}"
 
 
 __all__ = [

@@ -52,7 +52,7 @@ class NationalIdsConfig:
 
     Country codes are ISO 3166-1 alpha-2, lowercase. Each enabled
     country loads its national-ID validators from the bundled
-    ``national_ids.toml`` registry (vendored from hyperi-ai).
+    ``national_ids.toml`` registry (vendored from scalo-spec).
 
     The default enables AU only -- operators opt-in to additional
     jurisdictions by listing country codes:

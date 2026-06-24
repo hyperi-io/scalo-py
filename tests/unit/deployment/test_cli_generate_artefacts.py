@@ -126,7 +126,7 @@ class TestGenerateArtefactsCli:
         argo = argo_path.read_text()
         assert "kind: Application" in argo
         assert "name: test-deploy-app" in argo
-        assert "repoURL: https://github.com/hyperi-io/test-deploy-app" in argo
+        assert "repoURL: https://github.com/your-org/test-deploy-app" in argo
 
     def test_help_does_not_claim_helm_chart(self, capsys):
         # Issue #23: generate-artefacts emits no Helm chart; help must not claim one.

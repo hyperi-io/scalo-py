@@ -10,7 +10,7 @@
 
 Loads gitleaks-format rules from the bundled
 ``scalo/data/gitleaks.toml`` (vendored byte-identical from
-``hyperi-ai/standards/patterns/gitleaks.toml``, which is in turn
+``scalo-spec/standards/patterns/gitleaks.toml``, which is in turn
 synced from upstream ``gitleaks/gitleaks`` per spec §3.2) and applies
 them as a Scrubber Protocol implementation.
 

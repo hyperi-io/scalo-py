@@ -120,15 +120,15 @@ def tier_b_enabled() -> bool:
 def _skip_log_path() -> Path:
     """Resolve the side-channel skip log path.
 
-    Linux/macOS/WSL/Git Bash: ``~/.cache/hyperi-ai/contract-e2e-skips.log``.
-    Native Windows: ``%LOCALAPPDATA%\\hyperi-ai\\Cache\\contract-e2e-skips.log``.
+    Linux/macOS/WSL/Git Bash: ``~/.cache/scalo/contract-e2e-skips.log``.
+    Native Windows: ``%LOCALAPPDATA%\\scalo\\Cache\\contract-e2e-skips.log``.
 
     Never ``/tmp`` (AGENT-RULES Rule 4).
     """
     if sys.platform == "win32":
         base = Path(os.environ.get("LOCALAPPDATA", str(Path.home())))
-        return base / "hyperi-ai" / "Cache" / "contract-e2e-skips.log"
-    return Path.home() / ".cache" / "hyperi-ai" / "contract-e2e-skips.log"
+        return base / "scalo" / "Cache" / "contract-e2e-skips.log"
+    return Path.home() / ".cache" / "scalo" / "contract-e2e-skips.log"
 
 
 def skip(tier: str, test_name: str, reason: str) -> None:

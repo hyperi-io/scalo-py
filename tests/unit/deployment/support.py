@@ -24,6 +24,7 @@ def py_contract() -> DeploymentContract:
         env_prefix="DFE",
         metric_prefix="engine",
         config_mount_path="/etc/dfe/api.yaml",
+        image_registry="ghcr.io/hyperi-io",
         entrypoint_args=["run"],
         oci_labels=OciLabels(title="dfe-api", description="DFE engine API"),
     )
