@@ -1,4 +1,4 @@
-#  Project:   hyperi-pylib
+#  Project:   scalo
 #  File:      tests/unit/test_circuit_breaker_probe_ctx.py
 #  Purpose:   Verify CircuitBreaker.probe() context manager releases on exception
 #  Language:  Python
@@ -14,7 +14,7 @@ from __future__ import annotations
 
 import pytest
 
-from hyperi_pylib.resilience.circuit_breaker import (
+from scalo.resilience.circuit_breaker import (
     CircuitBreaker,
     CircuitBreakerConfig,
     CircuitState,

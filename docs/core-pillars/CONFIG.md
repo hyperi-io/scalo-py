@@ -33,7 +33,7 @@ schema, fallback file caching, and operator runbook.
 ## Read it like a dict
 
 ```python
-from hyperi_pylib.config import settings
+from scalo.config import settings
 
 # Attribute access, dot-separated keys.
 brokers = settings.kafka.brokers
@@ -97,7 +97,7 @@ means the var must be set or Dynaconf raises.
 optionally re-reads on SIGHUP:
 
 ```python
-from hyperi_pylib.config import ConfigReloader, ReloaderConfig
+from scalo.config import ConfigReloader, ReloaderConfig
 
 def on_reload(settings):
     logger.info("config reloaded", brokers=settings.kafka.brokers)
@@ -143,7 +143,7 @@ change shape per environment -- the same code reads `/config` in K8s,
 `/app/config` in Docker, `~/.config/{app}` on bare metal.
 
 ```python
-from hyperi_pylib.config import get_mount_config
+from scalo.config import get_mount_config
 
 mounts = get_mount_config()
 config_file = mounts.config_dir / "app.yaml"

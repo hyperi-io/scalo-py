@@ -6,7 +6,7 @@ external scaler can target. Matches `hyperi-rustlib`'s
 the same fleet produce comparable scores. Ships in the base package.
 
 ```python
-from hyperi_pylib.scaling import (
+from scalo.scaling import (
     ScalingPressure, ScalingPressureConfig, PressureSnapshot,
 )
 ```
@@ -16,7 +16,7 @@ from hyperi_pylib.scaling import (
 ## Quick start
 
 ```python
-from hyperi_pylib.scaling import ScalingPressure
+from scalo.scaling import ScalingPressure
 
 pressure = ScalingPressure()
 pressure.set_memory(used_bytes=900_000_000, limit_bytes=1_000_000_000)
@@ -68,7 +68,7 @@ metric scales out instantly.
 Override via `ScalingPressureConfig`:
 
 ```python
-from hyperi_pylib.scaling import ScalingPressureConfig
+from scalo.scaling import ScalingPressureConfig
 
 cfg = ScalingPressureConfig(
     memory_weight=0.15,
@@ -160,8 +160,8 @@ test assertions where you want one atomic read of state.
 ## Exposing as a Prometheus gauge
 
 ```python
-from hyperi_pylib.metrics import create_metrics
-from hyperi_pylib.scaling import ScalingPressure
+from scalo.metrics import create_metrics
+from scalo.scaling import ScalingPressure
 
 metrics = create_metrics("my_service")
 pressure = ScalingPressure()

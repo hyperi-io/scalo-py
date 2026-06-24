@@ -5,7 +5,7 @@ Two complementary caches behind one module. `cashews`-backed local cache
 caching, and `PostgresCache` for state shared across many pods.
 
 ```
-pip install hyperi-pylib[cache]
+pip install scalo[cache]
 ```
 
 Pulls in `cashews`, `msgpack`, and `psycopg`. The disk backend
@@ -19,7 +19,7 @@ otherwise the cache falls back to in-memory cashews automatically.
 ## Quick start
 
 ```python
-from hyperi_pylib.cache import configure_cache, cached
+from scalo.cache import configure_cache, cached
 
 configure_cache(directory="/cache/myapp", default_ttl="1h",
                 source_ttls={"http": "24h", "db": "30m"})
@@ -50,8 +50,8 @@ materialised query results shared across analytics pods.
 Call once at startup, before any decorated function runs.
 
 ```python
-from hyperi_pylib.cache import configure_cache
-from hyperi_pylib.metrics import create_metrics
+from scalo.cache import configure_cache
+from scalo.metrics import create_metrics
 
 metrics = create_metrics("myapp")
 
@@ -101,7 +101,7 @@ async def search(query: str) -> list: ...
 ## Manual get/set
 
 ```python
-from hyperi_pylib.cache import get_cached, set_cached
+from scalo.cache import get_cached, set_cached
 
 value = await get_cached("http", "https://example.com/api")
 if value is None:
@@ -118,7 +118,7 @@ counters tick over automatically.
 ## Invalidation
 
 ```python
-from hyperi_pylib.cache import invalidate_source
+from scalo.cache import invalidate_source
 
 await invalidate_source("http")    # clear every "http:*" entry
 await invalidate_source("tavily")  # clear every "tavily:*" entry
@@ -130,7 +130,7 @@ database results.
 For finer control, the global cashews `cache` object is re-exported:
 
 ```python
-from hyperi_pylib.cache import cache
+from scalo.cache import cache
 
 await cache.delete("http:https://example.com/specific-url")
 await cache.delete_match("http:*example.com*")
@@ -141,7 +141,7 @@ await cache.delete_match("http:*example.com*")
 ## `PostgresCache` — shared across pods
 
 ```python
-from hyperi_pylib.cache import PostgresCache, generate_cache_key
+from scalo.cache import PostgresCache, generate_cache_key
 
 cache = PostgresCache(dsn="postgresql://app:pw@db:5432/myapp")
 await cache.init()                  # creates table + indexes if missing
@@ -197,7 +197,7 @@ block on the counter update.
 ## Generating deterministic keys
 
 ```python
-from hyperi_pylib.cache import generate_cache_key
+from scalo.cache import generate_cache_key
 
 key = generate_cache_key(
     namespace="clickhouse",

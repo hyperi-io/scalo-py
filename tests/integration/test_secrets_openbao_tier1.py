@@ -1,4 +1,4 @@
-# Project:   hyperi-pylib
+# Project:   scalo
 # File:      tests/integration/test_secrets_openbao_tier1.py
 # Purpose:   Integration tests for OpenBao Tier 1 + Tier 2 against real KV v2 wire protocol
 # Language:  Python
@@ -24,13 +24,13 @@ import uuid
 
 import pytest
 
-from hyperi_pylib.secrets.exceptions import (
+from scalo.secrets.exceptions import (
     SecretAlreadyExistsError,
     SecretNotFoundError,
     SecretVersionNotFoundError,
 )
-from hyperi_pylib.secrets.providers.openbao import HTTPX_AVAILABLE, OpenBaoProvider
-from hyperi_pylib.secrets.types import OpenBaoConfig, SecretFilter
+from scalo.secrets.providers.openbao import HTTPX_AVAILABLE, OpenBaoProvider
+from scalo.secrets.types import OpenBaoConfig, SecretFilter
 
 pytestmark = [
     pytest.mark.integration,
@@ -46,7 +46,7 @@ def provider(openbao_endpoint) -> OpenBaoProvider:
 
 def _unique_path(suffix: str) -> str:
     """Per-test unique path so tests can run in parallel without collision."""
-    return f"secret/hyperi-pylib-test/{uuid.uuid4().hex[:8]}/{suffix}"
+    return f"secret/scalo-test/{uuid.uuid4().hex[:8]}/{suffix}"
 
 
 class TestOpenBaoTier1Roundtrip:
@@ -141,7 +141,7 @@ class TestOpenBaoListing:
     """Listing under a prefix works against real Vault LIST verb."""
 
     def test_list_under_prefix(self, provider):
-        prefix_path = f"secret/hyperi-pylib-test/list-{uuid.uuid4().hex[:8]}"
+        prefix_path = f"secret/scalo-test/list-{uuid.uuid4().hex[:8]}"
         names = ["alpha", "beta", "gamma"]
         try:
             for n in names:
@@ -157,7 +157,7 @@ class TestOpenBaoListing:
                     pass
 
     def test_list_pattern_post_filter(self, provider):
-        prefix_path = f"secret/hyperi-pylib-test/pattern-{uuid.uuid4().hex[:8]}"
+        prefix_path = f"secret/scalo-test/pattern-{uuid.uuid4().hex[:8]}"
         names = ["api_key", "api_secret", "password"]
         try:
             for n in names:

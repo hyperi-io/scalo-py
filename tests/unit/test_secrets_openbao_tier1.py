@@ -1,4 +1,4 @@
-# Project:   hyperi-pylib
+# Project:   scalo
 # File:      tests/unit/test_secrets_openbao_tier1.py
 # Purpose:   Unit tests for OpenBao Tier 1 + Tier 2 (versioned) methods
 # Language:  Python
@@ -18,15 +18,15 @@ import base64
 
 import pytest
 
-from hyperi_pylib.secrets.exceptions import (
+from scalo.secrets.exceptions import (
     ProviderError,
     SecretAlreadyExistsError,
     SecretNotFoundError,
     SecretPermissionError,
     SecretVersionNotFoundError,
 )
-from hyperi_pylib.secrets.providers.openbao import HTTPX_AVAILABLE, OpenBaoProvider
-from hyperi_pylib.secrets.types import OpenBaoConfig, SecretFilter
+from scalo.secrets.providers.openbao import HTTPX_AVAILABLE, OpenBaoProvider
+from scalo.secrets.types import OpenBaoConfig, SecretFilter
 
 pytestmark = pytest.mark.skipif(not HTTPX_AVAILABLE, reason="httpx not installed")
 

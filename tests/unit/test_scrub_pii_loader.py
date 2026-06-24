@@ -1,4 +1,4 @@
-#  Project:   hyperi-pylib
+#  Project:   scalo
 #  File:      tests/unit/test_scrub_pii_loader.py
 #  Purpose:   Tests for the TOML-driven national-ID validator loader
 #  Language:  Python
@@ -6,14 +6,14 @@
 #  License:   BUSL-1.1
 #  Copyright: (c) 2026 HYPERI PTY LIMITED
 
-"""Tests for ``hyperi_pylib.logger.scrub.pii._loader`` and ``_dynamic``."""
+"""Tests for ``scalo.logger.scrub.pii._loader`` and ``_dynamic``."""
 
 from __future__ import annotations
 
 import pytest
 
-from hyperi_pylib.logger.scrub import Scrubber
-from hyperi_pylib.logger.scrub.pii import (
+from scalo.logger.scrub import Scrubber
+from scalo.logger.scrub.pii import (
     _DynamicValidator,
     build_national_id_validators,
     load_registry,
@@ -46,7 +46,7 @@ class TestLoadRegistry:
         reg = load_registry()
         entry = reg["au"]["medicare"]
         assert "local_validator" in entry
-        assert entry["local_validator"].startswith("hyperi_pylib.logger.scrub.pii.au_medicare:")
+        assert entry["local_validator"].startswith("scalo.logger.scrub.pii.au_medicare:")
 
     def test_other_countries_are_stubs(self):
         reg = load_registry()
@@ -147,7 +147,7 @@ class TestDynamicValidatorErrors:
             "redaction_label": "TEST",
             "detection_regex": r"\bx\b",
             "keywords": [],
-            "local_validator": "hyperi_pylib.logger.scrub.pii.au_medicare:does_not_exist",
+            "local_validator": "scalo.logger.scrub.pii.au_medicare:does_not_exist",
         }
         with pytest.raises(ValueError, match="not callable or missing"):
             _DynamicValidator(entry)

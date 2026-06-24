@@ -1,4 +1,4 @@
-#  Project:      hyperi-pylib
+#  Project:      scalo
 #  File:         test_masking_parity.py
 #  Purpose:      Verify SensitiveDataFilter handles all shared masking fixture cases
 #  Language:     Python
@@ -20,7 +20,7 @@ from pathlib import Path
 import pytest
 import yaml
 
-from hyperi_pylib.logger.filters import SensitiveDataFilter
+from scalo.logger.filters import SensitiveDataFilter
 
 # Path to the shared fixture file inside the hyperi-ai submodule
 _FIXTURES_PATH = Path(__file__).parents[2] / "hyperi-ai" / "test-fixtures" / "masking-patterns.yaml"
@@ -90,7 +90,7 @@ def test_fixture_has_required_keys() -> None:
 @pytest.mark.skipif(_fixtures is None, reason=_skip_reason)
 def test_fixture_sensitive_fields_present() -> None:
     """Verify that the fixture's sensitive_field_names are a subset of the filter's SENSITIVE_FIELDS."""
-    from hyperi_pylib.logger.filters import SENSITIVE_FIELDS
+    from scalo.logger.filters import SENSITIVE_FIELDS
 
     fixture_fields = set(_fixtures["sensitive_field_names"])
     # Fields that the fixture defines but the filter also knows about

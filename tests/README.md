@@ -1,6 +1,6 @@
-# hyperi-pylib Test Suite
+# scalo Test Suite
 
-Test organisation for hyperi-pylib following standard testing patterns.
+Test organisation for scalo following standard testing patterns.
 
 ## Directory Structure
 
@@ -87,7 +87,7 @@ pytest tests/unit/ -v
 **With coverage:**
 
 ```bash
-pytest tests/ --cov=hyperi_pylib --cov-report=html
+pytest tests/ --cov=scalo --cov-report=html
 ```
 
 **Specific test file:**
@@ -108,7 +108,7 @@ pytest tests/unit/test_config.py::TestSettings::test_get_setting -v
 
 ```python
 # tests/unit/test_mymodule.py
-from hyperi_pylib.config import settings
+from scalo.config import settings
 
 
 def test_settings_get_with_default():
@@ -122,7 +122,7 @@ def test_settings_get_with_default():
 ```python
 # tests/integration/test_cache.py
 import pytest
-from hyperi_pylib.cache import PostgresCache
+from scalo.cache import PostgresCache
 
 
 @pytest.mark.asyncio

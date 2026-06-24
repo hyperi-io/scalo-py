@@ -7,14 +7,14 @@ Typer-based CLI framework with two entry shapes:
   standard flags wired into the config cascade, logger setup, and
   metrics auto-init.
 - **Raw Typer** — for one-off tools and utilities. The
-  `hyperi_pylib.cli` module re-exports `Typer`, `Argument`, `Option`
+  `scalo.cli` module re-exports `Typer`, `Argument`, `Option`
   plus a library of pre-built standard options and output helpers.
 
 Use `DfeApp` for long-running services; use raw Typer for everything
 else. Ships in the base package — Typer is a core dependency.
 
 ```python
-from hyperi_pylib.cli import (
+from scalo.cli import (
     Typer, Argument, Option,
     DfeApp, VersionInfo,
 )
@@ -25,7 +25,7 @@ from hyperi_pylib.cli import (
 ## Quick start — `DfeApp`
 
 ```python
-from hyperi_pylib.cli import DfeApp, VersionInfo
+from scalo.cli import DfeApp, VersionInfo
 
 class MyService(DfeApp):
     name = "my-service"
@@ -58,7 +58,7 @@ my-service --help
 
 ```python
 from pathlib import Path
-from hyperi_pylib.cli import Typer, Argument, Option
+from scalo.cli import Typer, Argument, Option
 
 app = Typer(help="My tool")
 
@@ -83,7 +83,7 @@ if __name__ == "__main__":
 `run_service_async()` (async). The framework: builds the Typer app,
 initialises the logger from `--log-level`/`--log-format`/`--verbose`,
 loads configuration via the 8-layer cascade with the app's
-`env_prefix`, auto-initialises `AppMetrics` if `hyperi-pylib[metrics]`
+`env_prefix`, auto-initialises `AppMetrics` if `scalo[metrics]`
 is installed (exposed at `--metrics-addr`), and dispatches to whichever
 of `run_service` / `run_service_async` the subclass overrode.
 
@@ -147,27 +147,27 @@ app.
 ## Deployment artefacts
 
 Override `deployment_contract()` to return a
-`hyperi_pylib.deployment.DeploymentContract`. `my-service
+`scalo.deployment.DeploymentContract`. `my-service
 generate-artefacts -o ci/` then writes `deployment-contract.json`,
 `container-manifest.json`, `Dockerfile.runtime`, and
-`argocd-application.yaml`. Requires `hyperi-pylib[deployment]`. The
+`argocd-application.yaml`. Requires `scalo[deployment]`. The
 default `None` return prints a warning and emits nothing — services
 that don't ship as containers can leave it unset.
 
 ---
 
-## Raw Typer — `hyperi_pylib.cli` re-exports
+## Raw Typer — `scalo.cli` re-exports
 
 The `cli` package re-exports Typer plus a small library of utilities:
 
 ```python
-from hyperi_pylib.cli import Typer, Argument, Option
-from hyperi_pylib.cli.options import VERBOSE_OPTION, CONFIG_OPTION, DRY_RUN_OPTION
-from hyperi_pylib.cli.output import (
+from scalo.cli import Typer, Argument, Option
+from scalo.cli.options import VERBOSE_OPTION, CONFIG_OPTION, DRY_RUN_OPTION
+from scalo.cli.output import (
     print_success, print_error, print_warning, print_info,
     print_table, print_json,
 )
-from hyperi_pylib.cli.version import version_option
+from scalo.cli.version import version_option
 ```
 
 ---
@@ -210,7 +210,7 @@ choices).
 ## Output helpers
 
 ```python
-from hyperi_pylib.cli.output import (
+from scalo.cli.output import (
     print_success, print_error, print_warning, print_info,
     print_table, print_json,
 )
@@ -234,7 +234,7 @@ in pipes and CI.
 ## Version option
 
 ```python
-from hyperi_pylib.cli.version import version_option
+from scalo.cli.version import version_option
 
 @app.callback()
 def main(

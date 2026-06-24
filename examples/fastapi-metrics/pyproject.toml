@@ -1,6 +1,6 @@
-# Project:   hyperi-pylib
+# Project:   scalo
 # File:      examples/fastapi-metrics/pyproject.toml
-# Purpose:   Example project demonstrating hyperi-pylib metrics with FastAPI
+# Purpose:   Example project demonstrating scalo metrics with FastAPI
 # Language:  Python
 #
 # License:   BUSL-1.1
@@ -9,10 +9,10 @@
 [project]
 name = "fastapi-metrics-example"
 version = "0.1.0"
-description = "Example demonstrating hyperi-pylib Prometheus metrics with FastAPI"
+description = "Example demonstrating scalo Prometheus metrics with FastAPI"
 requires-python = ">=3.12"
 dependencies = [
-    "hyperi-pylib>=2.14.0",
+    "scalo>=2.14.0",
     "fastapi>=0.115.0",
     "uvicorn>=0.32.0",
     "httpx>=0.28.0",  # For testing

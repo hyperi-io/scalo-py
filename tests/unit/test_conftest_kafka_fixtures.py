@@ -1,4 +1,4 @@
-# Project:   hyperi-pylib
+# Project:   scalo
 # File:      tests/unit/test_conftest_kafka_fixtures.py
 # Purpose:   Unit tests for Kafka fixture logic in conftest.py
 # Language:  Python
@@ -256,10 +256,10 @@ class TestKafkaFixtureConstants:
 
     def test_container_name_is_set(self):
         """Container name should be defined."""
-        assert KAFKA_CONTAINER_NAME == "hyperi-pylib-kafka"
+        assert KAFKA_CONTAINER_NAME == "scalo-kafka"
 
     def test_project_name_is_unique(self):
         """Project name should be unique to avoid conflicts."""
-        assert KAFKA_PROJECT_NAME == "hyperi-pylib-test"
-        # Should contain hyperi-pylib to identify it
-        assert "hyperi-pylib" in KAFKA_PROJECT_NAME
+        assert KAFKA_PROJECT_NAME == "scalo-test"
+        # Should contain scalo to identify it
+        assert "scalo" in KAFKA_PROJECT_NAME

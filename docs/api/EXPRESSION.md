@@ -7,7 +7,7 @@ by `hyperi-rustlib` — Python and Rust services parse and evaluate
 expressions identically. Zero behavioural drift.
 
 ```
-pip install hyperi-pylib[expression]
+pip install scalo[expression]
 ```
 
 ---
@@ -15,7 +15,7 @@ pip install hyperi-pylib[expression]
 ## Quick start
 
 ```python
-from hyperi_pylib.expression import evaluate, validate
+from scalo.expression import evaluate, validate
 
 errors = validate('severity == "critical" && amount > 10000')
 assert errors == []
@@ -58,7 +58,7 @@ with an `errors: list[str]` attribute carrying every diagnostic.
 ## Validating
 
 ```python
-from hyperi_pylib.expression import validate
+from scalo.expression import validate
 
 errors = validate('amount > 10000 && severity == "critical"')
 assert errors == []
@@ -76,7 +76,7 @@ without playing exception ping-pong.
 ## One-shot evaluation
 
 ```python
-from hyperi_pylib.expression import evaluate
+from scalo.expression import evaluate
 
 result = evaluate('severity == "critical"', {"severity": "critical"})
 assert result is True
@@ -95,7 +95,7 @@ for repeated evaluation against many records.
 When the same expression runs against millions of records:
 
 ```python
-from hyperi_pylib.expression import compile_expression
+from scalo.expression import compile_expression
 
 program = compile_expression("amount > threshold")
 for record in stream:
@@ -116,7 +116,7 @@ triggers, and `when:` clauses. Missing fields return `False` instead
 of raising:
 
 ```python
-from hyperi_pylib.expression import evaluate_condition
+from scalo.expression import evaluate_condition
 
 evaluate_condition('severity == "critical"', {})        # False
 evaluate_condition('severity == "critical"', {"severity": "info"})  # False
@@ -150,7 +150,7 @@ of when the pipeline ran it.
 ## Transpile to ClickHouse SQL
 
 ```python
-from hyperi_pylib.expression import transpile_to_clickhouse
+from scalo.expression import transpile_to_clickhouse
 
 sql_where = transpile_to_clickhouse('severity == "critical" && amount > 10000')
 # Returns the ClickHouse WHERE-clause fragment
@@ -184,8 +184,8 @@ CEL types map to Python types directly: `bool`, `int`, `float`, `str`,
 ## Cross-language parity
 
 ```python
-# Python — hyperi-pylib
-from hyperi_pylib.expression import evaluate
+# Python — scalo
+from scalo.expression import evaluate
 evaluate('amount > threshold', {"amount": 15000, "threshold": 10000})  # True
 ```
 

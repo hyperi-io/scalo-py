@@ -1,4 +1,4 @@
-"""Unit tests for hyperi_pylib.runtime module."""
+"""Unit tests for scalo.runtime module."""
 
 import os
 import platform
@@ -7,7 +7,7 @@ from unittest import mock
 
 import pytest
 
-from hyperi_pylib.runtime import RuntimeEnvironment, RuntimePaths, get_runtime_paths
+from scalo.runtime import RuntimeEnvironment, RuntimePaths, get_runtime_paths
 
 
 class TestRuntimeEnvironment:
@@ -410,8 +410,8 @@ class TestConvenienceFunction:
     def test_get_runtime_paths_local(self, tmp_path):
         """Test convenience function in local mode."""
         with (
-            mock.patch("hyperi_pylib.runtime.RuntimeEnvironment.detect_runtime") as mock_detect,
-            mock.patch("hyperi_pylib.runtime.RuntimeEnvironment.ensure_directories"),
+            mock.patch("scalo.runtime.RuntimeEnvironment.detect_runtime") as mock_detect,
+            mock.patch("scalo.runtime.RuntimeEnvironment.ensure_directories"),
         ):
             mock_paths = RuntimePaths(
                 config_dir=tmp_path / "config",
@@ -432,8 +432,8 @@ class TestConvenienceFunction:
     def test_get_runtime_paths_container(self):
         """Test convenience function in container mode."""
         with (
-            mock.patch("hyperi_pylib.runtime.RuntimeEnvironment.detect_runtime") as mock_detect,
-            mock.patch("hyperi_pylib.runtime.RuntimeEnvironment.ensure_directories"),
+            mock.patch("scalo.runtime.RuntimeEnvironment.detect_runtime") as mock_detect,
+            mock.patch("scalo.runtime.RuntimeEnvironment.ensure_directories"),
         ):
             mock_paths = RuntimePaths(
                 config_dir=Path("/app/config"),
@@ -453,8 +453,8 @@ class TestConvenienceFunction:
     def test_get_runtime_paths_no_ensure(self):
         """Test convenience function without directory creation."""
         with (
-            mock.patch("hyperi_pylib.runtime.RuntimeEnvironment.detect_runtime") as mock_detect,
-            mock.patch("hyperi_pylib.runtime.RuntimeEnvironment.ensure_directories") as mock_ensure,
+            mock.patch("scalo.runtime.RuntimeEnvironment.detect_runtime") as mock_detect,
+            mock.patch("scalo.runtime.RuntimeEnvironment.ensure_directories") as mock_ensure,
         ):
             mock_paths = RuntimePaths(
                 config_dir=Path("/app/config"),

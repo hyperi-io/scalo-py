@@ -1,4 +1,4 @@
-# Project:   hyperi-pylib
+# Project:   scalo
 # File:      tests/unit/deployment/test_identity_wiring.py
 # Purpose:   Verify ContractIdentity wiring into the five deployment generators
 # Language:  Python
@@ -30,7 +30,7 @@ from pathlib import Path
 import pytest
 import yaml
 
-from hyperi_pylib.deployment import (
+from scalo.deployment import (
     ArgocdConfig,
     DeploymentContract,
     HealthContract,
@@ -46,7 +46,7 @@ from hyperi_pylib.deployment import (
     generate_dockerfile,
     generate_runtime_stage,
 )
-from hyperi_pylib.deployment.contract_identity import ContractIdentity
+from scalo.deployment.contract_identity import ContractIdentity
 
 VALID_SHA = "0123456789abcdef0123456789abcdef01234567"
 VALID_REF = "ghcr.io/hyperi-io/dfe-loader:v2.7.3"

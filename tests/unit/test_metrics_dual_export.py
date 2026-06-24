@@ -10,7 +10,7 @@ import os
 
 import pytest
 
-from hyperi_pylib.metrics import MetricsManager, create_metrics
+from scalo.metrics import MetricsManager, create_metrics
 
 # Check if OTel is available in this environment
 try:
@@ -150,7 +150,7 @@ class TestEnvVarOverrides:
         """OTEL_EXPORTER_OTLP_ENDPOINT env var is respected."""
         monkeypatch.setenv("OTEL_EXPORTER_OTLP_ENDPOINT", "http://custom-collector:4317")
 
-        from hyperi_pylib.metrics.opentelemetry_backend import OpenTelemetryBackend
+        from scalo.metrics.opentelemetry_backend import OpenTelemetryBackend
 
         backend = OpenTelemetryBackend("env-test-endpoint")
         assert backend.enabled
@@ -159,7 +159,7 @@ class TestEnvVarOverrides:
         """OTEL_EXPORTER_OTLP_PROTOCOL env var is respected."""
         monkeypatch.setenv("OTEL_EXPORTER_OTLP_PROTOCOL", "http")
 
-        from hyperi_pylib.metrics.opentelemetry_backend import OpenTelemetryBackend
+        from scalo.metrics.opentelemetry_backend import OpenTelemetryBackend
 
         backend = OpenTelemetryBackend("env-test-protocol")
         assert backend.enabled
@@ -207,7 +207,7 @@ class TestConfigOverrides:
                 "auto_convert_names": False,
             }
         }
-        from hyperi_pylib.metrics.opentelemetry_backend import OpenTelemetryBackend
+        from scalo.metrics.opentelemetry_backend import OpenTelemetryBackend
 
         backend = OpenTelemetryBackend("config-test-names", config=config)
         assert not backend.auto_convert_names
@@ -253,15 +253,15 @@ class TestOTelNotInstalled:
 
     def test_otel_available_flag(self):
         """OTEL_AVAILABLE reflects installation status."""
-        from hyperi_pylib.metrics.opentelemetry_backend import OTEL_AVAILABLE
+        from scalo.metrics.opentelemetry_backend import OTEL_AVAILABLE
 
         # In our test env, OTel is installed
         assert OTEL_AVAILABLE is True
 
     def test_disabled_when_otel_unavailable(self):
         """Backend reports disabled when OTEL_AVAILABLE is False."""
-        import hyperi_pylib.metrics.opentelemetry_backend as otel_mod
-        from hyperi_pylib.metrics.opentelemetry_backend import OpenTelemetryBackend
+        import scalo.metrics.opentelemetry_backend as otel_mod
+        from scalo.metrics.opentelemetry_backend import OpenTelemetryBackend
 
         # Temporarily pretend OTel is not available
         original = otel_mod.OTEL_AVAILABLE

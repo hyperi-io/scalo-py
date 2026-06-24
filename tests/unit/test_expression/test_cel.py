@@ -1,4 +1,4 @@
-# Project:   hyperi-pylib
+# Project:   scalo
 # File:      tests/test_expression/test_cel.py
 # Purpose:   Tests for CEL expression module
 # Language:  Python
@@ -10,7 +10,7 @@
 
 import pytest
 
-from hyperi_pylib.expression import (
+from scalo.expression import (
     ALLOWED_FUNCTIONS,
     DISALLOWED_FUNCTIONS,
     ExpressionError,

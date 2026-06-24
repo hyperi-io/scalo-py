@@ -7,7 +7,7 @@ never affects exit code. Ships in the base package; needs `httpx` to
 actually make the call (otherwise silently skipped).
 
 ```python
-from hyperi_pylib.version_check import check_on_startup
+from scalo.version_check import check_on_startup
 ```
 
 ---
@@ -15,7 +15,7 @@ from hyperi_pylib.version_check import check_on_startup
 ## Quick start
 
 ```python
-from hyperi_pylib.version_check import check_on_startup
+from scalo.version_check import check_on_startup
 
 check_on_startup("dfe-receiver", "1.2.0", deployment="k8s")
 # Returns immediately. The check runs in a background daemon thread.
@@ -72,7 +72,7 @@ missing). Production code can ignore the return value; tests use it to
 ## Configuration
 
 ```python
-from hyperi_pylib.version_check.checker import VersionCheckConfig
+from scalo.version_check.checker import VersionCheckConfig
 
 cfg = VersionCheckConfig(
     api_url="https://releases.internal.hyperi.io/api/v1/check",
@@ -100,8 +100,8 @@ The check is auto-skipped when:
 ## Wire it into `DfeApp`
 
 ```python
-from hyperi_pylib.cli import DfeApp, VersionInfo
-from hyperi_pylib.version_check import check_on_startup
+from scalo.cli import DfeApp, VersionInfo
+from scalo.version_check import check_on_startup
 
 class MyService(DfeApp):
     name = "my-service"
@@ -202,7 +202,7 @@ if thread is not None:
 For full offline tests, point the API at a local mock:
 
 ```python
-from hyperi_pylib.version_check.checker import VersionCheckConfig
+from scalo.version_check.checker import VersionCheckConfig
 
 cfg = VersionCheckConfig(api_url="http://localhost:8080/check", timeout=1.0)
 check_on_startup("my-service", "1.0.0", config=cfg)

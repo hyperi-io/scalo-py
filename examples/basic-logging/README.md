@@ -1,6 +1,6 @@
 # Basic Logging Example
 
-Demonstrates hyperi-pylib's structured logging with automatic environment detection.
+Demonstrates scalo's structured logging with automatic environment detection.
 
 ## Features
 
@@ -58,4 +58,4 @@ uv run pytest
 
 ## See Also
 
-- [hyperi-pylib Logging Documentation](../../docs/LOGGING.md)
+- [scalo Logging Documentation](../../docs/LOGGING.md)

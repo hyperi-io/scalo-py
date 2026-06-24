@@ -6,7 +6,7 @@ git tracking for writes. Pure-Python git via `dulwich` — no `git`
 binary required. Ships in the base package.
 
 ```python
-from hyperi_pylib.config import DirectoryConfigStore
+from scalo.config import DirectoryConfigStore
 ```
 
 ---
@@ -14,7 +14,7 @@ from hyperi_pylib.config import DirectoryConfigStore
 ## Quick start
 
 ```python
-from hyperi_pylib.config import DirectoryConfigStore
+from scalo.config import DirectoryConfigStore
 
 store = DirectoryConfigStore("/config/dfe", refresh_interval=30)
 store.start()

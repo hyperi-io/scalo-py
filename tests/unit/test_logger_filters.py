@@ -1,12 +1,12 @@
 """
-Tests for hyperi_pylib logger filters (sensitive data masking and rate limiting).
+Tests for scalo logger filters (sensitive data masking and rate limiting).
 """
 
 import time
 
 import pytest
 
-from hyperi_pylib.logger.filters import MASK_VALUE, SENSITIVE_FIELDS, RateLimitFilter, SensitiveDataFilter
+from scalo.logger.filters import MASK_VALUE, SENSITIVE_FIELDS, RateLimitFilter, SensitiveDataFilter
 
 
 class TestSensitiveDataFilter:

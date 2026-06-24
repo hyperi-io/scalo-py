@@ -1,4 +1,4 @@
-# Project:   hyperi-pylib
+# Project:   scalo
 # File:      tests/unit/deployment/test_app_project.py
 # Purpose:   Tests for ArgoCD AppProject generator
 # Language:  Python
@@ -9,7 +9,7 @@
 
 from __future__ import annotations
 
-from hyperi_pylib.deployment.app_project import (
+from scalo.deployment.app_project import (
     AppProjectContract,
     AppProjectDestination,
     generate_argocd_app_project,

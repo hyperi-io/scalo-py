@@ -1,4 +1,4 @@
-#  Project:   hyperi-pylib
+#  Project:   scalo
 #  File:      tests/unit/test_kafka_buffer_full_real.py
 #  Purpose:   Trigger real librdkafka BufferError without a broker
 #  Language:  Python
@@ -14,7 +14,7 @@ import asyncio
 
 import pytest
 
-from hyperi_pylib.kafka.async_producer import AsyncKafkaProducer
+from scalo.kafka.async_producer import AsyncKafkaProducer
 
 
 def _producer_config() -> dict:

@@ -1,6 +1,6 @@
 # Config Cascade Example
 
-Demonstrates hyperi-pylib's 8-layer configuration cascade system.
+Demonstrates scalo's 8-layer configuration cascade system.
 
 ## Features
 
@@ -74,4 +74,4 @@ With environment override (DATABASE_HOST=prod-db):
 
 ## See Also
 
-- [hyperi-pylib Configuration Documentation](../../docs/CONFIG.md)
+- [scalo Configuration Documentation](../../docs/CONFIG.md)

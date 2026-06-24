@@ -10,7 +10,7 @@ lazily so the core module installs without it.
 
 ```python
 from fastapi import FastAPI
-from hyperi_pylib.health import HealthManager, create_health_router
+from scalo.health import HealthManager, create_health_router
 
 health = HealthManager()
 app = FastAPI()
@@ -122,7 +122,7 @@ async work, wrap with `asyncio.run` in a thread, or use the parallel
 helper:
 
 ```python
-from hyperi_pylib.concurrency import gather_with_timeouts
+from scalo.concurrency import gather_with_timeouts
 
 async def aggregate_health() -> dict[str, bool]:
     results = await gather_with_timeouts(

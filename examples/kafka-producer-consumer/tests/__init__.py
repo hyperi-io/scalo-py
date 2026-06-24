@@ -1,4 +1,4 @@
-# Project:   hyperi-pylib
+# Project:   scalo
 # File:      examples/kafka-producer-consumer/tests/__init__.py
 # Purpose:   Test package for kafka-producer-consumer example
 # Language:  Python

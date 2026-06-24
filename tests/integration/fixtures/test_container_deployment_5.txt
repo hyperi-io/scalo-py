@@ -1,7 +1,7 @@
 import os
 
-# hyperi-pylib is installed as a package
-from hyperi_pylib import get_database_config, build_database_url
+# scalo is installed as a package
+from scalo import get_database_config, build_database_url
 
 # Get database configuration
 db_config = get_database_config("postgresql")

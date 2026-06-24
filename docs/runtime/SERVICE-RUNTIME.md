@@ -25,13 +25,13 @@ framework.
 | Old | New |
 |-----|-----|
 | `Application.api(name=..., port=...)` | `FastAPI()` + `create_health_router(...)` + `create_metrics(...)` |
-| `Application.daemon(name=...)` | `from hyperi_pylib import logger, config, runtime` + your loop |
-| `Application.cli(name=...)` | `from hyperi_pylib.cli import DfeApp` (Typer-based) |
-| `app.profile_overrides({...})` | `hyperi_pylib.config` 8-layer cascade -- env / `settings.<env>.yaml` |
-| `app.runtime.paths` | `from hyperi_pylib.runtime import get_runtime_paths` |
-| `app.metrics` | `from hyperi_pylib.metrics import create_metrics` |
-| `app.health` | `from hyperi_pylib.health import HealthManager` |
-| `app.logger` | `from hyperi_pylib.logger import logger` |
+| `Application.daemon(name=...)` | `from scalo import logger, config, runtime` + your loop |
+| `Application.cli(name=...)` | `from scalo.cli import DfeApp` (Typer-based) |
+| `app.profile_overrides({...})` | `scalo.config` 8-layer cascade -- env / `settings.<env>.yaml` |
+| `app.runtime.paths` | `from scalo.runtime import get_runtime_paths` |
+| `app.metrics` | `from scalo.metrics import create_metrics` |
+| `app.health` | `from scalo.health import HealthManager` |
+| `app.logger` | `from scalo.logger import logger` |
 
 The composed pieces are the same ones the framework was wrapping. You
 lose the single-import constructor; you gain explicit wiring with no
@@ -46,11 +46,11 @@ The full recipe lives in [INTEGRATION.md](../INTEGRATION.md) steps
 
 ```python
 from fastapi import FastAPI
-from hyperi_pylib.config import settings
-from hyperi_pylib.logger import logger, info
-from hyperi_pylib.metrics import create_metrics
-from hyperi_pylib.health import HealthManager, create_health_router
-from hyperi_pylib.runtime import get_runtime_paths
+from scalo.config import settings
+from scalo.logger import logger, info
+from scalo.metrics import create_metrics
+from scalo.health import HealthManager, create_health_router
+from scalo.runtime import get_runtime_paths
 
 # 1. Runtime context -- paths, container detection
 paths = get_runtime_paths("my-service")
@@ -109,7 +109,7 @@ production, but if you're porting a spike):
 
 ```python
 # Before
-from hyperi_pylib import Application
+from scalo import Application
 app = Application.api(name="my-service", port=8000)
 app.metrics.counter("requests_total", "...", ["method"])
 app.health.set_ready()
@@ -119,9 +119,9 @@ paths = app.runtime.paths
 ```python
 # After
 from fastapi import FastAPI
-from hyperi_pylib.metrics import create_metrics
-from hyperi_pylib.health import HealthManager, create_health_router
-from hyperi_pylib.runtime import get_runtime_paths
+from scalo.metrics import create_metrics
+from scalo.health import HealthManager, create_health_router
+from scalo.runtime import get_runtime_paths
 
 app = FastAPI()
 health = HealthManager()
@@ -149,9 +149,9 @@ the design is mature." If it does:
 - It will be additive -- compose-the-modules will keep working.
 - It will likely be a *thin* wrapper that picks the FastAPI app,
   signal handlers, and shutdown ordering, not a config-override layer.
-- Subscribe to the [hyperi-pylib changelog] for the announcement.
+- Subscribe to the [scalo changelog] for the announcement.
 
-[hyperi-pylib changelog]: https://github.com/hyperi-io/hyperi-pylib/releases
+[scalo changelog]: https://github.com/hyperi-io/scalo-py/releases
 
 Until then -- compose directly.
 

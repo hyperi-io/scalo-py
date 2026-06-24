@@ -1,4 +1,4 @@
-#  Project:      hyperi-pylib
+#  Project:      scalo
 #  File:         test_cardinality.py
 #  Purpose:      Tests for label cardinality validation
 #  Language:     Python
@@ -17,7 +17,7 @@ from loguru import logger
 @pytest.fixture
 def tracker():
     """Fresh CardinalityTracker with default threshold (50)."""
-    from hyperi_pylib.metrics.cardinality import CardinalityTracker
+    from scalo.metrics.cardinality import CardinalityTracker
 
     return CardinalityTracker()
 
@@ -25,7 +25,7 @@ def tracker():
 @pytest.fixture
 def low_threshold_tracker():
     """CardinalityTracker with a low threshold (3) for easier triggering in tests."""
-    from hyperi_pylib.metrics.cardinality import CardinalityTracker
+    from scalo.metrics.cardinality import CardinalityTracker
 
     return CardinalityTracker(max_cardinality=3)
 
@@ -35,7 +35,7 @@ class TestCardinalityTrackerBasic:
 
     def test_import(self):
         """CardinalityTracker can be imported from the metrics package."""
-        from hyperi_pylib.metrics.cardinality import CardinalityTracker
+        from scalo.metrics.cardinality import CardinalityTracker
 
         assert CardinalityTracker is not None
 
@@ -250,7 +250,7 @@ class TestThreadSafety:
 
     def test_concurrent_tracking_does_not_corrupt_state(self):
         """Many threads tracking distinct label combinations concurrently all get counted."""
-        from hyperi_pylib.metrics.cardinality import CardinalityTracker
+        from scalo.metrics.cardinality import CardinalityTracker
 
         ct = CardinalityTracker(max_cardinality=10000)
         errors: list[Exception] = []
@@ -273,7 +273,7 @@ class TestThreadSafety:
 
     def test_concurrent_reset_and_track_does_not_raise(self):
         """Concurrent reset and track calls do not raise exceptions."""
-        from hyperi_pylib.metrics.cardinality import CardinalityTracker
+        from scalo.metrics.cardinality import CardinalityTracker
 
         ct = CardinalityTracker()
         errors: list[Exception] = []
@@ -310,7 +310,7 @@ class TestCustomThreshold:
 
     def test_custom_threshold_respected(self):
         """CardinalityTracker respects a non-default max_cardinality."""
-        from hyperi_pylib.metrics.cardinality import CardinalityTracker
+        from scalo.metrics.cardinality import CardinalityTracker
 
         messages: list[str] = []
         ct = CardinalityTracker(max_cardinality=5)
@@ -331,7 +331,7 @@ class TestCustomThreshold:
 
     def test_default_threshold_is_fifty(self):
         """Default max_cardinality is 50."""
-        from hyperi_pylib.metrics.cardinality import CardinalityTracker
+        from scalo.metrics.cardinality import CardinalityTracker
 
         messages: list[str] = []
         ct = CardinalityTracker()

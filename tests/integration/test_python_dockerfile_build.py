@@ -1,4 +1,4 @@
-# Project:   hyperi-pylib
+# Project:   scalo
 # File:      tests/integration/test_python_dockerfile_build.py
 # Purpose:   Docker build smoke test for generated Python Dockerfiles (issue #22)
 # Language:  Python
@@ -26,7 +26,7 @@ from pathlib import Path
 import pytest
 
 try:
-    from hyperi_pylib.deployment import (
+    from scalo.deployment import (
         DEPLOYMENT_AVAILABLE,
         DeploymentContract,
         HealthContract,
@@ -103,7 +103,7 @@ def test_generated_python_dockerfile_builds(tmp_path: Path) -> None:
     (docker_cfg / "config.json").write_text("{}", encoding="utf-8", newline="\n")
     env = {**os.environ, "DOCKER_CONFIG": str(docker_cfg)}
 
-    tag = "hyperi-pylib-smoke-py:test"
+    tag = "scalo-smoke-py:test"
     build = subprocess.run(
         ["docker", "build", "-t", tag, "-f", "Dockerfile", "."],
         cwd=tmp_path,

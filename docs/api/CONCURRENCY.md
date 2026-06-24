@@ -5,7 +5,7 @@ AnyIO and asyncer so they work under asyncio (and trio, if you ever
 need it). Ships in the base package — no extras to install.
 
 ```python
-from hyperi_pylib.concurrency import (
+from scalo.concurrency import (
     run_blocking, make_async, Bulkhead, gather_with_timeouts,
 )
 ```
@@ -18,7 +18,7 @@ in [`RESILIENCE.md`](RESILIENCE.md) — this module is the building blocks.
 ## Quick start
 
 ```python
-from hyperi_pylib.concurrency import run_blocking, Bulkhead
+from scalo.concurrency import run_blocking, Bulkhead
 
 aws_bulkhead = Bulkhead("aws-secrets", limit=32)
 
@@ -44,7 +44,7 @@ async def get_secret(path: str) -> bytes:
 
 ```python
 import anyio
-from hyperi_pylib.concurrency import run_blocking
+from scalo.concurrency import run_blocking
 
 async def read_config(path: Path) -> bytes:
     return await run_blocking(path.read_bytes)
@@ -71,7 +71,7 @@ When wrapping a sync library, implement `X_sync()` once and bind
 `X_async = make_async(X_sync)` at class level:
 
 ```python
-from hyperi_pylib.concurrency import make_async
+from scalo.concurrency import make_async
 
 class FileProvider:
     def get_sync(self, path: str) -> bytes:
@@ -94,7 +94,7 @@ Pattern: one `Bulkhead` instance per `(service, endpoint)` pair. When
 the in-flight count hits `limit`, the next async caller waits.
 
 ```python
-from hyperi_pylib.concurrency import Bulkhead
+from scalo.concurrency import Bulkhead
 
 vault_bulkhead = Bulkhead("vault-read", limit=16)
 db_bulkhead    = Bulkhead("postgres", limit=8)
@@ -127,7 +127,7 @@ Each task gets its own `asyncio.timeout(per_task_timeout)`. Exceptions
 doesn't fail the others.
 
 ```python
-from hyperi_pylib.concurrency import gather_with_timeouts
+from scalo.concurrency import gather_with_timeouts
 
 results = await gather_with_timeouts(
     {

@@ -1,4 +1,4 @@
-# Project:   hyperi-pylib
+# Project:   scalo
 # File:      tests/unit/deployment/support.py
 # Purpose:   Shared Python deployment-contract fixture for generator tests
 # Language:  Python
@@ -10,7 +10,7 @@
 
 from __future__ import annotations
 
-from hyperi_pylib.deployment import DeploymentContract, HealthContract, OciLabels
+from scalo.deployment import DeploymentContract, HealthContract, OciLabels
 
 
 def py_contract() -> DeploymentContract:

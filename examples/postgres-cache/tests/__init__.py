@@ -1,4 +1,4 @@
-# Project:   hyperi-pylib
+# Project:   scalo
 # File:      examples/postgres-cache/tests/__init__.py
 # Purpose:   Test package for postgres-cache example
 # Language:  Python

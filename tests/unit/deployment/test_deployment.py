@@ -1,4 +1,4 @@
-# Project:   hyperi-pylib
+# Project:   scalo
 # File:      tests/unit/deployment/test_deployment.py
 # Purpose:   Snapshot tests for the deployment-contract subsystem
 # Language:  Python
@@ -21,7 +21,7 @@ import json
 import pytest
 
 try:
-    from hyperi_pylib.deployment import (
+    from scalo.deployment import (
         DEPLOYMENT_AVAILABLE,
         ArgocdConfig,
         DeploymentContract,
@@ -49,7 +49,7 @@ except Exception:
 
 pytestmark = pytest.mark.skipif(
     not deployment_importable,
-    reason="hyperi_pylib.deployment requires the [deployment] extra (pydantic)",
+    reason="scalo.deployment requires the [deployment] extra (pydantic)",
 )
 
 
@@ -254,7 +254,7 @@ class TestGenerateDockerfile:
 
 class TestGenerateBuilderStage:
     def test_uv_builder_snippet(self):
-        from hyperi_pylib.deployment import generate_builder_stage
+        from scalo.deployment import generate_builder_stage
 
         text = generate_builder_stage(_full_contract())
         assert "FROM ghcr.io/astral-sh/uv:python3.12-bookworm-slim AS builder" in text
@@ -266,7 +266,7 @@ class TestGenerateBuilderStage:
         assert "TOKEN" not in text
 
     def test_builder_image_tracks_python_version(self):
-        from hyperi_pylib.deployment import generate_builder_stage
+        from scalo.deployment import generate_builder_stage
 
         c = _full_contract().model_copy(update={"python_version": "3.13"})
         assert "uv:python3.13-bookworm-slim AS builder" in generate_builder_stage(c)
@@ -444,7 +444,7 @@ class TestGenerateArgocd:
         assert 'sync-wave: "5"' in text
 
     def test_argocd_config_default_uses_wave_apps(self):
-        from hyperi_pylib.deployment import WAVE_APPS
+        from scalo.deployment import WAVE_APPS
 
         cfg = ArgocdConfig()
         assert cfg.sync_wave == WAVE_APPS
@@ -479,7 +479,7 @@ class TestGenerateArgocd:
         assert "/spec/template/spec/containers/0/image" in yaml
 
     def test_generate_argocd_application_sync_wave_annotation_uses_config_value(self):
-        from hyperi_pylib.deployment.waves import WAVE_TOPICS
+        from scalo.deployment.waves import WAVE_TOPICS
 
         argo = ArgocdConfig(
             repo_url="https://github.com/hyperi-io/dfe-loader",

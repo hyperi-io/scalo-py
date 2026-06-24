@@ -8,7 +8,7 @@ from unittest.mock import patch
 import pytest
 import yaml
 
-from hyperi_pylib.config import DirectoryConfigStore
+from scalo.config import DirectoryConfigStore
 
 
 @pytest.fixture

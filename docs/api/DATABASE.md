@@ -2,10 +2,10 @@
 
 Two distinct concerns under one doc:
 
-1. **Connection URL builders** (`hyperi_pylib.database`) — construct
+1. **Connection URL builders** (`scalo.database`) — construct
    `postgresql://`, `mysql://`, `mongodb://`, `redis://`,
    `clickhouse://`, `sqlite://` URLs from env vars or kwargs.
-2. **PostgreSQL data store** (`hyperi_pylib.config.postgres_loader`) —
+2. **PostgreSQL data store** (`scalo.config.postgres_loader`) —
    the async loader that reads `config_values` rows for the standard
    config cascade. The config-cascade integration itself is documented
    in [`../core-pillars/CONFIG.md`](../core-pillars/CONFIG.md); this doc
@@ -13,7 +13,7 @@ Two distinct concerns under one doc:
    `config_values` directly.
 
 ```
-pip install hyperi-pylib   # builders only, no DB driver (the [database] extra is a marker for documentation; add psycopg / pymongo / etc. directly)
+pip install scalo   # builders only, no DB driver (the [database] extra is a marker for documentation; add psycopg / pymongo / etc. directly)
 ```
 
 ---
@@ -21,7 +21,7 @@ pip install hyperi-pylib   # builders only, no DB driver (the [database] extra i
 ## Quick start
 
 ```python
-from hyperi_pylib.database import build_database_url
+from scalo.database import build_database_url
 
 # Reads POSTGRES_HOST / POSTGRES_USER / POSTGRES_PASSWORD / POSTGRES_DATABASE
 db_url = build_database_url("postgresql")
@@ -35,7 +35,7 @@ engine = create_engine(db_url)
 ### Auto-detection from env vars
 
 ```python
-from hyperi_pylib.database import build_database_url
+from scalo.database import build_database_url
 
 postgres_url = build_database_url("postgresql")   # POSTGRES_*
 mysql_url    = build_database_url("mysql")        # MYSQL_*
@@ -62,7 +62,7 @@ replica  = build_database_url("postgresql", env_prefix="REPLICA")
 ### Inspect the parsed config
 
 ```python
-from hyperi_pylib.database import get_database_config
+from scalo.database import get_database_config
 
 config = get_database_config("postgresql")
 # {"host": "...", "port": 5432, "user": "...", "password": "...",
@@ -72,7 +72,7 @@ config = get_database_config("postgresql")
 ### Parse an existing URL
 
 ```python
-from hyperi_pylib.database import parse_database_url
+from scalo.database import parse_database_url
 
 parts = parse_database_url("postgresql://u:p@db:5432/app?sslmode=require")
 # {"scheme": "postgresql", "host": "db", "port": 5432, "user": "u",
@@ -82,7 +82,7 @@ parts = parse_database_url("postgresql://u:p@db:5432/app?sslmode=require")
 ### Env-or-DSN
 
 ```python
-from hyperi_pylib.database import get_database_url_from_env
+from scalo.database import get_database_url_from_env
 
 url = get_database_url_from_env("DATABASE_URL", fallback_type="postgresql")
 # Reads DATABASE_URL if set, otherwise builds from POSTGRES_* env vars.
@@ -105,7 +105,7 @@ env-var name in the message.
 ### Convenience wrappers
 
 ```python
-from hyperi_pylib.database import (
+from scalo.database import (
     get_postgresql_url, get_mysql_url, get_mongodb_url, get_redis_url,
 )
 
@@ -126,7 +126,7 @@ discoverable for direct use too.
 ### Direct loader
 
 ```python
-from hyperi_pylib.config.postgres_loader import (
+from scalo.config.postgres_loader import (
     PostgresConfigLoader, PostgresConfigError, PostgresConfigUnavailable,
 )
 
@@ -145,7 +145,7 @@ namespace share state.
 ### Default loader
 
 ```python
-from hyperi_pylib.config.postgres_loader import get_default_loader
+from scalo.config.postgres_loader import get_default_loader
 
 loader = get_default_loader()   # reads HYPERI_CONFIG_* env vars; returns
                                 # None when HYPERI_CONFIG_DSN is unset

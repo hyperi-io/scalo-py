@@ -1,6 +1,6 @@
-# Project:   hyperi-pylib
+# Project:   scalo
 # File:      examples/basic-logging/pyproject.toml
-# Purpose:   Example project demonstrating hyperi-pylib logging
+# Purpose:   Example project demonstrating scalo logging
 # Language:  Python
 #
 # License:   BUSL-1.1
@@ -9,10 +9,10 @@
 [project]
 name = "basic-logging-example"
 version = "0.1.0"
-description = "Example demonstrating hyperi-pylib structured logging"
+description = "Example demonstrating scalo structured logging"
 requires-python = ">=3.12"
 dependencies = [
-    "hyperi-pylib>=2.14.0",
+    "scalo>=2.14.0",
 ]
 
 [project.optional-dependencies]

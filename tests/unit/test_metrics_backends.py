@@ -6,7 +6,7 @@ Tests both Prometheus and OpenTelemetry backends with unified API.
 
 import pytest
 
-from hyperi_pylib.metrics import MetricsManager, create_metrics
+from scalo.metrics import MetricsManager, create_metrics
 
 
 class TestPrometheusBackend:
@@ -75,7 +75,7 @@ class TestPrometheusBackend:
 
     def test_backward_compatibility_prometheus_metrics(self):
         """Test backward compatibility with PrometheusMetrics."""
-        from hyperi_pylib.metrics import PrometheusMetrics
+        from scalo.metrics import PrometheusMetrics
 
         # Old API should still work
         metrics = PrometheusMetrics("test-app", enable_auto_update=False)
@@ -149,7 +149,7 @@ class TestOpenTelemetryBackend:
     @otel_required
     def test_gauge_set_is_absolute(self):
         """Gauge .set() is absolute, not a delta -- subsequent reads reflect the set value."""
-        from hyperi_pylib.metrics.opentelemetry_backend import OtelGaugeAdapter
+        from scalo.metrics.opentelemetry_backend import OtelGaugeAdapter
 
         metrics = create_metrics("otel-prom-api-3", backend="opentelemetry")
         if not metrics.enabled:
@@ -188,7 +188,7 @@ class TestOpenTelemetryBackend:
     @otel_required
     def test_label_name_conversion(self):
         """Labels are converted to OTel attribute names when auto_convert_names is on."""
-        from hyperi_pylib.metrics.opentelemetry_backend import OtelCounterAdapter
+        from scalo.metrics.opentelemetry_backend import OtelCounterAdapter
 
         metrics = create_metrics("otel-prom-api-5", backend="opentelemetry")
         if not metrics.enabled:

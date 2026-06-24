@@ -1,6 +1,6 @@
 """Parity tests for config cascade alignment with hyperi-rustlib.
 
-These tests verify that hyperi-pylib's config cascade behaviour matches
+These tests verify that scalo's config cascade behaviour matches
 hyperi-rustlib's implementation per the unified spec.
 """
 
@@ -20,7 +20,7 @@ class TestAppEnvDetection:
         monkeypatch.delenv("ENVIRONMENT", raising=False)
         monkeypatch.delenv("ENV", raising=False)
 
-        from hyperi_pylib.config.config import get_app_env
+        from scalo.config.config import get_app_env
 
         assert get_app_env() == "production"
 
@@ -30,7 +30,7 @@ class TestAppEnvDetection:
         monkeypatch.setenv("ENVIRONMENT", "staging")
         monkeypatch.delenv("ENV", raising=False)
 
-        from hyperi_pylib.config.config import get_app_env
+        from scalo.config.config import get_app_env
 
         assert get_app_env() == "staging"
 
@@ -40,7 +40,7 @@ class TestAppEnvDetection:
         monkeypatch.delenv("ENVIRONMENT", raising=False)
         monkeypatch.setenv("ENV", "testing")
 
-        from hyperi_pylib.config.config import get_app_env
+        from scalo.config.config import get_app_env
 
         assert get_app_env() == "testing"
 
@@ -50,7 +50,7 @@ class TestAppEnvDetection:
         monkeypatch.delenv("ENVIRONMENT", raising=False)
         monkeypatch.delenv("ENV", raising=False)
 
-        from hyperi_pylib.config.config import get_app_env
+        from scalo.config.config import get_app_env
 
         assert get_app_env() == "development"
 
@@ -60,7 +60,7 @@ class TestAppEnvDetection:
         monkeypatch.setenv("ENVIRONMENT", "staging")
         monkeypatch.setenv("ENV", "testing")
 
-        from hyperi_pylib.config.config import get_app_env
+        from scalo.config.config import get_app_env
 
         assert get_app_env() == "production"
 
@@ -73,7 +73,7 @@ class TestAppNameDetection:
         monkeypatch.setenv("APP_NAME", "myapp")
         monkeypatch.delenv("HYPERI_LIB_APP_NAME", raising=False)
 
-        from hyperi_pylib.config.config import get_app_name
+        from scalo.config.config import get_app_name
 
         assert get_app_name() == "myapp"
 
@@ -82,7 +82,7 @@ class TestAppNameDetection:
         monkeypatch.delenv("APP_NAME", raising=False)
         monkeypatch.setenv("HYPERI_LIB_APP_NAME", "hyperi-app")
 
-        from hyperi_pylib.config.config import get_app_name
+        from scalo.config.config import get_app_name
 
         assert get_app_name() == "hyperi-app"
 
@@ -94,7 +94,7 @@ class TestLogFormatDefault:
         """Default log_format should be 'auto' (matches rustlib)."""
         monkeypatch.delenv("LOG_FORMAT", raising=False)
 
-        from hyperi_pylib.config.config import get_logging_config
+        from scalo.config.config import get_logging_config
 
         config = get_logging_config()
         assert config["format"] == "auto"
@@ -103,7 +103,7 @@ class TestLogFormatDefault:
         """LOG_FORMAT env var overrides default."""
         monkeypatch.setenv("LOG_FORMAT", "json")
 
-        from hyperi_pylib.config.config import get_logging_config
+        from scalo.config.config import get_logging_config
 
         config = get_logging_config()
         assert config["format"] == "json"
@@ -116,7 +116,7 @@ class TestLogLevelDefault:
         """Default log_level should be 'INFO' (matches rustlib 'info')."""
         monkeypatch.delenv("LOG_LEVEL", raising=False)
 
-        from hyperi_pylib.config.config import get_logging_config
+        from scalo.config.config import get_logging_config
 
         config = get_logging_config()
         assert config["level"].lower() == "info"
@@ -129,7 +129,7 @@ class TestDotenvCascadeDefault:
         """Home .env loading must be opt-in (matches rustlib load_home_dotenv=false)."""
         monkeypatch.delenv("HYPERI_DOTENV_CASCADE", raising=False)
 
-        from hyperi_pylib.config.config import _DOTENV_CASCADE_ENABLED
+        from scalo.config.config import _DOTENV_CASCADE_ENABLED
 
         assert not _DOTENV_CASCADE_ENABLED
 
@@ -143,7 +143,7 @@ class TestMultiLayerFileDiscovery:
         defaults_file = tmp_path / "defaults.yaml"
         defaults_file.write_text("key: value\n")
 
-        from hyperi_pylib.config.config import _find_config_files
+        from scalo.config.config import _find_config_files
 
         found = _find_config_files("defaults")
         assert str(defaults_file.resolve()) in found
@@ -156,7 +156,7 @@ class TestMultiLayerFileDiscovery:
         settings_file = config_dir / "settings.yaml"
         settings_file.write_text("key: value\n")
 
-        from hyperi_pylib.config.config import _find_config_files
+        from scalo.config.config import _find_config_files
 
         found = _find_config_files("settings")
         assert str(settings_file.resolve()) in found
@@ -167,7 +167,7 @@ class TestMultiLayerFileDiscovery:
         yml_file = tmp_path / "defaults.yml"
         yml_file.write_text("key: value\n")
 
-        from hyperi_pylib.config.config import _find_config_files
+        from scalo.config.config import _find_config_files
 
         found = _find_config_files("defaults")
         assert str(yml_file.resolve()) in found
@@ -178,7 +178,7 @@ class TestMultiLayerFileDiscovery:
         defaults_file = tmp_path / "defaults.yaml"
         defaults_file.write_text("key: value\n")
 
-        from hyperi_pylib.config.config import _find_config_files
+        from scalo.config.config import _find_config_files
 
         found = _find_config_files("defaults")
         assert len(found) == len(set(found))
@@ -188,7 +188,7 @@ class TestGetAppEnvExport:
     """Test that get_app_env is properly exported."""
 
     def test_get_app_env_importable(self):
-        """get_app_env should be importable from hyperi_pylib.config."""
-        from hyperi_pylib.config import get_app_env
+        """get_app_env should be importable from scalo.config."""
+        from scalo.config import get_app_env
 
         assert callable(get_app_env)

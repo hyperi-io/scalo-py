@@ -1,4 +1,4 @@
-# Project:   hyperi-pylib
+# Project:   scalo
 # File:      tests/unit/deployment/test_golden.py
 # Purpose:   Golden-file snapshot + determinism tests for python artefacts
 # Language:  Python
@@ -22,7 +22,7 @@ import pytest
 from .support import py_contract
 
 try:
-    from hyperi_pylib.deployment import (
+    from scalo.deployment import (
         DEPLOYMENT_AVAILABLE,
         ArgocdConfig,
         generate_argocd_application,
@@ -37,7 +37,7 @@ except Exception:
 
 pytestmark = pytest.mark.skipif(
     not deployment_importable,
-    reason="hyperi_pylib.deployment requires the [deployment] extra",
+    reason="scalo.deployment requires the [deployment] extra",
 )
 
 GOLDEN = Path(__file__).parent.parent.parent / "fixtures" / "deployment"

@@ -1,10 +1,10 @@
-"""Tests for hyperi_pylib.database module."""
+"""Tests for scalo.database module."""
 
 import os
 
 import pytest
 
-from hyperi_pylib.database import build_database_url, get_database_config
+from scalo.database import build_database_url, get_database_config
 
 
 class TestClickHouseSupport:

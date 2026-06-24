@@ -1,4 +1,4 @@
-#  Project:   hyperi-pylib
+#  Project:   scalo
 #  File:      tests/unit/test_health_manager.py
 #  Purpose:   Unit tests for HealthManager
 #  Language:  Python
@@ -18,7 +18,7 @@ from datetime import datetime
 
 import pytest
 
-from hyperi_pylib.health.manager import HealthManager, HealthStatus
+from scalo.health.manager import HealthManager, HealthStatus
 
 
 class TestHealthStatus:

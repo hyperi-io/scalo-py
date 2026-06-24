@@ -1,12 +1,12 @@
-# Project:   hyperi-pylib
+# Project:   scalo
 # File:      tests/unit/deployment/test_test_support.py
-# Purpose:   Unit tests for hyperi_pylib.deployment.test_support
+# Purpose:   Unit tests for scalo.deployment.test_support
 # Language:  Python
 #
 # License:   BUSL-1.1
 # Copyright: (c) 2026 HYPERI PTY LIMITED
 
-"""Tests for ``hyperi_pylib.deployment.test_support``.
+"""Tests for ``scalo.deployment.test_support``.
 
 Covers tool probes (cached via ``lru_cache``), skip emission to both
 stderr and the side-channel log file, tier_b env parsing, the skip
@@ -30,7 +30,7 @@ import pytest
 
 @pytest.mark.parametrize("val", ["1", "true", "True", "TRUE", "yes", "YES", "on", "ON"])
 def test_tier_b_enabled_truthy_values(val: str) -> None:
-    from hyperi_pylib.deployment.test_support import tier_b_enabled
+    from scalo.deployment.test_support import tier_b_enabled
 
     with patch.dict(os.environ, {"HYPERI_E2E_CLUSTER": val}):
         assert tier_b_enabled() is True
@@ -38,14 +38,14 @@ def test_tier_b_enabled_truthy_values(val: str) -> None:
 
 @pytest.mark.parametrize("val", ["0", "false", "no", "off", "", "garbage"])
 def test_tier_b_enabled_falsy_values(val: str) -> None:
-    from hyperi_pylib.deployment.test_support import tier_b_enabled
+    from scalo.deployment.test_support import tier_b_enabled
 
     with patch.dict(os.environ, {"HYPERI_E2E_CLUSTER": val}):
         assert tier_b_enabled() is False
 
 
 def test_tier_b_enabled_unset() -> None:
-    from hyperi_pylib.deployment.test_support import tier_b_enabled
+    from scalo.deployment.test_support import tier_b_enabled
 
     env = {k: v for k, v in os.environ.items() if k != "HYPERI_E2E_CLUSTER"}
     with patch.dict(os.environ, env, clear=True):
@@ -58,7 +58,7 @@ def test_tier_b_enabled_unset() -> None:
 
 
 def test_skip_log_path_linux_uses_xdg_cache(tmp_path: Path) -> None:
-    from hyperi_pylib.deployment import test_support
+    from scalo.deployment import test_support
 
     with patch.object(Path, "home", return_value=tmp_path), patch.object(test_support.sys, "platform", "linux"):
         p = test_support._skip_log_path()
@@ -66,7 +66,7 @@ def test_skip_log_path_linux_uses_xdg_cache(tmp_path: Path) -> None:
 
 
 def test_skip_log_path_darwin_uses_home_cache(tmp_path: Path) -> None:
-    from hyperi_pylib.deployment import test_support
+    from scalo.deployment import test_support
 
     with patch.object(Path, "home", return_value=tmp_path), patch.object(test_support.sys, "platform", "darwin"):
         p = test_support._skip_log_path()
@@ -74,7 +74,7 @@ def test_skip_log_path_darwin_uses_home_cache(tmp_path: Path) -> None:
 
 
 def test_skip_log_path_windows_uses_localappdata(tmp_path: Path) -> None:
-    from hyperi_pylib.deployment import test_support
+    from scalo.deployment import test_support
 
     fake_appdata = str(tmp_path / "AppDataLocal")
     with (
@@ -87,7 +87,7 @@ def test_skip_log_path_windows_uses_localappdata(tmp_path: Path) -> None:
 
 def test_skip_log_path_never_in_tmp() -> None:
     """AGENT-RULES Rule 4 -- /tmp is forbidden for state."""
-    from hyperi_pylib.deployment.test_support import _skip_log_path
+    from scalo.deployment.test_support import _skip_log_path
 
     p = _skip_log_path()
     assert not str(p).startswith("/tmp/"), f"skip log must NOT live under /tmp, got {p}"
@@ -99,7 +99,7 @@ def test_skip_log_path_never_in_tmp() -> None:
 
 
 def test_skip_writes_canonical_prefix_to_stderr_and_log(tmp_path: Path, capsys: pytest.CaptureFixture[str]) -> None:
-    from hyperi_pylib.deployment import test_support
+    from scalo.deployment import test_support
 
     log_path = tmp_path / "skips.log"
     with patch.object(test_support, "_skip_log_path", return_value=log_path), pytest.raises(pytest.skip.Exception):
@@ -112,7 +112,7 @@ def test_skip_writes_canonical_prefix_to_stderr_and_log(tmp_path: Path, capsys: 
 
 
 def test_skip_rejects_invalid_tier(tmp_path: Path) -> None:
-    from hyperi_pylib.deployment import test_support
+    from scalo.deployment import test_support
 
     log_path = tmp_path / "skips.log"
     with (
@@ -123,7 +123,7 @@ def test_skip_rejects_invalid_tier(tmp_path: Path) -> None:
 
 
 def test_skip_appends_not_truncates(tmp_path: Path, capsys: pytest.CaptureFixture[str]) -> None:
-    from hyperi_pylib.deployment import test_support
+    from scalo.deployment import test_support
 
     log_path = tmp_path / "skips.log"
     with patch.object(test_support, "_skip_log_path", return_value=log_path):
@@ -141,7 +141,7 @@ def test_skip_appends_not_truncates(tmp_path: Path, capsys: pytest.CaptureFixtur
 
 def test_docker_available_cached(monkeypatch: pytest.MonkeyPatch) -> None:
     """`docker_available()` calls shutil.which at most once across invocations."""
-    from hyperi_pylib.deployment import test_support
+    from scalo.deployment import test_support
 
     test_support.docker_available.cache_clear()
     call_counter = {"which": 0, "run": 0}
@@ -166,7 +166,7 @@ def test_docker_available_cached(monkeypatch: pytest.MonkeyPatch) -> None:
 
 
 def test_docker_available_false_when_no_binary(monkeypatch: pytest.MonkeyPatch) -> None:
-    from hyperi_pylib.deployment import test_support
+    from scalo.deployment import test_support
 
     test_support.docker_available.cache_clear()
     monkeypatch.setattr(test_support.shutil, "which", lambda _name: None)
@@ -174,7 +174,7 @@ def test_docker_available_false_when_no_binary(monkeypatch: pytest.MonkeyPatch) 
 
 
 def test_helm_available_when_present(monkeypatch: pytest.MonkeyPatch) -> None:
-    from hyperi_pylib.deployment import test_support
+    from scalo.deployment import test_support
 
     test_support.helm_available.cache_clear()
     monkeypatch.setattr(test_support.shutil, "which", lambda _name: "/usr/bin/helm")
@@ -188,7 +188,7 @@ def test_helm_available_when_present(monkeypatch: pytest.MonkeyPatch) -> None:
 
 def test_kubeconform_available_no_health_probe(monkeypatch: pytest.MonkeyPatch) -> None:
     """kubeconform is a CLI lint -- only check binary presence, no version call."""
-    from hyperi_pylib.deployment import test_support
+    from scalo.deployment import test_support
 
     test_support.kubeconform_available.cache_clear()
     monkeypatch.setattr(test_support.shutil, "which", lambda _name: "/usr/bin/kubeconform")
@@ -207,7 +207,7 @@ def test_kubeconform_available_no_health_probe(monkeypatch: pytest.MonkeyPatch) 
 
 
 def test_docker_empty_creds_json_format() -> None:
-    from hyperi_pylib.deployment.test_support import docker_empty_creds_json
+    from scalo.deployment.test_support import docker_empty_creds_json
 
     assert docker_empty_creds_json() == '{"auths": {}}'
 
@@ -218,19 +218,19 @@ def test_docker_empty_creds_json_format() -> None:
 
 
 def test_wait_until_returns_true_on_first_success() -> None:
-    from hyperi_pylib.deployment.test_support import wait_until
+    from scalo.deployment.test_support import wait_until
 
     assert wait_until(deadline_seconds=1.0, interval_seconds=0.01, predicate=lambda: True) is True
 
 
 def test_wait_until_returns_false_on_timeout() -> None:
-    from hyperi_pylib.deployment.test_support import wait_until
+    from scalo.deployment.test_support import wait_until
 
     assert wait_until(deadline_seconds=0.05, interval_seconds=0.01, predicate=lambda: False) is False
 
 
 def test_wait_until_polls_until_predicate_true() -> None:
-    from hyperi_pylib.deployment.test_support import wait_until
+    from scalo.deployment.test_support import wait_until
 
     counter = {"calls": 0}
 
@@ -248,7 +248,7 @@ def test_wait_until_polls_until_predicate_true() -> None:
 
 
 def test_kind_cluster_guard_name_is_hashed_from_test_name() -> None:
-    from hyperi_pylib.deployment.test_support import KindClusterGuard
+    from scalo.deployment.test_support import KindClusterGuard
 
     g = KindClusterGuard(test_name="test_foo")
     assert g.name.startswith("pylib-e2e-")
@@ -256,7 +256,7 @@ def test_kind_cluster_guard_name_is_hashed_from_test_name() -> None:
 
 
 def test_kind_cluster_guard_same_test_name_same_cluster() -> None:
-    from hyperi_pylib.deployment.test_support import KindClusterGuard
+    from scalo.deployment.test_support import KindClusterGuard
 
     a = KindClusterGuard(test_name="test_foo")
     b = KindClusterGuard(test_name="test_foo")
@@ -264,7 +264,7 @@ def test_kind_cluster_guard_same_test_name_same_cluster() -> None:
 
 
 def test_kind_cluster_guard_different_test_name_different_cluster() -> None:
-    from hyperi_pylib.deployment.test_support import KindClusterGuard
+    from scalo.deployment.test_support import KindClusterGuard
 
     a = KindClusterGuard(test_name="test_foo")
     b = KindClusterGuard(test_name="test_bar")
@@ -272,7 +272,7 @@ def test_kind_cluster_guard_different_test_name_different_cluster() -> None:
 
 
 def test_ensure_kind_cluster_returns_none_when_prereqs_missing(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
-    from hyperi_pylib.deployment import test_support
+    from scalo.deployment import test_support
 
     test_support.kind_available.cache_clear()
     test_support.kubectl_available.cache_clear()

@@ -7,7 +7,7 @@ attach it to `DeploymentContract.keda` to switch Helm output from a
 plain HPA to a `ScaledObject`.
 
 ```python
-from hyperi_pylib.deployment import KedaConfig, KedaContract
+from scalo.deployment import KedaConfig, KedaContract
 ```
 
 Both subclass `BaseModel` with `extra="forbid"`; both share the same
@@ -137,7 +137,7 @@ controller.
 
 ## Runtime signal feed
 
-The runtime side of scaling is `hyperi_pylib.scaling.ScalingPressure`
+The runtime side of scaling is `scalo.scaling.ScalingPressure`
 -- a composite consumer-lag + buffer-pressure + CPU pressure score the
 service exports as a single gauge. KEDA's external/prometheus trigger
 can scrape that gauge for finer-grained signals than raw consumer lag.

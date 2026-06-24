@@ -1,8 +1,8 @@
-# hyperi-pylib
+# scalo
 
 <!-- BADGES:START -->
-[![Build Status](https://github.com/hyperi-io/hyperi-pylib/actions/workflows/ci.yml/badge.svg)](https://github.com/hyperi-io/hyperi-pylib/actions)
-[![PyPI](https://img.shields.io/pypi/v/hyperi-pylib?logo=pypi)](https://pypi.org/project/hyperi-pylib/)
+[![Build Status](https://github.com/hyperi-io/scalo-py/actions/workflows/ci.yml/badge.svg)](https://github.com/hyperi-io/scalo-py/actions)
+[![PyPI](https://img.shields.io/pypi/v/scalo?logo=pypi)](https://pypi.org/project/scalo/)
 [![Python Version](https://img.shields.io/badge/python-3.12%2B-blue)](https://www.python.org/)
 [![License](https://img.shields.io/badge/license-BUSL--1.1-blue)](LICENSE)
 <!-- BADGES:END -->
@@ -46,7 +46,7 @@ This module exists because of this — but the backend version: <https://www.you
 
 ## What you get
 
-Core modules — always installed (`uv add hyperi-pylib`):
+Core modules — always installed (`uv add scalo`):
 
 | Module | Description | Third-party deps |
 |---|---|---|
@@ -74,16 +74,16 @@ Optional modules — install via extras:
 
 ```bash
 # Core only (logger, config, runtime, database, cli, harness, version-check)
-uv add hyperi-pylib
+uv add scalo
 
 # With common extras
-uv add "hyperi-pylib[http,metrics,kafka]"
+uv add "scalo[http,metrics,kafka]"
 
 # Full stack
-uv add "hyperi-pylib[http,metrics,expression,cache,kafka,opentelemetry,secrets]"
+uv add "scalo[http,metrics,expression,cache,kafka,opentelemetry,secrets]"
 ```
 
-> **Package naming:** `hyperi-pylib` on PyPI, `hyperi_pylib` for Python imports.
+> **Package naming:** `scalo` on PyPI, `scalo` for Python imports.
 
 ### Optional Extras Sizes
 
@@ -107,7 +107,7 @@ uv add "hyperi-pylib[http,metrics,expression,cache,kafka,opentelemetry,secrets]"
 ### Logging
 
 ```python
-from hyperi_pylib.logger import logger
+from scalo.logger import logger
 
 logger.info("Service starting", version="1.0.0")
 logger.error("DB connection failed", host="postgres", retry=3)
@@ -120,7 +120,7 @@ automatically.
 ### Configuration
 
 ```python
-from hyperi_pylib.config import settings
+from scalo.config import settings
 
 # Cascade: CLI args → ENV → .env → PostgreSQL → settings.yaml → defaults
 host = settings.database.host
@@ -133,7 +133,7 @@ configurable per app).
 ### Database URLs
 
 ```python
-from hyperi_pylib import build_database_url
+from scalo import build_database_url
 
 postgres = build_database_url("postgresql")  # reads POSTGRES_HOST, POSTGRES_PORT, etc.
 redis = build_database_url("redis")          # reads REDIS_HOST, REDIS_PORT, etc.
@@ -142,7 +142,7 @@ redis = build_database_url("redis")          # reads REDIS_HOST, REDIS_PORT, etc
 ### Runtime Paths (container-aware)
 
 ```python
-from hyperi_pylib import get_runtime_paths
+from scalo import get_runtime_paths
 
 runtime = get_runtime_paths()
 config = runtime.config_dir / "app.yaml"   # /config in K8s, ~/.config locally
@@ -152,7 +152,7 @@ data   = runtime.data_dir  / "state.db"    # /data in K8s, ~/.local/share locall
 ### Metrics
 
 ```python
-from hyperi_pylib import create_metrics
+from scalo import create_metrics
 
 metrics = create_metrics(namespace="myapp")
 metrics.http_requests.inc()
@@ -166,7 +166,7 @@ free — no extra wiring.
 ### Cache (PostgreSQL-backed)
 
 ```python
-from hyperi_pylib.cache import PostgresCache, generate_cache_key
+from scalo.cache import PostgresCache, generate_cache_key
 
 cache = PostgresCache(dsn="postgresql://user:pass@host/db")
 await cache.init()
@@ -181,7 +181,7 @@ await cache.close()
 ### Kafka
 
 ```python
-from hyperi_pylib.kafka import KafkaClient, KafkaConsumer, KafkaProducer
+from scalo.kafka import KafkaClient, KafkaConsumer, KafkaProducer
 ```
 
 Uses `confluent-kafka-python` (librdkafka) under the hood. Schema-registry
@@ -190,7 +190,7 @@ integration, health checks, and admin operations included.
 ### Secrets (multi-backend)
 
 ```python
-from hyperi_pylib.secrets import SecretsManager
+from scalo.secrets import SecretsManager
 
 # Picks the configured backend: file, OpenBao/Vault, AWS, GCP, Azure
 manager = SecretsManager.from_config()
@@ -206,7 +206,7 @@ Subclass `DfeApp` to get a standard service-CLI lifecycle (`run`, `version`,
 automatically.
 
 ```python
-from hyperi_pylib.cli import DfeApp, VersionInfo
+from scalo.cli import DfeApp, VersionInfo
 
 class MyService(DfeApp):
     name = "my-service"
@@ -229,7 +229,7 @@ if __name__ == "__main__":
 
 ## Health Check Endpoints — The Probe Trinity
 
-For services deployed to Kubernetes, hyperi-pylib's HTTP server provides
+For services deployed to Kubernetes, scalo's HTTP server provides
 the three K8s probe types:
 
 | Probe | Path | Checks | On failure |

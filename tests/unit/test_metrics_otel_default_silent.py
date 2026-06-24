@@ -1,4 +1,4 @@
-#  Project:   hyperi-pylib
+#  Project:   scalo
 #  File:      tests/unit/test_metrics_otel_default_silent.py
 #  Purpose:   OTLP push silent by default; only enabled when endpoint set
 #  Language:  Python
@@ -29,7 +29,7 @@ pytestmark = pytest.mark.skipif(not _otel_available(), reason="opentelemetry not
 
 
 def test_default_does_not_attach_otlp_push():
-    from hyperi_pylib.metrics.opentelemetry_backend import OpenTelemetryBackend
+    from scalo.metrics.opentelemetry_backend import OpenTelemetryBackend
 
     backend = OpenTelemetryBackend(app_name="testapp", config=None)
     assert backend.enabled, "Prometheus reader should still be on by default"
@@ -37,7 +37,7 @@ def test_default_does_not_attach_otlp_push():
 
 
 def test_explicit_endpoint_attaches_otlp_push():
-    from hyperi_pylib.metrics.opentelemetry_backend import OpenTelemetryBackend
+    from scalo.metrics.opentelemetry_backend import OpenTelemetryBackend
 
     backend = OpenTelemetryBackend(
         app_name="testapp",
@@ -48,7 +48,7 @@ def test_explicit_endpoint_attaches_otlp_push():
 
 def test_env_endpoint_attaches_otlp_push(monkeypatch):
     monkeypatch.setenv("OTEL_EXPORTER_OTLP_ENDPOINT", "http://otel-collector:4317")
-    from hyperi_pylib.metrics.opentelemetry_backend import OpenTelemetryBackend
+    from scalo.metrics.opentelemetry_backend import OpenTelemetryBackend
 
     backend = OpenTelemetryBackend(app_name="testapp", config=None)
     assert backend.enabled

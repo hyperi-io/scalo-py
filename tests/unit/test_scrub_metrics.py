@@ -1,4 +1,4 @@
-#  Project:   hyperi-pylib
+#  Project:   scalo
 #  File:      tests/unit/test_scrub_metrics.py
 #  Purpose:   Tests for ScrubMetrics emission per spec §8
 #  Language:  Python
@@ -20,7 +20,7 @@ from common.fake_pii import (
     visa_card,
 )
 
-from hyperi_pylib.logger.scrub import (
+from scalo.logger.scrub import (
     NationalIdsConfig,
     PiiConfig,
     PiiValidatorsConfig,
@@ -281,7 +281,7 @@ class TestFactoryEmitsMetrics:
 
     def test_error_count_on_broken_layer(self, backend, metrics):
         # Inject a layer that raises to exercise the fail-safe path.
-        from hyperi_pylib.logger.scrub import LayeredScrubber
+        from scalo.logger.scrub import LayeredScrubber
 
         class _Boom:
             def scrub(self, text: str) -> str:

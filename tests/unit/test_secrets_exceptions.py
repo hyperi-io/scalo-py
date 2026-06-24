@@ -2,7 +2,7 @@
 
 import pytest
 
-from hyperi_pylib.secrets.exceptions import (
+from scalo.secrets.exceptions import (
     AuthenticationError,
     CacheError,
     ProviderError,

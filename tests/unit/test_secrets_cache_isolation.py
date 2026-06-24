@@ -1,4 +1,4 @@
-#  Project:   hyperi-pylib
+#  Project:   scalo
 #  File:      tests/unit/test_secrets_cache_isolation.py
 #  Purpose:   Two SecretsManager instances must not share cached secrets
 #  Language:  Python
@@ -15,9 +15,9 @@ from pathlib import Path
 
 import pytest
 
-from hyperi_pylib.secrets.manager import SecretsManager, _CacheKey
-from hyperi_pylib.secrets.providers.file import FileProvider
-from hyperi_pylib.secrets.types import CacheConfig, ProviderType, SecretValue, SourceConfig
+from scalo.secrets.manager import SecretsManager, _CacheKey
+from scalo.secrets.providers.file import FileProvider
+from scalo.secrets.types import CacheConfig, ProviderType, SecretValue, SourceConfig
 
 
 def _write(path: Path, payload: bytes) -> None:

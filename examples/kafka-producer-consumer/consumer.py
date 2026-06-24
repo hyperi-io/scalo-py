@@ -1,6 +1,6 @@
-# Project:   hyperi-pylib
+# Project:   scalo
 # File:      examples/kafka-producer-consumer/consumer.py
-# Purpose:   Demonstrate hyperi-pylib Kafka consumer
+# Purpose:   Demonstrate scalo Kafka consumer
 # Language:  Python
 #
 # License:   BUSL-1.1
@@ -9,7 +9,7 @@
 """
 Kafka Consumer Example.
 
-Demonstrates hyperi-pylib's Kafka consumer with corporate defaults.
+Demonstrates scalo's Kafka consumer with corporate defaults.
 Run with: uv run python consumer.py
 
 Requires Kafka running (use docker compose up -d).
@@ -20,8 +20,8 @@ import os
 import signal
 import sys
 
-from hyperi_pylib.kafka import KafkaConsumer
-from hyperi_pylib.logger import error, info, success, warning
+from scalo.kafka import KafkaConsumer
+from scalo.logger import error, info, success, warning
 
 BOOTSTRAP_SERVERS = os.environ.get("KAFKA_BOOTSTRAP_SERVERS", "localhost:9092")
 TOPIC = "example-events"
@@ -136,7 +136,7 @@ def main() -> None:
     signal.signal(signal.SIGINT, signal_handler)
     signal.signal(signal.SIGTERM, signal_handler)
 
-    print("=== hyperi-pylib Kafka Consumer Demo ===\n")
+    print("=== scalo Kafka Consumer Demo ===\n")
     print("Press Ctrl+C to stop consuming.\n")
 
     try:

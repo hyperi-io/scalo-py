@@ -6,7 +6,7 @@ etc.). The contract drives the Dockerfile's APT block automatically --
 consumers don't hand-write `RUN apt-get install` lines.
 
 ```python
-from hyperi_pylib.deployment import NativeDepsContract, AptRepoContract
+from scalo.deployment import NativeDepsContract, AptRepoContract
 ```
 
 Most pylib services need NOTHING beyond `ca-certificates curl
@@ -55,7 +55,7 @@ image string; everything else (including `ubuntu:24.04`) falls back to
 
 `NativeDepsContract.for_pylib_extras(extras, base_image)` builds the
 runtime contract from your `pyproject.toml` extras list. Pass the same
-strings used in `pip install "hyperi-pylib[...]"`.
+strings used in `pip install "scalo[...]"`.
 
 | Extra | Adds repos | Adds packages |
 |---|---|---|

@@ -1,6 +1,6 @@
-# Project:   hyperi-pylib
+# Project:   scalo
 # File:      examples/fastapi-metrics/main.py
-# Purpose:   Demonstrate hyperi-pylib Prometheus metrics with FastAPI
+# Purpose:   Demonstrate scalo Prometheus metrics with FastAPI
 # Language:  Python
 #
 # License:   BUSL-1.1
@@ -9,7 +9,7 @@
 """
 FastAPI Metrics Example.
 
-Demonstrates hyperi-pylib's Prometheus metrics integration with FastAPI.
+Demonstrates scalo's Prometheus metrics integration with FastAPI.
 Run with: uv run python main.py
 
 Then visit:
@@ -26,8 +26,8 @@ from contextlib import asynccontextmanager
 from fastapi import FastAPI, Request, Response
 from fastapi.responses import PlainTextResponse
 
-from hyperi_pylib.logger import info, success
-from hyperi_pylib.metrics import create_metrics
+from scalo.logger import info, success
+from scalo.metrics import create_metrics
 
 # Configuration
 API_HOST = os.environ.get("API_HOST", "0.0.0.0")
@@ -72,7 +72,7 @@ async def lifespan(app: FastAPI):
 # Create FastAPI application
 app = FastAPI(
     title="FastAPI Metrics Example",
-    description="Demonstrates hyperi-pylib Prometheus metrics",
+    description="Demonstrates scalo Prometheus metrics",
     version="1.0.0",
     lifespan=lifespan,
 )

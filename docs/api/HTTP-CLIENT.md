@@ -8,7 +8,7 @@ needed. Replaces ad-hoc `requests` / `httpx` usage where Bandit's
 B113 (request without timeout) keeps biting.
 
 ```
-pip install hyperi-pylib[http]
+pip install scalo[http]
 ```
 
 ---
@@ -16,7 +16,7 @@ pip install hyperi-pylib[http]
 ## Quick start
 
 ```python
-from hyperi_pylib.http import HttpClient
+from scalo.http import HttpClient
 
 client = HttpClient(base_url="https://api.example.com")
 response = client.get("/users/123")
@@ -46,14 +46,14 @@ Pick by call site:
 
 ```python
 # Sync — startup probes, CLI tools, hyperi-ci checks
-from hyperi_pylib.http import HttpClient
+from scalo.http import HttpClient
 
 with HttpClient(base_url="https://api.example.com") as client:
     r = client.get("/health")
     assert r.status_code == 200
 
 # Async — anything running inside an asyncio loop
-from hyperi_pylib.http import AsyncHttpClient
+from scalo.http import AsyncHttpClient
 
 async with AsyncHttpClient(base_url="https://api.example.com") as client:
     r = await client.get("/users/123")
@@ -170,7 +170,7 @@ for fully offline tests:
 
 ```python
 import httpx
-from hyperi_pylib.http import HttpClient
+from scalo.http import HttpClient
 
 def handler(request):
     return httpx.Response(200, json={"ok": True})

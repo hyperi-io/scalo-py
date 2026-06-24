@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import pytest
 
-from hyperi_pylib.deployment.topology.errors import (
+from scalo.deployment.topology.errors import (
     TopologyError,
     TopologyValidationError,
     VersionResolutionError,

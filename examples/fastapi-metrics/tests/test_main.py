@@ -1,4 +1,4 @@
-# Project:   hyperi-pylib
+# Project:   scalo
 # File:      examples/fastapi-metrics/tests/test_main.py
 # Purpose:   Tests for fastapi-metrics example
 # Language:  Python
@@ -114,7 +114,7 @@ class TestImports:
 
     def test_create_metrics_import(self) -> None:
         """Should be able to import create_metrics."""
-        from hyperi_pylib.metrics import create_metrics
+        from scalo.metrics import create_metrics
 
         assert create_metrics is not None
 

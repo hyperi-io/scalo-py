@@ -1,4 +1,4 @@
-#  Project:   hyperi-pylib
+#  Project:   scalo
 #  File:      tests/unit/test_scrub_pii_validators.py
 #  Purpose:   Tests for L3 PII validators (strong-structural + context-required)
 #  Language:  Python
@@ -23,8 +23,8 @@ from __future__ import annotations
 
 import pytest
 
-from hyperi_pylib.logger.scrub import Scrubber
-from hyperi_pylib.logger.scrub.pii import (
+from scalo.logger.scrub import Scrubber
+from scalo.logger.scrub.pii import (
     CreditCardValidator,
     EmailValidator,
     IbanValidator,

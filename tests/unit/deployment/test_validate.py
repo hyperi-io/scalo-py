@@ -1,4 +1,4 @@
-# Project:   hyperi-pylib
+# Project:   scalo
 # File:      tests/unit/deployment/test_validate.py
 # Purpose:   Tests for validate_dockerfile / validate_helm_values drift checks
 # Language:  Python
@@ -17,7 +17,7 @@ import pytest
 from .support import py_contract
 
 try:
-    from hyperi_pylib.deployment import (
+    from scalo.deployment import (
         DEPLOYMENT_AVAILABLE,
         generate_chart,
         generate_runtime_stage,
@@ -31,7 +31,7 @@ except Exception:
 
 pytestmark = pytest.mark.skipif(
     not deployment_importable,
-    reason="hyperi_pylib.deployment requires the [deployment] extra",
+    reason="scalo.deployment requires the [deployment] extra",
 )
 
 

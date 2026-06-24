@@ -1,4 +1,4 @@
-#  Project:   hyperi-pylib
+#  Project:   scalo
 #  File:      tests/unit/test_scrub_chain.py
 #  Purpose:   Tests for Scrubber Protocol, LayeredScrubber, NoOpScrubber
 #  Language:  Python
@@ -12,7 +12,7 @@ from __future__ import annotations
 
 import pytest
 
-from hyperi_pylib.logger.scrub import (
+from scalo.logger.scrub import (
     LayeredScrubber,
     NoOpScrubber,
     PiiConfig,

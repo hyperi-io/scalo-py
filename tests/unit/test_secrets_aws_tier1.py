@@ -1,4 +1,4 @@
-# Project:   hyperi-pylib
+# Project:   scalo
 # File:      tests/unit/test_secrets_aws_tier1.py
 # Purpose:   Unit tests for AWS Secrets Manager Tier 1 + Tier 2 methods
 # Language:  Python
@@ -19,13 +19,13 @@ import os
 
 import pytest
 
-from hyperi_pylib.secrets.exceptions import (
+from scalo.secrets.exceptions import (
     SecretAlreadyExistsError,
     SecretNotFoundError,
     SecretVersionNotFoundError,
 )
-from hyperi_pylib.secrets.providers.aws import AIOBOTOCORE_AVAILABLE, BOTO3_AVAILABLE, AWSProvider
-from hyperi_pylib.secrets.types import AWSConfig, SecretFilter
+from scalo.secrets.providers.aws import AIOBOTOCORE_AVAILABLE, BOTO3_AVAILABLE, AWSProvider
+from scalo.secrets.types import AWSConfig, SecretFilter
 
 try:
     from moto import mock_aws
@@ -67,7 +67,7 @@ def provider(mocked_aws, monkeypatch) -> AWSProvider:
     Live aiobotocore is exercised by tests/integration/test_secrets_cloud_providers.py
     against real AWS when SSO creds are available.
     """
-    import hyperi_pylib.secrets.providers.aws as aws_mod
+    import scalo.secrets.providers.aws as aws_mod
 
     monkeypatch.setattr(aws_mod, "AIOBOTOCORE_AVAILABLE", False)
     return AWSProvider(AWSConfig(region=REGION))

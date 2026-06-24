@@ -1,12 +1,12 @@
 # Test support
 
-`hyperi_pylib.deployment.test_support` -- reusable helpers for the
+`scalo.deployment.test_support` -- reusable helpers for the
 deployment-contract e2e suite. Std-library only; no new runtime deps.
 Consumers import these into their own `tests/e2e/` modules; the
 canonical template lives at `tests/e2e/test_contract_artefacts.py`.
 
 ```python
-from hyperi_pylib.deployment.test_support import (
+from scalo.deployment.test_support import (
     SKIP_PREFIX,
     docker_available, helm_available, kubeconform_available,
     kind_available, kubectl_available,

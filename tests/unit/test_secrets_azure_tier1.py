@@ -1,4 +1,4 @@
-# Project:   hyperi-pylib
+# Project:   scalo
 # File:      tests/unit/test_secrets_azure_tier1.py
 # Purpose:   Unit tests for Azure Key Vault Tier 1 + Tier 2 helpers
 # Language:  Python
@@ -26,9 +26,9 @@ from types import SimpleNamespace
 
 import pytest
 
-from hyperi_pylib.secrets.exceptions import ProviderError, SecretNotFoundError
-from hyperi_pylib.secrets.providers.azure import AZURE_AVAILABLE, AzureProvider
-from hyperi_pylib.secrets.types import AzureConfig, SecretFilter
+from scalo.secrets.exceptions import ProviderError, SecretNotFoundError
+from scalo.secrets.providers.azure import AZURE_AVAILABLE, AzureProvider
+from scalo.secrets.types import AzureConfig, SecretFilter
 
 pytestmark = pytest.mark.skipif(not AZURE_AVAILABLE, reason="azure-keyvault-secrets not installed")
 

@@ -1,4 +1,4 @@
-#  Project:   hyperi-pylib
+#  Project:   scalo
 #  File:      tests/unit/test_logger_secrets_leak.py
 #  Purpose:   Tests for SecretsLeakFilter (detect-secrets backend)
 #  Language:  Python
@@ -22,8 +22,8 @@ from common.fake_secrets import (
     jwt as fake_jwt,
 )
 
-from hyperi_pylib.logger.filters import SensitiveDataFilter
-from hyperi_pylib.logger.secrets_leak import (
+from scalo.logger.filters import SensitiveDataFilter
+from scalo.logger.secrets_leak import (
     SECRETS_PLUGINS_FULL,
     SECRETS_PLUGINS_LITE,
     SecretsLeakFilter,

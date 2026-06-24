@@ -1,4 +1,4 @@
-# Project:   hyperi-pylib
+# Project:   scalo
 # File:      tests/integration/test_secrets_cloud_providers.py
 # Purpose:   Integration tests for cloud secrets providers (AWS, GCP, Azure, Vault)
 # Language:  Python
@@ -17,24 +17,24 @@ Configuration via environment variables (or tests/.env.integration file):
 
     # AWS Secrets Manager
     HYPERI_TEST_AWS_REGION=ap-southeast-2
-    HYPERI_TEST_AWS_SECRET_NAME=hyperi-pylib-test
+    HYPERI_TEST_AWS_SECRET_NAME=scalo-test
     # Credentials: AWS_ACCESS_KEY_ID + AWS_SECRET_ACCESS_KEY + AWS_SESSION_TOKEN
     # Via SSO: eval $(aws configure export-credentials --profile your-aws-profile --format env)
 
     # GCP Secret Manager
     HYPERI_TEST_GCP_PROJECT_ID=hyperi-dfe
-    HYPERI_TEST_GCP_SECRET_NAME=hyperi-pylib-test
+    HYPERI_TEST_GCP_SECRET_NAME=scalo-test
     # Credentials: gcloud auth application-default login
 
     # Azure Key Vault
-    HYPERI_TEST_AZURE_VAULT_URL=https://hyperi-pylib-test.vault.azure.net/
-    HYPERI_TEST_AZURE_SECRET_NAME=hyperi-pylib-test
+    HYPERI_TEST_AZURE_VAULT_URL=https://scalo-test.vault.azure.net/
+    HYPERI_TEST_AZURE_SECRET_NAME=scalo-test
     # Credentials: az login (ensure AZURE_CLIENT_SECRET is unset if stale)
 
     # OpenBao / Vault
     HYPERI_TEST_VAULT_ADDR=https://bao.devex.hyperi.io:8200
     HYPERI_TEST_VAULT_TOKEN=<token>
-    HYPERI_TEST_VAULT_PATH=secret/data/hyperi-pylib-test
+    HYPERI_TEST_VAULT_PATH=secret/data/scalo-test
     HYPERI_TEST_VAULT_KEY=api_key
 
 Copy tests/.env.integration.example to tests/.env.integration and fill in values.
@@ -64,17 +64,17 @@ pytestmark = pytest.mark.integration
 # ---------------------------------------------------------------------------
 
 AWS_REGION = os.environ.get("HYPERI_TEST_AWS_REGION", "ap-southeast-2")
-AWS_SECRET_NAME = os.environ.get("HYPERI_TEST_AWS_SECRET_NAME", "hyperi-pylib-test")
+AWS_SECRET_NAME = os.environ.get("HYPERI_TEST_AWS_SECRET_NAME", "scalo-test")
 
 GCP_PROJECT_ID = os.environ.get("HYPERI_TEST_GCP_PROJECT_ID", "hyperi-dfe")
-GCP_SECRET_NAME = os.environ.get("HYPERI_TEST_GCP_SECRET_NAME", "hyperi-pylib-test")
+GCP_SECRET_NAME = os.environ.get("HYPERI_TEST_GCP_SECRET_NAME", "scalo-test")
 
-AZURE_VAULT_URL = os.environ.get("HYPERI_TEST_AZURE_VAULT_URL", "https://hyperi-pylib-test.vault.azure.net/")
-AZURE_SECRET_NAME = os.environ.get("HYPERI_TEST_AZURE_SECRET_NAME", "hyperi-pylib-test")
+AZURE_VAULT_URL = os.environ.get("HYPERI_TEST_AZURE_VAULT_URL", "https://scalo-test.vault.azure.net/")
+AZURE_SECRET_NAME = os.environ.get("HYPERI_TEST_AZURE_SECRET_NAME", "scalo-test")
 
 VAULT_ADDR = os.environ.get("HYPERI_TEST_VAULT_ADDR", "")
 VAULT_TOKEN = os.environ.get("HYPERI_TEST_VAULT_TOKEN", "")
-VAULT_PATH = os.environ.get("HYPERI_TEST_VAULT_PATH", "secret/data/hyperi-pylib-test")
+VAULT_PATH = os.environ.get("HYPERI_TEST_VAULT_PATH", "secret/data/scalo-test")
 VAULT_KEY = os.environ.get("HYPERI_TEST_VAULT_KEY", "api_key")
 
 EXPECTED_API_KEY = "test-value-abc123"
@@ -144,15 +144,15 @@ requires_vault = pytest.mark.skipif(
 # ---------------------------------------------------------------------------
 
 try:
-    from hyperi_pylib.secrets import (
+    from scalo.secrets import (
         AWSConfig,
         AzureConfig,
         GCPConfig,
         OpenBaoConfig,
         SecretsManager,
     )
-    from hyperi_pylib.secrets.exceptions import SecretNotFoundError
-    from hyperi_pylib.secrets.providers import (
+    from scalo.secrets.exceptions import SecretNotFoundError
+    from scalo.secrets.providers import (
         AIOBOTOCORE_AVAILABLE,
         AZURE_AVAILABLE,
         BOTO3_AVAILABLE,
@@ -236,7 +236,7 @@ class TestAWSProviderIntegration:
                 "sources": {
                     "missing": {
                         "provider": "aws",
-                        "secret_id": "this-secret-does-not-exist-hyperi-pylib",
+                        "secret_id": "this-secret-does-not-exist-scalo",
                         "env_fallback": "FALLBACK_KEY",
                     },
                 },
@@ -318,7 +318,7 @@ class TestGCPProviderIntegration:
                 "sources": {
                     "missing": {
                         "provider": "gcp",
-                        "path": "this-secret-does-not-exist-hyperi-pylib",
+                        "path": "this-secret-does-not-exist-scalo",
                         "env_fallback": "FALLBACK_KEY",
                     },
                 },
@@ -408,7 +408,7 @@ class TestAzureProviderIntegration:
                 "sources": {
                     "missing": {
                         "provider": "azure",
-                        "path": "this-secret-does-not-exist-hyperi-pylib",
+                        "path": "this-secret-does-not-exist-scalo",
                         "env_fallback": "FALLBACK_KEY",
                     },
                 },
@@ -483,7 +483,7 @@ class TestVaultProviderIntegration:
                 "sources": {
                     "missing": {
                         "provider": "openbao",
-                        "path": "secret/data/this-does-not-exist-hyperi-pylib-test",
+                        "path": "secret/data/this-does-not-exist-scalo-test",
                         "env_fallback": "FALLBACK_KEY",
                     },
                 },

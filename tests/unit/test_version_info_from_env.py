@@ -1,4 +1,4 @@
-# Project:   hyperi-pylib
+# Project:   scalo
 # File:      tests/unit/test_version_info_from_env.py
 # Purpose:   Tests for VersionInfo.from_env() classmethod
 # Language:  Python
@@ -13,7 +13,7 @@ import sys
 
 import pytest
 
-from hyperi_pylib.cli.version_info import VersionInfo
+from scalo.cli.version_info import VersionInfo
 
 
 def test_from_env_with_git_commit(monkeypatch: pytest.MonkeyPatch) -> None:

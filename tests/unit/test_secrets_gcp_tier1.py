@@ -1,4 +1,4 @@
-# Project:   hyperi-pylib
+# Project:   scalo
 # File:      tests/unit/test_secrets_gcp_tier1.py
 # Purpose:   Unit tests for GCP Secret Manager Tier 1 + Tier 2 helpers
 # Language:  Python
@@ -26,8 +26,8 @@ from types import SimpleNamespace
 
 import pytest
 
-from hyperi_pylib.secrets.providers.gcp import GCP_AVAILABLE, GCPProvider
-from hyperi_pylib.secrets.types import GCPConfig, SecretFilter
+from scalo.secrets.providers.gcp import GCP_AVAILABLE, GCPProvider
+from scalo.secrets.types import GCPConfig, SecretFilter
 
 pytestmark = pytest.mark.skipif(not GCP_AVAILABLE, reason="google-cloud-secret-manager not installed")
 
@@ -237,13 +237,13 @@ class TestParsePayload:
         assert result == b"xyz"
 
     def test_missing_key_raises(self, provider):
-        from hyperi_pylib.secrets.exceptions import SecretNotFoundError
+        from scalo.secrets.exceptions import SecretNotFoundError
 
         with pytest.raises(SecretNotFoundError):
             provider._parse_payload(b'{"a": 1}', "secret/foo", "b")
 
     def test_invalid_json_raises(self, provider):
-        from hyperi_pylib.secrets.exceptions import ProviderError
+        from scalo.secrets.exceptions import ProviderError
 
         with pytest.raises(ProviderError):
             provider._parse_payload(b"not json", "secret/foo", "key")

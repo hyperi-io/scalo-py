@@ -1,4 +1,4 @@
-#  Project:   hyperi-pylib
+#  Project:   scalo
 #  File:      tests/unit/test_scrub_resolver.py
 #  Purpose:   Tests for resolve_scrubber() -- config + kwargs → Scrubber
 #  Language:  Python
@@ -13,13 +13,13 @@ from __future__ import annotations
 
 import pytest
 
-from hyperi_pylib.logger.scrub import (
+from scalo.logger.scrub import (
     LayeredScrubber,
     NoOpScrubber,
     ScrubConfig,
     SecretsConfig,
 )
-from hyperi_pylib.logger.scrub_resolver import (
+from scalo.logger.scrub_resolver import (
     _legacy_to_scrub_config,
     _parse_scrub_dict,
     resolve_scrubber,
@@ -195,8 +195,8 @@ class TestSchemaParsing:
 # ---------------------------------------------------------------------------
 
 
-from hyperi_pylib.logger.logger import _scrub_level_enabled
-from hyperi_pylib.logger.scrub import LogLevelsConfig
+from scalo.logger.logger import _scrub_level_enabled
+from scalo.logger.scrub import LogLevelsConfig
 
 
 class TestLogLevelGate:

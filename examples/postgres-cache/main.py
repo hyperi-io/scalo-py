@@ -1,6 +1,6 @@
-# Project:   hyperi-pylib
+# Project:   scalo
 # File:      examples/postgres-cache/main.py
-# Purpose:   Demonstrate hyperi-pylib PostgreSQL cache
+# Purpose:   Demonstrate scalo PostgreSQL cache
 # Language:  Python
 #
 # License:   BUSL-1.1
@@ -9,7 +9,7 @@
 """
 PostgreSQL Cache Example.
 
-Demonstrates hyperi-pylib's PostgreSQL cache backend for multi-pod deployments.
+Demonstrates scalo's PostgreSQL cache backend for multi-pod deployments.
 Run with: uv run python main.py
 
 Requires PostgreSQL running (use docker compose up -d).
@@ -19,8 +19,8 @@ import asyncio
 import os
 from datetime import datetime
 
-from hyperi_pylib.cache import PostgresCache, generate_cache_key
-from hyperi_pylib.logger import error, info, success
+from scalo.cache import PostgresCache, generate_cache_key
+from scalo.logger import error, info, success
 
 # Default DSN for local development
 DEFAULT_DSN = "postgresql://postgres:postgres@localhost:5432/cache_example"
@@ -172,7 +172,7 @@ async def main() -> None:
     dsn = os.environ.get("POSTGRES_DSN", DEFAULT_DSN)
     info("PostgreSQL cache example starting", dsn=dsn.split("@")[1] if "@" in dsn else dsn)
 
-    print("=== hyperi-pylib PostgreSQL Cache Demo ===")
+    print("=== scalo PostgreSQL Cache Demo ===")
 
     try:
         # Initialise cache

@@ -1,4 +1,4 @@
-# Project:   hyperi-pylib
+# Project:   scalo
 # File:      tests/unit/test_cli_app.py
 # Purpose:   Unit tests for DfeApp CLI framework
 # Language:  Python
@@ -19,15 +19,15 @@ from typing import Any
 import pytest
 from typer.testing import CliRunner
 
-from hyperi_pylib.cli.app import CommonArgs, DfeApp, _build_typer_app, _is_async_overridden
-from hyperi_pylib.cli.error import (
+from scalo.cli.app import CommonArgs, DfeApp, _build_typer_app, _is_async_overridden
+from scalo.cli.error import (
     CliError,
     ConfigError,
     InvalidArgumentError,
     LoggerError,
     ServiceError,
 )
-from hyperi_pylib.cli.version_info import VersionInfo
+from scalo.cli.version_info import VersionInfo
 
 runner = CliRunner()
 
@@ -330,7 +330,7 @@ class TestDfeApp:
 
     def test_metrics_auto_init_after_run(self):
         """After run, _metrics and _app_metrics are set when metrics extra is available."""
-        pytest.importorskip("hyperi_pylib.metrics", reason="metrics extra not installed")
+        pytest.importorskip("scalo.metrics", reason="metrics extra not installed")
 
         app = _SyncApp()
         typer_app = _build_typer_app(app)
@@ -346,23 +346,23 @@ class TestDfeApp:
 
         # Inject a broken create_metrics into the metrics module namespace
         # so the import succeeds but the call raises
-        fake_metrics = types.ModuleType("hyperi_pylib.metrics")
+        fake_metrics = types.ModuleType("scalo.metrics")
 
         def broken_create_metrics(*args, **kwargs):
             raise RuntimeError("simulated metrics failure")
 
         fake_metrics.create_metrics = broken_create_metrics
-        monkeypatch.setitem(sys.modules, "hyperi_pylib.metrics", fake_metrics)
+        monkeypatch.setitem(sys.modules, "scalo.metrics", fake_metrics)
 
         # Also ensure AppMetrics import succeeds from dfe_groups
-        fake_dfe_groups = types.ModuleType("hyperi_pylib.metrics.dfe_groups")
+        fake_dfe_groups = types.ModuleType("scalo.metrics.dfe_groups")
 
         class _FakeAppMetrics:
             def __init__(self, *args, **kwargs):
                 pass
 
         fake_dfe_groups.AppMetrics = _FakeAppMetrics
-        monkeypatch.setitem(sys.modules, "hyperi_pylib.metrics.dfe_groups", fake_dfe_groups)
+        monkeypatch.setitem(sys.modules, "scalo.metrics.dfe_groups", fake_dfe_groups)
 
         app = _SyncApp()
         typer_app = _build_typer_app(app)

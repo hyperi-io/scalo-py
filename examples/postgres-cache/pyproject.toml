@@ -1,6 +1,6 @@
-# Project:   hyperi-pylib
+# Project:   scalo
 # File:      examples/postgres-cache/pyproject.toml
-# Purpose:   Example project demonstrating hyperi-pylib PostgreSQL cache
+# Purpose:   Example project demonstrating scalo PostgreSQL cache
 # Language:  Python
 #
 # License:   BUSL-1.1
@@ -9,10 +9,10 @@
 [project]
 name = "postgres-cache-example"
 version = "0.1.0"
-description = "Example demonstrating hyperi-pylib PostgreSQL cache for multi-pod deployments"
+description = "Example demonstrating scalo PostgreSQL cache for multi-pod deployments"
 requires-python = ">=3.12"
 dependencies = [
-    "hyperi-pylib[cache]>=2.14.0",
+    "scalo[cache]>=2.14.0",
 ]
 
 [project.optional-dependencies]
