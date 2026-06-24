@@ -154,7 +154,7 @@ Integration tests use Docker for external services:
 
 | Service | Docker Compose File | Port |
 |---------|---------------------|------|
-| PostgreSQL | `docker-compose.postgres.yml` | 5432 |
 | Kafka | `docker-compose.kafka.yml` | 9092 |
+| OpenBao / Vault | `docker-compose.openbao.yml` | 8200 |
 
 Fixtures in `conftest.py` auto-start containers when needed.
