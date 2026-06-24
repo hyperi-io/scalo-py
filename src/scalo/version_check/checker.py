@@ -11,7 +11,6 @@
 from __future__ import annotations
 
 import logging
-import os
 import platform
 import threading
 import uuid
@@ -19,27 +18,37 @@ from dataclasses import dataclass, field
 from datetime import UTC
 from pathlib import Path
 
-logger = logging.getLogger("hyperi.version_check")
-
-# Default version check API endpoint
-DEFAULT_API_URL = "https://releases.hyperi.io/api/v1/check"
+logger = logging.getLogger("scalo.version_check")
 
 # HTTP timeout (seconds) -- short, we don't want to delay anything
 DEFAULT_TIMEOUT = 5.0
 
 
+def _setting(key: str, default):
+    """Read ``version_check.<key>`` from the config cascade (None-safe)."""
+    try:
+        from scalo.config import settings
+
+        return settings.get(f"version_check.{key}", default)
+    except Exception:
+        return default
+
+
 @dataclass
 class VersionCheckConfig:
-    """Configuration for the startup version check."""
+    """Configuration for the startup version check.
+
+    The version check is OPT-IN: it runs only when ``version_check.enabled``
+    is true in the config cascade AND ``version_check.api_url`` is set. There
+    is no default endpoint -- the consuming app supplies its own.
+    """
 
     product: str = ""
     current_version: str = ""
     deployment: str | None = None
-    api_url: str = field(default_factory=lambda: os.getenv("VERSION_CHECK_URL", DEFAULT_API_URL))
-    timeout: float = DEFAULT_TIMEOUT
-    disabled: bool = field(
-        default_factory=lambda: os.getenv("VERSION_CHECK_DISABLED", "").lower() in ("true", "1", "yes")
-    )
+    api_url: str | None = field(default_factory=lambda: _setting("api_url", None))
+    timeout: float = field(default_factory=lambda: float(_setting("timeout", DEFAULT_TIMEOUT)))
+    enabled: bool = field(default_factory=lambda: bool(_setting("enabled", False)))
 
 
 @dataclass
@@ -84,8 +93,12 @@ def check_on_startup(
     if deployment is not None:
         cfg.deployment = deployment
 
-    if cfg.disabled:
-        logger.debug("version check disabled")
+    if not cfg.enabled:
+        logger.debug("version check disabled (opt-in: set version_check.enabled)")
+        return None
+
+    if not cfg.api_url:
+        logger.debug("version check skipped: no version_check.api_url configured")
         return None
 
     if not cfg.product or not cfg.current_version:
