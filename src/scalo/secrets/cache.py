@@ -80,8 +80,8 @@ class DiskCache:
 
     def _resolve_directory(self, directory: str | None) -> Path:
         """Cache dir priority (never /tmp): explicit arg, SECRETS_CACHE_DIR,
-        $XDG_CACHE_HOME/hs-secrets, %LOCALAPPDATA%/hyperi-ai/secrets-cache (Win),
-        ~/.cache/hyperi-ai/secrets-cache.
+        $XDG_CACHE_HOME/hs-secrets, %LOCALAPPDATA%/scalo/secrets-cache (Win),
+        ~/.cache/scalo/secrets-cache.
         """
         if directory:
             return Path(directory)
@@ -96,9 +96,9 @@ class DiskCache:
 
         if sys.platform == "win32":
             base = Path(os.environ.get("LOCALAPPDATA", str(Path.home())))
-            return base / "hyperi-ai" / "secrets-cache"
+            return base / "scalo" / "secrets-cache"
 
-        return Path.home() / ".cache" / "hyperi-ai" / "secrets-cache"
+        return Path.home() / ".cache" / "scalo" / "secrets-cache"
 
     def _key_to_path(self, secret_name: str) -> Path:
         """Convert secret name to cache file path.

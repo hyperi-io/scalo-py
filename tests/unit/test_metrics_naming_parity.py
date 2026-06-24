@@ -9,7 +9,7 @@
 """
 Parity tests for DFE metric naming validation using the shared fixture corpus.
 
-Loads hyperi-ai/test-fixtures/metrics-naming.yaml and verifies that
+Loads scalo-spec/test-fixtures/metrics-naming.yaml and verifies that
 validate_metric_name() and validate_dfe_prefix() accept valid names
 and warn on invalid names as specified.
 
@@ -24,8 +24,8 @@ import yaml
 
 from scalo.metrics.naming import validate_dfe_prefix, validate_metric_name
 
-# Path to the shared fixture file inside the hyperi-ai submodule
-_FIXTURES_PATH = Path(__file__).parents[2] / "hyperi-ai" / "test-fixtures" / "metrics-naming.yaml"
+# Path to the shared fixture file inside the scalo-spec submodule
+_FIXTURES_PATH = Path(__file__).parents[2] / "scalo-spec" / "test-fixtures" / "metrics-naming.yaml"
 
 
 def _load_fixtures() -> dict | None:
@@ -40,7 +40,7 @@ _fixtures = _load_fixtures()
 _valid_cases = _fixtures["valid"] if _fixtures else []
 _invalid_cases = _fixtures["invalid"] if _fixtures else []
 
-_skip_reason = "hyperi-ai submodule not checked out (test-fixtures unavailable)"
+_skip_reason = "scalo-spec submodule not checked out (test-fixtures unavailable)"
 
 
 def _valid_ids(cases: list[dict]) -> list[str]:

@@ -8,7 +8,7 @@
 
 """Tests for the parity manifest emitter.
 
-The manifest is the contract surface that hyperi-ai's CI diffs
+The manifest is the contract surface that scalo-spec's CI diffs
 between pylib and rustlib. The tests here lock the manifest shape so
 unintentional drift in pylib's output gets caught locally before it
 reaches the cross-language gate.

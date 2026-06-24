@@ -176,10 +176,12 @@ class DeploymentContract(BaseModel):
     """Prometheus metric namespace/prefix (e.g., ``loader``)."""
 
     config_mount_path: str
-    """Config file mount path (e.g., ``/etc/dfe/loader.yaml``)."""
+    """Config file mount path (e.g., ``/etc/myapp/config.yaml``)."""
 
-    image_registry: str = "ghcr.io/hyperi-io"
-    """Container registry base (e.g., ``ghcr.io/hyperi-io``)."""
+    image_registry: str = "localhost:5000"
+    """Container registry base. Parameterise per app via the
+    ``deployment.image_registry`` cascade key (e.g., ``ghcr.io/your-org``);
+    the default is a neutral local registry."""
 
     extra_ports: list[PortContract] = Field(default_factory=list)
     """Additional ports beyond metrics (e.g., HTTP data port for receiver)."""

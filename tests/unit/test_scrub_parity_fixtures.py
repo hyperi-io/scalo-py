@@ -10,7 +10,7 @@
 
 Reads ``scalo/data/pii_test_fixtures.toml`` (vendored byte-
 identical from
-``hyperi-ai/standards/patterns/pii_test_fixtures.toml``) and verifies
+``scalo-spec/standards/patterns/pii_test_fixtures.toml``) and verifies
 that pylib's validators redact every ``valid`` sample, never redact
 any ``invalid`` / ``should_NOT_match`` sample, and respect the
 context-keyword requirement for context-required validators.

@@ -9,7 +9,7 @@
 """
 Parity tests for sensitive data masking using the shared fixture corpus.
 
-Loads hyperi-ai/test-fixtures/masking-patterns.yaml and verifies that
+Loads scalo-spec/test-fixtures/masking-patterns.yaml and verifies that
 SensitiveDataFilter masks (or does not mask) each test case as specified.
 This corpus is shared with hyperi-rustlib to ensure identical masking
 behaviour across languages.
@@ -22,8 +22,8 @@ import yaml
 
 from scalo.logger.filters import SensitiveDataFilter
 
-# Path to the shared fixture file inside the hyperi-ai submodule
-_FIXTURES_PATH = Path(__file__).parents[2] / "hyperi-ai" / "test-fixtures" / "masking-patterns.yaml"
+# Path to the shared fixture file inside the scalo-spec submodule
+_FIXTURES_PATH = Path(__file__).parents[2] / "scalo-spec" / "test-fixtures" / "masking-patterns.yaml"
 
 
 def _load_fixtures() -> dict | None:
@@ -42,7 +42,7 @@ def _test_case_ids(test_cases: list[dict]) -> list[str]:
 _fixtures = _load_fixtures()
 _test_cases = _fixtures["test_cases"] if _fixtures else []
 
-_skip_reason = "hyperi-ai submodule not checked out (test-fixtures unavailable)"
+_skip_reason = "scalo-spec submodule not checked out (test-fixtures unavailable)"
 
 
 @pytest.mark.skipif(not _test_cases, reason=_skip_reason)

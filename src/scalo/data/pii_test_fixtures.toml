@@ -29,7 +29,7 @@
 
 [meta]
 version = "1.0.0"
-source = "hyperi-ai/standards/patterns/pii_test_fixtures.toml"
+source = "scalo-spec/standards/patterns/pii_test_fixtures.toml"
 
 # ---------------------------------------------------------------------
 # Strong-structural validators

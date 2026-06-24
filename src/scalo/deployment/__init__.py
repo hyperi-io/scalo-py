@@ -96,7 +96,7 @@ if not DEPLOYMENT_AVAILABLE:
     image_registry_from_cascade = _missing  # type: ignore[assignment]
     base_image_from_cascade = _missing  # type: ignore[assignment]
     argocd_repo_url_from_cascade = _missing  # type: ignore[assignment]
-    DEFAULT_IMAGE_REGISTRY = "ghcr.io/hyperi-io"
+    DEFAULT_IMAGE_REGISTRY = "localhost:5000"
     DEFAULT_BASE_IMAGE = "python:3.12-slim"
 else:
     from .app_project import (
