@@ -18,7 +18,7 @@ Cascade keys::
 
     deployment:
       image_registry: localhost:5000        # default: localhost:5000
-      base_image: ubuntu:24.04                 # default: ubuntu:24.04
+      base_image: python:3.12-slim          # default: python:3.12-slim
       argocd:
         repo_url: https://github.com/your-org/<app>  # default: derived
 """
