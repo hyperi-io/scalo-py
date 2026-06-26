@@ -5,7 +5,7 @@ scalo Config - Enterprise Configuration with Automatic Cascade
 Provides zero-configuration, automatic cascade for Python applications.
 Just import and use - no cascade implementation needed!
 
-Configuration Cascade (7 Layers, HyperI Standard)
+Configuration Cascade (7 Layers, highest wins)
 ====================================================
 
 ALL configuration automatically follows this priority (highest to lowest):
@@ -1002,8 +1002,8 @@ def get_logging_config():
     - LOG_STACKTRACE_LEVEL: Minimum level for stack traces (ERROR, CRITICAL)
 
     Environment Variable Prefix:
-    - Default: APP_ (e.g., APP_LOGGING__LEVEL)
-    - Configurable via: ENV_PREFIX (e.g., ENV_PREFIX=MYAPP)
+    - Default: bare "" (no prefix; e.g. LOGGING__LEVEL)
+    - Set one via ENV_PREFIX (e.g. ENV_PREFIX=MYAPP -> MYAPP_LOGGING__LEVEL)
 
     Priority order (CLI -> ENV -> .env -> config -> default -> hardcoded):
     1. Standard environment variables (LOG_*)

@@ -231,11 +231,11 @@ def _format_age(published_at: str) -> str:
 def _get_or_create_instance_id() -> str:
     """Get or create a persistent anonymous instance ID.
 
-    Reads from ~/.config/hyperi/instance_id. If missing, generates a
+    Reads from ~/.config/scalo/instance_id. If missing, generates a
     new UUIDv4 and persists it. Falls back to ephemeral UUID on any
     filesystem error.
     """
-    config_dir = Path.home() / ".config" / "hyperi"
+    config_dir = Path.home() / ".config" / "scalo"
     id_path = config_dir / "instance_id"
 
     # Try to read existing

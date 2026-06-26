@@ -2,7 +2,7 @@
 
 Typer-based CLI framework with two entry shapes:
 
-- **`DfeApp`** — service framework. Subclass it, get `run`, `version`,
+- **`ServiceApp`** — service framework. Subclass it, get `run`, `version`,
   `config-check`, and `generate-artefacts` subcommands for free, plus
   standard flags wired into the config cascade, logger setup, and
   metrics auto-init.
@@ -10,24 +10,27 @@ Typer-based CLI framework with two entry shapes:
   `scalo.cli` module re-exports `Typer`, `Argument`, `Option`
   plus a library of pre-built standard options and output helpers.
 
-Use `DfeApp` for long-running services; use raw Typer for everything
+Use `ServiceApp` for long-running services; use raw Typer for everything
 else. Ships in the base package — Typer is a core dependency.
+
+> `DfeApp` remains importable as a **deprecated alias** of `ServiceApp` (eases
+> the hyperi-pylib migration); new code should subclass `ServiceApp`.
 
 ```python
 from scalo.cli import (
     Typer, Argument, Option,
-    DfeApp, VersionInfo,
+    ServiceApp, VersionInfo,
 )
 ```
 
 ---
 
-## Quick start — `DfeApp`
+## Quick start — `ServiceApp`
 
 ```python
-from scalo.cli import DfeApp, VersionInfo
+from scalo.cli import ServiceApp, VersionInfo
 
-class MyService(DfeApp):
+class MyService(ServiceApp):
     name = "my-service"
     env_prefix = "MY_SVC"
 
@@ -76,9 +79,9 @@ if __name__ == "__main__":
 
 ---
 
-## `DfeApp` lifecycle
+## `ServiceApp` lifecycle
 
-`DfeApp` is an abstract base class. Subclasses provide `name`,
+`ServiceApp` is an abstract base class. Subclasses provide `name`,
 `env_prefix`, `version_info()`, and either `run_service()` (sync) or
 `run_service_async()` (async). The framework: builds the Typer app,
 initialises the logger from `--log-level`/`--log-format`/`--verbose`,
@@ -88,7 +91,7 @@ is installed (exposed at `--metrics-addr`), and dispatches to whichever
 of `run_service` / `run_service_async` the subclass overrode.
 
 ```python
-class MyService(DfeApp):
+class MyService(ServiceApp):
     name = "my-service"
     env_prefix = "MY_SVC"
 
@@ -109,7 +112,7 @@ class MyService(DfeApp):
 | `run` (default) | Initialise logger + config + metrics, then call `run_service` / `run_service_async`. |
 | `version` | Print the `VersionInfo` and exit. |
 | `config-check` | Validate the cascade loads cleanly, print a key-value summary to stderr, exit. |
-| `generate-artefacts` | Write `deployment-contract.json`, `container-manifest.json`, `Dockerfile.runtime`, `argocd-application.yaml` to the output dir (default `ci/`). Requires `DfeApp.deployment_contract()` to be overridden. |
+| `generate-artefacts` | Write `deployment-contract.json`, `container-manifest.json`, `Dockerfile.runtime`, `argocd-application.yaml` to the output dir (default `ci/`). Requires `ServiceApp.deployment_contract()` to be overridden. |
 
 Standard flags accepted by `run` and `config-check`:
 
@@ -261,7 +264,7 @@ result = CliRunner().invoke(app, ["process", "input.txt", "--verbose"])
 assert result.exit_code == 0
 ```
 
-For `DfeApp`, invoke via `service.cli(["version"])` — pass `args` to
+For `ServiceApp`, invoke via `service.cli(["version"])` — pass `args` to
 skip `sys.argv`.
 
 ---
@@ -270,7 +273,7 @@ skip `sys.argv`.
 
 ```toml
 [project.scripts]
-my-service = "my_package.cli:MyService.cli"  # DfeApp
+my-service = "my_package.cli:MyService.cli"  # ServiceApp
 my-tool    = "my_package.cli:app"             # raw Typer
 ```
 
@@ -283,10 +286,10 @@ PATH.
 
 | Building | Use |
 |----------|-----|
-| Long-running service (Kafka consumer, FastAPI, scheduled worker) | `DfeApp` |
+| Long-running service (Kafka consumer, FastAPI, scheduled worker) | `ServiceApp` |
 | Operator tool / data-pipeline runner / one-off CLI | Raw Typer + standard options |
 | Quick script bound to one function | Raw `app.command()` |
-| Custom subcommands on top of `DfeApp` defaults | `register_commands` |
+| Custom subcommands on top of `ServiceApp` defaults | `register_commands` |
 
 ---
 

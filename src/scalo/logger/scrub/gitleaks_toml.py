@@ -156,8 +156,8 @@ class GitleaksTomlScrubber:
         rule_ids: optional ``set[str]`` of rule IDs to enable. ``None``
             (default) enables every rule with a compilable regex.
 
-    Per spec §3.2, rules whose regex doesn't compile in Python's ``re``
-    module are skipped with a one-time warning and their ID recorded
+    Per spec §3.2, rules whose regex doesn't compile in the ``regex``
+    package are skipped with a one-time warning and their ID recorded
     in :attr:`skipped_rules` (also emitted via the
     ``log_scrub_skipped_rules_total`` gauge for cross-language parity).
     """

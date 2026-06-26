@@ -130,11 +130,24 @@ class AsyncKafkaProducer:
 
         await run_blocking(self._send_sync, topic, value, key, partition, headers, _on_delivery)
 
-        if timeout is not None:
-            report = await asyncio.wait_for(future, timeout)
-        else:
-            report = await future
+        # confluent-kafka has NO background poll thread: the delivery-report
+        # callback only dispatches while poll()/flush() is running. Drive poll()
+        # in short offloaded slices until the future resolves (or the timeout
+        # elapses) -- otherwise `await future` hangs until the timeout on every
+        # call (or forever when timeout is None).
+        deadline = None if timeout is None else loop.time() + timeout
+        while not future.done():
+            if deadline is not None:
+                remaining = deadline - loop.time()
+                if remaining <= 0:
+                    future.cancel()
+                    raise TimeoutError(f"Kafka delivery report not received within {timeout}s")
+                slice_s = min(0.2, remaining)
+            else:
+                slice_s = 0.2
+            await run_blocking(self._producer.poll, slice_s)
 
+        report = future.result()
         if report.error is not None:
             raise RuntimeError(f"Kafka delivery failed: {report.error}")
         return report

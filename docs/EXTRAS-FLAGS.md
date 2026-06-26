@@ -30,7 +30,7 @@ That gives you:
 - Structured logger with autodetect format + secret scrubbing (`from scalo import logger`)
 - Container-aware runtime paths (`from scalo import runtime`)
 - Health probe router primitives (`from scalo import health`)
-- CLI framework (`from scalo.cli import DfeApp`)
+- CLI framework (`from scalo.cli import ServiceApp`)
 - Concurrency primitives (`from scalo import concurrency`)
 - Version-check probe (`from scalo.version_check import check_on_startup`)
 
@@ -166,7 +166,7 @@ without committing to a transitive deps tree that may change.
 
 | Extra | Notes | Doc |
 |---|---|---|
-| `cli` | Base install already ships `typer` + `DfeApp`. Listing `scalo[cli]` declares CLI dependence without adding deps. | [api/CLI.md](api/CLI.md) |
+| `cli` | Base install already ships `typer` + `ServiceApp`. Listing `scalo[cli]` declares CLI dependence without adding deps. | [api/CLI.md](api/CLI.md) |
 | `enhanced` | Reserved. Will bundle a curated "DFE service" feature set once the shape is locked. Currently a no-op marker. | (no doc yet) |
 
 ### Development

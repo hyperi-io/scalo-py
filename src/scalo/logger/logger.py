@@ -578,6 +578,10 @@ def setup(
                 level=config.get("level", "INFO"),
                 format=console_format,
                 colorize=False,
+                # loguru's diagnose annotations render local-variable VALUES in
+                # tracebacks; those bypass the scrubber (it only sees the record
+                # message/extra/exc.args), so a secret in a local would leak. Off.
+                diagnose=False,
                 enqueue=enqueue,
                 filter=_add_emoji_to_record(
                     False,  # No emojis in CI
@@ -598,6 +602,7 @@ def setup(
                 format=console_format,
                 colorize=False,
                 serialize=serialize_console,
+                diagnose=False,  # see note above: diagnose values bypass scrub
                 enqueue=enqueue,
                 filter=_add_emoji_to_record(
                     False,  # No emojis in CI
@@ -618,6 +623,7 @@ def setup(
                 format=console_format,
                 colorize=not serialize_console,
                 serialize=serialize_console,
+                diagnose=False,  # see note above: diagnose values bypass scrub
                 enqueue=enqueue,
                 filter=_add_emoji_to_record(
                     use_emojis,
@@ -640,6 +646,7 @@ def setup(
             rotation="10 MB",
             retention="7 days",
             encoding="utf-8",
+            diagnose=False,  # see note above: diagnose values bypass scrub
             enqueue=enqueue,
             filter=_add_emoji_to_record(
                 False,

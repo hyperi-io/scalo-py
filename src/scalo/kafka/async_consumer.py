@@ -133,14 +133,13 @@ class AsyncKafkaConsumer:
     async def seek(self, topic: str, partition: int, offset: int) -> None:
         """Seek to specific offset."""
         tp = TopicPartition(topic, partition, offset)
-        self._consumer.seek(tp)
+        await run_blocking(self._consumer.seek, tp)
 
     async def commit(self, asynchronous: bool = False) -> None:
         """Commit current offsets."""
-        if asynchronous:
-            self._consumer.commit(asynchronous=True)
-        else:
-            await run_blocking(self._consumer.commit, asynchronous=False)
+        # Both paths offload: even an async commit enters librdkafka C code and
+        # must not run on the event-loop thread.
+        await run_blocking(self._consumer.commit, asynchronous=asynchronous)
 
     def __aiter__(self) -> AsyncIterator[Message]:
         return self

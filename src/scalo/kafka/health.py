@@ -534,8 +534,9 @@ class KafkaConsumerHealth:
         self._issues_detected[issue.issue] = self._issues_detected.get(issue.issue, 0) + 1
 
         # Log the warning with structured data via Loguru's bind
-        log_func = logger.logger.error if issue.severity == "critical" else logger.logger.warning
-        log_func(issue.message, **issue.details)
+        bound = logger.logger.bind(**issue.details)
+        log_func = bound.error if issue.severity == "critical" else bound.warning
+        log_func(issue.message)
 
         self._last_warnings[issue.issue] = now
 

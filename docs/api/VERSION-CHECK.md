@@ -97,13 +97,13 @@ The check is auto-skipped when:
 
 ---
 
-## Wire it into `DfeApp`
+## Wire it into `ServiceApp`
 
 ```python
-from scalo.cli import DfeApp, VersionInfo
+from scalo.cli import ServiceApp, VersionInfo
 from scalo.version_check import check_on_startup
 
-class MyService(DfeApp):
+class MyService(ServiceApp):
     name = "my-service"
     env_prefix = "MY_SVC"
 
