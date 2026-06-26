@@ -21,6 +21,7 @@ swap.
 
 from __future__ import annotations
 
+import warnings
 from typing import TYPE_CHECKING
 
 from ..secrets_leak import SecretsLeakFilter
@@ -101,6 +102,15 @@ class SecretsScrubber:
         self.patterns = patterns
 
         if patterns in ("gitleaks", "minimal"):
+            if extra_patterns:
+                warnings.warn(
+                    "extra_patterns is only honoured by the 'detect-secrets' "
+                    f"path; it is IGNORED for patterns={patterns!r}, so your "
+                    "custom secret regexes will NOT be applied. Use "
+                    "patterns='detect-secrets' until TOML [[rules]]-append lands.",
+                    RuntimeWarning,
+                    stacklevel=2,
+                )
             rule_ids = _MINIMAL_RULES if patterns == "minimal" else None
             self._inner: GitleaksTomlScrubber | SecretsLeakFilter = GitleaksTomlScrubber(
                 labeler=labeler,

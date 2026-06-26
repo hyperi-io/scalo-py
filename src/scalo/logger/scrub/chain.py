@@ -79,9 +79,11 @@ class LayeredScrubber:
         self._config = config if config is not None else ScrubConfig()
         self._layers: tuple[Scrubber, ...] = tuple(layers or ())
         self._metrics = metrics if metrics is not None else ScrubMetrics.noop()
-        # Track which layers have raised at least once so we don't
-        # warn repeatedly for the same bug.
-        self._broken: set[int] = set()
+        # Track which layers have warned at least once so we don't warn
+        # repeatedly. The layer is RETRIED each call (not permanently
+        # disabled) -- a transient error must not silently disable a
+        # PII/secret scrubber for the whole process.
+        self._warned: set[int] = set()
 
     @property
     def config(self) -> ScrubConfig:
@@ -109,23 +111,25 @@ class LayeredScrubber:
 
         result = text
         for i, layer in enumerate(self._layers):
-            if i in self._broken:
-                # Skip layers we've already learned are broken
-                continue
             layer_name = type(layer).__name__
             start = time.perf_counter()
             try:
                 result = layer.scrub(result)
             except Exception as e:
-                self._broken.add(i)
                 self._metrics.inc_error(layer_name, type(e).__name__)
-                warnings.warn(
-                    f"Scrub layer {layer_name} raised "
-                    f"{type(e).__name__}: {e}. Skipping this layer for "
-                    f"the rest of this process. Logging continues.",
-                    RuntimeWarning,
-                    stacklevel=2,
-                )
+                if i not in self._warned:
+                    # Warn once per layer, but RETRY it next call -- a
+                    # transient error must not permanently disable a
+                    # PII/secret scrubber (that would silently leak).
+                    self._warned.add(i)
+                    warnings.warn(
+                        f"Scrub layer {layer_name} raised "
+                        f"{type(e).__name__}: {e}. Skipping it for THIS "
+                        f"message only; it is retried next time. Logging "
+                        f"continues.",
+                        RuntimeWarning,
+                        stacklevel=2,
+                    )
             else:
                 self._metrics.observe_duration(layer_name, time.perf_counter() - start)
 

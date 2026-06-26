@@ -4,6 +4,7 @@ import json
 import logging
 from datetime import UTC, datetime
 
+from ...concurrency import run_blocking
 from ..exceptions import (
     ProviderError,
     SecretAlreadyExistsError,
@@ -117,9 +118,8 @@ class AWSProvider(VersionedProvider):
         """
         if not AIOBOTOCORE_AVAILABLE:
             # Fall back to sync in thread pool if aiobotocore not available
-            import asyncio
 
-            return await asyncio.get_event_loop().run_in_executor(None, self.get_sync, path, key)
+            return await run_blocking(self.get_sync, path, key)
 
         session = get_aiobotocore_session()
         kwargs = self._get_client_kwargs()
@@ -134,7 +134,7 @@ class AWSProvider(VersionedProvider):
             if error_code == "ResourceNotFoundException":
                 raise SecretNotFoundError(path, self.name)
             elif error_code == "AccessDeniedException":
-                raise ProviderError(self.name, f"access denied: {path}")
+                raise SecretPermissionError(self.name, "GetSecretValue", path, self._aws_hint("GetSecretValue"))
             elif error_code == "DecryptionFailure":
                 raise ProviderError(self.name, f"decryption failed for {path}")
             else:
@@ -169,7 +169,7 @@ class AWSProvider(VersionedProvider):
             if error_code == "ResourceNotFoundException":
                 raise SecretNotFoundError(path, self.name)
             elif error_code == "AccessDeniedException":
-                raise ProviderError(self.name, f"access denied: {path}")
+                raise SecretPermissionError(self.name, "GetSecretValue", path, self._aws_hint("GetSecretValue"))
             elif error_code == "DecryptionFailure":
                 raise ProviderError(self.name, f"decryption failed for {path}")
             else:
@@ -221,9 +221,7 @@ class AWSProvider(VersionedProvider):
     async def health_check_async(self) -> bool:
         """Check if AWS Secrets Manager is reachable."""
         if not AIOBOTOCORE_AVAILABLE:
-            import asyncio
-
-            return await asyncio.get_event_loop().run_in_executor(None, self.health_check_sync)
+            return await run_blocking(self.health_check_sync)
 
         session = get_aiobotocore_session()
         kwargs = self._get_client_kwargs()
@@ -311,9 +309,7 @@ class AWSProvider(VersionedProvider):
         tag-key/tag-value filters; ``filter.pattern`` is a client-side fnmatch.
         """
         if not AIOBOTOCORE_AVAILABLE:
-            import asyncio
-
-            return await asyncio.get_event_loop().run_in_executor(None, self.list_sync, filter)
+            return await run_blocking(self.list_sync, filter)
 
         session = get_aiobotocore_session()
         kwargs = self._get_client_kwargs()
@@ -384,9 +380,7 @@ class AWSProvider(VersionedProvider):
 
     async def get_metadata_async(self, path: str) -> SecretMetadata:
         if not AIOBOTOCORE_AVAILABLE:
-            import asyncio
-
-            return await asyncio.get_event_loop().run_in_executor(None, self.get_metadata_sync, path)
+            return await run_blocking(self.get_metadata_sync, path)
 
         session = get_aiobotocore_session()
         kwargs = self._get_client_kwargs()
@@ -410,9 +404,7 @@ class AWSProvider(VersionedProvider):
 
     async def create_async(self, path: str, value: bytes, tags: dict[str, str] | None = None) -> SecretMetadata:
         if not AIOBOTOCORE_AVAILABLE:
-            import asyncio
-
-            return await asyncio.get_event_loop().run_in_executor(None, self.create_sync, path, value, tags)
+            return await run_blocking(self.create_sync, path, value, tags)
 
         session = get_aiobotocore_session()
         kwargs = self._get_client_kwargs()
@@ -452,9 +444,7 @@ class AWSProvider(VersionedProvider):
     async def update_async(self, path: str, value: bytes) -> SecretMetadata:
         """Update an existing secret. Maps ResourceNotFoundException to SecretNotFoundError."""
         if not AIOBOTOCORE_AVAILABLE:
-            import asyncio
-
-            return await asyncio.get_event_loop().run_in_executor(None, self.update_sync, path, value)
+            return await run_blocking(self.update_sync, path, value)
 
         session = get_aiobotocore_session()
         kwargs = self._get_client_kwargs()
@@ -484,9 +474,7 @@ class AWSProvider(VersionedProvider):
         on the underlying client.
         """
         if not AIOBOTOCORE_AVAILABLE:
-            import asyncio
-
-            return await asyncio.get_event_loop().run_in_executor(None, self.delete_sync, path)
+            return await run_blocking(self.delete_sync, path)
 
         session = get_aiobotocore_session()
         kwargs = self._get_client_kwargs()
@@ -508,9 +496,7 @@ class AWSProvider(VersionedProvider):
 
     async def get_version_async(self, path: str, version: str, key: str | None = None) -> SecretValue:
         if not AIOBOTOCORE_AVAILABLE:
-            import asyncio
-
-            return await asyncio.get_event_loop().run_in_executor(None, self.get_version_sync, path, version, key)
+            return await run_blocking(self.get_version_sync, path, version, key)
 
         session = get_aiobotocore_session()
         kwargs = self._get_client_kwargs()
@@ -548,9 +534,7 @@ class AWSProvider(VersionedProvider):
 
     async def list_versions_async(self, path: str) -> list[SecretMetadata]:
         if not AIOBOTOCORE_AVAILABLE:
-            import asyncio
-
-            return await asyncio.get_event_loop().run_in_executor(None, self.list_versions_sync, path)
+            return await run_blocking(self.list_versions_sync, path)
 
         session = get_aiobotocore_session()
         kwargs = self._get_client_kwargs()
@@ -623,9 +607,7 @@ class AWSProvider(VersionedProvider):
             return {}
 
         if not AIOBOTOCORE_AVAILABLE:
-            import asyncio
-
-            return await asyncio.get_event_loop().run_in_executor(None, self._batch_get_sync, paths)
+            return await run_blocking(self._batch_get_sync, paths)
 
         session = get_aiobotocore_session()
         kwargs = self._get_client_kwargs()

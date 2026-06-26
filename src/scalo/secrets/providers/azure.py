@@ -12,6 +12,7 @@ import json
 import logging
 from datetime import UTC, datetime
 
+from ...concurrency import run_blocking
 from ..exceptions import (
     ProviderError,
     SecretAlreadyExistsError,
@@ -157,9 +158,7 @@ class AzureProvider(VersionedProvider):
             ProviderError: Azure request failed.
         """
         if not AZURE_ASYNC_AVAILABLE:
-            import asyncio
-
-            return await asyncio.get_event_loop().run_in_executor(None, self.get_sync, path, key)
+            return await run_blocking(self.get_sync, path, key)
 
         try:
             credential = self._async_credential()
@@ -209,9 +208,7 @@ class AzureProvider(VersionedProvider):
     async def health_check_async(self) -> bool:
         """Check if Azure Key Vault is reachable."""
         if not AZURE_ASYNC_AVAILABLE:
-            import asyncio
-
-            return await asyncio.get_event_loop().run_in_executor(None, self.health_check_sync)
+            return await run_blocking(self.health_check_sync)
 
         try:
             credential = self._async_credential()
@@ -304,9 +301,7 @@ class AzureProvider(VersionedProvider):
         all filtering is client-side.
         """
         if not AZURE_ASYNC_AVAILABLE:
-            import asyncio
-
-            return await asyncio.get_event_loop().run_in_executor(None, self.list_sync, filter)
+            return await run_blocking(self.list_sync, filter)
 
         try:
             credential = self._async_credential()
@@ -361,9 +356,7 @@ class AzureProvider(VersionedProvider):
 
     async def get_metadata_async(self, path: str) -> SecretMetadata:
         if not AZURE_ASYNC_AVAILABLE:
-            import asyncio
-
-            return await asyncio.get_event_loop().run_in_executor(None, self.get_metadata_sync, path)
+            return await run_blocking(self.get_metadata_sync, path)
 
         try:
             credential = self._async_credential()
@@ -409,9 +402,7 @@ class AzureProvider(VersionedProvider):
         race-tolerant, not race-safe.
         """
         if not AZURE_ASYNC_AVAILABLE:
-            import asyncio
-
-            return await asyncio.get_event_loop().run_in_executor(None, self.create_sync, path, value, tags)
+            return await run_blocking(self.create_sync, path, value, tags)
 
         # Pre-check existence
         try:
@@ -476,9 +467,7 @@ class AzureProvider(VersionedProvider):
         Pre-checks existence to map "missing" cleanly to ``SecretNotFoundError``.
         """
         if not AZURE_ASYNC_AVAILABLE:
-            import asyncio
-
-            return await asyncio.get_event_loop().run_in_executor(None, self.update_sync, path, value)
+            return await run_blocking(self.update_sync, path, value)
 
         await self.get_metadata_async(path)  # raises SecretNotFoundError if absent
         return await self._set_secret_async(path, value, tags=None)
@@ -492,9 +481,7 @@ class AzureProvider(VersionedProvider):
     async def delete_async(self, path: str) -> None:
         """Soft-delete a secret. Azure schedules deletion with the vault's recovery period."""
         if not AZURE_ASYNC_AVAILABLE:
-            import asyncio
-
-            return await asyncio.get_event_loop().run_in_executor(None, self.delete_sync, path)
+            return await run_blocking(self.delete_sync, path)
 
         try:
             credential = self._async_credential()
@@ -536,9 +523,7 @@ class AzureProvider(VersionedProvider):
 
     async def get_version_async(self, path: str, version: str, key: str | None = None) -> SecretValue:
         if not AZURE_ASYNC_AVAILABLE:
-            import asyncio
-
-            return await asyncio.get_event_loop().run_in_executor(None, self.get_version_sync, path, version, key)
+            return await run_blocking(self.get_version_sync, path, version, key)
 
         try:
             credential = self._async_credential()
@@ -589,9 +574,7 @@ class AzureProvider(VersionedProvider):
 
     async def list_versions_async(self, path: str) -> list[SecretMetadata]:
         if not AZURE_ASYNC_AVAILABLE:
-            import asyncio
-
-            return await asyncio.get_event_loop().run_in_executor(None, self.list_versions_sync, path)
+            return await run_blocking(self.list_versions_sync, path)
 
         try:
             credential = self._async_credential()

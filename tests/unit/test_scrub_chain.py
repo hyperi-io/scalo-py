@@ -164,22 +164,23 @@ class TestLayeredScrubberFailSafe:
         # Input returned unchanged on layer failure
         assert result == "hello"
 
-    def test_broken_layer_skipped_after_first_failure(self):
+    def test_broken_layer_retried_but_warns_once(self):
         broken = _BrokenLayer()
         s = LayeredScrubber(layers=[broken])
         with pytest.warns(RuntimeWarning):
             s.scrub("first call")
-        # Second call: layer already known-broken, skipped without
-        # another warning
+        # Second call: a transient failure must NOT permanently disable a
+        # PII/secret scrubber, so the layer is RETRIED -- but the warning is
+        # only emitted once (warn-once, not a permanent skip).
         import warnings as _w
 
         with _w.catch_warnings(record=True) as captured:
             _w.simplefilter("always")
             s.scrub("second call")
-        # No new RuntimeWarning emitted for the second call
+        # No new RuntimeWarning emitted for the second call (warn-once)
         assert not any(issubclass(w.category, RuntimeWarning) for w in captured)
-        # Layer's scrub() was only called once
-        assert broken.calls == 1
+        # Layer's scrub() WAS retried on the second call (not permanently disabled)
+        assert broken.calls == 2
 
     def test_other_layers_still_apply_after_broken_one(self):
         # _BrokenLayer in middle; _UpperLayer first; _ReverseLayer last

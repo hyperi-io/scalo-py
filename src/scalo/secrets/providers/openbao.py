@@ -88,8 +88,8 @@ class OpenBaoProvider(VersionedProvider):
             headers["X-Vault-Namespace"] = self._config.namespace
         return headers
 
-    def _get_ssl_context(self) -> httpx.Client | bool:
-        """Get SSL verification settings."""
+    def _get_ssl_context(self) -> str | bool:
+        """Get SSL verification settings (verify flag, or CA-cert path)."""
         if self._config.skip_verify:
             return False
         if self._config.ca_cert:
@@ -306,7 +306,7 @@ class OpenBaoProvider(VersionedProvider):
             raise
         except httpx.HTTPStatusError as e:
             if e.response.status_code == 403:
-                raise AuthenticationError(self.name, f"permission denied: {path}")
+                raise SecretPermissionError(self.name, "read", path, self._permission_hint("read"))
             raise ProviderError(self.name, f"request failed: {e.response.status_code}")
         except Exception as e:
             if isinstance(e, (SecretNotFoundError, AuthenticationError, ProviderError)):
@@ -351,7 +351,7 @@ class OpenBaoProvider(VersionedProvider):
             raise
         except httpx.HTTPStatusError as e:
             if e.response.status_code == 403:
-                raise AuthenticationError(self.name, f"permission denied: {path}")
+                raise SecretPermissionError(self.name, "read", path, self._permission_hint("read"))
             raise ProviderError(self.name, f"request failed: {e.response.status_code}")
         except Exception as e:
             if isinstance(e, (SecretNotFoundError, AuthenticationError, ProviderError)):

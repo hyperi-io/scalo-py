@@ -70,6 +70,7 @@ class GCPProvider(VersionedProvider):
             )
         self._config = config
         self._sync_client = None
+        self._async_client = None
 
     @property
     def name(self) -> str:
@@ -100,6 +101,24 @@ class GCPProvider(VersionedProvider):
             kwargs = {"credentials": credentials} if credentials else {}
             self._sync_client = secretmanager.SecretManagerServiceClient(**kwargs)
         return self._sync_client
+
+    def _get_async_client(self):
+        """Get or create the cached async Secret Manager client.
+
+        Cached + closed in :meth:`close` so calls reuse one gRPC channel
+        instead of leaking a new transport per request.
+        """
+        if self._async_client is None:
+            credentials = self._credentials()
+            kwargs = {"credentials": credentials} if credentials else {}
+            self._async_client = secretmanager.SecretManagerServiceAsyncClient(**kwargs)
+        return self._async_client
+
+    async def close(self) -> None:
+        """Close the cached async gRPC client to release its channel."""
+        if self._async_client is not None:
+            await self._async_client.transport.close()
+            self._async_client = None
 
     def _parse_payload(self, data: bytes, path: str, key: str | None) -> bytes:
         """Extract key from JSON payload, or return raw bytes."""
@@ -134,9 +153,7 @@ class GCPProvider(VersionedProvider):
         """
         name = self._version_name(path)
         try:
-            credentials = self._credentials()
-            kwargs = {"credentials": credentials} if credentials else {}
-            async_client = secretmanager.SecretManagerServiceAsyncClient(**kwargs)
+            async_client = self._get_async_client()
             response = await async_client.access_secret_version(request={"name": name})
             data = self._parse_payload(response.payload.data, path, key)
             version = response.name.split("/versions/")[-1]
@@ -183,9 +200,7 @@ class GCPProvider(VersionedProvider):
     async def health_check_async(self) -> bool:
         """Check if GCP Secret Manager is reachable."""
         try:
-            credentials = self._credentials()
-            kwargs = {"credentials": credentials} if credentials else {}
-            async_client = secretmanager.SecretManagerServiceAsyncClient(**kwargs)
+            async_client = self._get_async_client()
             parent = f"projects/{self._config.project_id}"
             await async_client.list_secrets(request={"parent": parent, "page_size": 1})
             return True
@@ -309,9 +324,7 @@ class GCPProvider(VersionedProvider):
 
     async def list_async(self, filter: SecretFilter | None = None) -> list[str]:
         try:
-            credentials = self._credentials()
-            kwargs = {"credentials": credentials} if credentials else {}
-            async_client = secretmanager.SecretManagerServiceAsyncClient(**kwargs)
+            async_client = self._get_async_client()
             request = {"parent": self._parent()}
             filter_str = self._build_filter(filter)
             if filter_str:
@@ -350,9 +363,7 @@ class GCPProvider(VersionedProvider):
 
     async def get_metadata_async(self, path: str) -> SecretMetadata:
         try:
-            credentials = self._credentials()
-            kwargs = {"credentials": credentials} if credentials else {}
-            async_client = secretmanager.SecretManagerServiceAsyncClient(**kwargs)
+            async_client = self._get_async_client()
             secret = await async_client.get_secret(request={"name": self._secret_name(path)})
 
             # Fill in version details with a list_secret_versions call (cheap; usually one page).
@@ -404,9 +415,7 @@ class GCPProvider(VersionedProvider):
 
     async def create_async(self, path: str, value: bytes, tags: dict[str, str] | None = None) -> SecretMetadata:
         try:
-            credentials = self._credentials()
-            kwargs = {"credentials": credentials} if credentials else {}
-            async_client = secretmanager.SecretManagerServiceAsyncClient(**kwargs)
+            async_client = self._get_async_client()
 
             secret_body: dict = {"replication": {"automatic": {}}}
             if tags:
@@ -454,9 +463,7 @@ class GCPProvider(VersionedProvider):
         ``update`` semantics map to ``add_secret_version`` on the existing Secret resource.
         """
         try:
-            credentials = self._credentials()
-            kwargs = {"credentials": credentials} if credentials else {}
-            async_client = secretmanager.SecretManagerServiceAsyncClient(**kwargs)
+            async_client = self._get_async_client()
             version = await async_client.add_secret_version(
                 request={"parent": self._secret_name(path), "payload": {"data": value}}
             )
@@ -495,9 +502,7 @@ class GCPProvider(VersionedProvider):
     async def delete_async(self, path: str) -> None:
         """Delete the entire Secret resource (all versions)."""
         try:
-            credentials = self._credentials()
-            kwargs = {"credentials": credentials} if credentials else {}
-            async_client = secretmanager.SecretManagerServiceAsyncClient(**kwargs)
+            async_client = self._get_async_client()
             await async_client.delete_secret(request={"name": self._secret_name(path)})
         except NotFound:
             raise SecretNotFoundError(path, self.name)
@@ -525,9 +530,7 @@ class GCPProvider(VersionedProvider):
 
     async def get_version_async(self, path: str, version: str, key: str | None = None) -> SecretValue:
         try:
-            credentials = self._credentials()
-            kwargs = {"credentials": credentials} if credentials else {}
-            async_client = secretmanager.SecretManagerServiceAsyncClient(**kwargs)
+            async_client = self._get_async_client()
             response = await async_client.access_secret_version(
                 request={"name": self._version_resource_name(path, version)}
             )
@@ -568,9 +571,7 @@ class GCPProvider(VersionedProvider):
 
     async def list_versions_async(self, path: str) -> list[SecretMetadata]:
         try:
-            credentials = self._credentials()
-            kwargs = {"credentials": credentials} if credentials else {}
-            async_client = secretmanager.SecretManagerServiceAsyncClient(**kwargs)
+            async_client = self._get_async_client()
             secret_name = self._secret_name(path)
             page_result = await async_client.list_secret_versions(request={"parent": secret_name})
             items: list[SecretMetadata] = []

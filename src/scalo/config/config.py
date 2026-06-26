@@ -635,16 +635,20 @@ if _DOTENV_CASCADE_ENABLED:
     try:
         from dotenv import load_dotenv as dotenv_load
 
-        # Load in order: home (base) -> project (overlay)
-        home_env = Path.home() / ".env"
-        if home_env.exists():
-            dotenv_load(home_env, override=True)
-            _debug_log(f"Loaded home .env: {home_env}")
-
+        # Load project first then home, both override=False, so a real
+        # exported ENV var (already in os.environ) always wins, and project
+        # .env still beats home .env (override=False = first-writer-wins, so
+        # the higher-priority file loads first). Fixes the precedence
+        # inversion where .env clobbered a real ENV var.
         project_env = Path(".env")
         if project_env.exists():
-            dotenv_load(project_env, override=True)
+            dotenv_load(project_env, override=False)
             _debug_log(f"Loaded project .env: {project_env}")
+
+        home_env = Path.home() / ".env"
+        if home_env.exists():
+            dotenv_load(home_env, override=False)
+            _debug_log(f"Loaded home .env: {home_env}")
 
         # Disable Dynaconf's dotenv since we loaded manually
         _use_dynaconf_dotenv = False
@@ -704,17 +708,19 @@ def _load_dotenv_cascade(dotenv_files: list[str] | None = None) -> None:
     from dotenv import load_dotenv as dotenv_load
 
     if dotenv_files is None:
-        # Default cascade: home first (base), then project (overlay)
+        # Default cascade: home (base) then project (overlay)
         dotenv_files = [
             str(Path.home() / ".env"),  # ~/.env - global defaults
             ".env",  # ./.env - project overrides (relative to cwd)
         ]
 
-    for env_file in dotenv_files:
+    # Higher-priority files are LATER in the list. Load in reverse with
+    # override=False so the higher-priority .env wins among the .env files,
+    # while a real exported ENV var (already in os.environ) beats them all.
+    for env_file in reversed(dotenv_files):
         path = Path(env_file).expanduser()
         if path.exists():
-            # override=True means later files override earlier values
-            dotenv_load(path, override=True)
+            dotenv_load(path, override=False)
             _debug_log(f"Loaded .env file: {path}")
 
 
