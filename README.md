@@ -8,20 +8,30 @@
 <!-- BADGES:END -->
 
 > There's plenty of sage advice about running services in production at
-> scale -- config cascades, structured logging with PII masking and secrets
-> filtering, multi-backend secrets management, Prometheus, OpenTelemetry,
-> backpressure, graceful shutdown -- but almost none of it as code you can
-> just install and use.
+> scale -- config cascades, structured logging, secret masking, Prometheus,
+> OpenTelemetry, health probes, backpressure, graceful shutdown -- but almost
+> none of it as code you can just install and use.
 >
 > This is that code.
 
-Opinionated, drop-in, working out of the box. The patterns from the blog
-posts as an actual library -- not a framework you assemble from twenty
-packages and a weekend.
+scalo is an integrated runtime for hyperscale-grade control-plane services.
+Config, logging and metrics come as one pre-wired trinity -- global singletons
+you just use, no plumbing, no init dance. Everything else leans on that same
+integration: the config cascade flows straight into the CLI so
+`run`/`version`/`config-check` just work; the metrics and health wiring feed
+the K8s probe trinity; and the deployment contract generates your Helm,
+Dockerfile and Argo manifests from the config the app already declares.
 
-Same batteries, idiomatic in each language: `pip install scalo` (scalo-py) /
-`cargo add scalo` (scalo-rs). Built as the foundation for HyperI's production
-services; generic enough that you don't need to be at HyperI to use it.
+Attach scalo to your service and a whole class of production pain -- the kind
+done wrong a hundred times elsewhere -- just goes away. Battle-tested, and
+almost no code on your side **to do it properly**. It's not a bag of utility
+functions you wire up yourself; it's the wiring, done right, for free.
+
+scalo comes in two halves that share one set of conventions, idiomatic in each
+language. **scalo-py** (this package) is the **control plane** -- orchestration,
+APIs and integration glue (`pip install scalo`). **scalo-rs** is the **data
+plane** -- the Rust hot path where every microsecond and byte counts
+(`cargo add scalo`).
 
 ## What this is (and isn't) for
 
@@ -43,21 +53,22 @@ design decision is why scalo-py allows substantial dependency trees and
 doesn't agonise over async dispatch overhead. We don't hard-iterate the
 hot path the way scalo-rs does, because that's scalo-rs's job.
 
-This module exists because of this — but the backend version: <https://www.youtube.com/watch?v=xE9W9Ghe4Jk>
+This module exists because of this -- but for the backend:
+<https://www.youtube.com/watch?v=xE9W9Ghe4Jk>
 
 ## What you get
 
-Core modules — always installed (`uv add scalo`):
+Core modules - always installed (`uv add scalo`):
 
 | Module | Description | Third-party deps |
 |---|---|---|
 | `logger` | Structured JSON logging with automatic PII masking and secrets filtering, container-aware output | loguru |
-| `config` | 7-layer cascade (CLI → ENV → .env → YAML → defaults), container-aware path resolution | dynaconf, pyyaml, python-dotenv, mergedeep, tomli-w, dulwich |
+| `config` | 7-layer cascade (CLI -> ENV -> .env -> YAML -> defaults), container-aware path resolution | dynaconf, pyyaml, python-dotenv, mergedeep, tomli-w, dulwich |
 | `runtime` | Auto-detects K8s / Docker / local, resolves config and data paths accordingly | stdlib only |
 | `cli` | `ServiceApp` base class -- subclass to get `run` / `version` / `config-check` for free | typer |
 | `version-check` | Optional startup check for new releases (no-op if `httpx` not installed) | httpx (lazy) |
 
-Optional modules — install via extras:
+Optional modules - install via extras:
 
 | Module | Extra | Third-party deps |
 |---|---|---|
@@ -92,10 +103,10 @@ uv add "scalo[http,metrics,expression,kafka,opentelemetry,secrets,deployment]"
 | `expression` | CEL via Rust/PyO3 | ~6 MB |
 | `kafka` | confluent-kafka + genson | ~11 MB (C libs) |
 | `opentelemetry` | OpenTelemetry SDK + exporters | ~4 MB |
-| `secrets` | All secrets backends | — |
+| `secrets` | All secrets backends | - |
 | `secrets-vault` | OpenBao / HashiCorp Vault (uses `http` extra) | convenience marker |
 | `secrets-aws` | AWS Secrets Manager via boto3 | ~100 MB |
-| `secrets-gcp` | GCP Secret Manager | ~80–100 MB |
+| `secrets-gcp` | GCP Secret Manager | ~80-100 MB |
 | `secrets-azure` | Azure Key Vault | ~50 MB |
 
 ## Quick Start
@@ -109,7 +120,7 @@ logger.info("Service starting", version="1.0.0")
 logger.error("DB connection failed", host="postgres", retry=3)
 ```
 
-Auto-detects console vs container — structured JSON in containers, human-readable
+Auto-detects console vs container - structured JSON in containers, human-readable
 locally. Sensitive fields (passwords, tokens, API keys, etc.) are masked
 automatically.
 
@@ -118,12 +129,12 @@ automatically.
 ```python
 from scalo.config import settings
 
-# Cascade: CLI args → ENV → .env → settings.yaml → defaults
+# Cascade: CLI args -> ENV -> .env -> settings.yaml -> defaults
 host = settings.database.host
 port = settings.api.port
 ```
 
-ENV key mapping: `settings.database.host` → `MYAPP_DATABASE_HOST` (prefix is
+ENV key mapping: `settings.database.host` -> `MYAPP_DATABASE_HOST` (prefix is
 configurable per app).
 
 ### Runtime Paths (container-aware)
@@ -148,7 +159,7 @@ metrics.request_duration.observe(0.123)
 ```
 
 Automatic process and container metrics (CPU, memory, FDs, uptime) come for
-free — no extra wiring.
+free - no extra wiring.
 
 ### Kafka
 
@@ -198,7 +209,7 @@ if __name__ == "__main__":
 > `DfeApp` remains as a deprecated alias for `ServiceApp` to ease migration
 > from `hyperi-pylib`; prefer `ServiceApp` in new code.
 
-## Health Check Endpoints — The Probe Trinity
+## Health Check Endpoints - The Probe Trinity
 
 For services deployed to Kubernetes, scalo's HTTP server provides
 the three K8s probe types:
@@ -211,7 +222,7 @@ the three K8s probe types:
 
 Liveness MUST NEVER check downstream dependencies (a DB outage shouldn't
 restart your replicas). Readiness checks dependencies AND requires an
-explicit `set_ready()` call — cleared during graceful shutdown.
+explicit `set_ready()` call - cleared during graceful shutdown.
 
 ## Development
 

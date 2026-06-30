@@ -5,7 +5,7 @@ build-backend = "uv_build"
 [project]
 name = "scalo"
 version = "2.28.5"
-description = "Batteries-included Python toolkit for control-plane services -- 7-layer config cascade, structured logging with PII masking and secrets filtering, Prometheus + OpenTelemetry, health probes, multi-backend secrets (Vault/AWS/GCP/Azure), Kafka, CEL, FastAPI-friendly. Idiomatic Python; sibling to the scalo crate (scalo-rs)."
+description = "Batteries-included runtime for hyperscale-grade control-plane services. Config, logging and metrics come pre-wired as singletons you just use -- then CLI, health probes, secrets (Vault/AWS/GCP/Azure), Kafka and deployment contracts all build on that integration. Idiomatic Python. Sibling to the scalo crate on crates.io (scalo-rs)."
 readme = "README.md"
 authors = [
     { name = "HyperI Team", email = "dev@hyperi.io" },
