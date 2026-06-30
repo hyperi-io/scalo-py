@@ -50,7 +50,6 @@ flowchart TB
         Secrets["secrets"]
         Expr["expression"]
         Resil["resilience"]
-        Conc["concurrency"]
         VC["version_check"]
         Scal["scaling"]
         CLI["cli"]
@@ -69,7 +68,6 @@ flowchart TB
     Rt --> Health
 
     Config --> Secrets
-    Config --> Lic
 
     Logger --> Metrics
 
@@ -83,12 +81,9 @@ flowchart TB
 
     Health --> HTTP
     Scal --> Health
-
-    Lic -.optional.-> Conc
 ```
 
 Solid arrows: hard dependency (module on left used by module on right).
-Dotted arrow: optional / conditional.
 
 Observations:
 

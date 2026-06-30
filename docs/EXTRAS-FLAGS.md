@@ -69,7 +69,6 @@ flowchart TB
     Base --> Kafka
     Base --> Deploy
     Base --> Expr
-    Base --> Lic
 
     Resil -.transitive.-> HTTP
 
@@ -238,8 +237,6 @@ references. The mapping:
 | Extra | Apt packages |
 |---|---|
 | `kafka` | none (confluent-kafka wheels bundle librdkafka) |
-| `cache` (psycopg `[binary]`) | none |
-| `cache` (psycopg without `[binary]`) | `libpq5` |
 | `metrics` | none |
 | `secrets-aws` / `secrets-gcp` / `secrets-azure` | `ca-certificates` (already in base image) |
 | `expression` | none (CEL wheel bundles the Rust binary) |

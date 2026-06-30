@@ -1,7 +1,10 @@
 # scalo
 
 <!-- BADGES:START -->
-[![Build Status](https://github.com/hyperi-io/scalo-py/actions/workflows/ci.yml/badge.svg)](https://github.com/hyperi-io/scalo-py/actions)
+<!-- Build Status badge omitted: the repo is private, so GitHub's Actions
+     badge SVG 404s for anonymous PyPI viewers (shields.io can't read a
+     private repo's status either). Re-add at the public-visibility flip:
+     [![Build Status](https://github.com/hyperi-io/scalo-py/actions/workflows/ci.yml/badge.svg)](https://github.com/hyperi-io/scalo-py/actions) -->
 [![PyPI](https://img.shields.io/pypi/v/scalo?logo=pypi)](https://pypi.org/project/scalo/)
 [![Python Version](https://img.shields.io/badge/python-3.12%2B-blue)](https://www.python.org/)
 [![License](https://img.shields.io/badge/license-Apache--2.0-green)](LICENSE)
@@ -78,6 +81,7 @@ Optional modules - install via extras:
 | `kafka` | `kafka` | confluent-kafka, genson |
 | `opentelemetry` | `opentelemetry` | OpenTelemetry SDK + OTLP + Prometheus exporters |
 | `secrets` | `secrets` | All backends (Vault/OpenBao + AWS + GCP + Azure) |
+| `deployment` | `deployment` | pydantic (Dockerfile / Helm / Argo / compose generators) |
 
 ## Installation
 
@@ -103,6 +107,7 @@ uv add "scalo[http,metrics,expression,kafka,opentelemetry,secrets,deployment]"
 | `expression` | CEL via Rust/PyO3 | ~6 MB |
 | `kafka` | confluent-kafka + genson | ~11 MB (C libs) |
 | `opentelemetry` | OpenTelemetry SDK + exporters | ~4 MB |
+| `deployment` | pydantic | ~2 MB |
 | `secrets` | All secrets backends | - |
 | `secrets-vault` | OpenBao / HashiCorp Vault (uses `http` extra) | convenience marker |
 | `secrets-aws` | AWS Secrets Manager via boto3 | ~100 MB |
