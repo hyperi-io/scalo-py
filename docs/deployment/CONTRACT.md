@@ -3,7 +3,7 @@
 The Pydantic model an app builds once from its `Config.default()`. CI
 validates Helm charts and Dockerfiles against the contract; generators
 emit deployment artefacts from it. Field shape mirrors
-`hyperi_rustlib::deployment::contract` exactly -- the JSON form
+`scalo::deployment::contract` exactly -- the JSON form
 round-trips between the two implementations.
 
 Import surface (gated on the `[deployment]` extra; importing without
