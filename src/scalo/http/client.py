@@ -44,11 +44,32 @@ from typing import Any
 import httpx
 import stamina
 
+from scalo.crypto import CryptoProfile, ssl_context
 from scalo.logger import logger
 
 # Default configuration
 DEFAULT_TIMEOUT = 30.0  # Solves B113 bandit warnings
 DEFAULT_RETRIES = 3
+
+
+def _apply_crypto_posture(
+    client_kwargs: dict[str, Any],
+    crypto_profile: CryptoProfile | None,
+    cafile: str | None,
+    capath: str | None,
+) -> None:
+    """Bake the scalo crypto TLS posture into httpx kwargs as ``verify``.
+
+    Every scalo HTTP client inherits the commercial-floor posture (TLS 1.2+,
+    AES-256-GCM, hybrid PQC where the runtime supports it, verified certs) with
+    no per-call config. Skipped when the caller passes an explicit ``verify=``
+    (full override - e.g. ``verify=False`` for a dev/test server, or a custom
+    context) or opts out with ``crypto_profile=None`` (plain httpx defaults).
+    Certificate verification follows the ``SCALO_TLS_VERIFY`` escape valve inside
+    :func:`scalo.crypto.ssl_context`.
+    """
+    if crypto_profile is not None and "verify" not in client_kwargs:
+        client_kwargs["verify"] = ssl_context(crypto_profile, cafile=cafile, capath=capath)
 
 
 def _is_retryable(exc: BaseException) -> bool:
@@ -109,6 +130,10 @@ class HttpClient:
         base_url: str | None = None,
         timeout: float = DEFAULT_TIMEOUT,
         retries: int = DEFAULT_RETRIES,
+        *,
+        crypto_profile: CryptoProfile | None = CryptoProfile.PROD,
+        cafile: str | None = None,
+        capath: str | None = None,
         **client_kwargs: Any,
     ) -> None:
         """Initialise HTTP client.
@@ -117,10 +142,18 @@ class HttpClient:
             base_url: Base URL for all requests (optional)
             timeout: Request timeout in seconds (default: 30.0)
             retries: Number of retry attempts (default: 3)
-            **client_kwargs: Additional arguments passed to httpx.Client
+            crypto_profile: TLS posture to bake in (default PROD = commercial
+                floor). ``None`` opts out (plain httpx defaults). See
+                :func:`scalo.crypto.ssl_context`.
+            cafile: PEM CA file for verifying an internal-CA peer (optional).
+            capath: OpenSSL CA directory (optional).
+            **client_kwargs: Additional arguments passed to httpx.Client. Pass
+                ``verify=False`` (or a custom context) to fully override the
+                posture - e.g. a dev/test server with a self-signed cert.
         """
         self._timeout = timeout
         self._retries = retries
+        _apply_crypto_posture(client_kwargs, crypto_profile, cafile, capath)
         self._client = httpx.Client(
             base_url=base_url or "",
             timeout=httpx.Timeout(timeout),
@@ -308,6 +341,10 @@ class AsyncHttpClient:
         base_url: str | None = None,
         timeout: float = DEFAULT_TIMEOUT,
         retries: int = DEFAULT_RETRIES,
+        *,
+        crypto_profile: CryptoProfile | None = CryptoProfile.PROD,
+        cafile: str | None = None,
+        capath: str | None = None,
         **client_kwargs: Any,
     ) -> None:
         """Initialise async HTTP client.
@@ -316,10 +353,18 @@ class AsyncHttpClient:
             base_url: Base URL for all requests (optional)
             timeout: Request timeout in seconds (default: 30.0)
             retries: Number of retry attempts (default: 3)
-            **client_kwargs: Additional arguments passed to httpx.AsyncClient
+            crypto_profile: TLS posture to bake in (default PROD = commercial
+                floor). ``None`` opts out (plain httpx defaults). See
+                :func:`scalo.crypto.ssl_context`.
+            cafile: PEM CA file for verifying an internal-CA peer (optional).
+            capath: OpenSSL CA directory (optional).
+            **client_kwargs: Additional arguments passed to httpx.AsyncClient.
+                Pass ``verify=False`` (or a custom context) to fully override the
+                posture - e.g. a dev/test server with a self-signed cert.
         """
         self._timeout = timeout
         self._retries = retries
+        _apply_crypto_posture(client_kwargs, crypto_profile, cafile, capath)
         self._client = httpx.AsyncClient(
             base_url=base_url or "",
             timeout=httpx.Timeout(timeout),

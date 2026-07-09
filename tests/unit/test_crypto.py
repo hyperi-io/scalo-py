@@ -29,7 +29,9 @@ from scalo.crypto import (
     PqcMode,
     openssl_supports_pqc,
     ssl_context,
+    tls_allow_weak,
     tls_parts,
+    tls_verify_default,
 )
 
 
@@ -160,3 +162,95 @@ def test_emit_terraform_and_aws_with_deltas():
     name, deltas = emit_aws_lb_ssl_policy(CryptoProfile.PROD)
     assert name == "ELBSecurityPolicy-TLS13-1-2-2021-06"
     assert deltas  # the bundle's shortfalls are recorded, not hidden
+
+
+# --- Escape valve 1: certificate verification (SCALO_TLS_VERIFY) --------------
+
+
+def test_verify_on_by_default():
+    ctx = ssl_context(CryptoProfile.PROD)
+    assert ctx.verify_mode is ssl.CERT_REQUIRED
+    assert ctx.check_hostname is True
+
+
+def test_verify_false_drops_cert_check_keeps_floor():
+    ctx = ssl_context(CryptoProfile.PROD, verify=False)
+    assert ctx.verify_mode is ssl.CERT_NONE
+    assert ctx.check_hostname is False
+    # the ALGORITHM floor is untouched - only the peer-cert check is dropped
+    assert ctx.minimum_version is ssl.TLSVersion.TLSv1_2
+
+
+def test_verify_env_escape_valve(monkeypatch):
+    monkeypatch.setenv("SCALO_TLS_VERIFY", "false")
+    assert tls_verify_default() is False
+    assert ssl_context(CryptoProfile.PROD).verify_mode is ssl.CERT_NONE  # verify=None -> env
+    assert tls_parts(CryptoProfile.PROD).verify is False
+    monkeypatch.setenv("SCALO_TLS_VERIFY", "true")
+    assert tls_verify_default() is True
+
+
+# --- Escape valve 2: legacy weak floor (SCALO_TLS_ALLOW_WEAK) -----------------
+
+
+def test_allow_weak_drops_version_floor():
+    ctx = ssl_context(CryptoProfile.PROD, allow_weak=True)
+    assert ctx.minimum_version is ssl.TLSVersion.TLSv1  # 1.0 for the old peer
+
+
+def test_allow_weak_env_escape_valve(monkeypatch):
+    monkeypatch.setenv("SCALO_TLS_ALLOW_WEAK", "true")
+    assert tls_allow_weak() is True
+    assert ssl_context(CryptoProfile.PROD).minimum_version is ssl.TLSVersion.TLSv1
+
+
+def test_highsec_refuses_weak_floor():
+    # HIGHSEC is a deliberate opt-in; an env/arg must not quietly weaken it.
+    ctx = ssl_context(CryptoProfile.HIGHSEC, allow_weak=True)
+    assert ctx.minimum_version is ssl.TLSVersion.TLSv1_3
+
+
+def test_tls_parts_allow_weak():
+    p = tls_parts(CryptoProfile.PROD, allow_weak=True)
+    assert p.min_version == "1.0"
+    assert "SECLEVEL=0" in p.cipher_string
+    hp = tls_parts(CryptoProfile.HIGHSEC, allow_weak=True)  # highsec ignores it
+    assert hp.min_version == "1.3"
+
+
+# --- scalo.http inherits the posture (real handshake, no mocks) ---------------
+
+
+def test_async_http_client_verifies_against_provided_ca(https_server):
+    import asyncio
+
+    from scalo.http import AsyncHttpClient
+
+    url, ca = https_server
+
+    async def _run():
+        # posture applied by default; verified against the internal CA we pass
+        async with AsyncHttpClient(cafile=ca) as client:
+            r = await client.get(url)
+            assert r.status_code == 200
+
+    asyncio.run(_run())
+
+
+def test_http_client_verify_false_override(https_server):
+    from scalo.http import HttpClient
+
+    url, _ = https_server
+    # self-signed server, no CA given: explicit verify=False must be respected
+    with HttpClient(verify=False) as client:
+        assert client.get(url).status_code == 200
+
+
+def test_http_client_default_posture_rejects_untrusted(https_server):
+    from scalo.http import HttpClient
+
+    url, _ = https_server
+    # default posture really verifies: an untrusted self-signed cert is rejected
+    # (retries=1 -> fail fast, no stamina backoff).
+    with HttpClient(retries=1) as client, pytest.raises(httpx.ConnectError):
+        client.get(url)

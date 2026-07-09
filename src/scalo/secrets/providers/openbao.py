@@ -6,6 +6,7 @@ import base64
 import fnmatch
 import json
 import logging
+import ssl
 from datetime import UTC, datetime
 from pathlib import Path
 
@@ -88,35 +89,40 @@ class OpenBaoProvider(VersionedProvider):
             headers["X-Vault-Namespace"] = self._config.namespace
         return headers
 
-    def _get_ssl_context(self) -> str | bool:
-        """Get SSL verification settings (verify flag, or CA-cert path)."""
-        if self._config.skip_verify:
-            return False
-        if self._config.ca_cert:
-            return self._config.ca_cert
-        return True
+    def _get_ssl_context(self) -> ssl.SSLContext:
+        """Build the OpenBao TLS context with the scalo crypto posture baked in.
+
+        TLS 1.2+/AES-256-GCM/hybrid-PQC-where-available, the same posture as every
+        other scalo client. ``skip_verify`` is the provider's explicit escape
+        valve -> the posture's ``verify=False`` (keeps the floor, drops only the
+        peer-cert check); ``ca_cert`` (an internal CA) becomes the trust anchor.
+        The ``SCALO_TLS_VERIFY`` / ``SCALO_TLS_ALLOW_WEAK`` env valves apply here
+        too, so a whole dev/test environment relaxes consistently.
+        """
+        from scalo.crypto import ssl_context
+
+        verify = False if self._config.skip_verify else None
+        return ssl_context(cafile=self._config.ca_cert or None, verify=verify)
 
     async def _get_async_client(self) -> httpx.AsyncClient:
         """Get or create async HTTP client."""
         if self._client is None:
-            verify = self._get_ssl_context()
             self._client = httpx.AsyncClient(
                 base_url=self._config.address,
                 headers=self._get_base_headers(),
                 timeout=self._config.timeout_secs,
-                verify=verify,  # type: ignore[arg-type]
+                verify=self._get_ssl_context(),
             )
         return self._client
 
     def _get_sync_client(self) -> httpx.Client:
         """Get or create sync HTTP client."""
         if self._sync_client is None:
-            verify = self._get_ssl_context()
             self._sync_client = httpx.Client(
                 base_url=self._config.address,
                 headers=self._get_base_headers(),
                 timeout=self._config.timeout_secs,
-                verify=verify,  # type: ignore[arg-type]
+                verify=self._get_ssl_context(),
             )
         return self._sync_client
 
