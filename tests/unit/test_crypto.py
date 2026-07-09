@@ -135,9 +135,13 @@ def test_tls_parts_reflect_profile():
     assert hs.curves == ["X25519MLKEM768"]
 
 
-def test_openssl_pqc_capability_is_boolean():
-    # This runtime is OpenSSL 3.5+, so PQC is available at the library level.
-    assert openssl_supports_pqc() is True
+def test_openssl_pqc_capability_matches_runtime():
+    # PQC availability tracks OpenSSL >= 3.5. It is environment-dependent (the
+    # whole point of the capability check - CI runners on OpenSSL 3.0 report
+    # False and degrade gracefully), so assert it matches the runtime, not a
+    # fixed value.
+    expected = ssl.OPENSSL_VERSION_INFO[:3] >= (3, 5, 0)
+    assert openssl_supports_pqc() == expected
 
 
 def test_emit_envoy_config():
