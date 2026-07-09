@@ -1,6 +1,5 @@
 """Disk-based cache for secrets with optional encryption."""
 
-import base64
 import hashlib
 import json
 import logging
@@ -15,14 +14,16 @@ from .types import CacheConfig, SecretValue
 
 logger = logging.getLogger(__name__)
 
-# Optional encryption support
+# Optional at-rest encryption. `crypto` imports `cryptography` at module
+# top, so a missing dependency degrades to unencrypted caching with a
+# warning (same posture as before, now AES-256-GCM instead of Fernet).
 try:
-    from cryptography.fernet import Fernet
+    from . import crypto
 
-    FERNET_AVAILABLE = True
+    CRYPTO_AVAILABLE = True
 except ImportError:
-    FERNET_AVAILABLE = False
-    Fernet = None  # type: ignore[assignment,misc]
+    CRYPTO_AVAILABLE = False
+    crypto = None  # ty: ignore[invalid-assignment]
 
 # File mode for cache files: owner-read/write only (0o600).
 _CACHE_FILE_MODE = 0o600
@@ -35,31 +36,34 @@ class DiskCache:
 
     Features:
     - TTL-based expiration with stale grace period
-    - Optional Fernet (AES-128-CBC + HMAC) encryption at rest
+    - Optional AES-256-GCM encryption at rest (CNSA 2.0 symmetric target;
+      shares the wire format with the scalo-rs secrets cache, see
+      :mod:`scalo.secrets.crypto`)
     - Atomic writes via unique tempfile + fsync + os.replace
     - Owner-only file permissions (0o600) on cache files
 
-    **Crypto note**: ``CacheConfig.encryption_key`` MUST be high-entropy
-    key material (>=32 bytes recommended) -- e.g. the output of
+    **Crypto note**: ``CacheConfig.encryption_key`` should be
+    high-entropy key material -- e.g. the output of
     ``secrets.token_bytes(32)`` stored in an env var, or a value pulled
-    from a KMS. It is NOT a user password: the key derivation is a
-    single SHA-256 pass (fast, no work factor). If the input could be
-    a password (low entropy, human-typed), use PBKDF2/argon2 to
-    pre-derive a 32-byte key BEFORE passing it here.
+    from a KMS. It is run through HKDF-SHA256 (fixed library salt/info)
+    to a 32-byte AES-256 key, so any length is accepted, but HKDF has no
+    work factor: it is NOT a password-stretching KDF. If the input could
+    be a low-entropy human password, pre-derive a key with PBKDF2/argon2
+    BEFORE passing it here.
     """
 
     def __init__(self, config: CacheConfig) -> None:
         self._config = config
         self._directory = self._resolve_directory(config.directory)
-        self._fernet: Fernet | None = None
+        # Normalised encryption key bytes (HKDF IKM), or None = plaintext.
+        self._enc_key: bytes | None = None
 
-        if config.encryption_key and FERNET_AVAILABLE:
+        if config.encryption_key and CRYPTO_AVAILABLE:
             key_bytes = config.encryption_key
             if isinstance(key_bytes, str):
                 key_bytes = key_bytes.encode("utf-8")
-            derived_key = hashlib.sha256(key_bytes).digest()
-            self._fernet = Fernet(base64.urlsafe_b64encode(derived_key))
-        elif config.encryption_key and not FERNET_AVAILABLE:
+            self._enc_key = key_bytes
+        elif config.encryption_key and not CRYPTO_AVAILABLE:
             logger.warning(
                 "Cache encryption requested but cryptography not installed. Install with: pip install cryptography"
             )
@@ -126,12 +130,14 @@ class DiskCache:
         try:
             data = path.read_bytes()
 
-            if self._fernet:
+            if self._enc_key is not None and crypto is not None:
                 try:
-                    data = self._fernet.decrypt(data)
+                    data = crypto.open_envelope(self._enc_key, data, crypto.aad_for(secret_name))
                 except Exception as e:
+                    # Wrong key, tampered data, or a legacy (pre-AES-256)
+                    # entry that won't parse: treat as a cache miss and
+                    # drop the file. The cache re-fills from the backend.
                     logger.warning("Cache decryption failed", extra={"secret_name": secret_name, "error": str(e)})
-                    # Remove corrupted cache
                     path.unlink(missing_ok=True)
                     return None
 
@@ -186,8 +192,8 @@ class DiskCache:
 
             data = json.dumps(cached).encode("utf-8")
 
-            if self._fernet:
-                data = self._fernet.encrypt(data)
+            if self._enc_key is not None and crypto is not None:
+                data = crypto.seal(self._enc_key, data, crypto.aad_for(secret_name))
 
             # Atomic write: unique tempfile in same dir, fsync, replace.
             # NamedTemporaryFile gives us a fresh inode per writer so

@@ -158,14 +158,19 @@ class TestDiskCache:
         value = SecretValue(data=b"sensitive-data", fetched_at=datetime.now(UTC))
         cache.set("encrypted-secret", value)
 
-        # Verify file is encrypted (not readable as plain JSON)
         cache_files = list(tmp_path.glob("*.cache"))
         assert len(cache_files) == 1
 
         raw_content = cache_files[0].read_bytes()
-        # Encrypted content should not be valid JSON
-        with pytest.raises((json.JSONDecodeError, UnicodeDecodeError)):
-            json.loads(raw_content.decode("utf-8"))
+        # The AES-256-GCM envelope is JSON, but must not leak the
+        # plaintext secret (nor its hex-encoded plaintext payload).
+        assert b"sensitive-data" not in raw_content
+        assert b"sensitive-data".hex().encode() not in raw_content
+        assert b"data_hex" not in raw_content
+        envelope = json.loads(raw_content.decode("utf-8"))
+        assert envelope["v"] == 1
+        assert "nonce" in envelope
+        assert "ct" in envelope
 
         # But cache.get should decrypt and return original value
         result = cache.get("encrypted-secret")
