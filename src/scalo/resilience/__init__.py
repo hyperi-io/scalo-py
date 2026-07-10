@@ -20,10 +20,20 @@ Provides circuit breaker with Closed/Open/HalfOpen state machine::
 """
 
 from .circuit_breaker import CircuitBreaker, CircuitBreakerConfig, CircuitBreakerError, CircuitState
+from .reconnecting import (
+    OutageState,
+    ReconnectingResilience,
+    ResilienceConfig,
+    ServiceUnavailable,
+)
 
 __all__ = [
     "CircuitBreaker",
     "CircuitBreakerConfig",
     "CircuitBreakerError",
     "CircuitState",
+    "OutageState",
+    "ReconnectingResilience",
+    "ResilienceConfig",
+    "ServiceUnavailable",
 ]
