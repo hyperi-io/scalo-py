@@ -192,11 +192,23 @@ def get_default_config(verify_ssl: bool = True) -> dict[str, Any]:
 # SASL-SCRAM helpers
 # =============================================================================
 #
-# Encodes the org-wide standard: SCRAM-SHA-512 over SASL_SSL for external
-# brokers (Apache Kafka, AutoMQ, MSK, Confluent Cloud all support unchanged),
-# SCRAM-SHA-512 over SASL_PLAINTEXT for in-cluster brokers where TLS is already
-# terminated by the network mesh. Removes per-project hand-rolling of
+# Generic builders for the two common SCRAM shapes: SCRAM over SASL_SSL for
+# external brokers that speak SCRAM (self-hosted Apache Kafka, Redpanda, AWS MSK
+# provisioned), and SCRAM over SASL_PLAINTEXT for in-cluster brokers where TLS is
+# already terminated by the network mesh. They save per-project hand-rolling of
 # security.protocol + sasl.* fields.
+#
+# NOTE: not every managed provider speaks SCRAM - Confluent Cloud is API-key
+# PLAIN over TLS, AWS MSK Serverless is IAM-only. For a provider-driven config
+# that picks the right mechanism automatically, use scalo.kafka.providers.
+
+
+def _reject_plain_over_plaintext(security_protocol: str, mechanism: str) -> None:
+    """The one hard floor: PLAIN must ride TLS - never send the password in clear."""
+    if mechanism == "PLAIN" and security_protocol != "SASL_SSL":
+        raise ValueError(
+            "SASL PLAIN requires security.protocol=SASL_SSL (never send a PLAIN password over a plaintext transport)"
+        )
 
 
 def external_sasl_scram(
@@ -210,14 +222,15 @@ def external_sasl_scram(
     """
     Build a Kafka client config for an external broker using SASL_SSL + SCRAM.
 
-    HyperI default for production-internet-facing brokers -- works unchanged
-    against Apache Kafka, AutoMQ, MSK, and Confluent Cloud.
+    The common shape for internet-facing brokers that speak SCRAM: self-hosted
+    Apache Kafka, Redpanda, AWS MSK provisioned. NOT Confluent Cloud (API-key
+    PLAIN) or MSK Serverless (IAM) - use scalo.kafka.providers for those.
 
     Args:
         brokers: Bootstrap servers (e.g. "broker1:9093,broker2:9093")
         username: SASL username
         password: SASL password
-        mechanism: SCRAM variant; defaults to ``SCRAM-SHA-512`` (HyperI standard)
+        mechanism: SCRAM variant; defaults to ``SCRAM-SHA-512``
         verify_ssl: TLS certificate verification; default True
 
     Returns:
@@ -227,6 +240,7 @@ def external_sasl_scram(
         >>> base = external_sasl_scram("kafka.prod:9093", "svc-loader", "***")
         >>> config = merge_config(base, PRODUCER_DEFAULTS)
     """
+    _reject_plain_over_plaintext("SASL_SSL", mechanism)
     config: dict[str, Any] = {
         "bootstrap.servers": brokers,
         "security.protocol": "SASL_SSL",
@@ -261,6 +275,7 @@ def internal_sasl_scram(
     Returns:
         Configuration dict ready to merge with PRODUCER/CONSUMER/ADMIN_DEFAULTS
     """
+    _reject_plain_over_plaintext("SASL_PLAINTEXT", mechanism)
     return {
         "bootstrap.servers": brokers,
         "security.protocol": "SASL_PLAINTEXT",

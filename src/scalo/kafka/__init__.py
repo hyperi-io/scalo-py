@@ -31,6 +31,11 @@ Async usage (FastAPI, async apps):
 
 # Config and defaults
 # Admin operations
+# Opt-in STRICT credential profile (DFE credential contract, dfe-engine#98).
+# Kept namespaced (``scalo.kafka.contract.require(...)``) rather than
+# flattened - it is POLICY layered on the vanilla facts above, not a fact
+# itself.
+from . import contract
 from .admin import KafkaAdmin, KafkaAdminError
 
 # Async clients
@@ -74,6 +79,19 @@ from .metrics import (
 )
 from .producer import KafkaProducer
 
+# Opt-in managed-Kafka provider auth presets (provider -> mechanism derivation)
+# plus the full, open KafkaProvider abstraction (facts only - no policy).
+from .providers import (
+    AuthKind,
+    KafkaProvider,
+    KafkaProviderError,
+    KnownProvider,
+    MetadataMode,
+    ProviderCapabilities,
+    SchemaRegistry,
+    provider_config,
+)
+
 # Read-only client
 from .readonly import ReadOnlyKafkaClient
 
@@ -89,6 +107,15 @@ from .schema import (
     AnalysisResult,
     FieldStats,
     SchemaAnalyser,
+)
+
+# Tool config emission - "provider X in way Y, here is the config for tool
+# Z" (kafbat-ui / kcat / librdkafka .properties).
+from .toolconfig import (
+    Connection,
+    emit_kafbat_cluster,
+    emit_kcat,
+    emit_librdkafka_properties,
 )
 
 # Types
@@ -113,6 +140,10 @@ __all__ = [
     "AsyncKafkaClient",
     "AsyncKafkaConsumer",
     "AsyncKafkaProducer",
+    # Kafka provider abstraction (facts)
+    "AuthKind",
+    # Tool config emission
+    "Connection",
     "ConsumerGroupInfo",
     "ConsumerGroupMember",
     "ConsumerGroupMetadata",
@@ -132,26 +163,38 @@ __all__ = [
     # Metrics
     "KafkaMetricsCollector",
     "KafkaProducer",
+    "KafkaProvider",
+    "KafkaProviderError",
+    "KnownProvider",
     # Types
     "Message",
+    "MetadataMode",
     "PartitionInfo",
     "PartitionLag",
+    "ProviderCapabilities",
     # Read-only client
     "ReadOnlyKafkaClient",
     # Schema
     "SchemaAnalyser",
+    "SchemaRegistry",
     "TopicInfo",
     "TopicMetadata",
     # Exceptions
     "TopicNotFoundError",
     "config_from_env",
     "config_from_file",
+    # Opt-in STRICT credential profile (submodule, not flattened)
+    "contract",
     "create_stats_callback",
+    "emit_kafbat_cluster",
+    "emit_kcat",
+    "emit_librdkafka_properties",
     "external_sasl_scram",
     "get_default_config",
     "internal_sasl_scram",
     "merge_config",
     "partition_sample",
+    "provider_config",
     # Sampling
     "reservoir_sample",
     "time_bounded_consume",
