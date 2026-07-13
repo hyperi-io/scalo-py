@@ -118,11 +118,23 @@ import threading
 import time
 from typing import Any
 
-import psutil
-
 from ..logger import logger
 from ..runtime import RuntimeEnvironment
 from .base import NoOpMetric
+
+# psutil lives in the optional `[metrics]` extra (alongside prometheus_client).
+# Guard it exactly like prometheus_client below: the top-level `scalo` package
+# eagerly imports this module, so a bare `import psutil` here made `import scalo`
+# hard-fail for EVERY consumer that installs scalo without the metrics extra
+# (e.g. a CLI that only wants config/logging). Every psutil use-site sits behind
+# the availability guards, so absence just disables process/container metrics.
+try:
+    import psutil
+
+    PSUTIL_AVAILABLE = True
+except ImportError:  # pragma: no cover - exercised by the no-extra import test
+    psutil = None  # type: ignore[assignment]
+    PSUTIL_AVAILABLE = False
 
 # Check if prometheus_client is available
 try:
@@ -161,7 +173,7 @@ class ProcessMetrics:
             registry: Prometheus registry (creates new if None)
             app_name: Application name for labels
         """
-        if not PROMETHEUS_AVAILABLE:
+        if not (PROMETHEUS_AVAILABLE and PSUTIL_AVAILABLE):
             self.enabled = False
             return
 
@@ -320,7 +332,7 @@ class ContainerMetrics:
             registry: Prometheus registry
             app_name: Application name for labels
         """
-        if not PROMETHEUS_AVAILABLE:
+        if not (PROMETHEUS_AVAILABLE and PSUTIL_AVAILABLE):
             self.enabled = False
             return
 

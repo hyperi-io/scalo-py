@@ -10,6 +10,10 @@
 These run on every push. If any of these fail, something fundamental is broken.
 """
 
+import subprocess
+import sys
+import textwrap
+
 import pytest
 
 
@@ -107,3 +111,62 @@ class TestOptionalExtras:
             assert callable(evaluate)
         except ImportError:
             pytest.skip("expression extra not installed")
+
+
+@pytest.mark.smoke
+class TestImportWithoutMetricsExtra:
+    """`import scalo` must survive an ABSENT `[metrics]` extra (regression).
+
+    The top-level package eagerly imports the metrics submodule, and its
+    prometheus.py once did a BARE `import psutil`. psutil ships only in the
+    optional `[metrics]` extra, so any consumer installing scalo without it (a CLI
+    wanting just config/logging, say) could not `import scalo` at all -- the whole
+    package was un-importable. prometheus_client was already guarded; psutil was
+    not. This locks the fix in.
+
+    Runs in a subprocess with both metrics deps blocked, so it holds even in a dev
+    venv where psutil/prometheus_client are installed. If the guard is reverted,
+    `import scalo` crashes here.
+    """
+
+    def _run_with_blocked(self, *blocked: str) -> subprocess.CompletedProcess[str]:
+        code = textwrap.dedent(
+            f"""
+            import sys
+            import importlib.abc
+
+            _BLOCKED = {blocked!r}
+
+            class _Blocker(importlib.abc.MetaPathFinder):
+                def find_spec(self, name, path=None, target=None):
+                    root = name.split(".", 1)[0]
+                    if root in _BLOCKED:
+                        raise ImportError(root + " blocked (simulating no [metrics] extra)")
+                    return None
+
+            sys.meta_path.insert(0, _Blocker())
+            for _m in _BLOCKED:
+                sys.modules.pop(_m, None)
+
+            import scalo
+            assert scalo.__version__, "scalo imported but has no __version__"
+
+            # The metrics manager must degrade to disabled, never crash.
+            from scalo.metrics import create_metrics
+            m = create_metrics("regression", enable_auto_update=False)
+            assert m.enabled is False, "metrics should be disabled without the extra"
+            print("OK")
+            """
+        )
+        return subprocess.run(
+            [sys.executable, "-c", code],
+            capture_output=True,
+            text=True,
+            encoding="utf-8",
+        )
+
+    def test_import_scalo_without_psutil(self):
+        # Block psutil specifically -- the exact dep the bare import needed.
+        result = self._run_with_blocked("psutil", "prometheus_client")
+        assert result.returncode == 0, f"stdout={result.stdout!r} stderr={result.stderr!r}"
+        assert "OK" in result.stdout
