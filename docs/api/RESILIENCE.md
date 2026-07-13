@@ -1,6 +1,6 @@
 # Resilience
 
-Circuit breaker matching `hyperi-rustlib`'s
+Circuit breaker matching `scalo-rs`'s
 `src/resilience/circuit_breaker.rs` byte for byte. Same three-state
 machine (CLOSED / OPEN / HALF_OPEN), same thresholds, same semantics —
 a service rewritten from Python to Rust trips and recovers identically.
@@ -182,7 +182,7 @@ label for any future observability hooks.
 
 ## Cross-language parity
 
-The Python breaker mirrors `hyperi-rustlib`'s implementation exactly:
+The Python breaker mirrors `scalo-rs`'s implementation exactly:
 
 | Behaviour | Both |
 |-----------|------|

@@ -91,7 +91,7 @@ limiting, CI mode, and the emoji-to-text conversion.
 ```python
 from scalo.metrics import create_metrics
 
-m = create_metrics(namespace="my_service")
+m = create_metrics("my_service")
 requests = m.counter("requests_total", "Total requests", ["method", "status"])
 requests.labels(method="POST", status="200").inc()
 ```
@@ -142,7 +142,7 @@ See [core-pillars/HEALTH.md](core-pillars/HEALTH.md).
 ```python
 from scalo.runtime import get_runtime_paths
 
-paths = get_runtime_paths()
+paths = get_runtime_paths("my-service")
 config_file = paths.config_dir / "app.yaml"   # /config in K8s, ~/.config locally
 data_file = paths.data_dir / "state.db"       # /data in K8s, ~/.local/share locally
 cache_file = paths.cache_dir / "warmup.json"  # /cache in K8s, ~/.cache locally
@@ -279,7 +279,7 @@ hyperi-ci check --quick  # quality + unit tests only
 - [ ] `settings.yaml` in the repo for static config; env vars for
       per-environment override
 - [ ] Logger imported at the top of `main`
-- [ ] `create_metrics(namespace=<app>)` called once, registered on
+- [ ] `create_metrics(<app_name>)` called once, registered on
       `/metrics`
 - [ ] `HealthManager` created, `set_ready()` called after dependencies
       connect, downstream checks registered

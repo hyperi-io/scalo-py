@@ -30,7 +30,7 @@ is now per-module and happens at first use.
 |---|---|---|
 | FastAPI server with `/health/*` router | `app.include_router(create_health_router(...))` | Pylib doesn't own your HTTP framework. `/metrics` is served by the app using `MetricsManager.content` + `content_type` (see core-pillars/METRICS.md). No `/config` router ships |
 | Kafka producer flush on shutdown | `producer.flush()` in your signal handler | Producer lifecycle is app-specific; we don't intercept SIGTERM |
-| Circuit breaker around a downstream | `with CircuitBreaker(config): call()` or `@with_resilience` decorator | Failure modes vary per downstream; sensible defaults exist but explicit is better |
+| Circuit breaker around a downstream | `with CircuitBreaker(config): call()` | Failure modes vary per downstream; sensible defaults exist but explicit is better |
 | Metric registration | `m.counter(name, help, labels)` per metric | Metrics are app-specific; we provide the framework, not the catalogue |
 | Application class / runtime entry point | Nothing — compose modules directly | The `Application` framework was experimental and deprecated; production code uses the modules directly |
 

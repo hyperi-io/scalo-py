@@ -82,7 +82,8 @@ configurable env-var prefix that is **bare ("") by default**:
       env_prefix = "DFE"        # -> DFE_DEBUG, DFE_DATABASE__HOST, ...
   ```
 
-  or imperatively: `from scalo import set_env_prefix; set_env_prefix("DFE")`,
+  or imperatively via `set_env_prefix("DFE")` (importable today only from
+  `scalo._env_compat` - a public re-export is on the review list),
   or via the bare `ENV_PREFIX` environment variable.
 
 **Action for downstream apps:** pick your prefix (e.g. `DFE`, `DFE_CP`)

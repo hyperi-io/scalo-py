@@ -147,7 +147,7 @@ configurable per app).
 ```python
 from scalo import get_runtime_paths
 
-runtime = get_runtime_paths()
+runtime = get_runtime_paths("myapp")
 config = runtime.config_dir / "app.yaml"   # /config in K8s, ~/.config locally
 data   = runtime.data_dir  / "state.db"    # /data in K8s, ~/.local/share locally
 ```
@@ -157,10 +157,14 @@ data   = runtime.data_dir  / "state.db"    # /data in K8s, ~/.local/share locall
 ```python
 from scalo import create_metrics
 
-metrics = create_metrics(namespace="myapp")
-metrics.http_requests.inc()
-metrics.active_users.set(42)
-metrics.request_duration.observe(0.123)
+metrics = create_metrics("myapp")
+requests = metrics.counter("http_requests", "Total HTTP requests")
+active   = metrics.gauge("active_users", "Signed-in users")
+duration = metrics.histogram("request_duration", "Request duration (s)")
+
+requests.inc()
+active.set(42)
+duration.observe(0.123)
 ```
 
 Automatic process and container metrics (CPU, memory, FDs, uptime) come for
@@ -181,7 +185,7 @@ integration, health checks, and admin operations included.
 from scalo.secrets import SecretsManager
 
 # Picks the configured backend: file, OpenBao/Vault, AWS, GCP, Azure
-manager = SecretsManager.from_config()
+manager = SecretsManager.from_config(config)   # config dict per docs/api/SECRETS.md
 api_key = await manager.get("stripe/api_key")
 ```
 
@@ -221,9 +225,9 @@ the three K8s probe types:
 
 | Probe | Path | Checks | On failure |
 |---|---|---|---|
-| Startup | `/healthz/startup` | Init complete | K8s waits, then restarts |
-| Liveness | `/healthz/live` | Process not deadlocked | Restart pod |
-| Readiness | `/healthz/ready` | Deps healthy + ready flag set | Stop routing traffic |
+| Startup | `/health/startup` | Init complete | K8s waits, then restarts |
+| Liveness | `/health/live` | Process not deadlocked | Restart pod |
+| Readiness | `/health/ready` | Deps healthy + ready flag set | Stop routing traffic |
 
 Liveness MUST NEVER check downstream dependencies (a DB outage shouldn't
 restart your replicas). Readiness checks dependencies AND requires an

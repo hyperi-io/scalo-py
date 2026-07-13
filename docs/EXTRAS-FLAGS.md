@@ -106,9 +106,9 @@ via the prometheus exporter, all from one backend.
 | `resilience` | `stamina`, `purgatory` | none | [api/RESILIENCE.md](api/RESILIENCE.md) |
 | `http` | `httpx`, `stamina`, `purgatory` | none | [api/HTTP-CLIENT.md](api/HTTP-CLIENT.md) |
 
-`http` and every `secrets-*` extra pull `resilience` in
-transitively. Install `resilience` directly only if you want
-standalone circuit breakers without the rest.
+`http` carries the retry/breaker deps itself; the `secrets-*` extras do
+NOT pull `resilience` in. Install `resilience` directly if you want the
+standalone circuit breaker without the HTTP client.
 
 ### Transport + data
 
@@ -132,7 +132,7 @@ is part of the test suite, not a runtime artefact.
 |---|---|---|---|
 | `expression` | `common-expression-language` (PyO3 wrapper around `cel-interpreter` Rust crate) | none (precompiled wheels) | [api/EXPRESSION.md](api/EXPRESSION.md) |
 
-Provides byte-identical CEL evaluation with rustlib's `expression`
+Provides byte-identical CEL evaluation with scalo-rs's `expression`
 crate. Same expression, same result, regardless of which language the
 service is in.
 
@@ -140,7 +140,7 @@ service is in.
 
 | Extra | Adds | Native deps | Doc |
 |---|---|---|---|
-| `secrets-vault` | (none extra — uses base HTTP client) | none | [api/SECRETS.md](api/SECRETS.md) |
+| `secrets-vault` | `httpx` | none | [api/SECRETS.md](api/SECRETS.md) |
 | `secrets-aws` | `boto3`, `aiobotocore` | none | [api/SECRETS.md](api/SECRETS.md) |
 | `secrets-gcp` | `google-cloud-secret-manager` | none | [api/SECRETS.md](api/SECRETS.md) |
 | `secrets-azure` | `azure-keyvault-secrets`, `azure-identity` | none | [api/SECRETS.md](api/SECRETS.md) |

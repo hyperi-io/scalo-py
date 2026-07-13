@@ -1,10 +1,10 @@
 # scalo docs
 
-Shared Python library for HyperI services. Import the modules you need,
-configure them once, and you get an 7-layer config cascade, structured
-logs, Prometheus + OTel metrics, K8s health probes, secrets management,
-resilience primitives, a Kafka client, and deployment-artefact
-generation — all opinionated, all production-tested in the DFE stack.
+Batteries-included Python library for building services. Import the modules
+you need, configure them once, and you get a 7-layer config cascade,
+structured logs, Prometheus + OTel metrics, K8s health probes, secrets
+management, resilience primitives, a Kafka client, and deployment-artefact
+generation — all opinionated, all production-tested.
 
 This is the index. Read [ARCHITECTURE.md](ARCHITECTURE.md) for the
 10,000-foot view, [INTEGRATION.md](INTEGRATION.md) for a recipe to build
@@ -20,7 +20,7 @@ Python extras pull in which deps.
 |-------------|----------------------|------------|
 | `from scalo import config` | 7-layer cascade, env-var nesting, `.env`, sensitive masking | Wire dynaconf, write a settings loader |
 | `from scalo import logger` | Loguru-backed structured logs, JSON-in-container / human-on-TTY autodetect, RFC 3339 timestamps, gitleaks-based secret scrubbing, rate-limit filter, emoji-to-text for CI | Install loguru, format JSON, hand-roll a scrubber |
-| `from scalo import metrics` | Prometheus + OpenTelemetry dual backend, `MetricsManager` content + content-type for an app-served `/metrics` route, process collector, cardinality cap, DFE metric groups (consumer/sink/buffer/circuit-breaker), HTTP middleware | Stand up an exporter, wire a process collector, hand-roll a cardinality limiter |
+| `from scalo import metrics` | Prometheus + OpenTelemetry dual backend, `MetricsManager` content + content-type for an app-served `/metrics` route, process collector, cardinality cap, metric groups (consumer/sink/buffer/circuit-breaker) | Stand up an exporter, wire a process collector, hand-roll a cardinality limiter |
 | `from scalo import health` | `/health/live`, `/health/ready`, `/health/startup` router, downstream-dep registry, K8s-shaped responses | Write probe handlers, manage dependency state |
 | `from scalo import runtime` | K8s / Docker / bare-metal autodetect, container-aware paths (config_dir, data_dir, cache_dir, run_dir), `CONTAINER_BASE_PATH` override | Read `/.dockerenv`, parse cgroups, pick path defaults |
 | `from scalo import secrets` | OpenBao / Vault / AWS / GCP / Azure / ansible-vault / file providers behind one interface | Pick a provider SDK, wrap each behind a uniform API |
@@ -143,4 +143,4 @@ flowchart TB
 
 - **Package:** [scalo](https://pypi.org/project/scalo/) (PyPI)
 - **Python:** ≥3.12
-- **Sibling lib:** [hyperi-rustlib](https://github.com/hyperi-io/hyperi-rustlib) (Rust equivalent; same subdir layout where the concept maps 1:1)
+- **Sibling lib:** [scalo-rs](https://github.com/hyperi-io/scalo-rs) (Rust equivalent; same subdir layout where the concept maps 1:1)

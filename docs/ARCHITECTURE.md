@@ -90,9 +90,10 @@ Observations:
 - Every module above the runtime layer depends on at least one core
   pillar. Apps that just want config + logs install nothing else and
   stop here.
-- `resilience` is the only cross-cutting API-surface module: HTTP
-  and secrets both wrap it (`with_resilience` decorator).
-  Stamina + purgatory under the hood.
+- `resilience` is the only cross-cutting API-surface module: a
+  hand-rolled `CircuitBreaker`, with stamina providing retry in the
+  HTTP client. (An earlier design promised a `with_resilience`
+  decorator - it was never built; wrap calls explicitly.)
 - `metrics` is the second cross-cutting one: anything that does I/O
   emits counters/histograms when metrics is installed.
 
@@ -104,7 +105,7 @@ Each module under `src/scalo/` and what you import from it:
 
 | Module | Public API entry |
 |---|---|
-| `cli` | `DfeApp`, standard options, common patterns |
+| `cli` | `ServiceApp` (legacy `DfeApp` alias), standard options, common patterns |
 | `concurrency` | `run_blocking`, `Bulkhead`, `gather_with_timeouts` |
 | `config` | `settings`, `get_environment`, `get_app_name`, `init_config_directory` |
 | `data` | data files only — gitleaks rules + national-ID validators |
@@ -114,7 +115,7 @@ Each module under `src/scalo/` and what you import from it:
 | `http` | `HttpClient`, `AsyncHttpClient` |
 | `kafka` | `KafkaProducer`, `KafkaConsumer`, `AsyncKafka*`, `KafkaAdmin`, `SchemaAnalyser` |
 | `logger` | `logger`, convenience fns, `scrub/` package |
-| `metrics` | `create_metrics`, `groups/*`, `CardinalityTracker`, FastAPI middleware |
+| `metrics` | `create_metrics`, `groups/*`, `CardinalityTracker` |
 | `resilience` | `CircuitBreaker`, `CircuitBreakerConfig` |
 | `runtime` | `get_runtime_paths`, `RuntimePaths`, `RuntimeEnvironment` |
 | `scaling` | `ScalingPressure`, `ScalingPressureConfig`, `PressureSnapshot` |
@@ -126,9 +127,9 @@ The `Application` framework was removed to backlog (see the note in
 
 ---
 
-## What's not here vs hyperi-rustlib
+## What's not here vs scalo-rs
 
-Rustlib ships several modules pylib does not, by design:
+scalo-rs ships several modules scalo-py does not, by design:
 
 - `transport/` abstraction layer (rustlib has Kafka, gRPC, HTTP, Redis,
   File, Pipe, Memory transports behind a single trait). Pylib has Kafka
@@ -150,13 +151,13 @@ What pylib has that rustlib doesn't:
 
 ---
 
-## Naming parity with rustlib
+## Naming parity with scalo-rs
 
-| Concept | rustlib | pylib |
+| Concept | scalo-rs | scalo-py |
 |---|---|---|
-| Runtime entry point | `ServiceRuntime` + `DfeApp` trait | `Application` (deprecated; compose modules directly) |
+| Runtime entry point | `ServiceRuntime` + service trait | `Application` (deprecated; compose modules directly) |
 | HTTP client | `reqwest` + retry | `httpx` + stamina retry |
-| Circuit breaker | `purgatory` (vendored) | `purgatory` (PyPI) |
+| Circuit breaker | `purgatory` (vendored) | hand-rolled `resilience.CircuitBreaker` |
 | Retry | `stamina` (Rust crate) | `stamina` (Python PyPI) |
 | Config | `figment` 7-layer | `dynaconf` 7-layer |
 | Logger | `tracing` | `loguru` |

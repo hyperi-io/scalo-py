@@ -26,7 +26,7 @@ framework.
 |-----|-----|
 | `Application.api(name=..., port=...)` | `FastAPI()` + `create_health_router(...)` + `create_metrics(...)` |
 | `Application.daemon(name=...)` | `from scalo import logger, config, runtime` + your loop |
-| `Application.cli(name=...)` | `from scalo.cli import DfeApp` (Typer-based) |
+| `Application.cli(name=...)` | `from scalo.cli import ServiceApp` (Typer-based) |
 | `app.profile_overrides({...})` | `scalo.config` 7-layer cascade -- env / `settings.<env>.yaml` |
 | `app.runtime.paths` | `from scalo.runtime import get_runtime_paths` |
 | `app.metrics` | `from scalo.metrics import create_metrics` |
@@ -62,7 +62,7 @@ brokers = settings.get("kafka.brokers", "localhost:9092")
 info("Service starting", version="2.28.3", config_dir=str(paths.config_dir))
 
 # 4. Metrics -- Prometheus + OTel, /metrics endpoint
-m = create_metrics(namespace="my_service")
+m = create_metrics("my_service")
 requests = m.counter("requests_total", "Total requests", ["method", "status"])
 
 # 5. Health -- /health/live, /health/ready, /health/startup
@@ -127,7 +127,7 @@ app = FastAPI()
 health = HealthManager()
 app.include_router(create_health_router(health))
 
-m = create_metrics(namespace="my_service")
+m = create_metrics("my_service")
 m.counter("requests_total", "...", ["method"])
 paths = get_runtime_paths("my-service")
 health.set_ready()
@@ -137,7 +137,8 @@ Run with uvicorn / hypercorn / gunicorn as you would any FastAPI app
 -- the framework used to pick the runner for you; now you pick.
 
 For CLI tools, use [api/CLI.md](../api/CLI.md) -- the Typer-based
-`DfeApp` is the supported replacement for `Application.cli()`.
+`ServiceApp` is the supported replacement for `Application.cli()`
+(`DfeApp` remains as a deprecated alias).
 
 ---
 
