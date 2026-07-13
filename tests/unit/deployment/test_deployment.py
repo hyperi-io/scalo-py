@@ -752,7 +752,7 @@ class TestContractValidation:
             config_mount_path="/etc/min.yaml",
         )
         # Defaults applied
-        assert c.schema_version == 2
+        assert c.schema_version == 3
         assert c.image_registry == "localhost:5000"
         # base_image defaults empty; resolved to python:{python_version}-slim.
         assert c.base_image == ""

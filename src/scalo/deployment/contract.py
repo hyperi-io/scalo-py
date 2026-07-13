@@ -29,6 +29,7 @@ from typing import Any
 
 from pydantic import BaseModel, ConfigDict, Field
 
+from .capability import Capability
 from .keda import KedaContract
 from .native_deps import NativeDepsContract
 
@@ -59,8 +60,10 @@ class ImageProfile(StrEnum):
 
 DEFAULT_VENDOR = "HYPERI PTY LIMITED"
 DEFAULT_LICENSE = "Apache-2.0"
-DEFAULT_SCHEMA_VERSION = 2
-MAX_SUPPORTED_SCHEMA_VERSION = 2
+# v3: added config_schema + capabilities (scalo-py#3 / scalo-rs#6). Back-compat --
+# old consumers ignore the new optional fields.
+DEFAULT_SCHEMA_VERSION = 3
+MAX_SUPPORTED_SCHEMA_VERSION = 3
 
 
 class OciLabels(BaseModel):
@@ -229,6 +232,18 @@ class DeploymentContract(BaseModel):
 
     oci_labels: OciLabels = Field(default_factory=OciLabels)
     """OCI image labels (static -- dynamic labels injected by CI at build time)."""
+
+    config_schema: dict[str, Any] | None = None
+    """Reflectable JSON Schema (draft 2020-12) of the app's full ``Config``,
+    derived via pydantic ``model_json_schema`` (scalo-py#3). ``None`` when not
+    provided. Secret fields carry the ``x-dfe-secret`` marker. Also written to
+    ``config-schema.{json,yaml}`` by
+    :func:`scalo.deployment.emit_config_artifacts`."""
+
+    capabilities: list[Capability] = Field(default_factory=list)
+    """Capability catalog -- the runtime-data surface a schema cannot derive
+    (service names + their knobs). Hand-authored per app. Also written to
+    ``capability-catalog.{json,yaml}``."""
 
     # ---- Convenience accessors (mirror rustlib's impl block) ---------------
 

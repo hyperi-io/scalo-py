@@ -63,6 +63,13 @@ if not DEPLOYMENT_AVAILABLE:
         )
 
     DeploymentContract = _missing  # type: ignore[assignment]
+    Capability = _missing  # type: ignore[assignment]
+    FieldSpec = _missing  # type: ignore[assignment]
+    FieldType = _missing  # type: ignore[assignment]
+    config_schema_json = _missing  # type: ignore[assignment]
+    emit_config_artifacts = _missing  # type: ignore[assignment]
+    check_config_artifact_drift = _missing  # type: ignore[assignment]
+    assert_no_config_artifact_drift = _missing  # type: ignore[assignment]
     HealthContract = _missing  # type: ignore[assignment]
     ImageProfile = _missing  # type: ignore[assignment]
     OciLabels = _missing  # type: ignore[assignment]
@@ -104,6 +111,7 @@ else:
         AppProjectDestination,
         generate_argocd_app_project,
     )
+    from .capability import Capability, FieldSpec, FieldType
     from .contract import (
         DEFAULT_LICENSE,
         DEFAULT_SCHEMA_VERSION,
@@ -116,6 +124,12 @@ else:
         PortContract,
         SecretEnvContract,
         SecretGroupContract,
+    )
+    from .emit import (
+        assert_no_config_artifact_drift,
+        check_config_artifact_drift,
+        config_schema_json,
+        emit_config_artifacts,
     )
     from .errors import (
         ContractMismatch,
@@ -170,10 +184,13 @@ __all__ = [
     "AppProjectDestination",
     "AptRepoContract",
     "ArgocdConfig",
+    "Capability",
     "ContractIdentity",
     "ContractMismatch",
     "DeploymentContract",
     "DeploymentError",
+    "FieldSpec",
+    "FieldType",
     "HealthContract",
     "IdentityError",
     "ImageProfile",
@@ -185,7 +202,11 @@ __all__ = [
     "SecretEnvContract",
     "SecretGroupContract",
     "argocd_repo_url_from_cascade",
+    "assert_no_config_artifact_drift",
     "base_image_from_cascade",
+    "check_config_artifact_drift",
+    "config_schema_json",
+    "emit_config_artifacts",
     "generate_argocd_app_project",
     "generate_argocd_application",
     "generate_builder_stage",
