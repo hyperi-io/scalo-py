@@ -106,10 +106,15 @@ await reloader.start()
 await reloader.stop()
 ```
 
-`reload_count_success` and `reload_count_error` properties feed into
-[AppMetrics.record_config_reload](METRICS.md#dfe-groups) for
-observability. SIGHUP is a no-op on Windows and in restricted
-environments.
+`reload_count_success` and `reload_count_error` are counters you can
+feed into [AppMetrics.record_config_reload](METRICS.md#dfe-groups).
+The reloader does not do it for you -- it imports nothing from
+`metrics` or `health`, so read the properties and record them from
+your own code.
+
+SIGHUP is registered whenever `enable_sighup` is set, independently of
+`poll_interval`, so "reload on SIGHUP, never poll" works. It is a
+no-op on Windows and in restricted environments.
 
 ---
 
@@ -189,8 +194,8 @@ cascade.
 ## Related
 
 - [LOGGING.md](LOGGING.md) -- shares the sensitive-field list
-- [METRICS.md](METRICS.md) -- `AppMetrics.record_config_reload`
-- [HEALTH.md](HEALTH.md) -- readiness probe wires into reload errors
+- [METRICS.md](METRICS.md) -- `AppMetrics.record_config_reload` (record it yourself)
+- [HEALTH.md](HEALTH.md) -- register a readiness check against reload errors
 - [api/DIRECTORY-CONFIG.md](../api/DIRECTORY-CONFIG.md) -- YAML directory store
 - [runtime/RUNTIME-CONTEXT.md](../runtime/RUNTIME-CONTEXT.md) -- path detection
 - [EXTRAS-FLAGS.md](../EXTRAS-FLAGS.md) -- which extras add which providers

@@ -20,11 +20,19 @@ requests.labels(method="POST", status="200").inc()
 
 ## Backend selection
 
-Backend resolves in this priority: explicit `backend=` arg, then
-`HYPERI_METRICS_BACKEND` env var, then `settings.metrics.backend`,
-then `"opentelemetry"`. If OTel SDK imports fail (extras not
-installed), the manager logs a warning and falls back to the
-Prometheus backend so metrics keep working.
+Backend resolves in this priority: explicit `backend=` arg, then the
+`METRICS_BACKEND` env var, then `settings.metrics.backend`, then
+`"opentelemetry"`. If OTel SDK imports fail (extras not installed),
+the manager logs a warning and falls back to the Prometheus backend so
+metrics keep working.
+
+The env var is subject to the env prefix like every other control var:
+bare `METRICS_BACKEND` by default, or `<PREFIX>_METRICS_BACKEND` when
+the app sets one. There is no `HYPERI_`-prefixed form -- scalo
+hard-codes no brand.
+
+`ServiceApp` honours the same cascade, but falls back to `prometheus`
+rather than `opentelemetry` when nothing is configured.
 
 | Backend | When chosen | Default extras |
 |---------|-------------|----------------|
@@ -97,8 +105,22 @@ buffer.record_flush(duration_seconds=0.01, trigger="size")
 sink.record_duration(backend="clickhouse", duration_seconds=0.05)
 ```
 
-Every group prefixes its metrics with the manager's `app_name`, so
-`dfe_loader` and `dfe_archiver` never collide on the scrape.
+Every group prefixes its metrics with the manager's **metric prefix**
+-- not its `app_name`. That prefix resolves from `set_metric_prefix()`
+/ `METRIC_PREFIX` / `metrics.namespace` and is **bare by default**, so
+out of the box these names are unprefixed and two apps DO collide on
+name alone. That is deliberate: differentiation is meant to come from
+scrape labels (`job`, `instance`, `pod`, `namespace`), which is also
+how scalo-rs behaves.
+
+If you want the names themselves namespaced, set it explicitly:
+
+```python
+create_metrics("dfe-loader", metric_prefix="dfe_loader")
+```
+
+`app_name` only names the backend/meter and supplies the `app` label
+on the `AppMetrics` info metric.
 
 ---
 
@@ -106,8 +128,13 @@ Every group prefixes its metrics with the manager's `app_name`, so
 
 `CardinalityTracker` tracks unique label combinations per metric and
 logs a single warning when the count exceeds the cap (default 50).
-This prevents the classic Prometheus blow-up where a user ID or
+This guards against the classic Prometheus blow-up where a user ID or
 request path becomes a label and the time-series count explodes.
+
+**It is opt-in, and you must call `track()` yourself.** Nothing in
+`MetricsManager` or either backend calls it, so creating metrics the
+normal way gets you no cardinality warnings. Wire it into whatever
+code chooses the label values.
 
 ```python
 from scalo.metrics import CardinalityTracker
@@ -118,8 +145,8 @@ tracker.track("requests_total", {"method": "POST", "status": "201"})
 tracker.get_cardinality("requests_total")    # 2
 ```
 
-The cap is enforced at observation time -- the metric still records;
-the warning surfaces the issue so you can drop the offending label.
+The cap does not block anything -- the metric still records; the
+warning surfaces the issue so you can drop the offending label.
 Reset via `tracker.reset()` (test fixtures only; never in production).
 
 ---

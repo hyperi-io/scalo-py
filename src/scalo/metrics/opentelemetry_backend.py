@@ -277,11 +277,22 @@ class OpenTelemetryBackend(MetricsBackend):
     }
 
     # Label name mappings (Prometheus -> OTEL)
+    #
+    # NOTE: this map is flat and keyed by the Prometheus label name, so it
+    # cannot distinguish two families that use the same label. "status" is
+    # exactly that case: HTTP metrics and task metrics both carry one. There
+    # used to be a "status": "http.status_code" entry above the task block;
+    # it was dead -- the later duplicate key silently overwrote it -- so
+    # every HTTP metric has always been exported as task.status.
+    #
+    # The dead entry is removed rather than re-ordered: whichever wins is an
+    # emitted attribute name, and flipping it renames a label that existing
+    # dashboards and alerts query. Disambiguating properly means scoping the
+    # map per instrument family.
     LABEL_MAP = {
         # HTTP labels
         "method": "http.method",
         "endpoint": "http.route",
-        "status": "http.status_code",
         "path": "http.target",
         # Task labels
         "task": "task.name",
@@ -608,8 +619,16 @@ class OpenTelemetryBackend(MetricsBackend):
         )
 
     def get_content_type(self) -> str:
-        """Get content type for metrics endpoint."""
-        if self._prometheus_reader is not None and CONTENT_TYPE_LATEST:
+        """Get content type for metrics endpoint.
+
+        ``getattr`` rather than a bare attribute read: ``_prometheus_reader``
+        is only assigned inside the init try-block, so on the degraded paths
+        (OTel SDK missing, or init raising and setting ``enabled = False``)
+        it does not exist at all. The observability server calls this on
+        every scrape, so an AttributeError here would turn a missing extra
+        into a 500.
+        """
+        if getattr(self, "_prometheus_reader", None) is not None and CONTENT_TYPE_LATEST:
             return CONTENT_TYPE_LATEST
         return "text/plain; version=0.0.4"
 

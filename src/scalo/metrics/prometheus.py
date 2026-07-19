@@ -87,7 +87,7 @@ Kubernetes Integration
     metadata:
       annotations:
         prometheus.io/scrape: "true"
-        prometheus.io/port: "8000"
+        prometheus.io/port: "9090"
         prometheus.io/path: "/metrics"
 
 **ServiceMonitor (Prometheus Operator):**
@@ -108,8 +108,11 @@ Zero Configuration Required
 ✅ Auto-collects process metrics (CPU, memory, threads)
 ✅ Auto-detects container environment (K8s, Docker)
 ✅ Auto-exposes standard metrics
-✅ Standard ENV variables (namespace, port, path)
 ✅ Works with Prometheus, Grafana, CloudWatch
+
+This class reads NO environment variables. Bind address and namespace
+are decided by the caller -- `ServiceApp` via `--metrics-addr` /
+`METRICS_ADDR`, or `serve_observability(...)` directly.
 """
 
 import os
@@ -646,7 +649,11 @@ class PrometheusMetrics:
     - HTTP metrics (request tracking)
     - Custom metrics (easy to add)
 
-    Provides automatic metric collection and HTTP endpoint.
+    Collects metrics and renders them via :meth:`get_metrics` /
+    :meth:`get_content_type`. It does NOT itself listen on a port -- serving
+    is someone else's job, either ``scalo.health.serve_observability`` (the
+    dedicated observability port, which is what ``ServiceApp`` uses) or the
+    application mounting the output on its own router.
 
     Example - Adding custom metrics:
         metrics = create_metrics("my-app")
@@ -683,6 +690,16 @@ class PrometheusMetrics:
         if not PROMETHEUS_AVAILABLE:
             logger.warning("Prometheus metrics disabled (prometheus_client not installed)")
             self.enabled = False
+            # Set the attributes the lifecycle methods touch before bailing.
+            # Without them, stop_auto_update() and get_custom_metric() raise
+            # AttributeError on the degraded path -- the path where the
+            # feature is supposed to be merely ABSENT, not fatal. MetricsManager
+            # happens to guard both behind .enabled; anything using this class
+            # directly does not.
+            self.app_name = app_name
+            self.update_interval = update_interval
+            self.update_thread = None
+            self._custom_metrics = {}
             return
 
         self.enabled = True

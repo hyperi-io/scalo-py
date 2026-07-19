@@ -59,6 +59,15 @@ def build_scrubber(
     # described in spec §8.
     if not config.metrics_enabled or metrics is None:
         metrics = ScrubMetrics.noop()
+    elif metrics._type_cap != config.metrics_type_cardinality_cap:
+        # Rebind onto the CONFIGURED cap. ScrubMetrics defaults to 64, and
+        # nothing used to pass config.metrics_type_cardinality_cap through,
+        # so the documented knob had no effect even when a caller supplied a
+        # real metrics instance.
+        metrics = ScrubMetrics.from_manager(
+            metrics._backend,
+            type_cardinality_cap=config.metrics_type_cardinality_cap,
+        )
     layers: list[Scrubber] = []
 
     # Resolve the labeler once -- every layer that produces labels shares it

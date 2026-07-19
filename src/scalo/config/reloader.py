@@ -63,12 +63,19 @@ class ConfigReloader:
         self._reload_count_error = 0
 
     async def start(self) -> None:
-        """Start the polling loop (async). Only polls if interval > 0."""
+        """Start the reloader: SIGHUP handler and/or the polling loop.
+
+        Polling and SIGHUP are independent features -- "reload on SIGHUP,
+        never poll" is a documented configuration, so the handler is
+        registered before the ``poll_interval`` check. Registering it only
+        alongside polling meant ``enable_sighup`` was silently ignored for
+        exactly the setup that asked for it.
+        """
+        if self._config.enable_sighup:
+            self._register_sighup()
         if self._config.poll_interval <= 0:
             return
         self._running = True
-        if self._config.enable_sighup:
-            self._register_sighup()
         self._task = asyncio.create_task(self._poll_loop())
 
     async def stop(self) -> None:
