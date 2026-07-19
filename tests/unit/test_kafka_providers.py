@@ -32,7 +32,7 @@ CANONICAL_TABLE = {
 
 
 class TestDerive:
-    @pytest.mark.parametrize("provider,expected", list(CANONICAL_TABLE.items()))
+    @pytest.mark.parametrize(("provider", "expected"), list(CANONICAL_TABLE.items()))
     def test_table(self, provider, expected):
         assert derive(provider) == expected
 
