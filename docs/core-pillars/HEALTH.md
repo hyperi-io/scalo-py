@@ -64,17 +64,32 @@ broken check never takes the probe with it.
 
 ---
 
+## Paths
+
+`/healthz` and `/readyz` are canonical. The `*z` suffix is the
+convention, chosen so probe routes stay visually distinct from
+application routes, and scalo-rs serves the same names.
+
+`/health/live` and `/health/ready` remain as sanctioned aliases so
+existing charts keep working. Both the observability server and the
+FastAPI router serve the canonical names and the aliases.
+
+There is deliberately **no canonical startup path**. The standard
+points `startupProbe` at the liveness path so the two cannot drift
+apart; `/health/startup` still answers, but do not aim new manifests
+at it.
+
 ## K8s probe spec
 
-The probe path defaults in `deployment.contract.HealthContract` are
-historical (`/healthz`, `/readyz`). The pylib router emits
-`/health/{live,ready,startup}`. Match your manifest to the router:
+Probe the **observability port**, not the traffic port. That is the
+whole point of a separate port: exposing the application must not
+expose the operator surface.
 
 ```yaml
 livenessProbe:
   httpGet:
-    path: /health/live
-    port: http
+    path: /healthz
+    port: metrics       # the observability port (9090), NOT http
   initialDelaySeconds: 30
   periodSeconds: 10
   timeoutSeconds: 3
@@ -82,8 +97,8 @@ livenessProbe:
 
 readinessProbe:
   httpGet:
-    path: /health/ready
-    port: http
+    path: /readyz
+    port: metrics
   initialDelaySeconds: 5
   periodSeconds: 5
   timeoutSeconds: 3
@@ -91,15 +106,54 @@ readinessProbe:
 
 startupProbe:
   httpGet:
-    path: /health/startup
-    port: http
+    path: /healthz      # reuses liveness, by design
+    port: metrics
   periodSeconds: 5
   failureThreshold: 30      # 30 * 5s = 150s max startup
 ```
 
-When using the deployment generator, override
-`HealthContract(liveness_path="/health/live",
-readiness_path="/health/ready")` so the generated chart matches.
+The deployment generator already emits exactly this from the default
+`HealthContract` -- no override needed.
+
+---
+
+## Serving the probes
+
+Two shapes, and the first is the one you want.
+
+**Dedicated observability port (recommended).** `ServiceApp` binds
+`--metrics-addr` (default `0.0.0.0:9090`) during `run` and serves
+`/metrics`, `/healthz` and `/readyz` there. Register checks and flip
+readiness on the manager it hands you, or `/readyz` will report
+something the service does not mean:
+
+```python
+class MyService(ServiceApp):
+    name = "my-service"
+    env_prefix = "MYAPP"
+
+    def run_service(self, config):
+        self.health().register_ready_check("db", db.is_connected)
+        self.health().set_ready()
+        ...
+```
+
+Outside `ServiceApp`, do the same directly:
+
+```python
+from scalo.health import HealthManager, serve_observability
+
+health = HealthManager()
+server = serve_observability(health, metrics, "0.0.0.0:9090")
+```
+
+That listener is stdlib-only, so it does not need the FastAPI extra.
+
+**App-mounted router.** `create_health_router` still exists for
+services that want the probes on their own FastAPI app. Be aware this
+puts the operator surface behind the same ingress as user traffic --
+which is how an unauthenticated `/metrics` ends up on a public API
+port.
 
 ---
 

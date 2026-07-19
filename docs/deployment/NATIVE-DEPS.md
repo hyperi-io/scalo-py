@@ -13,8 +13,8 @@ Most pylib services need NOTHING beyond `ca-certificates curl
 netcat-openbsd iputils-ping` (the always-on base packages). Wheels are
 self-contained for `config`, `logger`, `metrics`, `health`, `runtime`,
 `secrets-file`, `secrets-ansible`, `expression`, `resilience`,
-`concurrency`, `cache` (sqlite mode), `http` (default), and pretty
-much every pillar except the explicitly C-linked transports.
+`concurrency`, `http` (default), and pretty much every pillar except
+the explicitly C-linked transports.
 
 ---
 
@@ -24,12 +24,25 @@ much every pillar except the explicitly C-linked transports.
 |---|---|---|
 | `apt_repos` | `list[AptRepoContract]` | `[]` |
 | `apt_packages` | `list[str]` | `[]` |
+| `distro_codename` | `str` | `trixie` |
 
 - `is_empty()` -- shortcut the Dockerfile generator uses to emit a
   smaller APT block when there's nothing extra.
-- `for_pylib_extras(extras, base_image)` -- factory; see below.
-- `for_rustlib_features(features, base_image)` -- factory for
-  polyglot apps that re-bind a rustlib core.
+- `for_pylib_extras(extras, base_image, *, distro_codename=...)` --
+  factory; see below.
+- `for_rustlib_features(features, base_image, *, distro_codename=...)`
+  -- factory for polyglot apps that re-bind a rustlib core.
+
+`distro_codename` names the base-image suite the package names were
+selected for, and is recorded in the emitted contract so CI can audit
+which suite an image targets. It defaults to `trixie` (Debian 13),
+which is what `python:{python_version}-slim` resolves to.
+
+State it explicitly -- never sniff it out of the base-image string.
+`debian:13-slim`, `debian:stable-slim` and any digest-pinned reference
+all defeat substring matching, and getting it wrong produces a package
+name that does not exist in the target suite (see
+[Verify by building](#verify-by-building-not-by-reading-the-index)).
 
 ---
 
@@ -42,12 +55,19 @@ A custom APT repository (e.g. Confluent for `librdkafka`).
 | `key_url` | yes | GPG key URL -- fetched via `curl -fsSL` |
 | `keyring` | yes | Local path; the basename (sans extension) names the sources-list file |
 | `url` | yes | Base URL after `deb` |
-| `codename` | no | E.g. `noble`. Derived from `base_image` when empty |
+| `codename` | no | E.g. `noble`. The *vendor repo's* suite, derived from `base_image` when empty |
 | `packages` | no | Packages installed from this specific repo |
 
-Codename autodetect maps `bookworm`/`jammy`/`focal` from the base
-image string; everything else (including `ubuntu:24.04`) falls back to
-`noble`.
+`codename` here is the suite the **vendor** publishes, which is not the
+same thing as the base image's distro suite. Confluent ships its own
+set of suites, so the repo tracks one Confluent actually publishes: the
+autodetect maps `bookworm`/`jammy`/`focal` out of the base-image string
+and otherwise falls back to `noble`. Both `bookworm` and `noble` are
+verified by build to install cleanly on a trixie base, which is why the
+move to Debian 13 needed no change here.
+
+For distro-versioned package names (`libgit2-1.9` vs `libgit2-1.7`) use
+`distro_codename` on the contract instead -- never this field.
 
 ---
 
@@ -60,7 +80,6 @@ strings used in `pip install "scalo[...]"`.
 | Extra | Adds repos | Adds packages |
 |---|---|---|
 | `kafka` | Confluent | `librdkafka1`, `libssl3`, `zlib1g` |
-| `cache` (postgres mode) | -- | `libpq5`, `libssl3` |
 | `opentelemetry` | -- | `libssl3`, `zlib1g` |
 | `http` | -- | `libssl3`, `zlib1g` |
 | `secrets-*` (any) | -- | `libssl3`, `zlib1g` |
@@ -74,7 +93,7 @@ Example -- a typical DFE service:
 ```python
 native_deps = NativeDepsContract.for_pylib_extras(
     ["kafka", "metrics", "opentelemetry", "secrets-vault", "http"],
-    base_image="ubuntu:24.04",
+    base_image="python:{python_version}-slim",
 )
 ```
 
@@ -100,7 +119,49 @@ Feature mapping (excerpt):
 | `transport-kafka`, `dlq-kafka*` | Confluent repo + `librdkafka1` + `libssl3` + `zlib1g` |
 | `spool`, `tiered-sink` | `libzstd1` |
 | `http`, `secrets*`, `transport*`, `config-postgres`, `otel*` | `libssl3` + `zlib1g` |
-| `directory-config-git` | `libgit2-1.7` |
+| `directory-config-git` | `libgit2-1.9` (trixie) / `libgit2-1.7` (older) |
+
+The libgit2 name is resolved from `distro_codename` via
+`libgit2_runtime_package()`. Soname-versioned packages do not alias --
+different ABI versions are genuinely different libraries, so there is
+no virtual provider to fall back on and the name must match the suite.
+
+---
+
+## No musl, no Alpine
+
+Application images use a glibc base -- Debian slim. This is a house
+rule, and `validate_base_image()` flags a contract that breaks it.
+
+The reason is specific rather than tribal. Python wheels are published
+for manylinux, not musllinux, so on Alpine `pip`/`uv` silently falls
+back to building from source: a much slower build that yields a slower
+runtime, for no gain. scalo's own C-linked dependencies make it worse
+-- `confluent-kafka` and `common-expression-language` have no musl
+wheels at all, which is exactly why the builder sets `UV_NO_BUILD=1`
+to turn that silent fallback into a loud failure.
+
+Alpine images in this repo are test scaffolding, not application
+images: a public canary in `TEST-SUPPORT.md` and a label-only mock in
+`tests/e2e/test_contract_artefacts.py`. Neither breaks the rule and
+neither should be "fixed".
+
+---
+
+## Verify by building, not by reading the index
+
+Package names get checked by **building**, never by reading a
+distribution's package pages or search UI.
+
+This is not a style preference. An earlier review of this file reported
+three build-breaking package names, reasoned from published indexes.
+Two of the three were wrong: the packages resolved via `Provides:`
+aliases that the package pages do not surface. Only the libgit2 one was
+real, and it was real precisely because soname-versioned packages are
+the case where aliasing does *not* happen.
+
+So: change a package name, then build the image on the target base
+before believing it.
 
 ---
 

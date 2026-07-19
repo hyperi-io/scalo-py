@@ -338,9 +338,32 @@ class TestGenerateComposeFragment:
         assert "kafka:" in text
         assert "clickhouse:" in text
         assert "condition: service_healthy" in text
-        assert '"9090:9090"' in text
         assert "loader.yaml:/etc/dfe/loader.yaml:ro" in text
         assert "/healthz" in text
+
+    def test_observability_port_exposed_not_published(self):
+        # Publishing the observability port to the host partly undoes the
+        # reason it is a separate port. It stays reachable inside the compose
+        # network (and to the healthcheck) via `expose`.
+        text = generate_compose_fragment(_full_contract())
+        assert '- "9090"' in text
+        assert '"9090:9090"' not in text
+
+    def test_application_ports_are_still_published(self):
+        # Only the observability port is withheld -- ports carrying user
+        # traffic still need to be reachable from the host.
+        contract = _full_contract().model_copy(update={"extra_ports": [PortContract(name="http", port=8080)]})
+        text = generate_compose_fragment(contract)
+        assert '"8080:8080"' in text
+        assert '"9090:9090"' not in text
+
+    def test_declares_resource_limits(self):
+        # An unlimited service on a single box is how one container takes the
+        # host down.
+        text = generate_compose_fragment(_full_contract())
+        assert "deploy:" in text
+        assert "limits:" in text
+        assert "reservations:" in text
 
 
 # -----------------------------------------------------------------------------

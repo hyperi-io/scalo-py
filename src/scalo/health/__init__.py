@@ -28,13 +28,42 @@ Quick start::
 
 The ``HealthManager`` has no external dependencies. The router factory
 requires FastAPI and raises ``ImportError`` if it is not installed.
+
+Mounting the probes on the application's own port is only one of the two
+shapes. The other -- and the one the container standard wants -- is a
+dedicated observability port carrying health AND metrics, separate from the
+port serving user traffic. ``ServiceApp`` does that for you; standalone
+services can do it directly::
+
+    from scalo.health import HealthManager, serve_observability
+
+    health = HealthManager()
+    server = serve_observability(health, metrics, "0.0.0.0:9090")
+
+That listener is stdlib-only, so it does not depend on the FastAPI extra.
 """
 
 from .manager import HealthManager, HealthStatus
+from .observability import (
+    DEFAULT_OBSERVABILITY_ADDR,
+    LIVENESS_PATH,
+    METRICS_PATH,
+    READINESS_PATH,
+    ObservabilityServer,
+    parse_addr,
+    serve_observability,
+)
 from .router import create_health_router
 
 __all__ = [
+    "DEFAULT_OBSERVABILITY_ADDR",
+    "LIVENESS_PATH",
+    "METRICS_PATH",
+    "READINESS_PATH",
     "HealthManager",
     "HealthStatus",
+    "ObservabilityServer",
     "create_health_router",
+    "parse_addr",
+    "serve_observability",
 ]

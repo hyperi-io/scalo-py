@@ -39,10 +39,48 @@ from scalo.deployment import (
 | `default_config` | `Any \| None` | `None` | Embedded `values.yaml` `config:` block |
 | `depends_on` | `list[str]` | `[]` | Compose-only service deps |
 | `keda` | `KedaContract \| None` | `None` | See [KEDA.md](KEDA.md) |
-| `base_image` | `str` | `ubuntu:24.04` | Runtime base for Dockerfile |
+| `base_image` | `str` | `""` -> `python:{python_version}-slim` | Runtime base for Dockerfile; read via `effective_base_image()` |
+| `builder_image` | `str` | `""` -> uv image for `python_version` | Builder stage; read via `effective_builder_image()` |
+| `python_version` | `str` | `3.12` | Drives BOTH default images |
 | `native_deps` | `NativeDepsContract` | factory | See [NATIVE-DEPS.md](NATIVE-DEPS.md) |
 | `image_profile` | `ImageProfile` | `PRODUCTION` | See below |
 | `oci_labels` | `OciLabels` | factory | Static OCI labels |
+
+`base_image` and `builder_image` both default to empty and resolve
+through their accessors, so `python_version` is the single knob: bump it
+and both images move together. Set either field to override (a digest
+pin belongs here).
+
+The two ends sit on different Debian releases deliberately. The runtime
+is `python:{python_version}-slim` (Debian 13 trixie); the builder is
+held on `-bookworm-slim` (Debian 12). The rule is
+`glibc(runtime) >= glibc(build)` -- a binary built against older glibc
+runs on newer, never the reverse. If that ever inverts, the failure is
+`version 'GLIBC_x.yz' not found` at container exec, in the target
+environment rather than at build time.
+
+### Pin a digest for anything you ship
+
+Bare tags are fine while iterating. Anything shipped should pin a
+digest, because a tag is a moving pointer -- `python:3.12-slim` is
+rebuilt regularly, so the "same" contract can produce a different image
+tomorrow, and a build you cannot reproduce is a build you cannot
+bisect.
+
+Both fields take a digest-suffixed reference:
+
+```python
+DeploymentContract(
+    ...,
+    base_image="python:3.12-slim@sha256:<digest>",
+    builder_image="ghcr.io/astral-sh/uv:python3.12-bookworm-slim@sha256:<digest>",
+)
+```
+
+Renovate updates digest pins the same way it updates versions, so this
+costs nothing ongoing. Note that pinning `base_image` opts out of the
+`python_version` derivation -- pin both ends or neither, or a
+`python_version` bump will move only the unpinned one.
 
 `model_config = ConfigDict(extra="forbid")` on every nested model --
 typos fail at construction, not at deploy.
@@ -202,7 +240,7 @@ def deployment_contract(cfg: AppConfig) -> DeploymentContract:
         keda=KedaContract.from_config(cfg.keda),
         native_deps=NativeDepsContract.for_pylib_extras(
             ["kafka", "metrics", "opentelemetry", "secrets-vault"],
-            base_image="ubuntu:24.04",
+            base_image="python:{python_version}-slim",
         ),
     )
 ```

@@ -32,6 +32,7 @@ from pydantic import BaseModel, ConfigDict, Field
 from .capability import Capability
 from .keda import KedaContract
 from .native_deps import NativeDepsContract
+from .registry import DEFAULT_PYTHON_VERSION, default_base_image, default_builder_image
 
 
 class ImageProfile(StrEnum):
@@ -212,11 +213,23 @@ class DeploymentContract(BaseModel):
     :meth:`effective_base_image`.
     """
 
-    python_version: str = "3.12"
+    builder_image: str = ""
+    """Builder-stage image (the uv image that produces ``/app/.venv``).
+
+    Leave empty (the default) for the Astral uv image matching
+    ``python_version``. Set explicitly to override -- mirrors ``base_image``.
+    Read it via :meth:`effective_builder_image`.
+
+    The default deliberately trails the runtime by one Debian release; see
+    :func:`~scalo.deployment.registry.default_builder_image` for the
+    ``glibc(runtime) >= glibc(build)`` rule that pins the direction.
+    """
+
+    python_version: str = DEFAULT_PYTHON_VERSION
     """Python version for the runtime/base image (e.g. ``"3.12"``).
 
     Drives the default base image (``python:{python_version}-slim``) and the
-    uv builder image when ``base_image`` is left empty.
+    uv builder image when ``base_image`` / ``builder_image`` are left empty.
     """
 
     native_deps: NativeDepsContract = Field(default_factory=NativeDepsContract)
@@ -229,6 +242,18 @@ class DeploymentContract(BaseModel):
 
     image_profile: ImageProfile = ImageProfile.PRODUCTION
     """Image profile -- production (minimal) or development (debug tools)."""
+
+    emit_healthcheck: bool = True
+    """Emit a ``HEALTHCHECK`` directive in the runtime stage.
+
+    Kubernetes ignores ``HEALTHCHECK`` entirely -- it uses the probes from
+    the pod spec -- so for a cluster-only image the directive is dead weight.
+    It is still on by default because Compose DOES use it, and Compose is a
+    supported target. Set False for images that only ever run in K8s.
+
+    ``curl`` stays in the image either way: the standard keeps small debug
+    utilities, and it earns its place on those merits.
+    """
 
     oci_labels: OciLabels = Field(default_factory=OciLabels)
     """OCI image labels (static -- dynamic labels injected by CI at build time)."""
@@ -253,7 +278,11 @@ class DeploymentContract(BaseModel):
 
     def effective_base_image(self) -> str:
         """Runtime base image -- explicit ``base_image`` or ``python:{python_version}-slim``."""
-        return self.base_image if self.base_image else f"python:{self.python_version}-slim"
+        return self.base_image if self.base_image else default_base_image(self.python_version)
+
+    def effective_builder_image(self) -> str:
+        """Builder image -- explicit ``builder_image`` or the matching uv image."""
+        return self.builder_image if self.builder_image else default_builder_image(self.python_version)
 
     def config_filename(self) -> str:
         """Config file name from the mount path (e.g., ``loader.yaml``)."""

@@ -17,8 +17,9 @@ is now per-module and happens at first use.
 | `config` | First `from scalo.config import settings` | Dynaconf cascade construction, `.env` loading, sensitive masking, `RuntimePaths.config_dir` selection |
 | `logger` | First import | Loguru sink installed, JSON/text autodetect (TTY vs not), RFC 3339 format, level from `LOG_LEVEL` env (default INFO), scrub filters loaded from `data/gitleaks.toml` + `data/national_ids.toml`, CI mode autodetect (GitHub Actions / GitLab CI / Jenkins) for ASCII-only output |
 | `runtime` | First `get_runtime_paths()` call | K8s / Docker / BareMetal detection (7 indicators), path-set materialisation, `CONTAINER_BASE_PATH` env override |
-| `metrics` | First `create_metrics(namespace)` call | Backend selection (OTel default, Prometheus fallback if OTel not installed), `MetricsManager` content + content-type for an app-served route, process collector (RSS, CPU, FDs via psutil), cardinality cap |
-| `health` | First `HealthManager()` instantiation | Probe handlers ready; `/health/live` is unconditionally 200; `/health/ready` returns 503 until `set_ready()` is called and all registered downstream checks pass |
+| `metrics` | First `create_metrics(namespace)` call | Backend selection (OTel default, Prometheus fallback if OTel not installed), `MetricsManager` content + content-type for the observability server (or an app-served route), process collector (RSS, CPU, FDs via psutil). The cardinality cap is NOT automatic -- see [core-pillars/METRICS.md](core-pillars/METRICS.md) |
+| `health` | First `HealthManager()` instantiation | Probe handlers ready; `/healthz` is unconditionally 200; `/readyz` returns 503 until `set_ready()` is called and all registered downstream checks pass |
+| observability port | `ServiceApp` `run` (unless `serve_observability = False`) | Binds `--metrics-addr` (default `0.0.0.0:9090`) and serves `/metrics`, `/healthz`, `/readyz` (plus `/health/*` aliases) off `app.health()` and the auto-initialised metrics manager. A bind failure is fatal by design |
 | `version_check` | `check_on_startup(product, version)` call | Daemon thread fires-and-forgets a probe to HyperI version API; never blocks, never raises |
 | `secrets` | `SecretsManager.from_config(...)` | Provider class selected from `settings.secrets.provider`; backend extras (`secrets-vault`, `secrets-aws`, etc.) imported lazily |
 
@@ -44,10 +45,10 @@ Read top-to-bottom: install the extra in the first column, get every
 | Install | Adds | Automatic |
 |---|---|---|
 | `scalo` (base) | `config`, `logger`, `runtime`, `cli`, `health`, `version_check`, `concurrency` | Cascade, structured logs, path detection, version probe |
-| `scalo[metrics]` | `metrics` + `prometheus-client` + `psutil` | Above + `MetricsManager.content` for app-served `/metrics` route + process collector + cardinality cap |
+| `scalo[metrics]` | `metrics` + `prometheus-client` + `psutil` | Above + `MetricsManager.content` for the observability server or an app-served `/metrics` route + process collector (cardinality cap is opt-in) |
 | `scalo[opentelemetry]` | OTel SDK + exporters | Above + OTel metric backend + OTLP export (dual with Prometheus) |
 | `scalo[http]` | `http` + `httpx` + `stamina` + `purgatory` | Above + HTTP client with retry + circuit breaker + metrics integration |
-| `scalo[kafka]` | `kafka` + `confluent-kafka` + `genson` | Above + producer/consumer/admin + schema sampling + consumer-lag health |
+| `scalo[kafka]` | `kafka` + `confluent-kafka` + `genson` | Above + producer/consumer/admin + schema sampling. Consumer-lag health is MANUAL: `KafkaConsumer` does not install the statistics callback, so `KafkaConsumerHealth` and the `kafka.health.*` keys stay inert until the app wires `create_stats_callback` itself |
 | `scalo[secrets-{vault,aws,gcp,azure,ansible-vault}]` | `secrets` provider | Above + uniform interface, lazy-loaded provider |
 | `scalo[deployment]` | `deployment` + `pydantic` | Above + `DeploymentContract` + generators + `ContractIdentity` + `test_support` |
 | `scalo[expression]` | `expression` + `common-expression-language` | Above + CEL evaluation (Python/Rust parity via PyO3) |

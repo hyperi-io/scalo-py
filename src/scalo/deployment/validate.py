@@ -22,15 +22,39 @@ from .contract import DeploymentContract
 from .errors import ContractMismatch
 
 
+def validate_base_image(contract: DeploymentContract) -> list[ContractMismatch]:
+    """Check the contract's base image against the house rules.
+
+    One rule today: no musl/Alpine bases for application images. Python
+    wheels ship manylinux binaries, not musllinux, so an Alpine base silently
+    falls back to compiling from source -- a slower build producing a slower
+    runtime -- and the C libraries scalo links against (librdkafka, OpenSSL)
+    differ enough on musl to turn a working image into a debugging session.
+    Debian slim is the estate-wide base.
+
+    This is a warning-shaped check: it returns a mismatch so callers can
+    surface it, and does not raise.
+    """
+    issues: list[ContractMismatch] = []
+    for field, value in (
+        ("base_image", contract.effective_base_image()),
+        ("builder_image", contract.effective_builder_image()),
+    ):
+        lowered = value.lower()
+        if "alpine" in lowered or "musl" in lowered:
+            issues.append(ContractMismatch(field, "a glibc base (Debian slim)", value))
+    return issues
+
+
 def validate_dockerfile(contract: DeploymentContract, path: Path | str) -> list[ContractMismatch]:
     """Check a runtime/full Dockerfile against the Python contract.
 
-    Verifies the runtime base image, exposed metrics port, venv ``PATH``, and
-    the console-script entrypoint. Returns one :class:`ContractMismatch` per
-    discrepancy (empty list = clean).
+    Verifies the runtime base image, exposed metrics port, venv ``PATH``, the
+    console-script entrypoint, and that the base is not musl/Alpine. Returns
+    one :class:`ContractMismatch` per discrepancy (empty list = clean).
     """
     text = Path(path).read_text(encoding="utf-8")
-    issues: list[ContractMismatch] = []
+    issues: list[ContractMismatch] = list(validate_base_image(contract))
 
     base = contract.effective_base_image()
     if f"FROM {base}" not in text:
@@ -74,4 +98,4 @@ def validate_helm_values(contract: DeploymentContract, chart_dir: Path | str) ->
     return issues
 
 
-__all__ = ["validate_dockerfile", "validate_helm_values"]
+__all__ = ["validate_base_image", "validate_dockerfile", "validate_helm_values"]

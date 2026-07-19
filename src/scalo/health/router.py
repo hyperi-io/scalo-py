@@ -30,16 +30,34 @@ Usage::
 from __future__ import annotations
 
 from .manager import HealthManager
+from .observability import LIVENESS_PATH, READINESS_PATH
 
 
 def create_health_router(manager: HealthManager | None = None) -> APIRouter:
     """Create a FastAPI router with standard health probe endpoints.
 
-    Provides three endpoints matching rustlib's built-in health probes:
+    Canonical paths (these match scalo-rs and the deployment contract's
+    ``HealthContract`` defaults):
 
-    - ``GET /health/live`` - Liveness probe (200 if alive, 503 if not)
-    - ``GET /health/ready`` - Readiness probe (200 if ready, 503 if not)
-    - ``GET /health/startup`` - Startup probe (200 if started, 503 if not)
+    - ``GET /healthz`` - Liveness probe (200 if alive, 503 if not)
+    - ``GET /readyz`` - Readiness probe (200 if ready, 503 if not)
+
+    Sanctioned aliases, kept so existing charts keep working:
+
+    - ``GET /health/live`` - alias of ``/healthz``
+    - ``GET /health/ready`` - alias of ``/readyz``
+    - ``GET /health/startup`` - startup probe (200 if started, 503 if not)
+
+    The ``*z`` suffix is the convention, chosen to keep probe routes
+    visually distinct from application routes. Startup deliberately has no
+    canonical path of its own -- the standard points ``startupProbe`` at the
+    liveness path so the two cannot drift apart -- so ``/health/startup``
+    remains available but is not the recommended target.
+
+    Prefer the dedicated observability port for these
+    (:func:`scalo.health.serve_observability`); mounting them on the
+    application's own listener puts the operator surface behind the same
+    ingress as user traffic.
 
     Args:
         manager: HealthManager instance. If None, a default is created
@@ -62,6 +80,7 @@ def create_health_router(manager: HealthManager | None = None) -> APIRouter:
 
     router = APIRouter(tags=["health"])
 
+    @router.get(LIVENESS_PATH)
     @router.get("/health/live")
     async def liveness() -> JSONResponse:
         """Liveness probe -- is the process alive?
@@ -73,6 +92,7 @@ def create_health_router(manager: HealthManager | None = None) -> APIRouter:
         status_code = 200 if resp["status"] == "alive" else 503
         return JSONResponse(content=resp, status_code=status_code)
 
+    @router.get(READINESS_PATH)
     @router.get("/health/ready")
     async def readiness() -> JSONResponse:
         resp = await manager.readiness_response_async()

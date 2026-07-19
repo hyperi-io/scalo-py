@@ -183,12 +183,42 @@ class ServiceApp(ABC):
             msg = f"{cls.__name__} must define 'env_prefix' class attribute"
             raise TypeError(msg)
 
+    serve_observability: bool = True
+    """Serve health probes + metrics on ``--metrics-addr`` during ``run``.
+
+    Set False only for a service that genuinely has no business binding an
+    observability port (a one-shot CLI, say). Leaving it on is what makes
+    the advertised address real.
+    """
+
     def __init__(self) -> None:
         self._common_args = CommonArgs()
         self._metrics: Any = None
         """MetricsManager instance, set automatically by _handle_run() if metrics extra is installed."""
         self._app_metrics: Any = None
         """AppMetrics instance, set automatically by _handle_run() if metrics extra is installed."""
+        self._health: Any = None
+        """HealthManager backing the observability port. Use health() to reach it."""
+        self._observability: Any = None
+        """ObservabilityServer bound to --metrics-addr, set by _handle_run()."""
+
+    def health(self) -> Any:
+        """The ``HealthManager`` served on the observability port.
+
+        Created on first use so it is available to ``run_service`` /
+        ``run_service_async`` overrides. Register checks and flip readiness
+        on THIS instance -- a separate manager would leave ``/readyz``
+        reporting something the service does not mean::
+
+            def run_service(self, config):
+                self.health().register_ready_check("db", db.is_connected)
+                self.health().set_ready()
+        """
+        if self._health is None:
+            from scalo.health import HealthManager
+
+            self._health = HealthManager()
+        return self._health
 
     @abstractmethod
     def version_info(self) -> VersionInfo:
@@ -245,9 +275,9 @@ class ServiceApp(ABC):
         container-manifest.json, argocd-application.yaml, etc. into the
         output directory.
 
-        Default returns ``None`` -- the subcommand will print a warning and
-        emit only ``metrics-manifest.json``. Apps that don't ship as
-        containers can leave it as None.
+        Default returns ``None`` -- the subcommand then prints a warning and
+        emits nothing. Apps that don't ship as containers can leave it as
+        None.
 
         Mirrors rustlib's ``ServiceApp::deployment_contract()`` trait hook.
         """
@@ -370,11 +400,26 @@ def _handle_run(service_app: ServiceApp, args: CommonArgs) -> None:
             from scalo.metrics.groups import AppMetrics
 
             ns = service_app.name.replace("-", "_")
-            metrics_manager = create_metrics(ns, backend="prometheus")
+            # Honour the documented backend knob. It used to be hardcoded to
+            # "prometheus" here, which silently beat both METRICS_BACKEND and
+            # settings.metrics.backend -- an explicit argument wins the
+            # cascade, so the knob did nothing on the ServiceApp path.
+            # The fallback stays "prometheus" rather than create_metrics'
+            # own "opentelemetry" default, so honouring the knob does not
+            # also change the backend for every existing service.
+            from scalo._env_compat import control_var
+
+            backend = control_var("METRICS_BACKEND")
+            if backend is None:
+                try:
+                    backend = config.get("metrics", {}).get("backend")
+                except Exception:
+                    backend = None
+            metrics_manager = create_metrics(ns, backend=backend or "prometheus")
             app_metrics = AppMetrics(metrics_manager, info.version, info.commit or "unknown")
             service_app._metrics = metrics_manager
             service_app._app_metrics = app_metrics
-            logger.debug("metrics auto-initialised", namespace=ns, addr=args.metrics_addr)
+            logger.debug("metrics auto-initialised", namespace=ns)
         except ImportError:
             service_app._metrics = None
             service_app._app_metrics = None
@@ -383,6 +428,27 @@ def _handle_run(service_app: ServiceApp, args: CommonArgs) -> None:
             service_app._metrics = None
             service_app._app_metrics = None
             logger.warning("metrics initialisation failed", error=str(e))
+
+        # Bind the observability port BEFORE the service starts, so a probe
+        # arriving during startup gets an honest 503 rather than a refused
+        # connection. A bind failure is fatal by design: the alternative is
+        # a service that reports healthy on a port nobody is listening to.
+        if service_app.serve_observability:
+            from scalo.health import serve_observability as _serve_observability
+
+            service_app._observability = _serve_observability(
+                health=service_app.health(),
+                metrics=service_app._metrics,
+                addr=args.metrics_addr,
+            )
+            bound = service_app._observability.bound_address
+            logger.info(
+                "observability listening",
+                addr=f"{bound[0]}:{bound[1]}" if bound else args.metrics_addr,
+                paths="/metrics /healthz /readyz",
+            )
+
+        service_app.health().set_started()
 
         # Check if run_service_async is overridden (not the default delegation)
         uses_async = _is_async_overridden(service_app)
@@ -401,6 +467,12 @@ def _handle_run(service_app: ServiceApp, args: CommonArgs) -> None:
     except Exception as exc:
         print_error(f"fatal: {exc}")
         raise Exit(1) from exc
+    finally:
+        # Release the port on every exit path, or a restart in the same
+        # process (tests, supervisors) hits "address already in use".
+        if service_app._observability is not None:
+            service_app._observability.stop()
+            service_app._observability = None
 
 
 def _handle_config_check(service_app: ServiceApp, args: CommonArgs) -> None:
@@ -462,6 +534,7 @@ def _handle_generate_artefacts(service_app: ServiceApp, output_dir: str) -> None
             argocd_repo_url_from_cascade,
             generate_argocd_application,
             generate_container_manifest,
+            generate_dockerignore,
             generate_runtime_stage,
         )
     except Exception as exc:
@@ -471,6 +544,7 @@ def _handle_generate_artefacts(service_app: ServiceApp, output_dir: str) -> None
     (out / "deployment-contract.json").write_text(contract.to_json(), encoding="utf-8", newline="\n")
     (out / "container-manifest.json").write_text(generate_container_manifest(contract), encoding="utf-8", newline="\n")
     (out / "Dockerfile.runtime").write_text(generate_runtime_stage(contract), encoding="utf-8", newline="\n")
+    (out / ".dockerignore").write_text(generate_dockerignore(contract), encoding="utf-8", newline="\n")
 
     argo = ArgocdConfig(repo_url=argocd_repo_url_from_cascade(contract.app_name))
     (out / "argocd-application.yaml").write_text(
@@ -483,6 +557,7 @@ def _handle_generate_artefacts(service_app: ServiceApp, output_dir: str) -> None
             "deployment-contract.json",
             "container-manifest.json",
             "Dockerfile.runtime",
+            ".dockerignore",
             "argocd-application.yaml",
         ):
             print(f"  {filename}", file=sys.stderr)

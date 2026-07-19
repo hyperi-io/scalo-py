@@ -98,13 +98,26 @@ if not DEPLOYMENT_AVAILABLE:
     generate_compose_fragment = _missing  # type: ignore[assignment]
     generate_chart = _missing  # type: ignore[assignment]
     generate_argocd_application = _missing  # type: ignore[assignment]
+    validate_base_image = _missing  # type: ignore[assignment]
     validate_dockerfile = _missing  # type: ignore[assignment]
     validate_helm_values = _missing  # type: ignore[assignment]
+    generate_dockerignore = _missing  # type: ignore[assignment]
     image_registry_from_cascade = _missing  # type: ignore[assignment]
     base_image_from_cascade = _missing  # type: ignore[assignment]
     argocd_repo_url_from_cascade = _missing  # type: ignore[assignment]
-    DEFAULT_IMAGE_REGISTRY = "localhost:5000"
-    DEFAULT_BASE_IMAGE = "python:3.12-slim"
+    # Image defaults are plain strings with no pydantic dependency, so they
+    # come from the one source even on the degraded-import path -- never
+    # re-spelled here, where they would silently drift from the contract.
+    libgit2_runtime_package = _missing  # type: ignore[assignment]
+    from .registry import (
+        DEFAULT_BASE_IMAGE,
+        DEFAULT_BUILDER_IMAGE,
+        DEFAULT_DISTRO_CODENAME,
+        DEFAULT_IMAGE_REGISTRY,
+        DEFAULT_PYTHON_VERSION,
+        default_base_image,
+        default_builder_image,
+    )
 else:
     from .app_project import (
         AppProjectContract,
@@ -148,18 +161,28 @@ else:
         generate_compose_fragment,
         generate_container_manifest,
         generate_dockerfile,
+        generate_dockerignore,
         generate_runtime_stage,
     )
     from .keda import KedaConfig, KedaContract
-    from .native_deps import AptRepoContract, NativeDepsContract
+    from .native_deps import (
+        AptRepoContract,
+        NativeDepsContract,
+        libgit2_runtime_package,
+    )
     from .registry import (
         DEFAULT_BASE_IMAGE,
+        DEFAULT_BUILDER_IMAGE,
+        DEFAULT_DISTRO_CODENAME,
         DEFAULT_IMAGE_REGISTRY,
+        DEFAULT_PYTHON_VERSION,
         argocd_repo_url_from_cascade,
         base_image_from_cascade,
+        default_base_image,
+        default_builder_image,
         image_registry_from_cascade,
     )
-    from .validate import validate_dockerfile, validate_helm_values
+    from .validate import validate_base_image, validate_dockerfile, validate_helm_values
     from .waves import (
         WAVE_APPS,
         WAVE_CRDS,
@@ -171,7 +194,10 @@ else:
 
 __all__ = [
     "DEFAULT_BASE_IMAGE",
+    "DEFAULT_BUILDER_IMAGE",
+    "DEFAULT_DISTRO_CODENAME",
     "DEFAULT_IMAGE_REGISTRY",
+    "DEFAULT_PYTHON_VERSION",
     "DEPLOYMENT_AVAILABLE",
     "KEY_PREFIX",
     "VERSION",
@@ -206,6 +232,8 @@ __all__ = [
     "base_image_from_cascade",
     "check_config_artifact_drift",
     "config_schema_json",
+    "default_base_image",
+    "default_builder_image",
     "emit_config_artifacts",
     "generate_argocd_app_project",
     "generate_argocd_application",
@@ -214,8 +242,11 @@ __all__ = [
     "generate_compose_fragment",
     "generate_container_manifest",
     "generate_dockerfile",
+    "generate_dockerignore",
     "generate_runtime_stage",
     "image_registry_from_cascade",
+    "libgit2_runtime_package",
+    "validate_base_image",
     "validate_dockerfile",
     "validate_helm_values",
 ]

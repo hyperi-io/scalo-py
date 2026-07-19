@@ -29,12 +29,54 @@ DEFAULT_IMAGE_REGISTRY = "localhost:5000"
 """Neutral default registry. Parameterise per app via the
 ``deployment.image_registry`` cascade key (e.g., ``ghcr.io/your-org``)."""
 
-DEFAULT_BASE_IMAGE = "python:3.12-slim"
-"""Default runtime base image for Python apps.
+DEFAULT_PYTHON_VERSION = "3.12"
+"""Default Python version driving both the runtime base and builder images.
 
-Pulled from Docker Hub. Override per-environment by setting
-``deployment.base_image`` in the YAML cascade.
+The single source for the version -- ``DeploymentContract.python_version``
+defaults to it, and both image helpers below format it in, so a bump cannot
+leave one path on an older tag than the other.
 """
+
+
+DEFAULT_DISTRO_CODENAME = "trixie"
+"""Base-image distro suite (Debian 13) that ``python:*-slim`` resolves to.
+
+Stated explicitly and kept beside the image defaults it belongs to, because
+package selection must never sniff the codename out of the base-image string
+-- ``debian:13-slim``, ``debian:stable-slim`` and any digest-pinned reference
+all defeat substring matching.
+"""
+
+
+def default_base_image(python_version: str = DEFAULT_PYTHON_VERSION) -> str:
+    """Default runtime base image for Python apps.
+
+    ``python:*-slim`` is Debian 13 (trixie) underneath, which is the
+    estate-wide base OS. Override per-environment via the
+    ``deployment.base_image`` cascade key.
+    """
+    return f"python:{python_version}-slim"
+
+
+def default_builder_image(python_version: str = DEFAULT_PYTHON_VERSION) -> str:
+    """Default Astral uv builder image.
+
+    Deliberately held on ``-bookworm-slim`` (Debian 12) while the runtime is
+    ``-slim`` (Debian 13). The rule is ``glibc(runtime) >= glibc(build)``: a
+    binary built against older glibc runs on newer, not the reverse. Keeping
+    the builder explicitly one release behind means the safe direction holds
+    even if Astral repoints its tags -- if these ever invert, the failure is
+    ``version 'GLIBC_x.yz' not found`` at container exec, in the target
+    environment rather than at build time.
+    """
+    return f"ghcr.io/astral-sh/uv:python{python_version}-bookworm-slim"
+
+
+DEFAULT_BASE_IMAGE = default_base_image()
+"""Default runtime base image (see :func:`default_base_image`)."""
+
+DEFAULT_BUILDER_IMAGE = default_builder_image()
+"""Default uv builder image (see :func:`default_builder_image`)."""
 
 
 def _from_settings(key: str) -> str | None:
@@ -81,8 +123,13 @@ def argocd_repo_url_from_cascade(app_name: str) -> str:
 
 __all__ = [
     "DEFAULT_BASE_IMAGE",
+    "DEFAULT_BUILDER_IMAGE",
+    "DEFAULT_DISTRO_CODENAME",
     "DEFAULT_IMAGE_REGISTRY",
+    "DEFAULT_PYTHON_VERSION",
     "argocd_repo_url_from_cascade",
     "base_image_from_cascade",
+    "default_base_image",
+    "default_builder_image",
     "image_registry_from_cascade",
 ]
