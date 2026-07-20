@@ -33,7 +33,6 @@ from typing import Any
 
 from .scrub import (
     FieldsConfig,
-    LayeredScrubber,
     LogLevelsConfig,
     NationalIdsConfig,
     PiiConfig,
@@ -52,28 +51,40 @@ def resolve_scrubber(
     mask_sensitive: bool | None = None,
     masking_level: str | None = None,
     config_dict: dict[str, Any] | None = None,
+    metrics: Any | None = None,
 ) -> Scrubber:
     """Resolve a :class:`Scrubber` from setup args + config dict.
 
     See module docstring for resolution priority.
+
+    ``metrics`` is a ``MetricsManager`` (or any backend ``ScrubMetrics``
+    accepts). Pass it and the scrub layers emit the metrics the parity
+    manifest publishes; omit it and they stay no-op. Without this parameter
+    there was no path at all from ``setup()`` to ``ScrubMetrics``, so
+    ``scrub.metrics_enabled`` was a knob that could not do anything.
     """
+    scrub_metrics = _build_scrub_metrics(metrics)
+
     # 1. Explicit scrubber instance
     if scrubber is not None:
         return scrubber
 
     # 2. Explicit ScrubConfig
     if scrub_config is not None:
-        return build_scrubber(scrub_config)
+        return build_scrubber(scrub_config, metrics=scrub_metrics)
 
     # 3. Explicit legacy kwargs override config_dict
     if mask_sensitive is not None or masking_level is not None:
-        return build_scrubber(_legacy_to_scrub_config(mask_sensitive, masking_level))
+        return build_scrubber(
+            _legacy_to_scrub_config(mask_sensitive, masking_level),
+            metrics=scrub_metrics,
+        )
 
     config = config_dict or {}
 
     # 4. New schema in config -- `logging.scrub.*`
     if "scrub" in config:
-        return build_scrubber(_parse_scrub_dict(config["scrub"]))
+        return build_scrubber(_parse_scrub_dict(config["scrub"]), metrics=scrub_metrics)
 
     # 5. Legacy schema in config
     if "mask_sensitive_data" in config or "masking_level" in config:
@@ -88,11 +99,29 @@ def resolve_scrubber(
             _legacy_to_scrub_config(
                 config.get("mask_sensitive_data"),
                 config.get("masking_level"),
-            )
+            ),
+            metrics=scrub_metrics,
         )
 
     # 6. Defaults
-    return build_scrubber()
+    return build_scrubber(metrics=scrub_metrics)
+
+
+def _build_scrub_metrics(metrics: Any | None) -> Any | None:
+    """Wrap a metrics manager in :class:`ScrubMetrics`, or pass through.
+
+    Accepts either a raw ``MetricsManager`` (the common case -- the caller
+    should not have to know about ``ScrubMetrics``) or an already-built
+    ``ScrubMetrics``. Returns None when no metrics were supplied, which
+    leaves ``build_scrubber`` on its no-op path.
+    """
+    if metrics is None:
+        return None
+    from .scrub.metrics import ScrubMetrics
+
+    if isinstance(metrics, ScrubMetrics):
+        return metrics
+    return ScrubMetrics.from_manager(metrics)
 
 
 def _legacy_to_scrub_config(

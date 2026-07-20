@@ -32,12 +32,16 @@ class SecretsConfig:
         enabled: master toggle for the layer.
         patterns: rule-set selector -- ``"gitleaks"`` (full),
             ``"minimal"`` (high-signal subset), or ``"off"``.
-        entropy_filter: opt-in pure-entropy scan. False by default --
-            FP-prone on normal log content (UUIDs, hashes, request
-            IDs read high-entropy).
-        token_efficiency: opt-in cache for repeated-token matches.
-            Reduces hot-path cost when bursts contain the same
-            secret value many times.
+        entropy_filter: NOT IMPLEMENTED. Reserved for an opt-in
+            pure-entropy scan. Nothing reads this field --
+            :class:`~scalo.logger.scrub.secrets.SecretsScrubber` takes
+            only patterns and a labeler -- so setting it True does NOT
+            turn on entropy detection. Kept so existing config does not
+            break; ``build_scrubber`` warns if you enable it, because a
+            silently-inert security control is worse than an absent one.
+        token_efficiency: NOT IMPLEMENTED. Reserved for a repeated-token
+            match cache. Nothing reads this field; setting it True has
+            no effect on hot-path cost.
     """
 
     enabled: bool = True
@@ -107,7 +111,9 @@ class PiiConfig:
     Args:
         enabled: master toggle for L3.
         validators: per-validator toggles (see :class:`PiiValidatorsConfig`).
-        token_efficiency: opt-in cache for repeated-match results.
+        token_efficiency: NOT IMPLEMENTED. Reserved for a repeated-match
+            result cache. Nothing reads this field; setting it True has no
+            effect.
 
     Note: there is no Layer 4 (NLP/NER). Earlier drafts of the spec
     described an opt-in spaCy backend for unstructured entities

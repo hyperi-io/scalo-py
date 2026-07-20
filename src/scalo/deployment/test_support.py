@@ -22,13 +22,14 @@ Std-library only -- no new runtime dependencies.
 from __future__ import annotations
 
 import hashlib
+import json
 import os
 import shutil
 import subprocess
 import sys
 import time
 from dataclasses import dataclass
-from functools import cache, lru_cache
+from functools import cache
 from pathlib import Path
 from typing import Callable
 
@@ -69,6 +70,47 @@ def docker_available() -> bool:
     if shutil.which("docker") is None:
         return False
     return _shell_ok(["docker", "info"])
+
+
+@cache
+def buildx_available() -> bool:
+    """BuildKit (``docker buildx``) usable for builds."""
+    if shutil.which("docker") is None:
+        return False
+    return _shell_ok(["docker", "buildx", "version"])
+
+
+def docker_build_cmd(
+    tag: str,
+    *,
+    dockerfile: str = "Dockerfile",
+    context: str = ".",
+    no_cache: bool = False,
+) -> list[str]:
+    """Build the ``docker build`` argv, preferring BuildKit.
+
+    Use this rather than hand-writing ``["docker", "build", ...]``. The
+    legacy builder connects to ``unix:///var/run/docker.sock`` directly
+    instead of honouring the active ``docker context``, so on any setup
+    where the daemon lives elsewhere -- colima, Rancher Desktop, a remote
+    DOCKER_HOST -- ``docker info`` reports the daemon up while
+    ``docker build`` fails with "failed to connect to the docker API".
+    That combination turns a working machine into a hard test failure
+    that reads like a broken image.
+
+    ``docker buildx build`` uses the active context, and BuildKit is what
+    the container standard specifies anyway. ``--load`` puts the result
+    in the local image store so a following ``docker run`` can see it.
+    Falls back to the legacy form when buildx is absent.
+    """
+    if buildx_available():
+        cmd = ["docker", "buildx", "build", "--load", "-t", tag, "-f", dockerfile]
+    else:
+        cmd = ["docker", "build", "-t", tag, "-f", dockerfile]
+    if no_cache:
+        cmd.append("--no-cache")
+    cmd.append(context)
+    return cmd
 
 
 @cache
@@ -158,8 +200,113 @@ def skip(tier: str, test_name: str, reason: str) -> None:
 
 
 def docker_empty_creds_json() -> str:
-    """Empty Docker creds JSON (write into a tempdir's ``config.json``)."""
-    return '{"auths": {}}'
+    """Empty Docker creds JSON (write into a tempdir's ``config.json``).
+
+    Emptying ``auths`` is the point -- it makes public base images pull
+    anonymously regardless of any credential helper on the host.
+
+    It also has to carry ``cliPluginsExtraDirs`` forward. Pointing
+    ``DOCKER_CONFIG`` at a directory holding a bare ``{"auths": {}}``
+    silently disables CLI-plugin discovery, because Docker looks for
+    plugins under the *config* directory plus whatever that key lists.
+    Lose it and ``docker buildx`` stops resolving -- the build then fails
+    with "unknown flag: --load", which reads like a broken build command
+    rather than a lost plugin path.
+    """
+    extra_dirs = _cli_plugin_dirs()
+    config: dict[str, object] = {"auths": {}}
+    if extra_dirs:
+        config["cliPluginsExtraDirs"] = extra_dirs
+    return json.dumps(config)
+
+
+@cache
+def docker_host() -> str | None:
+    """Endpoint of the ACTIVE docker context, e.g. ``unix:///...docker.sock``.
+
+    Returns None when it cannot be determined (then leave DOCKER_HOST unset
+    and let docker use its own defaults).
+
+    Needed because pointing ``DOCKER_CONFIG`` at a temp directory -- which
+    the build tests do to force anonymous pulls -- also throws away the
+    stored *current context*. Docker then falls back to ``default``
+    (``unix:///var/run/docker.sock``), so on colima / Rancher Desktop / a
+    remote DOCKER_HOST the build tries a socket that does not exist while
+    ``docker info`` (run without the override) says the daemon is fine.
+    Pinning DOCKER_HOST makes the endpoint explicit and context-independent.
+    """
+    if shutil.which("docker") is None:
+        return None
+    try:
+        result = subprocess.run(
+            ["docker", "context", "inspect", "--format", "{{.Endpoints.docker.Host}}"],
+            capture_output=True,
+            text=True,
+            encoding="utf-8",
+            errors="replace",
+            check=False,
+            timeout=10.0,
+        )
+    except (FileNotFoundError, subprocess.TimeoutExpired, OSError):
+        return None
+    host = result.stdout.strip()
+    return host if result.returncode == 0 and host else None
+
+
+def docker_env(config_dir: str | Path) -> dict[str, str]:
+    """Environment for docker subprocesses in tests.
+
+    Combines the two things a build test needs and that are easy to get
+    subtly wrong together:
+
+    - ``DOCKER_CONFIG`` -> ``config_dir``, holding empty ``auths`` so public
+      base images pull anonymously whatever credential helper the host has.
+    - ``DOCKER_HOST`` -> the active context's endpoint, because the line
+      above discards the context (see :func:`docker_host`).
+
+    Write :func:`docker_empty_creds_json` into ``config_dir/config.json``
+    first -- it keeps CLI-plugin discovery alive so ``docker buildx``
+    still resolves.
+    """
+    env = {**os.environ, "DOCKER_CONFIG": str(config_dir)}
+    host = docker_host()
+    if host:
+        env["DOCKER_HOST"] = host
+    return env
+
+
+def _cli_plugin_dirs() -> list[str]:
+    """Directories holding docker CLI plugins, for ``cliPluginsExtraDirs``.
+
+    Takes whatever the real config already declares, plus the usual
+    install locations, and keeps only those that exist.
+    """
+    candidates: list[str] = []
+
+    real_config = Path(os.environ.get("DOCKER_CONFIG") or Path.home() / ".docker") / "config.json"
+    try:
+        declared = json.loads(real_config.read_text(encoding="utf-8")).get("cliPluginsExtraDirs")
+    except (OSError, ValueError, AttributeError):
+        declared = None
+    if isinstance(declared, list):
+        candidates.extend(str(d) for d in declared)
+
+    candidates.extend(
+        [
+            str(Path.home() / ".docker" / "cli-plugins"),
+            "/opt/homebrew/lib/docker/cli-plugins",
+            "/usr/local/lib/docker/cli-plugins",
+            "/usr/libexec/docker/cli-plugins",
+            "/usr/lib/docker/cli-plugins",
+        ]
+    )
+
+    # Empty strings are dropped explicitly: Path("").is_dir() is True (it
+    # resolves to the cwd), so a malformed cliPluginsExtraDirs entry would
+    # otherwise be copied through as a bogus plugin directory.
+    seen: set[str] = set()
+    unique = [d for d in candidates if d and not (d in seen or seen.add(d))]
+    return [d for d in unique if Path(d).is_dir()]
 
 
 # ---------------------------------------------------------------------------
@@ -253,7 +400,9 @@ def ensure_kind_cluster(test_name: str) -> KindClusterGuard | None:
 __all__ = [
     "SKIP_PREFIX",
     "KindClusterGuard",
+    "buildx_available",
     "docker_available",
+    "docker_build_cmd",
     "docker_empty_creds_json",
     "ensure_kind_cluster",
     "helm_available",

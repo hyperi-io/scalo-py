@@ -61,6 +61,7 @@ class ConfigReloader:
         self._task: asyncio.Task[None] | None = None
         self._reload_count_success = 0
         self._reload_count_error = 0
+        self._prev_sighup: Any = None
 
     async def start(self) -> None:
         """Start the reloader: SIGHUP handler and/or the polling loop.
@@ -79,8 +80,9 @@ class ConfigReloader:
         self._task = asyncio.create_task(self._poll_loop())
 
     async def stop(self) -> None:
-        """Stop the polling loop."""
+        """Stop the polling loop and release the SIGHUP handler."""
         self._running = False
+        self._restore_sighup()
         if self._task is not None:
             self._task.cancel()
             try:
@@ -132,11 +134,30 @@ class ConfigReloader:
         """Register SIGHUP handler for manual reload trigger.
 
         No-op if enable_sighup is False or SIGHUP is unavailable (Windows).
+        Keeps the previous handler so :meth:`stop` can put it back.
         """
         if not self._config.enable_sighup:
             return
         try:
+            self._prev_sighup = signal.getsignal(signal.SIGHUP)
             signal.signal(signal.SIGHUP, lambda *_: self.reload_now())
-        except (OSError, AttributeError):
-            # SIGHUP not available on Windows or in some restricted environments
+        except (OSError, AttributeError, ValueError):
+            # SIGHUP unavailable (Windows), or not on the main thread.
+            self._prev_sighup = None
+
+    def _restore_sighup(self) -> None:
+        """Put the previous SIGHUP handler back.
+
+        Without this the handler outlives the reloader: a signal arriving
+        after ``stop()`` still calls ``reload_now()`` on an object the
+        caller believes is torn down. That was survivable while the handler
+        was only installed alongside polling; it is not now that
+        SIGHUP-only (``poll_interval <= 0``) is a supported configuration.
+        """
+        prev, self._prev_sighup = self._prev_sighup, None
+        if prev is None:
+            return
+        try:
+            signal.signal(signal.SIGHUP, prev)
+        except (OSError, AttributeError, ValueError):
             pass

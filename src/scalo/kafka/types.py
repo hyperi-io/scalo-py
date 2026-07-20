@@ -110,14 +110,25 @@ class PartitionInfo:
 @dataclass
 class TopicMetadata:
     """
-    Full topic metadata.
+    Topic metadata: name and partition details.
 
-    Includes partition details and topic configuration.
+    ``config`` is NOT populated by the ``get_topic_metadata`` methods on the
+    clients -- they read the cluster metadata response, which does not carry
+    topic configuration. It is left empty rather than fetched because
+    describing configs is a separate broker round-trip, and paying it on
+    every metadata call would tax the majority of callers who never read
+    this field.
+
+    For real topic configuration use
+    :meth:`~scalo.kafka.admin.KafkaAdmin.describe_configs`, then assign it
+    here if you want the two carried together.
     """
 
     name: str
     partitions: list[PartitionInfo]
     config: dict[str, str] = field(default_factory=dict)
+    """Topic configuration. Empty unless the caller fills it -- see the class
+    docstring."""
 
     @property
     def partition_count(self) -> int:

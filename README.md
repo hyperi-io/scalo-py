@@ -218,20 +218,49 @@ if __name__ == "__main__":
 > `DfeApp` remains as a deprecated alias for `ServiceApp` to ease migration
 > from `hyperi-pylib`; prefer `ServiceApp` in new code.
 
-## Health Check Endpoints - The Probe Trinity
+## Observability port - health and metrics
 
-For services deployed to Kubernetes, scalo's HTTP server provides
-the three K8s probe types:
+`ServiceApp` binds a dedicated observability listener on `--metrics-addr`
+(default `0.0.0.0:9090`, env `METRICS_ADDR`) for the whole time the service
+runs, and serves:
 
-| Probe | Path | Checks | On failure |
-|---|---|---|---|
-| Startup | `/health/startup` | Init complete | K8s waits, then restarts |
-| Liveness | `/health/live` | Process not deadlocked | Restart pod |
-| Readiness | `/health/ready` | Deps healthy + ready flag set | Stop routing traffic |
+| Path | Purpose | On failure |
+|---|---|---|
+| `/metrics` | Prometheus scrape | - |
+| `/healthz` | Liveness - process not deadlocked | Restart pod |
+| `/readyz` | Readiness - deps healthy + ready flag set | Stop routing traffic |
+
+`/health/live` and `/health/ready` are kept as aliases, plus
+`/health/startup`; point new manifests at the `*z` names. Startup
+deliberately has no path of its own - the standard aims `startupProbe` at
+the liveness path so the two cannot drift apart.
+
+This is a **separate port from your application's**, on purpose: exposing
+user traffic must never expose the operator surface. Probe the
+observability port in your manifests, not the traffic port.
+
+Register checks and flip readiness on the manager scalo serves, or
+`/readyz` will report something your service does not mean:
+
+```python
+class MyService(ServiceApp):
+    name = "my-service"
+    env_prefix = "MYAPP"
+
+    def run_service(self, config):
+        self.health().register_ready_check("db", db.is_connected)
+        self.health().set_ready()
+```
 
 Liveness MUST NEVER check downstream dependencies (a DB outage shouldn't
 restart your replicas). Readiness checks dependencies AND requires an
 explicit `set_ready()` call - cleared during graceful shutdown.
+
+The listener is stdlib-only, so it works without the FastAPI extra. Set
+`serve_observability = False` on your `ServiceApp` for a service that has
+no business binding a port (a one-shot CLI, say). A bind failure is fatal
+by design - a service reporting healthy on a port nobody is listening to
+is the failure this exists to prevent.
 
 ## Development
 

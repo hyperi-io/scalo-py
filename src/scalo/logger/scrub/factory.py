@@ -19,6 +19,8 @@ factory handles the wiring details correctly.
 
 from __future__ import annotations
 
+import warnings
+
 from .chain import LayeredScrubber
 from .config import ScrubConfig
 from .labeler import resolve_labeler
@@ -26,6 +28,31 @@ from .metrics import ScrubMetrics
 from .types import Scrubber
 
 __all__ = ["build_scrubber"]
+
+
+def _warn_unimplemented(config: ScrubConfig) -> None:
+    """Warn when config enables a knob nothing reads.
+
+    ``entropy_filter`` and the two ``token_efficiency`` flags are reserved
+    but unimplemented. Staying silent lets an operator believe they turned
+    on entropy-based secret detection when no such scan runs -- a false
+    sense of a security control, which is worse than not offering one.
+    """
+    inert = []
+    if config.secrets.entropy_filter:
+        inert.append("secrets.entropy_filter")
+    if config.secrets.token_efficiency:
+        inert.append("secrets.token_efficiency")
+    if config.pii.token_efficiency:
+        inert.append("pii.token_efficiency")
+    if inert:
+        warnings.warn(
+            f"scrub config enables unimplemented option(s): {', '.join(inert)}. "
+            "These are reserved and read by nothing -- no entropy scan or token "
+            "cache runs. Scrubbing is unaffected otherwise.",
+            UserWarning,
+            stacklevel=3,
+        )
 
 
 def build_scrubber(
@@ -54,6 +81,7 @@ def build_scrubber(
         >>> clean = scrubber.scrub("API token ghp_abcdef1234... sent")
     """
     config = config if config is not None else ScrubConfig()
+    _warn_unimplemented(config)
     # Operator kill-switch: ScrubConfig.metrics_enabled=False forces noop
     # regardless of what the caller passed in. Honours the hot-path opt-out
     # described in spec §8.

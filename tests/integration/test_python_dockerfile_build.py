@@ -18,7 +18,6 @@ Skipped unless docker + uv are available (release CI provides both).
 
 from __future__ import annotations
 
-import os
 import shutil
 import subprocess
 from pathlib import Path
@@ -38,20 +37,18 @@ except Exception:
     deployment_importable = False
 
 
-def _docker_available() -> bool:
-    if not shutil.which("docker"):
-        return False
-    try:
-        return subprocess.run(["docker", "info"], capture_output=True, timeout=15).returncode == 0
-    except Exception:
-        return False
-
+from scalo.deployment.test_support import (
+    docker_available,
+    docker_build_cmd,
+    docker_empty_creds_json,
+    docker_env,
+)
 
 pytestmark = [
     pytest.mark.integration,
     pytest.mark.skipif(not deployment_importable, reason="requires the [deployment] extra"),
     pytest.mark.skipif(shutil.which("uv") is None, reason="requires uv"),
-    pytest.mark.skipif(not _docker_available(), reason="requires a running docker daemon"),
+    pytest.mark.skipif(not docker_available(), reason="requires a running docker daemon"),
 ]
 
 
@@ -100,12 +97,12 @@ def test_generated_python_dockerfile_builds(tmp_path: Path) -> None:
     # regardless of any credential helper configured on the host.
     docker_cfg = tmp_path / "dockercfg"
     docker_cfg.mkdir()
-    (docker_cfg / "config.json").write_text("{}", encoding="utf-8", newline="\n")
-    env = {**os.environ, "DOCKER_CONFIG": str(docker_cfg)}
+    (docker_cfg / "config.json").write_text(docker_empty_creds_json(), encoding="utf-8", newline="\n")
+    env = docker_env(docker_cfg)
 
     tag = "scalo-smoke-py:test"
     build = subprocess.run(
-        ["docker", "build", "-t", tag, "-f", "Dockerfile", "."],
+        docker_build_cmd(tag),
         cwd=tmp_path,
         capture_output=True,
         text=True,

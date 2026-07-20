@@ -270,17 +270,26 @@ class TestWindowExpiry:
         # Now within a new window -- must suppress again
         assert f(_make_record(msg)) is False
 
-    def test_window_boundary_is_per_message(self):
-        """Each message key has its own independent expiry timer."""
+    def test_window_boundary_is_per_message(self, monkeypatch):
+        """Each message key has its own independent expiry timer.
+
+        Driven by a fake clock rather than real sleeps. With sleeps this
+        needed msg_b to still be inside its window after 0.07s of a 0.1s
+        period -- 0.03s of slack, which a loaded test run overshoots, so it
+        failed intermittently on suite load rather than on any real defect.
+        """
+        clock = {"now": 1_000.0}
+        monkeypatch.setattr(time, "time", lambda: clock["now"])
+
         f = RateLimitFilter(period_sec=0.1)
         msg_a = "Alpha event"
         msg_b = "Beta event"
 
         f(_make_record(msg_a))
-        time.sleep(0.08)  # Not yet expired for msg_a
+        clock["now"] += 0.08  # not yet expired for msg_a
         f(_make_record(msg_b))  # msg_b starts its own timer
 
-        time.sleep(0.07)  # msg_a expired (~0.15s total), msg_b has ~0.07s left
+        clock["now"] += 0.07  # msg_a at 0.15s (expired), msg_b at 0.07s
 
         assert f(_make_record(msg_a)) is True  # msg_a window expired
         assert f(_make_record(msg_b)) is False  # msg_b window still active

@@ -207,9 +207,18 @@ def test_kubeconform_available_no_health_probe(monkeypatch: pytest.MonkeyPatch) 
 
 
 def test_docker_empty_creds_json_format() -> None:
+    import json
+
     from scalo.deployment.test_support import docker_empty_creds_json
 
-    assert docker_empty_creds_json() == '{"auths": {}}'
+    parsed = json.loads(docker_empty_creds_json())
+    # Empty auths is the point: public base images pull anonymously
+    # regardless of any credential helper on the host.
+    assert parsed["auths"] == {}
+    # Plugin dirs must survive, or pointing DOCKER_CONFIG at a temp dir
+    # hides `docker buildx` and builds fail with "unknown flag: --load".
+    extra = parsed.get("cliPluginsExtraDirs")
+    assert extra is None or isinstance(extra, list)
 
 
 # ---------------------------------------------------------------------------

@@ -438,6 +438,7 @@ def setup(
     ci_mode=None,
     scrubber=None,
     scrub_config=None,
+    metrics=None,
 ):
     """Setup standard logging with RFC 3339 compliance and CHARS-POLICY.md enforcement
 
@@ -479,6 +480,19 @@ def setup(
             - None (default): Auto-detect from environment (GITHUB_ACTIONS, CI, etc.)
             - True: Force CI mode - use workflow commands (::error::, ::warning::, etc.)
             - False: Force normal mode - standard console output
+        metrics: Optional ``MetricsManager`` for the scrub layers.
+            - None (default): scrub metrics stay no-op
+            - A manager: the scrub layers emit the metrics named in the
+              parity manifest (matches, redactions, errors, skipped,
+              duration, pattern version)
+
+            The scrub config carries ``metrics_enabled`` and
+            ``metrics_type_cardinality_cap``, but nothing could honour them
+            until there was a way to hand a manager in::
+
+                from scalo.metrics import create_metrics
+                metrics = create_metrics("my-app")
+                logger.setup(metrics=metrics)
     """
 
     # Remove default handler
@@ -534,6 +548,7 @@ def setup(
         mask_sensitive=mask_sensitive,
         masking_level=masking_level,
         config_dict=config,
+        metrics=metrics,
     )
 
     # Sensitive data masking (default: enabled). Retained for backwards

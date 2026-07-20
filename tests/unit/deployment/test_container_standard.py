@@ -143,7 +143,7 @@ class TestBuilderStageLayerCache:
     def test_two_phase_sync(self):
         text = generate_builder_stage(py_contract())
         # Phase 1 installs deps without the project; phase 2 installs the project.
-        assert "RUN uv sync --frozen --no-dev --no-install-project" in text
+        assert "uv sync --frozen --no-dev --no-install-project" in text
         assert text.rstrip().endswith("RUN uv sync --frozen --no-dev")
 
     def test_manifests_copied_before_first_sync(self):
@@ -152,17 +152,31 @@ class TestBuilderStageLayerCache:
 
 
 class TestBuilderStageUvPosture:
-    """P2.2 / P3.12 -- never source-build; compile bytecode at build time."""
+    """P2.2 / P3.12 -- never source-build a DEPENDENCY; bytecode at build time."""
 
-    def test_no_build_is_set(self):
-        assert "ENV UV_NO_BUILD=1" in generate_builder_stage(py_contract())
+    def test_no_build_covers_the_dependency_phase(self):
+        text = generate_builder_stage(py_contract())
+        assert "RUN UV_NO_BUILD=1 uv sync --frozen --no-dev --no-install-project" in text
+
+    def test_no_build_is_not_stage_wide(self):
+        # Regression guard. As a stage-wide `ENV UV_NO_BUILD=1` this also
+        # blocks building THE PROJECT, which is a local source tree with no
+        # wheel, so phase 2 died with "marked as --no-build but has no binary
+        # distribution" and every generated Dockerfile failed to build.
+        text = generate_builder_stage(py_contract())
+        assert "ENV UV_NO_BUILD" not in text
+
+    def test_project_phase_has_no_build_restriction(self):
+        text = generate_builder_stage(py_contract())
+        project_phase = text.split("COPY src/ src/", 1)[1]
+        assert "UV_NO_BUILD" not in project_phase
 
     def test_compile_bytecode_is_set(self):
         assert "ENV UV_COMPILE_BYTECODE=1" in generate_builder_stage(py_contract())
 
     def test_uv_env_precedes_the_sync(self):
         text = generate_builder_stage(py_contract())
-        assert text.index("UV_NO_BUILD") < text.index("uv sync")
+        assert text.index("UV_COMPILE_BYTECODE") < text.index("uv sync")
 
 
 class TestBuilderImageContractField:

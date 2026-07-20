@@ -287,7 +287,9 @@ class DeploymentContract(BaseModel):
     def config_filename(self) -> str:
         """Config file name from the mount path (e.g., ``loader.yaml``)."""
         if "/" not in self.config_mount_path:
-            return "config.yaml"
+            # A bare filename IS the filename. Returning a hardcoded
+            # "config.yaml" here would rename the app's config behind its back.
+            return self.config_mount_path or "config.yaml"
         return self.config_mount_path.rsplit("/", 1)[-1]
 
     def config_dir(self) -> str:

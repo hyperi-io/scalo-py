@@ -123,7 +123,8 @@ For `env_prefix="DFE"` and source `db_password`, the manager checks
 ## Caching
 
 Two-tier: in-process memory cache (per-`SecretsManager`, class-level
-shared) plus optional encrypted disk cache (Fernet, `[cache]` extra). On
+shared) plus optional encrypted disk cache (AES-256-GCM, via the
+`cryptography` package; there is no `[cache]` extra). On
 provider failure the manager returns the cached value if still within
 `stale_grace_secs` past TTL — your service keeps running through a
 Vault outage.

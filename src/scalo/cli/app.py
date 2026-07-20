@@ -89,12 +89,18 @@ class CommonArgs:
             return "ERROR"
         return self.log_level.upper()
 
-    def init_logger(self) -> None:
+    def init_logger(self, metrics: Any | None = None) -> None:
         """Initialise the scalo logger with resolved settings.
 
         Sets the ``LOG_LEVEL`` and ``LOG_FORMAT`` environment variables
         before calling ``logger.setup()``, so the logger's own env-based
         detection picks up CLI overrides.
+
+        Args:
+            metrics: Optional ``MetricsManager`` handed to the scrub layers
+                so they emit the metrics the parity manifest publishes.
+                Called a second time with this once metrics exist -- see
+                :func:`_handle_run`.
 
         Raises:
             LoggerError: If logger initialisation fails.
@@ -106,7 +112,7 @@ class CommonArgs:
 
             from scalo.logger import setup
 
-            setup()
+            setup(metrics=metrics)
         except Exception as exc:
             raise LoggerError(str(exc)) from exc
 
@@ -271,9 +277,10 @@ class ServiceApp(ABC):
         """Return the app's ``DeploymentContract`` for ``generate-artefacts``.
 
         Override to return a ``scalo.deployment.DeploymentContract``
-        instance; ``generate-artefacts`` will then emit Dockerfile,
-        container-manifest.json, argocd-application.yaml, etc. into the
-        output directory.
+        instance; ``generate-artefacts`` will then emit
+        deployment-contract.json, container-manifest.json,
+        Dockerfile.runtime, .dockerignore and argocd-application.yaml into
+        the output directory.
 
         Default returns ``None`` -- the subcommand then prints a warning and
         emits nothing. Apps that don't ship as containers can leave it as
@@ -416,6 +423,27 @@ def _handle_run(service_app: ServiceApp, args: CommonArgs) -> None:
                 except Exception:
                     backend = None
             metrics_manager = create_metrics(ns, backend=backend or "prometheus")
+            # Re-install the logger now that a metrics manager exists, so the
+            # scrub layers emit log_scrub_* (spec 8 / the parity manifest).
+            #
+            # Deliberately a second setup() rather than a reorder: the scrub
+            # layers must be live for the FIRST log line, and create_metrics()
+            # logs on its way up. Initialising metrics first would push those
+            # lines through loguru's default handler -- unformatted, and more
+            # importantly unscrubbed. setup() calls logger.remove() first, so
+            # re-running it swaps the sinks rather than stacking them.
+            #
+            # Its own try: setup() drops all sinks before rebuilding them, so a
+            # failure part-way leaves loguru with nothing attached. Reporting
+            # that through `logger` would post the bad news to the very logger
+            # that just went silent -- and the service would then run its whole
+            # life logging nothing. Report on stderr, then put a working logger
+            # back without the metrics wiring.
+            try:
+                args.init_logger(metrics=metrics_manager)
+            except Exception as exc:
+                print_error(f"scrub-metrics logger re-init failed: {exc}")
+                args.init_logger()
             app_metrics = AppMetrics(metrics_manager, info.version, info.commit or "unknown")
             service_app._metrics = metrics_manager
             service_app._app_metrics = app_metrics
@@ -427,6 +455,9 @@ def _handle_run(service_app: ServiceApp, args: CommonArgs) -> None:
         except Exception as e:
             service_app._metrics = None
             service_app._app_metrics = None
+            # stderr as well as the logger: this handler also covers the
+            # window where logging itself may be the thing that broke.
+            print_error(f"metrics initialisation failed: {e}")
             logger.warning("metrics initialisation failed", error=str(e))
 
         # Bind the observability port BEFORE the service starts, so a probe

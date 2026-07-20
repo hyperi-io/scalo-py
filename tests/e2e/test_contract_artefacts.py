@@ -56,7 +56,9 @@ from scalo.deployment import (
 )
 from scalo.deployment.test_support import (
     docker_available,
+    docker_build_cmd,
     docker_empty_creds_json,
+    docker_env,
     ensure_kind_cluster,
     helm_available,
     kubeconform_available,
@@ -164,10 +166,10 @@ def test_tier_a_dockerfile_builds_and_image_runs() -> None:
         (build_dir / "mock-bin").chmod(0o755)
 
         (Path(docker_cfg_dir) / "config.json").write_text(docker_empty_creds_json(), encoding="utf-8", newline="\n")
-        build_env = {**os.environ, "DOCKER_CONFIG": docker_cfg_dir}
+        build_env = docker_env(docker_cfg_dir)
 
         subprocess.run(
-            ["docker", "build", "-f", "Dockerfile", "-t", tag, "--no-cache", "."],
+            docker_build_cmd(tag, no_cache=True),
             cwd=str(build_dir),
             env=build_env,
             check=True,

@@ -24,7 +24,6 @@ from confluent_kafka.admin import AdminClient
 
 from .config import ADMIN_DEFAULTS, CONSUMER_DEFAULTS, merge_config
 from .types import (
-    ConsumerGroupInfo,
     PartitionInfo,
     TopicInfo,
     TopicMetadata,
@@ -171,7 +170,10 @@ class KafkaClient:
         return TopicMetadata(
             name=topic,
             partitions=partitions,
-            config={},  # TODO: Fetch config via describe_configs if needed
+            # Empty by design -- cluster metadata carries no topic config, and
+            # describing it is a separate round-trip. Use
+            # KafkaAdmin.describe_configs when you need it.
+            config={},
         )
 
     # =========================================================================

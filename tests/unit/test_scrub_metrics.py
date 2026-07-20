@@ -10,6 +10,7 @@
 
 from __future__ import annotations
 
+import warnings
 from collections import defaultdict
 
 import pytest
@@ -21,7 +22,6 @@ from common.fake_pii import (
 )
 
 from scalo.logger.scrub import (
-    NationalIdsConfig,
     PiiConfig,
     PiiValidatorsConfig,
     ScrubConfig,
@@ -424,3 +424,111 @@ class TestMetricsDoNotAffectOutput:
             if ev[1] == "log_scrub_matches_total" and ev[2] == {"layer": "L3", "type": "EMAIL"}
         ]
         assert len(events) >= 1
+
+
+# ---------------------------------------------------------------------------
+# Wiring from setup()/resolve_scrubber -- the path that did not exist
+# ---------------------------------------------------------------------------
+
+
+class TestScrubMetricsReachTheScrubber:
+    """Before this, ScrubMetrics.from_manager had zero call sites in src/.
+
+    The parity manifest publishes six metric names and states both
+    implementations must honour every key, while the runtime path forced
+    ScrubMetrics.noop() unconditionally -- so metrics_enabled was a knob
+    that could not do anything.
+    """
+
+    def test_resolver_threads_a_manager_through(self):
+        from scalo.logger.scrub_resolver import resolve_scrubber
+
+        backend = _FakeBackend()
+        s = resolve_scrubber(scrub_config=ScrubConfig(), metrics=ScrubMetrics(backend=backend))
+        s.scrub(email())
+        assert any(ev[1] == "log_scrub_matches_total" for ev in backend.events)
+
+    def test_resolver_defaults_path_also_threads_metrics(self):
+        from scalo.logger.scrub_resolver import resolve_scrubber
+
+        backend = _FakeBackend()
+        s = resolve_scrubber(metrics=ScrubMetrics(backend=backend))
+        s.scrub(email())
+        assert any(ev[1] == "log_scrub_matches_total" for ev in backend.events)
+
+    def test_no_metrics_stays_noop(self):
+        from scalo.logger.scrub_resolver import resolve_scrubber
+
+        # Must not raise and must still scrub.
+        s = resolve_scrubber(scrub_config=ScrubConfig())
+        assert email() not in s.scrub(email())
+
+    def test_metrics_enabled_false_still_wins(self):
+        from scalo.logger.scrub_resolver import resolve_scrubber
+
+        backend = _FakeBackend()
+        s = resolve_scrubber(
+            scrub_config=ScrubConfig(metrics_enabled=False),
+            metrics=ScrubMetrics(backend=backend),
+        )
+        s.scrub(email())
+        assert backend.events == []
+
+    def test_setup_accepts_metrics(self):
+        import inspect
+
+        from scalo.logger.logger import setup
+
+        assert "metrics" in inspect.signature(setup).parameters
+
+
+class TestCardinalityCapComesFromConfig:
+    """ScrubMetrics kept its own default of 64 regardless of the config.
+
+    Asserted through BEHAVIOUR -- over-cap type labels collapse to
+    "OVER_CAP" -- rather than by reading ``_type_cap`` off an instance the
+    factory may never have used. An earlier version of these tests checked a
+    separately-constructed object and so passed even when ``build_scrubber``
+    did nothing with the config.
+    """
+
+    def _types_seen(self, cfg: ScrubConfig) -> set[str]:
+        backend = _FakeBackend()
+        s = build_scrubber(cfg, metrics=ScrubMetrics(backend=backend))
+        with warnings.catch_warnings():
+            warnings.simplefilter("ignore", RuntimeWarning)  # cap-reached notice
+            s.scrub(f"mail {email()} card {visa_card()}")
+        return {
+            ev[2].get("type") for ev in backend.events if ev[1] == "log_scrub_matches_total" and isinstance(ev[2], dict)
+        }
+
+    def test_low_cap_collapses_extra_types(self):
+        # cap=1: the first distinct type is recorded, the second is gated.
+        types = self._types_seen(ScrubConfig(metrics_type_cardinality_cap=1))
+        assert "OVER_CAP" in types, f"cap not applied; saw {types}"
+
+    def test_generous_cap_keeps_real_type_labels(self):
+        types = self._types_seen(ScrubConfig(metrics_type_cardinality_cap=50))
+        assert "OVER_CAP" not in types
+        assert len(types) >= 2, f"expected distinct types, saw {types}"
+
+
+class TestUnimplementedKnobsWarn:
+    """entropy_filter reads as a security control and does nothing."""
+
+    def test_entropy_filter_warns(self):
+        cfg = ScrubConfig(secrets=SecretsConfig(entropy_filter=True))
+        with pytest.warns(UserWarning, match="entropy_filter"):
+            build_scrubber(cfg)
+
+    def test_token_efficiency_warns(self):
+        cfg = ScrubConfig(pii=PiiConfig(token_efficiency=True))
+        with pytest.warns(UserWarning, match="token_efficiency"):
+            build_scrubber(cfg)
+
+    def test_default_config_is_silent(self):
+        import warnings as _w
+
+        with _w.catch_warnings():
+            _w.simplefilter("error", UserWarning)
+            build_scrubber(ScrubConfig())

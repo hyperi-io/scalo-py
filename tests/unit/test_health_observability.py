@@ -15,10 +15,9 @@ kubelet probes aimed at that port got connection-refused.
 
 from __future__ import annotations
 
+import http.client
 import json
 import time
-import urllib.error
-import urllib.request
 
 import pytest
 
@@ -33,14 +32,23 @@ LOCAL = "127.0.0.1:0"
 
 
 def _get(port: int, path: str) -> tuple[int, dict | bytes, str]:
-    """GET a path, returning (status, parsed-or-raw body, content type)."""
-    url = f"http://127.0.0.1:{port}{path}"
+    """GET a path, returning (status, parsed-or-raw body, content type).
+
+    http.client rather than urllib.request: the host and scheme are fixed,
+    so there is no URL to parse and no scheme to get wrong, and a 4xx/5xx
+    comes back as an ordinary response instead of an exception -- which is
+    the whole point here, since most of these assertions are ABOUT the
+    non-200 statuses.
+    """
+    conn = http.client.HTTPConnection("127.0.0.1", port, timeout=5)
     try:
-        resp = urllib.request.urlopen(url, timeout=5)  # noqa: S310 -- fixed http:// loopback
-        status, raw, ctype = resp.status, resp.read(), resp.headers["Content-Type"]
-    except urllib.error.HTTPError as exc:
-        status, raw, ctype = exc.code, exc.read(), exc.headers["Content-Type"]
-    if ctype and ctype.startswith("application/json"):
+        conn.request("GET", path)
+        resp = conn.getresponse()
+        status, raw = resp.status, resp.read()
+        ctype = resp.getheader("Content-Type") or ""
+    finally:
+        conn.close()
+    if ctype.startswith("application/json"):
         return status, json.loads(raw), ctype
     return status, raw, ctype
 
@@ -172,18 +180,96 @@ class TestMetricsEndpoint:
         _, _, port = server
         assert _get(port, "/metrics")[0] == 404
 
-    def test_serves_prometheus_text(self):
-        metrics = pytest.importorskip("scalo.metrics")
-        mgr = metrics.create_metrics("obs_test", backend="prometheus")
-        mgr.counter("obs_widgets_total", "test counter").inc()
-        srv = serve_observability(HealthManager(), mgr, LOCAL)
+    def test_serves_the_managers_body_and_content_type(self):
+        # The server's job is to pass the manager's output through
+        # unaltered. A stub keeps that contract testable without the
+        # optional [metrics] extra, and with no conditional guard on this
+        # test at all -- the REAL prometheus path runs end-to-end against a
+        # live ServiceApp in test_cli_scrub_metrics_wiring.py.
+        class _Manager:
+            def get_metrics(self):
+                return b"obs_widgets_total 1.0\n"
+
+            def get_content_type(self):
+                return "text/plain; version=0.0.4"
+
+        srv = serve_observability(HealthManager(), _Manager(), LOCAL)
         try:
             status, raw, ctype = _get(srv.bound_address[1], "/metrics")
             assert status == 200
             assert "text/plain" in ctype
-            assert b"obs_widgets_total" in raw
+            assert b"obs_widgets_total 1.0" in raw
         finally:
             srv.stop()
+
+    def test_accepts_a_str_body_from_the_manager(self):
+        # Backends differ: one returns bytes, another str. Both must serve.
+        class _StrManager:
+            def get_metrics(self):
+                return "obs_str_total 2.0\n"
+
+            def get_content_type(self):
+                return "text/plain"
+
+        srv = serve_observability(HealthManager(), _StrManager(), LOCAL)
+        try:
+            status, raw, _ = _get(srv.bound_address[1], "/metrics")
+            assert status == 200
+            assert b"obs_str_total 2.0" in raw
+        finally:
+            srv.stop()
+
+
+class TestDoesNotLeakInternals:
+    """The port is unauthenticated -- errors must not describe the inside."""
+
+    def test_metrics_failure_returns_generic_body(self):
+        secret = "/etc/private/db.conf password=hunter2"
+
+        class _Exploding:
+            def get_metrics(self):
+                raise RuntimeError(secret)
+
+            def get_content_type(self):
+                return "text/plain"
+
+        srv = serve_observability(HealthManager(), _Exploding(), LOCAL)
+        try:
+            status, body, _ = _get(srv.bound_address[1], "/metrics")
+            assert status == 500
+            assert secret not in json.dumps(body)
+            assert "hunter2" not in json.dumps(body)
+        finally:
+            srv.stop()
+
+    def test_content_type_cannot_inject_a_header(self):
+        class _Injecting:
+            def get_metrics(self):
+                return b"scalo_ok 1\n"
+
+            def get_content_type(self):
+                return "text/plain\r\nX-Injected: yes"
+
+        srv = serve_observability(HealthManager(), _Injecting(), LOCAL)
+        try:
+            conn = http.client.HTTPConnection("127.0.0.1", srv.bound_address[1], timeout=5)
+            try:
+                conn.request("GET", "/metrics")
+                resp = conn.getresponse()
+                resp.read()
+                assert resp.getheader("X-Injected") is None
+            finally:
+                conn.close()
+        finally:
+            srv.stop()
+
+    def test_handler_has_a_socket_timeout(self):
+        # Without it a stalled client pins a thread for good.
+        from scalo.health.observability import REQUEST_TIMEOUT_SECONDS, _make_handler
+
+        handler = _make_handler(HealthManager(), None)
+        assert handler.timeout == REQUEST_TIMEOUT_SECONDS
+        assert REQUEST_TIMEOUT_SECONDS > 0
 
 
 class TestLifecycle:

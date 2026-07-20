@@ -16,9 +16,8 @@ HTTP request to the advertised address from inside the service.
 
 from __future__ import annotations
 
+import http.client
 import json
-import urllib.error
-import urllib.request
 
 import pytest
 
@@ -26,12 +25,18 @@ from scalo.cli import ServiceApp, VersionInfo
 
 
 def _get(port: int, path: str) -> tuple[int, dict]:
-    url = f"http://127.0.0.1:{port}{path}"
+    """GET a JSON probe, returning (status, body).
+
+    http.client keeps the fixed host/port explicit and returns 4xx/5xx as
+    ordinary responses -- these tests assert on 503 as much as on 200.
+    """
+    conn = http.client.HTTPConnection("127.0.0.1", port, timeout=5)
     try:
-        resp = urllib.request.urlopen(url, timeout=5)  # noqa: S310 -- fixed http:// loopback
+        conn.request("GET", path)
+        resp = conn.getresponse()
         return resp.status, json.loads(resp.read())
-    except urllib.error.HTTPError as exc:
-        return exc.code, json.loads(exc.read())
+    finally:
+        conn.close()
 
 
 class _ProbeApp(ServiceApp):
@@ -48,6 +53,7 @@ class _ProbeApp(ServiceApp):
         port = self._observability.bound_address[1]
         self.observed["port"] = port
         self.observed["healthz"] = _get(port, "/healthz")
+        self.observed["startup"] = _get(port, "/health/startup")
         self.observed["readyz_before"] = _get(port, "/readyz")
         self.health().set_ready()
         self.observed["readyz_after"] = _get(port, "/readyz")
@@ -76,14 +82,24 @@ class TestServiceAppServesTheAdvertisedPort:
         assert app.observed["readyz_after"][0] == 200
 
     def test_startup_marked_before_service_runs(self):
+        # ServiceApp calls health().set_started() before handing control to
+        # run_service, so a startupProbe arriving during startup gets 200
+        # rather than a 503 that would restart the pod.
+        app = _ProbeApp()
+        _run(app)
+        status, body = app.observed["startup"]
+        assert status == 200
+        assert body["status"] == "started"
+
+    def test_port_is_closed_after_run(self):
         app = _ProbeApp()
         _run(app)
         port = app.observed["port"]
-        # Port is released after run, so re-probing must now fail to connect.
-        with pytest.raises(urllib.error.URLError):
-            urllib.request.urlopen(f"http://127.0.0.1:{port}/healthz", timeout=2)
+        # Re-probing must now fail to connect -- the listener is gone.
+        with pytest.raises(OSError):
+            _get(port, "/healthz")
 
-    def test_port_released_after_run(self):
+    def test_server_handle_released_after_run(self):
         app = _ProbeApp()
         _run(app)
         assert app._observability is None

@@ -74,6 +74,24 @@ STARTUP_PATHS = ("/health/startup",)
 
 _JSON = "application/json"
 
+REQUEST_TIMEOUT_SECONDS = 15.0
+"""Per-connection socket timeout for the observability listener."""
+
+
+def _log_exception(message: str) -> None:
+    """Log a handler failure to the service log, never to the HTTP caller.
+
+    Imported lazily so this module keeps working for a service that has not
+    initialised the logger, and so importing ``scalo.health`` does not drag
+    the logger in.
+    """
+    try:
+        from scalo.logger import logger
+
+        logger.exception(message)
+    except Exception:  # pragma: no cover - logging must never break a probe
+        pass
+
 
 def parse_addr(addr: str, *, default_port: int = 9090) -> tuple[str, int]:
     """Split a ``host:port`` bind string into its parts.
@@ -241,6 +259,13 @@ def _make_handler(health: HealthManager, metrics: Any | None) -> type[BaseHTTPRe
         server_version = "scalo-observability"
         sys_version = ""
 
+        # Bound how long one connection can hold its thread. ThreadingHTTPServer
+        # starts a thread per connection, so a client that opens sockets and
+        # then dribbles (or never sends) would otherwise pin threads
+        # indefinitely and starve real probes. Generous next to a kubelet's
+        # timeoutSeconds, tight enough that a stalled peer cannot camp.
+        timeout = REQUEST_TIMEOUT_SECONDS
+
         # Name is fixed by BaseHTTPRequestHandler's dispatch, not our choice.
         def do_GET(self) -> None:
             path = self.path.split("?", 1)[0].rstrip("/") or "/"
@@ -264,8 +289,14 @@ def _make_handler(health: HealthManager, metrics: Any | None) -> type[BaseHTTPRe
             try:
                 body = metrics.get_metrics()
                 content_type = metrics.get_content_type()
-            except Exception as exc:  # pragma: no cover - defensive
-                self._send(500, json.dumps({"error": str(exc)}).encode("utf-8"), _JSON)
+            except Exception:
+                # Generic body on purpose. This port is unauthenticated, and
+                # an exception string can carry file paths, config values or
+                # a connection string. The detail goes to the service log,
+                # where it is scrubbed and access-controlled; the caller gets
+                # only the status.
+                _log_exception("failed to render metrics")
+                self._send(500, b'{"error":"metrics unavailable"}', _JSON)
                 return
             if isinstance(body, str):
                 body = body.encode("utf-8")
@@ -277,7 +308,10 @@ def _make_handler(health: HealthManager, metrics: Any | None) -> type[BaseHTTPRe
 
         def _send(self, code: int, body: bytes, content_type: str) -> None:
             self.send_response(code)
-            self.send_header("Content-Type", content_type)
+            # Strip CR/LF before it goes in a header. The value comes from our
+            # own metrics backend today, but a newline reaching a header is
+            # response splitting, and this is the one place it could.
+            self.send_header("Content-Type", content_type.replace("\r", "").replace("\n", ""))
             self.send_header("Content-Length", str(len(body)))
             self.end_headers()
             self.wfile.write(body)
