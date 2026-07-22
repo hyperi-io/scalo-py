@@ -432,6 +432,25 @@ class TestGenerateChart:
         assert not (tmp_path / "templates/keda-scaledobject.yaml").exists()
         assert not (tmp_path / "templates/keda-triggerauth.yaml").exists()
 
+    def test_deployment_wires_security_context(self, tmp_path):
+        # Both the pod-level and container-level securityContext blocks are
+        # emitted, wired to values so an operator can tune (or opt out).
+        generate_chart(_full_contract(), tmp_path)
+        text = (tmp_path / "templates/deployment.yaml").read_text()
+        assert "with .Values.podSecurityContext" in text
+        assert "with .Values.securityContext" in text
+
+    def test_values_ship_nonroot_security_floor(self, tmp_path):
+        # Secure-by-default: the generated values carry the non-root floor and
+        # the container hardening, so a service gets them without opting in.
+        generate_chart(_full_contract(), tmp_path)
+        text = (tmp_path / "values.yaml").read_text()
+        assert "runAsNonRoot: true" in text
+        assert "runAsUser: 1000" in text
+        assert "fsGroup: 1000" in text
+        assert "allowPrivilegeEscalation: false" in text
+        assert "- ALL" in text  # capabilities.drop
+
 
 # -----------------------------------------------------------------------------
 # ArgoCD Application

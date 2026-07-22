@@ -60,6 +60,31 @@ def test_validate_dockerfile_flags_wrong_base(tmp_path: Path):
     assert any(m.field == "base_image" for m in issues)
 
 
+def test_validate_dockerfile_accepts_arg_parameterised_base(tmp_path: Path):
+    # The container standard's parameterise-the-base pattern: `ARG BASE_IMAGE=<pinned>`
+    # + `FROM ${BASE_IMAGE}`. The resolved base equals the contract base, so a
+    # substring search for `FROM <pinned>` would wrongly flag drift - it must not.
+    base = py_contract().effective_base_image()
+    runtime = generate_runtime_stage(py_contract()).replace(
+        f"FROM {base} AS runtime", "FROM ${BASE_IMAGE} AS runtime"
+    )
+    p = tmp_path / "Dockerfile.runtime"
+    p.write_text(f"ARG BASE_IMAGE={base}\n{runtime}", encoding="utf-8")
+    assert not any(m.field == "base_image" for m in validate_dockerfile(py_contract(), p))
+
+
+def test_validate_dockerfile_flags_arg_default_that_drifts(tmp_path: Path):
+    # ARG resolution must not paper over a genuinely wrong pin: an ARG default
+    # that resolves to a different base is still drift.
+    base = py_contract().effective_base_image()
+    runtime = generate_runtime_stage(py_contract()).replace(
+        f"FROM {base} AS runtime", "FROM ${BASE_IMAGE} AS runtime"
+    )
+    p = tmp_path / "Dockerfile.runtime"
+    p.write_text(f"ARG BASE_IMAGE=ubuntu:24.04\n{runtime}", encoding="utf-8")
+    assert any(m.field == "base_image" for m in validate_dockerfile(py_contract(), p))
+
+
 def test_validate_helm_values_clean(tmp_path: Path):
     generate_chart(py_contract(), tmp_path)
     assert validate_helm_values(py_contract(), tmp_path) == []

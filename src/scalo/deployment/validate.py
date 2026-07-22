@@ -46,18 +46,47 @@ def validate_base_image(contract: DeploymentContract) -> list[ContractMismatch]:
     return issues
 
 
+def _from_image_refs(text: str) -> set[str]:
+    """Resolve every ``FROM`` image reference, expanding ``ARG`` defaults.
+
+    The container standard says parameterise the base (``ARG BASE_IMAGE=<pinned>``
+    + ``FROM ${BASE_IMAGE}``), so a plain substring search for ``FROM <pinned>``
+    reports drift precisely when the guidance is followed. Collect the ``ARG``
+    defaults declared before each ``FROM`` and substitute ``${NAME}`` / ``$NAME``
+    (longest name first, so ``$FOO_BAR`` is not eaten by ``$FOO``) so the resolved
+    base can be compared to the contract. Stage aliases (``FROM x AS y``) are
+    dropped; a ``FROM <prior-stage>`` simply will not match the contract base.
+    """
+    args: dict[str, str] = {}
+    resolved: set[str] = set()
+    for raw in text.splitlines():
+        line = raw.strip()
+        if line.startswith("ARG "):
+            name, sep, value = line[4:].strip().partition("=")
+            if sep:
+                args[name.strip()] = value.strip().strip('"').strip("'")
+        elif line.startswith("FROM "):
+            ref = line[5:].strip().split()[0]  # drop "AS <stage>"
+            for name in sorted(args, key=len, reverse=True):
+                ref = ref.replace(f"${{{name}}}", args[name]).replace(f"${name}", args[name])
+            resolved.add(ref)
+    return resolved
+
+
 def validate_dockerfile(contract: DeploymentContract, path: Path | str) -> list[ContractMismatch]:
     """Check a runtime/full Dockerfile against the Python contract.
 
     Verifies the runtime base image, exposed metrics port, venv ``PATH``, the
     console-script entrypoint, and that the base is not musl/Alpine. Returns
-    one :class:`ContractMismatch` per discrepancy (empty list = clean).
+    one :class:`ContractMismatch` per discrepancy (empty list = clean). The base
+    may be pinned literally (``FROM <base>``) or parameterised via an
+    ``ARG BASE_IMAGE=<base>`` default - both satisfy the check.
     """
     text = Path(path).read_text(encoding="utf-8")
     issues: list[ContractMismatch] = list(validate_base_image(contract))
 
     base = contract.effective_base_image()
-    if f"FROM {base}" not in text:
+    if base not in _from_image_refs(text):
         issues.append(ContractMismatch("base_image", f"FROM {base}", "absent"))
 
     port = str(contract.metrics_port)

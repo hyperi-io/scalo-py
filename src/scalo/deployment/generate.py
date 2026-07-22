@@ -630,6 +630,27 @@ def _gen_values_yaml(c: DeploymentContract) -> str:
     )
 
     parts.append(
+        "# -- Pod-level security context (non-root floor; the container standard).\n"
+        "# The image runs as UID 1000; a restricted-PodSecurity namespace requires\n"
+        "# runAsNonRoot. Empty this map to opt out (you own the consequence).\n"
+        "podSecurityContext:\n"
+        "  runAsNonRoot: true\n"
+        "  runAsUser: 1000\n"
+        "  fsGroup: 1000\n"
+        "\n"
+        "# -- Container-level hardening. readOnlyRootFilesystem is deliberately NOT\n"
+        "# set: a service that mints a key or writes a cache to the image rootfs\n"
+        "# needs a writable FS. Mount that state on a shared Secret/volume, then\n"
+        "# add `readOnlyRootFilesystem: true` here.\n"
+        "securityContext:\n"
+        "  allowPrivilegeEscalation: false\n"
+        "  capabilities:\n"
+        "    drop:\n"
+        "      - ALL\n"
+        "\n"
+    )
+
+    parts.append(
         f"# -- Pod annotations (Prometheus scrape config included by default)\n"
         f"podAnnotations:\n"
         f'  prometheus.io/scrape: "true"\n'
@@ -843,10 +864,18 @@ def _gen_deployment_yaml(c: DeploymentContract) -> str:
         f"        {{{{- toYaml . | nindent 8 }}}}\n"
         f"      {{{{- end }}}}\n"
         f'      serviceAccountName: {{{{ include "{app}.serviceAccountName" . }}}}\n'
+        f"      {{{{- with .Values.podSecurityContext }}}}\n"
+        f"      securityContext:\n"
+        f"        {{{{- toYaml . | nindent 8 }}}}\n"
+        f"      {{{{- end }}}}\n"
         f"      containers:\n"
         f"        - name: {{{{ .Chart.Name }}}}\n"
         f'          image: "{{{{ .Values.image.repository }}}}:{{{{ .Values.image.tag | default .Chart.AppVersion }}}}"\n'
         f"          imagePullPolicy: {{{{ .Values.image.pullPolicy }}}}\n"
+        f"          {{{{- with .Values.securityContext }}}}\n"
+        f"          securityContext:\n"
+        f"            {{{{- toYaml . | nindent 12 }}}}\n"
+        f"          {{{{- end }}}}\n"
     )
 
     if c.entrypoint_args:
