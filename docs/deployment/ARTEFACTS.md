@@ -207,6 +207,16 @@ Key behaviours:
 - `deployment.yaml` wires `livenessProbe`, `readinessProbe`, AND a
   `startupProbe`, all pointed at `health.liveness_path` over the
   `metrics` named port.
+- `deployment.yaml` emits a pod-level and a container-level
+  `securityContext`, both wired to values so an operator can tune (or
+  empty the map to opt out). `values.yaml` ships the non-root floor on
+  by default: `podSecurityContext` = `runAsNonRoot` / `runAsUser 1000` /
+  `fsGroup 1000`, and `securityContext` = `allowPrivilegeEscalation:
+  false` + `capabilities.drop: [ALL]`. A restricted-PodSecurity
+  namespace rejects the pod without these. `readOnlyRootFilesystem` is
+  deliberately NOT set -- a service that mints a key or writes a cache
+  to the image rootfs needs a writable FS, so it is an opt-in once that
+  state lives on a mount.
 - `secret.yaml` is one `Secret` per group, gated by
   `{{- if not .Values.<group>.existingSecret }}` so users can BYO.
 - `hpa.yaml` only renders when both `autoscaling.enabled` and NOT
