@@ -58,7 +58,7 @@ ABSENT_FROM_SUITE = {
 
 
 class TestLibgit2SuiteResolution:
-    """P1.1 -- libgit2-1.7 does not exist in Debian trixie."""
+    """libgit2-1.7 does not exist in Debian trixie."""
 
     def test_trixie_gets_1_9(self):
         assert libgit2_runtime_package("trixie") == "libgit2-1.9"
@@ -93,7 +93,7 @@ class TestLibgit2SuiteResolution:
 
 
 class TestNoPackageAbsentFromTargetSuite:
-    """The check that would have caught P1.1 in the first place."""
+    """No emitted apt package may be absent from the target suite."""
 
     @pytest.mark.parametrize("codename", sorted(ABSENT_FROM_SUITE))
     def test_scalo_rs_features_emit_nothing_absent_from_suite(self, codename: str):
@@ -129,7 +129,7 @@ class TestNoPackageAbsentFromTargetSuite:
 
 
 class TestBuilderStageLayerCache:
-    """P2.3 -- the builder stage must not defeat its own layer cache."""
+    """The builder stage must not defeat its own layer cache."""
 
     def test_project_source_is_copied_after_the_dependency_sync(self):
         text = generate_builder_stage(py_contract())
@@ -152,7 +152,7 @@ class TestBuilderStageLayerCache:
 
 
 class TestBuilderStageUvPosture:
-    """P2.2 / P3.12 -- never source-build a DEPENDENCY; bytecode at build time."""
+    """Never source-build a DEPENDENCY; bytecode at build time."""
 
     def test_no_build_covers_the_dependency_phase(self):
         text = generate_builder_stage(py_contract())
@@ -180,7 +180,7 @@ class TestBuilderStageUvPosture:
 
 
 class TestBuilderImageContractField:
-    """P2.4 -- the builder image is overridable and pinned deliberately."""
+    """The builder image is overridable and pinned deliberately."""
 
     def test_default_builder_image_matches_python_version(self):
         c = py_contract()
@@ -201,7 +201,7 @@ class TestBuilderImageContractField:
 
 
 class TestSingleSourcedImageDefaults:
-    """P2.6 -- the default base image literal lived in three places."""
+    """The default base and builder image literals are single-sourced."""
 
     def test_contract_default_matches_registry_default(self):
         c = DeploymentContract(
@@ -232,7 +232,7 @@ class TestSingleSourcedImageDefaults:
 
 
 class TestHealthcheckIsContractGated:
-    """P3.13 -- K8s ignores HEALTHCHECK, so a cluster-only image can drop it."""
+    """K8s ignores HEALTHCHECK, so a cluster-only image can drop it."""
 
     def test_emitted_by_default(self):
         assert "HEALTHCHECK" in generate_runtime_stage(py_contract())
@@ -251,7 +251,7 @@ class TestHealthcheckIsContractGated:
 
 
 class TestDockerignore:
-    """P3.11 -- the whole context transfers to the daemon on every build."""
+    """The whole context transfers to the daemon on every build."""
 
     def test_excludes_the_heavy_and_the_secret(self):
         text = generate_dockerignore(py_contract())
@@ -266,7 +266,7 @@ class TestDockerignore:
 
 
 class TestAlpineGuard:
-    """P3.9 -- scalo-py stated no position on musl/Alpine anywhere."""
+    """musl/Alpine bases are flagged; Debian is the supported base."""
 
     def test_clean_on_the_default_debian_base(self):
         assert validate_base_image(py_contract()) == []
