@@ -8,8 +8,8 @@
 
 """Snapshot tests for deployment artefact generators.
 
-Cross-language byte parity with rustlib will be wired in v2.29.0 once
-``hyperi-rustlib/tests/parity/fixtures/`` lands. For now we verify shape
+Cross-language byte parity with scalo-rs will be wired in v2.29.0 once
+``scalo-rs/tests/parity/fixtures/`` lands. For now we verify shape
 and key fragments -- enough to catch regressions while the contract is
 being shaped.
 """
@@ -54,7 +54,7 @@ pytestmark = pytest.mark.skipif(
 
 
 # -----------------------------------------------------------------------------
-# Test contract -- mirrors rustlib's tests::test_contract() in shape
+# Test contract -- mirrors scalo-rs's tests::test_contract() in shape
 # -----------------------------------------------------------------------------
 
 
@@ -191,13 +191,13 @@ class TestGenerateDockerfile:
         assert "/app/target/release" not in df
         assert "userdel" not in df
         assert "EXPOSE 9090" in df
-        assert "localhost:9090/healthz" in df
+        assert "localhost:9090/livez" in df
         assert 'ENTRYPOINT ["dfe-loader"]' in df
         assert 'CMD ["--config", "/etc/dfe/loader.yaml"]' in df
 
     def test_with_native_deps_emits_confluent(self):
         c = _full_contract()
-        c.native_deps = NativeDepsContract.for_pylib_extras(["kafka"], "ubuntu:24.04")
+        c.native_deps = NativeDepsContract.for_scalo_extras(["kafka"], "ubuntu:24.04")
         df = generate_dockerfile(c)
         assert "packages.confluent.io" in df
         assert "confluent-clients.gpg" in df
@@ -207,7 +207,7 @@ class TestGenerateDockerfile:
 
     def test_pure_python_extras_have_no_apt_repos(self):
         c = _full_contract()
-        c.native_deps = NativeDepsContract.for_pylib_extras(["expression"], "ubuntu:24.04")
+        c.native_deps = NativeDepsContract.for_scalo_extras(["expression"], "ubuntu:24.04")
         df = generate_dockerfile(c)
         assert "confluent" not in df
         assert "librdkafka1" not in df
@@ -216,7 +216,7 @@ class TestGenerateDockerfile:
     def test_bookworm_codename(self):
         c = _full_contract()
         c.base_image = "debian:bookworm-slim"
-        c.native_deps = NativeDepsContract.for_pylib_extras(["kafka"], "debian:bookworm-slim")
+        c.native_deps = NativeDepsContract.for_scalo_extras(["kafka"], "debian:bookworm-slim")
         df = generate_dockerfile(c)
         assert "bookworm main" in df
 
@@ -239,7 +239,7 @@ class TestGenerateDockerfile:
 
     def test_dev_with_native_deps_includes_both(self):
         c = _full_contract()
-        c.native_deps = NativeDepsContract.for_pylib_extras(["kafka"], "ubuntu:24.04")
+        c.native_deps = NativeDepsContract.for_scalo_extras(["kafka"], "ubuntu:24.04")
         df = generate_dockerfile(c.with_dev_profile())
         assert "strace" in df
         assert "librdkafka1" in df
@@ -305,7 +305,7 @@ class TestGenerateContainerManifest:
         assert manifest["base_image"] == "python:3.12-slim"
         assert manifest["image_profile"] == "production"
         assert manifest["expose_ports"] == [9090]
-        assert manifest["healthcheck"]["path"] == "/healthz"
+        assert manifest["healthcheck"]["path"] == "/livez"
         assert manifest["healthcheck"]["port"] == 9090
         assert manifest["entrypoint"] == ["dfe-loader"]
         assert manifest["cmd"] == ["--config", "/etc/dfe/loader.yaml"]
@@ -313,7 +313,7 @@ class TestGenerateContainerManifest:
 
     def test_includes_native_deps_when_present(self):
         c = _full_contract()
-        c.native_deps = NativeDepsContract.for_pylib_extras(["kafka"], "ubuntu:24.04")
+        c.native_deps = NativeDepsContract.for_scalo_extras(["kafka"], "ubuntu:24.04")
         manifest = json.loads(generate_container_manifest(c))
         assert len(manifest["runtime_packages"]["apt_repos"]) == 1
         assert manifest["runtime_packages"]["apt_repos"][0]["url"].startswith("https://packages.confluent.io")
@@ -339,7 +339,7 @@ class TestGenerateComposeFragment:
         assert "clickhouse:" in text
         assert "condition: service_healthy" in text
         assert "loader.yaml:/etc/dfe/loader.yaml:ro" in text
-        assert "/healthz" in text
+        assert "/livez" in text
 
     def test_observability_port_exposed_not_published(self):
         # Publishing the observability port to the host partly undoes the
@@ -421,7 +421,7 @@ class TestGenerateChart:
         assert "DFE_LOADER__KAFKA__USERNAME" in text
         assert "DFE_LOADER__KAFKA__PASSWORD" in text
         assert "DFE_LOADER__CLICKHOUSE__PASSWORD" in text
-        assert "path: /healthz" in text
+        assert "path: /livez" in text
         assert "path: /readyz" in text
         assert "/etc/dfe" in text
 
@@ -550,13 +550,13 @@ class TestKedaContract:
 
 
 # -----------------------------------------------------------------------------
-# NativeDepsContract.for_pylib_extras
+# NativeDepsContract.for_scalo_extras
 # -----------------------------------------------------------------------------
 
 
 class TestNativeDepsForPylibExtras:
     def test_kafka_adds_confluent_repo(self):
-        deps = NativeDepsContract.for_pylib_extras(["kafka"], "ubuntu:24.04")
+        deps = NativeDepsContract.for_scalo_extras(["kafka"], "ubuntu:24.04")
         assert len(deps.apt_repos) == 1
         assert "confluent" in deps.apt_repos[0].url
         assert "librdkafka1" in deps.apt_repos[0].packages
@@ -565,20 +565,20 @@ class TestNativeDepsForPylibExtras:
         assert "zlib1g" in deps.apt_packages
 
     def test_no_extras_is_empty(self):
-        deps = NativeDepsContract.for_pylib_extras([], "ubuntu:24.04")
+        deps = NativeDepsContract.for_scalo_extras([], "ubuntu:24.04")
         assert deps.is_empty()
 
     def test_pure_python_extras_empty(self):
-        deps = NativeDepsContract.for_pylib_extras(["expression", "metrics"], "ubuntu:24.04")
+        deps = NativeDepsContract.for_scalo_extras(["expression", "metrics"], "ubuntu:24.04")
         assert deps.is_empty()
 
     def test_no_duplicate_packages(self):
-        deps = NativeDepsContract.for_pylib_extras(["kafka", "http", "secrets-aws"], "ubuntu:24.04")
+        deps = NativeDepsContract.for_scalo_extras(["kafka", "http", "secrets-aws"], "ubuntu:24.04")
         ssl_count = deps.apt_packages.count("libssl3")
         assert ssl_count == 1
 
     def test_bookworm_codename(self):
-        deps = NativeDepsContract.for_pylib_extras(["kafka"], "debian:bookworm-slim")
+        deps = NativeDepsContract.for_scalo_extras(["kafka"], "debian:bookworm-slim")
         assert deps.apt_repos[0].codename == "bookworm"
 
 
@@ -586,12 +586,12 @@ class TestNativeDepsForRustlibFeatures:
     """Polyglot path -- when a Python app re-binds a Rust core via PyO3."""
 
     def test_kafka_feature_adds_confluent(self):
-        deps = NativeDepsContract.for_rustlib_features(["transport-kafka"], "ubuntu:24.04")
+        deps = NativeDepsContract.for_scalo_features(["transport-kafka"], "ubuntu:24.04")
         assert len(deps.apt_repos) == 1
         assert "librdkafka1" in deps.apt_repos[0].packages
 
     def test_spool_adds_zstd(self):
-        deps = NativeDepsContract.for_rustlib_features(["spool"], "ubuntu:24.04")
+        deps = NativeDepsContract.for_scalo_features(["spool"], "ubuntu:24.04")
         assert "libzstd1" in deps.apt_packages
 
 
@@ -692,7 +692,7 @@ class TestGeneratorDeterminism:
 
     def test_dockerfile_deterministic(self):
         c = _full_contract()
-        c.native_deps = NativeDepsContract.for_pylib_extras(["kafka", "http"], "ubuntu:24.04")
+        c.native_deps = NativeDepsContract.for_scalo_extras(["kafka", "http"], "ubuntu:24.04")
         assert generate_dockerfile(c) == generate_dockerfile(c)
 
     def test_runtime_stage_deterministic(self):
@@ -800,7 +800,7 @@ class TestContractValidation:
         assert c.base_image == ""
         assert c.effective_base_image() == "python:3.12-slim"
         assert c.image_profile == ImageProfile.PRODUCTION
-        assert c.health.liveness_path == "/healthz"
+        assert c.health.liveness_path == "/livez"
         assert c.keda is None
         assert c.binary() == "minimal"  # falls back to app_name
 

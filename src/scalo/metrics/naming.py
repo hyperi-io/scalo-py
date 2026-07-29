@@ -92,7 +92,7 @@ def validate_metric_prefix(name: str, app: str = "", prefix: str | None = None) 
 def validate_dfe_prefix(name: str, app: str) -> list[str]:
     """Deprecated alias for :func:`validate_metric_prefix` (expects a ``dfe_`` prefix).
 
-    Retained for downstream callers migrating from hyperi-pylib; prefer
+    Retained for downstream callers migrating from the old hyperi-pylib; prefer
     ``validate_metric_prefix`` with an explicit ``prefix`` in new code.
     """
     return validate_metric_prefix(name, app, prefix="dfe")

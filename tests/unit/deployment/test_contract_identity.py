@@ -11,7 +11,7 @@
 Covers validators, the auto-detect classmethod, and the two serialisers
 (``as_dockerfile_labels``, ``as_yaml_annotations``). These tests define
 byte-equivalent output that the cross-language parity test will verify
-against the shared golden fixture once rustlib lands its implementation.
+against the shared golden fixture once scalo-rs lands its implementation.
 """
 
 from __future__ import annotations

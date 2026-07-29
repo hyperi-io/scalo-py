@@ -52,8 +52,8 @@ class _ProbeApp(ServiceApp):
         self.observed = {}
         port = self._observability.bound_address[1]
         self.observed["port"] = port
-        self.observed["healthz"] = _get(port, "/healthz")
-        self.observed["startup"] = _get(port, "/health/startup")
+        self.observed["livez"] = _get(port, "/livez")
+        self.observed["started_flag"] = self.health().startup_response()
         self.observed["readyz_before"] = _get(port, "/readyz")
         self.health().set_ready()
         self.observed["readyz_after"] = _get(port, "/readyz")
@@ -66,10 +66,10 @@ def _run(app: ServiceApp, addr: str = "127.0.0.1:0") -> None:
 
 
 class TestServiceAppServesTheAdvertisedPort:
-    def test_healthz_answers_during_run(self):
+    def test_livez_answers_during_run(self):
         app = _ProbeApp()
         _run(app)
-        status, body = app.observed["healthz"]
+        status, body = app.observed["livez"]
         assert status == 200
         assert body["status"] == "alive"
 
@@ -84,12 +84,13 @@ class TestServiceAppServesTheAdvertisedPort:
     def test_startup_marked_before_service_runs(self):
         # ServiceApp calls health().set_started() before handing control to
         # run_service, so a startupProbe arriving during startup gets 200
-        # rather than a 503 that would restart the pod.
+        # rather than a 503 that would restart the pod. There is no startup
+        # ROUTE -- the probe targets /livez -- so assert the flag itself plus
+        # the endpoint that probe actually hits.
         app = _ProbeApp()
         _run(app)
-        status, body = app.observed["startup"]
-        assert status == 200
-        assert body["status"] == "started"
+        assert app.observed["started_flag"]["status"] == "started"
+        assert app.observed["livez"][0] == 200
 
     def test_port_is_closed_after_run(self):
         app = _ProbeApp()
@@ -97,7 +98,7 @@ class TestServiceAppServesTheAdvertisedPort:
         port = app.observed["port"]
         # Re-probing must now fail to connect -- the listener is gone.
         with pytest.raises(OSError):
-            _get(port, "/healthz")
+            _get(port, "/livez")
 
     def test_server_handle_released_after_run(self):
         app = _ProbeApp()
@@ -119,7 +120,7 @@ class TestAsyncService:
 
             async def run_service_async(self, config) -> None:
                 port = self._observability.bound_address[1]
-                self.observed = _get(port, "/healthz")
+                self.observed = _get(port, "/livez")
 
         app = _AsyncApp()
         _run(app)

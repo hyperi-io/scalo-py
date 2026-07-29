@@ -1,13 +1,13 @@
 #  Project:      scalo
 #  File:         src/scalo/resilience/circuit_breaker.py
-#  Purpose:      Circuit breaker matching rustlib Closed/Open/HalfOpen state machine
+#  Purpose:      Circuit breaker matching scalo-rs Closed/Open/HalfOpen state machine
 #  Language:     Python
 #
 #  License:      Apache-2.0
 #  Copyright:    (c) 2026 HYPERI PTY LIMITED
 
 """
-Circuit breaker matching rustlib ``src/resilience/circuit_breaker.rs``.
+Circuit breaker matching scalo-rs ``src/resilience/circuit_breaker.rs``.
 
 State machine:
     CLOSED -> OPEN:      consecutive_failures >= failure_threshold
@@ -30,7 +30,7 @@ from typing import Iterator
 
 
 class CircuitState(StrEnum):
-    """Circuit breaker states matching rustlib."""
+    """Circuit breaker states matching scalo-rs."""
 
     CLOSED = "closed"
     OPEN = "open"

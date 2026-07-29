@@ -216,7 +216,7 @@ class TestNoSyncInAsync:
                 )
 
     def test_no_new_sync_in_async(self):
-        """Every async-def in pylib is free of blocking calls except for
+        """Every async-def in scalo-py is free of blocking calls except for
         entries explicitly in KNOWN_UNFIXED."""
         by_file = _all_findings()
         new_findings: dict[str, list[tuple[int, str]]] = {}

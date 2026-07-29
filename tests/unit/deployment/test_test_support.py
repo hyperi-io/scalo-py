@@ -260,8 +260,8 @@ def test_kind_cluster_guard_name_is_hashed_from_test_name() -> None:
     from scalo.deployment.test_support import KindClusterGuard
 
     g = KindClusterGuard(test_name="test_foo")
-    assert g.name.startswith("pylib-e2e-")
-    assert len(g.name.removeprefix("pylib-e2e-")) == 12  # 12-char hash slice
+    assert g.name.startswith("scalo-py-e2e-")
+    assert len(g.name.removeprefix("scalo-py-e2e-")) == 12  # 12-char hash slice
 
 
 def test_kind_cluster_guard_same_test_name_same_cluster() -> None:

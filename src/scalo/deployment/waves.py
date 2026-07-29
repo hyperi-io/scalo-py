@@ -1,6 +1,6 @@
 # Project:   scalo
 # File:      deployment/waves.py
-# Purpose:   Shared ArgoCD sync-wave constants (mirrors hyperi-rustlib)
+# Purpose:   Shared ArgoCD sync-wave constants (mirrors scalo-rs)
 # Language:  Python
 #
 # License:   Apache-2.0
@@ -18,7 +18,7 @@ slot custom waves (e.g. ``-15`` for "between operators and CRDs",
 bands where possible -- operators install order is genuinely
 dependency-driven.
 
-Mirrors ``hyperi_rustlib::deployment::waves`` for byte-level
+Mirrors ``scalo::deployment::waves`` for byte-level
 cross-language parity. The numeric values match.
 """
 

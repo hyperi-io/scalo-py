@@ -52,7 +52,7 @@ miss it and K8s SIGKILLs the process.
 |---|-------|--------|-------------|
 | 1 | K8s | Sends SIGTERM to PID 1 | -- |
 | 2 | K8s | Removes pod from Endpoints (eventual; ~5s) | -- |
-| 3 | App | Flips `/health/ready` to 503 | `health.set_ready(False)` |
+| 3 | App | Flips `/readyz` to 503 | `health.set_ready(False)` |
 | 4 | App | Waits for in-flight requests to drain | `asyncio.sleep(preStop_delay)` |
 | 5 | App | Closes downstreams in parallel | `gather_with_timeouts(...)` |
 | 6 | App | Process exits | `sys.exit(0)` |

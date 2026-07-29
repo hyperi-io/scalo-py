@@ -11,7 +11,7 @@ Parity tests for sensitive data masking using the shared fixture corpus.
 
 Loads scalo-spec/test-fixtures/masking-patterns.yaml and verifies that
 SensitiveDataFilter masks (or does not mask) each test case as specified.
-This corpus is shared with hyperi-rustlib to ensure identical masking
+This corpus is shared with scalo-rs to ensure identical masking
 behaviour across languages.
 """
 

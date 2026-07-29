@@ -12,7 +12,7 @@ ArgoCD project with restricted ``sourceRepos``, ``destinations``, and
 ``roles``. Consumer Applications reference the project via their
 ``spec.project`` field.
 
-Mirrors ``hyperi_rustlib::deployment::app_project`` for byte-level
+Mirrors ``scalo::deployment::app_project`` for byte-level
 cross-language parity.
 
 See the spec section 3.5 in

@@ -1,6 +1,6 @@
 #  Project:      scalo
 #  File:         test_scaling_pressure.py
-#  Purpose:      Tests for scaling pressure calculator matching rustlib
+#  Purpose:      Tests for scaling pressure calculator matching scalo-rs
 #  Language:     Python
 #
 #  License:      Apache-2.0

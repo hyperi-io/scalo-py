@@ -1,0 +1,26 @@
+# Project:   scalo
+# File:      .hadolint.yaml
+# Purpose:   Dockerfile lint configuration
+# Language:  YAML
+#
+# License:   Apache-2.0
+# Copyright: (c) 2026 HYPERI PTY LIMITED
+
+ignored:
+  # DL3022 -- "`COPY --from` should reference a previously defined `FROM` alias".
+  # The deployment contract emits the builder and runtime stages as SEPARATE
+  # files, and CI concatenates them. Linting the runtime fragment on its own
+  # cannot see the `builder` alias that the builder fragment defines, so this
+  # fires on every generated runtime stage and never means anything. Composed
+  # Dockerfiles in the consumer apps do define the alias.
+  - DL3022
+
+  # DL3008 -- "Pin versions in apt get install".
+  # Deliberately not pinned. The generated runtime stage installs base security
+  # packages (ca-certificates, curl, netcat-openbsd, iputils-ping) from Debian
+  # slim, where pinning is actively harmful: Debian drops superseded versions
+  # from the archive, so a pinned build starts failing the moment a package is
+  # rotated, and a pin holds the image on a CVE-carrying version until someone
+  # notices. Reproducibility comes from the digest-pinned base image, not from
+  # apt pins.
+  - DL3008

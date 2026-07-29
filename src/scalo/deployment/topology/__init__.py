@@ -11,7 +11,7 @@
 Cross-language data type describing which apps + third-party charts compose
 into a deployable HyperI stack. Consumed by ``hyperi-ci stitch`` to
 generate umbrella Helm charts; mirrored in
-``hyperi_rustlib::deployment::topology`` for Rust consumers.
+``scalo::deployment::topology`` for Rust consumers.
 
 This module is opt-in via the parent ``[deployment]`` extra; the gate
 follows the same pattern as ``scalo.deployment`` itself.

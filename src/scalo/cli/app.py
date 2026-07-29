@@ -9,7 +9,7 @@
 """service application framework.
 
 Provides the standard CLI lifecycle for Python services, mirroring
-hyperi-rustlib's cli::app module. Apps subclass ``ServiceApp`` and get standard
+scalo-rs's cli::app module. Apps subclass ``ServiceApp`` and get standard
 subcommands (``run``, ``version``, ``config-check``) and common flags
 (``--config``, ``--log-level``, ``--verbose``, ``--quiet``) for free.
 
@@ -59,7 +59,7 @@ __all__ = [
 class CommonArgs:
     """Standard CLI arguments for services.
 
-    Mirrors rustlib's ``CommonArgs`` struct. Populated from Typer callback
+    Mirrors scalo-rs's ``CommonArgs`` struct. Populated from Typer callback
     parameters and provides integration methods for logger and config setup.
     """
 
@@ -286,7 +286,7 @@ class ServiceApp(ABC):
         emits nothing. Apps that don't ship as containers can leave it as
         None.
 
-        Mirrors rustlib's ``ServiceApp::deployment_contract()`` trait hook.
+        Mirrors scalo-rs's ``ServiceApp::deployment_contract()`` trait hook.
         """
         return None
 
@@ -476,7 +476,7 @@ def _handle_run(service_app: ServiceApp, args: CommonArgs) -> None:
             logger.info(
                 "observability listening",
                 addr=f"{bound[0]}:{bound[1]}" if bound else args.metrics_addr,
-                paths="/metrics /healthz /readyz",
+                paths="/metrics /livez /readyz",
             )
 
         service_app.health().set_started()
@@ -519,7 +519,7 @@ def _handle_config_check(service_app: ServiceApp, args: CommonArgs) -> None:
         if not args.quiet:
             config_path = args.config or "(defaults)"
             print()
-            # Key-value summary to stderr (matching rustlib format)
+            # Key-value summary to stderr (matching scalo-rs format)
             _print_kv("service", service_app.name)
             _print_kv("config", config_path)
             _print_kv("log_level", args.effective_log_level())
@@ -537,7 +537,7 @@ def _handle_config_check(service_app: ServiceApp, args: CommonArgs) -> None:
 def _handle_generate_artefacts(service_app: ServiceApp, output_dir: str) -> None:
     """Handle the 'generate-artefacts' subcommand.
 
-    Mirrors rustlib's ``generate_artefacts`` CLI command: writes
+    Mirrors scalo-rs's ``generate_artefacts`` CLI command: writes
     ``deployment-contract.json``, ``container-manifest.json``,
     ``Dockerfile.runtime``, and ``argocd-application.yaml`` into ``output_dir``
     based on the app's ``deployment_contract()`` return value.
@@ -602,7 +602,7 @@ def _is_async_overridden(service_app: ServiceApp) -> bool:
 
 
 def _print_kv(key: str, value: str) -> None:
-    """Print a key-value pair in rustlib format."""
+    """Print a key-value pair in scalo-rs format."""
     print(f"  {key:<16} {value}", file=sys.stderr)
 
 

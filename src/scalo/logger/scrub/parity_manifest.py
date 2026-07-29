@@ -8,19 +8,19 @@
 
 """Emit a parity manifest of the scrubber's supported surface.
 
-Spec §11 requires that scalo and hyperi-rustlib produce
+Spec §11 requires that scalo and scalo-rs produce
 identical scrubbing outputs and identical observability surfaces.
 This module collects a JSON document listing every metric name,
 every loaded rule ID, every skipped rule ID, every validator
 label, and every config knob this implementation supports.
 
-The corresponding rustlib entry point will emit the same shape.
+The corresponding scalo-rs entry point will emit the same shape.
 A CI job in scalo-spec diffs the two manifests; any divergence
 fails the CI run and blocks releases.
 
 Usage:
 
-    python -m scalo.logger.scrub.parity_manifest > pylib.json
+    python -m scalo.logger.scrub.parity_manifest > scalo-py.json
 
 Or programmatically::
 

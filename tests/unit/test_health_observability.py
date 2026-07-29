@@ -91,7 +91,7 @@ class TestParseAddr:
 class TestProbeSemantics:
     def test_liveness_alive_before_ready(self, server):
         _, _, port = server
-        status, body, ctype = _get(port, "/healthz")
+        status, body, ctype = _get(port, "/livez")
         assert status == 200
         assert body["status"] == "alive"
         assert ctype.startswith("application/json")
@@ -104,11 +104,15 @@ class TestProbeSemantics:
         assert status == 200
         assert body["status"] == "ready"
 
-    def test_startup_503_until_set_started(self, server):
+    def test_startup_state_is_not_served_as_a_route(self, server):
+        """Startup state still exists on the manager; it has no endpoint.
+
+        A startupProbe targets /livez -- Kubernetes suspends liveness until it
+        passes, so one path covers both without the two drifting apart.
+        """
         _, health, port = server
-        assert _get(port, "/health/startup")[0] == 503
         health.set_started()
-        assert _get(port, "/health/startup")[0] == 200
+        assert _get(port, "/livez")[0] == 200
 
     def test_failing_ready_check_keeps_503(self, server):
         _, health, port = server
@@ -150,25 +154,38 @@ class TestProbeSemantics:
         health.register_ready_check("hung", lambda: time.sleep(30) or True, per_check_timeout=0.5)
         _get(port, "/readyz")
         # Liveness is unaffected by a stuck readiness check.
-        assert _get(port, "/healthz")[0] == 200
+        assert _get(port, "/livez")[0] == 200
 
 
-class TestCanonicalPathsAndAliases:
-    @pytest.mark.parametrize("path", ["/healthz", "/health/live"])
-    def test_liveness_paths(self, server, path: str):
+class TestCanonicalPaths:
+    def test_liveness_path(self, server):
         _, _, port = server
-        assert _get(port, path)[0] == 200
+        assert _get(port, "/livez")[0] == 200
 
-    @pytest.mark.parametrize("path", ["/readyz", "/health/ready"])
-    def test_readiness_paths(self, server, path: str):
+    def test_readiness_path(self, server):
         _, health, port = server
         health.set_ready()
-        assert _get(port, path)[0] == 200
+        assert _get(port, "/readyz")[0] == 200
+
+    @pytest.mark.parametrize(
+        "path",
+        ["/healthz", "/health/live", "/health/ready", "/health/startup", "/startupz"],
+    )
+    def test_retired_paths_404(self, server, path: str):
+        """Retired paths are GONE, not quietly still answering.
+
+        An alias that keeps returning 200 hides a probe still aimed at the old
+        name, which is how a chart/app mismatch survives unnoticed.
+        """
+        _, health, port = server
+        health.set_ready()
+        health.set_started()
+        assert _get(port, path)[0] == 404
 
     def test_trailing_slash_and_query_tolerated(self, server):
         _, _, port = server
-        assert _get(port, "/healthz/")[0] == 200
-        assert _get(port, "/healthz?verbose=1")[0] == 200
+        assert _get(port, "/livez/")[0] == 200
+        assert _get(port, "/livez?verbose=1")[0] == 200
 
     def test_unknown_path_404s(self, server):
         _, _, port = server
@@ -293,7 +310,7 @@ class TestLifecycle:
     def test_context_manager_releases_port(self):
         with ObservabilityServer(HealthManager(), None, LOCAL) as srv:
             port = srv.bound_address[1]
-            assert _get(port, "/healthz")[0] == 200
+            assert _get(port, "/livez")[0] == 200
         assert not srv.is_running
         # Port is free again -- rebinding it explicitly must succeed.
         again = ObservabilityServer(HealthManager(), None, f"127.0.0.1:{port}")

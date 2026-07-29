@@ -14,7 +14,7 @@ than hard-coding them in a per-country class.
 
 Spec §3.4 and §9.2 describe the entry shape. See
 ``src/scalo/data/national_ids.toml`` for the canonical
-registry shipped with pylib.
+registry shipped with scalo-py.
 """
 
 from __future__ import annotations

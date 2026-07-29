@@ -8,7 +8,7 @@
 
 """CLI error types for service applications.
 
-Mirrors the error hierarchy from hyperi-rustlib's cli::error module.
+Mirrors the error hierarchy from scalo-rs's cli::error module.
 Each variant maps to a specific lifecycle failure mode.
 """
 

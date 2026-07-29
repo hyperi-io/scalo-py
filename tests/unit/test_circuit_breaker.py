@@ -1,6 +1,6 @@
 #  Project:      scalo
 #  File:         tests/unit/test_circuit_breaker.py
-#  Purpose:      Tests for circuit breaker matching rustlib state machine
+#  Purpose:      Tests for circuit breaker matching scalo-rs state machine
 #  Language:     Python
 #
 #  License:      Apache-2.0

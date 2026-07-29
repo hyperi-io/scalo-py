@@ -10,9 +10,9 @@
 """Reusable test infrastructure for the deployment-contract e2e suite.
 
 Consumers import these helpers from their own ``tests/e2e/`` modules. The
-canonical pylib template lives at ``tests/e2e/test_contract_artefacts.py``.
+canonical scalo-py template lives at ``tests/e2e/test_contract_artefacts.py``.
 
-Mirrors ``hyperi_rustlib::deployment::test_support`` once that lands;
+Mirrors ``scalo::deployment::test_support`` once that lands;
 both implementations emit the same ``HYPERCI-SKIP[contract-e2e][...]:``
 prefix so the hyperi-ci runner can aggregate skip counts uniformly.
 
@@ -352,7 +352,7 @@ class KindClusterGuard:
 
     def __post_init__(self) -> None:
         digest = hashlib.sha256(self.test_name.encode("utf-8")).hexdigest()[:12]
-        self.name = f"pylib-e2e-{digest}"
+        self.name = f"scalo-py-e2e-{digest}"
 
     def __enter__(self) -> KindClusterGuard:
         if not (kind_available() and kubectl_available() and tier_b_enabled()):

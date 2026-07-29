@@ -64,7 +64,7 @@ ALL configuration automatically follows this priority (highest to lowest):
 
     Prefix customizable via: ENV_PREFIX=MYAPP
 
-**Multi-File Discovery (matches rustlib):**
+**Multi-File Discovery (matches scalo-rs):**
 
     For each config layer (defaults, settings, settings.{env}), files are
     searched across these locations (all merged, later overrides earlier):
@@ -531,7 +531,7 @@ APP_NAME = get_app_name()
 def get_app_env() -> str:
     """Get application environment with proper priority.
 
-    Priority order (matches rustlib):
+    Priority order (matches scalo-rs):
     1. APP_ENV environment variable
     2. ENVIRONMENT environment variable
     3. ENV environment variable
@@ -576,7 +576,7 @@ def _find_config_files(base_name: str) -> list[str]:
     5. Mount config dir (from environment detection)
 
     Both .yaml and .yml extensions are checked (.yaml first).
-    Matches rustlib's find_config_files() search order.
+    Matches scalo-rs's find_config_files() search order.
     """
     found = []
     search_dirs = [
@@ -612,7 +612,7 @@ def _find_config_files(base_name: str) -> list[str]:
 
 
 # Build settings file list using multi-layer discovery
-# Matches rustlib cascade: defaults.yaml (layer 7), settings.yaml (layer 6),
+# Matches scalo-rs cascade: defaults.yaml (layer 7), settings.yaml (layer 6),
 # settings.{env}.yaml (layer 5) -- all merged, later layers override earlier
 settings_files = []
 
@@ -1028,7 +1028,7 @@ def get_logging_config():
         log_level = logging_config.get("level", "INFO")
 
     # LOG_FORMAT: Output format (auto, json, text, console, logfmt)
-    # "auto" detects JSON in containers, text in terminals (matches rustlib)
+    # "auto" detects JSON in containers, text in terminals (matches scalo-rs)
     log_format = os.getenv("LOG_FORMAT")
     if not log_format:
         log_format = logging_config.get("format", "auto")

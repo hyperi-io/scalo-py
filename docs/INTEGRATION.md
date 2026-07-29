@@ -130,8 +130,8 @@ async def db_ok() -> bool:
 health.register_ready_check("postgres", db_ok)
 ```
 
-That gives you `/health/live`, `/health/ready`, and `/health/startup`
-with K8s-shaped responses (200 / 503).
+That gives you `/livez` and `/readyz` with K8s-shaped responses (200 / 503).
+Aim a `startupProbe` at `/livez` -- there is no separate startup path.
 
 See [core-pillars/HEALTH.md](core-pillars/HEALTH.md).
 

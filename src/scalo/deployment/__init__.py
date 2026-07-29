@@ -8,7 +8,7 @@
 
 """Deployment contract and artefact generation for Python apps.
 
-pylib is the Tier-2 producer of the HyperI deployment contract (rustlib is
+scalo-py is the Tier-2 producer of the HyperI deployment contract (scalo-rs is
 Tier 1 for Rust). The serialised JSON stays schema-compatible across both, but
 artefact *generation* here is Python-native (uv venv runtime stage,
 console-script entrypoint, ``python:*-slim`` base) -- it does not emit Rust

@@ -64,7 +64,7 @@ def build_scrubber(
     Composes layers in spec §2.1 order -- L1 -> L2 -> L3 -- including only
     those layers enabled by the config. There is no L4: NLP/NER
     scrubbing was dropped from scope (false-positive rate on log
-    content was unacceptable; both pylib and rustlib stop at L3).
+    content was unacceptable; both scalo-py and scalo-rs stop at L3).
 
     Args:
         config: scrubber configuration. ``None`` means use the canonical

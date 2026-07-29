@@ -10,7 +10,7 @@
 Scaling pressure calculator for KEDA autoscaling.
 
 Calculates a composite 0-100 pressure score from weighted component
-saturations, matching rustlib's ``src/scaling/pressure.rs`` gate logic.
+saturations, matching scalo-rs's ``src/scaling/pressure.rs`` gate logic.
 
 Quick start::
 

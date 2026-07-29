@@ -227,13 +227,16 @@ runs, and serves:
 | Path | Purpose | On failure |
 |---|---|---|
 | `/metrics` | Prometheus scrape | - |
-| `/healthz` | Liveness - process not deadlocked | Restart pod |
+| `/livez` | Liveness - process not deadlocked | Restart pod |
 | `/readyz` | Readiness - deps healthy + ready flag set | Stop routing traffic |
 
-`/health/live` and `/health/ready` are kept as aliases, plus
-`/health/startup`; point new manifests at the `*z` names. Startup
-deliberately has no path of its own - the standard aims `startupProbe` at
-the liveness path so the two cannot drift apart.
+Those two are the whole surface - there are no aliases. A second path meaning
+the same thing eventually stops meaning the same thing, and an alias that keeps
+answering 200 hides a probe still aimed at a retired name.
+
+Startup has no path of its own: aim `startupProbe` at `/livez`. Kubernetes
+suspends liveness until the startup probe passes, so one path gives both a
+generous boot budget and a tight liveness period without the two drifting.
 
 This is a **separate port from your application's**, on purpose: exposing
 user traffic must never expose the operator surface. Probe the

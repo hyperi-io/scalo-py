@@ -23,7 +23,7 @@ Hash algorithm: BLAKE2b keyed with ``secret_hash_key``,
 ``digest_size=4`` (8 hex chars), truncated to 6 hex chars per spec.
 BLAKE2b is in the Python stdlib (``hashlib.blake2b``) and has a Rust
 counterpart in the RustCrypto ``blake2`` crate -- chosen over BLAKE3
-to avoid a build-time Rust-wheel dep in pylib for what is functionally
+to avoid a build-time Rust-wheel dep in scalo-py for what is functionally
 a short-label hash.
 """
 

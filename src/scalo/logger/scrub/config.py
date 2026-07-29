@@ -117,8 +117,8 @@ class PiiConfig:
 
     Note: there is no Layer 4 (NLP/NER). Earlier drafts of the spec
     described an opt-in spaCy backend for unstructured entities
-    (PERSON / LOCATION / ORG). That layer was dropped -- both pylib and
-    rustlib -- because the false-positive rate on log content is
+    (PERSON / LOCATION / ORG). That layer was dropped -- both scalo-py and
+    scalo-rs -- because the false-positive rate on log content is
     unacceptable and the cost (5-200ms/call) is incompatible with
     structured-logging budgets. PII detection in HyperI services is
     L3 algorithmic + L1 secrets, full stop.

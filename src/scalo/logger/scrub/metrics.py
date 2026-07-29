@@ -8,7 +8,7 @@
 
 """Metric emission per spec §8.
 
-Five metrics, identical names in both pylib and rustlib so operator
+Five metrics, identical names in both scalo-py and scalo-rs so operator
 dashboards work across implementations:
 
 - ``log_scrub_matches_total`` -- counter, labels ``layer``/``type``

@@ -9,8 +9,8 @@
 """Tests for the parity manifest emitter.
 
 The manifest is the contract surface that scalo-spec's CI diffs
-between pylib and rustlib. The tests here lock the manifest shape so
-unintentional drift in pylib's output gets caught locally before it
+between scalo-py and scalo-rs. The tests here lock the manifest shape so
+unintentional drift in scalo-py's output gets caught locally before it
 reaches the cross-language gate.
 """
 
@@ -36,7 +36,7 @@ class TestManifestShape:
 
     def test_top_level_keys(self, m):
         # The keys here ARE the contract. Adding a new top-level key
-        # requires a spec amendment in both pylib and rustlib.
+        # requires a spec amendment in both scalo-py and scalo-rs.
         assert set(m.keys()) == {
             "implementation",
             "language",

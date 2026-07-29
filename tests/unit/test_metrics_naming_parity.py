@@ -13,7 +13,7 @@ Loads scalo-spec/test-fixtures/metrics-naming.yaml and verifies that
 validate_metric_name() and validate_dfe_prefix() accept valid names
 and warn on invalid names as specified.
 
-This corpus is shared with hyperi-rustlib to ensure identical naming
+This corpus is shared with scalo-rs to ensure identical naming
 validation behaviour across languages.
 """
 

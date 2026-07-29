@@ -31,7 +31,7 @@ USER appuser
 EXPOSE 8000
 
 HEALTHCHECK --interval=30s --timeout=3s --start-period=5s --retries=3 \
-    CMD curl -sf http://localhost:8000/healthz > /dev/null || exit 1
+    CMD curl -sf http://localhost:8000/livez > /dev/null || exit 1
 
 ENTRYPOINT ["dfe-api"]
 CMD ["run"]
