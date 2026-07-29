@@ -67,8 +67,12 @@ from scalo.deployment.test_support import (
     wait_until,
 )
 
-# Pinned ArgoCD upstream tag for Tier B install. Update intentionally.
-ARGOCD_INSTALL_MANIFEST = "https://raw.githubusercontent.com/argoproj/argo-cd/v2.13.1/manifests/install.yaml"
+# Pinned ArgoCD upstream tag for Tier B install. Update intentionally -- but do
+# update: this sat on v2.13.1 while ArgoCD went to 3.x, so the manifests the
+# Application resources were validated against were two majors behind anything
+# a cluster would run.
+# renovate: datasource=github-releases depName=argoproj/argo-cd
+ARGOCD_INSTALL_MANIFEST = "https://raw.githubusercontent.com/argoproj/argo-cd/v3.4.5/manifests/install.yaml"
 
 # A public canary image used in Tier B helm-install (no registry creds needed).
 PUBLIC_CANARY_IMAGE_REPO = "public.ecr.aws/docker/library/nginx"
@@ -101,7 +105,7 @@ def _make_contract(app_name: str = "scalo-py-e2e-app") -> DeploymentContract:
         description="scalo-py deployment contract e2e canary",
         metrics_port=9090,
         health=HealthContract(),
-        env_prefix="PYLIB_E2E",
+        env_prefix="SCALO_E2E",
         metric_prefix="scalo_py_e2e",
         config_mount_path=f"/etc/{app_name}.yaml",
         image_registry="ghcr.io/hyperi-io",
