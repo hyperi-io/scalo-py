@@ -231,7 +231,7 @@ status = await sm.health_check()
 ```
 
 Wire this into `health.register_ready_check(...)` to surface secrets-backend
-outages in `/health/ready`.
+outages in `/readyz`.
 
 ---
 

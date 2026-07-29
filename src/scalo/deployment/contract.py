@@ -90,11 +90,17 @@ class OciLabels(BaseModel):
 
 
 class HealthContract(BaseModel):
-    """Health probe endpoint paths."""
+    """Health probe endpoint paths.
+
+    There is no startup path. A ``startupProbe`` targets ``liveness_path``:
+    Kubernetes suspends liveness until the startup probe passes, so one path
+    gives both a generous boot budget and a tight liveness period without the
+    two drifting apart.
+    """
 
     model_config = ConfigDict(extra="forbid")
 
-    liveness_path: str = "/healthz"
+    liveness_path: str = "/livez"
     readiness_path: str = "/readyz"
     metrics_path: str = "/metrics"
 

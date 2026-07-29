@@ -153,13 +153,13 @@ async def get_user(user_id: int):
 
 
 @app.get("/health")
-@app.get("/health/live")
+@app.get("/livez")
 async def health_live():
     """Liveness probe - is the process alive?"""
     return {"status": "alive"}
 
 
-@app.get("/health/ready")
+@app.get("/readyz")
 async def health_ready():
     """Readiness probe - can we handle traffic?"""
     # In a real app, check database connections, etc.

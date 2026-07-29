@@ -27,16 +27,24 @@ itself is sync or async, and cannot block the event loop.
 Paths served::
 
     GET /metrics        Prometheus text (404 when no metrics manager)
-    GET /healthz        liveness   (200 alive / 503 not)
+    GET /livez          liveness   (200 alive / 503 not)
     GET /readyz         readiness  (200 ready / 503 not)
-    GET /health/live    alias of /healthz
-    GET /health/ready   alias of /readyz
-    GET /health/startup startup    (200 started / 503 starting)
 
-``/healthz`` and ``/readyz`` are canonical -- the ``*z`` suffix keeps probe
-routes visually distinct from application routes, and scalo-rs serves the
-same names. The ``/health/*`` forms are kept as sanctioned aliases so
-existing charts keep working.
+These three are the whole surface. There are no aliases: a second path meaning
+the same thing eventually stops meaning the same thing, and an alias that keeps
+answering 200 hides a probe still pointed at the old name.
+
+The ``*z`` suffix keeps probe routes visually distinct from application routes,
+and scalo-rs serves the same names. ``/livez`` and ``/readyz`` follow the
+Kubernetes API server and etcd convention.
+
+There is no startup path. A ``startupProbe`` targets ``/livez`` -- Kubernetes
+suspends liveness until the startup probe passes, so one path gives both a
+generous boot budget and a tight liveness period without the two drifting.
+
+Liveness answers "is this process wedged" and MUST NOT check dependencies:
+restarting will not fix someone else's datastore, it just destroys warm state
+mid-outage. Dependency checks belong in readiness.
 
 Usage::
 
@@ -64,13 +72,9 @@ from .manager import HealthManager
 DEFAULT_OBSERVABILITY_ADDR = "0.0.0.0:9090"
 """Default bind address -- matches ``ServiceApp``'s ``--metrics-addr``."""
 
-LIVENESS_PATH = "/healthz"
+LIVENESS_PATH = "/livez"
 READINESS_PATH = "/readyz"
 METRICS_PATH = "/metrics"
-
-LIVENESS_ALIASES = ("/health/live",)
-READINESS_ALIASES = ("/health/ready",)
-STARTUP_PATHS = ("/health/startup",)
 
 _JSON = "application/json"
 
@@ -272,13 +276,10 @@ def _make_handler(health: HealthManager, metrics: Any | None) -> type[BaseHTTPRe
 
             if path == METRICS_PATH:
                 self._metrics()
-            elif path == LIVENESS_PATH or path in LIVENESS_ALIASES:
+            elif path == LIVENESS_PATH:
                 self._probe(_run(health.liveness_response_async()), "alive")
-            elif path == READINESS_PATH or path in READINESS_ALIASES:
+            elif path == READINESS_PATH:
                 self._probe(_run(health.readiness_response_async()), "ready")
-            elif path in STARTUP_PATHS:
-                # Startup is a plain flag read -- no checks, nothing to time out.
-                self._probe(health.startup_response(), "started")
             else:
                 self._send(404, b'{"error":"not found"}', _JSON)
 

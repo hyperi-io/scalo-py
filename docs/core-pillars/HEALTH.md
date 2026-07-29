@@ -2,9 +2,8 @@
 
 Kubernetes-style probe endpoints with three-state semantics. Instantiate
 `HealthManager`, register downstream checks, mount the FastAPI router,
-and the service exposes `/health/live`, `/health/ready`, and
-`/health/startup` -- each returning a 200 JSON body when healthy and a
-503 with check details when not. The manager itself is pure Python and
+and the service exposes `/livez` and `/readyz` -- each returning a 200 JSON
+body when healthy and a 503 with check details when not. The manager itself is pure Python and
 has no external dependencies; the router factory imports FastAPI
 lazily so the core module installs without it.
 
@@ -31,9 +30,9 @@ health.set_ready()
 
 | Probe | Path | 200 when | 503 when | Purpose |
 |-------|------|----------|----------|---------|
-| Liveness | `/health/live` | All registered liveness checks pass (or none registered) | A check returns false or raises | K8s restarts the pod |
-| Readiness | `/health/ready` | `set_ready()` called AND all readiness checks pass | Either gate fails | K8s removes pod from Service |
-| Startup | `/health/startup` | `set_started()` called | Not yet called | K8s defers liveness checks |
+| Liveness | `/livez` | All registered liveness checks pass (or none registered) | A check returns false or raises | K8s restarts the pod |
+| Readiness | `/readyz` | `set_ready()` called AND all readiness checks pass | Either gate fails | K8s removes pod from Service |
+| Startup | none -- probe `/livez` | -- | -- | K8s defers liveness until it passes |
 
 Liveness defaults to "alive" when no checks are registered -- the
 process is running, that's enough. Readiness defaults to NOT ready
@@ -66,18 +65,20 @@ broken check never takes the probe with it.
 
 ## Paths
 
-`/healthz` and `/readyz` are canonical. The `*z` suffix is the
+`/livez` and `/readyz` are canonical. The `*z` suffix is the
 convention, chosen so probe routes stay visually distinct from
 application routes, and scalo-rs serves the same names.
 
-`/health/live` and `/health/ready` remain as sanctioned aliases so
-existing charts keep working. Both the observability server and the
-FastAPI router serve the canonical names and the aliases.
+`/livez` and `/readyz` are the whole surface -- **there are no aliases**.
+Both the observability server and the FastAPI router serve exactly these
+two, and every retired path returns 404. That is deliberate: an alias
+that keeps answering 200 hides a probe still aimed at the old name, which
+is how a chart and an app drift apart without anyone noticing.
 
-There is deliberately **no canonical startup path**. The standard
-points `startupProbe` at the liveness path so the two cannot drift
-apart; `/health/startup` still answers, but do not aim new manifests
-at it.
+There is **no startup path**. Aim `startupProbe` at the liveness path --
+Kubernetes suspends liveness until the startup probe passes, so one path
+gives both a generous boot budget and a tight liveness period without the
+two drifting apart.
 
 ## K8s probe spec
 
@@ -88,7 +89,7 @@ expose the operator surface.
 ```yaml
 livenessProbe:
   httpGet:
-    path: /healthz
+    path: /livez
     port: metrics       # the observability port (9090), NOT http
   initialDelaySeconds: 30
   periodSeconds: 10
@@ -106,7 +107,7 @@ readinessProbe:
 
 startupProbe:
   httpGet:
-    path: /healthz      # reuses liveness, by design
+    path: /livez      # reuses liveness, by design
     port: metrics
   periodSeconds: 5
   failureThreshold: 30      # 30 * 5s = 150s max startup
@@ -123,7 +124,7 @@ Two shapes, and the first is the one you want.
 
 **Dedicated observability port (recommended).** `ServiceApp` binds
 `--metrics-addr` (default `0.0.0.0:9090`) during `run` and serves
-`/metrics`, `/healthz` and `/readyz` there. Register checks and flip
+`/metrics`, `/livez` and `/readyz` there. Register checks and flip
 readiness on the manager it hands you, or `/readyz` will report
 something the service does not mean:
 

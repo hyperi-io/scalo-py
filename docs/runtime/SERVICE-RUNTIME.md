@@ -65,7 +65,7 @@ info("Service starting", version="2.28.3", config_dir=str(paths.config_dir))
 m = create_metrics("my_service")
 requests = m.counter("requests_total", "Total requests", ["method", "status"])
 
-# 5. Health -- /health/live, /health/ready, /health/startup
+# 5. Health -- /livez and /readyz
 health = HealthManager()
 app = FastAPI()
 app.include_router(create_health_router(health))

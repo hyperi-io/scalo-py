@@ -476,7 +476,7 @@ def _handle_run(service_app: ServiceApp, args: CommonArgs) -> None:
             logger.info(
                 "observability listening",
                 addr=f"{bound[0]}:{bound[1]}" if bound else args.metrics_addr,
-                paths="/metrics /healthz /readyz",
+                paths="/metrics /livez /readyz",
             )
 
         service_app.health().set_started()

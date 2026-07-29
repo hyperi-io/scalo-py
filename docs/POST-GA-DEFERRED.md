@@ -94,7 +94,7 @@ flush). No code change needed; just a doc page.
 
 ## D6: FastAPI `response_model` on health endpoints
 
-**Issue:** `/health/live`, `/health/ready`, `/health/startup` return
+**Issue:** `/livez` and `/readyz` return
 `JSONResponse` with no Pydantic `response_model`. OpenAPI schema shows
 `object` for the response body.
 

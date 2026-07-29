@@ -7,11 +7,14 @@
 #  Copyright: (c) 2026 HYPERI PTY LIMITED
 
 """
-Health probe module for Kubernetes-style liveness, readiness, and startup checks.
+Health probe module for Kubernetes-style liveness and readiness checks.
 
 Provides a pure-Python ``HealthManager`` for tracking probe state, and a
-FastAPI router factory for exposing ``/health/live``, ``/health/ready``,
-``/health/startup`` endpoints with one line.
+FastAPI router factory for exposing ``/livez`` and ``/readyz`` with one line.
+
+Startup state lives on the manager (``set_started()``) but has no endpoint of
+its own: a ``startupProbe`` targets ``/livez``, since Kubernetes suspends
+liveness until the startup probe passes.
 
 Quick start::
 

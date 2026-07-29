@@ -73,8 +73,8 @@ duration.labels(endpoint="/api/users").observe(0.123)
 | Endpoint | Purpose | K8s Probe |
 |----------|---------|-----------|
 | `/health` | Basic liveness | livenessProbe |
-| `/health/live` | Process alive | livenessProbe |
-| `/health/ready` | Ready for traffic | readinessProbe |
+| `/livez` | Process alive | livenessProbe |
+| `/readyz` | Ready for traffic | readinessProbe |
 
 ## Environment Variables
 
@@ -95,11 +95,11 @@ spec:
       name: http
     livenessProbe:
       httpGet:
-        path: /health/live
+        path: /livez
         port: http
     readinessProbe:
       httpGet:
-        path: /health/ready
+        path: /readyz
         port: http
 ```
 

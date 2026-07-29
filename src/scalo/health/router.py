@@ -9,9 +9,9 @@
 """
 FastAPI router factory for Kubernetes health probes.
 
-Creates a router with ``/health/live``, ``/health/ready``, and
-``/health/startup`` endpoints. FastAPI is imported lazily so this
-module can be installed without requiring FastAPI at import time.
+Creates a router with ``/livez`` and ``/readyz`` endpoints. FastAPI is
+imported lazily so this module can be installed without requiring FastAPI
+at import time.
 
 Usage::
 
@@ -34,25 +34,29 @@ from .observability import LIVENESS_PATH, READINESS_PATH
 
 
 def create_health_router(manager: HealthManager | None = None) -> APIRouter:
-    """Create a FastAPI router with standard health probe endpoints.
+    """Create a FastAPI router with the standard health probe endpoints.
 
-    Canonical paths (these match scalo-rs and the deployment contract's
-    ``HealthContract`` defaults):
+    These match scalo-rs and the deployment contract's ``HealthContract``
+    defaults:
 
-    - ``GET /healthz`` - Liveness probe (200 if alive, 503 if not)
+    - ``GET /livez`` - Liveness probe (200 if alive, 503 if not)
     - ``GET /readyz`` - Readiness probe (200 if ready, 503 if not)
 
-    Sanctioned aliases, kept so existing charts keep working:
+    That is the whole surface -- there are no aliases. A second path meaning
+    the same thing eventually stops meaning the same thing, and an alias that
+    keeps answering 200 hides a probe still pointed at the old name.
 
-    - ``GET /health/live`` - alias of ``/healthz``
-    - ``GET /health/ready`` - alias of ``/readyz``
-    - ``GET /health/startup`` - startup probe (200 if started, 503 if not)
+    The ``*z`` suffix keeps probe routes visually distinct from application
+    routes, following the Kubernetes API server and etcd convention.
 
-    The ``*z`` suffix is the convention, chosen to keep probe routes
-    visually distinct from application routes. Startup deliberately has no
-    canonical path of its own -- the standard points ``startupProbe`` at the
-    liveness path so the two cannot drift apart -- so ``/health/startup``
-    remains available but is not the recommended target.
+    There is no startup route. Point a ``startupProbe`` at ``/livez``:
+    Kubernetes suspends liveness until the startup probe passes, so one path
+    gives both a generous boot budget and a tight liveness period without the
+    two drifting apart.
+
+    Liveness MUST NOT check dependencies -- restarting will not fix someone
+    else's datastore, it just destroys warm state mid-outage. Put dependency
+    checks in readiness.
 
     Prefer the dedicated observability port for these
     (:func:`scalo.health.serve_observability`); mounting them on the
@@ -81,7 +85,6 @@ def create_health_router(manager: HealthManager | None = None) -> APIRouter:
     router = APIRouter(tags=["health"])
 
     @router.get(LIVENESS_PATH)
-    @router.get("/health/live")
     async def liveness() -> JSONResponse:
         """Liveness probe -- is the process alive?
 
@@ -93,16 +96,9 @@ def create_health_router(manager: HealthManager | None = None) -> APIRouter:
         return JSONResponse(content=resp, status_code=status_code)
 
     @router.get(READINESS_PATH)
-    @router.get("/health/ready")
     async def readiness() -> JSONResponse:
         resp = await manager.readiness_response_async()
         status_code = 200 if resp["status"] == "ready" else 503
-        return JSONResponse(content=resp, status_code=status_code)
-
-    @router.get("/health/startup")
-    async def startup() -> JSONResponse:
-        resp = manager.startup_response()
-        status_code = 200 if resp["status"] == "started" else 503
         return JSONResponse(content=resp, status_code=status_code)
 
     return router

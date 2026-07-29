@@ -122,13 +122,18 @@ labels listed here come from the contract.
 
 | Field | Default | Purpose |
 |---|---|---|
-| `liveness_path` | `/healthz` | Used by Dockerfile `HEALTHCHECK` and Helm `livenessProbe` |
+| `liveness_path` | `/livez` | Used by Dockerfile `HEALTHCHECK` and Helm `livenessProbe` |
 | `readiness_path` | `/readyz` | Helm `readinessProbe` |
 | `metrics_path` | `/metrics` | Prometheus scrape annotation in `values.yaml` |
 
-The Helm `startupProbe` also points at `liveness_path` -- startup vs
-liveness shouldn't diverge for pylib services. `/startupz` is not a
-separate field; if you need it, alias it in your handler.
+The Helm `startupProbe` also points at `liveness_path`. There is no separate
+startup field and no `/startupz`: Kubernetes suspends liveness until the
+startup probe passes, so one path gives both a generous boot budget and a
+tight liveness period without the two drifting apart.
+
+These three paths are the whole surface. There are no aliases -- a retired
+path returns 404, deliberately, because an alias that keeps answering 200
+hides a probe still aimed at the old name.
 
 ---
 

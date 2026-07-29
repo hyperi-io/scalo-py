@@ -69,13 +69,13 @@ class TestHealthEndpoints:
 
     def test_health_live_returns_alive(self, client: TestClient) -> None:
         """Liveness probe should return alive status."""
-        response = client.get("/health/live")
+        response = client.get("/livez")
         assert response.status_code == 200
         assert response.json()["status"] == "alive"
 
     def test_health_ready_returns_ready(self, client: TestClient) -> None:
         """Readiness probe should return ready status."""
-        response = client.get("/health/ready")
+        response = client.get("/readyz")
         assert response.status_code == 200
         assert response.json()["status"] == "ready"
 

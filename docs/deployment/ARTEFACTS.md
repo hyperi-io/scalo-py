@@ -144,7 +144,7 @@ Shape:
   "image_profile": "production",
   "runtime_packages": { "apt_repos": [...], "apt_packages": [...] },
   "expose_ports": [9090, 8080],
-  "healthcheck": { "path": "/healthz", "port": 9090, "interval": "30s", ... },
+  "healthcheck": { "path": "/livez", "port": 9090, "interval": "30s", ... },
   "entrypoint": ["..."],
   "cmd": [...],
   "user": "appuser",

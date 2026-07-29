@@ -191,7 +191,7 @@ class TestGenerateDockerfile:
         assert "/app/target/release" not in df
         assert "userdel" not in df
         assert "EXPOSE 9090" in df
-        assert "localhost:9090/healthz" in df
+        assert "localhost:9090/livez" in df
         assert 'ENTRYPOINT ["dfe-loader"]' in df
         assert 'CMD ["--config", "/etc/dfe/loader.yaml"]' in df
 
@@ -305,7 +305,7 @@ class TestGenerateContainerManifest:
         assert manifest["base_image"] == "python:3.12-slim"
         assert manifest["image_profile"] == "production"
         assert manifest["expose_ports"] == [9090]
-        assert manifest["healthcheck"]["path"] == "/healthz"
+        assert manifest["healthcheck"]["path"] == "/livez"
         assert manifest["healthcheck"]["port"] == 9090
         assert manifest["entrypoint"] == ["dfe-loader"]
         assert manifest["cmd"] == ["--config", "/etc/dfe/loader.yaml"]
@@ -339,7 +339,7 @@ class TestGenerateComposeFragment:
         assert "clickhouse:" in text
         assert "condition: service_healthy" in text
         assert "loader.yaml:/etc/dfe/loader.yaml:ro" in text
-        assert "/healthz" in text
+        assert "/livez" in text
 
     def test_observability_port_exposed_not_published(self):
         # Publishing the observability port to the host partly undoes the
@@ -421,7 +421,7 @@ class TestGenerateChart:
         assert "DFE_LOADER__KAFKA__USERNAME" in text
         assert "DFE_LOADER__KAFKA__PASSWORD" in text
         assert "DFE_LOADER__CLICKHOUSE__PASSWORD" in text
-        assert "path: /healthz" in text
+        assert "path: /livez" in text
         assert "path: /readyz" in text
         assert "/etc/dfe" in text
 
@@ -800,7 +800,7 @@ class TestContractValidation:
         assert c.base_image == ""
         assert c.effective_base_image() == "python:3.12-slim"
         assert c.image_profile == ImageProfile.PRODUCTION
-        assert c.health.liveness_path == "/healthz"
+        assert c.health.liveness_path == "/livez"
         assert c.keda is None
         assert c.binary() == "minimal"  # falls back to app_name
 
