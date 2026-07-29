@@ -90,8 +90,8 @@ def test_same_provider_name_different_path_no_bleed(tmp_path):
 
 
 def test_path_containing_colons_round_trips(tmp_path):
-    """C14: previous string-based key used split(':', 2), which broke for
-    paths containing colons. Structured cache key handles this cleanly."""
+    """The previous string-based key used split(':', 2), which broke for
+    paths containing colons. The structured cache key handles them cleanly."""
     weird_path = tmp_path / "ns:tenant-1:key" / "secret"
     _write(weird_path, b"COLON_HEAVY_VALUE")
 
