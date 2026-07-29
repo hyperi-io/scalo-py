@@ -11,7 +11,7 @@
 Stamps every deployment artefact (Dockerfile, Helm Chart.yaml, ArgoCD
 Application) with three uniform, greppable keys so the same logical
 contract output is traceable across surfaces and across language tiers
-(rustlib / pylib / hyperi-ci).
+(scalo-rs / scalo-py / hyperi-ci).
 
 Keys (all under the ``io.hyperi.contract`` prefix):
 
@@ -22,7 +22,7 @@ Keys (all under the ``io.hyperi.contract`` prefix):
   ``<registry>/<repo>:<tag>`` (pre-push) or ``<registry>/<repo>@sha256:<digest>``
   (post-push, immutable).
 
-Mirrors ``hyperi_rustlib::deployment::contract_identity`` once that
+Mirrors ``scalo::deployment::contract_identity`` once that
 module lands. Both implementations consume a shared golden fixture for
 byte-equivalent output verification.
 """

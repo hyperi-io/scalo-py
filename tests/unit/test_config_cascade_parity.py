@@ -1,7 +1,7 @@
-"""Parity tests for config cascade alignment with hyperi-rustlib.
+"""Parity tests for config cascade alignment with scalo-rs.
 
 These tests verify that scalo's config cascade behaviour matches
-hyperi-rustlib's implementation per the unified spec.
+scalo-rs's implementation per the unified spec.
 """
 
 import os
@@ -12,7 +12,7 @@ import pytest
 
 
 class TestAppEnvDetection:
-    """Test get_app_env() matches rustlib's detection chain."""
+    """Test get_app_env() matches scalo-rs's detection chain."""
 
     def test_app_env_from_app_env_var(self, monkeypatch):
         """APP_ENV takes highest priority."""
@@ -66,7 +66,7 @@ class TestAppEnvDetection:
 
 
 class TestAppNameDetection:
-    """Test get_app_name() priority matches rustlib."""
+    """Test get_app_name() priority matches scalo-rs."""
 
     def test_app_name_from_env(self, monkeypatch):
         """APP_NAME (bare, or app-prefixed) takes highest priority."""
@@ -78,10 +78,10 @@ class TestAppNameDetection:
 
 
 class TestLogFormatDefault:
-    """Test log_format default matches rustlib's 'auto'."""
+    """Test log_format default matches scalo-rs's 'auto'."""
 
     def test_log_format_default_is_auto(self, monkeypatch):
-        """Default log_format should be 'auto' (matches rustlib)."""
+        """Default log_format should be 'auto' (matches scalo-rs)."""
         monkeypatch.delenv("LOG_FORMAT", raising=False)
 
         from scalo.config.config import get_logging_config
@@ -100,10 +100,10 @@ class TestLogFormatDefault:
 
 
 class TestLogLevelDefault:
-    """Test log_level default matches rustlib's 'info'."""
+    """Test log_level default matches scalo-rs's 'info'."""
 
     def test_log_level_default_is_info(self, monkeypatch):
-        """Default log_level should be 'INFO' (matches rustlib 'info')."""
+        """Default log_level should be 'INFO' (matches scalo-rs 'info')."""
         monkeypatch.delenv("LOG_LEVEL", raising=False)
 
         from scalo.config.config import get_logging_config
@@ -116,7 +116,7 @@ class TestDotenvCascadeDefault:
     """Test .env cascade is opt-in (disabled by default)."""
 
     def test_dotenv_cascade_disabled_by_default(self, monkeypatch):
-        """Home .env loading must be opt-in (matches rustlib load_home_dotenv=false)."""
+        """Home .env loading must be opt-in (matches scalo-rs load_home_dotenv=false)."""
         monkeypatch.delenv("DOTENV_CASCADE", raising=False)
 
         from scalo.config.config import _DOTENV_CASCADE_ENABLED

@@ -8,7 +8,7 @@
 
 """Load the bundled ``national_ids.toml`` and build validator instances.
 
-The TOML is bundled in pylib's wheel at
+The TOML is bundled in scalo-py's wheel at
 ``scalo/data/national_ids.toml`` -- vendored from the
 canonical source in
 ``scalo-spec/standards/patterns/national_ids.toml`` (see spec §3.0
@@ -48,7 +48,7 @@ def load_registry(path: Path | None = None) -> dict[str, dict[str, Any]]:
             return tomllib.load(f)
 
     # Bundled file -- read via importlib.resources so it works whether
-    # pylib is installed as a wheel or run from source.
+    # scalo-py is installed as a wheel or run from source.
     resource = resources.files("scalo") / "data" / "national_ids.toml"
     with resource.open("rb") as f:
         return tomllib.load(f)

@@ -9,7 +9,7 @@
 """
 Config Reloader -- wraps Dynaconf reload with polling and callbacks.
 
-Mirrors rustlib's SharedConfig/ConfigReloader pattern. Provides:
+Mirrors scalo-rs's SharedConfig/ConfigReloader pattern. Provides:
 - Periodic polling (configurable interval, 0 = disabled)
 - on_reload callback after successful reload
 - Optional validation before applying reload

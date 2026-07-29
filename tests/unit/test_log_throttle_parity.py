@@ -1,16 +1,16 @@
 #  Project:      scalo
 #  File:         test_log_throttle_parity.py
-#  Purpose:      Verify RateLimitFilter behaviour matches rustlib's log throttle pattern
+#  Purpose:      Verify RateLimitFilter behaviour matches scalo-rs's log throttle pattern
 #  Language:     Python
 #
 #  License:      Apache-2.0
 #  Copyright:    (c) 2026 HYPERI PTY LIMITED
 
 """
-Parity tests for log throttle alignment with hyperi-rustlib.
+Parity tests for log throttle alignment with scalo-rs.
 
 These tests verify that scalo's RateLimitFilter behaviour matches
-hyperi-rustlib's log throttle implementation per the unified spec.
+scalo-rs's log throttle implementation per the unified spec.
 
 Rustlib pattern: identical (or normalised) messages within a window are suppressed;
 the next emission after the window appends a "(suppressed N similar)" summary.
@@ -32,7 +32,7 @@ def _make_record(message: str, level_no: int = 20, name: str = "test.logger") ->
 
 
 class TestDeduplicationWithinWindow:
-    """Identical messages within the period are suppressed -- parity with rustlib throttle."""
+    """Identical messages within the period are suppressed -- parity with scalo_rs throttle."""
 
     def test_first_emission_always_passes(self):
         """First occurrence of any message is never throttled."""
@@ -54,7 +54,7 @@ class TestDeduplicationWithinWindow:
         assert all(r is False for r in results[1:])
 
     def test_suppressed_count_increments_for_each_dropped(self):
-        """Suppressed count tracks every dropped message, matching rustlib's counter."""
+        """Suppressed count tracks every dropped message, matching scalo-rs's counter."""
         f = RateLimitFilter(period_sec=30)
         msg = "Kafka lag exceeded threshold"
         for _ in range(6):
@@ -64,7 +64,7 @@ class TestDeduplicationWithinWindow:
 
 
 class TestSummaryAppend:
-    """Suppressed count is appended to the next emission -- parity with rustlib summary field."""
+    """Suppressed count is appended to the next emission -- parity with scalo_rs summary field."""
 
     def test_summary_appended_after_window_expires(self):
         """After window expiry, the resumed message includes suppression count."""
@@ -84,7 +84,7 @@ class TestSummaryAppend:
         assert f(resume) is True
         assert "(suppressed 3 similar)" in resume["message"]
 
-    def test_summary_format_matches_rustlib(self):
+    def test_summary_format_matches_scalo_rs(self):
         """Summary text format: '<original> (suppressed N similar)'."""
         f = RateLimitFilter(period_sec=0.1, summary_enabled=True)
         msg = "Health check failed"
@@ -146,7 +146,7 @@ class TestSummaryAppend:
 
 
 class TestPatternNormalisation:
-    """Variable parts of messages are normalised -- parity with rustlib's normalise_numbers."""
+    """Variable parts of messages are normalised -- parity with scalo-rs's normalise_numbers."""
 
     def test_large_numbers_normalised(self):
         """Messages differing only in large numbers (4+ digits) are treated as identical."""

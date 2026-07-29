@@ -9,7 +9,7 @@
 """Unit tests for the HealthManager -- pure Python health state tracking.
 
 Tests liveness, readiness, and startup probe logic with registered checks,
-timestamp formatting, and response structure matching rustlib's health probes.
+timestamp formatting, and response structure matching scalo-rs's health probes.
 """
 
 from __future__ import annotations
@@ -155,7 +155,7 @@ class TestReadinessChecks:
 
 
 class TestLivenessResponse:
-    """liveness_response() returns structured dict matching rustlib format."""
+    """liveness_response() returns structured dict matching scalo-rs format."""
 
     def test_response_structure(self):
         mgr = HealthManager()

@@ -11,7 +11,7 @@ Health state manager for Kubernetes-style probes.
 
 Pure Python, no external dependencies. Tracks liveness, readiness, and
 startup state with optional registered checks. Response format matches
-rustlib's built-in health endpoints.
+scalo-rs's built-in health endpoints.
 
 Sync checks run via ``run_blocking`` with a per-check timeout to avoid
 stalling the event loop when called from async probe endpoints.
@@ -52,7 +52,7 @@ AnyCheck = SyncCheck | AsyncCheck
 
 
 class HealthStatus(StrEnum):
-    """Health probe status values matching rustlib conventions."""
+    """Health probe status values matching scalo-rs conventions."""
 
     ALIVE = "alive"
     READY = "ready"

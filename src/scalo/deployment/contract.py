@@ -8,7 +8,7 @@
 
 """Deployment contract Pydantic models for Python apps.
 
-pylib is the Tier-2 producer of the HyperI deployment contract (rustlib is
+scalo-py is the Tier-2 producer of the HyperI deployment contract (scalo-rs is
 Tier 1 for Rust services). Apps build a ``DeploymentContract`` from their
 ``Config`` defaults; generation functions create Python-native deployment
 artefacts (uv/venv runtime-stage Dockerfile, Helm chart, Compose fragment,
@@ -16,7 +16,7 @@ ArgoCD Application) and validation functions check existing artefacts against
 the contract.
 
 The serialised JSON (``deployment-contract.json`` / ``container-manifest.json``)
-stays schema-compatible with rustlib's so CI tooling reads either uniformly;
+stays schema-compatible with scalo-rs's so CI tooling reads either uniformly;
 the *generation* is Python-specific (uv venv, console-script entrypoint,
 ``python:*-slim`` base) -- it does not produce Rust artefacts.
 """
@@ -241,7 +241,7 @@ class DeploymentContract(BaseModel):
     native_deps: NativeDepsContract = Field(default_factory=NativeDepsContract)
     """Runtime native dependencies for the container image.
 
-    Use ``NativeDepsContract.for_pylib_extras`` to auto-populate from pylib
+    Use ``NativeDepsContract.for_scalo_extras`` to auto-populate from scalo-py
     optional-dependency names; the Dockerfile generator emits the correct
     APT repo setup and package installation commands.
     """
@@ -276,7 +276,7 @@ class DeploymentContract(BaseModel):
     (service names + their knobs). Hand-authored per app. Also written to
     ``capability-catalog.{json,yaml}``."""
 
-    # ---- Convenience accessors (mirror rustlib's impl block) ---------------
+    # ---- Convenience accessors (mirror scalo-rs's impl block) ---------------
 
     def binary(self) -> str:
         """Effective binary name -- falls back to app_name when binary_name empty."""

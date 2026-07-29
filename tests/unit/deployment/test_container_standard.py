@@ -71,12 +71,12 @@ class TestLibgit2SuiteResolution:
         assert DEFAULT_DISTRO_CODENAME == "trixie"
 
     def test_git_feature_emits_trixie_package_by_default(self):
-        deps = NativeDepsContract.for_rustlib_features(["directory-config-git"], DEFAULT_BASE_IMAGE)
+        deps = NativeDepsContract.for_scalo_features(["directory-config-git"], DEFAULT_BASE_IMAGE)
         assert "libgit2-1.9" in deps.apt_packages
         assert "libgit2-1.7" not in deps.apt_packages
 
     def test_explicit_codename_overrides(self):
-        deps = NativeDepsContract.for_rustlib_features(
+        deps = NativeDepsContract.for_scalo_features(
             ["directory-config-git"],
             "python:3.12-slim",
             distro_codename="bookworm",
@@ -88,7 +88,7 @@ class TestLibgit2SuiteResolution:
         # The regression this guards: deriving the suite by substring-matching
         # the base image breaks on debian:13-slim / stable-slim / digest pins.
         for base in ("debian:13-slim", "debian:stable-slim", "python:3.12-slim@sha256:abc"):
-            deps = NativeDepsContract.for_rustlib_features(["directory-config-git"], base)
+            deps = NativeDepsContract.for_scalo_features(["directory-config-git"], base)
             assert "libgit2-1.9" in deps.apt_packages, base
 
 
@@ -96,7 +96,7 @@ class TestNoPackageAbsentFromTargetSuite:
     """The check that would have caught P1.1 in the first place."""
 
     @pytest.mark.parametrize("codename", sorted(ABSENT_FROM_SUITE))
-    def test_rustlib_features_emit_nothing_absent_from_suite(self, codename: str):
+    def test_scalo_rs_features_emit_nothing_absent_from_suite(self, codename: str):
         features = [
             "directory-config-git",
             "transport-kafka",
@@ -107,7 +107,7 @@ class TestNoPackageAbsentFromTargetSuite:
             "config-postgres",
             "otel",
         ]
-        deps = NativeDepsContract.for_rustlib_features(features, DEFAULT_BASE_IMAGE, distro_codename=codename)
+        deps = NativeDepsContract.for_scalo_features(features, DEFAULT_BASE_IMAGE, distro_codename=codename)
         emitted = set(deps.apt_packages)
         for repo in deps.apt_repos:
             emitted.update(repo.packages)
@@ -116,8 +116,8 @@ class TestNoPackageAbsentFromTargetSuite:
         )
 
     @pytest.mark.parametrize("codename", sorted(ABSENT_FROM_SUITE))
-    def test_pylib_extras_emit_nothing_absent_from_suite(self, codename: str):
-        deps = NativeDepsContract.for_pylib_extras(
+    def test_scalo_py_extras_emit_nothing_absent_from_suite(self, codename: str):
+        deps = NativeDepsContract.for_scalo_extras(
             ["kafka", "opentelemetry", "http", "secrets-vault"],
             DEFAULT_BASE_IMAGE,
             distro_codename=codename,

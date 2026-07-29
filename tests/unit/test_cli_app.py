@@ -82,7 +82,7 @@ class TestVersionInfo:
         assert v.build_date is None
         assert v.python_version is None
         assert v.platform is None
-        assert isinstance(v.pylib_version, str)
+        assert isinstance(v.scalo_version, str)
 
     def test_builder_with_commit(self):
         v = VersionInfo("dfe-loader", "1.9.7").with_commit("abc1234")
@@ -134,7 +134,7 @@ class TestVersionInfo:
         v = VersionInfo("dfe-loader", "1.9.7")
         output = str(v)
         assert "dfe-loader 1.9.7" in output
-        assert "pylib:" in output
+        assert "scalo:" in output
 
     def test_display_full(self):
         v = (
@@ -150,7 +150,7 @@ class TestVersionInfo:
         assert "built:   2026-03-04" in output
         assert "python:  3.12.1" in output
         assert "target:  Linux-6.1" in output
-        assert "pylib:" in output
+        assert "scalo:" in output
 
 
 # --- Error type tests ---
@@ -281,7 +281,7 @@ class TestDfeApp:
         assert result.exit_code == 0
         assert "test-sync 0.1.0" in result.output
         assert "commit:  test123" in result.output
-        assert "pylib:" in result.output
+        assert "scalo:" in result.output
 
     def test_help_shows_subcommands(self):
         app = _SyncApp()

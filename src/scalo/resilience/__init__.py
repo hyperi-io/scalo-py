@@ -7,7 +7,7 @@
 #  Copyright:    (c) 2026 HYPERI PTY LIMITED
 
 """
-Resilience patterns matching rustlib.
+Resilience patterns matching scalo-rs.
 
 Provides circuit breaker with Closed/Open/HalfOpen state machine::
 

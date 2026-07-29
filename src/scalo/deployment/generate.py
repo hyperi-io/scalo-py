@@ -16,7 +16,7 @@ Compose fragment, full Helm chart, and ArgoCD ``Application``.
 
 Generation is Python-specific (uv venv, console-script entrypoint,
 ``python:*-slim`` base) -- it does not produce Rust artefacts. The container
-manifest JSON stays schema-compatible with rustlib's so CI tooling reads
+manifest JSON stays schema-compatible with scalo-rs's so CI tooling reads
 either uniformly. Artefact text is built with deterministic f-strings (no
 timestamps/random ids) so golden snapshots and CI drift-diffs are stable.
 """
@@ -186,7 +186,7 @@ def generate_container_manifest(
 ) -> str:
     """Generate a container manifest JSON for CI consumption.
 
-    Mirrors rustlib's ``generate_container_manifest``. Output is the minimal
+    Mirrors scalo-rs's ``generate_container_manifest``. Output is the minimal
     subset of the deployment contract that CI needs to build the container
     image -- no secrets, no K8s-specific config.
 
@@ -270,7 +270,7 @@ def generate_runtime_stage(
 ) -> str:
     """Generate only the runtime stage of a Dockerfile as a fragment.
 
-    The canonical artefact pylib owns. CI (or the app) composes the full
+    The canonical artefact scalo-py owns. CI (or the app) composes the full
     Dockerfile by prepending a uv builder stage (see
     :func:`generate_builder_stage`) that produces ``/app/.venv``, then this
     runtime stage copies the venv and puts its ``bin/`` on ``PATH``.
@@ -453,7 +453,7 @@ def generate_dockerignore(contract: DeploymentContract) -> str:
 def generate_compose_fragment(contract: DeploymentContract) -> str:
     """Generate a Docker Compose service fragment from the deployment contract.
 
-    Mirrors rustlib's ``generate_compose_fragment``.
+    Mirrors scalo-rs's ``generate_compose_fragment``.
     """
     binary = contract.binary()
     parts: list[str] = []
@@ -526,7 +526,7 @@ def generate_chart(
     """Generate a complete Helm chart directory from the deployment contract.
 
     Writes ``Chart.yaml``, ``values.yaml``, and all template files to
-    ``output_dir``. Mirrors rustlib's ``generate_chart``.
+    ``output_dir``. Mirrors scalo-rs's ``generate_chart``.
 
     When ``identity`` is provided, ``Chart.yaml`` carries the three Contract
     Identity Annotation Scheme v1 keys under a top-level ``annotations:``

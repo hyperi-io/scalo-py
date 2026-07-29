@@ -8,7 +8,7 @@
 
 """Version information for service CLIs.
 
-Mirrors hyperi-rustlib's cli::version::VersionInfo with a builder pattern.
+Mirrors scalo-rs's cli::version::VersionInfo with a builder pattern.
 Populated at build time or from package metadata.
 """
 
@@ -23,7 +23,7 @@ __all__ = [
 ]
 
 
-def _get_pylib_version() -> str:
+def _get_scalo_version() -> str:
     """Get scalo version from package metadata."""
     try:
         return pkg_version("scalo")
@@ -36,7 +36,7 @@ class VersionInfo:
     """Service version information.
 
     Populated at build time or from package metadata. Provides both
-    short and long format output matching rustlib's VersionInfo.
+    short and long format output matching scalo-rs's VersionInfo.
 
     Example::
 
@@ -51,7 +51,7 @@ class VersionInfo:
     build_date: str | None = None
     python_version: str | None = None
     platform: str | None = None
-    pylib_version: str = field(default_factory=_get_pylib_version)
+    scalo_version: str = field(default_factory=_get_scalo_version)
 
     @classmethod
     def from_env(cls, name: str, version: str) -> "VersionInfo":
@@ -101,7 +101,7 @@ class VersionInfo:
         return f"{self.name} {self.version}"
 
     def __str__(self) -> str:
-        """Multi-line version output matching rustlib format."""
+        """Multi-line version output matching scalo-rs format."""
         lines = [f"{self.name} {self.version}"]
         if self.commit:
             lines.append(f"  commit:  {self.commit}")
@@ -111,5 +111,5 @@ class VersionInfo:
             lines.append(f"  python:  {self.python_version}")
         if self.platform:
             lines.append(f"  target:  {self.platform}")
-        lines.append(f"  pylib:   {self.pylib_version}")
+        lines.append(f"  scalo:   {self.scalo_version}")
         return "\n".join(lines)

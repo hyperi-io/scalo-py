@@ -40,8 +40,8 @@ def test_waves_have_gaps_for_custom_slots():
     assert WAVE_POST - WAVE_APPS >= 5
 
 
-def test_waves_match_rustlib_constants():
-    """Cross-language parity: constants match hyperi_rustlib::deployment::waves."""
+def test_waves_match_scalo_rs_constants():
+    """Cross-language parity: constants match scalo::deployment::waves."""
     assert WAVE_OPERATORS == -20
     assert WAVE_CRDS == -10
     assert WAVE_TOPICS == -5

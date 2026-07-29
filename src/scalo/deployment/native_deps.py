@@ -6,11 +6,11 @@
 # License:   Apache-2.0
 # Copyright: (c) 2026 HYPERI PTY LIMITED
 
-"""Runtime native dependency contracts -- mirrors rustlib's
-``hyperi_rustlib::deployment::native_deps``.
+"""Runtime native dependency contracts -- mirrors scalo-rs's
+``scalo::deployment::native_deps``.
 
-For Python apps, the equivalent of rustlib's ``for_rustlib_features`` is
-``for_pylib_extras`` -- pass the list of pylib optional extras the app uses,
+For Python apps, the equivalent of scalo-rs's ``for_scalo_features`` is
+``for_scalo_extras`` -- pass the list of scalo-py optional extras the app uses,
 get back the runtime APT packages and any custom repos needed.
 """
 
@@ -59,8 +59,8 @@ class AptRepoContract(BaseModel):
 class NativeDepsContract(BaseModel):
     """Runtime native dependencies for a container image.
 
-    Populate via ``NativeDepsContract.for_pylib_extras`` from the list of
-    ``pyproject.toml`` extras the app uses, or via ``for_rustlib_features``
+    Populate via ``NativeDepsContract.for_scalo_extras`` from the list of
+    ``pyproject.toml`` extras the app uses, or via ``for_scalo_features``
     for polyglot apps that re-bind a Rust core.
     """
 
@@ -85,7 +85,7 @@ class NativeDepsContract(BaseModel):
         return not self.apt_repos and not self.apt_packages
 
     @classmethod
-    def for_pylib_extras(
+    def for_scalo_extras(
         cls,
         extras: list[str],
         base_image: str,
@@ -131,16 +131,16 @@ class NativeDepsContract(BaseModel):
         return cls(apt_repos=apt_repos, apt_packages=packages, distro_codename=distro_codename)
 
     @classmethod
-    def for_rustlib_features(
+    def for_scalo_features(
         cls,
         features: list[str],
         base_image: str,
         *,
         distro_codename: str = DEFAULT_DISTRO_CODENAME,
     ) -> NativeDepsContract:
-        """Build runtime native deps from a list of hyperi-rustlib feature flags.
+        """Build runtime native deps from a list of scalo-rs feature flags.
 
-        Mirrors rustlib's ``NativeDepsContract::for_rustlib_features`` for
+        Mirrors scalo-rs's ``NativeDepsContract::for_scalo_features`` for
         polyglot apps that re-bind Rust cores. Feature strings match Cargo
         feature names exactly.
 

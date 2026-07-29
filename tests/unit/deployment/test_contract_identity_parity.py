@@ -10,11 +10,11 @@
 """Cross-language parity test for Contract Identity v1.
 
 Loads ``tests/fixtures/contract-parity/v1-output.txt`` and asserts the
-pylib ``ContractIdentity`` produces byte-identical output for each
+scalo_py ``ContractIdentity`` produces byte-identical output for each
 section. Rustlib's parity test consumes the same file.
 
-When a local rustlib checkout has its own copy of the golden file (post
-rustlib pathfind), this test additionally diffs the two copies and
+When a local scalo_rs checkout has its own copy of the golden file (post
+scalo_rs pathfind), this test additionally diffs the two copies and
 fails on any divergence -- a guardrail against the vendored copy
 drifting from the upstream source.
 """
@@ -30,7 +30,7 @@ from scalo.deployment.contract_identity import ContractIdentity
 
 GOLDEN_PATH = Path(__file__).parent.parent.parent / "fixtures" / "contract-parity" / "v1-output.txt"
 
-RUSTLIB_GOLDEN_PATH = Path("/projects/hyperi-rustlib/tests/fixtures/contract-parity/v1-output.txt")
+SCALO_RS_GOLDEN_PATH = Path("/projects/scalo-rs/tests/fixtures/contract-parity/v1-output.txt")
 
 # Canonical test inputs -- MUST match the golden file's encoded values.
 GOLDEN_SHA = "0123456789abcdef0123456789abcdef01234567"
@@ -67,7 +67,7 @@ def test_dockerfile_labels_match_golden() -> None:
     if actual != expected:
         diff = "\n".join(
             difflib.unified_diff(
-                expected.splitlines(), actual.splitlines(), lineterm="", fromfile="golden", tofile="pylib"
+                expected.splitlines(), actual.splitlines(), lineterm="", fromfile="golden", tofile="scalo_py"
             )
         )
         pytest.fail(f"dockerfile-labels drift:\n{diff}")
@@ -82,7 +82,7 @@ def test_yaml_annotations_match_golden(indent: int) -> None:
     if actual != expected:
         diff = "\n".join(
             difflib.unified_diff(
-                expected.splitlines(), actual.splitlines(), lineterm="", fromfile="golden", tofile="pylib"
+                expected.splitlines(), actual.splitlines(), lineterm="", fromfile="golden", tofile="scalo_py"
             )
         )
         pytest.fail(f"yaml-annotations-indent-{indent} drift:\n{diff}")
@@ -93,21 +93,27 @@ def test_golden_file_has_lf_line_endings() -> None:
     assert b"\r\n" not in raw, "golden fixture must use LF line endings"
 
 
-def test_vendored_golden_matches_rustlib_when_available() -> None:
-    """If local rustlib exposes its golden, our vendored copy must match it.
+def test_vendored_golden_matches_scalo_rs_when_available() -> None:
+    """If local scalo_rs exposes its golden, our vendored copy must match it.
 
-    Skipped (not failed) when rustlib's golden isn't on disk -- per the
-    2026-05-22 direction, rustlib lands first; until then there's
+    Skipped (not failed) when scalo-rs's golden isn't on disk -- per the
+    2026-05-22 direction, scalo_rs lands first; until then there's
     nothing to diff against.
     """
-    if not RUSTLIB_GOLDEN_PATH.exists():
-        pytest.skip(f"rustlib golden not at {RUSTLIB_GOLDEN_PATH}; vendored pylib copy is the current source of truth")
-    pylib = GOLDEN_PATH.read_text(encoding="utf-8")
-    rustlib = RUSTLIB_GOLDEN_PATH.read_text(encoding="utf-8")
-    if pylib != rustlib:
+    if not SCALO_RS_GOLDEN_PATH.exists():
+        pytest.skip(
+            f"scalo_rs golden not at {SCALO_RS_GOLDEN_PATH}; vendored scalo_py copy is the current source of truth"
+        )
+    scalo_py = GOLDEN_PATH.read_text(encoding="utf-8")
+    scalo_rs = SCALO_RS_GOLDEN_PATH.read_text(encoding="utf-8")
+    if scalo_py != scalo_rs:
         diff = "\n".join(
             difflib.unified_diff(
-                rustlib.splitlines(), pylib.splitlines(), lineterm="", fromfile="rustlib", tofile="pylib-vendored"
+                scalo_rs.splitlines(),
+                scalo_py.splitlines(),
+                lineterm="",
+                fromfile="scalo_rs",
+                tofile="scalo_py-vendored",
             )
         )
-        pytest.fail(f"vendored copy diverged from rustlib upstream:\n{diff}")
+        pytest.fail(f"vendored copy diverged from scalo_rs upstream:\n{diff}")

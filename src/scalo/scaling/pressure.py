@@ -7,7 +7,7 @@
 #  Copyright:    (c) 2026 HYPERI PTY LIMITED
 
 """
-Scaling pressure calculator matching rustlib ``src/scaling/pressure.rs``.
+Scaling pressure calculator matching scalo-rs ``src/scaling/pressure.rs``.
 
 Produces a 0-100 composite score from weighted component saturations.
 Gate logic (evaluated in order):
@@ -99,7 +99,7 @@ class ScalingPressure:
     """
     Weighted composite scaling pressure calculator for KEDA autoscaling.
 
-    Matches rustlib's gate logic: circuit open -> 0, memory gate -> 100,
+    Matches scalo-rs's gate logic: circuit open -> 0, memory gate -> 100,
     otherwise weighted sum of components * 100.
     """
 

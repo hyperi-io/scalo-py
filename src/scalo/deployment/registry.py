@@ -6,8 +6,8 @@
 # License:   Apache-2.0
 # Copyright: (c) 2026 HYPERI PTY LIMITED
 
-"""Container registry resolution -- mirrors rustlib's
-``hyperi_rustlib::deployment::registry``.
+"""Container registry resolution -- mirrors scalo-rs's
+``scalo::deployment::registry``.
 
 The publish-target registry (where the built image is pushed) and the base
 image (the ``FROM`` line) are org-wide decisions, not per-app. This module

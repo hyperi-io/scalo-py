@@ -88,21 +88,21 @@ def _mock_binary_script() -> str:
     return (
         "#!/bin/sh\n"
         'case "$1" in\n'
-        '  --help|-h) echo "mock pylib e2e binary: ok"; exit 0 ;;\n'
-        '  *) echo "mock pylib e2e binary"; exit 0 ;;\n'
+        '  --help|-h) echo "mock scalo-py e2e binary: ok"; exit 0 ;;\n'
+        '  *) echo "mock scalo-py e2e binary"; exit 0 ;;\n'
         "esac\n"
     )
 
 
-def _make_contract(app_name: str = "pylib-e2e-app") -> DeploymentContract:
+def _make_contract(app_name: str = "scalo-py-e2e-app") -> DeploymentContract:
     return DeploymentContract(
         app_name=app_name,
         binary_name=app_name,
-        description="pylib deployment contract e2e canary",
+        description="scalo-py deployment contract e2e canary",
         metrics_port=9090,
         health=HealthContract(),
         env_prefix="PYLIB_E2E",
-        metric_prefix="pylib_e2e",
+        metric_prefix="scalo_py_e2e",
         config_mount_path=f"/etc/{app_name}.yaml",
         image_registry="ghcr.io/hyperi-io",
         base_image="ubuntu:24.04",
@@ -114,7 +114,7 @@ def _make_contract(app_name: str = "pylib-e2e-app") -> DeploymentContract:
     )
 
 
-def _make_argo(app_name: str = "pylib-e2e-app") -> ArgocdConfig:
+def _make_argo(app_name: str = "scalo-py-e2e-app") -> ArgocdConfig:
     return ArgocdConfig(
         repo_url=f"https://github.com/hyperi-io/{app_name}",
         target_revision="main",
@@ -150,7 +150,7 @@ def test_tier_a_dockerfile_builds_and_image_runs() -> None:
         )
 
     identity = _make_identity()
-    tag = f"pylib-e2e:{os.getpid()}"
+    tag = f"scalo-py-e2e:{os.getpid()}"
 
     with tempfile.TemporaryDirectory() as tdir, tempfile.TemporaryDirectory() as docker_cfg_dir:
         build_dir = Path(tdir)
@@ -187,7 +187,7 @@ def test_tier_a_dockerfile_builds_and_image_runs() -> None:
                 errors="replace",
                 timeout=30,
             )
-            assert "mock pylib e2e binary: ok" in run_out.stdout
+            assert "mock scalo-py e2e binary: ok" in run_out.stdout
 
             inspect = subprocess.run(
                 ["docker", "inspect", "--format", "{{json .Config.Labels}}", tag],
