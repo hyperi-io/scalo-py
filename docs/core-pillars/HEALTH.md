@@ -71,9 +71,27 @@ application routes, and scalo-rs serves the same names.
 
 `/livez` and `/readyz` are the whole surface -- **there are no aliases**.
 Both the observability server and the FastAPI router serve exactly these
-two, and every retired path returns 404. That is deliberate: an alias
-that keeps answering 200 hides a probe still aimed at the old name, which
-is how a chart and an app drift apart without anyone noticing.
+two, and every retired path returns 404.
+
+That is deliberate, and it is worth being blunt about why. An alias looks
+like kindness and behaves like a blindfold: while every spelling answers
+200, nothing can tell you which spelling a service actually intends, so a
+chart probing a name the app no longer means keeps passing and a
+half-finished migration is indistinguishable from a finished one.
+
+It is not hypothetical either. An earlier version of the sibling library
+served six spellings. Across one fleet of six services on that version,
+the deployment contracts had drifted into three different answers for the
+same question -- and all three worked, because the library answered them
+all. The drift stayed invisible until one service, which did not inherit
+those routes, wired its chart to one spelling and its app to another. The
+probe 404'd, liveness killed a healthy process, and the replacement
+crash-looped for six days before anyone noticed.
+
+So the contract has two halves: canonical paths return 200, retired paths
+return **404**, and the tests assert both. The 404 is the half that does
+the work -- it turns a stale probe from a silent success into an obvious
+failure, and it stops an alias creeping back in later.
 
 There is **no startup path**. Aim `startupProbe` at the liveness path --
 Kubernetes suspends liveness until the startup probe passes, so one path
