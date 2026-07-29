@@ -31,7 +31,7 @@ from scalo.deployment import (
 | `health` | `HealthContract` | factory | Probe paths -- see below |
 | `env_prefix` | `str` | required | Dynaconf prefix; `__` is the nesting separator |
 | `metric_prefix` | `str` | required | Prometheus namespace |
-| `config_mount_path` | `str` | required | E.g. `/etc/dfe/loader.yaml` |
+| `config_mount_path` | `str` | required | E.g. `/etc/event-loader/config.yaml` |
 | `image_registry` | `str` | `ghcr.io/hyperi-io` | Container registry base |
 | `extra_ports` | `list[PortContract]` | `[]` | HTTP / gRPC / data ports beyond metrics |
 | `entrypoint_args` | `list[str]` | `[]` | Default `CMD` args |
@@ -146,7 +146,7 @@ Generators emit one `containerPort` per entry plus a matching Service
 
 `SecretEnvContract` -- one env var fed from a K8s Secret:
 
-- `env_var` -- full env-var name (e.g. `DFE_LOADER__KAFKA__PASSWORD`)
+- `env_var` -- full env-var name (e.g. `EVENT_LOADER__KAFKA__PASSWORD`)
 - `key_name` -- key in `values.yaml` `secretKeys`
 - `secret_key` -- default K8s Secret key (e.g. `kafka-password`)
 
@@ -163,7 +163,7 @@ is named `kafka`.
 - `binary()` -- effective binary name (`binary_name` or `app_name`).
 - `config_filename()` -- basename of `config_mount_path`
   (e.g. `loader.yaml`).
-- `config_dir()` -- parent directory (e.g. `/etc/dfe`). Used for the
+- `config_dir()` -- parent directory (e.g. `/etc/event-loader`). Used for the
   K8s `volumeMounts.mountPath`.
 - `to_json()` -- pretty-printed JSON; the wire format for
   `--emit-contract` CLI commands.
@@ -192,11 +192,11 @@ rustlib in the same change set.
 
 ```python
 contract = DeploymentContract(
-    app_name="dfe-loader",
+    app_name="event-loader",
     metrics_port=9090,
-    env_prefix="DFE_LOADER",
+    env_prefix="EVENT_LOADER",
     metric_prefix="loader",
-    config_mount_path="/etc/dfe/loader.yaml",
+    config_mount_path="/etc/event-loader/config.yaml",
 )
 raw = contract.to_json()
 restored = DeploymentContract.from_json(raw)
@@ -220,9 +220,9 @@ the running app and the deployment artefacts.
 ```python
 def deployment_contract(cfg: AppConfig) -> DeploymentContract:
     return DeploymentContract(
-        app_name="dfe-loader",
+        app_name="event-loader",
         metrics_port=cfg.metrics.port,
-        env_prefix="DFE_LOADER",
+        env_prefix="EVENT_LOADER",
         metric_prefix="loader",
         config_mount_path=cfg.config_path,
         secrets=[
@@ -230,12 +230,12 @@ def deployment_contract(cfg: AppConfig) -> DeploymentContract:
                 group_name="kafka",
                 env_vars=[
                     SecretEnvContract(
-                        env_var="DFE_LOADER__KAFKA__USERNAME",
+                        env_var="EVENT_LOADER__KAFKA__USERNAME",
                         key_name="username",
                         secret_key="kafka-username",
                     ),
                     SecretEnvContract(
-                        env_var="DFE_LOADER__KAFKA__PASSWORD",
+                        env_var="EVENT_LOADER__KAFKA__PASSWORD",
                         key_name="password",
                         secret_key="kafka-password",
                     ),
