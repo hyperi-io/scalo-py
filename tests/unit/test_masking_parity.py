@@ -73,9 +73,23 @@ def test_masking_parity(case: dict) -> None:
         )
 
 
-@pytest.mark.skipif(not _FIXTURES_PATH.exists(), reason=_skip_reason)
+@pytest.mark.xfail(
+    strict=True,
+    reason=(
+        "scalo-spec/test-fixtures/masking-patterns.yaml is absent -- the repo has no "
+        ".gitmodules and no scalo-spec checkout -- so every masking-parity test in this "
+        "module skips in every environment including CI. The corpus must be vendored into "
+        "src/scalo/data/ alongside pii_test_fixtures.toml, or scalo-spec added as a "
+        "submodule and checked out in CI. Remove this marker once the corpus loads."
+    ),
+)
 def test_fixture_file_exists() -> None:
-    """Verify the shared fixture file is present (catches broken submodule paths)."""
+    """The shared fixture file must be present, or the parity corpus above is vacuous.
+
+    Unguarded on purpose: an absent corpus is the failure mode this test exists
+    to report, so guarding it on the corpus being present would leave it
+    incapable of failing.
+    """
     assert _FIXTURES_PATH.exists(), f"Fixture file not found: {_FIXTURES_PATH}"
 
 

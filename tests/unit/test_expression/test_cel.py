@@ -126,6 +126,37 @@ class TestValidate:
         assert len(errors) == 1
         assert "duration()" in errors[0]
 
+    @pytest.mark.xfail(
+        strict=True,
+        reason=(
+            "The cel package defers function resolution to evaluation, so a function in "
+            "neither ALLOWED_FUNCTIONS nor DISALLOWED_FUNCTIONS reaches no check at all and "
+            "validate() returns []: the profile is a denylist only. Either _check_profile "
+            "must enforce ALLOWED_FUNCTIONS -- which needs the legitimate CEL builtins it "
+            "would then reject, dyn() and the getDate/getHours family, added to "
+            "profile.ALLOWED_FUNCTIONS -- or validate() must stop promising expression "
+            "profile compliance. Remove this marker once one is in place."
+        ),
+    )
+    @pytest.mark.parametrize(
+        "expr",
+        [
+            "nosuchfunc(x)",
+            'severity == "critical" && bogus(z)',
+        ],
+    )
+    def test_unknown_function_is_not_silently_accepted(self, expr):
+        """A function in neither ALLOWED nor DISALLOWED must not validate clean.
+
+        This is the "cannot determine -> valid" branch: the profile check declines
+        to judge an unknown function, the CEL compiler does not judge it either,
+        and the caller is told the expression is fine. dfe-engine's UI live
+        validation (``dfe_engine.cel.check_syntax``) sits directly on top of
+        this, so a typo'd filter reports valid in the UI and fails in the data
+        pipeline instead.
+        """
+        assert validate(expr) != [], f"{expr!r} validated clean despite an unknown function"
+
 
 # ── evaluate() ────────────────────────────────────────────────
 
