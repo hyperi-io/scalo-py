@@ -133,10 +133,6 @@ flowchart TB
 - [api/SCALING.md](api/SCALING.md) — `ScalingPressure` composite score for KEDA
 - [api/CLI.md](api/CLI.md) — Typer-based CLI framework, `ServiceApp`, standard options
 
-### Workflow artefacts (not user docs)
-
-- [superpowers/](superpowers/) — specs and execution plans for in-flight work
-
 ---
 
 ## Project facts
