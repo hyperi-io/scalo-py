@@ -40,6 +40,11 @@ FILES=(
     "national_ids.toml"
     "gitleaks.toml"
     "pii_test_fixtures.toml"
+    # Cross-language corpora consumed by the parity tests. Vendored copies are
+    # committed so a PyPI install and a CI run without a hyperi-ai checkout still
+    # have them; --check reports drift from canonical.
+    "masking-patterns.yaml"
+    "metrics-naming.yaml"
     # Future:
     # "field_names.toml"
 )

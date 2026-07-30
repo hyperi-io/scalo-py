@@ -126,6 +126,51 @@ class TestValidate:
         assert len(errors) == 1
         assert "duration()" in errors[0]
 
+    @pytest.mark.parametrize(
+        "expr",
+        [
+            "nosuchfunc(x)",
+            'severity == "critical" && bogus(z)',
+            "startWith(host)",  # startsWith, mistyped
+            "sizeof(tags) > 3",
+        ],
+    )
+    def test_unknown_function_is_not_silently_accepted(self, expr):
+        """A function in neither ALLOWED nor DISALLOWED must not validate clean.
+
+        The profile check used to decline to judge an unknown function on the
+        grounds that CEL would reject it at compile time. It does not -- the cel
+        package defers function resolution to evaluation, so the caller was told a
+        typo was fine. dfe-engine's UI live validation
+        (``dfe_engine.cel.check_syntax``) sits directly on this, so the typo
+        reported valid in the UI and failed in the data pipeline.
+        """
+        assert validate(expr) != [], f"{expr!r} validated clean despite an unknown function"
+
+    @pytest.mark.parametrize(
+        "expr",
+        [
+            'has(user.id) && host.startsWith("web-")',
+            "size(tags) > 3",
+            'int(count) > 100 && message.contains("error")',
+            'host.matches("^web-[0-9]+$")',
+            'double(score) >= 0.5 && string(id).endsWith("-x")',
+            "bytes(payload).size() > 0",
+            "type(value) == string",
+            'dyn(meta).contains("k")',
+            "created.getFullYear() == 2026",
+        ],
+    )
+    def test_profile_functions_still_validate(self, expr):
+        """The allowlist must not reject legitimate profile expressions.
+
+        Enforcing an allowlist trades one failure mode for another: an omission
+        here refuses a valid expression, which in the UI reads as the operator's
+        filter being wrong. These cover every shape the DFE services actually use
+        plus the builtins added when the allowlist was enforced.
+        """
+        assert validate(expr) == [], f"{expr!r} was rejected by the profile"
+
 
 # ── evaluate() ────────────────────────────────────────────────
 

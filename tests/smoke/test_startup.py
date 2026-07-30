@@ -86,31 +86,67 @@ class TestCoreDefaults:
 
 @pytest.mark.smoke
 class TestOptionalExtras:
-    """Verify optional extras import without error when installed."""
+    """Verify optional extras import without error when installed.
+
+    Each check skips ONLY when the extra's third-party dependency is absent.
+    With the dependency installed, an ImportError means scalo's own module or
+    the symbol named here is broken, so it is re-raised: a blanket
+    ``except ImportError -> skip`` cannot tell those two cases apart and turns
+    a broken module into a pass.
+    """
 
     def test_import_metrics(self):
         try:
             from scalo.metrics import create_metrics
-
-            assert callable(create_metrics)
         except ImportError:
-            pytest.skip("metrics extra not installed")
+            pytest.importorskip("prometheus_client", reason="metrics extra not installed")
+            raise
+        assert callable(create_metrics)
 
     def test_import_http(self):
         try:
-            from scalo.http import create_client
-
-            assert callable(create_client)
+            from scalo.http import HttpClient
         except ImportError:
-            pytest.skip("http extra not installed")
+            pytest.importorskip("httpx", reason="http extra not installed")
+            raise
+        assert callable(HttpClient)
 
     def test_import_expression(self):
         try:
             from scalo.expression import evaluate
-
-            assert callable(evaluate)
         except ImportError:
-            pytest.skip("expression extra not installed")
+            pytest.importorskip("cel", reason="expression extra not installed")
+            raise
+        assert callable(evaluate)
+
+
+@pytest.mark.smoke
+class TestOptionalExtraGuardsCannotHideBreakage:
+    """The guards in :class:`TestOptionalExtras` must skip ONLY when the extra's
+    third-party dependency is absent.
+
+    Each case runs the real guarded check with its dependency installed. A skip
+    there means the guard is reporting a broken scalo module as a missing extra,
+    so a skip is a failure here.
+    """
+
+    # (import name of the third-party dep gating the extra, the guarded check)
+    CASES = [
+        ("prometheus_client", TestOptionalExtras.test_import_metrics),
+        ("httpx", TestOptionalExtras.test_import_http),
+        ("cel", TestOptionalExtras.test_import_expression),
+    ]
+
+    @pytest.mark.parametrize(("dep", "check"), CASES, ids=[c[0] for c in CASES])
+    def test_extra_check_asserts_when_its_dependency_is_installed(self, dep, check):
+        pytest.importorskip(dep, reason=f"{dep} absent -- the extra really is not installed")
+        try:
+            check(TestOptionalExtras())
+        except pytest.skip.Exception as exc:
+            pytest.fail(
+                f"{check.__name__} skipped with {str(exc)!r} even though {dep} imports. "
+                "The guard is reporting a broken scalo module as a missing extra."
+            )
 
 
 @pytest.mark.smoke

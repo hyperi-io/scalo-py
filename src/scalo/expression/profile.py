@@ -18,6 +18,11 @@ See: docs/EXPRESSIONS-CEL.md
 from __future__ import annotations
 
 # Functions allowed in the expression profile.
+#
+# This is an ALLOWLIST and is enforced as one: a function that appears in neither
+# this set nor DISALLOWED_FUNCTIONS is rejected. Adding a function here is what
+# permits it, so anything CEL supports and the profile should accept has to be
+# listed -- the cost of omission is a valid expression refused.
 ALLOWED_FUNCTIONS: frozenset[str] = frozenset(
     {
         # String methods
@@ -34,6 +39,26 @@ ALLOWED_FUNCTIONS: frozenset[str] = frozenset(
         "double",
         "string",
         "bool",
+        "bytes",
+        # Type introspection. Constant-time, and `dyn()` only relaxes static
+        # type-checking; neither iterates.
+        "type",
+        "dyn",
+        # Timestamp and duration accessors. Cheap field reads on a value that is
+        # already a timestamp -- and since `timestamp()` and `duration()` are
+        # denied, these are only reachable when the datastore hands the
+        # expression a typed value rather than a JSON scalar. Listed so that case
+        # is not refused.
+        "getDate",
+        "getDayOfMonth",
+        "getDayOfWeek",
+        "getDayOfYear",
+        "getFullYear",
+        "getHours",
+        "getMilliseconds",
+        "getMinutes",
+        "getMonth",
+        "getSeconds",
     }
 )
 

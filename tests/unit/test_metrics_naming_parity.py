@@ -7,40 +7,41 @@
 #  Copyright:    (c) 2026 HYPERI PTY LIMITED
 
 """
-Parity tests for DFE metric naming validation using the shared fixture corpus.
+Metric naming corpus tests: every entry in the shared naming corpus is run
+against validate_metric_name() and validate_dfe_prefix().
 
-Loads scalo-spec/test-fixtures/metrics-naming.yaml and verifies that
-validate_metric_name() and validate_dfe_prefix() accept valid names
-and warn on invalid names as specified.
+The corpus is vendored at ``scalo/data/metrics-naming.yaml`` from
+``hyperi-ai/standards/patterns/`` by ``tools/vendor_patterns.sh``, the same route
+``pii_test_fixtures.toml`` takes. It used to be read from a
+``scalo-spec/test-fixtures/`` submodule that does not exist, so every entry here
+skipped in every environment including CI.
 
-This corpus is shared with scalo-rs to ensure identical naming
-validation behaviour across languages.
+Intended as a cross-language corpus, and scalo-rs does not read it yet, so
+passing here proves the Python behaviour only.
 """
 
-from pathlib import Path
+from importlib import resources
 
 import pytest
 import yaml
 
 from scalo.metrics.naming import validate_dfe_prefix, validate_metric_name
 
-# Path to the shared fixture file inside the scalo-spec submodule
-_FIXTURES_PATH = Path(__file__).parents[2] / "scalo-spec" / "test-fixtures" / "metrics-naming.yaml"
+_FIXTURES_PATH = resources.files("scalo") / "data" / "metrics-naming.yaml"
 
 
 def _load_fixtures() -> dict | None:
-    """Load the shared metrics-naming YAML. Returns None if file missing."""
-    if not _FIXTURES_PATH.exists():
+    """Load the vendored naming corpus. None when the file is absent."""
+    if not _FIXTURES_PATH.is_file():
         return None
-    with _FIXTURES_PATH.open() as f:
-        return yaml.safe_load(f)
+    return yaml.safe_load(_FIXTURES_PATH.read_text(encoding="utf-8"))
 
 
 _fixtures = _load_fixtures()
 _valid_cases = _fixtures["valid"] if _fixtures else []
 _invalid_cases = _fixtures["invalid"] if _fixtures else []
 
-_skip_reason = "scalo-spec submodule not checked out (test-fixtures unavailable)"
+_skip_reason = "naming corpus not vendored (run tools/vendor_patterns.sh)"
 
 
 def _valid_ids(cases: list[dict]) -> list[str]:
@@ -104,10 +105,15 @@ def test_invalid_metric_produces_warning(case: dict) -> None:
 # ---------------------------------------------------------------------------
 
 
-@pytest.mark.skipif(not _FIXTURES_PATH.exists(), reason=_skip_reason)
 def test_fixture_file_exists() -> None:
-    """Verify the shared fixture file is present (catches broken submodule paths)."""
-    assert _FIXTURES_PATH.exists(), f"Fixture file not found: {_FIXTURES_PATH}"
+    """The corpus must be present, or every entry above is vacuous.
+
+    Unguarded on purpose: an absent corpus is the failure mode this test exists
+    to report, so guarding it on the corpus being present would leave it
+    incapable of failing -- which is how it read before, as
+    ``@skipif(not _FIXTURES_PATH.exists())``.
+    """
+    assert _FIXTURES_PATH.is_file(), f"Naming corpus not found: {_FIXTURES_PATH}"
 
 
 @pytest.mark.skipif(_fixtures is None, reason=_skip_reason)

@@ -14,7 +14,7 @@ TDD approach: Write failing tests first, then implement to make them pass.
 import pytest
 
 # =============================================================================
-# Phase 1: Types and Config (Foundation)
+# Types and Config (Foundation)
 # =============================================================================
 
 
@@ -351,7 +351,7 @@ class TestTopicTypes:
 
 
 # =============================================================================
-# Phase 2: KafkaClient (Admin Operations)
+# KafkaClient (Admin Operations)
 # =============================================================================
 
 from datetime import UTC
@@ -810,7 +810,7 @@ class TestKafkaClientTopicStats:
 
 
 # =============================================================================
-# Phase 3: KafkaConsumer
+# KafkaConsumer
 # =============================================================================
 
 
@@ -1198,7 +1198,7 @@ class TestKafkaConsumerIterator:
 
 
 # =============================================================================
-# Phase 4: KafkaProducer
+# KafkaProducer
 # =============================================================================
 
 
@@ -1412,7 +1412,7 @@ class TestKafkaProducerPoll:
 
 
 # =============================================================================
-# Phase 5: Sampling Utilities
+# Sampling Utilities
 # =============================================================================
 
 
@@ -1690,7 +1690,7 @@ class TestPartitionSample:
 
 
 # =============================================================================
-# Phase 6: Schema Analyser
+# Schema Analyser
 # =============================================================================
 
 
@@ -1962,7 +1962,7 @@ class TestSchemaAnalysisResult:
 
 
 # =============================================================================
-# Phase 7: Async Wrappers
+# Async Wrappers
 # =============================================================================
 
 
@@ -2162,7 +2162,7 @@ class TestAsyncKafkaProducer:
 
 
 # =============================================================================
-# Phase 8: Module Exports
+# Module Exports
 # =============================================================================
 
 
@@ -2264,7 +2264,7 @@ class TestKafkaModuleExports:
 
 
 # =============================================================================
-# Phase 9: Kafka Metrics (librdkafka stats)
+# Kafka Metrics (librdkafka stats)
 # =============================================================================
 
 
@@ -2499,7 +2499,7 @@ class TestReadOnlyKafkaClient:
 
 
 # =============================================================================
-# Phase 10: File-based Configuration (librdkafka formats)
+# File-based Configuration (librdkafka formats)
 # =============================================================================
 
 
@@ -2684,7 +2684,7 @@ class TestConfigModuleExports:
 
 
 # =============================================================================
-# Phase 11: Kafka Admin Operations (Topic Config Changes)
+# Kafka Admin Operations (Topic Config Changes)
 # =============================================================================
 
 
@@ -2823,7 +2823,7 @@ class TestKafkaAdminExports:
 
 
 # =============================================================================
-# Phase 12: Consumer Group Offset Reset by Timestamp
+# Consumer Group Offset Reset by Timestamp
 # =============================================================================
 
 
@@ -2991,7 +2991,7 @@ class TestKafkaAdminOffsetReset:
 
 
 # =============================================================================
-# Phase 13: Kafka Consumer Health Monitoring
+# Kafka Consumer Health Monitoring
 # =============================================================================
 
 
