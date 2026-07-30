@@ -156,7 +156,7 @@ class TestValidate:
             'host.matches("^web-[0-9]+$")',
             'double(score) >= 0.5 && string(id).endsWith("-x")',
             "bytes(payload).size() > 0",
-            'type(value) == string',
+            "type(value) == string",
             'dyn(meta).contains("k")',
             "created.getFullYear() == 2026",
         ],
