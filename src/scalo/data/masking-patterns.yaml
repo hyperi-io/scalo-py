@@ -1,0 +1,154 @@
+# HyperI log masking: cross-language field-masking corpus.
+#
+# Canonical input -> expected-outcome data for the log field masker.
+# scalo (Python) loads this via tests/unit/test_masking_parity.py.
+#
+# STATUS: the Rust consumer does not exist yet. Until scalo-rs loads this same
+# file, the name "parity corpus" describes the intent, not a proven property --
+# only the Python side is checked. See the field-set divergence below for what a
+# Rust consumer would have to reconcile first.
+#
+# `sensitive_field_names` lists ONLY fields both implementations recognise
+# (scalo-py `SENSITIVE_FIELDS` in src/scalo/logger/filters.py, scalo-rs
+# `default_sensitive_fields()` in src/logger/masking.rs). Each side knows more
+# than this list, which is allowed -- the test asserts the corpus is a SUBSET, so
+# a field here that either side drops fails.
+#
+# Known divergence, recorded rather than papered over:
+#   Python only: id_token, session_token, api_token, api_secret,
+#     secret_access_key, aws_secret_access_key, session_id, sessionid,
+#     certificate, cert, ssl_cert, creds, db_password, database_password,
+#     connection_string
+#   Rust only:   pass, api-key, access_key, privatekey, credential, ssn,
+#     credit_card, creditcard, cvv, pin
+# The two also match differently: Python compiles per-field regexes against four
+# shapes (quoted JSON, unquoted-key JSON, form data, bare key-value), Rust does
+# case-insensitive SUBSTRING matching on the field name. Substring matching
+# masks `my_api_key_extra`; the Python patterns need a word boundary. Cases
+# below stay inside the overlap so they cannot depend on which rule applies.
+#
+# `should_mask` is deliberately coarse -- output differs from input, or does not.
+# Asserting the exact replacement string would encode each language's mask
+# token (`***REDACTED***` vs `[REDACTED]`), which is presentation, not
+# behaviour.
+#
+# Every value here is synthetic. None is a real credential.
+
+meta:
+  version: "1.0.0"
+  source: "hyperi-ai/standards/patterns/masking-patterns.yaml"
+
+# Fields both implementations recognise.
+sensitive_field_names:
+  - password
+  - passwd
+  - pwd
+  - token
+  - access_token
+  - refresh_token
+  - api_key
+  - apikey
+  - secret
+  - client_secret
+  - secret_key
+  - private_key
+  - authorization
+  - auth
+  - credentials
+  - bearer
+
+test_cases:
+  # -- Quoted JSON --------------------------------------------------------
+  - name: json_quoted_password
+    description: Quoted JSON key and value, the shape structured logs emit.
+    input: '{"password":"hunter2"}'
+    should_mask: true
+
+  - name: json_quoted_password_spaced
+    description: Whitespace around the colon must not defeat the match.
+    input: '{"password" : "hunter2"}'
+    should_mask: true
+
+  - name: json_quoted_api_key_uppercase
+    description: Field matching is case-insensitive.
+    input: '{"API_KEY":"AKIAIOSFODNN7EXAMPLE"}'
+    should_mask: true
+
+  - name: json_quoted_among_safe_fields
+    description: Only the sensitive value goes; neighbouring fields survive.
+    input: '{"user":"alice","token":"abc123","status":"ok"}'
+    should_mask: true
+
+  # -- Unquoted key -------------------------------------------------------
+  - name: unquoted_key_quoted_value
+    description: Key without quotes, value with -- some formatters emit this.
+    input: 'secret:"s3cr3t"'
+    should_mask: true
+
+  - name: bare_key_value
+    description: Bare key-value with no quotes at all.
+    input: "client_secret: s3cr3t"
+    should_mask: true
+
+  # -- Form data / query params -------------------------------------------
+  - name: form_encoded_password
+    description: Form body or query string.
+    input: "username=alice&password=hunter2"
+    should_mask: true
+
+  - name: query_param_access_token
+    description: A token on a URL, the classic accidental log line.
+    input: "GET /api/v1/things?access_token=eyJhbGciOiJIUzI1NiJ9"
+    should_mask: true
+
+  # -- Authorization header ----------------------------------------------
+  - name: authorization_header
+    description: Authorization header as logged by an HTTP middleware.
+    input: "Authorization: Bearer eyJhbGciOiJIUzI1NiJ9.payload.sig"
+    should_mask: true
+
+  - name: bearer_token_inline
+    description: A bearer token with no field name in front of it.
+    input: "retrying with bearer eyJhbGciOiJIUzI1NiJ9"
+    should_mask: true
+
+  # -- Database URLs ------------------------------------------------------
+  - name: postgres_url_password
+    description: Password embedded in a connection URL.
+    input: "postgres://dfe:hunter2@db.internal:5432/dfe"
+    should_mask: true
+
+  - name: kafka_sasl_url_password
+    description: Same shape, different scheme.
+    input: "kafka://svc:s3cr3t@broker.internal:9092"
+    should_mask: true
+
+  # -- Must NOT mask ------------------------------------------------------
+  # A masker that redacts everything is as useless as one that redacts
+  # nothing, so the negative cases carry equal weight.
+  - name: plain_message_untouched
+    description: An ordinary log line with no sensitive field.
+    input: "processed 1200 records from topic raw_events"
+    should_mask: false
+
+  - name: safe_json_untouched
+    description: JSON with no sensitive key.
+    input: '{"user":"alice","status":"ok","count":42}'
+    should_mask: false
+
+  - name: url_without_credentials_untouched
+    description: A connection URL with no password to redact.
+    input: "postgres://db.internal:5432/dfe"
+    should_mask: false
+
+  - name: word_password_in_prose_untouched
+    description: >-
+      The word appears but names no value. Masking prose would corrupt
+      operator-facing messages.
+    input: "the password policy requires 12 characters"
+    should_mask: false
+
+  - name: unrelated_key_untouched
+    description: A key that is not in the sensitive set.
+    input: '{"tokenizer":"whitespace"}'
+    should_mask: false

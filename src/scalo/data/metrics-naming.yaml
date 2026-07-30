@@ -1,0 +1,124 @@
+# HyperI metric naming: cross-language naming-validation corpus.
+#
+# Canonical name -> expected-verdict data for metric naming validation.
+# scalo (Python) loads this via tests/unit/test_metrics_naming_parity.py.
+#
+# STATUS: the Rust consumer does not exist yet. Until scalo-rs loads this same
+# file, "parity corpus" describes the intent, not a proven property.
+#
+# Two validators are exercised per entry:
+#   validate_metric_name(name, type)  -- suffix conventions
+#     counter   MUST end _total
+#     histogram MUST end _seconds, _bytes or _ratio
+#     gauge     no suffix rule
+#   validate_dfe_prefix(name, app)    -- name MUST start "dfe_{app}_"
+#                                        (or "dfe_" when app is empty)
+#
+# A `valid` entry must draw NO warning from either validator. An `invalid` entry
+# must draw at least one from either, with `reason` naming the rule it breaks --
+# a single assertion over the union, because which validator objects is an
+# implementation detail and pinning it would break on a refactor that is not a
+# behaviour change.
+#
+# Every entry names a real metric shape from the DFE services, so a convention
+# change that would rename shipped metrics fails here first.
+
+meta:
+  version: "1.0.0"
+  source: "hyperi-ai/standards/patterns/metrics-naming.yaml"
+
+valid:
+  # -- Counters: _total ---------------------------------------------------
+  - name: dfe_loader_records_inserted_total
+    app: loader
+    type: counter
+
+  - name: dfe_receiver_requests_total
+    app: receiver
+    type: counter
+
+  - name: dfe_fetcher_records_filtered_total
+    app: fetcher
+    type: counter
+
+  - name: dfe_archiver_objects_written_total
+    app: archiver
+    type: counter
+
+  # -- Histograms: unit suffix -------------------------------------------
+  - name: dfe_loader_insert_duration_seconds
+    app: loader
+    type: histogram
+
+  - name: dfe_receiver_request_body_bytes
+    app: receiver
+    type: histogram
+
+  - name: dfe_loader_buffer_fill_ratio
+    app: loader
+    type: histogram
+
+  # -- Gauges: no suffix rule -------------------------------------------
+  - name: dfe_loader_buffer_depth
+    app: loader
+    type: gauge
+
+  - name: dfe_receiver_active_connections
+    app: receiver
+    type: gauge
+
+  # -- Platform-wide: empty app, "dfe_" prefix only ---------------------
+  - name: dfe_process_memory_bytes
+    app: ""
+    type: gauge
+
+  - name: dfe_shutdown_requests_total
+    app: ""
+    type: counter
+
+invalid:
+  # -- Suffix violations -------------------------------------------------
+  - name: dfe_loader_records_inserted
+    app: loader
+    type: counter
+    reason: counter without the _total suffix
+
+  - name: dfe_loader_insert_duration
+    app: loader
+    type: histogram
+    reason: histogram without a unit suffix (_seconds, _bytes, _ratio)
+
+  - name: dfe_loader_insert_duration_ms
+    app: loader
+    type: histogram
+    reason: >-
+      _ms is not an accepted unit suffix; Prometheus convention is base units,
+      so a duration is _seconds
+
+  # -- Prefix violations -------------------------------------------------
+  - name: loader_records_inserted_total
+    app: loader
+    type: counter
+    reason: missing the dfe_ platform prefix
+
+  - name: dfe_records_inserted_total
+    app: loader
+    type: counter
+    reason: has dfe_ but omits the app segment while an app was declared
+
+  - name: dfe_receiver_records_inserted_total
+    app: loader
+    type: counter
+    reason: app segment names a different app to the one declared
+
+  # -- Both at once ------------------------------------------------------
+  - name: loader_records_inserted
+    app: loader
+    type: counter
+    reason: missing prefix AND missing the _total suffix
+
+  # -- Empty ------------------------------------------------------------
+  - name: ""
+    app: loader
+    type: counter
+    reason: empty metric name

@@ -7,31 +7,35 @@
 #  Copyright:    (c) 2026 HYPERI PTY LIMITED
 
 """
-Parity tests for sensitive data masking using the shared fixture corpus.
+Masking corpus tests: every case in the shared field-masking corpus is run
+against SensitiveDataFilter.
 
-Loads scalo-spec/test-fixtures/masking-patterns.yaml and verifies that
-SensitiveDataFilter masks (or does not mask) each test case as specified.
-This corpus is shared with scalo-rs to ensure identical masking
-behaviour across languages.
+The corpus is vendored at ``scalo/data/masking-patterns.yaml`` from
+``hyperi-ai/standards/patterns/`` by ``tools/vendor_patterns.sh``, the same route
+``pii_test_fixtures.toml`` takes. It used to be read from a
+``scalo-spec/test-fixtures/`` submodule that does not exist -- no scalo-spec
+repo, no ``.gitmodules``, no checkout -- so every case here skipped in every
+environment including CI.
+
+Intended as a cross-language corpus, and scalo-rs does not read it yet, so
+passing here proves the Python behaviour only.
 """
 
-from pathlib import Path
+from importlib import resources
 
 import pytest
 import yaml
 
 from scalo.logger.filters import SensitiveDataFilter
 
-# Path to the shared fixture file inside the scalo-spec submodule
-_FIXTURES_PATH = Path(__file__).parents[2] / "scalo-spec" / "test-fixtures" / "masking-patterns.yaml"
+_FIXTURES_PATH = resources.files("scalo") / "data" / "masking-patterns.yaml"
 
 
 def _load_fixtures() -> dict | None:
-    """Load the shared masking patterns YAML. Returns None if file missing (submodule not checked out)."""
-    if not _FIXTURES_PATH.exists():
+    """Load the vendored masking corpus. None when the file is absent."""
+    if not _FIXTURES_PATH.is_file():
         return None
-    with _FIXTURES_PATH.open() as f:
-        return yaml.safe_load(f)
+    return yaml.safe_load(_FIXTURES_PATH.read_text(encoding="utf-8"))
 
 
 def _test_case_ids(test_cases: list[dict]) -> list[str]:
@@ -42,7 +46,7 @@ def _test_case_ids(test_cases: list[dict]) -> list[str]:
 _fixtures = _load_fixtures()
 _test_cases = _fixtures["test_cases"] if _fixtures else []
 
-_skip_reason = "scalo-spec submodule not checked out (test-fixtures unavailable)"
+_skip_reason = "masking corpus not vendored (run tools/vendor_patterns.sh)"
 
 
 @pytest.mark.skipif(not _test_cases, reason=_skip_reason)
@@ -73,24 +77,26 @@ def test_masking_parity(case: dict) -> None:
         )
 
 
-@pytest.mark.xfail(
-    strict=True,
-    reason=(
-        "scalo-spec/test-fixtures/masking-patterns.yaml is absent -- the repo has no "
-        ".gitmodules and no scalo-spec checkout -- so every masking-parity test in this "
-        "module skips in every environment including CI. The corpus must be vendored into "
-        "src/scalo/data/ alongside pii_test_fixtures.toml, or scalo-spec added as a "
-        "submodule and checked out in CI. Remove this marker once the corpus loads."
-    ),
-)
 def test_fixture_file_exists() -> None:
-    """The shared fixture file must be present, or the parity corpus above is vacuous.
+    """The corpus must be present, or every case above is vacuous.
 
     Unguarded on purpose: an absent corpus is the failure mode this test exists
     to report, so guarding it on the corpus being present would leave it
-    incapable of failing.
+    incapable of failing -- which is how it read before, as
+    ``@skipif(not _FIXTURES_PATH.exists())``.
     """
-    assert _FIXTURES_PATH.exists(), f"Fixture file not found: {_FIXTURES_PATH}"
+    assert _FIXTURES_PATH.is_file(), f"Masking corpus not found: {_FIXTURES_PATH}"
+
+
+def test_corpus_has_positive_and_negative_cases() -> None:
+    """Both directions must be covered.
+
+    A masker that redacts everything passes an all-positive corpus, and one that
+    redacts nothing passes an all-negative one.
+    """
+    assert _test_cases, "corpus has no test cases"
+    assert any(c["should_mask"] for c in _test_cases), "no should_mask: true cases"
+    assert any(not c["should_mask"] for c in _test_cases), "no should_mask: false cases"
 
 
 @pytest.mark.skipif(_fixtures is None, reason=_skip_reason)

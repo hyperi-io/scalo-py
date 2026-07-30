@@ -73,13 +73,24 @@ class ExpressionError(Exception):
 _FUNCTION_CALL_RE = re.compile(r"\b([a-zA-Z_]\w*)\s*\(")
 
 
+# CEL keywords and literals that the function-call regex also matches.
+_NOT_FUNCTIONS = frozenset({"true", "false", "null", "in"})
+
+
 def _check_profile(expr: str) -> list[str]:
-    """Check expression against the expression profile. Returns errors."""
+    """Check an expression against the expression profile. Returns errors.
+
+    Enforced as an ALLOWLIST. An unknown function used to reach `pass` here on the
+    grounds that "CEL will reject it at compile time anyway" -- it does not. The
+    cel package defers function resolution to evaluation, so `cel.compile
+    ("nosuchfunc(x)")` succeeds and :func:`validate` returned no errors at all. A
+    typo'd expression was reported valid by the UI and then failed in the data
+    pipeline.
+    """
     errors: list[str] = []
     for match in _FUNCTION_CALL_RE.finditer(expr):
         name = match.group(1)
-        # Skip CEL keywords/literals that look like function calls
-        if name in ("true", "false", "null", "in", "has", "int", "uint", "double", "string", "bool"):
+        if name in _NOT_FUNCTIONS:
             continue
         if name in DISALLOWED_FUNCTIONS:
             errors.append(
@@ -87,9 +98,11 @@ def _check_profile(expr: str) -> list[str]:
                 f"Excluded for performance: per-element iteration or time functions."
             )
         elif name not in ALLOWED_FUNCTIONS:
-            # Unknown function -- CEL will reject it at compile time anyway,
-            # but we give a better error message here.
-            pass  # Let CEL handle unknown functions with its own error
+            errors.append(
+                f"Function '{name}()' is not in the expression profile. "
+                f"Check the spelling, or add it to ALLOWED_FUNCTIONS if it "
+                f"belongs in the profile."
+            )
     return errors
 
 
