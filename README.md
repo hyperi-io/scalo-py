@@ -17,7 +17,7 @@
 >
 > This is that code.
 
-scalo is an integrated runtime for hyperscale-grade control-plane services.
+scalo is an integrated runtime for control-plane services.
 Config, logging and metrics come as one pre-wired trinity -- global singletons
 you just use, no plumbing, no init dance. Everything else leans on that same
 integration: the config cascade flows straight into the CLI so
