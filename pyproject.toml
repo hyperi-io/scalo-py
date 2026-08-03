@@ -5,7 +5,7 @@ build-backend = "uv_build"
 [project]
 name = "scalo"
 version = "2.28.5"
-description = "Batteries-included runtime for hyperscale-grade control-plane services. Config, logging and metrics come pre-wired as singletons you just use -- then CLI, health probes, secrets (Vault/AWS/GCP/Azure), Kafka and deployment contracts all build on that integration. Idiomatic Python. Sibling to the scalo crate on crates.io (scalo-rs)."
+description = "Service runtime for Python control planes. Config, logging, metrics, health, secrets and deployment contracts, wired together."
 readme = "README.md"
 authors = [
     { name = "HyperI Team", email = "dev@hyperi.io" },
