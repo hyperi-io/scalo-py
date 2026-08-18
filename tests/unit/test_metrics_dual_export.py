@@ -25,13 +25,44 @@ except ImportError:
 pytestmark = pytest.mark.skipif(not OTEL_INSTALLED, reason="OpenTelemetry packages not installed")
 
 
+@pytest.fixture
+def config_endpoint_wins(monkeypatch):
+    """Clear the suite-wide OTLP off switch so config can set the endpoint.
+
+    ``tests/conftest.py`` blanks ``OTEL_EXPORTER_OTLP_ENDPOINT`` to keep the
+    suite off a collector, and the env var outranks config. Without clearing it
+    a test that passes an endpoint in config asserts nothing.
+
+    Yields a registrar. Anything built with a real OTLP reader MUST be handed to
+    it: the reader runs on its own thread and keeps exporting to a collector
+    that is not there long after the test returns, which surfaces as a loguru
+    write to a stream pytest has already closed.
+    """
+    monkeypatch.delenv("OTEL_EXPORTER_OTLP_ENDPOINT", raising=False)
+    created: list[MetricsManager] = []
+
+    def register(manager: MetricsManager) -> MetricsManager:
+        created.append(manager)
+        return manager
+
+    yield register
+
+    for manager in created:
+        try:
+            manager.stop_auto_update()
+        except Exception:
+            pass
+
+
 class TestDualReaderCreation:
     """Test that both OTLP and Prometheus readers are created."""
 
-    def test_default_creates_both_readers(self):
+    def test_default_creates_both_readers(self, config_endpoint_wins):
         """Default config creates both OTLP push and Prometheus scrape readers."""
         config = {"opentelemetry": {"endpoint": "http://localhost:4317"}}
-        metrics = create_metrics("dual-test-default", backend="opentelemetry", backend_config=config)
+        metrics = config_endpoint_wins(
+            create_metrics("dual-test-default", backend="opentelemetry", backend_config=config)
+        )
 
         assert metrics.enabled
         assert metrics.backend_name == "opentelemetry"
@@ -44,7 +75,7 @@ class TestDualReaderCreation:
         assert "PeriodicExportingMetricReader" in reader_types
         assert "PrometheusMetricReader" in reader_types
 
-    def test_prometheus_scrape_disabled(self):
+    def test_prometheus_scrape_disabled(self, config_endpoint_wins):
         """prometheus_scrape: false creates OTLP-only reader."""
         config = {
             "opentelemetry": {
@@ -52,7 +83,9 @@ class TestDualReaderCreation:
                 "endpoint": "http://localhost:4317",
             }
         }
-        metrics = create_metrics("dual-test-no-prom", backend="opentelemetry", backend_config=config)
+        metrics = config_endpoint_wins(
+            create_metrics("dual-test-no-prom", backend="opentelemetry", backend_config=config)
+        )
 
         assert metrics.enabled
         backend = metrics._backend
@@ -63,7 +96,7 @@ class TestDualReaderCreation:
         assert "PrometheusMetricReader" not in reader_types
         assert backend._prometheus_reader is None
 
-    def test_prometheus_only_when_no_endpoint(self):
+    def test_prometheus_only_when_no_endpoint(self, config_endpoint_wins):
         """Empty endpoint skips OTLP, Prometheus-only reader."""
         config = {
             "opentelemetry": {
@@ -71,7 +104,9 @@ class TestDualReaderCreation:
                 "prometheus_scrape": True,
             }
         }
-        metrics = create_metrics("dual-test-prom-only", backend="opentelemetry", backend_config=config)
+        metrics = config_endpoint_wins(
+            create_metrics("dual-test-prom-only", backend="opentelemetry", backend_config=config)
+        )
 
         assert metrics.enabled
         backend = metrics._backend
@@ -101,7 +136,7 @@ class TestPrometheusOutputFromOTel:
         # The output should not be the placeholder message
         assert b"OTLP exporter active" not in output
 
-    def test_get_metrics_otlp_only_returns_info(self):
+    def test_get_metrics_otlp_only_returns_info(self, config_endpoint_wins):
         """get_metrics() returns info message when only OTLP is configured."""
         config = {
             "opentelemetry": {
@@ -109,7 +144,9 @@ class TestPrometheusOutputFromOTel:
                 "endpoint": "http://localhost:4317",
             }
         }
-        metrics = create_metrics("dual-test-otlp-only", backend="opentelemetry", backend_config=config)
+        metrics = config_endpoint_wins(
+            create_metrics("dual-test-otlp-only", backend="opentelemetry", backend_config=config)
+        )
 
         output = metrics.get_metrics()
         assert b"OTLP exporter active" in output

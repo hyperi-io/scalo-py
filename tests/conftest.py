@@ -33,9 +33,12 @@ def _reset_scalo_env_prefix():
 # Enable DEBUG logging for all tests
 os.environ["LOG_LEVEL"] = "DEBUG"
 
-# Disable OTel OTLP exporter in tests -- prevents atexit export errors
-# when no collector is running (causes exit code 1 even with all tests passing).
-# Tests that specifically validate OTLP reader creation pass explicit config.
+# OTLP push is ON by default, so the suite has to switch it off explicitly or
+# every backend built in a test dials a collector that is not there. A blank
+# OTEL_EXPORTER_OTLP_ENDPOINT is the documented off switch, and it beats config
+# -- which is the point: a test asserting that config CAN set the endpoint has to
+# clear this first (see the config_endpoint_wins fixture in
+# tests/unit/test_metrics_dual_export.py), or it asserts nothing.
 os.environ.setdefault("OTEL_EXPORTER_OTLP_ENDPOINT", "")
 
 # Load .env file for test credentials (Artifactory, database, etc.)

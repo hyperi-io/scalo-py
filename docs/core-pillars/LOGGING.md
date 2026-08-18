@@ -35,8 +35,8 @@ fallback when unset:
 | unset | Auto-detect: console on TTY, text otherwise |
 
 CI environments override autodetect to ASCII-only text format. Set
-`HYPERI_LIB_NO_LOGGER_CONFIG=1` to disable auto-configuration if you
-need to wire Loguru yourself.
+`NO_LOGGER_CONFIG=1` to disable auto-configuration if you need to wire
+Loguru yourself.
 
 ---
 
@@ -50,11 +50,38 @@ LOG_COLOR=false              # Disable colours (also NO_COLOR=1)
 LOG_TIMESTAMP_FORMAT=rfc3339 # iso8601, rfc3339, unix, epoch
 LOG_CALLER=true              # Source file:line
 LOG_STACKTRACE_LEVEL=ERROR   # Minimum level for tracebacks
-HYPERI_LOG_ENQUEUE=0         # Sync sinks (default: fire-and-forget)
+LOG_ENQUEUE=0                # Sync sinks (default: fire-and-forget)
 ```
+
+`NO_LOGGER_CONFIG` and `LOG_ENQUEUE` are scalo control vars, so they
+take the app's env prefix like every other one: bare by default,
+`<PREFIX>_LOG_ENQUEUE` when the app sets one. There is no `HYPERI_`
+form -- scalo hard-codes no brand.
 
 The same keys live under `logging:` in `settings.yaml` and follow the
 [CONFIG cascade](CONFIG.md#the-cascade).
+
+---
+
+## Where the level comes from
+
+On the `ServiceApp` path, highest first:
+
+1. `--verbose` / `--quiet`
+2. `--log-level` (Typer also fills this from `LOG_LEVEL`)
+3. `logging.level` in the config cascade
+4. `INFO`
+
+`--log-level` and `--log-format` carry no default, deliberately: a
+default is indistinguishable from an explicit flag, so one would outrank
+the cascade permanently. Same reason scalo-rs dropped its clap defaults.
+
+This is why `run` and `config-check` load config BEFORE building the
+logger. The logger's level, format and span exporter all come from the
+cascade, so building it first left every one of them reachable only from
+a flag or an env var. The cost is that anything the cascade itself logs
+on the way up has no scalo sink yet; it is DEBUG-gated, and the resolved
+config path is reported straight after.
 
 ---
 
@@ -157,7 +184,7 @@ messages differing only in IDs collapse to one.
 
 Sinks default to fire-and-forget (`enqueue=True` on Loguru) -- log
 calls return in microseconds even with slow disk or network sinks.
-Set `HYPERI_LOG_ENQUEUE=0` for synchronous behaviour, which audit
+Set `LOG_ENQUEUE=0` for synchronous behaviour, which audit
 logs and pytest fixtures asserting on captured output need.
 
 ---

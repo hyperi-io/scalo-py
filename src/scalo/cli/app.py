@@ -66,11 +66,17 @@ class CommonArgs:
     config: str | None = None
     """Path to configuration file."""
 
-    log_level: str = "info"
-    """Log level (debug, info, warning, error, critical)."""
+    log_level: str | None = None
+    """Log level (debug, info, warning, error, critical).
 
-    log_format: str = "auto"
-    """Log output format (json, text, auto)."""
+    ``None`` means neither ``--log-level`` nor ``LOG_LEVEL`` was given, which is
+    what lets the config cascade have a say; a hard-coded default here would be
+    indistinguishable from an explicit flag. Mirrors scalo-rs, which dropped the
+    equivalent clap defaults for the same reason.
+    """
+
+    log_format: str | None = None
+    """Log output format (json, text, auto). ``None`` = not specified."""
 
     metrics_addr: str = "0.0.0.0:9090"
     """Metrics server bind address."""
@@ -81,38 +87,92 @@ class CommonArgs:
     quiet: bool = False
     """Suppress all output except errors."""
 
-    def effective_log_level(self) -> str:
-        """Resolve the effective log level, accounting for --verbose and --quiet."""
+    def effective_log_level(self, config: Any | None = None) -> str:
+        """Resolve the effective log level across the whole cascade.
+
+        Precedence, highest first: ``--verbose`` / ``--quiet``, then
+        ``--log-level`` (which Typer also fills from ``LOG_LEVEL``, the
+        cross-language convention scalo-rs honours through ``EnvFilter``), then
+        the config cascade's ``logging.level``, then ``INFO``.
+
+        Args:
+            config: Loaded settings object, or None when config has not been
+                loaded yet (``version``, or a failure before the cascade ran).
+        """
         if self.verbose:
             return "DEBUG"
         if self.quiet:
             return "ERROR"
-        return self.log_level.upper()
+        if self.log_level:
+            return self.log_level.upper()
+        from_config = _config_section(config, "logging").get("level")
+        if isinstance(from_config, str) and from_config:
+            return from_config.upper()
+        return "INFO"
 
-    def init_logger(self, metrics: Any | None = None) -> None:
-        """Initialise the scalo logger with resolved settings.
+    def effective_log_format(self, config: Any | None = None) -> str:
+        """Resolve the effective log format, same precedence as the level.
 
-        Sets the ``LOG_LEVEL`` and ``LOG_FORMAT`` environment variables
-        before calling ``logger.setup()``, so the logger's own env-based
-        detection picks up CLI overrides.
+        ``auto`` is the hard-coded floor: JSON in a container, human-readable
+        text on a terminal.
+        """
+        if self.log_format:
+            return self.log_format
+        from_config = _config_section(config, "logging").get("format")
+        if isinstance(from_config, str) and from_config:
+            return from_config
+        return "auto"
+
+    def init_logger(
+        self,
+        config: Any | None = None,
+        metrics: Any | None = None,
+        service_name: str | None = None,
+        otel_tracing: bool = True,
+    ) -> None:
+        """Initialise the scalo logger with settings resolved from the cascade.
+
+        Call this AFTER :meth:`load_config` so ``logging.*`` from the config
+        cascade -- including a file named by ``--config`` -- can configure the
+        logger. ``get_logging_config()`` reads the process-wide Dynaconf
+        instance, which never sees ``get_config(additional_files=...)``, so the
+        resolved values are passed in explicitly rather than left to it.
+
+        The resolved level and format are also exported as ``LOG_LEVEL`` /
+        ``LOG_FORMAT`` because subprocesses and libraries that read those env
+        vars directly should agree with what this process decided.
 
         Args:
+            config: Loaded settings object, or None to resolve without one.
             metrics: Optional ``MetricsManager`` handed to the scrub layers
                 so they emit the metrics the parity manifest publishes.
                 Called a second time with this once metrics exist -- see
                 :func:`_handle_run`.
+            service_name: ``service.name`` for exported spans. The app's name,
+                so the fleet does not report itself as one service.
+            otel_tracing: Compose span export in. False for the one-shot
+                subcommands, which have no business dialling a collector to
+                print a config summary or a manifest.
 
         Raises:
             LoggerError: If logger initialisation fails.
         """
         try:
-            os.environ["LOG_LEVEL"] = self.effective_log_level()
-            if self.log_format != "auto":
-                os.environ["LOG_FORMAT"] = self.log_format
+            level = self.effective_log_level(config)
+            log_format = self.effective_log_format(config)
+            os.environ["LOG_LEVEL"] = level
+            if log_format != "auto":
+                os.environ["LOG_FORMAT"] = log_format
 
             from scalo.logger import setup
 
-            setup(metrics=metrics)
+            setup(
+                level=level,
+                log_format=log_format,
+                metrics=metrics,
+                service_name=service_name,
+                otel_tracing=otel_tracing,
+            )
         except Exception as exc:
             raise LoggerError(str(exc)) from exc
 
@@ -329,10 +389,21 @@ def _build_typer_app(service_app: ServiceApp) -> Any:
     @app.command()
     def run(
         config: str | None = Option(None, "--config", "-c", help="Path to configuration file", envvar="CLI_CONFIG"),
-        log_level: str = Option(
-            "info", "--log-level", "-l", help="Log level (debug, info, warning, error)", envvar="LOG_LEVEL"
+        # No defaults here: Typer cannot tell a default apart from an explicit
+        # flag, so one would outrank the config cascade permanently.
+        log_level: str | None = Option(
+            None,
+            "--log-level",
+            "-l",
+            help="Log level (debug, info, warning, error) [default: config, else info]",
+            envvar="LOG_LEVEL",
         ),
-        log_format: str = Option("auto", "--log-format", help="Log format (json, text, auto)", envvar="LOG_FORMAT"),
+        log_format: str | None = Option(
+            None,
+            "--log-format",
+            help="Log format (json, text, auto) [default: config, else auto]",
+            envvar="LOG_FORMAT",
+        ),
         metrics_addr: str = Option(
             "0.0.0.0:9090", "--metrics-addr", help="Metrics server bind address", envvar="METRICS_ADDR"
         ),
@@ -364,7 +435,7 @@ def _build_typer_app(service_app: ServiceApp) -> Any:
     @app.command(name="config-check")
     def config_check(
         config: str | None = Option(None, "--config", "-c", help="Path to configuration file", envvar="CLI_CONFIG"),
-        log_level: str = Option("info", "--log-level", "-l", help="Log level", envvar="LOG_LEVEL"),
+        log_level: str | None = Option(None, "--log-level", "-l", help="Log level", envvar="LOG_LEVEL"),
         verbose: bool = Option(False, "--verbose", "-v", help="Enable debug logging"),
         quiet: bool = Option(False, "--quiet", "-q", help="Suppress non-error output"),
     ) -> None:
@@ -391,15 +462,24 @@ def _handle_run(service_app: ServiceApp, args: CommonArgs) -> None:
     from typer import Exit
 
     try:
-        args.init_logger()
+        # Config first, then the logger, then the first log line. The logger's
+        # level, format and span exporter all come from the cascade, so building
+        # it first left them reachable only from a flag or an env var.
+        #
+        # The cost is that anything the cascade itself logs on the way up has no
+        # scalo sink yet and goes through loguru's default handler -- unformatted
+        # and unscrubbed. It is DEBUG-gated (config._debug_log), so the exposure
+        # is a developer who asked for it; the resolved config path is reported
+        # below regardless.
+        config = args.load_config(service_app.env_prefix)
+
+        args.init_logger(config=config, service_name=service_app.name)
 
         from scalo.logger import logger
 
         info = service_app.version_info()
         logger.info("starting service", service=service_app.name, version=info.version)
-
-        config = args.load_config(service_app.env_prefix)
-        logger.debug("configuration loaded")
+        logger.debug("configuration loaded", config=args.config or "(defaults)")
 
         # Auto-init metrics if available (metrics extra installed)
         try:
@@ -407,22 +487,17 @@ def _handle_run(service_app: ServiceApp, args: CommonArgs) -> None:
             from scalo.metrics.groups import AppMetrics
 
             ns = service_app.name.replace("-", "_")
-            # Honour the documented backend knob. It used to be hardcoded to
-            # "prometheus" here, which silently beat both METRICS_BACKEND and
-            # settings.metrics.backend -- an explicit argument wins the
-            # cascade, so the knob did nothing on the ServiceApp path.
-            # The fallback stays "prometheus" rather than create_metrics'
-            # own "opentelemetry" default, so honouring the knob does not
-            # also change the backend for every existing service.
+            # Backend knob, then the cascade, then opentelemetry. The OTel
+            # backend is DUAL -- it pushes over OTLP and keeps serving /metrics
+            # -- so defaulting to it costs a Prometheus-estate deployer nothing
+            # and stops a service silently exporting nothing when the platform
+            # has handed it a collector endpoint.
             from scalo._env_compat import control_var
 
-            backend = control_var("METRICS_BACKEND")
-            if backend is None:
-                try:
-                    backend = config.get("metrics", {}).get("backend")
-                except Exception:
-                    backend = None
-            metrics_manager = create_metrics(ns, backend=backend or "prometheus")
+            metrics_section = _config_section(config, "metrics")
+            backend = control_var("METRICS_BACKEND") or metrics_section.get("backend") or "opentelemetry"
+            _warn_on_unreachable_otlp_endpoint(backend)
+            metrics_manager = create_metrics(ns, backend=backend, backend_config=metrics_section)
             # Re-install the logger now that a metrics manager exists, so the
             # scrub layers emit log_scrub_* (spec 8 / the parity manifest).
             #
@@ -440,10 +515,10 @@ def _handle_run(service_app: ServiceApp, args: CommonArgs) -> None:
             # life logging nothing. Report on stderr, then put a working logger
             # back without the metrics wiring.
             try:
-                args.init_logger(metrics=metrics_manager)
+                args.init_logger(config=config, metrics=metrics_manager, service_name=service_app.name)
             except Exception as exc:
                 print_error(f"scrub-metrics logger re-init failed: {exc}")
-                args.init_logger()
+                args.init_logger(config=config, service_name=service_app.name)
             app_metrics = AppMetrics(metrics_manager, info.version, info.commit or "unknown")
             service_app._metrics = metrics_manager
             service_app._app_metrics = app_metrics
@@ -511,8 +586,11 @@ def _handle_config_check(service_app: ServiceApp, args: CommonArgs) -> None:
     from typer import Exit
 
     try:
-        args.init_logger()
-        args.load_config(service_app.env_prefix)
+        # Same order as `run`, and for a second reason: this subcommand PRINTS
+        # the resolved log level, so building the logger first would report the
+        # hard-coded default rather than what the cascade yields.
+        config = args.load_config(service_app.env_prefix)
+        args.init_logger(config=config, otel_tracing=False)
 
         print_success("configuration is valid")
 
@@ -522,8 +600,8 @@ def _handle_config_check(service_app: ServiceApp, args: CommonArgs) -> None:
             # Key-value summary to stderr (matching scalo-rs format)
             _print_kv("service", service_app.name)
             _print_kv("config", config_path)
-            _print_kv("log_level", args.effective_log_level())
-            _print_kv("log_format", args.log_format)
+            _print_kv("log_level", args.effective_log_level(config))
+            _print_kv("log_format", args.effective_log_format(config))
             _print_kv("metrics_addr", args.metrics_addr)
 
     except CliError as exc:
@@ -599,6 +677,53 @@ def _is_async_overridden(service_app: ServiceApp) -> bool:
     # If the method's defining class is not ServiceApp, it's been overridden
     method = type(service_app).run_service_async
     return method is not ServiceApp.run_service_async
+
+
+def _warn_on_unreachable_otlp_endpoint(backend: str) -> None:
+    """Warn when a collector endpoint is set but the backend cannot use it.
+
+    ``OTEL_EXPORTER_OTLP_ENDPOINT`` with a non-OTel backend is always a
+    misconfiguration: the platform has handed the service somewhere to push and
+    the service exports nothing. Silent until now -- the only symptom was a
+    backend name in a log line and knowing what it meant.
+    """
+    if backend == "opentelemetry":
+        return
+    endpoint = (os.environ.get("OTEL_EXPORTER_OTLP_ENDPOINT") or "").strip()
+    if not endpoint:
+        return
+
+    from scalo.logger import logger
+
+    logger.warning(
+        f"OTEL_EXPORTER_OTLP_ENDPOINT={endpoint} is set but the metrics backend is {backend!r}, "
+        f"so nothing is pushed to it -- use the 'opentelemetry' backend (it also serves /metrics) "
+        f"or unset the endpoint"
+    )
+
+
+def _config_section(config: Any | None, name: str) -> dict[str, Any]:
+    """Read one top-level section out of a loaded settings object.
+
+    Returns an empty dict for every failure mode -- no config loaded yet, the
+    section absent, or a settings object whose ``get`` raises. Callers are
+    resolving a default, so a missing section and an unreadable one mean the
+    same thing to them.
+    """
+    if config is None:
+        return {}
+    try:
+        section = config.get(name, {})
+    except Exception:
+        return {}
+    if isinstance(section, dict):
+        return section
+    # Dynaconf hands back a DynaBox for nested sections; it is dict-like but
+    # not a dict subclass on every version, so convert rather than assume.
+    try:
+        return dict(section)
+    except (TypeError, ValueError):
+        return {}
 
 
 def _print_kv(key: str, value: str) -> None:
