@@ -4,7 +4,7 @@ Seven-layer configuration cascade backed by Dynaconf. Import `settings`,
 read it like a dict, and every value resolves through CLI args, env
 vars, `.env`, per-environment YAML,
 base YAML, defaults YAML, and hard-coded fallbacks -- in that order.
-Every pylib-based service shares this cascade so the same `LOG_LEVEL`,
+Every scalo-py-based service shares this cascade so the same `LOG_LEVEL`,
 `MYAPP_DATABASE_HOST`, or `settings.production.yaml` key behaves
 identically across daemons, CLIs, and Kafka consumers.
 
@@ -16,7 +16,7 @@ identically across daemons, CLIs, and Kafka consumers.
 |---|-------|--------|--------------|
 | 1 | CLI args | `--host prod.db.com` (Typer/Click) | One-shot runtime override |
 | 2 | Env vars | `MYAPP_DATABASE_HOST=...` | Deployment-injected |
-| 3 | `.env` file | `./.env` (or `~/.env` + `./.env` with `HYPERI_DOTENV_CASCADE=true`) | Local dev secrets, gitignored |
+| 3 | `.env` file | `./.env` (or `~/.env` + `./.env` with `DOTENV_CASCADE=true`) | Local dev secrets, gitignored |
 | 4 | `settings.{env}.yaml` | Per-environment overlay (e.g. `settings.production.yaml`) | Environment-specific |
 | 5 | `settings.yaml` | Project base | Team defaults |
 | 6 | `defaults.yaml` | Safe fallback | Local dev |
@@ -46,13 +46,15 @@ Env keys are auto-generated from the dotted path:
 | `cache.redis.enabled` | `MYAPP_CACHE_REDIS_ENABLED` |
 | `kafka.brokers` | `MYAPP_KAFKA_BROKERS` |
 
-Prefix comes from `HYPERI_LIB_ENV_PREFIX` (default `APP`).
+The prefix comes from `ServiceApp(env_prefix=...)` / `set_env_prefix()`,
+then the bare `ENV_PREFIX` env var, then bare -- no prefix at all, so the
+key above is just `DATABASE_HOST`. scalo hard-codes no brand.
 
 ---
 
 ## Multi-file discovery
 
-For each YAML layer (`defaults`, `settings`, `settings.{env}`), pylib
+For each YAML layer (`defaults`, `settings`, `settings.{env}`), scalo-py
 searches four locations and merges every file found, later overriding
 earlier:
 
@@ -62,9 +64,10 @@ earlier:
 4. `~/.config/{app_name}/` -- XDG user config
 
 Both `.yaml` and `.yml` extensions are checked (`.yaml` wins on tie).
-App name resolves from `APP_NAME` env, then `HYPERI_LIB_APP_NAME`,
-then auto-detect, then `"app"`. App environment resolves from
-`APP_ENV`, `ENVIRONMENT`, `ENV`, then `"development"`.
+App name resolves from the bare `APP_NAME` env var (the K8s/Docker
+convention), then the prefix-aware `<PREFIX>_APP_NAME`, then package
+auto-detect, then `"app"`. App environment resolves from `APP_ENV`,
+`ENVIRONMENT`, `ENV`, then `"development"`.
 
 ---
 
@@ -120,16 +123,21 @@ no-op on Windows and in restricted environments.
 
 ## Cross-cutting envs
 
-These bypass the cascade entirely and tweak pylib's own behaviour:
+These bypass the cascade entirely and tweak scalo-py's own behaviour.
+All but `ENV_PREFIX` itself are prefix-aware -- read as
+`<PREFIX>_<NAME>` when the app sets a prefix, bare otherwise:
 
 | Var | Effect | Default |
 |-----|--------|---------|
-| `HYPERI_LIB_APP_NAME` | Service name (used in paths, env prefix) | `app` |
-| `HYPERI_LIB_ENV_PREFIX` | Env var prefix for cascade keys | `APP` |
-| `HYPERI_LIB_DEBUG` | Verbose config-loading debug logs | unset |
-| `HYPERI_DOTENV_CASCADE` | Load `~/.env` then `./.env` | `false` |
+| `APP_NAME` | Service name (used in paths) | auto-detect, else `app` |
+| `ENV_PREFIX` | Env var prefix for everything else | bare (no prefix) |
+| `DEBUG` | Verbose config-loading debug logs | unset |
+| `DOTENV_CASCADE` | Load `~/.env` then `./.env` | `false` |
+| `AUTO_DETECT` | Auto-detect container/runtime environment | `true` |
 | `CONTAINER_BASE_PATH` | Override container mount root | unset |
 | `LOG_LEVEL` | Logger level (also a cascade key) | `INFO` |
+| `METRIC_PREFIX` | Prefix on scalo's built-in metrics | bare (no prefix) |
+| `METRICS_BACKEND` | `opentelemetry` or `prometheus` | `opentelemetry` |
 
 ---
 

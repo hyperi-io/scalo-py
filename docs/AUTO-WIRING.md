@@ -1,10 +1,10 @@
 # Auto-wiring
 
-What pylib does automatically when you import a module, versus what
+What scalo-py does automatically when you import a module, versus what
 you wire by hand. The principle: opinionated defaults that just work,
 escape hatches when you need them.
 
-The deprecated `Application` framework was the rustlib-style "wire
+The deprecated `Application` framework was the scalo-rs-style "wire
 everything from one call" entry point. It's gone. Pylib's auto-wiring
 is now per-module and happens at first use.
 

@@ -18,7 +18,7 @@ from scalo.deployment.test_support import (
 )
 ```
 
-Mirrors `hyperi_rustlib::deployment::test_support` once that lands;
+Mirrors `scalo::deployment::test_support` once that lands;
 both emit the same `HYPERCI-SKIP[contract-e2e][...]:` prefix so the
 hyperi-ci runner aggregates skip counts uniformly.
 
@@ -47,11 +47,11 @@ Probes never raise. A timeout or `FileNotFoundError` returns `False`.
 
 ```python
 def tier_b_enabled() -> bool:
-    raw = os.environ.get("HYPERI_E2E_CLUSTER", "").lower()
+    raw = os.environ.get("E2E_CLUSTER", "").lower()
     return raw in ("1", "true", "yes", "on")
 ```
 
-Tier B (the cluster-creating tests) opts in via the `HYPERI_E2E_CLUSTER`
+Tier B (the cluster-creating tests) opts in via the `E2E_CLUSTER`
 env var. The default is off so local `pytest` runs don't spin up
 kind clusters by accident. CI sets it explicitly on the e2e job.
 
@@ -126,7 +126,7 @@ class KindClusterGuard:
 A context-manager-shaped lifecycle wrapper for a uniquely-named kind
 cluster.
 
-- Cluster name = `f"pylib-e2e-{sha256(test_name)[:12]}"` -- 12-char
+- Cluster name = `f"scalo-py-e2e-{sha256(test_name)[:12]}"` -- 12-char
   digest keeps it under K8s 63-char name limits and gives parallel
   pytest-xdist workers distinct clusters.
 - `__enter__` validates prereqs and returns `self`. The cluster
@@ -163,7 +163,7 @@ finally:
 ## The e2e template
 
 `tests/e2e/test_contract_artefacts.py` is dual-purpose: it self-tests
-pylib's own deployment subsystem AND serves as the template Python
+scalo-py's own deployment subsystem AND serves as the template Python
 DFE consumers copy into their own `tests/e2e/`. Five test functions:
 
 ### Tier A (cluster-less; runs anywhere the tool is present)
@@ -181,8 +181,8 @@ missing -- never silently passes.
 
 | Test | Exercises | Tools required |
 |---|---|---|
-| `test_tier_b_helm_install_on_kind` | full `helm install` on a kind cluster with a public canary image (`public.ecr.aws/docker/library/nginx:alpine` -- no creds needed) | `helm` + `kind` + `kubectl` + `HYPERI_E2E_CLUSTER=1` |
-| `test_tier_b_argocd_application_sync_on_kind` | `kubectl apply` the generated Application against a kind cluster with ArgoCD installed; round-trip the identity annotations through `kubectl get application -o jsonpath` | `kubectl` + `kind` + `HYPERI_E2E_CLUSTER=1` |
+| `test_tier_b_helm_install_on_kind` | full `helm install` on a kind cluster with a public canary image (`public.ecr.aws/docker/library/nginx:alpine` -- no creds needed) | `helm` + `kind` + `kubectl` + `E2E_CLUSTER=1` |
+| `test_tier_b_argocd_application_sync_on_kind` | `kubectl apply` the generated Application against a kind cluster with ArgoCD installed; round-trip the identity annotations through `kubectl get application -o jsonpath` | `kubectl` + `kind` + `E2E_CLUSTER=1` |
 
 The ArgoCD install manifest is pinned to a specific upstream tag --
 consumers updating that should bump intentionally.
@@ -214,7 +214,7 @@ runner already knows how to split them into the right CI jobs.
    contract + ArgoCD config.
 4. Keep `VALID_SHA` / `VALID_REF` constants -- they're test
    placeholders, not production values.
-5. Wire the e2e job in your CI to set `HYPERI_E2E_CLUSTER=1` and
+5. Wire the e2e job in your CI to set `E2E_CLUSTER=1` and
    install `kind` + `kubectl` + `helm` + `kubeconform`.
 
 ---

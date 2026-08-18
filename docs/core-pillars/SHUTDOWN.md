@@ -1,7 +1,7 @@
 # Shutdown
 
 Pylib does not install signal handlers on import -- shutdown ordering
-is the app's job. What pylib ships is the primitive set every shutdown
+is the app's job. What scalo-py ships is the primitive set every shutdown
 path needs: `gather_with_timeouts` for parallel drain with per-task
 budgets, an `atexit` hook in the OTel backend that flushes pending
 metrics before the SDK's own hook, and the readiness flag on
@@ -181,7 +181,7 @@ async def drain():
     logger.remove()           # stop sinks
 ```
 
-Set `HYPERI_LOG_ENQUEUE=0` for synchronous sinks if you need
+Set `LOG_ENQUEUE=0` for synchronous sinks if you need
 guaranteed ordering with stdout (CI test capture, audit logs).
 See [LOGGING.md](LOGGING.md#async-safety).
 
@@ -206,14 +206,14 @@ drain + 5s OTel = 25s. Set 30s and leave headroom.
 
 ---
 
-## What pylib does NOT do
+## What scalo-py does NOT do
 
 - Install signal handlers on import. The app owns SIGTERM/SIGINT.
 - Auto-flip readiness on shutdown. You must call `set_ready(False)`.
 - Auto-flush Kafka producers. The producer lifecycle is app-specific.
 - Auto-close database pools. Connection ownership lives in app code.
 
-The only pylib component with a process-wide hook is OTel's atexit
+The only scalo-py component with a process-wide hook is OTel's atexit
 flush -- because the SDK's own hook would otherwise misorder it.
 
 ---

@@ -4,8 +4,8 @@ Three greppable keys stamped onto every deployment artefact so the
 same logical contract output is traceable across surfaces (Dockerfile
 `LABEL`, Helm `Chart.yaml` annotations, ArgoCD `Application`
 annotations, container manifest JSON `labels`) and across language
-tiers (rustlib, pylib, hyperi-ci). Mirrors
-`hyperi_rustlib::deployment::contract_identity` byte-for-byte; both
+tiers (scalo-rs, scalo-py, hyperi-ci). Mirrors
+`scalo::deployment::contract_identity` byte-for-byte; both
 implementations are diffed against a shared golden fixture.
 
 Import surface -- no pydantic dependency, importable as soon as the
@@ -176,20 +176,22 @@ image_ref     = "ghcr.io/hyperi-io/dfe-loader:v2.7.3"
 ```
 
 `tests/unit/deployment/test_contract_identity_parity.py` diffs
-`ContractIdentity` output against each section byte-for-byte. When a
-local `/projects/hyperi-rustlib/tests/fixtures/contract-parity/v1-output.txt`
-exists, the parity test additionally diffs the two repos' copies --
-any mismatch fails the suite with the diff in the assertion message.
+`ContractIdentity` output against each section byte-for-byte. The other
+side of the contract is
+`hyperi-io/scalo-rs:tests/fixtures/contract-parity/v1-output.txt`; when a
+clone of it is on disk the parity test additionally diffs the two repos'
+copies, and any mismatch fails the suite with the diff in the assertion
+message. Without a clone that cross-check skips.
 
 File invariants: LF line endings, UTF-8, trailing newline, no blank
 lines inside content blocks.
 
 ### Status
 
-The pylib fixture is the authored reference until rustlib publishes
-its `contract_identity` module. Once rustlib lands, copy its golden
-verbatim into the pylib repo and update the parity test's drift
-detection to point at the rustlib path. Eventually both copies move
+The scalo-py fixture is the authored reference until scalo-rs publishes
+its `contract_identity` module. Once scalo-rs lands, copy its golden
+verbatim into the scalo-py repo and update the parity test's drift
+detection to point at the scalo-rs path. Eventually both copies move
 to `hyperi-ci/tests/fixtures/contract-parity/` and both libs consume
 from there.
 
@@ -197,8 +199,8 @@ from there.
 
 ## Phase staging
 
-The scheme rolls out in three coordinated phases across pylib,
-rustlib, and the consumer apps:
+The scheme rolls out in three coordinated phases across scalo-py,
+scalo-rs, and the consumer apps:
 
 | Phase | State | Default | Generators |
 |---|---|---|---|

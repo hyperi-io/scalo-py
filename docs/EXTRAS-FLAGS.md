@@ -1,7 +1,7 @@
 # Extras flags
 
-Python equivalent of rustlib's `FEATURE-FLAGS.md`. Where rustlib uses
-cargo features, pylib uses [PEP 631 extras](https://peps.python.org/pep-0631/).
+Python equivalent of scalo-rs's `FEATURE-FLAGS.md`. Where scalo-rs uses
+cargo features, scalo-py uses [PEP 631 extras](https://peps.python.org/pep-0631/).
 Same idea: install what you need, pay nothing for what you don't.
 
 This page covers:
@@ -172,7 +172,7 @@ without committing to a transitive deps tree that may change.
 
 | Extra | Adds | Doc |
 |---|---|---|
-| `dev` | pytest + asyncio + cov + httpx + ruff + mypy + ty + bandit + pip-audit + vulture + moto + faker + pre-commit | (install for contributing to pylib) |
+| `dev` | pytest + asyncio + cov + httpx + ruff + mypy + ty + bandit + pip-audit + vulture + moto + faker + pre-commit | (install for contributing to scalo-py) |
 | `docs` | sphinx + rtd-theme + myst-parser | (install for building docs) |
 
 ---
@@ -241,7 +241,7 @@ references. The mapping:
 | `secrets-aws` / `secrets-gcp` / `secrets-azure` | `ca-certificates` (already in base image) |
 | `expression` | none (CEL wheel bundles the Rust binary) |
 
-In short: pylib's wheels are largely self-contained. The
+In short: scalo-py's wheels are largely self-contained. The
 `NativeDepsContract` exists to support edge cases where you opt out of
 binary wheels.
 

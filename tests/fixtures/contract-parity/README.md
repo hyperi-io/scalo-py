@@ -24,24 +24,28 @@ image_ref     = "ghcr.io/hyperi-io/dfe-loader:v2.7.3"
 ## Status
 
 **Vendored copy.** The canonical source will eventually live at
-`hyperi-ci/tests/fixtures/contract-parity/v1-output.txt` so both
-rustlib and pylib consume from one place.
+`hyperi-io/hyperi-ci:tests/fixtures/contract-parity/v1-output.txt` so
+scalo-rs and scalo-py consume from one place.
 
-Until that lands, this file is the pylib-authored reference. When
-rustlib publishes its `contract_identity` module, copy its golden file
-verbatim and update this README to point at it.
+Until that lands this file is the scalo-py-authored reference. scalo-rs
+ships `deployment::contract_identity` but has not published a golden
+fixture, so copy its file here verbatim and repoint this README when it
+does.
 
 ## Drift detection
 
 `tests/unit/deployment/test_contract_identity_parity.py` asserts that
 `ContractIdentity` produces byte-identical output to each section of
 this file. Any divergence is a generator regression OR a deliberate
-spec change -- if deliberate, update this file AND rustlib's copy AND
+spec change -- if deliberate, update this file AND scalo-rs's copy AND
 bump `KEY_PREFIX` / `VERSION` in `contract_identity.py`.
 
-When a local `/projects/hyperi-rustlib/tests/fixtures/contract-parity/v1-output.txt`
-exists, the parity test additionally diffs the two copies; mismatch
-fails the suite (with the diff in the assertion message).
+The other side is
+`hyperi-io/scalo-rs:tests/fixtures/contract-parity/v1-output.txt`. When
+a clone of scalo-rs is on disk the parity test additionally diffs the
+two copies and a mismatch fails the suite with the diff. That file does
+not exist yet, so today the cross-repo check always skips -- and says so
+rather than reporting green.
 
 ## File format invariants
 
