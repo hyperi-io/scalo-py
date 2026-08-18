@@ -118,9 +118,22 @@ def _build_apt_block(deps: NativeDepsContract, profile: ImageProfile) -> str:
 
     for repo in deps.apt_repos:
         keyring_stem = Path(repo.keyring).stem or "custom-repo"
+        # Download to a file rather than piping into gpg: `sh` has no pipefail,
+        # so `curl ... | gpg` discards curl's exit status and a failed fetch
+        # leaves an empty keyring instead of failing the build (hadolint DL4006).
+        parts.append(f"    && curl -fsSL {repo.key_url} -o /tmp/repo-key.asc \\\n")
+        if repo.key_fingerprint:
+            # Assert the key is the pinned one BEFORE it is trusted. Written to a
+            # file and grepped rather than piped, for the same exit-status reason.
+            parts.append(
+                "    && gpg --show-keys --with-colons --with-fingerprint /tmp/repo-key.asc \\\n"
+                "       > /tmp/repo-key.info \\\n"
+                f'    && grep -q "^fpr:::::::::{repo.key_fingerprint}:" /tmp/repo-key.info \\\n'
+                "    && rm -f /tmp/repo-key.info \\\n"
+            )
         parts.append(
-            f"    && curl -fsSL {repo.key_url} \\\n"
-            f"       | gpg --dearmor -o {repo.keyring} \\\n"
+            f"    && gpg --dearmor -o {repo.keyring} /tmp/repo-key.asc \\\n"
+            "    && rm -f /tmp/repo-key.asc \\\n"
             f'    && echo "deb [signed-by={repo.keyring}] \\\n'
             f'       {repo.url} {repo.codename} main" \\\n'
             f"       > /etc/apt/sources.list.d/{keyring_stem}.list \\\n"
@@ -201,6 +214,7 @@ def generate_container_manifest(
     apt_repos = [
         {
             "key_url": r.key_url,
+            "key_fingerprint": r.key_fingerprint,
             "keyring": r.keyring,
             "url": r.url,
             "codename": r.codename,

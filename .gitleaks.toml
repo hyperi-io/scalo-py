@@ -36,8 +36,16 @@ paths = [
     '''src/scalo/data/masking-patterns\.yaml''',
 ]
 
-# Regex patterns that are test fixtures (fake secrets for testing)
+# Regex patterns that are test fixtures (fake secrets for testing), plus one
+# genuinely public identifier.
 regexes = [
+    # A PGP fingerprint is a PUBLIC key identifier -- publishing it is the whole
+    # point. This one pins the Confluent APT signing key so the generated
+    # Dockerfile can assert the downloaded key before trusting the repo. Its 40
+    # hex chars read as high entropy to the generic-api-key rule. Allowlisted by
+    # VALUE rather than by file, so the rule keeps working on the rest of
+    # native_deps.py. Same entry as scalo-rs.
+    '''CBBB821E8FAF364F79835C438B1DA6120C2BF624''',
     '''sk-proj-abc123def456ghi789''',
     '''secret_abc123def456''',
     '''sk_live_51Hqx2ABCDEFGabcdefg''',
