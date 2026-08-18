@@ -1,7 +1,7 @@
 # HyperI log-scrub: L3 PII validator test fixtures.
 #
 # Canonical input → expected-outcome data for Layer 3 PII validators.
-# Both scalo and hyperi-rustlib load this file and run their
+# Both scalo-py and scalo-rs load this file and run their
 # implementations against it in CI (spec: 2026-05-13 log-scrub §3.5).
 #
 # Cross-language parity: both implementations MUST produce identical

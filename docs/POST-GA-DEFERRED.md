@@ -14,7 +14,7 @@ into the branch as commits. This file is the residual.
 explicit `httpx.Limits(...)` object. The library accepts httpx defaults
 (100 max_connections, 20 max_keepalive_connections) silently.
 
-**Why deferred:** httpx defaults are sane for the typical pylib
+**Why deferred:** httpx defaults are sane for the typical scalo-py
 consumer (an internal service making a few hundred outbound calls).
 File descriptor exhaustion at the defaults requires sustained
 high-concurrency abuse that the consumer would notice in their own
@@ -30,7 +30,7 @@ defaults + a tuning recipe in `docs/api/HTTP.md`.
 attacker-controlled endpoint can stream unbounded bytes and OOM the
 client process.
 
-**Why deferred:** pylib HTTP consumers in our deployments only call
+**Why deferred:** scalo-py HTTP consumers in our deployments only call
 internal services. Untrusted upstreams are out of scope. If a future
 consumer hits a public endpoint (webhook receiver, federation
 endpoint), this becomes BLOCKER for them.
@@ -207,9 +207,9 @@ For the avoidance of doubt -- the following are DONE, not deferred:
   GCP, OpenBao, Ansible Vault. No demonstrated leak; deferred to a
   focused secrets-provider hardening pass.
 - **C16** -- `hyperi-ci check --quick` exits 0 despite type-check
-  errors. Tool-side issue, not pylib. Filed against hyperi-ci.
+  errors. Tool-side issue, not scalo-py. Filed against hyperi-ci.
 - **T9** -- OpenBao/LocalStack/real-cloud integration tests for
   provider error sanitisation. Needs CI testcontainers infrastructure
   bundled with the GA-blocking OTel collector docker fixture.
-- **T11** -- AnyIO limiter stats test. Tests AnyIO, not pylib;
+- **T11** -- AnyIO limiter stats test. Tests AnyIO, not scalo-py;
   dropped (no public saturation helper to validate).

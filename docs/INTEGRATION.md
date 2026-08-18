@@ -42,7 +42,7 @@ recommended bundles.
 
 `scalo.config` exposes a `settings` object built from an 7-layer
 cascade (CLI > env > .env > settings.<env>.yaml > settings.yaml >
-defaults.yaml > pylib defaults > hard-coded). Read it like a dict;
+defaults.yaml > scalo-py defaults > hard-coded). Read it like a dict;
 nested keys via dot or `__`.
 
 ```python
@@ -54,7 +54,7 @@ batch_size = settings.get("processor.batch_size", 100)
 
 Env-var nesting follows the cascade rule: `KAFKA__BROKERS=...` maps to
 `settings.kafka.brokers`. Cross-cutting envs (`LOG_LEVEL`,
-`HYPERI_DOTENV_CASCADE`, `CONTAINER_BASE_PATH`) override defaults without
+`DOTENV_CASCADE`, `CONTAINER_BASE_PATH`) override defaults without
 needing a settings file.
 
 See [core-pillars/CONFIG.md](core-pillars/CONFIG.md) for the full
@@ -260,7 +260,7 @@ For the deployment contract subsystem, an e2e TEMPLATE lives at
 [`tests/e2e/test_contract_artefacts.py`](../tests/e2e/test_contract_artefacts.py).
 It runs Tier A (cluster-less: docker build, helm template, kubeconform)
 locally when those tools are present, and Tier B (kind cluster + helm
-install + ArgoCD apply) when `HYPERI_E2E_CLUSTER=1` is set. Skips
+install + ArgoCD apply) when `E2E_CLUSTER=1` is set. Skips
 emit a canonical `HYPERCI-SKIP[contract-e2e][...]:` prefix; see
 [deployment/TEST-SUPPORT.md](deployment/TEST-SUPPORT.md).
 

@@ -2,7 +2,7 @@
 
 Six generator entrypoints turn a `DeploymentContract` into the files
 CI commits to the gitops repo. All output is f-string assembled (not
-templated) so it stays byte-equivalent with rustlib's `format!()`
+templated) so it stays byte-equivalent with scalo-rs's `format!()`
 output across the two implementations.
 
 ```python
@@ -310,7 +310,7 @@ waves; pick a canonical band where possible.
 | `WAVE_APPS` | `0` | DFE apps -- the default |
 | `WAVE_POST` | `10` | Smoke tests, webhook registrations, alerts |
 
-Values mirror rustlib's `hyperi_rustlib::deployment::waves` numerically.
+Values mirror scalo-rs's `scalo::deployment::waves` numerically.
 
 ---
 

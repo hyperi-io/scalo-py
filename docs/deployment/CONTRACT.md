@@ -179,12 +179,12 @@ DEFAULT_SCHEMA_VERSION = 2
 MAX_SUPPORTED_SCHEMA_VERSION = 2
 ```
 
-Bumping the schema is a coordinated rustlib + pylib change. CI parses
+Bumping the schema is a coordinated scalo-rs + scalo-py change. CI parses
 `schema_version` first and fails fast when a consumer writes a contract
-above the version pylib supports -- forward-compat is intentional and
+above the version scalo-py supports -- forward-compat is intentional and
 only one step deep. When you add a field, bump
 `MAX_SUPPORTED_SCHEMA_VERSION` on both sides AND mirror the field in
-rustlib in the same change set.
+scalo-rs in the same change set.
 
 ---
 
@@ -243,7 +243,7 @@ def deployment_contract(cfg: AppConfig) -> DeploymentContract:
             ),
         ],
         keda=KedaContract.from_config(cfg.keda),
-        native_deps=NativeDepsContract.for_pylib_extras(
+        native_deps=NativeDepsContract.for_scalo_extras(
             ["kafka", "metrics", "opentelemetry", "secrets-vault"],
             base_image="python:{python_version}-slim",
         ),

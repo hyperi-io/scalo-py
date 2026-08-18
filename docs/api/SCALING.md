@@ -1,7 +1,7 @@
 # Scaling
 
 `ScalingPressure` — a weighted composite 0-100 score that KEDA's
-external scaler can target. Matches `hyperi-rustlib`'s
+external scaler can target. Matches the `scalo` crate's
 `src/scaling/pressure.rs` byte for byte, so Python and Rust services in
 the same fleet produce comparable scores. Ships in the base package.
 
@@ -202,7 +202,7 @@ external synchronisation.
 
 ## Cross-language parity
 
-Same struct in Rust (`hyperi_rustlib::scaling::ScalingPressure`), same
+Same struct in Rust (`scalo::scaling::ScalingPressure`), same
 default weights, same gate thresholds, same calculation. A KEDA scaler
 that targets `scaling_pressure >= 70` works identically against a
 Python service and a Rust service in the same deployment.

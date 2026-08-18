@@ -9,7 +9,7 @@ consumers don't hand-write `RUN apt-get install` lines.
 from scalo.deployment import NativeDepsContract, AptRepoContract
 ```
 
-Most pylib services need NOTHING beyond `ca-certificates curl
+Most scalo-py services need NOTHING beyond `ca-certificates curl
 netcat-openbsd iputils-ping` (the always-on base packages). Wheels are
 self-contained for `config`, `logger`, `metrics`, `health`, `runtime`,
 `secrets-file`, `secrets-ansible`, `expression`, `resilience`,
@@ -28,10 +28,10 @@ the explicitly C-linked transports.
 
 - `is_empty()` -- shortcut the Dockerfile generator uses to emit a
   smaller APT block when there's nothing extra.
-- `for_pylib_extras(extras, base_image, *, distro_codename=...)` --
+- `for_scalo_extras(extras, base_image, *, distro_codename=...)` --
   factory; see below.
-- `for_rustlib_features(features, base_image, *, distro_codename=...)`
-  -- factory for polyglot apps that re-bind a rustlib core.
+- `for_scalo_features(features, base_image, *, distro_codename=...)`
+  -- factory for polyglot apps that re-bind a scalo-rs core.
 
 `distro_codename` names the base-image suite the package names were
 selected for, and is recorded in the emitted contract so CI can audit
@@ -73,7 +73,7 @@ For distro-versioned package names (`libgit2-1.9` vs `libgit2-1.7`) use
 
 ## Extras -> APT mapping
 
-`NativeDepsContract.for_pylib_extras(extras, base_image)` builds the
+`NativeDepsContract.for_scalo_extras(extras, base_image)` builds the
 runtime contract from your `pyproject.toml` extras list. Pass the same
 strings used in `pip install "scalo[...]"`.
 
@@ -91,7 +91,7 @@ many extras pull them in.
 Example -- a typical DFE service:
 
 ```python
-native_deps = NativeDepsContract.for_pylib_extras(
+native_deps = NativeDepsContract.for_scalo_extras(
     ["kafka", "metrics", "opentelemetry", "secrets-vault", "http"],
     base_image="python:{python_version}-slim",
 )
@@ -103,12 +103,12 @@ strict so the image stays minimal.
 
 ---
 
-## `for_rustlib_features` (polyglot apps)
+## `for_scalo_features` (polyglot apps)
 
 For services with a Rust core re-bound to Python (or vice-versa),
-`for_rustlib_features(features, base_image)` accepts Cargo feature
+`for_scalo_features(features, base_image)` accepts Cargo feature
 names and maps them to runtime APT packages. The mapping mirrors
-rustlib's own `NativeDepsContract::for_rustlib_features` -- both
+scalo-rs's own `NativeDepsContract::for_scalo_features` -- both
 implementations resolve to the same package set for the same feature
 list, by design.
 

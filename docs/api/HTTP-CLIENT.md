@@ -32,7 +32,7 @@ data = response.json()
 - Stamina retries cover the cases everyone forgets: transport errors and
   5xx server errors, with exponential backoff and jitter. 4xx errors
   surface immediately — retrying client errors is a bug.
-- Stamina exposes Prometheus / structlog hooks; pylib does not wire
+- Stamina exposes Prometheus / structlog hooks; scalo-py does not wire
   them. If you want retry attempts on `/metrics`, follow Stamina's
   own setup at your site.
 - `stamina.set_testing(True)` disables backoff in tests so suites stay

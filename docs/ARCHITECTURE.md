@@ -131,11 +131,11 @@ The `Application` framework was removed to backlog (see the note in
 
 scalo-rs ships several modules scalo-py does not, by design:
 
-- `transport/` abstraction layer (rustlib has Kafka, gRPC, HTTP, Redis,
+- `transport/` abstraction layer (scalo-rs has Kafka, gRPC, HTTP, Redis,
   File, Pipe, Memory transports behind a single trait). Pylib has Kafka
   only; no abstraction layer planned.
 - `pipeline/` — BatchEngine, WorkerPool, TieredSink, Spool, DLQ,
-  STRmatch. None of these exist in pylib. Python's async model + GIL
+  STRmatch. None of these exist in scalo-py. Python's async model + GIL
   make the hot-path concurrency story different; we use
   `concurrency.gather_with_timeouts` for the simple cases.
 - `tracing` as a distinct module. Pylib emits structured log fields
@@ -143,7 +143,7 @@ scalo-rs ships several modules scalo-py does not, by design:
   modules. Tracking issue: when this lands, it'll get a
   `core-pillars/TRACING.md`.
 
-What pylib has that rustlib doesn't:
+What scalo-py has that scalo-rs doesn't:
 
 - `expression/` CEL bindings via PyO3 to `cel-interpreter` Rust crate
   so Python and Rust services evaluate the same expressions
@@ -165,7 +165,7 @@ What pylib has that rustlib doesn't:
 | CLI | `clap` + `cli/app.rs` | `typer` + `cli/app.py` |
 | Expression | `cel-interpreter` direct | `common-expression-language` (PyO3 wrapper around `cel-interpreter`) |
 
-The doc subdirs match where the concept maps 1:1. Where pylib lacks
+The doc subdirs match where the concept maps 1:1. Where scalo-py lacks
 the concept (`transport/` abstraction, `pipeline/`), the subdir is
 absent rather than carrying placeholder files.
 

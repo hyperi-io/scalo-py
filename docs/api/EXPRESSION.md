@@ -3,7 +3,7 @@
 CEL (Common Expression Language) evaluation backed by the
 `common-expression-language` package, which wraps the Rust
 `cel-interpreter` crate via PyO3. The Rust crate is the same one used
-by `hyperi-rustlib` — Python and Rust services parse and evaluate
+by the `scalo` crate — Python and Rust services parse and evaluate
 expressions identically. Zero behavioural drift.
 
 ```
@@ -190,8 +190,8 @@ evaluate('amount > threshold', {"amount": 15000, "threshold": 10000})  # True
 ```
 
 ```rust
-// Rust — hyperi-rustlib
-use hyperi_rustlib::expression::evaluate;
+// Rust — the scalo crate
+use scalo::expression::evaluate;
 evaluate("amount > threshold", &ctx)?  // also true
 ```
 
