@@ -8,7 +8,7 @@ generation — all opinionated, all production-tested.
 
 This is the index. Read [ARCHITECTURE.md](ARCHITECTURE.md) for the
 10,000-foot view, [INTEGRATION.md](INTEGRATION.md) for a recipe to build
-a pylib-based service, [AUTO-WIRING.md](AUTO-WIRING.md) for the "you get
+a scalo-based service, [AUTO-WIRING.md](AUTO-WIRING.md) for the "you get
 this for free" model, and [EXTRAS-FLAGS.md](EXTRAS-FLAGS.md) for which
 Python extras pull in which deps.
 
@@ -36,7 +36,7 @@ pieces work".
 
 ```mermaid
 flowchart TB
-    subgraph App["pylib-based service"]
+    subgraph App["scalo-based service"]
         Init["module init at startup"]
     end
 
@@ -91,7 +91,7 @@ flowchart TB
 ### Start here
 
 - [ARCHITECTURE.md](ARCHITECTURE.md) — module map, dependency graph, layering
-- [INTEGRATION.md](INTEGRATION.md) — "I'm building a pylib service" recipe
+- [INTEGRATION.md](INTEGRATION.md) — "I'm building a scalo service" recipe
 - [AUTO-WIRING.md](AUTO-WIRING.md) — what's wired automatically, what's manual
 - [EXTRAS-FLAGS.md](EXTRAS-FLAGS.md) — extras tree, recommended bundles, native deps
 
@@ -99,8 +99,9 @@ flowchart TB
 
 - [core-pillars/CONFIG.md](core-pillars/CONFIG.md) — 7-layer cascade, registry, sensitive masking
 - [core-pillars/LOGGING.md](core-pillars/LOGGING.md) — loguru setup, JSON/text autodetect, scrub, rate-limit, CI mode
-- [core-pillars/METRICS.md](core-pillars/METRICS.md) — Prometheus + OTel dual, DFE metric groups, cardinality cap
-- [core-pillars/HEALTH.md](core-pillars/HEALTH.md) — `HealthManager`, `/livez` / `/ready` / `/startup`
+- [core-pillars/METRICS.md](core-pillars/METRICS.md) — Prometheus + OTel dual, metric groups, cardinality cap
+- [core-pillars/TRACING.md](core-pillars/TRACING.md) — OTLP span export, sampling, backoff when the collector is absent
+- [core-pillars/HEALTH.md](core-pillars/HEALTH.md) — `HealthManager`, `/livez` / `/readyz`
 - [core-pillars/SHUTDOWN.md](core-pillars/SHUTDOWN.md) — SIGTERM handling, K8s pre-stop delay
 
 ### Runtime

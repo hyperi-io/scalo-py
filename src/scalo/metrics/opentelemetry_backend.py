@@ -7,13 +7,27 @@ simultaneous OTLP push and Prometheus scrape support.
 A single MeterProvider with multiple MetricReaders means every metric
 observation is seen by ALL readers automatically - no duplication needed.
 
+OTLP push is ON by default, pointed at a local collector -- good citizen out of
+the box, in step with scalo-rs. Opting out is a config line
+(``metrics.opentelemetry.enabled: false``, or a blank endpoint), not a feature
+you had to know about. Losing the push path never costs the scrape endpoint.
+
+When nothing is listening the exporter is wrapped in a backoff gate
+(:mod:`scalo.otel_backoff`), so a dead collector costs one warning and a
+widening retry interval rather than a stalled export and a burst of transient
+errors every tick.
+
 Configuration (settings.yaml):
     metrics:
       backend: opentelemetry
       opentelemetry:
-        endpoint: http://otel-collector:4317    # or OTEL_EXPORTER_OTLP_ENDPOINT
+        enabled: true                            # master switch for OTLP push
+        endpoint: http://otel-collector:4317     # or OTEL_EXPORTER_OTLP_ENDPOINT
         protocol: grpc                           # grpc|http, or OTEL_EXPORTER_OTLP_PROTOCOL
         export_interval_millis: 60000
+        export_timeout_millis: 10000
+        headers: {}                              # commonly a backend API key
+        resource_attributes: {}                  # applied last, so they win
         prometheus_scrape: true                  # also expose /metrics (default: true)
         auto_convert_names: true                 # Prometheus->OTEL name conversion
         service_version: "1.0.0"
@@ -22,10 +36,18 @@ Configuration (settings.yaml):
 from __future__ import annotations
 
 import os
+from dataclasses import dataclass, field
 from typing import Any, Callable
 
 from ..logger import logger
+from ..otel_backoff import DEFAULT_ENDPOINTS, append_signal_path, normalise_protocol
 from .base import MetricsBackend, NoOpMetric
+
+# Re-exported under the older name for consumers that import it from here.
+DEFAULT_OTLP_ENDPOINTS = DEFAULT_ENDPOINTS
+
+# Bound on the shutdown flush, well under a Kubernetes termination grace period.
+SHUTDOWN_FLUSH_MILLIS = 2_000
 
 # ---------------------------------------------------------------------------
 # Prometheus-compatible adapter wrappers for OTel instruments
@@ -194,24 +216,111 @@ except ImportError:
     CONTENT_TYPE_LATEST = "text/plain; version=0.0.4"
 
 
-def _create_otlp_exporter(protocol: str, endpoint: str) -> Any:
-    """Create OTLP exporter based on protocol selection.
+@dataclass
+class ResolvedOtelConfig:
+    """OTLP settings after config, OTel env vars and defaults are folded together.
 
-    Args:
-        protocol: "grpc" or "http"
-        endpoint: Collector endpoint URL
-
-    Returns:
-        OTLP metric exporter instance
+    Mirrors scalo-rs ``ResolvedOtelConfig``. Split out from the backend so the
+    resolution can be asserted without standing up a MeterProvider.
     """
+
+    enabled: bool = True
+    endpoint: str = DEFAULT_OTLP_ENDPOINTS["grpc"]
+    protocol: str = "grpc"
+    export_interval_millis: int = 60_000
+    export_timeout_millis: int = 10_000
+    # repr=False: headers commonly carry a backend API key, and this object is
+    # held on the backend where any debug dump or log of it would print the
+    # value in clear. Redaction elsewhere matches on field NAMES and would not
+    # see a token sitting in a map value.
+    headers: dict[str, str] = field(default_factory=dict, repr=False)
+    resource_attributes: dict[str, str] = field(default_factory=dict)
+    # Deployment tier (dev/staging/prod), tagged on the OTel resource as the
+    # stable semconv attribute deployment.environment.name.
+    deployment_environment: str = "development"
+
+    @property
+    def push_active(self) -> bool:
+        """Whether OTLP push should be wired up.
+
+        False when disabled or the effective endpoint is blank; the caller then
+        installs the Prometheus reader alone.
+        """
+        return self.enabled and bool(self.endpoint)
+
+
+def resolve_otel_config(otel_config: dict[str, Any] | None) -> ResolvedOtelConfig:
+    """Resolve OTLP settings from config, with OTel env vars taking precedence.
+
+    Precedence per field: the standard ``OTEL_*`` env var, then the config
+    cascade's ``metrics.opentelemetry.*``, then the default. The env vars win
+    because they are what a deployment sets and what the charts already emit.
+    """
+    otel_config = otel_config or {}
+
+    protocol = normalise_protocol(
+        os.environ.get("OTEL_EXPORTER_OTLP_PROTOCOL"),
+        normalise_protocol(otel_config.get("protocol"), "grpc"),
+    )
+
+    # A whitespace-only endpoint resolves to empty, so OTEL_EXPORTER_OTLP_ENDPOINT=" "
+    # reads as "off" rather than as an unparseable URI. It is the off switch for
+    # an operator who cannot reach the config file.
+    configured_endpoint = otel_config.get("endpoint", DEFAULT_OTLP_ENDPOINTS[protocol])
+    endpoint = os.environ.get("OTEL_EXPORTER_OTLP_ENDPOINT", configured_endpoint)
+    endpoint = (endpoint or "").strip()
+
+    interval = _int_env("OTEL_METRIC_EXPORT_INTERVAL", otel_config.get("export_interval_millis", 60_000))
+    timeout = _int_env("OTEL_METRIC_EXPORT_TIMEOUT", otel_config.get("export_timeout_millis", 10_000))
+
+    from ..config import get_app_env
+
+    return ResolvedOtelConfig(
+        enabled=bool(otel_config.get("enabled", True)),
+        endpoint=endpoint,
+        protocol=protocol,
+        export_interval_millis=interval,
+        export_timeout_millis=timeout,
+        headers=dict(otel_config.get("headers") or {}),
+        resource_attributes=dict(otel_config.get("resource_attributes") or {}),
+        deployment_environment=get_app_env(),
+    )
+
+
+def _int_env(name: str, fallback: Any) -> int:
+    """Read a millisecond env var, falling back to the configured value."""
+    raw = os.environ.get(name)
+    if raw:
+        try:
+            return int(raw)
+        except ValueError:
+            logger.warning(f"{name}={raw!r} is not an integer -- using {fallback}")
+    try:
+        return int(fallback)
+    except (TypeError, ValueError):
+        return 0
+
+
+def _create_otlp_exporter(protocol: str, endpoint: str, timeout_millis: int, headers: dict[str, str]) -> Any:
+    """Create the OTLP metric exporter for the given protocol and endpoint.
+
+    The timeout is the per-attempt deadline, so an endpoint that accepts the
+    connection and then stalls fails the attempt instead of holding the exporter
+    open past the next interval.
+    """
+    timeout_seconds = max(timeout_millis / 1000, 1)
     if protocol == "http":
         from opentelemetry.exporter.otlp.proto.http.metric_exporter import OTLPMetricExporter
 
-        return OTLPMetricExporter(endpoint=endpoint)
-    else:
-        from opentelemetry.exporter.otlp.proto.grpc.metric_exporter import OTLPMetricExporter
+        return OTLPMetricExporter(
+            endpoint=append_signal_path(endpoint, "v1/metrics"),
+            timeout=timeout_seconds,
+            headers=headers or None,
+        )
 
-        return OTLPMetricExporter(endpoint=endpoint)
+    from opentelemetry.exporter.otlp.proto.grpc.metric_exporter import OTLPMetricExporter
+
+    return OTLPMetricExporter(endpoint=endpoint, timeout=timeout_seconds, headers=headers or None)
 
 
 class OpenTelemetryBackend(MetricsBackend):
@@ -324,24 +433,8 @@ class OpenTelemetryBackend(MetricsBackend):
 
         otel_config = config.get("opentelemetry", {}) if config else {}
 
-        # Resolve endpoint: config > env var > NONE (silent by default).
-        # Previous default of "http://localhost:4317" caused every
-        # default-config process (incl. tests + local dev) to attempt
-        # OTLP push to a collector that usually wasn't running, producing
-        # constant "Transient error" log noise. Opt-in via config or
-        # OTEL_EXPORTER_OTLP_ENDPOINT.
-        endpoint = otel_config.get(
-            "endpoint",
-            os.environ.get("OTEL_EXPORTER_OTLP_ENDPOINT", ""),
-        )
-
-        # Resolve protocol: config > env var > default
-        protocol = otel_config.get(
-            "protocol",
-            os.environ.get("OTEL_EXPORTER_OTLP_PROTOCOL", "grpc"),
-        )
-
-        export_interval = otel_config.get("export_interval_millis", 60000)
+        self.resolved = resolve_otel_config(otel_config)
+        resolved = self.resolved
         prometheus_scrape = otel_config.get("prometheus_scrape", True)
         self.auto_convert_names = otel_config.get("auto_convert_names", True)
 
@@ -350,12 +443,19 @@ class OpenTelemetryBackend(MetricsBackend):
         # processor / Prometheus scrape relabeling, NOT self-stamped on metrics.
         import socket
 
+        service_name = os.environ.get("OTEL_SERVICE_NAME") or app_name
         service_version = otel_config.get("service_version", "1.0.0")
         resource_attrs: dict[str, Any] = {
-            "service.name": app_name,
+            "service.name": service_name,
             "service.version": service_version,
             "service.instance.id": socket.gethostname(),
         }
+
+        # deployment.environment.name is the STABLE semconv key; the bare
+        # deployment.environment is deprecated. Sourced from scalo's own env
+        # detection, so telemetry carries the tier without per-app wiring.
+        if resolved.deployment_environment:
+            resource_attrs["deployment.environment.name"] = resolved.deployment_environment
 
         # Optional, opt-in (default OFF): fold k8s Downward-API env into the
         # resource. The collector's k8sattributes processor does this more
@@ -370,21 +470,45 @@ class OpenTelemetryBackend(MetricsBackend):
                 if value:
                     resource_attrs[attr] = value
 
+        # Configured attributes applied LAST so they win over the auto-set ones.
+        resource_attrs.update(resolved.resource_attributes)
+
         resource = Resource.create(resource_attrs)
 
         try:
             metric_readers = []
             readers_desc = []
 
-            # OTLP push reader (always created unless endpoint explicitly empty)
-            if endpoint:
-                otlp_exporter = _create_otlp_exporter(protocol, endpoint)
-                otlp_reader = PeriodicExportingMetricReader(
-                    exporter=otlp_exporter,
-                    export_interval_millis=export_interval,
-                )
-                metric_readers.append(otlp_reader)
-                readers_desc.append(f"otlp({protocol})->{endpoint}")
+            # OTLP push reader, on unless disabled or the endpoint is blank.
+            #
+            # Its own try: losing the push path must never cost the scrape
+            # endpoint. A bad endpoint or a missing transport extra degrades to
+            # Prometheus-only rather than installing no metrics at all.
+            if resolved.push_active:
+                try:
+                    otlp_exporter = _create_otlp_exporter(
+                        resolved.protocol,
+                        resolved.endpoint,
+                        resolved.export_timeout_millis,
+                        resolved.headers,
+                    )
+                    # Backoff starts at one export interval so the first retry is
+                    # the next scheduled tick, then doubles while the collector
+                    # stays unreachable.
+                    from ..otel_backoff import GatedMetricExporter
+
+                    otlp_exporter = GatedMetricExporter(otlp_exporter, resolved.export_interval_millis / 1000)
+                    otlp_reader = PeriodicExportingMetricReader(
+                        exporter=otlp_exporter,
+                        export_interval_millis=resolved.export_interval_millis,
+                        export_timeout_millis=resolved.export_timeout_millis,
+                    )
+                    metric_readers.append(otlp_reader)
+                    readers_desc.append(f"otlp({resolved.protocol})->{resolved.endpoint}")
+                except Exception as exc:
+                    logger.warning(
+                        f"OTLP metric push unavailable ({exc}) -- continuing with the Prometheus scrape endpoint"
+                    )
 
             # Prometheus scrape reader (enabled by default)
             self._prometheus_reader = None
@@ -414,24 +538,41 @@ class OpenTelemetryBackend(MetricsBackend):
             self._metrics_cache: dict[str, Any] = {}
 
             self.enabled = True
-            logger.info(f"OpenTelemetry metrics initialised: readers=[{', '.join(readers_desc)}]")
+            logger.info(
+                f"OpenTelemetry metrics initialised: readers=[{', '.join(readers_desc)}], "
+                f"env={resolved.deployment_environment}, "
+                f"export_interval={resolved.export_interval_millis}ms, "
+                f"export_timeout={resolved.export_timeout_millis}ms"
+            )
 
             # Register graceful shutdown BEFORE OTel SDK's own atexit handler.
             # Python atexit runs LIFO -- registering last means we run first,
             # shutting down the provider cleanly before the SDK tries to flush.
             import atexit
 
+            self._shut_down = False
+
             def _graceful_shutdown():
+                # Idempotent: stop_auto_update() shuts the same provider down, and
+                # the SDK writes "shutdown can only be called once" to stderr for
+                # the second attempt.
+                if self._shut_down:
+                    return
+                self._shut_down = True
                 try:
-                    # Shut down each reader individually to suppress export errors
+                    # Bounded well under a Kubernetes termination grace period:
+                    # the SDK default is 30s, so an unreachable collector would
+                    # otherwise hold the process open until SIGKILL.
                     for reader in metric_readers:
                         try:
-                            reader.shutdown()
+                            reader.shutdown(timeout_millis=SHUTDOWN_FLUSH_MILLIS)
                         except Exception:
                             pass
-                    self._provider.shutdown()
+                    self._provider.shutdown(timeout_millis=SHUTDOWN_FLUSH_MILLIS)
                 except Exception:
                     pass  # Suppress export errors at shutdown (collector may be unavailable)
+
+            self._graceful_shutdown = _graceful_shutdown
 
             atexit.register(_graceful_shutdown)
 
@@ -645,9 +786,11 @@ class OpenTelemetryBackend(MetricsBackend):
 
         Shuts down the MeterProvider which flushes and stops all readers.
         """
-        if self.enabled and hasattr(self, "_provider"):
+        if self.enabled and hasattr(self, "_graceful_shutdown"):
             try:
-                self._provider.shutdown()
+                # The same bounded, idempotent path the atexit handler runs, so
+                # an explicit stop followed by process exit shuts down once.
+                self._graceful_shutdown()
             except Exception as e:
                 logger.error(f"Error shutting down OpenTelemetry: {e}")
 

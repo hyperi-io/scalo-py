@@ -31,20 +31,52 @@ bare `METRICS_BACKEND` by default, or `<PREFIX>_METRICS_BACKEND` when
 the app sets one. There is no `HYPERI_`-prefixed form -- scalo
 hard-codes no brand.
 
-`ServiceApp` honours the same cascade, but falls back to `prometheus`
-rather than `opentelemetry` when nothing is configured.
+`ServiceApp` honours the same cascade and the same default.
 
-| Backend | When chosen | Default extras |
-|---------|-------------|----------------|
-| `opentelemetry` | Default, with `[opentelemetry]` extra installed | Prometheus scrape on; OTLP push opt-in |
+| Backend | When chosen | What it does |
+|---------|-------------|--------------|
+| `opentelemetry` | Default, with `[opentelemetry]` extra installed | Prometheus scrape AND OTLP push |
 | `prometheus` | Explicit, or OTel SDK missing | Prometheus scrape only |
 
-OTLP push is silent by default -- set `endpoint:` in config or
-`OTEL_EXPORTER_OTLP_ENDPOINT` to enable it. Previously the default
-``http://localhost:4317`` caused tests and local dev to spam
-"Transient error" logs against a collector that wasn't running.
-Prometheus scrape stays on by default; disable with
-`prometheus_scrape: false`.
+### OTLP push is on by default
+
+Enabling metrics composes the exporters in: Prometheus scrape, OTLP
+metric push and OTLP span export, pointed at a local collector. A
+service is a good citizen out of the box rather than only serving
+`/metrics` for something else to come and scrape, and matches scalo-rs.
+
+The OTel backend is DUAL -- it pushes and keeps serving `/metrics` --
+so a Prometheus-estate deployer loses nothing.
+
+Two ways off, and neither costs the scrape endpoint:
+
+```yaml
+metrics:
+  opentelemetry:
+    enabled: false          # master switch
+    endpoint: ""            # or blank the endpoint
+```
+
+A blank `OTEL_EXPORTER_OTLP_ENDPOINT` does the same thing, for an
+operator who cannot reach the config file. The env var outranks config,
+per the OTel spec.
+
+Disable the scrape endpoint separately with `prometheus_scrape: false`.
+
+### When the collector is not there
+
+Laptops and CI runners have no collector, and neither does a service
+during a collector outage. The exporters are wrapped in a backoff gate
+(`scalo.otel_backoff`): the first failure logs one warning and starts a
+wait that doubles to a 15-minute ceiling with 20% jitter, so a fleet
+that lost its collector together does not come back in lockstep. One
+success resets it and logs what the outage cost. Suppressed exports
+report success to the SDK -- OTLP metrics are cumulative, so the next
+export that lands carries the full value.
+
+The flush on exit is bounded at 2 seconds, well inside a Kubernetes
+termination grace period, so an unreachable collector cannot hold a pod
+open until SIGKILL.
 
 ---
 
@@ -74,7 +106,7 @@ latency.labels(method="GET").observe(0.123)
 
 ## DFE groups
 
-Composable metric structs that mirror rustlib's `groups`. Wire
+Composable metric structs that mirror scalo-rs's `groups`. Wire
 the groups your app needs; each registers a fixed set of metrics
 with the standard names and labels HyperI services emit.
 
@@ -157,13 +189,36 @@ Reset via `tracker.reset()` (test fixtures only; never in production).
 metrics:
   backend: opentelemetry
   opentelemetry:
-    endpoint: http://otel-collector:4317   # or OTEL_EXPORTER_OTLP_ENDPOINT
+    enabled: true                           # master switch for OTLP push
+    endpoint: http://otel-collector:4317    # or OTEL_EXPORTER_OTLP_ENDPOINT
     protocol: grpc                          # grpc | http
+    export_interval_millis: 60000
+    export_timeout_millis: 10000            # per-attempt deadline
+    headers: {}                             # commonly a backend API key
+    resource_attributes: {}                 # applied last, so they win
     prometheus_scrape: true                 # also expose /metrics (default)
 ```
 
-Standard OTel env vars (`OTEL_EXPORTER_OTLP_ENDPOINT`,
-`OTEL_EXPORTER_OTLP_PROTOCOL`, `OTEL_RESOURCE_ATTRIBUTES`) are honoured.
+Standard OTel env vars outrank config: `OTEL_EXPORTER_OTLP_ENDPOINT`,
+`OTEL_EXPORTER_OTLP_PROTOCOL`, `OTEL_SERVICE_NAME`,
+`OTEL_METRIC_EXPORT_INTERVAL`, `OTEL_METRIC_EXPORT_TIMEOUT`.
+
+The resource carries `service.name`, `service.version`,
+`service.instance.id` and `deployment.environment.name` -- the stable
+semconv key, sourced from scalo's own env detection
+(`APP_ENV` / `ENVIRONMENT` / `ENV`), so telemetry is tagged with the
+tier without per-app wiring. Anything in `resource_attributes` is
+applied last and wins.
+
+`export_timeout_millis` is the per-attempt deadline. Without it an
+endpoint that accepts the connection and never answers holds the
+exporter open past the next interval and the attempts overlap.
+
+On the `http` protocol the OTLP signal path (`/v1/metrics`) is appended
+to the endpoint for you. The SDK only does that for an endpoint it reads
+from the environment itself; one passed in is used verbatim, so a base
+URL would POST to the collector's root.
+
 At shutdown, the backend registers an atexit hook that runs before
 the OTel SDK's own hook (LIFO order) to flush pending metrics; see
 [SHUTDOWN.md](SHUTDOWN.md#otel-flush).

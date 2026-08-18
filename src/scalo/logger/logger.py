@@ -439,6 +439,10 @@ def setup(
     scrubber=None,
     scrub_config=None,
     metrics=None,
+    level=None,
+    log_format=None,
+    otel_tracing=True,
+    service_name=None,
 ):
     """Setup standard logging with RFC 3339 compliance and CHARS-POLICY.md enforcement
 
@@ -493,6 +497,23 @@ def setup(
                 from scalo.metrics import create_metrics
                 metrics = create_metrics("my-app")
                 logger.setup(metrics=metrics)
+        level: Explicit log level, already resolved by the caller.
+            ``get_logging_config()`` reads the process-wide Dynaconf instance,
+            which never sees a config file passed to
+            ``get_config(additional_files=...)``. A caller that HAS loaded such
+            a file -- ``ServiceApp``, via ``--config`` -- passes the resolved
+            level here instead of hoping the two agree.
+        log_format: Explicit format selector ("json", "text", "console",
+            "auto"), resolved by the caller. Same reasoning as ``level``.
+        otel_tracing: Compose OTLP span export in (default True), so an app that
+            calls this and nothing else gets distributed tracing -- matching
+            scalo-rs, which wires spans at logger setup. Set False for a context
+            that must not start an exporter thread. Switching it off in config
+            (``otel_tracing.enabled: false`` or a blank endpoint) is the normal
+            way to opt out; this argument is for callers that cannot reach it.
+        service_name: ``service.name`` for the span resource. Without it the
+            attribute is left unset rather than defaulted, because a package-name
+            default would report every service in the fleet as "scalo".
     """
 
     # Remove default handler
@@ -501,19 +522,22 @@ def setup(
     # Get logging config (lazy import to avoid circular dependency)
     config = _get_logging_config()
 
+    # A caller-resolved level outranks the config it was resolved from: it has
+    # already folded in --verbose/--quiet and the CLI flag.
+    resolved_level = level or config.get("level", "INFO")
+
     # Fire-and-forget mode by default -- sinks run on a background thread, so
     # logger.info() returns in ~us even with slow disk/network sinks. Override
     # with SCALO_LOG_ENQUEUE=0 for sync semantics (audit logging, unit tests
     # that assert on captured output, etc.).
     enqueue = control_var("LOG_ENQUEUE", default="1") != "0"
 
-    # LOG_FORMAT: explicit selector for the console sink format.
-    # Accepted values: "json" (one JSON object per line via loguru
-    # serialize=True), "console" / "text" / "" (default human-readable
-    # console with colours in TTY, plain ASCII in files / CI). The env
-    # var beats the config value beats the auto-detected default.
-    log_format = (os.environ.get("LOG_FORMAT") or config.get("format") or "").strip().lower()
-    serialize_console = log_format == "json"
+    # Explicit selector for the console sink format. Accepted values: "json"
+    # (one JSON object per line via loguru serialize=True), "console" / "text" /
+    # "auto" / "" (human-readable console with colours in a TTY, plain ASCII in
+    # files and CI). Caller-resolved beats the env var beats the config value.
+    resolved_format = (log_format or os.environ.get("LOG_FORMAT") or config.get("format") or "").strip().lower()
+    serialize_console = resolved_format == "json"
 
     # CI mode: Auto-detect from environment or config, can be overridden by parameter
     # Priority: parameter > config > auto-detect
@@ -590,7 +614,7 @@ def setup(
             console_format = _get_log_format(is_file=False, ci_mode=True)
             logger.add(
                 _github_actions_sink,
-                level=config.get("level", "INFO"),
+                level=resolved_level,
                 format=console_format,
                 colorize=False,
                 # loguru's diagnose annotations render local-variable VALUES in
@@ -613,7 +637,7 @@ def setup(
             console_format = _get_log_format(is_file=False, ci_mode=True)
             logger.add(
                 sys.stderr,
-                level=config.get("level", "INFO"),
+                level=resolved_level,
                 format=console_format,
                 colorize=False,
                 serialize=serialize_console,
@@ -634,7 +658,7 @@ def setup(
             console_format = _get_log_format(is_file=False, color_scheme=color_scheme)
             logger.add(
                 sys.stderr,
-                level=config.get("level", "INFO"),
+                level=resolved_level,
                 format=console_format,
                 colorize=not serialize_console,
                 serialize=serialize_console,
@@ -656,7 +680,7 @@ def setup(
         file_format = _get_log_format(is_file=True, color_scheme=color_scheme)
         logger.add(
             log_file,
-            level=config.get("level", "INFO"),
+            level=resolved_level,
             format=file_format,
             rotation="10 MB",
             retention="7 days",
@@ -674,6 +698,17 @@ def setup(
             ),  # Convert emojis to text for machine-readable logs
         )
 
+    # Span export last, so whatever it reports goes through the sinks just built.
+    # Telemetry failures degrade telemetry and never stop a service starting, so
+    # this cannot raise past here.
+    if otel_tracing:
+        try:
+            from ..otel_tracing import setup_tracing
+
+            setup_tracing(service_name=service_name)
+        except Exception as exc:
+            logger.warning(f"OTLP span export unavailable, continuing without it: {exc}")
+
     return logger
 
 
@@ -687,8 +722,11 @@ def setup(
 # Opt-in: set SCALO_AUTO_LOGGER_CONFIG=1 (keeps SCALO_NO_LOGGER_CONFIG as override)
 
 if control_flag("AUTO_LOGGER_CONFIG") and not control_flag("NO_LOGGER_CONFIG"):
-    # Initialize with smart defaults (auto-detects terminal, RFC 3339, emojis)
-    setup()
+    # Smart defaults (auto-detects terminal, RFC 3339, emojis), but no span
+    # export: this runs on `import scalo.logger`, and importing a library must
+    # not start an exporter thread. A service gets tracing from its own
+    # setup() call, which is where scalo-rs composes it too.
+    setup(otel_tracing=False)
 
 
 # Standard logging functions for convenience

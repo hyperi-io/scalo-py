@@ -32,6 +32,20 @@ from scalo.cli.version_info import VersionInfo
 runner = CliRunner()
 
 
+class _Settings:
+    """Minimal stand-in for a loaded Dynaconf object."""
+
+    def __init__(self, data: dict[str, Any]) -> None:
+        self._data = data
+
+    def get(self, key: str, default: Any = None) -> Any:
+        return self._data.get(key, default)
+
+
+def _settings(data: dict[str, Any]) -> _Settings:
+    return _Settings(data)
+
+
 # --- CommonArgs tests ---
 
 
@@ -63,11 +77,44 @@ class TestCommonArgs:
     def test_defaults(self):
         args = CommonArgs()
         assert args.config is None
-        assert args.log_level == "info"
-        assert args.log_format == "auto"
+        # None, not "info"/"auto": a default here is indistinguishable from an
+        # explicit flag, and would outrank the config cascade permanently.
+        assert args.log_level is None
+        assert args.log_format is None
         assert args.metrics_addr == "0.0.0.0:9090"
         assert args.verbose is False
         assert args.quiet is False
+
+    def test_unset_level_resolves_to_info(self):
+        assert CommonArgs().effective_log_level() == "INFO"
+        assert CommonArgs().effective_log_format() == "auto"
+
+    def test_config_supplies_the_level_when_no_flag_is_given(self):
+        config = {"logging": {"level": "warning", "format": "json"}}
+        args = CommonArgs()
+        assert args.effective_log_level(_settings(config)) == "WARNING"
+        assert args.effective_log_format(_settings(config)) == "json"
+
+    def test_flag_beats_config(self):
+        config = {"logging": {"level": "warning", "format": "json"}}
+        args = CommonArgs(log_level="error", log_format="text")
+        assert args.effective_log_level(_settings(config)) == "ERROR"
+        assert args.effective_log_format(_settings(config)) == "text"
+
+    def test_verbose_beats_config(self):
+        config = {"logging": {"level": "error"}}
+        assert CommonArgs(verbose=True).effective_log_level(_settings(config)) == "DEBUG"
+
+    def test_quiet_beats_config(self):
+        config = {"logging": {"level": "debug"}}
+        assert CommonArgs(quiet=True).effective_log_level(_settings(config)) == "ERROR"
+
+    def test_unreadable_config_falls_back_rather_than_raising(self):
+        class _Exploding:
+            def get(self, *args, **kwargs):
+                raise RuntimeError("settings unavailable")
+
+        assert CommonArgs().effective_log_level(_Exploding()) == "INFO"
 
 
 # --- VersionInfo tests ---
