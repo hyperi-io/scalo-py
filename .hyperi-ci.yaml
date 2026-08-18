@@ -4,6 +4,11 @@
 
 license: Apache-2.0
 
+# Declared, never inferred. Category 4 (OSS): Apache-2.0, publishes to PyPI,
+# neutral branding. The repo stays private until the consuming apps migrate;
+# the package is already public.
+classification: oss
+
 build:
   type: package
 
