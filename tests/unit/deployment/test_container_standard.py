@@ -16,12 +16,15 @@ base image spelled in more than one place.
 
 from __future__ import annotations
 
+import json
+
 import pytest
 
 from .support import py_contract
 
 try:
     from scalo.deployment import (
+        CONFLUENT_KEY_FINGERPRINT,
         DEFAULT_BASE_IMAGE,
         DEFAULT_BUILDER_IMAGE,
         DEFAULT_DISTRO_CODENAME,
@@ -263,6 +266,64 @@ class TestDockerignore:
 
     def test_deterministic(self):
         assert generate_dockerignore(py_contract()) == generate_dockerignore(py_contract())
+
+
+class TestAptRepoKeyIsPinned:
+    """The generated build must not re-establish trust in an APT key every build.
+
+    Without a pin the key is downloaded fresh and whatever comes back is
+    trusted: a compromised mirror serves its own key, ``signed-by`` validates
+    the attacker's repo, and their ``librdkafka1`` goes into the image.
+    """
+
+    @staticmethod
+    def _kafka_runtime_stage() -> str:
+        contract = py_contract().model_copy(
+            update={"native_deps": NativeDepsContract.for_scalo_extras(["kafka"], base_image=DEFAULT_BASE_IMAGE)}
+        )
+        return generate_runtime_stage(contract)
+
+    def test_the_confluent_repo_carries_a_fingerprint(self):
+        deps = NativeDepsContract.for_scalo_extras(["kafka"], base_image=DEFAULT_BASE_IMAGE)
+        assert deps.apt_repos, "the kafka extra must add the Confluent repo"
+        for repo in deps.apt_repos:
+            assert repo.key_fingerprint, f"{repo.url} has no pinned key fingerprint"
+            assert repo.key_fingerprint == repo.key_fingerprint.upper()
+            assert " " not in repo.key_fingerprint, "gpg --with-colons emits the fingerprint unspaced"
+
+    def test_the_fingerprint_is_asserted_in_the_build(self):
+        stage = self._kafka_runtime_stage()
+        assert "gpg --show-keys --with-colons --with-fingerprint" in stage
+        assert f"^fpr:::::::::{CONFLUENT_KEY_FINGERPRINT}:" in stage
+
+    def test_the_check_runs_before_the_key_is_trusted(self):
+        stage = self._kafka_runtime_stage()
+        check = stage.index("--with-fingerprint")
+        dearmor = stage.index("gpg --dearmor")
+        assert check < dearmor, "the key was dearmoured into the keyring before it was verified"
+
+    def test_the_key_is_not_piped_into_gpg(self):
+        """`sh` has no pipefail, so a failed fetch would leave an empty keyring."""
+        stage = self._kafka_runtime_stage()
+        assert "| gpg" not in stage
+        assert "-o /tmp/repo-key.asc" in stage
+
+    def test_the_downloaded_key_does_not_stay_in_the_layer(self):
+        stage = self._kafka_runtime_stage()
+        assert "rm -f /tmp/repo-key.asc" in stage
+        assert "rm -f /tmp/repo-key.info" in stage
+
+    def test_the_manifest_records_the_pin(self):
+        """CI reads the manifest, so the pin has to survive the round trip."""
+        from scalo.deployment import generate_container_manifest
+
+        contract = py_contract().model_copy(
+            update={"native_deps": NativeDepsContract.for_scalo_extras(["kafka"], base_image=DEFAULT_BASE_IMAGE)}
+        )
+        manifest = json.loads(generate_container_manifest(contract))
+        repos = manifest["runtime_packages"]["apt_repos"]
+        assert repos, "the manifest lost the APT repo"
+        assert repos[0]["key_fingerprint"] == CONFLUENT_KEY_FINGERPRINT
 
 
 class TestAlpineGuard:

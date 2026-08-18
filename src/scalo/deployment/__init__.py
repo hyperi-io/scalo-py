@@ -166,6 +166,7 @@ else:
     )
     from .keda import KedaConfig, KedaContract
     from .native_deps import (
+        CONFLUENT_KEY_FINGERPRINT,
         AptRepoContract,
         NativeDepsContract,
         libgit2_runtime_package,
@@ -193,6 +194,7 @@ else:
 
 
 __all__ = [
+    "CONFLUENT_KEY_FINGERPRINT",
     "DEFAULT_BASE_IMAGE",
     "DEFAULT_BUILDER_IMAGE",
     "DEFAULT_DISTRO_CODENAME",

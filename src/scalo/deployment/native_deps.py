@@ -40,6 +40,19 @@ class AptRepoContract(BaseModel):
     key_url: str
     """GPG key URL for the repo."""
 
+    key_fingerprint: str = ""
+    """Expected OpenPGP fingerprint of ``key_url``, uppercase hex, no spaces.
+
+    Asserted before the key is dearmoured into the keyring. Without it the build
+    downloads the key fresh every time and trusts whatever comes back: a
+    compromised mirror or an intercepted TLS session serves its own key,
+    ``signed-by`` then validates the attacker's repo, and their package goes into
+    the image. Pinning converts an every-build trust-on-first-use into a one-time
+    one; it does not establish that the key was legitimate to begin with.
+
+    Empty skips the check, for a repo whose fingerprint has not been derived.
+    """
+
     keyring: str
     """Local keyring file path (e.g., ``/usr/share/keyrings/confluent-clients.gpg``)."""
 
@@ -184,10 +197,17 @@ class NativeDepsContract(BaseModel):
         return cls(apt_repos=apt_repos, apt_packages=packages, distro_codename=distro_codename)
 
 
+# OpenPGP v4 fingerprint of the Confluent clients signing key, shared with
+# scalo-rs. If Confluent rotates the key the build fails loudly at the gpg
+# step -- re-derive and update it, never remove the check.
+CONFLUENT_KEY_FINGERPRINT = "CBBB821E8FAF364F79835C438B1DA6120C2BF624"
+
+
 def _confluent_repo(codename: str) -> AptRepoContract:
     """Confluent APT repository for librdkafka."""
     return AptRepoContract(
         key_url="https://packages.confluent.io/clients/deb/archive.key",
+        key_fingerprint=CONFLUENT_KEY_FINGERPRINT,
         keyring="/usr/share/keyrings/confluent-clients.gpg",
         url="https://packages.confluent.io/clients/deb",
         codename=codename,
@@ -215,6 +235,7 @@ def _confluent_suite_codename(base_image: str) -> str:
 
 
 __all__ = [
+    "CONFLUENT_KEY_FINGERPRINT",
     "DEFAULT_DISTRO_CODENAME",
     "AptRepoContract",
     "NativeDepsContract",
