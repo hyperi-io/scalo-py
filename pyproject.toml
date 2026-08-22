@@ -83,10 +83,18 @@ http = [
     "stamina>=26.1.0",
     "purgatory>=3.0.1",
 ]
+# Carries the OTel SDK because the default backend is "opentelemetry" (OTLP
+# push + Prometheus scrape); without it the default degrades to Prometheus-only.
+# Mirrors the scalo-rs `metrics` feature, which bundles both exporters.
 metrics = [
     "prometheus-client>=0.25.0",
     "psutil>=7.2.0",
+    "opentelemetry-api>=1.41.0",
+    "opentelemetry-sdk>=1.41.0",
+    "opentelemetry-exporter-otlp>=1.41.0",
+    "opentelemetry-exporter-prometheus>=0.62b0",
 ]
+# Subset of [metrics], kept so existing "scalo[metrics,opentelemetry]" pins resolve.
 opentelemetry = [
     "opentelemetry-api>=1.41.0",
     "opentelemetry-sdk>=1.41.0",

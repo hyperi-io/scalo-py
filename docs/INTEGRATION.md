@@ -21,7 +21,7 @@ OTel metrics, uses Vault secrets, and ships container artefacts:
 ```toml
 [project]
 dependencies = [
-    "scalo[kafka,metrics,opentelemetry,secrets-vault,deployment,resilience,http]>=2.28.3",
+    "scalo[kafka,metrics,secrets-vault,deployment,resilience,http]>=2.28.3",
 ]
 ```
 

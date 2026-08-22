@@ -308,3 +308,19 @@ class TestOTelNotInstalled:
             assert not backend.enabled
         finally:
             otel_mod.OTEL_AVAILABLE = original
+
+    def test_manager_falls_back_to_prometheus(self, monkeypatch):
+        """A missing SDK must yield a working Prometheus backend, not a silent no-op.
+
+        The backend module imports without the SDK, so the manager has to read
+        OTEL_AVAILABLE; reporting ``opentelemetry`` while exporting nothing is
+        the failure this guards.
+        """
+        import scalo.metrics.opentelemetry_backend as otel_mod
+
+        monkeypatch.setattr(otel_mod, "OTEL_AVAILABLE", False)
+
+        manager = MetricsManager("fallback-test", backend="opentelemetry")
+
+        assert manager._actual_backend == "prometheus"
+        assert manager._backend.enabled

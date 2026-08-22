@@ -46,8 +46,8 @@ Read top-to-bottom: install the extra in the first column, get every
 | Install | Adds | Automatic |
 |---|---|---|
 | `scalo` (base) | `config`, `logger`, `runtime`, `cli`, `health`, `version_check`, `concurrency` | Cascade, structured logs, path detection, version probe |
-| `scalo[metrics]` | `metrics` + `prometheus-client` + `psutil` | Above + `MetricsManager.content` for the observability server or an app-served `/metrics` route + process collector (cardinality cap is opt-in) |
-| `scalo[opentelemetry]` | OTel SDK + exporters | Above + OTel metric backend + OTLP export (dual with Prometheus) |
+| `scalo[metrics]` | `metrics` + `prometheus-client` + `psutil` + OTel SDK/exporters | Above + the default OTel backend: OTLP push AND `MetricsManager.content` for the observability server or an app-served `/metrics` route + process collector (cardinality cap is opt-in) |
+| `scalo[opentelemetry]` | OTel SDK + exporters | Subset of `[metrics]`, kept for existing pins |
 | `scalo[http]` | `http` + `httpx` + `stamina` + `purgatory` | Above + HTTP client with retry + circuit breaker + metrics integration |
 | `scalo[kafka]` | `kafka` + `confluent-kafka` + `genson` | Above + producer/consumer/admin + schema sampling. Consumer-lag health is MANUAL: `KafkaConsumer` does not install the statistics callback, so `KafkaConsumerHealth` and the `kafka.health.*` keys stay inert until the app wires `create_stats_callback` itself |
 | `scalo[secrets-{vault,aws,gcp,azure,ansible-vault}]` | `secrets` provider | Above + uniform interface, lazy-loaded provider |

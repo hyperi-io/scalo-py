@@ -72,7 +72,7 @@ flowchart TB
 
     Resil -.transitive.-> HTTP
 
-    Metrics -.optional pairing.-> OTel
+    Metrics -.transitive.-> OTel
 
     SAV --> SAll
     SV --> SAll
@@ -93,11 +93,13 @@ meta-extra that installs every backend at once.
 
 | Extra | Adds | Native deps | Doc |
 |---|---|---|---|
-| `metrics` | `prometheus-client`, `psutil` | none | [core-pillars/METRICS.md](core-pillars/METRICS.md) |
-| `opentelemetry` | `opentelemetry-api`, `opentelemetry-sdk`, `opentelemetry-exporter-otlp`, `opentelemetry-exporter-prometheus` | none | [core-pillars/METRICS.md](core-pillars/METRICS.md) |
+| `metrics` | `prometheus-client`, `psutil`, `opentelemetry-api`, `opentelemetry-sdk`, `opentelemetry-exporter-otlp`, `opentelemetry-exporter-prometheus` | none | [core-pillars/METRICS.md](core-pillars/METRICS.md) |
+| `opentelemetry` | the four `opentelemetry-*` packages above | none | [core-pillars/METRICS.md](core-pillars/METRICS.md) |
 
-Pair these for dual-export: OTel pushes via OTLP, exposes `/metrics`
-via the prometheus exporter, all from one backend.
+`metrics` is the one to install: it carries the OTel SDK, so the default
+dual-export backend (OTLP push plus `/metrics`) works on that install
+alone. `opentelemetry` is a subset of it, kept so existing
+`scalo[metrics,opentelemetry]` pins resolve.
 
 ### Cross-cutting primitives
 
@@ -190,14 +192,14 @@ Base install only. Config + logger + runtime + CLI framework.
 ### FastAPI service (config + logs + metrics)
 
 ```toml
-dependencies = ["scalo[metrics,opentelemetry]>=2.28.3"]
+dependencies = ["scalo[metrics]>=2.28.3"]
 ```
 
 ### Kafka consumer (typical DFE shape)
 
 ```toml
 dependencies = [
-    "scalo[kafka,metrics,opentelemetry,resilience,http,deployment]>=2.28.3",
+    "scalo[kafka,metrics,resilience,http,deployment]>=2.28.3",
 ]
 ```
 
@@ -205,7 +207,7 @@ dependencies = [
 
 ```toml
 dependencies = [
-    "scalo[kafka,metrics,opentelemetry,secrets-vault,resilience,http,deployment]>=2.28.3",
+    "scalo[kafka,metrics,secrets-vault,resilience,http,deployment]>=2.28.3",
 ]
 ```
 
@@ -213,7 +215,7 @@ dependencies = [
 
 ```toml
 dependencies = [
-    "scalo[kafka,metrics,opentelemetry,secrets-vault,secrets-aws,resilience,http,deployment]>=2.28.3",
+    "scalo[kafka,metrics,secrets-vault,secrets-aws,resilience,http,deployment]>=2.28.3",
 ]
 ```
 
@@ -221,7 +223,7 @@ dependencies = [
 
 ```toml
 dependencies = [
-    "scalo[kafka,metrics,opentelemetry,http,secrets,deployment,expression,resilience,dev]>=2.28.3",
+    "scalo[kafka,metrics,http,secrets,deployment,expression,resilience,dev]>=2.28.3",
 ]
 ```
 
