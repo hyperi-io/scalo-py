@@ -162,6 +162,9 @@ dev = [
     "mypy>=1.0.0",
     "bandit[toml]>=1.7.0",
     "pip-audit>=2.6.0",
+    # pip arrives transitively via pip-audit, which then reports it: 26.2 is the
+    # fix for PYSEC-2026-3721.
+    "pip>=26.2",
     "vulture>=2.16",
     "mergedeep>=1.3.4",
     "pre-commit>=4.6.0",
