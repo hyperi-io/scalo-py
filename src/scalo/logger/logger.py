@@ -426,6 +426,20 @@ def _get_log_format(is_file: bool, color_scheme: str = "solarized", ci_mode: boo
         )
 
 
+def _resolve_console_format(log_format, config) -> str:
+    """Resolve the console sink format selector.
+
+    Caller-resolved beats the ``LOG_FORMAT`` env var beats the config value.
+    Unset derives from otel presence: a deployment that ships telemetry logs
+    json, one that does not logs lines -- ``OTEL_EXPORTER_OTLP_ENDPOINT`` is
+    the deploy-layer seam.
+    """
+    resolved = (log_format or os.environ.get("LOG_FORMAT") or config.get("format") or "").strip().lower()
+    if not resolved and os.environ.get("OTEL_EXPORTER_OTLP_ENDPOINT", "").strip():
+        resolved = "json"
+    return resolved
+
+
 def setup(
     settings=None,
     color_scheme="solarized",
@@ -536,7 +550,7 @@ def setup(
     # (one JSON object per line via loguru serialize=True), "console" / "text" /
     # "auto" / "" (human-readable console with colours in a TTY, plain ASCII in
     # files and CI). Caller-resolved beats the env var beats the config value.
-    resolved_format = (log_format or os.environ.get("LOG_FORMAT") or config.get("format") or "").strip().lower()
+    resolved_format = _resolve_console_format(log_format, config)
     serialize_console = resolved_format == "json"
 
     # CI mode: Auto-detect from environment or config, can be overridden by parameter
