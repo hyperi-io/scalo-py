@@ -35,7 +35,7 @@ hard-codes no brand.
 
 | Backend | When chosen | What it does |
 |---------|-------------|--------------|
-| `opentelemetry` | Default, with `[opentelemetry]` extra installed | Prometheus scrape AND OTLP push |
+| `opentelemetry` | Default, on the `[metrics]` extra | Prometheus scrape AND OTLP push |
 | `prometheus` | Explicit, or OTel SDK missing | Prometheus scrape only |
 
 ### OTLP push is on by default
@@ -289,4 +289,4 @@ semantic conventions on export.
 - [SHUTDOWN.md](SHUTDOWN.md) -- OTel atexit ordering matters
 - [api/RESILIENCE.md](../api/RESILIENCE.md) -- pairs with `CircuitBreakerMetrics`
 - [transport/KAFKA.md](../transport/KAFKA.md) -- pairs with `ConsumerMetrics`
-- [EXTRAS-FLAGS.md](../EXTRAS-FLAGS.md) -- `[metrics]` vs `[opentelemetry]`
+- [EXTRAS-FLAGS.md](../EXTRAS-FLAGS.md) -- what `[metrics]` installs

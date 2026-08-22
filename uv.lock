@@ -2744,6 +2744,10 @@ kafka = [
     { name = "genson" },
 ]
 metrics = [
+    { name = "opentelemetry-api" },
+    { name = "opentelemetry-exporter-otlp" },
+    { name = "opentelemetry-exporter-prometheus" },
+    { name = "opentelemetry-sdk" },
     { name = "prometheus-client" },
     { name = "psutil" },
 ]
@@ -2828,9 +2832,13 @@ requires-dist = [
     { name = "moto", extras = ["secretsmanager"], marker = "extra == 'dev'", specifier = ">=5.2.0" },
     { name = "mypy", marker = "extra == 'dev'", specifier = ">=1.0.0" },
     { name = "myst-parser", marker = "extra == 'docs'", specifier = ">=5.0.0" },
+    { name = "opentelemetry-api", marker = "extra == 'metrics'", specifier = ">=1.41.0" },
     { name = "opentelemetry-api", marker = "extra == 'opentelemetry'", specifier = ">=1.41.0" },
+    { name = "opentelemetry-exporter-otlp", marker = "extra == 'metrics'", specifier = ">=1.41.0" },
     { name = "opentelemetry-exporter-otlp", marker = "extra == 'opentelemetry'", specifier = ">=1.41.0" },
+    { name = "opentelemetry-exporter-prometheus", marker = "extra == 'metrics'", specifier = ">=0.62b0" },
     { name = "opentelemetry-exporter-prometheus", marker = "extra == 'opentelemetry'", specifier = ">=0.62b0" },
+    { name = "opentelemetry-sdk", marker = "extra == 'metrics'", specifier = ">=1.41.0" },
     { name = "opentelemetry-sdk", marker = "extra == 'opentelemetry'", specifier = ">=1.41.0" },
     { name = "phonenumbers", specifier = ">=9.0.0" },
     { name = "pip-audit", marker = "extra == 'dev'", specifier = ">=2.6.0" },

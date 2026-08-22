@@ -150,23 +150,32 @@ class MetricsManager:
                 config=self.backend_config,
             )
         elif backend == "opentelemetry":
+            # The backend module imports without the SDK and records the result
+            # in OTEL_AVAILABLE, so the flag is what decides the fallback -- no
+            # ImportError reaches this frame.
+            otel_available = False
             try:
-                from .opentelemetry_backend import OpenTelemetryBackend
+                from .opentelemetry_backend import OTEL_AVAILABLE, OpenTelemetryBackend
 
+                otel_available = OTEL_AVAILABLE
+            except ImportError:
+                pass
+
+            if otel_available:
                 self._actual_backend = "opentelemetry"
                 return OpenTelemetryBackend(app_name=app_name, config=self.backend_config)
-            except ImportError:
-                logger.error("OpenTelemetry backend not available. Install with: pip install scalo[opentelemetry]")
-                logger.warning("Falling back to Prometheus backend")
-                from .prometheus_backend import PrometheusBackend
 
-                self._actual_backend = "prometheus"
-                return PrometheusBackend(
-                    app_name=app_name,
-                    enable_auto_update=enable_auto_update,
-                    update_interval=update_interval,
-                    config=self.backend_config,
-                )
+            logger.error("OpenTelemetry backend not available. Install with: pip install scalo[metrics]")
+            logger.warning("Falling back to Prometheus backend")
+            from .prometheus_backend import PrometheusBackend
+
+            self._actual_backend = "prometheus"
+            return PrometheusBackend(
+                app_name=app_name,
+                enable_auto_update=enable_auto_update,
+                update_interval=update_interval,
+                config=self.backend_config,
+            )
         else:
             logger.error(f"Unknown metrics backend: {backend}. Supported: prometheus, opentelemetry")
             logger.warning("Falling back to Prometheus backend")
