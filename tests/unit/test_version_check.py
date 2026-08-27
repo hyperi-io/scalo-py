@@ -76,25 +76,57 @@ class TestVersionCheckResponse:
         assert resp.latest_version == "2.0.0"
 
 
-class TestInstanceId:
-    """Test persistent instance ID generation."""
+class TestPayloadIsAnonymous:
+    """The wire payload carries no identifier beyond product/version/platform."""
 
-    def test_instance_id_is_uuid(self):
-        import uuid as uuid_mod
+    def test_payload_has_no_instance_id(self):
+        import http.server
+        import json
+        import threading
 
-        from scalo.version_check.checker import _get_or_create_instance_id
+        from scalo.version_check import check_on_startup
+        from scalo.version_check.checker import VersionCheckConfig
 
-        instance_id = _get_or_create_instance_id()
-        # Should be a valid UUID
-        parsed = uuid_mod.UUID(instance_id)
-        assert parsed.version == 4
+        received: list[dict] = []
 
-    def test_instance_id_stable(self):
-        from scalo.version_check.checker import _get_or_create_instance_id
+        class Handler(http.server.BaseHTTPRequestHandler):
+            def do_POST(self):
+                body = self.rfile.read(int(self.headers["Content-Length"]))
+                received.append(json.loads(body))
+                resp = b'{"update_available": false}'
+                self.send_response(200)
+                self.send_header("Content-Type", "application/json")
+                self.send_header("Content-Length", str(len(resp)))
+                self.end_headers()
+                self.wfile.write(resp)
 
-        id1 = _get_or_create_instance_id()
-        id2 = _get_or_create_instance_id()
-        assert id1 == id2
+            def log_message(self, *args):
+                pass
+
+        srv = http.server.HTTPServer(("127.0.0.1", 0), Handler)
+        threading.Thread(target=srv.serve_forever, daemon=True).start()
+        try:
+            cfg = VersionCheckConfig(
+                product="",
+                current_version="",
+                api_url=f"http://127.0.0.1:{srv.server_address[1]}/",
+                enabled=True,
+                deployment="secret-site-name",
+            )
+            thread = check_on_startup(product="test", version="1.0.0", config=cfg)
+            assert thread is not None
+            thread.join(timeout=10)
+        finally:
+            srv.shutdown()
+
+        assert received == [
+            {
+                "product": "test",
+                "current_version": "1.0.0",
+                "os": received[0]["os"],
+                "arch": received[0]["arch"],
+            }
+        ]
 
 
 class TestCheckOnStartup:

@@ -129,12 +129,16 @@ POST body:
 {
   "product": "dfe-receiver",
   "current_version": "1.2.0",
-  "instance_id": "a1b2c3d4-e5f6-7890-...",
   "os": "Linux",
-  "arch": "x86_64",
-  "deployment": "k8s"
+  "arch": "x86_64"
 }
 ```
+
+The payload is intentionally minimal, matching scalo-rs: no instance
+identifier (a disk-persisted UUID is a tracking cookie) and no
+deployment string (operators embed sensitive names in those). The
+`deployment` config field remains accepted for forward-compat but is
+never sent.
 
 Response:
 

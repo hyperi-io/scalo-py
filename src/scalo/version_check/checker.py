@@ -13,10 +13,8 @@ from __future__ import annotations
 import logging
 import platform
 import threading
-import uuid
 from dataclasses import dataclass, field
 from datetime import UTC
-from pathlib import Path
 
 logger = logging.getLogger("scalo.version_check")
 
@@ -132,17 +130,16 @@ def _do_http_check(config: VersionCheckConfig) -> VersionCheckResponse:
         logger.debug("httpx not installed, version check skipped")
         return VersionCheckResponse()
 
-    instance_id = _get_or_create_instance_id()
-
+    # Intentionally minimal, matching scalo-rs 2.7.5+: no instance_id (a
+    # disk-persisted UUID is a tracking cookie) and no deployment string
+    # (operators embed sensitive names). The config field stays for
+    # forward-compat but is not sent.
     payload = {
         "product": config.product,
         "current_version": config.current_version,
-        "instance_id": instance_id,
         "os": platform.system(),
         "arch": platform.machine(),
     }
-    if config.deployment:
-        payload["deployment"] = config.deployment
 
     resp = httpx.post(
         config.api_url,
@@ -226,34 +223,3 @@ def _format_age(published_at: str) -> str:
         return f"released {years}y {remaining}m ago"
     except (ValueError, TypeError):
         return ""
-
-
-def _get_or_create_instance_id() -> str:
-    """Get or create a persistent anonymous instance ID.
-
-    Reads from ~/.config/scalo/instance_id. If missing, generates a
-    new UUIDv4 and persists it. Falls back to ephemeral UUID on any
-    filesystem error.
-    """
-    config_dir = Path.home() / ".config" / "scalo"
-    id_path = config_dir / "instance_id"
-
-    # Try to read existing
-    try:
-        content = id_path.read_text(encoding="utf-8").strip()
-        if content:
-            return content
-    except OSError:
-        pass
-
-    # Generate new
-    instance_id = str(uuid.uuid4())
-
-    # Try to persist (best-effort)
-    try:
-        config_dir.mkdir(parents=True, exist_ok=True)
-        id_path.write_text(instance_id, encoding="utf-8", newline="\n")
-    except OSError:
-        pass
-
-    return instance_id
