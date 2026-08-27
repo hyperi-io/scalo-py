@@ -76,13 +76,12 @@ class TestVersionCheckResponse:
         assert resp.latest_version == "2.0.0"
 
 
-class TestPayloadIsAnonymous:
-    """The wire payload carries no identifier beyond product/version/platform."""
+class TestPayloadShape:
+    """The wire payload: minimal fields plus the config-gated instance id."""
 
-    def test_payload_has_no_instance_id(self):
+    @staticmethod
+    def _capture_payload(**config_overrides) -> dict:
         import http.server
-        import json
-        import threading
 
         from scalo.version_check import check_on_startup
         from scalo.version_check.checker import VersionCheckConfig
@@ -111,7 +110,7 @@ class TestPayloadIsAnonymous:
                 current_version="",
                 api_url=f"http://127.0.0.1:{srv.server_address[1]}/",
                 enabled=True,
-                deployment="secret-site-name",
+                **config_overrides,
             )
             thread = check_on_startup(product="test", version="1.0.0", config=cfg)
             assert thread is not None
@@ -119,14 +118,35 @@ class TestPayloadIsAnonymous:
         finally:
             srv.shutdown()
 
-        assert received == [
-            {
-                "product": "test",
-                "current_version": "1.0.0",
-                "os": received[0]["os"],
-                "arch": received[0]["arch"],
-            }
-        ]
+        assert len(received) == 1
+        return received[0]
+
+    def test_default_payload_carries_a_stable_instance_id(self):
+        import uuid as uuid_mod
+
+        payload = self._capture_payload(deployment="secret-site-name")
+        assert "deployment" not in payload
+        assert set(payload) == {"product", "current_version", "os", "arch", "instance_id"}
+        uuid_mod.UUID(payload["instance_id"])
+        assert payload["instance_id"] == self._capture_payload()["instance_id"]
+
+    def test_send_instance_id_false_strips_the_id(self):
+        payload = self._capture_payload(send_instance_id=False)
+        assert set(payload) == {"product", "current_version", "os", "arch"}
+
+    def test_explicit_instance_id_wins(self):
+        payload = self._capture_payload(instance_id="operator-chosen")
+        assert payload["instance_id"] == "operator-chosen"
+
+    def test_machine_derivation_matches_scalo_rs(self):
+        # Both chassis share the UUIDv5 namespace, so one platform yields one
+        # id whichever chassis reports first. Fixture mirrored in scalo-rs.
+        import uuid as uuid_mod
+
+        from scalo.version_check.checker import INSTANCE_ID_NS
+
+        derived = uuid_mod.uuid5(INSTANCE_ID_NS, "machine:test-fixture")
+        assert str(derived) == "4f9f9577-e391-5835-8236-3e88e902b11b"
 
 
 class TestCheckOnStartup:

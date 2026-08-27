@@ -130,15 +130,16 @@ POST body:
   "product": "dfe-receiver",
   "current_version": "1.2.0",
   "os": "Linux",
-  "arch": "x86_64"
+  "arch": "x86_64",
+  "instance_id": "4f9f9577-e391-5835-8236-3e88e902b11b"
 }
 ```
 
-The payload is intentionally minimal, matching scalo-rs: no instance
-identifier (a disk-persisted UUID is a tracking cookie) and no
-deployment string (operators embed sensitive names in those). The
-`deployment` config field remains accepted for forward-compat but is
-never sent.
+The payload matches scalo-rs field for field. `deployment` is never
+sent -- operators embed sensitive names in free-form deployment
+strings; the config field remains accepted but stays local.
+`instance_id` is included unless `version_check.send_instance_id:
+false`, which yields a payload with no identifier at all.
 
 Response:
 
@@ -159,11 +160,23 @@ prefix — used for one-off operator advisories.
 
 ## Instance ID
 
-A v4 UUID generated once and stored at
-`~/.config/hyperi/instance_id`. Reused across runs, persists across
-restarts, never leaves the host. The check works fine without one — if
-the file can't be created (read-only home, no write permission), an
-ephemeral UUID is used for that run and discarded.
+Derived from what the app is running on, so the same install reports as
+the same install across restarts. Resolution order, first hit wins:
+
+1. `version_check.instance_id` from the config, sent verbatim.
+2. Kubernetes: UUIDv5 over the serviceaccount cluster CA cert plus the
+   pod namespace — readable in-pod with no API permissions, unique per
+   cluster, stable across every pod restart and reschedule.
+3. `/etc/machine-id`, as an app-scoped UUIDv5 — the raw machine id never
+   leaves the host. Skipped inside containers, where a machine-id baked
+   into the image would make every install report as the same one.
+4. A v4 UUID persisted at `~/.config/scalo/instance_id` (dev machines).
+5. An ephemeral UUID for that run alone.
+
+The derived forms are one-way UUIDv5 values: nothing about the host can
+be recovered from them. scalo-rs shares the UUIDv5 namespace, so both
+chassis derive the SAME id on the same platform. Disable entirely with
+`version_check.send_instance_id: false`.
 
 ---
 

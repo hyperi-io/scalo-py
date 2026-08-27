@@ -385,6 +385,10 @@ ignore_missing_imports = true
 # UV package manager configuration
 [tool.uv]
 index-strategy = "unsafe-best-match"
+# Supply-chain cooldown (standards/universal/ci.md): never resolve a package
+# version published in the last 7 days. CVE fixes bypass via a temporary
+# per-package exclude-newer-package entry, not by lowering this.
+exclude-newer = "7 days"
 # Bleeding-edge policy: force latest majors even when transitive deps
 # specify older lower bounds. Re-evaluate at each /deps pass; remove
 # overrides once the entire transitive tree has caught up.
