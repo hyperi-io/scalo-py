@@ -10,6 +10,7 @@
 
 from __future__ import annotations
 
+import hashlib
 import logging
 import platform
 import threading
@@ -49,6 +50,12 @@ class VersionCheckConfig:
     api_url: str | None = field(default_factory=lambda: _setting("api_url", None))
     timeout: float = field(default_factory=lambda: float(_setting("timeout", DEFAULT_TIMEOUT)))
     enabled: bool = field(default_factory=lambda: bool(_setting("enabled", False)))
+    # Include the platform-derived instance id so the same install reports as
+    # the same install across restarts; version_check.send_instance_id: false
+    # yields a payload with no identifier at all.
+    send_instance_id: bool = field(default_factory=lambda: bool(_setting("send_instance_id", True)))
+    # Explicit id, sent verbatim when set -- overrides the derived one.
+    instance_id: str = field(default_factory=lambda: str(_setting("instance_id", "") or ""))
 
 
 @dataclass
@@ -132,17 +139,18 @@ def _do_http_check(config: VersionCheckConfig) -> VersionCheckResponse:
         logger.debug("httpx not installed, version check skipped")
         return VersionCheckResponse()
 
-    instance_id = _get_or_create_instance_id()
-
+    # deployment is never sent: operators embed sensitive names in free-form
+    # deployment strings. The instance id is platform-derived and one-way
+    # (see resolve_instance_id), and version_check.send_instance_id: false
+    # strips it entirely.
     payload = {
         "product": config.product,
         "current_version": config.current_version,
-        "instance_id": instance_id,
         "os": platform.system(),
         "arch": platform.machine(),
     }
-    if config.deployment:
-        payload["deployment"] = config.deployment
+    if config.send_instance_id:
+        payload["instance_id"] = resolve_instance_id(config)
 
     resp = httpx.post(
         config.api_url,
@@ -228,32 +236,88 @@ def _format_age(published_at: str) -> str:
         return ""
 
 
-def _get_or_create_instance_id() -> str:
-    """Get or create a persistent anonymous instance ID.
+# UUIDv5 namespace for platform-derived instance ids:
+# uuid5(NAMESPACE_DNS, "scalo.hyperi.io"). Shared with scalo-rs so both
+# chassis derive the SAME id from the same platform material.
+INSTANCE_ID_NS = uuid.UUID("10ada713-52f0-5b77-aab7-7792712f92a0")
 
-    Reads from ~/.config/scalo/instance_id. If missing, generates a
-    new UUIDv4 and persists it. Falls back to ephemeral UUID on any
-    filesystem error.
+_K8S_SA = Path("/var/run/secrets/kubernetes.io/serviceaccount")
+
+
+def resolve_instance_id(config: VersionCheckConfig) -> str:
+    """Stable per-install instance id, derived from what the app runs on.
+
+    Resolution order, first hit wins:
+
+    1. ``version_check.instance_id`` from the config, verbatim.
+    2. Kubernetes: UUIDv5 over the serviceaccount cluster CA cert plus the
+       pod namespace -- readable in-pod with no API permissions, unique per
+       cluster, stable across every pod restart and reschedule.
+    3. ``/etc/machine-id`` (UUIDv5, app-scoped per machine-id(5) -- the raw
+       id never leaves the host). Skipped inside a container, where a
+       machine-id baked into the image would make every install report as
+       the same one.
+    4. A UUID persisted at ``~/.config/scalo/instance_id`` (dev machines).
+    5. An ephemeral UUID for this run alone.
     """
-    config_dir = Path.home() / ".config" / "scalo"
-    id_path = config_dir / "instance_id"
+    if config.instance_id:
+        return config.instance_id
+    return _k8s_instance_id() or _machine_instance_id() or _persisted_instance_id() or str(uuid.uuid4())
 
-    # Try to read existing
+
+def _k8s_instance_id() -> str | None:
     try:
-        content = id_path.read_text(encoding="utf-8").strip()
-        if content:
-            return content
+        ca = (_K8S_SA / "ca.crt").read_bytes()
+        ns = (_K8S_SA / "namespace").read_text(encoding="utf-8").strip()
+    except OSError:
+        return None
+    material = b"k8s:" + ca + b":" + ns.encode("utf-8")
+    return str(_uuid5_bytes(material))
+
+
+def _uuid5_bytes(material: bytes) -> uuid.UUID:
+    """``uuid.uuid5`` over raw bytes -- byte-identical to scalo-rs, which
+    hashes the material without a text round-trip."""
+    digest = hashlib.sha1(INSTANCE_ID_NS.bytes + material).digest()  # noqa: S324
+    return uuid.UUID(bytes=digest[:16], version=5)
+
+
+def _machine_instance_id() -> str | None:
+    if _in_container():
+        return None
+    for path in (Path("/etc/machine-id"), Path("/var/lib/dbus/machine-id")):
+        try:
+            machine_id = path.read_text(encoding="utf-8").strip()
+        except OSError:
+            continue
+        if len(machine_id) >= 32 and set(machine_id) != {"0"}:
+            return str(uuid.uuid5(INSTANCE_ID_NS, f"machine:{machine_id}"))
+    return None
+
+
+def _in_container() -> bool:
+    if Path("/.dockerenv").exists() or Path("/run/.containerenv").exists():
+        return True
+    try:
+        cgroup = Path("/proc/1/cgroup").read_text(encoding="utf-8")
+    except OSError:
+        return False
+    return any(marker in cgroup for marker in ("docker", "containerd", "kubepods"))
+
+
+def _persisted_instance_id() -> str | None:
+    directory = Path.home() / ".config" / "scalo"
+    path = directory / "instance_id"
+    try:
+        existing = path.read_text(encoding="utf-8").strip()
+        if existing:
+            return existing
     except OSError:
         pass
-
-    # Generate new
-    instance_id = str(uuid.uuid4())
-
-    # Try to persist (best-effort)
+    new_id = str(uuid.uuid4())
     try:
-        config_dir.mkdir(parents=True, exist_ok=True)
-        id_path.write_text(instance_id, encoding="utf-8", newline="\n")
+        directory.mkdir(parents=True, exist_ok=True)
+        path.write_text(new_id, encoding="utf-8", newline="\n")
     except OSError:
-        pass
-
-    return instance_id
+        return None
+    return new_id
