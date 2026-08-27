@@ -17,14 +17,14 @@ import pytest
 
 
 class TestVersionCheckConfig:
-    """Test VersionCheckConfig defaults (opt-in, no default endpoint)."""
+    """Test VersionCheckConfig defaults (opt-out, no default endpoint)."""
 
-    def test_default_config_is_opt_in(self):
+    def test_default_config_is_on_but_inert(self):
         from scalo.version_check.checker import VersionCheckConfig
 
         config = VersionCheckConfig()
-        # Opt-in: disabled by default, no baked-in endpoint.
-        assert config.enabled is False
+        # Opt-out: on by default, inert until an api_url is supplied.
+        assert config.enabled is True
         assert config.api_url is None
         assert config.timeout == 5.0
         assert config.product == ""
@@ -48,8 +48,45 @@ class TestVersionCheckConfig:
             assert config.enabled is True
             assert config.api_url == "https://cascade.example.com/check"
         finally:
-            settings.set("version_check.enabled", False)
-            settings.set("version_check.api_url", None)
+            settings.unset("VERSION_CHECK")
+
+    def test_from_cascade_or_defaults_apply_when_unset(self):
+        from scalo.config import settings
+        from scalo.version_check.checker import VersionCheckConfig
+
+        settings.unset("VERSION_CHECK")
+        config = VersionCheckConfig.from_cascade_or(enabled=True, api_url="https://releases.example.com/api/v1/check")
+        assert config.enabled is True
+        assert config.api_url == "https://releases.example.com/api/v1/check"
+        assert config.timeout == 5.0
+        assert config.send_instance_id is True
+
+    def test_from_cascade_or_explicit_false_wins(self):
+        from scalo.config import settings
+        from scalo.version_check.checker import VersionCheckConfig
+
+        settings.set("version_check.enabled", False)
+        try:
+            config = VersionCheckConfig.from_cascade_or(
+                enabled=True, api_url="https://releases.example.com/api/v1/check"
+            )
+            assert config.enabled is False
+        finally:
+            settings.unset("VERSION_CHECK")
+
+    def test_from_cascade_or_cascade_url_wins(self):
+        from scalo.config import settings
+        from scalo.version_check.checker import VersionCheckConfig
+
+        settings.set("version_check.api_url", "https://mirror.example.com/")
+        try:
+            config = VersionCheckConfig.from_cascade_or(
+                enabled=True, api_url="https://releases.example.com/api/v1/check"
+            )
+            assert config.enabled is True
+            assert config.api_url == "https://mirror.example.com/"
+        finally:
+            settings.unset("VERSION_CHECK")
 
 
 class TestVersionCheckResponse:
@@ -152,11 +189,22 @@ class TestPayloadShape:
 class TestCheckOnStartup:
     """Test the fire-and-forget check_on_startup function."""
 
-    def test_not_enabled_returns_none(self):
+    def test_no_endpoint_returns_none(self):
         from scalo.version_check import check_on_startup
 
-        # Opt-in: the default config is not enabled -> no thread, returns None.
+        # On by default but inert: no api_url -> no thread, returns None.
         result = check_on_startup(product="test", version="1.0.0")
+        assert result is None
+
+    def test_explicit_opt_out_returns_none(self):
+        from scalo.version_check import check_on_startup
+        from scalo.version_check.checker import VersionCheckConfig
+
+        config = VersionCheckConfig(
+            enabled=False,
+            api_url="https://releases.example.com/api/v1/check",
+        )
+        result = check_on_startup(product="test", version="1.0.0", config=config)
         assert result is None
 
     def test_empty_product_returns_immediately(self):
