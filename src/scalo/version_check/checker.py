@@ -39,9 +39,11 @@ def _setting(key: str, default):
 class VersionCheckConfig:
     """Configuration for the startup version check.
 
-    The version check is OPT-IN: it runs only when ``version_check.enabled``
-    is true in the config cascade AND ``version_check.api_url`` is set. There
-    is no default endpoint -- the consuming app supplies its own.
+    The check is OPT-OUT: wiring it into an app is the opt-in, so
+    ``enabled`` defaults true and the check stays inert until an
+    ``api_url`` is supplied (by the app via :meth:`from_cascade_or`, or by
+    config). An explicit ``version_check.enabled: false`` in any config
+    layer always wins.
     """
 
     product: str = ""
@@ -49,13 +51,40 @@ class VersionCheckConfig:
     deployment: str | None = None
     api_url: str | None = field(default_factory=lambda: _setting("api_url", None))
     timeout: float = field(default_factory=lambda: float(_setting("timeout", DEFAULT_TIMEOUT)))
-    enabled: bool = field(default_factory=lambda: bool(_setting("enabled", False)))
+    enabled: bool = field(default_factory=lambda: bool(_setting("enabled", True)))
     # Include the platform-derived instance id so the same install reports as
     # the same install across restarts; version_check.send_instance_id: false
     # yields a payload with no identifier at all.
     send_instance_id: bool = field(default_factory=lambda: bool(_setting("send_instance_id", True)))
     # Explicit id, sent verbatim when set -- overrides the derived one.
     instance_id: str = field(default_factory=lambda: str(_setting("instance_id", "") or ""))
+
+    @classmethod
+    def from_cascade_or(
+        cls,
+        *,
+        enabled: bool = True,
+        api_url: str | None = None,
+        timeout: float = DEFAULT_TIMEOUT,
+        send_instance_id: bool = True,
+        instance_id: str = "",
+    ) -> VersionCheckConfig:
+        """Build from the cascade, falling back to the caller's defaults.
+
+        Every ``version_check`` key the cascade sets wins -- an explicit
+        ``enabled: false`` included -- and a key it leaves unset falls to
+        the given default instead of this class's own. The seam an app
+        uses to supply its endpoint default while any config layer (file
+        or env) can still turn the check off. Mirrors scalo-rs
+        ``VersionCheckConfig::from_cascade_or``.
+        """
+        return cls(
+            api_url=_setting("api_url", api_url),
+            timeout=float(_setting("timeout", timeout)),
+            enabled=bool(_setting("enabled", enabled)),
+            send_instance_id=bool(_setting("send_instance_id", send_instance_id)),
+            instance_id=str(_setting("instance_id", instance_id) or ""),
+        )
 
 
 @dataclass
@@ -101,7 +130,7 @@ def check_on_startup(
         cfg.deployment = deployment
 
     if not cfg.enabled:
-        logger.debug("version check disabled (opt-in: set version_check.enabled)")
+        logger.debug("version check disabled (version_check.enabled is false)")
         return None
 
     if not cfg.api_url:

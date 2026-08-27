@@ -1,10 +1,16 @@
 # Version check
 
-Non-blocking startup probe that asks `https://releases.hyperi.io` whether
-a newer version of your service is available, and logs the result.
+Non-blocking startup probe that asks a configured releases endpoint
+whether a newer version of your service is available, and logs the result.
 Daemon thread, fire-and-forget — never blocks startup, never raises,
 never affects exit code. Ships in the base package; needs `httpx` to
-actually make the call (otherwise silently skipped).
+actually make the call (otherwise skipped with a DEBUG line).
+
+The check is OPT-OUT: wiring it into an app is the opt-in, so `enabled`
+defaults true — and it stays inert until an `api_url` is supplied, so
+nothing is ever sent unless the app (or config) names an endpoint. An
+explicit `version_check.enabled: false` in any config layer is the
+opt-out and always wins. Don't want a check at all? Don't call it.
 
 ```python
 from scalo.version_check import check_on_startup
@@ -16,16 +22,28 @@ from scalo.version_check import check_on_startup
 
 ```python
 from scalo.version_check import check_on_startup
+from scalo.version_check.checker import VersionCheckConfig
 
-check_on_startup("dfe-receiver", "1.2.0", deployment="k8s")
+# On by default; the app supplies only its endpoint, and any config
+# layer can still turn the check off.
+check_on_startup(
+    "dfe-receiver",
+    "1.2.0",
+    config=VersionCheckConfig.from_cascade_or(
+        api_url="https://releases.example.com/api/v1/check",
+    ),
+)
 # Returns immediately. The check runs in a background daemon thread.
+
+# Without an endpoint the call is inert (returns None, one DEBUG line).
+check_on_startup("dfe-receiver", "1.2.0")
 ```
 
 If a newer version is found:
 
 ```
 INFO  new version available: dfe-receiver (current: 1.2.0, latest: 1.3.1)
-      [released 12 days ago] — https://releases.hyperi.io/dfe-receiver/1.3.1
+      [released 12 days ago] — https://releases.example.com/dfe-receiver/1.3.1
 ```
 
 If you're up to date, the log goes out at DEBUG.
@@ -59,7 +77,7 @@ def check_on_startup(
 |-----|---------|
 | `product` | Stable identifier (e.g. `"dfe-receiver"`). |
 | `version` | Current version string (e.g. `"1.2.0"`). |
-| `deployment` | Optional context (`"k8s"`, `"docker"`, `"systemd"`). Appears in usage stats. |
+| `deployment` | Optional local context (`"k8s"`, `"docker"`, `"systemd"`). Never sent -- see Payload. |
 | `config` | Optional `VersionCheckConfig` override. |
 
 Returns the spawned `threading.Thread` if a check was kicked off, or
@@ -71,29 +89,44 @@ missing). Production code can ignore the return value; tests use it to
 
 ## Configuration
 
+All settings live under the `version_check` key of the config cascade, so
+any layer (file or env, via the app's cascade prefix) can set them:
+
+```yaml
+version_check:
+  enabled: true
+  api_url: "https://releases.example.com/api/v1/check"
+  timeout: 5
+  send_instance_id: true   # false = no identifier in the payload
+  instance_id: ""          # explicit override of the derived id
+```
+
+| Setting | Library default | Purpose |
+|---------|-----------------|---------|
+| `enabled` | `True` | The kill switch. An explicit `false` wins over any app default. |
+| `api_url` | `None` | Endpoint. No baked-in default -- the app supplies its own; without one the check is inert. |
+| `timeout` | `5.0` | HTTP timeout in seconds, kept short so the daemon thread exits quickly. |
+| `send_instance_id` | `True` | `false` strips the instance id from the payload. |
+| `instance_id` | `""` | Explicit id, sent verbatim -- overrides the derived one. |
+
+An app supplies its own defaults -- typically just the endpoint -- via
+`from_cascade_or`; the cascade overlays them, so unset keys fall to the
+app and set keys win:
+
 ```python
 from scalo.version_check.checker import VersionCheckConfig
 
-cfg = VersionCheckConfig(
-    api_url="https://releases.internal.hyperi.io/api/v1/check",
-    timeout=5.0,
-    disabled=False,
+cfg = VersionCheckConfig.from_cascade_or(
+    api_url="https://releases.example.com/api/v1/check",
 )
-
 check_on_startup("dfe-receiver", "1.2.0", config=cfg)
 ```
 
-| Setting | Default | Env var | Purpose |
-|---------|---------|---------|---------|
-| `api_url` | `https://releases.hyperi.io/api/v1/check` | `VERSION_CHECK_URL` | Endpoint. Internal mirrors welcome. |
-| `timeout` | `5.0` | — | HTTP timeout in seconds. Kept short so the daemon thread exits quickly even on bad networks. |
-| `disabled` | `False` | `VERSION_CHECK_DISABLED` | Set to `true`, `1`, or `yes` to skip the check entirely. |
-
 The check is auto-skipped when:
 
-- `VERSION_CHECK_DISABLED` is truthy
+- `enabled` resolves false, or no `api_url` is set
 - `product` or `version` is empty
-- `httpx` is not installed (warning logged at DEBUG)
+- `httpx` is not installed (logged at DEBUG)
 
 ---
 
@@ -147,7 +180,7 @@ Response:
 {
   "latest_version": "1.3.1",
   "update_available": true,
-  "release_url": "https://releases.hyperi.io/dfe-receiver/1.3.1",
+  "release_url": "https://releases.example.com/dfe-receiver/1.3.1",
   "published_at": "2026-05-13T09:30:00Z",
   "message": "Security fixes — recommend prompt upgrade."
 }
@@ -182,20 +215,17 @@ chassis derive the SAME id on the same platform. Disable entirely with
 
 ## Disabling in air-gapped environments
 
+Set `version_check.enabled: false` in any config layer -- a deployment
+yaml, or the env form of the cascade key with the app's prefix:
+
 ```bash
-export VERSION_CHECK_DISABLED=true
+export MY_SVC_VERSION_CHECK__ENABLED=false
 ```
 
-Or set it in your container manifest / Helm chart values:
-
-```yaml
-env:
-  - name: VERSION_CHECK_DISABLED
-    value: "true"
-```
-
-Air-gapped sites typically also block the endpoint at the egress layer;
-the env var saves on the connect timeout per restart.
+The explicit `false` wins even when the app ships the check on by
+default. Air-gapped sites typically also block the endpoint at the
+egress layer; without the config opt-out that costs one WARN line and
+one connect timeout per restart, nothing more.
 
 ---
 
