@@ -3,6 +3,12 @@
 Rendered by CI and committed back at the end of a release -- do not edit by
 hand. Release notes also appear on the GitHub Releases page, one per tag.
 
+## [2.30.0](https://github.com/hyperi-io/scalo-py/compare/v2.29.18...v2.30.0) (2026-08-27)
+
+### Features
+
+* version check on by default with app-supplied endpoint defaults ([3f76051](https://github.com/hyperi-io/scalo-py/commit/3f760519c561d68f8610439f83b37f70a69f930c))
+
 ## [2.29.18](https://github.com/hyperi-io/scalo-py/compare/v2.29.17...v2.29.18) (2026-08-27)
 
 ### Bug Fixes
