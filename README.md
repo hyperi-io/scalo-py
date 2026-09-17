@@ -7,34 +7,42 @@
      [![Build Status](https://github.com/hyperi-io/scalo-py/actions/workflows/ci.yml/badge.svg)](https://github.com/hyperi-io/scalo-py/actions) -->
 [![PyPI](https://img.shields.io/pypi/v/scalo?logo=pypi)](https://pypi.org/project/scalo/)
 [![Python Version](https://img.shields.io/badge/python-3.12%2B-blue)](https://www.python.org/)
-[![License](https://img.shields.io/badge/license-Apache--2.0-green)](LICENSE)
+[![License](https://img.shields.io/badge/license-Apache--2.0-green)](https://www.apache.org/licenses/LICENSE-2.0)
 <!-- BADGES:END -->
 
-> There's plenty of sage advice about running services in production at
-> scale -- config cascades, structured logging, secret masking, Prometheus,
-> OpenTelemetry, health probes, backpressure, graceful shutdown -- but almost
-> none of it as code you can just install and use.
->
-> This is that code.
+> The stuff for your app to operate at scale, in one place
 
-scalo is an integrated runtime for control-plane services.
-Config, logging and metrics come as one pre-wired trinity -- global singletons
-you just use, no plumbing, no init dance. Everything else leans on that same
-integration: the config cascade flows straight into the CLI so
-`run`/`version`/`config-check` just work; the metrics and health wiring feed
-the K8s probe trinity; and the deployment contract generates your Helm,
-Dockerfile and Argo manifests from the config the app already declares.
+What you get, installed with the package:
 
-Attach scalo to your service and a whole class of production pain -- the kind
-done wrong a hundred times elsewhere -- just goes away. Battle-tested, and
-almost no code on your side **to do it properly**. It's not a bag of utility
-functions you wire up yourself; it's the wiring, done right, for free.
+- A 7-layer config cascade, CLI through ENV and `.env` to YAML and defaults
+- Structured JSON logging, PII masked and secrets filtered, container-aware
+- Runtime path resolution that detects Kubernetes, Docker or local
+- A `ServiceApp` base class you subclass for `run`, `version` and `config-check`
+- An optional startup check for a newer release
 
-scalo comes in two halves that share one set of conventions, idiomatic in each
-language. **scalo-py** (this package) is the **control plane** -- orchestration,
-APIs and integration glue (`pip install scalo`). **scalo-rs** is the **data
-plane** -- the Rust hot path where every microsecond and byte counts
-(`cargo add scalo`).
+What you add by extra:
+
+- An HTTP client with retry and jitter
+- Prometheus metrics, with process and container gauges collected for you
+- CEL expressions
+- Kafka produce and consume, with schema inference
+- OpenTelemetry traces and metrics over OTLP
+- Secrets from OpenBao or Vault, AWS, GCP or Azure
+- Dockerfile, Helm, Argo and compose generators
+
+Wired together already, which is the part you would otherwise build:
+
+- Config, logging and metrics are global singletons. No init dance.
+- The cascade feeds the CLI, so `run`, `version` and `config-check` work
+  without you parsing an argument.
+- The metrics and health wiring feeds the Kubernetes probes.
+- The deployment contract writes your Helm chart, Dockerfile and Argo
+  manifests from the config the app already declares.
+
+Two halves, one set of conventions, each idiomatic. **scalo-py** (this package)
+is the control plane -- orchestration, APIs and integration glue
+(`pip install scalo`). **scalo-rs** is the data plane, the Rust hot path where
+every microsecond and byte counts (`cargo add scalo`).
 
 ## What this is (and isn't) for
 
