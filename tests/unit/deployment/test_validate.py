@@ -52,7 +52,7 @@ def test_validate_dockerfile_flags_wrong_base(tmp_path: Path):
     p = tmp_path / "Dockerfile.runtime"
     p.write_text(
         generate_runtime_stage(py_contract()).replace(
-            "FROM python:3.12-slim AS runtime", "FROM ubuntu:24.04 AS runtime"
+            "FROM python:3.14-slim AS runtime", "FROM ubuntu:24.04 AS runtime"
         ),
         encoding="utf-8",
     )

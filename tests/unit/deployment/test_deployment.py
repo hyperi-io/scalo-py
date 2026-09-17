@@ -156,12 +156,12 @@ class TestPythonRuntimeContract:
         )
 
     def test_default_python_version(self):
-        assert self._minimal().python_version == "3.12"
+        assert self._minimal().python_version == "3.14"
 
     def test_base_image_defaults_to_python_slim(self):
         c = self._minimal()
         assert c.base_image == ""
-        assert c.effective_base_image() == "python:3.12-slim"
+        assert c.effective_base_image() == "python:3.14-slim"
 
     def test_python_version_drives_base_image(self):
         c = self._minimal().model_copy(update={"python_version": "3.13"})
@@ -181,9 +181,9 @@ class TestGenerateDockerfile:
     def test_basic_shape(self):
         df = generate_dockerfile(_full_contract())
         # Python multi-stage: uv builder + venv runtime.
-        assert "FROM ghcr.io/astral-sh/uv:python3.12-bookworm-slim AS builder" in df
+        assert "FROM ghcr.io/astral-sh/uv:python3.14-bookworm-slim AS builder" in df
         assert "uv sync --frozen --no-dev" in df
-        assert "FROM python:3.12-slim AS runtime" in df
+        assert "FROM python:3.14-slim AS runtime" in df
         assert "COPY --from=builder /app /app" in df
         assert 'ENV PATH="/app/.venv/bin:$PATH"' in df
         # No Rust cargo layout.
@@ -257,7 +257,7 @@ class TestGenerateBuilderStage:
         from scalo.deployment import generate_builder_stage
 
         text = generate_builder_stage(_full_contract())
-        assert "FROM ghcr.io/astral-sh/uv:python3.12-bookworm-slim AS builder" in text
+        assert "FROM ghcr.io/astral-sh/uv:python3.14-bookworm-slim AS builder" in text
         assert "COPY pyproject.toml uv.lock ./" in text
         assert "COPY src/ src/" in text
         assert "uv sync --frozen --no-dev" in text
@@ -280,7 +280,7 @@ class TestGenerateBuilderStage:
 class TestGenerateRuntimeStage:
     def test_has_runtime_stage_marker(self):
         text = generate_runtime_stage(_full_contract())
-        assert "FROM python:3.12-slim AS runtime" in text
+        assert "FROM python:3.14-slim AS runtime" in text
         assert "COPY --from=builder /app /app" in text
         assert 'ENV PATH="/app/.venv/bin:$PATH"' in text
         assert "ARG OCI_SOURCE=" in text
@@ -302,7 +302,7 @@ class TestGenerateContainerManifest:
         manifest = json.loads(text)
         assert manifest["app_name"] == "dfe-loader"
         assert manifest["binary_name"] == "dfe-loader"
-        assert manifest["base_image"] == "python:3.12-slim"
+        assert manifest["base_image"] == "python:3.14-slim"
         assert manifest["image_profile"] == "production"
         assert manifest["expose_ports"] == [9090]
         assert manifest["healthcheck"]["path"] == "/livez"
@@ -798,7 +798,7 @@ class TestContractValidation:
         assert c.image_registry == "localhost:5000"
         # base_image defaults empty; resolved to python:{python_version}-slim.
         assert c.base_image == ""
-        assert c.effective_base_image() == "python:3.12-slim"
+        assert c.effective_base_image() == "python:3.14-slim"
         assert c.image_profile == ImageProfile.PRODUCTION
         assert c.health.liveness_path == "/livez"
         assert c.keda is None
@@ -831,8 +831,8 @@ class TestMinimalContractGenerators:
 
     def test_dockerfile_works_on_minimal(self):
         df = generate_dockerfile(self._minimal())
-        assert "FROM ghcr.io/astral-sh/uv:python3.12-bookworm-slim AS builder" in df
-        assert "FROM python:3.12-slim AS runtime" in df
+        assert "FROM ghcr.io/astral-sh/uv:python3.14-bookworm-slim AS builder" in df
+        assert "FROM python:3.14-slim AS runtime" in df
         assert "COPY --from=builder /app /app" in df
         assert "EXPOSE 8080" in df
         # No CMD line when entrypoint_args is empty

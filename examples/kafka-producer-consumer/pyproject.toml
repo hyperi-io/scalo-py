@@ -10,7 +10,7 @@
 name = "kafka-producer-consumer-example"
 version = "0.1.0"
 description = "Example demonstrating scalo Kafka producer and consumer"
-requires-python = ">=3.12"
+requires-python = ">=3.14"
 dependencies = [
     "scalo>=2.14.0",
     "confluent-kafka>=2.6.0",

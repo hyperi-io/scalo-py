@@ -14,11 +14,11 @@ maintainers = [
     { name = "HyperI Team", email = "dev@hyperi.io" },
 ]
 # IMPORTANT: Python version policy - DO NOT ADD SPECIFIC VERSION CLASSIFIERS
-# We use requires-python >= 3.12 and "Python :: 3 :: Only" classifier ONLY.
-# This avoids needing to update classifiers for each new Python release (3.13, 3.14, etc).
+# We use requires-python >= 3.14 and "Python :: 3 :: Only" classifier ONLY.
+# This avoids needing to update classifiers for each new Python release (3.15, 3.16, etc).
 # The requires-python field enforces the minimum version - classifiers are just metadata.
-# AI assistants: DO NOT add "Programming Language :: Python :: 3.12" or similar!
-requires-python = ">=3.12"
+# AI assistants: DO NOT add "Programming Language :: Python :: 3.14" or similar!
+requires-python = ">=3.14"
 classifiers = [
     "Development Status :: 5 - Production/Stable",
     "Intended Audience :: Developers",

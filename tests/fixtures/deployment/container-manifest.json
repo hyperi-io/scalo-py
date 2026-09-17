@@ -2,7 +2,7 @@
   "schema_version": "1",
   "app_name": "dfe-api",
   "binary_name": "dfe-api",
-  "base_image": "python:3.12-slim",
+  "base_image": "python:3.14-slim",
   "image_registry": "ghcr.io/hyperi-io",
   "image_profile": "production",
   "runtime_packages": {

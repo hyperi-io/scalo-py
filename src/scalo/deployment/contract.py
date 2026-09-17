@@ -232,7 +232,7 @@ class DeploymentContract(BaseModel):
     """
 
     python_version: str = DEFAULT_PYTHON_VERSION
-    """Python version for the runtime/base image (e.g. ``"3.12"``).
+    """Python version for the runtime/base image (e.g. ``"3.14"``).
 
     Drives the default base image (``python:{python_version}-slim``) and the
     uv builder image when ``base_image`` / ``builder_image`` are left empty.

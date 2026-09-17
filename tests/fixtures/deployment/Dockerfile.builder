@@ -1,5 +1,5 @@
 # --- Builder stage (reference; compose before the runtime stage) ---
-FROM ghcr.io/astral-sh/uv:python3.12-bookworm-slim AS builder
+FROM ghcr.io/astral-sh/uv:python3.14-bookworm-slim AS builder
 
 WORKDIR /app
 

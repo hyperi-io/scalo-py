@@ -18,7 +18,7 @@ Cascade keys::
 
     deployment:
       image_registry: localhost:5000        # default: localhost:5000
-      base_image: python:3.12-slim          # default: python:3.12-slim
+      base_image: python:3.14-slim          # default: python:3.14-slim
       argocd:
         repo_url: https://github.com/your-org/<app>  # default: derived
 """
@@ -29,7 +29,7 @@ DEFAULT_IMAGE_REGISTRY = "localhost:5000"
 """Neutral default registry. Parameterise per app via the
 ``deployment.image_registry`` cascade key (e.g., ``ghcr.io/your-org``)."""
 
-DEFAULT_PYTHON_VERSION = "3.12"
+DEFAULT_PYTHON_VERSION = "3.14"
 """Default Python version driving both the runtime base and builder images.
 
 The single source for the version -- ``DeploymentContract.python_version``
