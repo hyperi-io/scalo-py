@@ -157,7 +157,9 @@ dev = [
     "aiobotocore>=3.6.0",
     "moto[secretsmanager]>=5.2.0",
     "pydantic>=2.13.0",
-    "ruff>=0.15.0",
+    # 0.16 is the floor because `ruff format` only takes --extend-exclude from
+    # there, and the quality gate passes it.
+    "ruff>=0.16.0",
     "ty>=0.0.34",
     "mypy>=1.0.0",
     "bandit[toml]>=1.7.0",
