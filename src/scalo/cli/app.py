@@ -314,6 +314,28 @@ class ServiceApp(ABC):
         """
         self.run_service(config)
 
+    def check_config(self, config: Any) -> None:  # noqa: B027
+        """Validate settings only this service can judge.
+
+        Called by ``config-check`` and by ``run`` once the cascade has loaded,
+        so the command that exists to catch a bad setting sees the same
+        verdict the service itself would reach. Raise to reject; the message
+        is what the operator reads.
+
+        Args:
+            config: Dynaconf settings object loaded via the config cascade.
+
+        Raises:
+            Exception: Any exception rejects the configuration. A
+                :class:`scalo.cli.error.ConfigError` carries its own message
+                through unchanged; anything else is wrapped in one.
+
+        Example::
+
+            def check_config(self, config) -> None:
+                load_settings()   # raises on a placeholder secret
+        """
+
     def register_commands(self, app: Any) -> None:  # noqa: B027
         """Register additional app-specific subcommands.
 
@@ -493,6 +515,10 @@ def _handle_run(service_app: ServiceApp, args: CommonArgs) -> None:
         logger.info("starting service", service=service_app.name, version=info.version)
         logger.debug("configuration loaded", config=args.config or "(defaults)")
 
+        # Before anything binds or connects, and the same call config-check
+        # makes, so the two cannot disagree about whether the config is usable.
+        _run_check_config(service_app, config)
+
         # Auto-init metrics if available (metrics extra installed)
         try:
             from scalo.metrics import create_metrics
@@ -604,6 +630,25 @@ def _handle_run(service_app: ServiceApp, args: CommonArgs) -> None:
             service_app._observability = None
 
 
+def _run_check_config(service_app: ServiceApp, config: Any) -> None:
+    """Run the app's own validation hook, normalising what it raises.
+
+    Args:
+        service_app: The app whose ``check_config`` runs.
+        config: Loaded settings object handed to the hook.
+
+    Raises:
+        ConfigError: If the hook rejected the configuration. A ``CliError``
+            from the hook is re-raised as itself so its type survives.
+    """
+    try:
+        service_app.check_config(config)
+    except CliError:
+        raise
+    except Exception as exc:
+        raise ConfigError(str(exc)) from exc
+
+
 def _handle_config_check(service_app: ServiceApp, args: CommonArgs) -> None:
     """Handle the 'config-check' subcommand."""
     from typer import Exit
@@ -614,6 +659,7 @@ def _handle_config_check(service_app: ServiceApp, args: CommonArgs) -> None:
         # hard-coded default rather than what the cascade yields.
         config = args.load_config(service_app.env_prefix)
         args.init_logger(config=config, otel_tracing=False)
+        _run_check_config(service_app, config)
 
         print_success("configuration is valid")
 
