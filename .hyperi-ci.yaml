@@ -12,7 +12,7 @@ classification: oss
 build:
   type: package
 
-publish:
+release:
   enabled: true
 
 test:
