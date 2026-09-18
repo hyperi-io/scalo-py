@@ -436,11 +436,23 @@ def _build_typer_app(service_app: ServiceApp) -> Any:
     def config_check(
         config: str | None = Option(None, "--config", "-c", help="Path to configuration file", envvar="CLI_CONFIG"),
         log_level: str | None = Option(None, "--log-level", "-l", help="Log level", envvar="LOG_LEVEL"),
+        # Same option as `run` carries, because this command REPORTS the address.
+        # Without it the summary printed the dataclass default whatever the
+        # operator had set.
+        metrics_addr: str = Option(
+            "0.0.0.0:9090", "--metrics-addr", help="Metrics server bind address", envvar="METRICS_ADDR"
+        ),
         verbose: bool = Option(False, "--verbose", "-v", help="Enable debug logging"),
         quiet: bool = Option(False, "--quiet", "-q", help="Suppress non-error output"),
     ) -> None:
         """Validate configuration and exit."""
-        args = CommonArgs(config=config, log_level=log_level, verbose=verbose, quiet=quiet)
+        args = CommonArgs(
+            config=config,
+            log_level=log_level,
+            metrics_addr=metrics_addr,
+            verbose=verbose,
+            quiet=quiet,
+        )
         service_app._common_args = args
         _handle_config_check(service_app, args)
 
