@@ -44,7 +44,7 @@ from abc import ABC, abstractmethod
 from dataclasses import dataclass
 from typing import Any
 
-from .error import CliError, ConfigError, LoggerError
+from .error import CliError, ConfigError, LoggerError, ServiceError
 from .output import print_error, print_info, print_success
 from .version_info import VersionInfo
 
@@ -542,11 +542,22 @@ def _handle_run(service_app: ServiceApp, args: CommonArgs) -> None:
         if service_app.serve_observability:
             from scalo.health import serve_observability as _serve_observability
 
-            service_app._observability = _serve_observability(
-                health=service_app.health(),
-                metrics=service_app._metrics,
-                addr=args.metrics_addr,
-            )
+            try:
+                service_app._observability = _serve_observability(
+                    health=service_app.health(),
+                    metrics=service_app._metrics,
+                    addr=args.metrics_addr,
+                )
+            except OSError as exc:
+                # Still fatal; only the message changes. The address and the knob
+                # are both unguessable from a bare errno, and the knob is not
+                # under the app's env prefix.
+                reason = exc.strerror or str(exc)
+                raise ServiceError(
+                    f"cannot serve observability on {args.metrics_addr}: {reason}. "
+                    f"Move it with --metrics-addr or METRICS_ADDR, or set "
+                    f"serve_observability = False on the app."
+                ) from exc
             bound = service_app._observability.bound_address
             logger.info(
                 "observability listening",
