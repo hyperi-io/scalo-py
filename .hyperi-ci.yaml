@@ -26,28 +26,7 @@ quality:
     # vulture: library code has extensive public API that looks "unused"
     vulture: warn
 
-  # Risk acceptances. This is the section hyperi-ci actually reads
-  # (quality.ignore -> --ignore-vuln); a bare .pip-audit-ignore file is
+  # No risk acceptances. Both CVEs that had one are fixed in versions the
+  # floors now carry, so nothing is suppressed. This is the section hyperi-ci
+  # reads (quality.ignore -> --ignore-vuln); a bare .pip-audit-ignore file is
   # NOT read by anything.
-  ignore:
-    - tool: pip-audit
-      id: CVE-2026-11332
-      expires: 2026-10-31
-      reason: >-
-        ansible-core, transitive via ansible-vault in the OPTIONAL
-        secrets-ansible-vault extra. The flaw is argument injection in
-        `ansible-galaxy role install` parsing a role's meta/requirements.yml.
-        scalo uses only the Ansible Vault FILE FORMAT to decrypt secrets
-        (secrets/providers/ansible_vault.py) and never invokes
-        ansible-galaxy, so the vulnerable path is unreachable from here.
-        Not pinned because every published fix is still a release candidate
-        (2.16.19rc1 / 2.18.18rc1 / 2.19.11rc1 / 2.20.7rc1 / 2.21.1rc1) and a
-        shipped library should not carry an RC in its dependency floor.
-        Re-evaluate when a stable ansible-core with the fix ships.
-    - tool: pip-audit
-      id: CVE-2026-4539
-      expires: 2026-10-31
-      reason: >-
-        pygments, dev-only (sphinx docs), never shipped in the wheel. No
-        fixed version released at time of acceptance. Re-evaluate when
-        pygments >2.19.2 ships.
