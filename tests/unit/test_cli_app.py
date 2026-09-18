@@ -394,6 +394,22 @@ class TestDfeApp:
         assert app._metrics is not None
         assert app._app_metrics is not None
 
+    def test_config_check_reports_the_address_run_would_bind(self):
+        app = _SyncApp()
+        typer_app = _build_typer_app(app)
+        result = runner.invoke(typer_app, ["config-check", "--metrics-addr", "127.0.0.1:19099"])
+        assert result.exit_code == 0
+        assert "127.0.0.1:19099" in result.output
+        assert "0.0.0.0:9090" not in result.output
+
+    def test_config_check_reads_metrics_addr_from_the_env(self, monkeypatch):
+        monkeypatch.setenv("METRICS_ADDR", "127.0.0.1:19098")
+        app = _SyncApp()
+        typer_app = _build_typer_app(app)
+        result = runner.invoke(typer_app, ["config-check"])
+        assert result.exit_code == 0
+        assert "127.0.0.1:19098" in result.output
+
     def test_metrics_init_failure_does_not_crash_service(self, monkeypatch):
         """Metrics init failure is non-fatal -- service still runs."""
         import sys
