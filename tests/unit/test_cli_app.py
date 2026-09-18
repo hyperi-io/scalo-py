@@ -278,6 +278,26 @@ class _AsyncApp(DfeApp):
         self.ran_async = True
 
 
+class _RefusingApp(DfeApp):
+    """Test app whose own validation rejects the loaded settings."""
+
+    name = "test-refusing"
+    env_prefix = "TEST_REFUSING"
+
+    def __init__(self):
+        super().__init__()
+        self.ran = False
+
+    def version_info(self) -> VersionInfo:
+        return VersionInfo(self.name, "0.4.0")
+
+    def check_config(self, config: Any) -> None:
+        raise ValueError("api.jwt_secret is the known dev placeholder")
+
+    def run_service(self, config: Any) -> None:
+        self.ran = True
+
+
 class _CustomCommandApp(DfeApp):
     """Test app with custom subcommands."""
 
@@ -393,6 +413,29 @@ class TestDfeApp:
         assert result.exit_code == 0
         assert app._metrics is not None
         assert app._app_metrics is not None
+
+    def test_check_config_can_fail_config_check(self):
+        app = _RefusingApp()
+        typer_app = _build_typer_app(app)
+        result = runner.invoke(typer_app, ["config-check"])
+        assert result.exit_code == 1
+        assert "jwt_secret is the known dev placeholder" in result.output
+        assert "configuration is valid" not in result.output
+
+    def test_check_config_stops_run_before_the_service_starts(self):
+        app = _RefusingApp()
+        typer_app = _build_typer_app(app)
+        result = runner.invoke(typer_app, ["run", "--metrics-addr", EPHEMERAL_ADDR])
+        assert result.exit_code == 1
+        assert "jwt_secret is the known dev placeholder" in result.output
+        assert app.ran is False
+
+    def test_default_check_config_accepts_anything(self):
+        app = _SyncApp()
+        typer_app = _build_typer_app(app)
+        result = runner.invoke(typer_app, ["config-check"])
+        assert result.exit_code == 0
+        assert "configuration is valid" in result.output
 
     def test_config_check_reports_the_address_run_would_bind(self):
         app = _SyncApp()
