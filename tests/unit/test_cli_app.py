@@ -31,6 +31,14 @@ from scalo.cli.version_info import VersionInfo
 
 runner = CliRunner()
 
+EPHEMERAL_ADDR = "127.0.0.1:0"
+"""Bind address for tests that invoke ``run`` with observability served.
+
+``run`` binds the port for real, and the default ``0.0.0.0:9090`` collides with
+anything already holding 9090 -- a wildcard bind conflicts with a loopback-only
+listener too, so a local Prometheus is enough to fail the test.
+"""
+
 
 class _Settings:
     """Minimal stand-in for a loaded Dynaconf object."""
@@ -381,7 +389,7 @@ class TestDfeApp:
 
         app = _SyncApp()
         typer_app = _build_typer_app(app)
-        result = runner.invoke(typer_app, ["run"])
+        result = runner.invoke(typer_app, ["run", "--metrics-addr", EPHEMERAL_ADDR])
         assert result.exit_code == 0
         assert app._metrics is not None
         assert app._app_metrics is not None
@@ -413,7 +421,7 @@ class TestDfeApp:
 
         app = _SyncApp()
         typer_app = _build_typer_app(app)
-        result = runner.invoke(typer_app, ["run"])
+        result = runner.invoke(typer_app, ["run", "--metrics-addr", EPHEMERAL_ADDR])
 
         # Service must still run -- metrics failure is non-fatal
         assert result.exit_code == 0
