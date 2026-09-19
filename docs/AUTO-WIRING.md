@@ -111,7 +111,7 @@ Three points:
 ## Related
 
 - [README.md](README.md)
-- [ARCHITECTURE.md](ARCHITECTURE.md)
+- [architecture.md](architecture.md)
 - [INTEGRATION.md](INTEGRATION.md)
 - [EXTRAS-FLAGS.md](EXTRAS-FLAGS.md)
 - [core-pillars/CONFIG.md](core-pillars/CONFIG.md)

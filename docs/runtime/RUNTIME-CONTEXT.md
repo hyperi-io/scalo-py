@@ -242,7 +242,7 @@ python -m my_app          # uses ~/.my-app/config, ~/.my-app/data, /tmp/my-app-{
 
 - [../README.md](../README.md)
 - [../INTEGRATION.md](../INTEGRATION.md)
-- [../ARCHITECTURE.md](../ARCHITECTURE.md)
+- [../architecture.md](../architecture.md)
 - [../AUTO-WIRING.md](../AUTO-WIRING.md)
 - [SERVICE-RUNTIME.md](SERVICE-RUNTIME.md)
 - [../core-pillars/CONFIG.md](../core-pillars/CONFIG.md)

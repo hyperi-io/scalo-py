@@ -9,22 +9,22 @@ proposition; this page is the module map and dependency graph.
 
 Three layers, top to bottom:
 
-- **Core pillars** — config, logger, metrics, health, shutdown. Always
+- **Core pillars** -- config, logger, metrics, health, shutdown. Always
   available (no extras required for `config` / `logger`; `metrics` and
   `health` need their respective extras). Every other module depends on
   one or more of these.
-- **Runtime** — environment detection (K8s / Docker / BareMetal) and
+- **Runtime** -- environment detection (K8s / Docker / BareMetal) and
   container-aware paths. Used by core pillars to pick log format,
   metric defaults, probe wiring, and config file locations.
-- **API surface** — composable modules apps wire as needed: HTTP,
+- **API surface** -- composable modules apps wire as needed: HTTP,
   secrets, expression, resilience, concurrency,
   version-check, scaling, CLI. Each is independent of the
   others; pick what you need.
 
 Sibling concerns:
 
-- **Transport** — Kafka producer/consumer/admin (sync + async wrappers).
-- **Deployment** — `DeploymentContract` Pydantic model and the
+- **Transport** -- Kafka producer/consumer/admin (sync + async wrappers).
+- **Deployment** -- `DeploymentContract` Pydantic model and the
   Dockerfile / Helm / ArgoCD / Compose generators.
 
 ---
@@ -108,7 +108,7 @@ Each module under `src/scalo/` and what you import from it:
 | `cli` | `ServiceApp` (legacy `DfeApp` alias), standard options, common patterns |
 | `concurrency` | `run_blocking`, `Bulkhead`, `gather_with_timeouts` |
 | `config` | `settings`, `get_environment`, `get_app_name`, `init_config_directory` |
-| `data` | data files only — gitleaks rules + national-ID validators |
+| `data` | data files only -- gitleaks rules + national-ID validators |
 | `deployment` | `DeploymentContract`, `generate_*`, `ContractIdentity`, `test_support` |
 | `expression` | `evaluate`, `evaluate_condition`, `validate`, `compile_expression` |
 | `health` | `HealthManager`, `create_health_router`, probe handlers |
@@ -123,7 +123,7 @@ Each module under `src/scalo/` and what you import from it:
 | `version_check` | `check_on_startup`, `VersionCheckConfig` |
 
 The `Application` framework was removed to backlog (see the note in
-`src/scalo/__init__.py`) — compose modules directly.
+`src/scalo/__init__.py`) -- compose modules directly.
 
 ---
 
@@ -134,7 +134,7 @@ scalo-rs ships several modules scalo-py does not, by design:
 - `transport/` abstraction layer (scalo-rs has Kafka, gRPC, HTTP, Redis,
   File, Pipe, Memory transports behind a single trait). Pylib has Kafka
   only; no abstraction layer planned.
-- `pipeline/` — BatchEngine, WorkerPool, TieredSink, Spool, DLQ,
+- `pipeline/` -- BatchEngine, WorkerPool, TieredSink, Spool, DLQ,
   STRmatch. None of these exist in scalo-py. Python's async model + GIL
   make the hot-path concurrency story different; we use
   `concurrency.gather_with_timeouts` for the simple cases.

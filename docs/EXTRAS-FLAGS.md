@@ -263,7 +263,7 @@ binary wheels.
 ## Related
 
 - [README.md](README.md)
-- [ARCHITECTURE.md](ARCHITECTURE.md)
+- [architecture.md](architecture.md)
 - [INTEGRATION.md](INTEGRATION.md)
 - [AUTO-WIRING.md](AUTO-WIRING.md)
 - [deployment/NATIVE-DEPS.md](deployment/NATIVE-DEPS.md)
