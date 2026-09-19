@@ -6,7 +6,7 @@ structured logs, Prometheus + OTel metrics, K8s health probes, secrets
 management, resilience primitives, a Kafka client, and deployment-artefact
 generation — all opinionated, all production-tested.
 
-This is the index. Read [ARCHITECTURE.md](ARCHITECTURE.md) for the
+This is the index. Read [architecture.md](architecture.md) for the
 10,000-foot view, [INTEGRATION.md](INTEGRATION.md) for a recipe to build
 a scalo-based service, [AUTO-WIRING.md](AUTO-WIRING.md) for the "you get
 this for free" model, and [EXTRAS-FLAGS.md](EXTRAS-FLAGS.md) for which
@@ -90,7 +90,7 @@ flowchart TB
 
 ### Start here
 
-- [ARCHITECTURE.md](ARCHITECTURE.md) — module map, dependency graph, layering
+- [architecture.md](architecture.md) — module map, dependency graph, layering
 - [INTEGRATION.md](INTEGRATION.md) — "I'm building a scalo service" recipe
 - [AUTO-WIRING.md](AUTO-WIRING.md) — what's wired automatically, what's manual
 - [EXTRAS-FLAGS.md](EXTRAS-FLAGS.md) — extras tree, recommended bundles, native deps

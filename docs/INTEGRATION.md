@@ -295,7 +295,7 @@ hyperi-ci check --quick  # quality + unit tests only
 ## Related
 
 - [README.md](README.md)
-- [ARCHITECTURE.md](ARCHITECTURE.md)
+- [architecture.md](architecture.md)
 - [AUTO-WIRING.md](AUTO-WIRING.md)
 - [EXTRAS-FLAGS.md](EXTRAS-FLAGS.md)
 - [deployment/CONTRACT.md](deployment/CONTRACT.md)

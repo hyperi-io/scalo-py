@@ -162,7 +162,7 @@ Until then -- compose directly.
 
 - [../README.md](../README.md)
 - [../INTEGRATION.md](../INTEGRATION.md)
-- [../ARCHITECTURE.md](../ARCHITECTURE.md)
+- [../architecture.md](../architecture.md)
 - [../AUTO-WIRING.md](../AUTO-WIRING.md)
 - [RUNTIME-CONTEXT.md](RUNTIME-CONTEXT.md)
 - [../core-pillars/CONFIG.md](../core-pillars/CONFIG.md)
