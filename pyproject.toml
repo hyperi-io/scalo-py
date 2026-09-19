@@ -58,7 +58,8 @@ dependencies = [
     "tomli-w>=1.0.0",
     "typer>=0.25.0",
     "dulwich>=1.2.5",
-    "anyio>=4.13.0",
+    # 4.14.2 fixes CVE-2026-63374 and CVE-2026-64847.
+    "anyio>=4.14.2",
     "asyncer>=0.0.17",
     "detect-secrets>=1.5.0",
     "phonenumbers>=9.0.0",
@@ -119,6 +120,8 @@ kafka = [
 # rate on unstructured names/locations is unacceptable for logs.
 secrets-ansible-vault = [
     "ansible-vault>=4.0.0",
+    # ansible-core arrives transitively; 2.21.1 fixes CVE-2026-11332.
+    "ansible-core>=2.21.1",
 ]
 secrets-vault = [
     "httpx>=0.28.0",
@@ -136,6 +139,7 @@ secrets-azure = [
 ]
 secrets = [
     "ansible-vault>=4.0.0",
+    "ansible-core>=2.21.1",
     "boto3>=1.43.0",
     "aiobotocore>=3.6.0",
     "google-cloud-secret-manager>=2.28.0",
@@ -146,6 +150,7 @@ version-check = []
 enhanced = []
 dev = [
     "ansible-vault>=4.0.0",
+    "ansible-core>=2.21.1",
     "cryptography>=50.0.0",
     "pytest>=8.0.0",
     "pytest-cov>=7.0.0",
