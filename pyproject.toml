@@ -5,7 +5,7 @@ build-backend = "uv_build"
 [project]
 name = "scalo"
 version = "2.28.5"
-description = "An integrated package for control-plane services. Attach and 'enterprise-up' your application."
+description = "An integrated runtime for control-plane services. Attach and 'enterprise-up' your application."
 readme = "README.md"
 authors = [
     { name = "HyperI Team", email = "dev@hyperi.io" },
