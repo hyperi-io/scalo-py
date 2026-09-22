@@ -62,7 +62,7 @@ def _write_minimal_uv_app(root: Path, binary: str) -> None:
         f"[project]\n"
         f'name = "{binary}"\n'
         f'version = "0.0.0"\n'
-        f'requires-python = ">=3.12"\n'
+        f'requires-python = ">=3.14"\n'
         f"dependencies = []\n"
         f"\n"
         f"[project.scripts]\n"

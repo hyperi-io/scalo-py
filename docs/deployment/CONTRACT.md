@@ -41,7 +41,7 @@ from scalo.deployment import (
 | `keda` | `KedaContract \| None` | `None` | See [KEDA.md](KEDA.md) |
 | `base_image` | `str` | `""` -> `python:{python_version}-slim` | Runtime base for Dockerfile; read via `effective_base_image()` |
 | `builder_image` | `str` | `""` -> uv image for `python_version` | Builder stage; read via `effective_builder_image()` |
-| `python_version` | `str` | `3.12` | Drives BOTH default images |
+| `python_version` | `str` | `3.14` | Drives BOTH default images |
 | `native_deps` | `NativeDepsContract` | factory | See [NATIVE-DEPS.md](NATIVE-DEPS.md) |
 | `image_profile` | `ImageProfile` | `PRODUCTION` | See below |
 | `oci_labels` | `OciLabels` | factory | Static OCI labels |
@@ -62,7 +62,7 @@ environment rather than at build time.
 ### Pin a digest for anything you ship
 
 Bare tags are fine while iterating. Anything shipped should pin a
-digest, because a tag is a moving pointer -- `python:3.12-slim` is
+digest, because a tag is a moving pointer -- `python:3.14-slim` is
 rebuilt regularly, so the "same" contract can produce a different image
 tomorrow, and a build you cannot reproduce is a build you cannot
 bisect.
@@ -72,8 +72,8 @@ Both fields take a digest-suffixed reference:
 ```python
 DeploymentContract(
     ...,
-    base_image="python:3.12-slim@sha256:<digest>",
-    builder_image="ghcr.io/astral-sh/uv:python3.12-bookworm-slim@sha256:<digest>",
+    base_image="python:3.14-slim@sha256:<digest>",
+    builder_image="ghcr.io/astral-sh/uv:python3.14-bookworm-slim@sha256:<digest>",
 )
 ```
 
