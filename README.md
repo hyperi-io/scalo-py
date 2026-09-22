@@ -5,273 +5,99 @@
      badge SVG 404s for anonymous PyPI viewers (shields.io can't read a
      private repo's status either). Re-add at the public-visibility flip:
      [![Build Status](https://github.com/hyperi-io/scalo-py/actions/workflows/ci.yml/badge.svg)](https://github.com/hyperi-io/scalo-py/actions) -->
-[![PyPI](https://img.shields.io/pypi/v/scalo?logo=pypi)](https://pypi.org/project/scalo/)
-[![Python Version](https://img.shields.io/badge/python-3.12%2B-blue)](https://www.python.org/)
-[![License](https://img.shields.io/badge/license-Apache--2.0-green)](https://www.apache.org/licenses/LICENSE-2.0)
+
+| | |
+| --- | --- |
+| Package | [![PyPI](https://img.shields.io/pypi/v/scalo?logo=pypi)](https://pypi.org/project/scalo/) [![Python Version](https://img.shields.io/badge/python-3.12%2B-blue)](https://www.python.org/) |
+| Meta | [![License](https://img.shields.io/badge/license-Apache--2.0-green)](https://www.apache.org/licenses/LICENSE-2.0) |
 <!-- BADGES:END -->
 
-> The stuff for your app to operate at scale, in one place
+An integrated runtime for control-plane services. Attach and 'enterprise-up' your application.
 
-What you get, installed with the package:
+## Key features
 
-- A 7-layer config cascade, CLI through ENV and `.env` to YAML and defaults
-- Structured JSON logging, PII masked and secrets filtered, container-aware
-- Runtime path resolution that detects Kubernetes, Docker or local
-- A `ServiceApp` base class you subclass for `run`, `version` and `config-check`
-- An optional startup check for a newer release
+- configuration cascade for local test through at scale k8s deployments (env, config, cli)
+- automatically configured and integrated logger (line and json) for enterprise deployments
+- auto enabled Otel and Prometheus metrics in expected forms and buckets for cloud and k8s deployments
+- secrets management integration
+- authentication and secrets integration for most common deployments and services
+- deployment contracts, your code automatically generates docker, and k8s artefacts for deployment consumption
 
-What you add by extra:
+## Install
 
-- An HTTP client with retry and jitter
-- Prometheus metrics, with process and container gauges collected for you
-- CEL expressions
-- Kafka produce and consume, with schema inference
-- OpenTelemetry traces and metrics over OTLP
-- Secrets from OpenBao or Vault, AWS, GCP or Azure
-- Dockerfile, Helm, Argo and compose generators
+```bash
+uv add scalo                                    # core
+uv add "scalo[http,metrics,kafka]"              # common extras
+uv add "scalo[http,metrics,expression,kafka,opentelemetry,secrets,deployment]"
+```
 
-Wired together already, which is the part you would otherwise build:
+`scalo` on PyPI, `scalo` for imports. Extras and their install sizes are in
+[docs/EXTRAS-FLAGS.md](docs/EXTRAS-FLAGS.md) -- `secrets-aws` alone is ~100 MB, so
+pick the backend you use rather than `secrets`.
 
-- Config, logging and metrics are global singletons. No init dance.
-- The cascade feeds the CLI, so `run`, `version` and `config-check` work
-  without you parsing an argument.
-- The metrics and health wiring feeds the Kubernetes probes.
-- The deployment contract writes your Helm chart, Dockerfile and Argo
-  manifests from the config the app already declares.
+## What it is for
 
-Two halves, one set of conventions, each idiomatic. **scalo-py** (this package)
-is the control plane -- orchestration, APIs and integration glue
-(`pip install scalo`). **scalo-rs** is the data plane, the Rust hot path where
-every microsecond and byte counts (`cargo add scalo`).
+Control-plane APIs, UI backends, orchestrators, CLI tools, integration glue, batch
+workloads, configuration management.
 
-## What this is (and isn't) for
+Not the hot path. Processing millions of messages a second belongs in Rust --
+[scalo-rs](https://github.com/hyperi-io/scalo-rs) is the sister library for that.
+scalo-py is fast enough for control plane and integration; scalo-rs is fast enough
+for the hot path. So scalo-py leans to stability, expressiveness and integration:
+readable abstractions over inlined ones, heavier deps where they earn their keep,
+no agonising over async dispatch overhead.
 
-**For:** control-plane APIs, UI backends, orchestrators, CLI tools,
-integration glue, batch workloads, configuration management.
-
-**Not for:** the hot path. If you're processing millions of messages
-per second and shaving microseconds matters, that code belongs in
-Rust -- see [scalo-rs](https://github.com/hyperi-io/scalo-rs). scalo-py
-is "fast enough for control plane and integration"; scalo-rs is "fast
-enough for the hot path".
-
-We optimise scalo-py sensibly -- no gratuitously slow choices, no obvious
-algorithmic mistakes -- but the lean is toward **stability,
-expressiveness, and integration** rather than microseconds. Readable
-abstractions beat inlined ones; clean composition beats hand-rolled
-loops; heavier deps are acceptable when they earn their keep. This
-design decision is why scalo-py allows substantial dependency trees and
-doesn't agonise over async dispatch overhead. We don't hard-iterate the
-hot path the way scalo-rs does, because that's scalo-rs's job.
+Same conventions, DIFFERENT API, separate repo. Never assume parity.
 
 This module exists because of this -- but for the backend:
 <https://www.youtube.com/watch?v=xE9W9Ghe4Jk>
 
-## What you get
+## What is in the box
 
-Core modules - always installed (`uv add scalo`):
+Core, always installed:
 
-| Module | Description | Third-party deps |
+| Module | What it does | Deps |
 |---|---|---|
-| `logger` | Structured JSON logging with automatic PII masking and secrets filtering, container-aware output | loguru |
-| `config` | 7-layer cascade (CLI -> ENV -> .env -> YAML -> defaults), container-aware path resolution | dynaconf, pyyaml, python-dotenv, mergedeep, tomli-w, dulwich |
-| `runtime` | Auto-detects K8s / Docker / local, resolves config and data paths accordingly | stdlib only |
-| `cli` | `ServiceApp` base class -- subclass to get `run` / `version` / `config-check` for free | typer |
-| `version-check` | Optional startup check for new releases (no-op if `httpx` not installed) | httpx (lazy) |
+| `logger` | Structured JSON logging, PII masked, secrets filtered, container-aware | loguru |
+| `config` | 7-layer cascade (CLI -> ENV -> .env -> YAML -> defaults) | dynaconf, pyyaml, python-dotenv, mergedeep, tomli-w, dulwich |
+| `runtime` | Detects K8s / Docker / local, resolves config and data paths | stdlib only |
+| `cli` | `ServiceApp` -- subclass for `run` / `version` / `config-check` | typer |
+| `version-check` | Optional startup check for a newer release | httpx (lazy) |
 
-Optional modules - install via extras:
+By extra: `http` (retry with jitter), `metrics` (Prometheus + process and container
+gauges), `expression` (CEL), `kafka` (produce, consume, schema inference),
+`opentelemetry` (OTLP traces and metrics), `secrets` (OpenBao/Vault, AWS, GCP,
+Azure), `deployment` (Dockerfile, Helm, Argo, compose generators).
 
-| Module | Extra | Third-party deps |
-|---|---|---|
-| `http` | `http` | httpx, stamina (retry with jitter) |
-| `metrics` | `metrics` | prometheus-client, psutil (auto-collects process/container metrics) |
-| `expression` | `expression` | common-expression-language (CEL via Rust/PyO3) |
-| `kafka` | `kafka` | confluent-kafka, genson |
-| `opentelemetry` | `opentelemetry` | OpenTelemetry SDK + OTLP + Prometheus exporters |
-| `secrets` | `secrets` | All backends (Vault/OpenBao + AWS + GCP + Azure) |
-| `deployment` | `deployment` | pydantic (Dockerfile / Helm / Argo / compose generators) |
+Wired together already, which is the part you would otherwise build: config,
+logging and metrics are global singletons with no init dance; the cascade feeds the
+CLI so `run`, `version` and `config-check` work without you parsing an argument;
+the metrics and health wiring feeds the Kubernetes probes; the deployment contract
+writes your chart, Dockerfile and Argo manifests from the config the app already
+declares.
 
-## Installation
+## Documentation
 
-```bash
-# Core only (logger, config, runtime, cli, version-check)
-uv add scalo
+[docs/README.md](docs/README.md) is the index. The ones you want first:
 
-# With common extras
-uv add "scalo[http,metrics,kafka]"
+| Topic | Doc |
+|---|---|
+| Config cascade | [core-pillars/CONFIG.md](docs/core-pillars/CONFIG.md) |
+| Logging and PII scrubbing | [core-pillars/LOGGING.md](docs/core-pillars/LOGGING.md) |
+| Metrics | [core-pillars/METRICS.md](docs/core-pillars/METRICS.md) |
+| Health, and the observability port | [core-pillars/HEALTH.md](docs/core-pillars/HEALTH.md) |
+| `ServiceApp` and the CLI | [api/CLI.md](docs/api/CLI.md) |
+| Secrets backends | [api/SECRETS.md](docs/api/SECRETS.md) |
+| Kafka | [transport/KAFKA.md](docs/transport/KAFKA.md) |
+| Path resolution | [runtime/RUNTIME-CONTEXT.md](docs/runtime/RUNTIME-CONTEXT.md) |
+| Deployment contract | [deployment/CONTRACT.md](docs/deployment/CONTRACT.md) |
+| What wires itself | [AUTO-WIRING.md](docs/AUTO-WIRING.md) |
+| Layering and the module graph | [architecture.md](docs/architecture.md) |
 
-# Full stack
-uv add "scalo[http,metrics,expression,kafka,opentelemetry,secrets,deployment]"
-```
-
-> **Package naming:** `scalo` on PyPI, `scalo` for Python imports.
-
-### Optional Extras Sizes
-
-| Extra | Packages | Approx size |
-|---|---|---|
-| `http` | httpx + stamina | ~1 MB |
-| `metrics` | prometheus-client + psutil | ~1 MB |
-| `expression` | CEL via Rust/PyO3 | ~6 MB |
-| `kafka` | confluent-kafka + genson | ~11 MB (C libs) |
-| `opentelemetry` | OpenTelemetry SDK + exporters | ~4 MB |
-| `deployment` | pydantic | ~2 MB |
-| `secrets` | All secrets backends | - |
-| `secrets-vault` | OpenBao / HashiCorp Vault (uses `http` extra) | convenience marker |
-| `secrets-aws` | AWS Secrets Manager via boto3 | ~100 MB |
-| `secrets-gcp` | GCP Secret Manager | ~80-100 MB |
-| `secrets-azure` | Azure Key Vault | ~50 MB |
-
-## Quick Start
-
-### Logging
-
-```python
-from scalo.logger import logger
-
-logger.info("Service starting", version="1.0.0")
-logger.error("DB connection failed", host="postgres", retry=3)
-```
-
-Auto-detects console vs container - structured JSON in containers, human-readable
-locally. Sensitive fields (passwords, tokens, API keys, etc.) are masked
-automatically.
-
-### Configuration
-
-```python
-from scalo.config import settings
-
-# Cascade: CLI args -> ENV -> .env -> settings.yaml -> defaults
-host = settings.database.host
-port = settings.api.port
-```
-
-ENV key mapping: `settings.database.host` -> `MYAPP_DATABASE_HOST` (prefix is
-configurable per app).
-
-### Runtime Paths (container-aware)
-
-```python
-from scalo import get_runtime_paths
-
-runtime = get_runtime_paths("myapp")
-config = runtime.config_dir / "app.yaml"   # /config in K8s, ~/.config locally
-data   = runtime.data_dir  / "state.db"    # /data in K8s, ~/.local/share locally
-```
-
-### Metrics
-
-```python
-from scalo import create_metrics
-
-metrics = create_metrics("myapp")
-requests = metrics.counter("http_requests", "Total HTTP requests")
-active   = metrics.gauge("active_users", "Signed-in users")
-duration = metrics.histogram("request_duration", "Request duration (s)")
-
-requests.inc()
-active.set(42)
-duration.observe(0.123)
-```
-
-Automatic process and container metrics (CPU, memory, FDs, uptime) come for
-free - no extra wiring.
-
-### Kafka
-
-```python
-from scalo.kafka import KafkaClient, KafkaConsumer, KafkaProducer
-```
-
-Wraps `confluent-kafka-python`, which binds the librdkafka C client.
-Schema-registry integration, health checks, and admin operations included.
-
-### Secrets (multi-backend)
-
-```python
-from scalo.secrets import SecretsManager
-
-# Picks the configured backend: file, OpenBao/Vault, AWS, GCP, Azure
-manager = SecretsManager.from_config(config)   # config dict per docs/api/SECRETS.md
-api_key = await manager.get("stripe/api_key")
-```
-
-Two-tier caching (memory + disk), stale-cache fallback for backend outages.
-
-### CLI Framework (`ServiceApp`)
-
-Subclass `ServiceApp` to get a standard service-CLI lifecycle (`run`, `version`,
-`config-check`) with no boilerplate. Config flows through the 7-layer cascade
-automatically.
-
-```python
-from scalo.cli import ServiceApp, VersionInfo
-
-class MyService(ServiceApp):
-    name = "my-service"
-    env_prefix = "MY_SVC"
-
-    def version_info(self) -> VersionInfo:
-        return VersionInfo(self.name, "1.0.0")
-
-    async def run_service_async(self, config) -> None:
-        # your service code
-        ...
-
-if __name__ == "__main__":
-    MyService().cli()
-```
-
-> `DfeApp` remains as a deprecated alias for `ServiceApp` to ease migration
-> from `hyperi-pylib`; prefer `ServiceApp` in new code.
-
-## Observability port - health and metrics
-
-`ServiceApp` binds a dedicated observability listener on `--metrics-addr`
-(default `0.0.0.0:9090`, env `METRICS_ADDR`) for the whole time the service
-runs, and serves:
-
-| Path | Purpose | On failure |
-|---|---|---|
-| `/metrics` | Prometheus scrape | - |
-| `/livez` | Liveness - process not deadlocked | Restart pod |
-| `/readyz` | Readiness - deps healthy + ready flag set | Stop routing traffic |
-
-Those two are the whole surface - there are no aliases. A second path meaning
-the same thing eventually stops meaning the same thing, and an alias that keeps
-answering 200 hides a probe still aimed at a retired name.
-
-Startup has no path of its own: aim `startupProbe` at `/livez`. Kubernetes
-suspends liveness until the startup probe passes, so one path gives both a
-generous boot budget and a tight liveness period without the two drifting.
-
-This is a **separate port from your application's**, on purpose: exposing
-user traffic must never expose the operator surface. Probe the
-observability port in your manifests, not the traffic port.
-
-Register checks and flip readiness on the manager scalo serves, or
-`/readyz` will report something your service does not mean:
-
-```python
-class MyService(ServiceApp):
-    name = "my-service"
-    env_prefix = "MYAPP"
-
-    def run_service(self, config):
-        self.health().register_ready_check("db", db.is_connected)
-        self.health().set_ready()
-```
-
-Liveness MUST NEVER check downstream dependencies (a DB outage shouldn't
-restart your replicas). Readiness checks dependencies AND requires an
-explicit `set_ready()` call - cleared during graceful shutdown.
-
-The listener is stdlib-only, so it works without the FastAPI extra. Set
-`serve_observability = False` on your `ServiceApp` for a service that has
-no business binding a port (a one-shot CLI, say). A bind failure is fatal
-by design - a service reporting healthy on a port nobody is listening to
-is the failure this exists to prevent.
+Two things worth reading before you deploy: `/livez` and `/readyz` are the whole
+health surface and there are no aliases, and the observability port is separate
+from your application's on purpose -- exposing user traffic must never expose the
+operator surface. Both are in [HEALTH.md](docs/core-pillars/HEALTH.md).
 
 ## Development
 
@@ -287,12 +113,12 @@ make build     # build wheel
 
 ## Related
 
-- **[scalo-rs](https://github.com/hyperi-io/scalo-rs)** -- sister library for
-  Rust services. Same opinions, same patterns, native Rust performance for
-  hot-path workloads.
-- **[Migrating from hyperi-pylib](docs/MIGRATING-FROM-HYPERI-PYLIB.md)** --
-  `scalo` is the renamed, Apache-2.0 continuation of `hyperi-pylib`; this guide
-  covers the mechanical changes.
+- **[scalo-rs](https://github.com/hyperi-io/scalo-rs)** -- sister library for Rust
+  services. Same opinions, same patterns, native Rust performance for hot-path
+  workloads.
+- **[Migrating from hyperi-pylib](docs/MIGRATING-FROM-HYPERI-PYLIB.md)** -- `scalo`
+  is the renamed, Apache-2.0 continuation of `hyperi-pylib`; this guide covers the
+  mechanical changes.
 
 ## Context
 

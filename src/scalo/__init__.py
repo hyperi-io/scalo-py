@@ -1,14 +1,7 @@
 """scalo -- Opinionated, drop-in toolkit for production Python services.
 
-There's plenty of sage advice out there about how to run Python services in
-production at scale -- config cascades, structured logging with gitleaks-backed
-PII scrubbing, multi-backend secrets management, Prometheus and OpenTelemetry
-side-by-side, Kafka clients that retry properly, K8s health probes wired for
-rolling updates, deployment artefacts (Dockerfile + Helm + ArgoCD) all carrying
-the same identity stamps -- but almost none of it as code you can just
-`pip install` and use.
-
-This is that code.
+An integrated runtime for control-plane services. Attach and 'enterprise-up'
+your application.
 
 Opinionated, drop-in, working out of the box. The patterns from blog posts,
 watercooler chats and beers with your Google mates as actual library -- not
