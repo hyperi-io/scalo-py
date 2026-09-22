@@ -1,6 +1,7 @@
 """scalo -- Opinionated, drop-in toolkit for production Python services.
 
-The stuff for your app to operate at scale, in one place
+An integrated package for control-plane services. Attach and 'enterprise-up'
+your application.
 
 Opinionated, drop-in, working out of the box. The patterns from blog posts,
 watercooler chats and beers with your Google mates as actual library -- not
