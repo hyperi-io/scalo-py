@@ -25,7 +25,7 @@ Python extras pull in which deps.
 | `from scalo import runtime` | K8s / Docker / bare-metal autodetect, container-aware paths (config_dir, data_dir, cache_dir, run_dir), `CONTAINER_BASE_PATH` override | Read `/.dockerenv`, parse cgroups, pick path defaults |
 | `from scalo import secrets` | OpenBao / Vault / AWS / GCP / Azure / ansible-vault / file providers behind one interface | Pick a provider SDK, wrap each behind a uniform API |
 | `from scalo.deployment import DeploymentContract` | Pydantic contract → Dockerfile + Helm chart + ArgoCD Application + container manifest + Compose fragment, all carrying [Contract Identity v1](deployment/IDENTITY.md) labels | Write the generators yourself, keep them in sync, stamp identity by hand |
-| `from scalo.kafka import KafkaProducer, KafkaConsumer` | confluent-kafka clients with idempotent retry, schema sampling, consumer lag health, async wrappers | Configure librdkafka, hand-roll a retry wrapper, write a lag probe |
+| `from scalo.kafka import KafkaProducer, KafkaConsumer` | confluent-kafka clients with at-least-once producer defaults, schema sampling, consumer lag health, async wrappers | Configure librdkafka, hand-roll a retry wrapper, write a lag probe |
 
 That's the value proposition. Everything else is "and here's how the
 pieces work".
@@ -94,6 +94,7 @@ flowchart TB
 - [INTEGRATION.md](INTEGRATION.md) — "I'm building a scalo service" recipe
 - [AUTO-WIRING.md](AUTO-WIRING.md) — what's wired automatically, what's manual
 - [EXTRAS-FLAGS.md](EXTRAS-FLAGS.md) — extras tree, recommended bundles, native deps
+- [migrations.md](migrations.md) -- behaviour and API changes a consumer adjusts for, by release
 
 ### Core pillars (always available)
 

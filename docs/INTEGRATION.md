@@ -184,21 +184,19 @@ producer = KafkaProducer({"bootstrap.servers": settings.get("kafka.brokers")})
 producer.send("events", key=b"k", value=b'{"event":"x"}')
 producer.flush()
 
-consumer = KafkaConsumer({
-    "bootstrap.servers": settings.get("kafka.brokers"),
-    "group.id": "my-service",
-})
+consumer = KafkaConsumer(
+    {"bootstrap.servers": settings.get("kafka.brokers")},
+    group_id="my-service",
+)
 consumer.subscribe(["events"])
 while True:
     msg = consumer.poll(timeout=1.0)
     if msg is None:
         continue
-    handle(msg.value())
+    handle(msg.value)
 ```
 
-Idempotent retry, schema sampling, consumer-lag health probe, and
-async wrappers (`AsyncKafkaProducer`, `AsyncKafkaConsumer`) are all
-available.
+At-least-once producer defaults, schema sampling, a consumer-lag health probe and async wrappers (`AsyncKafkaProducer`, `AsyncKafkaConsumer`) are all available.
 
 See [transport/KAFKA.md](transport/KAFKA.md).
 

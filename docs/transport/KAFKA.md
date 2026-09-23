@@ -222,6 +222,22 @@ populate `headers` from the active OTel span yourself.
 
 ---
 
+## Internal consumer groups and broker ACLs
+
+librdkafka will not build a consumer without a `group.id`, and a consumer asks the broker for its group's coordinator as soon as it connects, whether or not it ever subscribes. A broker that grants groups by prefix refuses that lookup for any group outside the prefix, and logs it as `GroupAuthorizationFailed`. So the consumer each read client builds for its own offset queries takes a group id derived from the config you pass, never a fixed literal:
+
+| Client | Methods that build the offset-query consumer | Group id | Joins or commits |
+|---|---|---|---|
+| `KafkaClient` | `describe_topic`, `get_watermark_offsets`, `get_topic_message_count`, `get_offsets_for_times` | `<group.id>-admin`, or `<client.id>-admin` when `group.id` is unset or empty | Never |
+| `AsyncKafkaClient` | `describe_topic`, `get_watermark_offsets`, `get_topic_message_count` | as above | Never |
+| `ReadOnlyKafkaClient` | `describe_topic`, `get_watermark_offsets`, `get_topic_message_count` | as above | Never |
+
+A client given `group.id: dfe-engine` gets `dfe-engine-admin`, and one given only `client.id: dfe-engine` gets the same, both inside a `dfe-` grant. With neither set the anchor is `scalo`, and `scalo-admin` sits outside any app prefix, so set one of the two on a client that talks to a broker enforcing group ACLs. The anchor order and the `-admin` suffix match scalo-rs's `KafkaAdmin`.
+
+The group you pass to `get_consumer_lag` or a `KafkaAdmin` offset reset is used as named, so the grant has to cover it too. The lag read fetches that group's committed offsets; the resets commit to it.
+
+---
+
 ## Schema sampling
 
 For "what's in this topic?" discovery -- inferring a JSON schema and
@@ -344,6 +360,7 @@ Methods available: `list_topics`, `describe_topic`,
 
 - [../README.md](../README.md)
 - [../INTEGRATION.md](../INTEGRATION.md)
+- [../migrations.md](../migrations.md)
 - [../core-pillars/HEALTH.md](../core-pillars/HEALTH.md)
 - [../core-pillars/METRICS.md](../core-pillars/METRICS.md)
 - [../api/RESILIENCE.md](../api/RESILIENCE.md)
