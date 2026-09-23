@@ -8,9 +8,9 @@
 
 """Tests for ``scalo.logger.scrub.gitleaks_toml``."""
 
-from __future__ import annotations
-
+import random
 import re
+import string
 
 import pytest
 
@@ -160,6 +160,68 @@ class TestGitleaksTomlScrubberRuleFilter:
         gh_token = github_classic_pat()
         out2 = s.scrub(gh_token)
         assert gh_token in out2
+
+
+def _real_shaped_github_pat() -> str:
+    """A classic PAT shape (``ghp_`` + 36 mixed-case alphanumerics), built at runtime."""
+    rng = random.Random(20260924)
+    body = "".join(rng.choice(string.ascii_letters + string.digits) for _ in range(36))
+    return "gh" + "p_" + body
+
+
+# hyperi-ci's deprecation warning, verbatim from a dfe-ui CI job log.
+_DEPRECATION_LINE = (
+    "Renamed config keys in .hyperi-ci.yaml: publish.container -> release.container, "
+    "publish.enabled -> release.enabled. The old spelling keeps working; rename when convenient."
+)
+
+
+class TestExcludeRules:
+    """``exclude_rules`` narrows a false positive without dropping the rest of the set."""
+
+    def _excluding(self, *rule_ids: str) -> ScrubConfig:
+        return ScrubConfig(secrets=SecretsConfig(exclude_rules=frozenset(rule_ids)))
+
+    def test_default_set_eats_the_deprecation_warning(self):
+        # The control: without it the survival test below proves nothing.
+        out = build_scrubber().scrub(_DEPRECATION_LINE)
+        assert "[GENERIC_API_KEY_REDACTED]" in out
+        assert "publish.container" not in out
+
+    def test_deprecation_warning_survives_with_generic_api_key_excluded(self):
+        scrubber = build_scrubber(self._excluding("generic-api-key"))
+        assert scrubber.scrub(_DEPRECATION_LINE) == _DEPRECATION_LINE
+
+    def test_real_github_pat_still_redacted_by_its_own_rule(self):
+        pat = _real_shaped_github_pat()
+        scrubber = build_scrubber(self._excluding("generic-api-key"))
+        out = scrubber.scrub(f"pushing with token {pat} to origin")
+        assert pat not in out
+        assert out == "pushing with token [GITHUB_PAT_REDACTED] to origin"
+
+    def test_no_exclusion_keeps_every_rule(self):
+        assert SecretsScrubber()._inner.rule_count == GitleaksTomlScrubber().rule_count
+        assert SecretsConfig().exclude_rules == frozenset()
+
+    def test_exclusion_drops_exactly_the_named_rule(self):
+        full = GitleaksTomlScrubber()
+        narrowed = GitleaksTomlScrubber(exclude_rule_ids={"generic-api-key"})
+        assert narrowed.rule_count == full.rule_count - 1
+        assert "generic-api-key" not in {r.id for r in narrowed._compiled}
+
+    def test_exclusion_composes_with_minimal(self):
+        minimal = SecretsScrubber(patterns="minimal")
+        narrowed = SecretsScrubber(patterns="minimal", exclude_rules=frozenset({"github-pat"}))
+        assert narrowed._inner.rule_count == minimal._inner.rule_count - 1
+
+    def test_unknown_rule_id_warns_and_excludes_nothing(self):
+        with pytest.warns(RuntimeWarning, match="generic-api-kee"):
+            narrowed = GitleaksTomlScrubber(exclude_rule_ids={"generic-api-kee"})
+        assert narrowed.rule_count == GitleaksTomlScrubber().rule_count
+
+    def test_detect_secrets_path_warns_and_ignores(self):
+        with pytest.warns(RuntimeWarning, match="IGNORED"):
+            SecretsScrubber(patterns="detect-secrets", exclude_rules=frozenset({"generic-api-key"}))
 
 
 class TestGitleaksTomlScrubberLabeler:

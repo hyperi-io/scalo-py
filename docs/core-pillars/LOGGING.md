@@ -151,6 +151,28 @@ scrubber = build_scrubber(ScrubConfig(
 setup(scrubber=scrubber)
 ```
 
+### Excluding one L1 rule
+
+L1 runs every gitleaks rule over log prose, where a broad rule can match ordinary text. `generic-api-key` is the one known to: it turns `Renamed config keys in .hyperi-ci.yaml: publish.container -> ...` into `Renamed config [GENERIC_API_KEY_REDACTED]-> ...`. Drop the offending rule by id and keep the rest of the set running:
+
+```yaml
+logging:
+  scrub:
+    secrets:
+      exclude_rules: [generic-api-key]   # a comma-separated string also works, for env vars
+```
+
+```python
+from scalo.logger import setup
+from scalo.logger.scrub import ScrubConfig, SecretsConfig
+
+setup(scrub_config=ScrubConfig(secrets=SecretsConfig(exclude_rules=frozenset({"generic-api-key"}))))
+```
+
+The specific rules still catch the credential shapes, so a real GitHub token is still `[GITHUB_PAT_REDACTED]` with `generic-api-key` excluded. Do not reach for `patterns: minimal` to silence a false positive: it keeps 13 rules and drops cloudflare, npm and pypi detection with it.
+
+An id the rule set does not carry raises a `RuntimeWarning` at startup and excludes nothing. `exclude_rules` applies to `patterns: gitleaks` and `patterns: minimal`; the `detect-secrets` path warns and ignores it. The `logging.scrub.*` keys are read only when `setup()` gets no `mask_sensitive` or `masking_level` argument -- either one selects the legacy mapping and ignores them, so pass `scrub_config=` instead.
+
 The legacy `SensitiveDataFilter` in `logger.filters` ships the L2
 field set as a backwards-compatible shim. Add custom fields with
 `SensitiveDataFilter.add_sensitive_fields({"employee_id", "ssn"})`.
