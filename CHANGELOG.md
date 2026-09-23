@@ -3,6 +3,14 @@
 Rendered by CI and committed back at the end of a release -- do not edit by
 hand. Release notes also appear on the GitHub Releases page, one per tag.
 
+## [2.30.1](https://github.com/hyperi-io/scalo-py/compare/v2.30.0...v2.30.1) (2026-09-23)
+
+### Bug Fixes
+
+* **docs:** add the README Context section and lowercase the architecture doc ([#35](https://github.com/hyperi-io/scalo-py/issues/35)) ([c4fdc8f](https://github.com/hyperi-io/scalo-py/commit/c4fdc8fd341de3cb522e8e060acdcbc17739c3f2)), closes [#28](https://github.com/hyperi-io/scalo-py/issues/28)
+* lead with the hero line, and cut the README to it ([#36](https://github.com/hyperi-io/scalo-py/issues/36)) ([e0fa31e](https://github.com/hyperi-io/scalo-py/commit/e0fa31ef65d81f6a8eac0ff3948024eab980d55d))
+* raise the Python floor to 3.14 ([0c4c138](https://github.com/hyperi-io/scalo-py/commit/0c4c138effa044ded33f3e27332b6547c3ef2b84))
+
 ## [2.30.0](https://github.com/hyperi-io/scalo-py/compare/v2.29.18...v2.30.0) (2026-08-27)
 
 ### Features
