@@ -21,7 +21,7 @@ from confluent_kafka import TopicPartition
 from confluent_kafka.admin import AdminClient
 
 from ..concurrency import run_blocking
-from .config import ADMIN_DEFAULTS, CONSUMER_DEFAULTS, merge_config
+from .config import ADMIN_DEFAULTS, _offset_query_consumer_config, merge_config
 from .types import PartitionInfo, TopicInfo, TopicMetadata
 
 
@@ -114,12 +114,7 @@ class AsyncKafkaClient:
 
         topic_meta = metadata.topics[topic]
 
-        # Get watermarks
-        base_config = self._user_config.copy()
-        base_config["group.id"] = f"scalo-async-{id(self)}"
-        consumer_config = merge_config(base_config, CONSUMER_DEFAULTS, verify_ssl=self._verify_ssl)
-
-        consumer = Consumer(consumer_config)
+        consumer = Consumer(_offset_query_consumer_config(self._user_config, self._verify_ssl))
         try:
             partitions = []
             for partition_id, partition_meta in topic_meta.partitions.items():
@@ -160,11 +155,7 @@ class AsyncKafkaClient:
 
         partition_ids = list(metadata.topics[topic].partitions.keys())
 
-        base_config = self._user_config.copy()
-        base_config["group.id"] = f"scalo-async-wm-{id(self)}"
-        consumer_config = merge_config(base_config, CONSUMER_DEFAULTS, verify_ssl=self._verify_ssl)
-
-        consumer = Consumer(consumer_config)
+        consumer = Consumer(_offset_query_consumer_config(self._user_config, self._verify_ssl))
         try:
             watermarks = {}
             for partition_id in partition_ids:

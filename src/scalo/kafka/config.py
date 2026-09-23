@@ -129,6 +129,55 @@ def merge_config(
     return merged
 
 
+# =============================================================================
+# Internal consumer group ids
+# =============================================================================
+
+# Anchors scalo's own group ids when a config names neither a group nor a client, as scalo-rs does.
+_DEFAULT_CLIENT_ID = "scalo"
+
+# Names the offset-query consumer in its derived group id, the same role scalo-rs's KafkaAdmin uses.
+_OFFSET_QUERY_GROUP_ROLE = "admin"
+
+
+def _internal_group_id(config: dict[str, Any], role: str) -> str:
+    """Return the group id for one of scalo's own consumers, ``role`` naming it.
+
+    librdkafka looks up the coordinator for a consumer's ``group.id`` as soon as it
+    connects, and a broker that grants groups by prefix refuses any group outside
+    the prefix. So the id is ``<group.id>-<role>``, falling back to
+    ``<client.id>-<role>`` and, with neither set, ``scalo-<role>``.
+
+    Args:
+        config: The caller's librdkafka config.
+        role: What the consumer is for, appended to the anchor.
+
+    Returns:
+        The derived group id, never empty.
+    """
+    anchor = config.get("group.id") or config.get("client.id") or _DEFAULT_CLIENT_ID
+    return f"{anchor}-{role}"
+
+
+def _offset_query_consumer_config(user_config: dict[str, Any], verify_ssl: bool) -> dict[str, Any]:
+    """Build the config for a consumer that only reads watermarks and offsets.
+
+    The consumer inherits the caller's SASL/SSL settings, never subscribes, assigns
+    or commits, and takes a group id derived from ``user_config`` (see
+    ``_internal_group_id``).
+
+    Args:
+        user_config: The caller's librdkafka config; not modified.
+        verify_ssl: If False, disable SSL certificate verification.
+
+    Returns:
+        The caller's config over ``CONSUMER_DEFAULTS``, with the derived ``group.id``.
+    """
+    base_config = user_config.copy()
+    base_config["group.id"] = _internal_group_id(user_config, _OFFSET_QUERY_GROUP_ROLE)
+    return merge_config(base_config, CONSUMER_DEFAULTS, verify_ssl=verify_ssl)
+
+
 def config_from_env(prefix: str = "KAFKA_") -> dict[str, Any]:
     """
     Build Kafka configuration from environment variables.

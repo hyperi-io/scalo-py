@@ -25,7 +25,7 @@ from typing import Any
 from confluent_kafka import Consumer, TopicPartition
 from confluent_kafka.admin import AdminClient
 
-from .config import ADMIN_DEFAULTS, CONSUMER_DEFAULTS, merge_config
+from .config import ADMIN_DEFAULTS, CONSUMER_DEFAULTS, _offset_query_consumer_config, merge_config
 from .types import PartitionInfo, TopicInfo, TopicMetadata
 
 
@@ -259,16 +259,7 @@ class ReadOnlyKafkaClient:
         partition_ids: list[int],
     ) -> dict[int, tuple[int, int]]:
         """Get watermarks using a temporary consumer."""
-        base_config = self._user_config.copy()
-        base_config["group.id"] = f"scalo-readonly-{id(self)}"
-
-        consumer_config = merge_config(
-            base_config,
-            CONSUMER_DEFAULTS,
-            verify_ssl=self._verify_ssl,
-        )
-
-        consumer = Consumer(consumer_config)
+        consumer = Consumer(_offset_query_consumer_config(self._user_config, self._verify_ssl))
         try:
             watermarks = {}
             for partition_id in partition_ids:

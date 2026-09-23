@@ -22,7 +22,7 @@ from typing import Any
 from confluent_kafka import Consumer, TopicPartition
 from confluent_kafka.admin import AdminClient
 
-from .config import ADMIN_DEFAULTS, CONSUMER_DEFAULTS, merge_config
+from .config import ADMIN_DEFAULTS, CONSUMER_DEFAULTS, _offset_query_consumer_config, merge_config
 from .types import (
     PartitionInfo,
     TopicInfo,
@@ -229,17 +229,7 @@ class KafkaClient:
         Returns:
             Dict of partition -> offset
         """
-        # Create consumer just for offset lookup (inherit SASL/SSL from user config)
-        base_config = self._user_config.copy()
-        base_config["group.id"] = f"scalo-offset-lookup-{id(self)}"
-
-        consumer_config = merge_config(
-            base_config,
-            CONSUMER_DEFAULTS,
-            verify_ssl=self._verify_ssl,
-        )
-
-        consumer = Consumer(consumer_config)
+        consumer = Consumer(_offset_query_consumer_config(self._user_config, self._verify_ssl))
         try:
             # Create TopicPartition list with timestamps
             tps = [TopicPartition(topic, partition, timestamp) for partition, timestamp in timestamps.items()]
@@ -331,17 +321,7 @@ class KafkaClient:
         partition_ids: list[int],
     ) -> dict[int, tuple[int, int]]:
         """Get watermarks using a temporary consumer."""
-        # Start with user config (includes SASL/SSL settings)
-        base_config = self._user_config.copy()
-        base_config["group.id"] = f"scalo-watermark-{id(self)}"
-
-        consumer_config = merge_config(
-            base_config,
-            CONSUMER_DEFAULTS,
-            verify_ssl=self._verify_ssl,
-        )
-
-        consumer = Consumer(consumer_config)
+        consumer = Consumer(_offset_query_consumer_config(self._user_config, self._verify_ssl))
         try:
             watermarks = {}
             for partition_id in partition_ids:
