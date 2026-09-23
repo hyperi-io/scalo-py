@@ -26,8 +26,6 @@ Returns a :class:`LayeredScrubber` (or whatever the explicit
 scrubber that returns input unchanged.
 """
 
-from __future__ import annotations
-
 import warnings
 from typing import Any
 
@@ -211,6 +209,7 @@ def _parse_scrub_dict(d: dict[str, Any]) -> ScrubConfig:
             patterns=str(sub.get("patterns", "gitleaks")),
             entropy_filter=_bool(sub.get("entropy_filter"), False),
             token_efficiency=_bool(sub.get("token_efficiency"), False),
+            exclude_rules=frozenset(_list_str(sub.get("exclude_rules"), [])),
         )
 
     def _validators(sub: dict | None) -> PiiValidatorsConfig:

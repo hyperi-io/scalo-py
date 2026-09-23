@@ -17,8 +17,6 @@ Direct construction of :class:`LayeredScrubber` is fine but the
 factory handles the wiring details correctly.
 """
 
-from __future__ import annotations
-
 import warnings
 
 from .chain import LayeredScrubber
@@ -111,6 +109,7 @@ def build_scrubber(
                 patterns=config.secrets.patterns,
                 labeler=labeler,
                 metrics=metrics,
+                exclude_rules=config.secrets.exclude_rules,
             )
         )
 

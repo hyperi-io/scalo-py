@@ -152,6 +152,24 @@ class TestSchemaParsing:
         cfg = _parse_scrub_dict({"secrets": {"patterns": "minimal"}})
         assert cfg.secrets.patterns == "minimal"
 
+    def test_secrets_exclude_rules_list(self):
+        cfg = _parse_scrub_dict({"secrets": {"exclude_rules": ["generic-api-key"]}})
+        assert cfg.secrets.exclude_rules == frozenset({"generic-api-key"})
+
+    def test_secrets_exclude_rules_csv_string(self):
+        # Env-var convenience -- comma-separated string converts to a set
+        cfg = _parse_scrub_dict({"secrets": {"exclude_rules": "generic-api-key, jwt"}})
+        assert cfg.secrets.exclude_rules == frozenset({"generic-api-key", "jwt"})
+
+    def test_secrets_exclude_rules_default_empty(self):
+        assert _parse_scrub_dict({}).secrets.exclude_rules == frozenset()
+
+    def test_config_dict_exclusion_reaches_the_scrubber(self):
+        # The cascade key has to change what the built scrubber does, not only the parsed config.
+        line = "Renamed config keys in .hyperi-ci.yaml: publish.binaries -> release.binaries"
+        scrubber = resolve_scrubber(config_dict={"scrub": {"secrets": {"exclude_rules": ["generic-api-key"]}}})
+        assert scrubber.scrub(line) == line
+
     def test_pii_nlp_key_in_legacy_config_silently_ignored(self):
         # Legacy configs may still carry `pii.nlp = true`. The resolver
         # silently drops it (NLP/NER was dropped from scope) and the

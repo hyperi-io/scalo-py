@@ -12,8 +12,6 @@ Mirrors the canonical YAML in spec §6. Each language maps these keys
 identically -- the config is part of the cross-language contract.
 """
 
-from __future__ import annotations
-
 from dataclasses import dataclass, field
 
 
@@ -34,20 +32,27 @@ class SecretsConfig:
             ``"minimal"`` (high-signal subset), or ``"off"``.
         entropy_filter: NOT IMPLEMENTED. Reserved for an opt-in
             pure-entropy scan. Nothing reads this field --
-            :class:`~scalo.logger.scrub.secrets.SecretsScrubber` takes
-            only patterns and a labeler -- so setting it True does NOT
+            :class:`~scalo.logger.scrub.secrets.SecretsScrubber` takes no
+            entropy option -- so setting it True does NOT
             turn on entropy detection. Kept so existing config does not
             break; ``build_scrubber`` warns if you enable it, because a
             silently-inert security control is worse than an absent one.
         token_efficiency: NOT IMPLEMENTED. Reserved for a repeated-token
             match cache. Nothing reads this field; setting it True has
             no effect on hot-path cost.
+        exclude_rules: gitleaks rule ids to drop from the selected set,
+            e.g. ``frozenset({"generic-api-key"})``, whose match on the word
+            ``keys`` eats ordinary log prose. Every other rule still runs,
+            so narrow one false positive here rather than switching to
+            ``"minimal"``. Honoured by ``"gitleaks"`` and ``"minimal"``.
     """
 
     enabled: bool = True
     patterns: str = "gitleaks"
     entropy_filter: bool = False
     token_efficiency: bool = False
+    # Last, so a positional constructor call keeps its meaning.
+    exclude_rules: frozenset[str] = frozenset()
 
 
 @dataclass(slots=True)

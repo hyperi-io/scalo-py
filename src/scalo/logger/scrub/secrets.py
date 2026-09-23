@@ -19,18 +19,12 @@ in Step 10 -- the public API of this class is the same after that
 swap.
 """
 
-from __future__ import annotations
-
 import warnings
-from typing import TYPE_CHECKING
 
 from ..secrets_leak import SecretsLeakFilter
 from .gitleaks_toml import GitleaksTomlScrubber, load_gitleaks_rules
+from .labeler import LabelFn
 from .metrics import ScrubMetrics
-
-if TYPE_CHECKING:
-    from .labeler import LabelFn
-
 
 # Minimal subset of high-signal rule IDs from upstream gitleaks.toml --
 # used when patterns="minimal". Matches the historical SECRETS_PLUGINS_LITE
@@ -64,7 +58,7 @@ class SecretsScrubber:
       ``scalo-spec/standards/patterns/gitleaks.toml``). Cross-language
       parity contract per spec §3.2.
     - ``"minimal"`` -- TOML-driven, restricted to a high-signal subset
-      (~7 rules) for hot-ish paths.
+      (the 13 rules in ``_MINIMAL_RULES``) for hot-ish paths.
     - ``"detect-secrets"`` -- legacy path using the ``detect-secrets``
       package, including its entropy heuristics. Kept available for
       callers that want entropy-based detection that the TOML rules
@@ -82,6 +76,9 @@ class SecretsScrubber:
             ``[LABEL_REDACTED]``; pass the result of
             :func:`make_hash_labeler` for deterministic-hash mode.
         metrics: :class:`ScrubMetrics` instance. Defaults to no-op.
+        exclude_rules: gitleaks rule ids to leave out of the selected
+            set. Honoured by the ``"gitleaks"`` and ``"minimal"`` paths;
+            the ``detect-secrets`` path warns and ignores it.
     """
 
     # Map config-schema names to SecretsLeakFilter levels (legacy path only).
@@ -97,6 +94,7 @@ class SecretsScrubber:
         extra_patterns: list[tuple[str, str]] | None = None,
         labeler: LabelFn | None = None,
         metrics: ScrubMetrics | None = None,
+        exclude_rules: frozenset[str] = frozenset(),
     ) -> None:
         self._metrics = metrics if metrics is not None else ScrubMetrics.noop()
         self.patterns = patterns
@@ -116,8 +114,16 @@ class SecretsScrubber:
                 labeler=labeler,
                 metrics=self._metrics,
                 rule_ids=rule_ids,
+                exclude_rule_ids=exclude_rules,
             )
         elif patterns in self._DETECT_SECRETS_LEVEL_MAP:
+            if exclude_rules:
+                warnings.warn(
+                    f"exclude_rules names gitleaks rule ids; it is IGNORED for patterns={patterns!r}, "
+                    "which does not run the gitleaks rule set.",
+                    RuntimeWarning,
+                    stacklevel=2,
+                )
             level = self._DETECT_SECRETS_LEVEL_MAP[patterns]
             self._inner = SecretsLeakFilter(
                 level=level,
@@ -130,6 +136,7 @@ class SecretsScrubber:
             self._inner = GitleaksTomlScrubber(
                 labeler=labeler,
                 metrics=self._metrics,
+                exclude_rule_ids=exclude_rules,
             )
 
     def scrub(self, text: str) -> str:

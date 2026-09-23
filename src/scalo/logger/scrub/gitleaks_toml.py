@@ -33,10 +33,9 @@ entropy heuristics; ``SecretsScrubber`` picks between them via the
 ``patterns`` setting.
 """
 
-from __future__ import annotations
-
 import tomllib
 import warnings
+from collections.abc import Collection
 from importlib import resources
 from pathlib import Path
 from typing import Any
@@ -155,6 +154,10 @@ class GitleaksTomlScrubber:
         metrics: :class:`ScrubMetrics` instance. Defaults to no-op.
         rule_ids: optional ``set[str]`` of rule IDs to enable. ``None``
             (default) enables every rule with a compilable regex.
+        exclude_rule_ids: optional rule IDs to leave out of whatever
+            ``rule_ids`` selects. An ID the rule set does not carry is
+            reported with a one-time warning, since a typo would otherwise
+            leave the rule running unnoticed.
 
     Per spec §3.2, rules whose regex doesn't compile in the ``regex``
     package are skipped with a one-time warning and their ID recorded
@@ -169,7 +172,10 @@ class GitleaksTomlScrubber:
         labeler: LabelFn | None = None,
         metrics: ScrubMetrics | None = None,
         rule_ids: set[str] | None = None,
+        exclude_rule_ids: Collection[str] | None = None,
     ) -> None:
+        excluded = frozenset(exclude_rule_ids or ())
+        seen_ids: set[str] = set()
         if rules is None:
             rules, meta = load_gitleaks_rules(path)
             self.version: str = str(meta.get("version", "unversioned"))
@@ -190,9 +196,13 @@ class GitleaksTomlScrubber:
             # one from the id (kebab-case -> UPPER_SNAKE_CASE). Hand-authored
             # HyperI rules MAY supply an explicit label override.
             label = str(entry.get("label") or _derive_label(rule_id))
+            if rule_id:
+                seen_ids.add(rule_id)
             if not rule_id or not isinstance(regex_str, str) or not regex_str:
                 continue
             if rule_ids is not None and rule_id not in rule_ids:
+                continue
+            if rule_id in excluded:
                 continue
             try:
                 # `regex.MULTILINE | regex.V1` -- V1 enables the modern
@@ -212,6 +222,15 @@ class GitleaksTomlScrubber:
             if not isinstance(keywords, (list, tuple)):
                 keywords = ()
             self._compiled.append(_CompiledRule(rule_id, label, pattern, tuple(str(k) for k in keywords)))
+
+        unknown = sorted(excluded - seen_ids)
+        if unknown:
+            warnings.warn(
+                f"exclude_rule_ids names rule(s) the gitleaks rule set does not carry: {', '.join(unknown)}. "
+                "Nothing was excluded for them -- check the rule ids.",
+                RuntimeWarning,
+                stacklevel=2,
+            )
 
     @property
     def rule_count(self) -> int:
