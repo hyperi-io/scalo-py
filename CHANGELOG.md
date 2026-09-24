@@ -3,6 +3,12 @@
 Rendered by CI and committed back at the end of a release -- do not edit by
 hand. Release notes also appear on the GitHub Releases page, one per tag.
 
+## [2.30.4](https://github.com/hyperi-io/scalo-py/compare/v2.30.3...v2.30.4) (2026-09-24)
+
+### Bug Fixes
+
+* drop Redis from env detection and examples ([136dc16](https://github.com/hyperi-io/scalo-py/commit/136dc16e087c573bef7a28c66fa72af4773e06ef))
+
 ## [2.30.3](https://github.com/hyperi-io/scalo-py/compare/v2.30.2...v2.30.3) (2026-09-24)
 
 ### Bug Fixes
