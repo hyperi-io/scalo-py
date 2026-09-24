@@ -3,6 +3,12 @@
 Rendered by CI and committed back at the end of a release -- do not edit by
 hand. Release notes also appear on the GitHub Releases page, one per tag.
 
+## [2.30.3](https://github.com/hyperi-io/scalo-py/compare/v2.30.2...v2.30.3) (2026-09-24)
+
+### Bug Fixes
+
+* **scrub:** mask env-style and TOML keys in L2 ([#40](https://github.com/hyperi-io/scalo-py/issues/40)) ([dd97c60](https://github.com/hyperi-io/scalo-py/commit/dd97c605a5dcab0b1627fec47ac57b9bb40441cc))
+
 ## [2.30.2](https://github.com/hyperi-io/scalo-py/compare/v2.30.1...v2.30.2) (2026-09-24)
 
 ### Bug Fixes
