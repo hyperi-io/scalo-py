@@ -55,6 +55,7 @@ SENSITIVE_FIELDS: set[str] = {
     "private_key",
     "secret_access_key",
     "aws_secret_access_key",
+    "access_key_id",
     # Auth
     "authorization",
     "auth",
@@ -80,6 +81,9 @@ MASK_VALUE = "***REDACTED***"
 # Compiled once at module load instead of per-call to _mask_sensitive_string.
 _DB_URL_RE = re.compile(r"(://[^:/@]*:)([^@]+)(@)")
 _BEARER_RE = re.compile(r"\bbearer\s+([^\s]+)", re.IGNORECASE)
+
+# A sensitive name may follow `_`, `-`, `.`, a quote or whitespace, never a letter or digit.
+_NAME_START = r"(?<![A-Za-z0-9])"
 
 
 class SensitiveDataFilter(logging.Filter):
@@ -147,16 +151,21 @@ class SensitiveDataFilter(logging.Filter):
 
         pairs: list[tuple[re.Pattern, str]] = []
         for field in fields:
-            # 1: JSON with quotes ("field":"value")
-            pairs.append((re.compile(rf'("{field}"\s*:\s*)"([^"]*)"', re.IGNORECASE), rf'\1"{MASK_VALUE}"'))
-            # 2: JSON without key quotes (field:"value")
-            pairs.append((re.compile(rf'(\b{field}\s*:\s*)"([^"]*)"', re.IGNORECASE), rf'\1"{MASK_VALUE}"'))
-            # 3: Form data / query params
-            pairs.append((re.compile(rf"(\b{field})=([^\s&\n]*)", re.IGNORECASE), rf"\1={MASK_VALUE}"))
-            # 4: Key-value without quotes (field: value)
+            # The field must END the key: CARGO_REGISTRY_TOKEN matches `token`, token_count does not.
+            key = rf"{_NAME_START}{field}[\"']?"
+            # `key: "value"` (JSON): the quotes stay so the line is still valid JSON
+            pairs.append((re.compile(rf'({key}\s*:\s*)"[^"]*"', re.IGNORECASE), rf'\1"{MASK_VALUE}"'))
+            # `key: 'value'` (Python repr) or `key: value` (YAML, headers)
             pairs.append(
                 (
-                    re.compile(rf'(\b{field}\s*:\s*)([^\s\n,"}}]+)(?=[\s\n,}}]|$)', re.IGNORECASE),
+                    re.compile(rf"""({key}\s*:\s*)(?:'[^'\n]*'|[^\s,"}}]+(?=[\s,}}]|$))""", re.IGNORECASE),
+                    rf"\1{MASK_VALUE}",
+                )
+            )
+            # `key=value` (env, form data, TOML, INI): a quoted value goes whole, quotes included
+            pairs.append(
+                (
+                    re.compile(rf"""({key}[ \t]*=(?![=>])[ \t]*)(?:"[^"\n]*"|'[^'\n]*'|[^\s&]*)""", re.IGNORECASE),
                     rf"\1{MASK_VALUE}",
                 )
             )
@@ -220,8 +229,14 @@ class SensitiveDataFilter(logging.Filter):
         Handles multiple formats:
         - URL parameters: `field=value&`
         - JSON: `"field":"value"` or `field:"value"`
+        - Python repr: `'field': 'value'`
         - Key-value pairs: `field: value` or `field=value`
+        - Env, TOML and INI: `PREFIX_FIELD=value`, `field = "value"`
         - Database URLs: `://user:password@host`
+
+        A field matches when it ends the key and is not preceded by a
+        letter or digit, so `CARGO_REGISTRY_TOKEN` and `x-auth-token`
+        match `token` while `token_count` and `tokenizer` do not.
 
         Runs the secrets-leak scrubber first (if configured), then
         applies the field-name regex pass.
