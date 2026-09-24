@@ -43,7 +43,7 @@ Env keys are auto-generated from the dotted path:
 | Config path | Env key (prefix `MYAPP`) |
 |-------------|--------------------------|
 | `database.host` | `MYAPP_DATABASE_HOST` |
-| `cache.redis.enabled` | `MYAPP_CACHE_REDIS_ENABLED` |
+| `cache.disk.enabled` | `MYAPP_CACHE_DISK_ENABLED` |
 | `kafka.brokers` | `MYAPP_KAFKA_BROKERS` |
 
 The prefix comes from `ServiceApp(env_prefix=...)` / `set_env_prefix()`,
