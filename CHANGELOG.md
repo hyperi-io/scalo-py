@@ -3,6 +3,13 @@
 Rendered by CI and committed back at the end of a release -- do not edit by
 hand. Release notes also appear on the GitHub Releases page, one per tag.
 
+## [2.30.2](https://github.com/hyperi-io/scalo-py/compare/v2.30.1...v2.30.2) (2026-09-24)
+
+### Bug Fixes
+
+* **kafka:** derive internal group ids from config ([#39](https://github.com/hyperi-io/scalo-py/issues/39)) ([114717d](https://github.com/hyperi-io/scalo-py/commit/114717d3aee5cea0f2bcf2b81ad8ad45764200b8)), closes [#171](https://github.com/hyperi-io/scalo-py/issues/171)
+* **scrub:** exclude one gitleaks rule by id ([#37](https://github.com/hyperi-io/scalo-py/issues/37)) ([be94253](https://github.com/hyperi-io/scalo-py/commit/be9425327d43fc5e22d59242060a93f84db26022)), closes [hyperi-io/hyperi-ci#255](https://github.com/hyperi-io/hyperi-ci/issues/255)
+
 ## [2.30.1](https://github.com/hyperi-io/scalo-py/compare/v2.30.0...v2.30.1) (2026-09-23)
 
 ### Bug Fixes
