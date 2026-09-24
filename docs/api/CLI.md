@@ -301,4 +301,3 @@ PATH.
 - [../core-pillars/METRICS.md](../core-pillars/METRICS.md)
 - [../deployment/CONTRACT.md](../deployment/CONTRACT.md)
 - [VERSION-CHECK.md](VERSION-CHECK.md)
-- [HARNESS.md](HARNESS.md)

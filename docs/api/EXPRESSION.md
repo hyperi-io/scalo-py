@@ -204,7 +204,5 @@ on one passes on the other.
 
 - [../core-pillars/CONFIG.md](../core-pillars/CONFIG.md)
 - [DIRECTORY-CONFIG.md](DIRECTORY-CONFIG.md)
-- [DATABASE.md](DATABASE.md)
-- [CACHE.md](CACHE.md)
 - [../EXTRAS-FLAGS.md](../EXTRAS-FLAGS.md)
 - [../INTEGRATION.md](../INTEGRATION.md)

@@ -223,7 +223,6 @@ finally:
 ## Related
 
 - [../core-pillars/CONFIG.md](../core-pillars/CONFIG.md)
-- [DATABASE.md](DATABASE.md)
 - [SECRETS.md](SECRETS.md)
 - [../INTEGRATION.md](../INTEGRATION.md)
 - [../runtime/RUNTIME-CONTEXT.md](../runtime/RUNTIME-CONTEXT.md)

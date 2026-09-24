@@ -273,6 +273,5 @@ credentials, and joins the refresh task.
 - [../core-pillars/CONFIG.md](../core-pillars/CONFIG.md)
 - [../EXTRAS-FLAGS.md](../EXTRAS-FLAGS.md)
 - [HTTP-CLIENT.md](HTTP-CLIENT.md)
-- [CACHE.md](CACHE.md)
 - [CONCURRENCY.md](CONCURRENCY.md)
 - [RESILIENCE.md](RESILIENCE.md)

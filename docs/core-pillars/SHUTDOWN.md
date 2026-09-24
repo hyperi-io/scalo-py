@@ -136,7 +136,7 @@ async def drain_kafka():
     producer.flush(timeout=10.0)
 ```
 
-See [transport/KAFKA.md](../transport/KAFKA.md#shutdown) for the
+See [transport/KAFKA.md](../transport/KAFKA.md#async-clients) for the
 async producer/consumer drain pattern.
 
 ---

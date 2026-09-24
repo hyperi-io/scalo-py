@@ -238,13 +238,6 @@ podDisruptionBudget:
   minAvailable: 2
 ```
 
-## Examples
-
-See complete examples:
-
-- [examples/api-container](../../examples/api-container) - REST API
-- [examples/daemon-container](../../examples/daemon-container) - Background worker
-
 ## Upgrading
 
 ```bash
@@ -267,5 +260,4 @@ helm uninstall my-app
 ## See Also
 
 - [scalo Documentation](https://github.com/hyperi-io/scalo-py/tree/main/docs)
-- [Kubernetes Guide](../../../docs/KUBERNETES.md)
-- [Profiles Guide](../../../docs/PROFILES.md)
+- [Deployment contract and artefacts](../../../docs/deployment/CONTRACT.md)
