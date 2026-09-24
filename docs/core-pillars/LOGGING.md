@@ -128,7 +128,7 @@ Three layers fire in order on every log message. Built from
 | Layer | Source | Detects |
 |-------|--------|---------|
 | L1 secrets | `scrub/secrets.py` + `gitleaks.toml` rules | AWS keys, GitHub tokens, JWTs, private keys, third-party API keys |
-| L2 fields | `scrub/field_names.py` (regex on key names) | `password=...`, `"token":"..."`, bearer tokens, DB URLs |
+| L2 fields | `scrub/field_names.py` (regex on key names) | `password=...`, `"token":"..."`, `CARGO_REGISTRY_TOKEN=...`, `token = "..."`, bearer tokens, DB URLs |
 | L3 PII | `scrub/pii/` validators (Luhn, mod-97, libphonenumber) | Credit cards, IBANs, emails, phones, AU ABN, AU TFN |
 
 There is no L4 -- NLP/NER scrubbing was dropped from scope (the
@@ -169,9 +169,23 @@ from scalo.logger.scrub import ScrubConfig, SecretsConfig
 setup(scrub_config=ScrubConfig(secrets=SecretsConfig(exclude_rules=frozenset({"generic-api-key"}))))
 ```
 
-The specific rules still catch the credential shapes, so a real GitHub token is still `[GITHUB_PAT_REDACTED]` with `generic-api-key` excluded. Do not reach for `patterns: minimal` to silence a false positive: it keeps 13 rules and drops cloudflare, npm and pypi detection with it.
+The specific rules still catch the credential shapes, so a real GitHub token is still `[GITHUB_PAT_REDACTED]` with `generic-api-key` excluded. L2 still masks by key name, so `CARGO_REGISTRY_TOKEN=...` and `token = "..."` stay masked too. Do not reach for `patterns: minimal` to silence a false positive: it keeps 13 rules and drops cloudflare, npm and pypi detection with it.
 
 An id the rule set does not carry raises a `RuntimeWarning` at startup and excludes nothing. `exclude_rules` applies to `patterns: gitleaks` and `patterns: minimal`; the `detect-secrets` path warns and ignores it. The `logging.scrub.*` keys are read only when `setup()` gets no `mask_sensitive` or `masking_level` argument -- either one selects the legacy mapping and ignores them, so pass `scrub_config=` instead.
+
+### Layer 2 field-name regex
+
+A listed field masks the value when it ENDS the key and no letter or digit comes before it. So `CARGO_REGISTRY_TOKEN=...` and `JFROG_TOKEN=...` mask on `token`, and `R2_SECRET_ACCESS_KEY=...` on `secret_access_key`. A key that runs on past the field does not match: `token_count=5`, `max_tokens=4096` and `tokenizer` pass through, while `max_token=5` is masked. Matching is case-insensitive.
+
+| Shape | Input | Output |
+|-------|-------|--------|
+| env, form data | `JFROG_TOKEN=abc` | `JFROG_TOKEN=***REDACTED***` |
+| TOML, INI | `token = "abc def"` | `token = ***REDACTED***` |
+| JSON | `{"CARGO_REGISTRY_TOKEN": "abc"}` | `{"CARGO_REGISTRY_TOKEN": "***REDACTED***"}` |
+| Python repr | `{'password': 'abc'}` | `{'password': ***REDACTED***}` |
+| YAML, HTTP header | `x-auth-token: abc` | `x-auth-token: ***REDACTED***` |
+
+A quoted value after `=`, or a single-quoted one after `:`, is masked whole with its quotes. A double-quoted JSON value keeps its quotes so the line stays valid JSON. Whitespace around `=` never crosses a line, and `==` and `=>` are not read as assignments.
 
 The legacy `SensitiveDataFilter` in `logger.filters` ships the L2
 field set as a backwards-compatible shim. Add custom fields with
