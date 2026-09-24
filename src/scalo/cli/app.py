@@ -44,7 +44,7 @@ from abc import ABC, abstractmethod
 from dataclasses import dataclass
 from typing import Any
 
-from .error import CliError, ConfigError, LoggerError
+from .error import CliError, ConfigError, LoggerError, ServiceError
 from .output import print_error, print_info, print_success
 from .version_info import VersionInfo
 
@@ -314,6 +314,28 @@ class ServiceApp(ABC):
         """
         self.run_service(config)
 
+    def check_config(self, config: Any) -> None:  # noqa: B027
+        """Validate settings only this service can judge.
+
+        Called by ``config-check`` and by ``run`` once the cascade has loaded,
+        so the command that exists to catch a bad setting sees the same
+        verdict the service itself would reach. Raise to reject; the message
+        is what the operator reads.
+
+        Args:
+            config: Dynaconf settings object loaded via the config cascade.
+
+        Raises:
+            Exception: Any exception rejects the configuration. A
+                :class:`scalo.cli.error.ConfigError` carries its own message
+                through unchanged; anything else is wrapped in one.
+
+        Example::
+
+            def check_config(self, config) -> None:
+                load_settings()   # raises on a placeholder secret
+        """
+
     def register_commands(self, app: Any) -> None:  # noqa: B027
         """Register additional app-specific subcommands.
 
@@ -436,11 +458,23 @@ def _build_typer_app(service_app: ServiceApp) -> Any:
     def config_check(
         config: str | None = Option(None, "--config", "-c", help="Path to configuration file", envvar="CLI_CONFIG"),
         log_level: str | None = Option(None, "--log-level", "-l", help="Log level", envvar="LOG_LEVEL"),
+        # Same option as `run` carries, because this command REPORTS the address.
+        # Without it the summary printed the dataclass default whatever the
+        # operator had set.
+        metrics_addr: str = Option(
+            "0.0.0.0:9090", "--metrics-addr", help="Metrics server bind address", envvar="METRICS_ADDR"
+        ),
         verbose: bool = Option(False, "--verbose", "-v", help="Enable debug logging"),
         quiet: bool = Option(False, "--quiet", "-q", help="Suppress non-error output"),
     ) -> None:
         """Validate configuration and exit."""
-        args = CommonArgs(config=config, log_level=log_level, verbose=verbose, quiet=quiet)
+        args = CommonArgs(
+            config=config,
+            log_level=log_level,
+            metrics_addr=metrics_addr,
+            verbose=verbose,
+            quiet=quiet,
+        )
         service_app._common_args = args
         _handle_config_check(service_app, args)
 
@@ -480,6 +514,10 @@ def _handle_run(service_app: ServiceApp, args: CommonArgs) -> None:
         info = service_app.version_info()
         logger.info("starting service", service=service_app.name, version=info.version)
         logger.debug("configuration loaded", config=args.config or "(defaults)")
+
+        # Before anything binds or connects, and the same call config-check
+        # makes, so the two cannot disagree about whether the config is usable.
+        _run_check_config(service_app, config)
 
         # Auto-init metrics if available (metrics extra installed)
         try:
@@ -542,11 +580,22 @@ def _handle_run(service_app: ServiceApp, args: CommonArgs) -> None:
         if service_app.serve_observability:
             from scalo.health import serve_observability as _serve_observability
 
-            service_app._observability = _serve_observability(
-                health=service_app.health(),
-                metrics=service_app._metrics,
-                addr=args.metrics_addr,
-            )
+            try:
+                service_app._observability = _serve_observability(
+                    health=service_app.health(),
+                    metrics=service_app._metrics,
+                    addr=args.metrics_addr,
+                )
+            except OSError as exc:
+                # Still fatal; only the message changes. The address and the knob
+                # are both unguessable from a bare errno, and the knob is not
+                # under the app's env prefix.
+                reason = exc.strerror or str(exc)
+                raise ServiceError(
+                    f"cannot serve observability on {args.metrics_addr}: {reason}. "
+                    f"Move it with --metrics-addr or METRICS_ADDR, or set "
+                    f"serve_observability = False on the app."
+                ) from exc
             bound = service_app._observability.bound_address
             logger.info(
                 "observability listening",
@@ -581,6 +630,25 @@ def _handle_run(service_app: ServiceApp, args: CommonArgs) -> None:
             service_app._observability = None
 
 
+def _run_check_config(service_app: ServiceApp, config: Any) -> None:
+    """Run the app's own validation hook, normalising what it raises.
+
+    Args:
+        service_app: The app whose ``check_config`` runs.
+        config: Loaded settings object handed to the hook.
+
+    Raises:
+        ConfigError: If the hook rejected the configuration. A ``CliError``
+            from the hook is re-raised as itself so its type survives.
+    """
+    try:
+        service_app.check_config(config)
+    except CliError:
+        raise
+    except Exception as exc:
+        raise ConfigError(str(exc)) from exc
+
+
 def _handle_config_check(service_app: ServiceApp, args: CommonArgs) -> None:
     """Handle the 'config-check' subcommand."""
     from typer import Exit
@@ -591,6 +659,7 @@ def _handle_config_check(service_app: ServiceApp, args: CommonArgs) -> None:
         # hard-coded default rather than what the cascade yields.
         config = args.load_config(service_app.env_prefix)
         args.init_logger(config=config, otel_tracing=False)
+        _run_check_config(service_app, config)
 
         print_success("configuration is valid")
 

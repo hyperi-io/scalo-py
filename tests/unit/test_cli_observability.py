@@ -18,6 +18,7 @@ from __future__ import annotations
 
 import http.client
 import json
+import socket
 
 import pytest
 
@@ -143,6 +144,27 @@ class TestOptOut:
         app = _NoObsApp()
         _run(app)
         assert app.observed is None
+
+
+class TestBindFailureNamesTheAddressAndTheKnob:
+    def test_occupied_port_fails_with_the_address_and_the_flag(self, capsys):
+        # The bind stays fatal; what is asserted here is that the operator is
+        # told which address failed and what moves it.
+        with socket.socket() as held:
+            held.bind(("127.0.0.1", 0))
+            held.listen(1)
+            addr = f"127.0.0.1:{held.getsockname()[1]}"
+
+            app = _ProbeApp()
+            with pytest.raises(SystemExit) as exc:
+                app.cli(["run", "--metrics-addr", addr])
+
+        assert exc.value.code == 1
+        err = capsys.readouterr().err
+        assert addr in err
+        assert "--metrics-addr" in err
+        assert "METRICS_ADDR" in err
+        assert "serve_observability" in err
 
 
 class TestHealthAccessor:
