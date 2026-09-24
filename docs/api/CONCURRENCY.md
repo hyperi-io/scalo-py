@@ -196,6 +196,5 @@ async def call_a():
 - [RESILIENCE.md](RESILIENCE.md)
 - [HTTP-CLIENT.md](HTTP-CLIENT.md)
 - [SECRETS.md](SECRETS.md)
-- [CACHE.md](CACHE.md)
 - [../core-pillars/HEALTH.md](../core-pillars/HEALTH.md)
 - [../INTEGRATION.md](../INTEGRATION.md)

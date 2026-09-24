@@ -259,7 +259,6 @@ check_on_startup("my-service", "1.0.0", config=cfg)
 
 ## Related
 
-- [LICENSE.md](LICENSE.md)
 - [CLI.md](CLI.md)
 - [../core-pillars/LOGGING.md](../core-pillars/LOGGING.md)
 - [HTTP-CLIENT.md](HTTP-CLIENT.md)
