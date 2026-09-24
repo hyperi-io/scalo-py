@@ -72,7 +72,7 @@ class TestDbQueryContextManager:
         mock_metrics.histogram = MagicMock(return_value=MagicMock())
         mock_metrics.counter = MagicMock(return_value=MagicMock())
 
-        with pytest.raises(RuntimeError, match="Original error"), db_query(mock_metrics, "redis", "get"):
+        with pytest.raises(RuntimeError, match="Original error"), db_query(mock_metrics, "mysql", "get"):
             raise RuntimeError("Original error")
 
 
@@ -222,11 +222,11 @@ class TestTrackDbQueryAsyncDecorator:
         mock_metrics.histogram = MagicMock(return_value=mock_duration)
         mock_metrics.counter = MagicMock(return_value=mock_counter)
 
-        @track_db_query_async(mock_metrics, db_type="redis")
+        @track_db_query_async(mock_metrics, db_type="mysql")
         async def failing_query():
             raise ConnectionError("Connection lost")
 
         with pytest.raises(ConnectionError):
             await failing_query()
 
-        mock_duration.labels.assert_called_with(db_type="redis", operation="failing_query", status="error")
+        mock_duration.labels.assert_called_with(db_type="mysql", operation="failing_query", status="error")

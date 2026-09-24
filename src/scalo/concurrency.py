@@ -202,7 +202,6 @@ async def gather_with_timeouts[T](
         ...     {
         ...         "db": lambda: db.ping(),
         ...         "kafka": lambda: producer.health_check(),
-        ...         "redis": lambda: redis.ping(),
         ...     },
         ...     per_task_timeout=1.0,
         ... )

@@ -161,7 +161,7 @@ configMap:
   enabled: true
   data:
     DATABASE_HOST: "postgres.default.svc.cluster.local"
-    REDIS_URL: "redis://redis:6379"
+    KAFKA_BROKERS: "kafka:9092"
 
 secret:
   enabled: true

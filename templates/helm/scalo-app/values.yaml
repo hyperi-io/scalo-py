@@ -180,7 +180,7 @@ configMap:
   enabled: false
   data: {}
   # DATABASE_HOST: "postgres.default.svc.cluster.local"
-  # REDIS_URL: "redis://redis.default.svc.cluster.local:6379"
+  # KAFKA_BROKERS: "kafka.default.svc.cluster.local:9092"
 
 # Secret data (use external-secrets or sealed-secrets in production)
 secret:

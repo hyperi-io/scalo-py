@@ -60,7 +60,7 @@ ALL configuration automatically follows this priority (highest to lowest):
     -----------              ----------------------
     database.host         -> MYAPP_DATABASE_HOST
     api.timeout           -> MYAPP_API_TIMEOUT
-    cache.redis.enabled   -> MYAPP_CACHE_REDIS_ENABLED
+    cache.disk.enabled    -> MYAPP_CACHE_DISK_ENABLED
 
     Prefix customizable via: ENV_PREFIX=MYAPP
 
@@ -223,7 +223,7 @@ class MountConfig:
     - logs_dir: Application logs (PVC/EmptyDir/stdout)
 
     Additional DevOps paths (auto-detected if present):
-    - cache_dir: Application cache (Redis/computed data)
+    - cache_dir: Application cache (computed data)
     - run_dir: Runtime state (PID files, sockets)
     """
 
@@ -938,7 +938,7 @@ def get_standard_env_vars() -> dict:
 
     # Database standard environment variables
     db_vars = {}
-    for prefix in ["POSTGRES", "MYSQL", "MONGO", "REDIS", "CLICKHOUSE"]:
+    for prefix in ["POSTGRES", "MYSQL", "MONGO", "CLICKHOUSE"]:
         for suffix in ["HOST", "PORT", "USER", "PASSWORD", "DATABASE", "DB"]:
             key = f"{prefix}_{suffix}"
             value = os.getenv(key)

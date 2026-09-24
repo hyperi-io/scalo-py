@@ -131,7 +131,7 @@ The `Application` framework was removed to backlog (see the note in
 
 scalo-rs ships several modules scalo-py does not, by design:
 
-- `transport/` abstraction layer (scalo-rs has Kafka, gRPC, HTTP, Redis,
+- `transport/` abstraction layer (scalo-rs has Kafka, gRPC, HTTP,
   File, Pipe, Memory transports behind a single trait). Pylib has Kafka
   only; no abstraction layer planned.
 - `pipeline/` -- BatchEngine, WorkerPool, TieredSink, Spool, DLQ,

@@ -10,7 +10,7 @@
 Database query metrics helpers for explicit instrumentation.
 
 Provides context manager and decorator for tracking DB query metrics
-with any database client (ClickHouse, Postgres, Redis, etc.).
+with any database client (ClickHouse, Postgres, MySQL, etc.).
 
 Quick Start:
     >>> from scalo.metrics import create_metrics
@@ -83,7 +83,7 @@ def db_query(
 
     Args:
         metrics: MetricsManager instance
-        db_type: Database type (e.g., "postgres", "clickhouse", "redis")
+        db_type: Database type (e.g., "postgres", "clickhouse", "mysql")
         operation: Operation type (e.g., "select", "insert", "update", "delete")
 
     Yields:
@@ -127,7 +127,7 @@ def track_db_query(
 
     Args:
         metrics: MetricsManager instance
-        db_type: Database type (e.g., "postgres", "clickhouse", "redis")
+        db_type: Database type (e.g., "postgres", "clickhouse", "mysql")
         operation: Operation type (defaults to function name)
 
     Returns:
@@ -169,7 +169,7 @@ def track_db_query_async(
 
     Args:
         metrics: MetricsManager instance
-        db_type: Database type (e.g., "postgres", "clickhouse", "redis")
+        db_type: Database type (e.g., "postgres", "clickhouse", "mysql")
         operation: Operation type (defaults to function name)
 
     Returns:

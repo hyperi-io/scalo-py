@@ -85,8 +85,8 @@ class TestSensitiveDataFilter:
                 f"mysql://root:{MASK_VALUE}@host:3306/mydb",
             ),
             (
-                "redis://:password@redis.example.com/0",
-                f"redis://:{MASK_VALUE}@redis.example.com/0",
+                "amqp://:password@broker.example.com/0",
+                f"amqp://:{MASK_VALUE}@broker.example.com/0",
             ),
         ]
 
