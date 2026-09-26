@@ -612,28 +612,13 @@ class AWSProvider(VersionedProvider):
         session = get_aiobotocore_session()
         kwargs = self._get_client_kwargs()
 
-        results: dict[str, SecretValue] = {}
         try:
             async with session.create_client(**kwargs) as client:
                 response = await client.batch_get_secret_value(SecretIdList=paths)
         except ClientError as e:
             raise self._map_client_error(e, "BatchGetSecretValue", "<batch>")
 
-        for entry in response.get("SecretValues", []) or []:
-            name = entry.get("Name", "")
-            results[name] = self._parse_response(entry, name, key=None)
-
-        for err in response.get("Errors", []) or []:
-            logger.warning(
-                "AWS batch_get error",
-                extra={
-                    "secret_id": err.get("SecretId"),
-                    "code": err.get("ErrorCode"),
-                    "message": err.get("ErrorMessage"),
-                },
-            )
-
-        return results
+        return self._collect_batch(response)
 
     def _batch_get_sync(self, paths: list[str]) -> dict[str, SecretValue]:
         """Sync sibling of batch_get_async, used as the fallback path."""
@@ -645,17 +630,23 @@ class AWSProvider(VersionedProvider):
         except ClientError as e:
             raise self._map_client_error(e, "BatchGetSecretValue", "<batch>")
 
+        return self._collect_batch(response)
+
+    def _collect_batch(self, response: dict) -> dict[str, SecretValue]:
+        """Parse a BatchGetSecretValue response, logging and omitting each per-secret failure."""
         results: dict[str, SecretValue] = {}
         for entry in response.get("SecretValues", []) or []:
             name = entry.get("Name", "")
             results[name] = self._parse_response(entry, name, key=None)
         for err in response.get("Errors", []) or []:
+            # An Errors entry carries the secret's id and AWS's error text, never a SecretString.
             logger.warning(
                 "AWS batch_get error",
                 extra={
                     "secret_id": err.get("SecretId"),
                     "code": err.get("ErrorCode"),
-                    "message": err.get("ErrorMessage"),
+                    # "message" is a reserved LogRecord attribute, so extra= rejects it.
+                    "error_message": err.get("Message"),
                 },
             )
         return results

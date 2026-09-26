@@ -11,6 +11,9 @@ name: Test Container Hooks
 on:
   workflow_dispatch:
 
+# Neither job checks out code or calls the API, so the token gets no scopes.
+permissions: {}
+
 jobs:
   test-container-injection:
     name: Test Container Injection

@@ -324,6 +324,18 @@ class TestAWSBatchGet:
     async def test_empty_input_returns_empty(self, provider):
         assert await provider.batch_get_async([]) == {}
 
+    async def test_missing_secret_is_logged_and_omitted(self, provider, caplog):
+        await provider.create_async("batch-present", b"value-present")
+        caplog.set_level("WARNING", logger="scalo.secrets.providers.aws")
+        results = await provider.batch_get_async(["batch-present", "batch-missing"])
+        assert set(results) == {"batch-present"}
+        errors = [r for r in caplog.records if r.getMessage() == "AWS batch_get error"]
+        assert len(errors) == 1
+        assert errors[0].secret_id == "batch-missing"
+        assert errors[0].code == "ResourceNotFoundException"
+        assert errors[0].error_message
+        assert "value-present" not in " ".join(str(v) for v in vars(errors[0]).values())
+
 
 # -------------------------------------------------------------------------
 # Encoding helpers (no AWS calls -- don't need the fixture)

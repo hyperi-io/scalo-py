@@ -298,3 +298,75 @@ class TestDiskCache:
         result = cache.get("binary-secret")
         assert result is not None
         assert result.data == binary_data
+
+
+class TestDiskCacheLogsNameNotValue:
+    """Every cache log record names the secret and never carries its value."""
+
+    NAME = "vault:app/db:password"
+    VALUE = b"s3cr3t-value-7f3a9c"
+
+    def _assert_no_value_logged(self, caplog) -> None:
+        records = [r for r in caplog.records if r.name == "scalo.secrets.cache"]
+        assert records, "expected at least one cache log record"
+        for record in records:
+            fields = " ".join(str(v) for v in vars(record).values())
+            assert self.VALUE.decode() not in fields
+            assert self.VALUE.hex() not in fields
+            assert getattr(record, "secret_name", None) == self.NAME
+
+    def _entry(self, fetched_at: datetime) -> SecretValue:
+        return SecretValue(data=self.VALUE, fetched_at=fetched_at)
+
+    def test_hit_stale_and_expired_paths(self, tmp_path, caplog):
+        caplog.set_level("DEBUG", logger="scalo.secrets.cache")
+        cache = DiskCache(CacheConfig(enabled=True, directory=str(tmp_path), ttl_secs=60, stale_grace_secs=600))
+        cache.set(self.NAME, self._entry(datetime.now(UTC)))
+        assert cache.get(self.NAME) is not None
+        cache.set(self.NAME, self._entry(datetime.now(UTC) - timedelta(minutes=5)))
+        assert cache.get(self.NAME) is not None
+        cache.set(self.NAME, self._entry(datetime.now(UTC) - timedelta(hours=2)))
+        assert cache.get(self.NAME) is None
+        messages = {r.getMessage() for r in caplog.records}
+        assert {"Cache set", "Cache hit", "Using stale cached secret", "Cache expired beyond grace period"} <= messages
+        self._assert_no_value_logged(caplog)
+
+    @pytest.mark.parametrize(
+        "corrupt",
+        [
+            b"{not json",
+            # Truncated mid-document with the hex payload already written.
+            b'{"data_hex": "' + VALUE.hex().encode() + b'", "fetched_at": ',
+            b'{"data_hex": "' + VALUE.hex().encode() + b'", "fetched_at": "not-a-time"}',
+            b"\xff\xfe" + VALUE,
+        ],
+        # Named ids keep the fixture value out of test output.
+        ids=["not-json", "truncated-holding-hex", "bad-timestamp-holding-hex", "non-utf8-holding-value"],
+    )
+    def test_read_failure_does_not_log_the_value(self, tmp_path, caplog, corrupt):
+        caplog.set_level("DEBUG", logger="scalo.secrets.cache")
+        cache = DiskCache(CacheConfig(enabled=True, directory=str(tmp_path)))
+        cache.set(self.NAME, self._entry(datetime.now(UTC)))
+        cache._key_to_path(self.NAME).write_bytes(corrupt)
+        assert cache.get(self.NAME) is None
+        assert any(r.getMessage() == "Cache read failed" for r in caplog.records)
+        self._assert_no_value_logged(caplog)
+
+    def test_decryption_failure_does_not_log_the_value(self, tmp_path, caplog):
+        caplog.set_level("DEBUG", logger="scalo.secrets.cache")
+        DiskCache(CacheConfig(enabled=True, directory=str(tmp_path), encryption_key=b"key-one")).set(
+            self.NAME, self._entry(datetime.now(UTC))
+        )
+        other = DiskCache(CacheConfig(enabled=True, directory=str(tmp_path), encryption_key=b"key-two"))
+        assert other.get(self.NAME) is None
+        assert any(r.getMessage() == "Cache decryption failed" for r in caplog.records)
+        self._assert_no_value_logged(caplog)
+
+    def test_write_failure_does_not_log_the_value(self, tmp_path, caplog):
+        caplog.set_level("DEBUG", logger="scalo.secrets.cache")
+        cache_dir = tmp_path / "cache"
+        cache = DiskCache(CacheConfig(enabled=True, directory=str(cache_dir)))
+        cache_dir.rmdir()
+        cache.set(self.NAME, self._entry(datetime.now(UTC)))
+        assert any(r.getMessage() == "Cache write failed" for r in caplog.records)
+        self._assert_no_value_logged(caplog)

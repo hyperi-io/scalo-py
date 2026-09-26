@@ -220,6 +220,7 @@ class TestGitHistory:
 
         # Check that diff shows the change
         diff = _git(git_config_dir, "log", "-1", "-p", "--", "dfe-loader.yaml")
+        # Substring check on git diff output, not a host allow-list.
         assert "prod-db.example.com" in diff
         store.stop()
 

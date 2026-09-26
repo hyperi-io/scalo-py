@@ -572,6 +572,7 @@ def generate_chart(
 
 def _write_file(path: Path, content: str) -> None:
     try:
+        # Chart files hold Secret key names and Helm references; secret values are empty until install.
         path.write_text(content, encoding="utf-8", newline="\n")
     except OSError as e:
         raise WriteFileError(str(path), e)

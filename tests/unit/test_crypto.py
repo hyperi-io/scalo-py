@@ -74,6 +74,8 @@ def https_server(tmp_path_factory):
 
     srv = http.server.HTTPServer(("127.0.0.1", 0), H)
     sctx = ssl.SSLContext(ssl.PROTOCOL_TLS_SERVER)
+    # The fixture server holds the same TLS 1.2 floor as the PROD client.
+    sctx.minimum_version = ssl.TLSVersion.TLSv1_2
     sctx.load_cert_chain(str(cf), str(kf))
     srv.socket = sctx.wrap_socket(srv.socket, server_side=True)
     threading.Thread(target=srv.serve_forever, daemon=True).start()
@@ -112,7 +114,8 @@ def test_httpx_consumes_ssl_context_object(https_server):
 def test_httpx_consumes_ca_path_primitive(https_server):
     url, ca = https_server
     parts = tls_parts(CryptoProfile.PROD, ca_paths=[ca])
-    r = httpx.get(url, verify=parts.ca_paths[0])  # primitive form, AS-IS
+    # httpx deprecated verify=<path>, so the primitive path goes through the stdlib constructor.
+    r = httpx.get(url, verify=ssl.create_default_context(cafile=parts.ca_paths[0]))
     assert r.status_code == 200
 
 
@@ -122,6 +125,7 @@ def test_real_handshake_is_tls13_aes256(https_server):
     url, ca = https_server
     port = int(url.rsplit(":", 1)[1].rstrip("/"))
     ctx = ssl_context(CryptoProfile.PROD, cafile=ca)
+    # PROD floors at TLS 1.2; only the off-by-default SCALO_TLS_ALLOW_WEAK valve admits TLS 1.0.
     with socket.create_connection(("localhost", port)) as s, ctx.wrap_socket(s, server_hostname="localhost") as ss:
         assert ss.version() == "TLSv1.3"
         assert ss.cipher()[0] == "TLS_AES_256_GCM_SHA384"
@@ -191,6 +195,20 @@ def test_verify_env_escape_valve(monkeypatch):
 
 
 # --- Escape valve 2: legacy weak floor (SCALO_TLS_ALLOW_WEAK) -----------------
+
+
+def test_default_posture_keeps_floor_and_security_level(monkeypatch):
+    # The weak valve is opt-in: with it unset, nothing lowers the floor, the ciphers or the security level.
+    monkeypatch.delenv("SCALO_TLS_ALLOW_WEAK", raising=False)
+    ctx = ssl_context(CryptoProfile.PROD)
+    assert ctx.minimum_version is ssl.TLSVersion.TLSv1_2
+    assert ctx.security_level > 0
+    tls12 = [c["name"] for c in ctx.get_ciphers() if c["protocol"] == "TLSv1.2"]
+    assert tls12
+    assert all("AES256-GCM" in name for name in tls12)
+    parts = tls_parts(CryptoProfile.PROD)
+    assert parts.min_version == "1.2"
+    assert "SECLEVEL" not in parts.cipher_string
 
 
 def test_allow_weak_drops_version_floor():
