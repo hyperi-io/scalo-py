@@ -12,7 +12,7 @@
 spec-mandated order. :class:`NoOpScrubber` passes input through
 unchanged -- for tests and dependency-injection swaps.
 
-Per spec §2.3, both are discrete objects with explicit per-instance
+Per spec Section 2.3, both are discrete objects with explicit per-instance
 configuration. No global mutable state.
 """
 
@@ -49,7 +49,7 @@ class NoOpScrubber:
 class LayeredScrubber:
     """Compose multiple :class:`Scrubber` layers in spec-mandated order.
 
-    Per spec §2.1, layers run in numeric order L1 -> L2 -> L3 -> L4. Each
+    Per spec Section 2.1, layers run in numeric order L1 -> L2 -> L3 -> L4. Each
     receives the output of the previous and may further redact.
 
     The order is enforced by the order of ``layers`` passed to the
@@ -63,7 +63,7 @@ class LayeredScrubber:
         layers: sequence of :class:`Scrubber` instances to apply in
             order. Empty sequence means pass-through.
 
-    Fail-safe contract (spec §5.1): if any layer raises, that layer
+    Fail-safe contract (spec Section 5.1): if any layer raises, that layer
     is skipped for the current call (a one-time warning is emitted)
     and the chain continues with the remaining layers. The original
     text is returned if EVERY layer fails. The scrubber never raises
@@ -98,10 +98,10 @@ class LayeredScrubber:
     def scrub(self, text: str) -> str:
         """Apply all layers in order; return the redacted text.
 
-        Per spec §5.1, fails safe: a misbehaving layer is skipped
+        Per spec Section 5.1, fails safe: a misbehaving layer is skipped
         with a one-time warning, not propagated to the caller.
 
-        Per spec §5.5, ``observe_only`` mode does not skip layers --
+        Per spec Section 5.5, ``observe_only`` mode does not skip layers --
         layers run normally and emit detection metrics, but the
         returned text equals the input. (Metrics not yet wired --
         see Step 9 of the implementation plan.)

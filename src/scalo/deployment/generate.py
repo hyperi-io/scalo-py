@@ -306,6 +306,8 @@ def generate_runtime_stage(
         # Compose honours it. Contract-gated so a cluster-only image can drop
         # the dead weight.
         healthcheck = (
+            f"# Shell form maps any curl failure to exit 1, the only unhealthy status Docker defines.\n"
+            f"# hadolint ignore=DL3025\n"
             f"HEALTHCHECK --interval=30s --timeout=3s --start-period=5s --retries=3 \\\n"
             f"    CMD curl -sf http://localhost:{contract.metrics_port}"
             f"{contract.health.liveness_path} > /dev/null || exit 1\n"
@@ -340,7 +342,8 @@ def generate_runtime_stage(
         f'ENV PATH="/app/.venv/bin:$PATH"\n'
         f"\n"
         f"RUN useradd --create-home --uid 1000 appuser\n"
-        f"USER appuser\n"
+        f"# Numeric, so Kubernetes runAsNonRoot can verify it without reading /etc/passwd.\n"
+        f"USER 1000\n"
         f"\n"
         f"EXPOSE {expose}\n"
         f"\n"

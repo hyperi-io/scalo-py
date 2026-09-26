@@ -1,12 +1,12 @@
 #  Project:   scalo
 #  File:      src/scalo/logger/scrub/metrics.py
-#  Purpose:   Metric emission for scrub events (spec §8)
+#  Purpose:   Metric emission for scrub events (spec Section 8)
 #  Language:  Python
 #
 #  License:   Apache-2.0
 #  Copyright: (c) 2026 HYPERI PTY LIMITED
 
-"""Metric emission per spec §8.
+"""Metric emission per spec Section 8.
 
 Five metrics, identical names in both scalo-py and scalo-rs so operator
 dashboards work across implementations:
@@ -26,7 +26,7 @@ default). This keeps it decoupled from any specific metrics-manager
 implementation: tests pass ``ScrubMetrics()`` (no-op) and production
 passes ``ScrubMetrics.from_manager(metrics_manager)``.
 
-Per spec §8: scrub-metric emission is best-effort. Failures here must
+Per spec Section 8: scrub-metric emission is best-effort. Failures here must
 NEVER break logging -- every method wraps backend calls and swallows
 exceptions silently. The scrubber's own logging suppression already
 prevents storms from a misbehaving backend.

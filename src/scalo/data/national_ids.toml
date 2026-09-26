@@ -1,4 +1,4 @@
-# National-ID validator registry — seeded from python-stdnum.
+# National-ID validator registry -- seeded from python-stdnum.
 # Source of truth for L3 PII detection metadata across both
 # scalo-py and scalo-rs (see scalo-spec/standards/specs/log-scrub-spec.md).
 #

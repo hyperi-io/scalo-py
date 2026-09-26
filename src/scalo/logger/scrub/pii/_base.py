@@ -8,7 +8,7 @@
 
 """Base class for L3 PII validators.
 
-Implements the detection-validation-redaction loop per spec §9.3.
+Implements the detection-validation-redaction loop per spec Section 9.3.
 Subclasses provide:
 
 - ``LABEL``: redaction-label slug (e.g. ``"CREDIT_CARD"``)
@@ -34,7 +34,7 @@ class _Validator:
     Implements :class:`Scrubber` Protocol via duck typing -- no
     inheritance required at the call site.
 
-    Per spec §4.4, the label format is controlled by an injected
+    Per spec Section 4.4, the label format is controlled by an injected
     :data:`LabelFn`. The default produces ``[LABEL_REDACTED]``; the
     factory swaps in a deterministic-hash labeler when
     ``scrub.hash_redaction: true`` is set.

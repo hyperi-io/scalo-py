@@ -13,7 +13,7 @@ Matches the existing ``SensitiveDataFilter`` field-name patterns --
 exposes them via the :class:`Scrubber` Protocol.
 
 Once the field-name list moves to
-``scalo-spec/standards/patterns/field_names.toml`` (per spec §3.2),
+``scalo-spec/standards/patterns/field_names.toml`` (per spec Section 3.2),
 this class reads from there. For now it delegates to the existing
 ``SensitiveDataFilter._mask_sensitive_string`` to preserve current
 behaviour and avoid a forced restructure mid-flight.

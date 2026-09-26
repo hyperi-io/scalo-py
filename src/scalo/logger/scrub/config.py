@@ -1,6 +1,6 @@
 #  Project:   scalo
 #  File:      src/scalo/logger/scrub/config.py
-#  Purpose:   Configuration dataclasses matching spec §6
+#  Purpose:   Configuration dataclasses matching spec Section 6
 #  Language:  Python
 #
 #  License:   Apache-2.0
@@ -8,7 +8,7 @@
 
 """Scrubber configuration schema.
 
-Mirrors the canonical YAML in spec §6. Each language maps these keys
+Mirrors the canonical YAML in spec Section 6. Each language maps these keys
 identically -- the config is part of the cross-language contract.
 """
 
@@ -74,7 +74,7 @@ class NationalIdsConfig:
     Entries within enabled countries are STILL gated on
     ``enabled = true`` in the TOML registry -- listing a country
     here doesn't activate IDs that haven't been hand-curated.
-    See spec §3.4 for the registry shape.
+    See spec Section 3.4 for the registry shape.
     """
 
     enabled: list[str] = field(default_factory=lambda: ["au"])
@@ -82,7 +82,7 @@ class NationalIdsConfig:
 
 @dataclass(slots=True)
 class PiiValidatorsConfig:
-    """Layer 3 validator toggles (spec §6).
+    """Layer 3 validator toggles (spec Section 6).
 
     Strong-structural validators (jurisdiction-agnostic) are listed
     individually. Country-specific national IDs are managed as a
@@ -136,7 +136,7 @@ class PiiConfig:
 
 @dataclass(slots=True)
 class LogLevelsConfig:
-    """Per-log-level scrubbing gate (spec §5.6).
+    """Per-log-level scrubbing gate (spec Section 5.6).
 
     Setting a level to False bypasses the scrubber entirely for
     records at that level. Useful to disable on ``trace`` (volume),
@@ -153,17 +153,17 @@ class LogLevelsConfig:
 
 @dataclass(slots=True)
 class ScrubConfig:
-    """Top-level scrubber configuration. Mirrors spec §6 verbatim.
+    """Top-level scrubber configuration. Mirrors spec Section 6 verbatim.
 
     Args:
         enabled: master switch. False disables the scrubber entirely.
         observe_only: detect-only mode. Emit metrics, leave output
-            unchanged. For tuning in staging (spec §5.5).
+            unchanged. For tuning in staging (spec Section 5.5).
         hash_redaction: deterministic short-hash labels. When True,
             redactions look like ``[EMAIL_a3f5b2]`` so operators can
             correlate the same value across log lines without
-            revealing it (spec §4.4).
-        metrics_enabled: emit per-layer scrub metrics (spec §8). True
+            revealing it (spec Section 4.4).
+        metrics_enabled: emit per-layer scrub metrics (spec Section 8). True
             by default. Operator kill-switch -- set False to skip every
             metric call on ultra-hot paths where the ~1-2µs/layer
             histogram observation is unacceptable. Independent of

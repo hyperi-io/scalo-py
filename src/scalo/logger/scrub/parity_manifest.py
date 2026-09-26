@@ -8,7 +8,7 @@
 
 """Emit a parity manifest of the scrubber's supported surface.
 
-Spec §11 requires that scalo and scalo-rs produce
+Spec Section 11 requires that scalo and scalo-rs produce
 identical scrubbing outputs and identical observability surfaces.
 This module collects a JSON document listing every metric name,
 every loaded rule ID, every skipped rule ID, every validator
@@ -38,7 +38,7 @@ from .config import ScrubConfig
 from .factory import build_scrubber
 from .gitleaks_toml import load_gitleaks_rules
 
-# Metric names per spec §8 -- these strings are the cross-language
+# Metric names per spec Section 8 -- these strings are the cross-language
 # contract. Both implementations MUST emit identical bytes.
 METRIC_NAMES: tuple[str, ...] = (
     "log_scrub_matches_total",
@@ -50,7 +50,7 @@ METRIC_NAMES: tuple[str, ...] = (
 )
 
 
-# Top-level ScrubConfig keys per spec §6 -- both implementations MUST
+# Top-level ScrubConfig keys per spec Section 6 -- both implementations MUST
 # accept and honour every key. New keys require a spec amendment in
 # both projects.
 CONFIG_KEYS: tuple[str, ...] = (
@@ -114,7 +114,7 @@ def build_manifest() -> dict[str, Any]:
             "hash": "[<LABEL>_<6-hex>]",
             "hash_algorithm": "blake2b-keyed-4byte-truncated-to-6-hex",
         },
-        "no_layer_4": ("NLP/NER scrubbing dropped from scope; see spec §2 for rationale"),
+        "no_layer_4": ("NLP/NER scrubbing dropped from scope; see spec Section 2 for rationale"),
     }
 
 

@@ -59,7 +59,7 @@ def build_scrubber(
 ) -> LayeredScrubber:
     """Build a :class:`LayeredScrubber` per the supplied config.
 
-    Composes layers in spec §2.1 order -- L1 -> L2 -> L3 -- including only
+    Composes layers in spec Section 2.1 order -- L1 -> L2 -> L3 -- including only
     those layers enabled by the config. There is no L4: NLP/NER
     scrubbing was dropped from scope (false-positive rate on log
     content was unacceptable; both scalo-py and scalo-rs stop at L3).
@@ -82,7 +82,7 @@ def build_scrubber(
     _warn_unimplemented(config)
     # Operator kill-switch: ScrubConfig.metrics_enabled=False forces noop
     # regardless of what the caller passed in. Honours the hot-path opt-out
-    # described in spec §8.
+    # described in spec Section 8.
     if not config.metrics_enabled or metrics is None:
         metrics = ScrubMetrics.noop()
     elif metrics._type_cap != config.metrics_type_cardinality_cap:
@@ -152,7 +152,7 @@ def build_scrubber(
     # No L4 (NLP/NER) -- dropped from the spec. See PiiConfig docstring
     # for why.
 
-    # Per spec §8: emit pattern_version metrics at scrubber build time so
+    # Per spec Section 8: emit pattern_version metrics at scrubber build time so
     # operators know which pattern set the running service is using. The
     # version sources are read from the bundled TOML / installed package
     # metadata at startup (rather than threaded through config) because
@@ -163,7 +163,7 @@ def build_scrubber(
 
 
 def _emit_pattern_versions(metrics: ScrubMetrics) -> None:
-    """Emit `log_scrub_pattern_version{source, version}` per spec §8."""
+    """Emit `log_scrub_pattern_version{source, version}` per spec Section 8."""
     # L1 -- canonical TOML-driven path (gitleaks.toml vendored from scalo-spec).
     try:
         from .gitleaks_toml import load_gitleaks_rules

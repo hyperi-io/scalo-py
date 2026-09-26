@@ -244,7 +244,7 @@ def _add_emoji_to_record(
         scrubber: Optional :class:`Scrubber` instance to use instead of
             building one from ``mask_sensitive``/``masking_level``.
             When provided, takes precedence over the legacy args.
-            Per spec §5.6, the scrubber's ``config.log_levels`` gate
+            Per spec Section 5.6, the scrubber's ``config.log_levels`` gate
             controls which log levels get scrubbed.
 
     Returns:
@@ -595,7 +595,7 @@ def setup(
     if allow_all_emojis and not use_emojis:
         allow_all_emojis = False  # Can't allow all if emojis disabled
 
-    # Build a Scrubber per spec §2.3. The resolver honours (in order):
+    # Build a Scrubber per spec Section 2.3. The resolver honours (in order):
     # explicit `scrubber=` arg -> explicit `scrub_config=` arg -> legacy
     # `mask_sensitive` / `masking_level` args -> new `logging.scrub.*`
     # config keys -> legacy `logging.mask_sensitive_data` /

@@ -9,7 +9,7 @@
 """Credit card validator -- strong-structural.
 
 Detects 13-19 digit runs with optional separators and validates via
-Luhn (ISO/IEC 7812-1 Annex B). Strong-structural per spec §9.1 --
+Luhn (ISO/IEC 7812-1 Annex B). Strong-structural per spec Section 9.1 --
 fires from any context.
 """
 

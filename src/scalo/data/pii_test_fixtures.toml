@@ -1,19 +1,19 @@
 # HyperI log-scrub: L3 PII validator test fixtures.
 #
-# Canonical input → expected-outcome data for Layer 3 PII validators.
+# Canonical input -> expected-outcome data for Layer 3 PII validators.
 # Both scalo-py and scalo-rs load this file and run their
-# implementations against it in CI (spec: 2026-05-13 log-scrub §3.5).
+# implementations against it in CI (spec: 2026-05-13 log-scrub Section 3.5).
 #
 # Cross-language parity: both implementations MUST produce identical
 # redaction output (codepoint-equal) for every sample. CI fails on
 # any drift.
 #
-# Sections per validator type. Two reliability tiers (§9 of the spec):
+# Sections per validator type. Two reliability tiers (Section 9 of the spec):
 #
 # Strong-structural (fires from any context):
 #   credit_card, iban, email, phone
 #
-# Context-required (needs a keyword anchor nearby — §9.2):
+# Context-required (needs a keyword anchor nearby -- Section 9.2):
 #   au_abn, au_acn, au_tfn, au_medicare
 #
 # Each section uses ``valid`` / ``invalid`` for strong-structural
@@ -23,7 +23,7 @@
 # All samples are synthetic or ATO/scheme-published test examples.
 # None are real personal information.
 #
-# Non-ASCII coverage is mandatory (spec §10a): every section that can
+# Non-ASCII coverage is mandatory (spec Section 10a): every section that can
 # meaningfully take non-ASCII content includes at least one Unicode
 # sample.
 
@@ -81,7 +81,7 @@ valid = [
     "user.name+tag@sub.domain.example.com",
     "user-with-hyphen@example-domain.com",
     "x@y.z",
-    # Non-ASCII (IDN direct form per spec §10a.6)
+    # Non-ASCII (IDN direct form per spec Section 10a.6)
     "山田@example.jp",
     "ünïcödé@example.com",
     "user@münchen.de",
@@ -106,7 +106,7 @@ valid = [
     "+33 1 23 45 67 89",               # France, international
 ]
 # libphonenumber rejects bare local numbers without country context.
-# Validators in both languages should NOT match these — too many
+# Validators in both languages should NOT match these -- too many
 # false positives on bare digit runs in logs.
 should_NOT_match = [
     "412 345 678",                     # bare AU mobile, no +61
@@ -116,11 +116,11 @@ should_NOT_match = [
 ]
 
 # ---------------------------------------------------------------------
-# Context-required validators (§9.2)
+# Context-required validators (Section 9.2)
 # ---------------------------------------------------------------------
 
 [au_abn]
-# Australian Business Number — 11 digits, ATO mod-89 weighted checksum.
+# Australian Business Number -- 11 digits, ATO mod-89 weighted checksum.
 context_required = true
 keywords = ["abn", "australian business number"]
 valid_with_context = [
@@ -133,7 +133,7 @@ invalid_in_context = [
     "ABN: 53 004 085 617",         # checksum fails (one digit off)
     "ABN: 12345678901",            # random digits, checksum fails
 ]
-# Bare valid ABN with no keyword nearby — MUST NOT redact.
+# Bare valid ABN with no keyword nearby -- MUST NOT redact.
 # This is the critical false-positive guard for context-required types.
 should_NOT_match = [
     "53 004 085 616",                            # bare ABN, no keyword
@@ -142,7 +142,7 @@ should_NOT_match = [
 ]
 
 [au_acn]
-# Australian Company Number — 9 digits, ATO weighted-sum checksum.
+# Australian Company Number -- 9 digits, ATO weighted-sum checksum.
 context_required = true
 keywords = ["acn", "australian company number"]
 valid_with_context = [
@@ -159,7 +159,7 @@ should_NOT_match = [
 ]
 
 [au_tfn]
-# Australian Tax File Number — 8 or 9 digits, ATO mod-11 weighted.
+# Australian Tax File Number -- 8 or 9 digits, ATO mod-11 weighted.
 # TFN is highly sensitive; context-required to avoid false positives
 # on bare 9-digit runs.
 context_required = true
@@ -172,7 +172,7 @@ valid_with_context = [
 invalid_in_context = [
     "TFN: 123 456 783",            # checksum fails (one digit off)
     "TFN: 123 456 784",            # checksum fails
-    # NOTE: 000000000 omitted — mod-11 weighted sum is 0, which is
+    # NOTE: 000000000 omitted -- mod-11 weighted sum is 0, which is
     # divisible by 11, so stdnum reports it as "valid". Validators
     # can't reject by checksum alone.
 ]
@@ -182,7 +182,7 @@ should_NOT_match = [
 ]
 
 [au_medicare]
-# Australian Medicare number — 10 or 11 digits, ATO check-digit
+# Australian Medicare number -- 10 or 11 digits, ATO check-digit
 # (custom algorithm in ``au_medicare.py`` since python-stdnum has
 # no module). Valid samples below verified against the local
 # ``_is_valid_medicare()`` implementation.

@@ -16,7 +16,7 @@ Resolution priority (highest wins):
 2. Explicit ``scrub_config=`` kwarg -- operator built a
    :class:`ScrubConfig` and wants the factory to materialise it.
 3. ``logging.scrub.*`` keys in the config dict -- new hierarchical
-   schema per spec §6.
+   schema per spec Section 6.
 4. ``logging.mask_sensitive_data`` / ``logging.masking_level``
    legacy keys -- emit a deprecation warning, map to ScrubConfig.
 5. Defaults -- :class:`ScrubConfig` with all layers enabled.

@@ -1,6 +1,6 @@
 #  Project:   scalo
 #  File:      src/scalo/logger/scrub/types.py
-#  Purpose:   Scrubber Protocol -- discrete-object contract per spec §2.3
+#  Purpose:   Scrubber Protocol -- discrete-object contract per spec Section 2.3
 #  Language:  Python
 #
 #  License:   Apache-2.0
@@ -8,7 +8,7 @@
 
 """Protocol every scrubber satisfies.
 
-See spec §2.3 -- the scrubber is a first-class object/protocol, not a
+See spec Section 2.3 -- the scrubber is a first-class object/protocol, not a
 free function or global mutable state. Implementations:
 
 - :class:`LayeredScrubber` -- the canonical multi-layer scrubber
@@ -36,7 +36,7 @@ class Scrubber(Protocol):
     - **Idempotent on already-redacted input.** Calling :meth:`scrub`
       twice on the same input produces the same output as calling
       it once (no double-redaction labels, no progressive damage).
-    - **Fail-safe** (spec §5.1). If internal state fails, return the
+    - **Fail-safe** (spec Section 5.1). If internal state fails, return the
       input unchanged and emit a one-time warning; never raise to
       the caller.
     """

@@ -9,7 +9,7 @@
 """IBAN validator -- strong-structural.
 
 Detects ISO 13616-1 International Bank Account Numbers. Strong-
-structural per spec §9.1 -- the country-code prefix + check digits
+structural per spec Section 9.1 -- the country-code prefix + check digits
 make the candidate shape distinctive.
 """
 
