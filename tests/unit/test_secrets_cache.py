@@ -340,6 +340,8 @@ class TestDiskCacheLogsNameNotValue:
             b'{"data_hex": "' + VALUE.hex().encode() + b'", "fetched_at": "not-a-time"}',
             b"\xff\xfe" + VALUE,
         ],
+        # Named ids keep the fixture value out of test output.
+        ids=["not-json", "truncated-holding-hex", "bad-timestamp-holding-hex", "non-utf8-holding-value"],
     )
     def test_read_failure_does_not_log_the_value(self, tmp_path, caplog, corrupt):
         caplog.set_level("DEBUG", logger="scalo.secrets.cache")
