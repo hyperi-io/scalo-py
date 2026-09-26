@@ -164,12 +164,11 @@ class DiskCache:
                     path.unlink(missing_ok=True)
                     return None
 
-            # secret_name names the secret; its value never reaches the log.
+            # Name only: secret_name is not the value, and no read, decode or parse error below carries it.
             logger.debug("Cache hit", extra={"secret_name": secret_name})
             return value
 
         except Exception as e:
-            # secret_name names the secret; no read, decode or parse error here carries the value.
             logger.warning("Cache read failed", extra={"secret_name": secret_name, "error": str(e)})
             return None
 
@@ -224,11 +223,10 @@ class DiskCache:
                 tmp_path.unlink(missing_ok=True)
                 raise
 
-            # secret_name names the secret; its value never reaches the log.
+            # Name only: secret_name is not the value, and no seal or file-write error below carries it.
             logger.debug("Cache set", extra={"secret_name": secret_name})
 
         except Exception as e:
-            # secret_name names the secret; no seal or file-write error here carries the value.
             logger.warning("Cache write failed", extra={"secret_name": secret_name, "error": str(e)})
 
     def delete(self, secret_name: str) -> bool:
