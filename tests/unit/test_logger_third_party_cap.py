@@ -59,10 +59,10 @@ def test_stricter_app_level_is_left_alone(debug_app):
 
 
 def test_botocore_debug_record_does_not_reach_root_handler(debug_app):
-    secret = opaque_secret("secretstring")
+    marker = "response-body-marker-7f3a9c"
     setup(level="DEBUG", otel_tracing=False)
-    logging.getLogger("botocore.parsers").debug("Response body:\n%r", secret)
-    assert secret not in debug_app.text
+    logging.getLogger("botocore.parsers").debug("Response body:\n%r", marker)
+    assert marker not in debug_app.text
 
 
 def test_aws_secret_value_not_logged_at_debug(debug_app, monkeypatch):
