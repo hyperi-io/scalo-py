@@ -118,6 +118,24 @@ client.get("/search", params={"q": "term", "limit": 10})
 
 ---
 
+## TLS
+
+Both clients build their TLS context with `scalo.crypto.ssl_context` and the `PROD` profile: TLS 1.2 minimum, AES-256-GCM ciphers, peer certificate and hostname verified. `cafile=` or `capath=` trusts that CA in place of the system store, `crypto_profile=CryptoProfile.HIGHSEC` raises the minimum to TLS 1.3, and `crypto_profile=None` falls back to plain httpx defaults. Any `verify=` kwarg, like the CA bundle in the example above, replaces the scalo context outright.
+
+Two environment variables change the context scalo builds. They are read when a client is constructed and apply to every client in the process that lets scalo build its context, including the OpenBao secrets provider. Each logs one warning per process when it takes effect.
+
+| Variable | Default | Effect |
+|---|---|---|
+| `SCALO_TLS_VERIFY` | unset: verify | `false`, `0`, `no` or `off` stops checking the peer certificate and hostname. The TLS 1.2 minimum and cipher list stay. |
+| `SCALO_TLS_ALLOW_WEAK` | unset: floor enforced | `true`, `1`, `yes` or `on` drops the minimum to TLS 1.0 and opens the cipher list at OpenSSL security level 0, which admits SHA-1, short keys and CBC. `HIGHSEC` ignores it. |
+
+When to set them:
+
+- `SCALO_TLS_VERIFY=false` is for a dev or test endpoint with a self-signed certificate. Anything on the network path can then impersonate the server, so never set it in production. Pointing `cafile=` at the issuing CA keeps verification on and is the better fix.
+- `SCALO_TLS_ALLOW_WEAK=true` weakens TLS. It exists only for a legacy endpoint that cannot negotiate TLS 1.2 with AES-256-GCM, and only until that endpoint is upgraded. It applies to every client in the process, so to confine it to the one legacy peer pass `verify=scalo.crypto.ssl_context(allow_weak=True)` to that client instead.
+
+---
+
 ## Lifecycle
 
 Always close the client — connection pools and the underlying HTTP/2
