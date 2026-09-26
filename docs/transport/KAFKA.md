@@ -161,6 +161,8 @@ user config (user wins). `merge_config(user, defaults)` does the
 overlay; `verify_ssl=False` flips
 `enable.ssl.certificate.verification` to `"false"`.
 
+librdkafka accepts some settings under two names (`compression.type` and `compression.codec`, `acks` and `request.required.acks`, `linger.ms` and `queue.buffering.max.ms`, and the rest of the pairs scalo-rs lists). A user setting under either name replaces the default under the other, so only your value reaches librdkafka. The codec name is matched without regard to case.
+
 ### Producer defaults (`PRODUCER_DEFAULTS`)
 
 | Key | Value | Why |

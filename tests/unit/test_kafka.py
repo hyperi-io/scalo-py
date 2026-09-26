@@ -155,6 +155,49 @@ class TestConfigMerge:
         assert merged["compression.type"] == "lz4"
         assert merged["compression.level"] == 8
 
+    def test_merge_config_codec_override_by_alias_replaces_default(self):
+        """compression.codec is librdkafka's other name for the codec, so it replaces ours."""
+        from scalo.kafka.config import PRODUCER_DEFAULTS, merge_config
+
+        user_config = {
+            "bootstrap.servers": "localhost:9092",
+            "compression.codec": "lz4",
+        }
+        merged = merge_config(user_config, PRODUCER_DEFAULTS)
+
+        assert merged["compression.codec"] == "lz4"
+        assert "compression.type" not in merged
+        assert "compression.level" not in merged
+
+    def test_merge_config_codec_match_ignores_case(self):
+        """librdkafka reads the codec name case-insensitively, so ZSTD keeps the level."""
+        from scalo.kafka.config import PRODUCER_DEFAULTS, merge_config
+
+        user_config = {
+            "bootstrap.servers": "localhost:9092",
+            "compression.type": "ZSTD",
+        }
+        merged = merge_config(user_config, PRODUCER_DEFAULTS)
+
+        assert merged["compression.level"] == 3
+
+    def test_merge_config_alias_replaces_any_default(self):
+        """Every aliased default gives way to the user's other name for it."""
+        from scalo.kafka.config import PRODUCER_DEFAULTS, merge_config
+
+        user_config = {
+            "bootstrap.servers": "localhost:9092",
+            "request.required.acks": "1",
+            "queue.buffering.max.ms": 20,
+            "message.send.max.retries": 9,
+        }
+        merged = merge_config(user_config, PRODUCER_DEFAULTS)
+
+        assert "acks" not in merged
+        assert "linger.ms" not in merged
+        assert "retries" not in merged
+        assert merged["request.required.acks"] == "1"
+
     def test_verify_ssl_false_sets_librdkafka_config(self):
         """verify_ssl=False should set librdkafka SSL verification config."""
         from scalo.kafka.config import PRODUCER_DEFAULTS, merge_config

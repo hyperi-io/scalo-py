@@ -95,6 +95,20 @@ ADMIN_DEFAULTS: dict[str, Any] = {
     "request.timeout.ms": 30000,  # 30 seconds for admin operations
 }
 
+# librdkafka accepts each of these settings under either name, the same pairs as scalo-rs's LIBRDKAFKA_ALIASES.
+_LIBRDKAFKA_ALIASES: tuple[tuple[str, str], ...] = (
+    ("bootstrap.servers", "metadata.broker.list"),
+    ("max.in.flight", "max.in.flight.requests.per.connection"),
+    ("sasl.mechanism", "sasl.mechanisms"),
+    ("sasl.oauthbearer.client.credentials.client.id", "sasl.oauthbearer.client.id"),
+    ("sasl.oauthbearer.client.credentials.client.secret", "sasl.oauthbearer.client.secret"),
+    ("max.partition.fetch.bytes", "fetch.message.max.bytes"),
+    ("linger.ms", "queue.buffering.max.ms"),
+    ("retries", "message.send.max.retries"),
+    ("compression.type", "compression.codec"),
+    ("acks", "request.required.acks"),
+)
+
 
 # =============================================================================
 # Configuration Utilities
@@ -123,14 +137,17 @@ def merge_config(
     # Start with defaults, then overlay user config
     merged = {**defaults, **user_config}
 
+    # A user setting under one librdkafka name replaces our default under the other rather than racing it.
+    for name, alias in _LIBRDKAFKA_ALIASES:
+        for ours, theirs in ((name, alias), (alias, name)):
+            if theirs in user_config and ours not in user_config and ours in defaults:
+                del merged[ours]
+
     # compression.level=3 only tunes zstd. lz4 treats any level above 0 as
     # its slow high-compression mode, so a codec override without an
     # explicit level must not inherit ours.
-    if (
-        "compression.level" in defaults
-        and "compression.level" not in user_config
-        and merged.get("compression.type") != "zstd"
-    ):
+    codec = merged.get("compression.type", merged.get("compression.codec"))
+    if "compression.level" in defaults and "compression.level" not in user_config and str(codec).lower() != "zstd":
         del merged["compression.level"]
 
     # Handle SSL verification
