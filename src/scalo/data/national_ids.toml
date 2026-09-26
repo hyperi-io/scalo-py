@@ -1,6 +1,6 @@
 # National-ID validator registry -- seeded from python-stdnum.
 # Source of truth for L3 PII detection metadata across both
-# scalo-py and scalo-rs (see scalo-spec/standards/specs/log-scrub-spec.md).
+# scalo-py and scalo (see hyperi-ai/standards/specs/log-scrub-spec.md).
 #
 # To regenerate after a python-stdnum release:
 #   python tools/seed_national_ids_from_stdnum.py \

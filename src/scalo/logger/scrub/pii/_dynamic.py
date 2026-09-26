@@ -28,6 +28,10 @@ from ..labeler import LabelFn
 from ..metrics import ScrubMetrics
 from ._base import _Validator
 
+# A registry can be caller-supplied, so it may only name modules inside these packages.
+_STDNUM_PACKAGE = "stdnum."
+_LOCAL_VALIDATOR_PACKAGE = "scalo.logger.scrub.pii."
+
 
 class _DynamicValidator(_Validator):
     """Validator whose label/regex/keywords/validator come from a TOML entry.
@@ -83,7 +87,11 @@ def _resolve_validator(entry: dict[str, Any]) -> Callable[[str], bool]:
     """Resolve an entry's validator function via stdnum_module or local_validator."""
     if "stdnum_module" in entry:
         module_name = entry["stdnum_module"]
+        if not module_name.startswith(_STDNUM_PACKAGE):
+            raise ValueError(f"stdnum_module {module_name!r} is outside the {_STDNUM_PACKAGE[:-1]} package")
         try:
+            # module_name is confined to the stdnum package by the check above.
+            # nosemgrep: python.lang.security.audit.non-literal-import.non-literal-import
             mod = importlib.import_module(module_name)
         except ImportError as e:
             raise ValueError(f"national_ids entry refers to missing module {module_name!r}: {e}") from e
@@ -97,7 +105,11 @@ def _resolve_validator(entry: dict[str, Any]) -> Callable[[str], bool]:
             module_name, attr_name = ref.split(":", 1)
         except ValueError as e:
             raise ValueError(f"local_validator must be 'module:attribute', got {ref!r}") from e
+        if not module_name.startswith(_LOCAL_VALIDATOR_PACKAGE):
+            raise ValueError(f"local_validator module {module_name!r} is outside {_LOCAL_VALIDATOR_PACKAGE[:-1]}")
         try:
+            # module_name is confined to scalo's own validator package by the check above.
+            # nosemgrep: python.lang.security.audit.non-literal-import.non-literal-import
             mod = importlib.import_module(module_name)
         except ImportError as e:
             raise ValueError(f"local_validator module {module_name!r} not importable: {e}") from e

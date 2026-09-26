@@ -5,22 +5,26 @@
     {
       "description": "OpenTelemetry api + sdk + OTLP/Prometheus exporters release in lockstep (the prometheus exporter's 0.x line pairs with the 1.x api/sdk line); bumping one alone breaks the build.",
       "matchPackageNames": ["/^opentelemetry-/"],
-      "groupName": "opentelemetry"
+      "groupName": "opentelemetry",
+      "minimumReleaseAge": "7 days"
     },
     {
       "description": "AWS SDK packages (boto3, botocore, aiobotocore) share a release train and must move together; boto3/botocore also carry bleeding-edge overrides in pyproject [tool.uv].",
       "matchPackageNames": ["boto3", "botocore", "aiobotocore"],
-      "groupName": "aws-sdk"
+      "groupName": "aws-sdk",
+      "minimumReleaseAge": "7 days"
     },
     {
       "description": "Azure Key Vault client + identity move together.",
       "matchPackageNames": ["/^azure-/"],
-      "groupName": "azure"
+      "groupName": "azure",
+      "minimumReleaseAge": "7 days"
     },
     {
       "description": "pytest and its plugins (cov, asyncio, httpx) version together to avoid plugin/core API mismatches.",
       "matchPackageNames": ["pytest", "/^pytest-/"],
-      "groupName": "pytest"
+      "groupName": "pytest",
+      "minimumReleaseAge": "7 days"
     }
   ]
 }

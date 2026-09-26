@@ -14,9 +14,8 @@ This module collects a JSON document listing every metric name,
 every loaded rule ID, every skipped rule ID, every validator
 label, and every config knob this implementation supports.
 
-The corresponding scalo-rs entry point will emit the same shape.
-A CI job in scalo-spec diffs the two manifests; any divergence
-fails the CI run and blocks releases.
+scalo-rs has no matching entry point yet, so nothing diffs the two
+implementations; the shape tests lock this side until one exists.
 
 Usage:
 

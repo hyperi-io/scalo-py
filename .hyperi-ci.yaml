@@ -19,14 +19,17 @@ test:
   min_coverage: 70  # Current: 73%. Target: 80%. Ratchet up as coverage improves.
 
 quality:
-  # examples/ has its own tests/ — exclude from quality scans
+  # examples/ has its own tests/ -- exclude from quality scans
   exclude_paths:
     - examples/
   python:
     # vulture: library code has extensive public API that looks "unused"
     vulture: warn
 
-  # No risk acceptances. Both CVEs that had one are fixed in versions the
-  # floors now carry, so nothing is suppressed. This is the section hyperi-ci
-  # reads (quality.ignore -> --ignore-vuln); a bare .pip-audit-ignore file is
-  # NOT read by anything.
+  # hyperi-ci reads quality.ignore and passes each entry to its tool
+  # (pip-audit --ignore-vuln, semgrep --exclude-rule); a bare .pip-audit-ignore
+  # file is NOT read by anything. pip-audit carries no risk acceptances.
+  ignore:
+    - tool: semgrep
+      id: python.lang.compatibility.python37.python37-compatibility-importlib2
+      reason: "Flags importlib.resources as Python 3.7+ only; requires-python is >=3.14, so no supported interpreter lacks it."

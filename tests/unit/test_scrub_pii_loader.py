@@ -153,6 +153,65 @@ class TestDynamicValidatorErrors:
             _DynamicValidator(entry)
 
 
+class TestDynamicValidatorImportConfinement:
+    """A registry entry cannot import a module outside the two allowed packages."""
+
+    @staticmethod
+    def _probe_module(tmp_path, monkeypatch, name):
+        marker = tmp_path / f"{name}.imported"
+        source = f"open({str(marker)!r}, 'w').close()\n\ndef is_valid(value):\n    return True\n"
+        (tmp_path / f"{name}.py").write_text(source, encoding="utf-8")
+        monkeypatch.syspath_prepend(str(tmp_path))
+        return marker
+
+    def test_stdnum_module_outside_stdnum_is_refused_before_import(self, tmp_path, monkeypatch):
+        marker = self._probe_module(tmp_path, monkeypatch, "scalo_probe_stdnum_escape")
+        entry = {
+            "redaction_label": "TEST",
+            "detection_regex": r"\bx\b",
+            "keywords": [],
+            "stdnum_module": "scalo_probe_stdnum_escape",
+        }
+        with pytest.raises(ValueError, match="outside the stdnum package"):
+            _DynamicValidator(entry)
+        assert not marker.exists()
+
+    def test_local_validator_outside_scalo_pii_is_refused_before_import(self, tmp_path, monkeypatch):
+        marker = self._probe_module(tmp_path, monkeypatch, "scalo_probe_local_escape")
+        entry = {
+            "redaction_label": "TEST",
+            "detection_regex": r"\bx\b",
+            "keywords": [],
+            "local_validator": "scalo_probe_local_escape:is_valid",
+        }
+        with pytest.raises(ValueError, match=r"outside scalo\.logger\.scrub\.pii"):
+            _DynamicValidator(entry)
+        assert not marker.exists()
+
+    def test_probe_module_really_imports_when_not_confined(self, tmp_path, monkeypatch):
+        import importlib
+        import sys
+
+        marker = self._probe_module(tmp_path, monkeypatch, "scalo_probe_control")
+        try:
+            importlib.import_module("scalo_probe_control")
+        finally:
+            sys.modules.pop("scalo_probe_control", None)
+        assert marker.exists()
+
+    def test_bundled_registry_stays_inside_the_allowed_packages(self):
+        for ids in load_registry().values():
+            if not isinstance(ids, dict):
+                continue
+            for entry in ids.values():
+                if not isinstance(entry, dict):
+                    continue
+                if "stdnum_module" in entry:
+                    assert entry["stdnum_module"].startswith("stdnum.")
+                if "local_validator" in entry:
+                    assert entry["local_validator"].startswith("scalo.logger.scrub.pii.")
+
+
 class TestLoaderFailsSafeOnBadEntry:
     """build_national_id_validators MUST warn on bad entries, never raise."""
 

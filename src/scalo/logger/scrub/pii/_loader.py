@@ -11,7 +11,7 @@
 The TOML is bundled in scalo-py's wheel at
 ``scalo/data/national_ids.toml`` -- vendored from the
 canonical source in
-``scalo-spec/standards/patterns/national_ids.toml`` (see spec Section 3.0
+``hyperi-ai/standards/patterns/national_ids.toml`` (see spec Section 3.0
 for vendoring discipline).
 
 This module is the only place that reads the TOML; the rest of the

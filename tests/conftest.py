@@ -274,52 +274,6 @@ def kafka_config_local_only():
     _stop_docker_kafka()
 
 
-def cleanup_hung_processes():
-    """
-    Kill hung background processes from previous test runs.
-
-    Uses LIB-specific labels to avoid killing other projects' processes.
-    """
-    # Kill processes with LIB test labels
-    scalo_patterns = [
-        "TEST_HELM",
-        "TEST_K8S",
-        "TEST_DOCKER",
-        "TEST_MINIKUBE",
-    ]
-
-    for pattern in scalo_patterns:
-        try:
-            subprocess.run(["pkill", "-9", "-f", pattern], capture_output=True, timeout=5)
-        except (subprocess.TimeoutExpired, Exception):
-            pass  # Best effort cleanup
-
-    # Also kill generic hung Kubernetes commands (broad cleanup)
-    generic_patterns = [
-        "minikube ssh.*docker login",
-        "kubectl.*helm-scalo",  # scalo-specific namespace
-        "helm install.*scalo",  # scalo-specific releases
-    ]
-
-    for pattern in generic_patterns:
-        try:
-            subprocess.run(["pkill", "-9", "-f", pattern], capture_output=True, timeout=5)
-        except (subprocess.TimeoutExpired, Exception):
-            pass  # Best effort cleanup
-
-
-@pytest.fixture(scope="session", autouse=True)
-def session_cleanup():
-    """Session-level fixture to cleanup before and after all tests."""
-    # Cleanup before tests start
-    cleanup_hung_processes()
-
-    yield
-
-    # Cleanup after all tests complete
-    cleanup_hung_processes()
-
-
 @pytest.fixture
 def temp_dir():
     """Provide a temporary directory that is cleaned up after the test."""

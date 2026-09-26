@@ -8,10 +8,10 @@
 
 """Tests for the parity manifest emitter.
 
-The manifest is the contract surface that scalo-spec's CI diffs
-between scalo-py and scalo-rs. The tests here lock the manifest shape so
-unintentional drift in scalo-py's output gets caught locally before it
-reaches the cross-language gate.
+The manifest is the contract surface a cross-language check would diff
+between scalo-py and scalo-rs; no such check exists yet. The tests here
+lock the manifest shape so unintentional drift in scalo-py's output gets
+caught locally.
 """
 
 from __future__ import annotations
