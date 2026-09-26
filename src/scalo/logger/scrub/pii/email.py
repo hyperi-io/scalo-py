@@ -26,7 +26,7 @@ class EmailValidator(_Validator):
 
     LABEL = "EMAIL"
     # Pragmatic RFC 5322 subset. Allow Unicode in local part and domain
-    # (IDN supported in direct form per spec §10a.6). \w includes
+    # (IDN supported in direct form per spec Section 10a.6). \w includes
     # Unicode word characters by default in Python 3.
     PATTERN = re.compile(
         r"\b[\w.+\-]+@[\w\-]+(?:\.[\w\-]+)+\b",

@@ -12,7 +12,7 @@ Generic Scrubber-Protocol implementation that takes its label,
 regex, keywords, and validation function from a TOML entry rather
 than hard-coding them in a per-country class.
 
-Spec §3.4 and §9.2 describe the entry shape. See
+Spec Section 3.4 and Section 9.2 describe the entry shape. See
 ``src/scalo/data/national_ids.toml`` for the canonical
 registry shipped with scalo-py.
 """

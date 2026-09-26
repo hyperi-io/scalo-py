@@ -11,7 +11,7 @@
 The TOML is bundled in scalo-py's wheel at
 ``scalo/data/national_ids.toml`` -- vendored from the
 canonical source in
-``scalo-spec/standards/patterns/national_ids.toml`` (see spec §3.0
+``scalo-spec/standards/patterns/national_ids.toml`` (see spec Section 3.0
 for vendoring discipline).
 
 This module is the only place that reads the TOML; the rest of the
@@ -86,7 +86,7 @@ def build_national_id_validators(
 
     Misconfigured entries (e.g. unimportable stdnum_module) emit a
     one-time warning and are skipped -- never raise to the caller.
-    Per spec §5.1, broken scrubber components must not break logging.
+    Per spec Section 5.1, broken scrubber components must not break logging.
     """
     if registry is None:
         registry = load_registry()

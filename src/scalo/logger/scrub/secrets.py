@@ -13,7 +13,7 @@ private keys, third-party SaaS API keys) and exposes them via the
 :class:`Scrubber` Protocol.
 
 Currently delegates to the existing :class:`SecretsLeakFilter`
-backed by ``detect-secrets``. Per spec §3.1, this will migrate to
+backed by ``detect-secrets``. Per spec Section 3.1, this will migrate to
 direct compilation from ``scalo-spec/standards/patterns/gitleaks.toml``
 in Step 10 -- the public API of this class is the same after that
 swap.
@@ -56,7 +56,7 @@ class SecretsScrubber:
     - ``"gitleaks"`` (default) -- TOML-driven, loads the bundled
       ``gitleaks.toml`` (vendored from
       ``scalo-spec/standards/patterns/gitleaks.toml``). Cross-language
-      parity contract per spec §3.2.
+      parity contract per spec Section 3.2.
     - ``"minimal"`` -- TOML-driven, restricted to a high-signal subset
       (the 13 rules in ``_MINIMAL_RULES``) for hot-ish paths.
     - ``"detect-secrets"`` -- legacy path using the ``detect-secrets``

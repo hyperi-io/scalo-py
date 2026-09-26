@@ -33,7 +33,7 @@ Public surface:
   four layers
 - :class:`NoOpScrubber` -- passes input through unchanged; for tests
   and dependency-injection swaps
-- :class:`ScrubConfig` -- config dataclasses matching spec §6
+- :class:`ScrubConfig` -- config dataclasses matching spec Section 6
 """
 
 from __future__ import annotations

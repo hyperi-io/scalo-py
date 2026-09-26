@@ -9,7 +9,7 @@
 """AU Medicare card-number checksum validator.
 
 ``python-stdnum`` v2.2 doesn't include ``stdnum.au.medicare``. The
-checksum is implemented here per the ATO spec (log-scrub-spec §9.7)
+checksum is implemented here per the ATO spec (log-scrub-spec Section 9.7)
 and referenced from ``national_ids.toml`` via
 ``local_validator = "scalo.logger.scrub.pii.au_medicare:_is_valid_medicare"``.
 

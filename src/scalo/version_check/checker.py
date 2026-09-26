@@ -307,6 +307,8 @@ def _k8s_instance_id() -> str | None:
 def _uuid5_bytes(material: bytes) -> uuid.UUID:
     """``uuid.uuid5`` over raw bytes -- byte-identical to scalo-rs, which
     hashes the material without a text round-trip."""
+    # UUIDv5 is SHA-1 by definition (RFC 9562) -- an id derivation, not a signature, and it must match scalo-rs.
+    # nosemgrep: python.lang.security.insecure-hash-algorithms.insecure-hash-algorithm-sha1
     digest = hashlib.sha1(INSTANCE_ID_NS.bytes + material).digest()  # noqa: S324
     return uuid.UUID(bytes=digest[:16], version=5)
 

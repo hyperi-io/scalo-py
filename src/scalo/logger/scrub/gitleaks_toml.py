@@ -11,7 +11,7 @@
 Loads gitleaks-format rules from the bundled
 ``scalo/data/gitleaks.toml`` (vendored byte-identical from
 ``scalo-spec/standards/patterns/gitleaks.toml``, which is in turn
-synced from upstream ``gitleaks/gitleaks`` per spec §3.2) and applies
+synced from upstream ``gitleaks/gitleaks`` per spec Section 3.2) and applies
 them as a Scrubber Protocol implementation.
 
 **Regex engine**: this module uses the PyPI ``regex`` package, not
@@ -159,7 +159,7 @@ class GitleaksTomlScrubber:
             reported with a one-time warning, since a typo would otherwise
             leave the rule running unnoticed.
 
-    Per spec §3.2, rules whose regex doesn't compile in the ``regex``
+    Per spec Section 3.2, rules whose regex doesn't compile in the ``regex``
     package are skipped with a one-time warning and their ID recorded
     in :attr:`skipped_rules` (also emitted via the
     ``log_scrub_skipped_rules_total`` gauge for cross-language parity).

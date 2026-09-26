@@ -8,7 +8,7 @@
 
 """Layer 3 -- structured PII validators.
 
-Two tiers per spec §9:
+Two tiers per spec Section 9:
 
 **Strong-structural** (fires from any context) -- hand-coded classes:
 
@@ -21,7 +21,7 @@ Two tiers per spec §9:
 
 National-ID validators load from the bundled
 ``scalo/data/national_ids.toml`` (vendored from
-``scalo-spec/standards/patterns/national_ids.toml`` per spec §3.0).
+``scalo-spec/standards/patterns/national_ids.toml`` per spec Section 3.0).
 Per-country entries with ``enabled = true`` materialise as
 :class:`_DynamicValidator` instances via :func:`build_national_id_validators`.
 

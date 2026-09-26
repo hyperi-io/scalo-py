@@ -9,7 +9,7 @@
 """Phone validator -- strong-structural.
 
 Detects phone numbers via libphonenumber-grade parsing. Strong-
-structural per spec §9.1 -- but only when libphonenumber confirms the
+structural per spec Section 9.1 -- but only when libphonenumber confirms the
 candidate. python-stdnum has no phone module; libphonenumber (via
 ``phonenumbers``) is the canonical answer for global phone parsing.
 """

@@ -6,7 +6,7 @@
 #  License:   Apache-2.0
 #  Copyright: (c) 2026 HYPERI PTY LIMITED
 
-"""Redaction-label formatting per spec §4.
+"""Redaction-label formatting per spec Section 4.
 
 Two modes:
 
