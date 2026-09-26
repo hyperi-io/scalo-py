@@ -171,7 +171,8 @@ overlay; `verify_ssl=False` flips
 | `delivery.timeout.ms` | `120000` | 2-minute upper bound on delivery. |
 | `request.timeout.ms` | `30000` | Per-request timeout. |
 | `linger.ms` | `5` | Small wait to batch. |
-| `compression.type` | `"lz4"` | Fast compression. |
+| `compression.type` | `"zstd"` | Corporate default codec. |
+| `compression.level` | `3` | zstd tuning; dropped by `merge_config` if you override the codec without setting your own level. |
 | `batch.size` | `16384` | 16 KiB batches. |
 
 `enable.idempotence` is **not** set by the defaults. Opt in explicitly

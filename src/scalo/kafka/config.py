@@ -72,7 +72,8 @@ PRODUCER_DEFAULTS: dict[str, Any] = {
     "request.timeout.ms": 30000,  # 30 seconds per request
     # Batching and compression
     "linger.ms": 5,  # Small delay for batching
-    "compression.type": "lz4",  # Fast compression
+    "compression.type": "zstd",  # Corporate default -- see merge_config for the level pairing
+    "compression.level": 3,  # zstd only; dropped by merge_config if the codec is overridden
     "batch.size": 16384,  # 16KB batch size
 }
 
@@ -121,6 +122,16 @@ def merge_config(
     """
     # Start with defaults, then overlay user config
     merged = {**defaults, **user_config}
+
+    # compression.level=3 only tunes zstd. lz4 treats any level above 0 as
+    # its slow high-compression mode, so a codec override without an
+    # explicit level must not inherit ours.
+    if (
+        "compression.level" in defaults
+        and "compression.level" not in user_config
+        and merged.get("compression.type") != "zstd"
+    ):
+        del merged["compression.level"]
 
     # Handle SSL verification
     if not verify_ssl:

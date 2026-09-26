@@ -53,7 +53,7 @@ class TestExternalSaslScram:
         merged = merge_config(base, PRODUCER_DEFAULTS)
         assert merged["security.protocol"] == "SASL_SSL"
         assert merged["acks"] == "all"  # PRODUCER_DEFAULTS preserved
-        assert merged["compression.type"] == "lz4"
+        assert merged["compression.type"] == "zstd"
 
 
 class TestInternalSaslScram:
