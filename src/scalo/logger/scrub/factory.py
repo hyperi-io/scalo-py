@@ -164,7 +164,7 @@ def build_scrubber(
 
 def _emit_pattern_versions(metrics: ScrubMetrics) -> None:
     """Emit `log_scrub_pattern_version{source, version}` per spec Section 8."""
-    # L1 -- canonical TOML-driven path (gitleaks.toml vendored from scalo-spec).
+    # L1 -- canonical TOML-driven path (gitleaks.toml vendored from hyperi-ai).
     try:
         from .gitleaks_toml import load_gitleaks_rules
 

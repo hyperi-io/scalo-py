@@ -21,7 +21,7 @@ Two tiers per spec Section 9:
 
 National-ID validators load from the bundled
 ``scalo/data/national_ids.toml`` (vendored from
-``scalo-spec/standards/patterns/national_ids.toml`` per spec Section 3.0).
+``hyperi-ai/standards/patterns/national_ids.toml`` per spec Section 3.0).
 Per-country entries with ``enabled = true`` materialise as
 :class:`_DynamicValidator` instances via :func:`build_national_id_validators`.
 

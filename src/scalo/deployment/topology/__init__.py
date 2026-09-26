@@ -86,6 +86,8 @@ def __getattr__(name: str) -> Any:
     submodule, attr = target
     from importlib import import_module
 
+    # submodule comes only from the fixed _LAZY_MAP above, never from a caller.
+    # nosemgrep: python.lang.security.audit.non-literal-import.non-literal-import
     mod = import_module(f"scalo.deployment.topology.{submodule}")
     value = getattr(mod, attr)
     globals()[name] = value  # cache so subsequent access skips __getattr__

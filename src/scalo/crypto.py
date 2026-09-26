@@ -258,13 +258,18 @@ def ssl_context(
         with warnings.catch_warnings():
             warnings.simplefilter("ignore", DeprecationWarning)
             ctx.minimum_version = ssl.TLSVersion.TLSv1
+        # Reached only through the SCALO_TLS_ALLOW_WEAK / allow_weak=True opt-in, which HIGHSEC refuses.
         try:
+            # nosemgrep: python.lang.security.audit.insecure-transport.ssl.no-set-ciphers.no-set-ciphers
             ctx.set_ciphers("DEFAULT:@SECLEVEL=0")
         except ssl.SSLError:  # pragma: no cover - depends on OpenSSL build
+            # nosemgrep: python.lang.security.audit.insecure-transport.ssl.no-set-ciphers.no-set-ciphers
             ctx.set_ciphers("DEFAULT")
         _warn_weak_floor_once()
     else:
         ctx.minimum_version = profile.tls_floor
+        # Narrows TLS 1.2 to the two ECDHE AES-256-GCM suites, a subset of the stdlib default list.
+        # nosemgrep: python.lang.security.audit.insecure-transport.ssl.no-set-ciphers.no-set-ciphers
         ctx.set_ciphers(_AES256_CIPHERS)
     if verify is None:
         verify = tls_verify_default()
