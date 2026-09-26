@@ -21,6 +21,7 @@ ENV overrides:
 See docs/LOGGING.md for examples and configuration details.
 """
 
+import logging
 import os
 import sys
 
@@ -426,6 +427,19 @@ def _get_log_format(is_file: bool, color_scheme: str = "solarized", ci_mode: boo
         )
 
 
+# AWS SDK and HTTP pool loggers; at DEBUG botocore writes request params and
+# response bodies, a Secrets Manager SecretString included.
+_CAPPED_LIBRARY_LOGGERS = ("boto3", "botocore", "s3transfer", "urllib3")
+
+
+def _cap_library_loggers() -> None:
+    """Raise each capped library logger to WARNING; never lower one."""
+    for name in _CAPPED_LIBRARY_LOGGERS:
+        library_logger = logging.getLogger(name)
+        if library_logger.level < logging.WARNING:
+            library_logger.setLevel(logging.WARNING)
+
+
 def _resolve_console_format(log_format, config) -> str:
     """Resolve the console sink format selector.
 
@@ -528,10 +542,17 @@ def setup(
         service_name: ``service.name`` for the span resource. Without it the
             attribute is left unset rather than defaulted, because a package-name
             default would report every service in the fleet as "scalo".
+
+    The stdlib ``boto3``, ``botocore``, ``s3transfer`` and ``urllib3`` loggers
+    are raised to WARNING whatever ``level`` is, because botocore writes secret
+    values to DEBUG. An app that needs their DEBUG output sets the level itself
+    after this call.
     """
 
     # Remove default handler
     logger.remove()
+
+    _cap_library_loggers()
 
     # Get logging config (lazy import to avoid circular dependency)
     config = _get_logging_config()
@@ -542,7 +563,7 @@ def setup(
 
     # Fire-and-forget mode by default -- sinks run on a background thread, so
     # logger.info() returns in ~us even with slow disk/network sinks. Override
-    # with SCALO_LOG_ENQUEUE=0 for sync semantics (audit logging, unit tests
+    # with LOG_ENQUEUE=0 for sync semantics (audit logging, unit tests
     # that assert on captured output, etc.).
     enqueue = control_var("LOG_ENQUEUE", default="1") != "0"
 
@@ -733,7 +754,7 @@ def setup(
 # Smart Auto-Configuration (Zero-Config Pattern)
 # ============================================================================
 # Only auto-configure if explicitly requested.
-# Opt-in: set SCALO_AUTO_LOGGER_CONFIG=1 (keeps SCALO_NO_LOGGER_CONFIG as override)
+# Opt-in: set AUTO_LOGGER_CONFIG=1 (keeps NO_LOGGER_CONFIG as override)
 
 if control_flag("AUTO_LOGGER_CONFIG") and not control_flag("NO_LOGGER_CONFIG"):
     # Smart defaults (auto-detects terminal, RFC 3339, emojis), but no span
