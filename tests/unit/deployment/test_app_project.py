@@ -92,6 +92,7 @@ def test_multiple_destinations_all_present():
         AppProjectDestination(server="https://cluster-b.example", namespace="ns-b"),
     ]
     yaml = generate_argocd_app_project(project)
+    # Substring checks on generated YAML, not a host allow-list.
     assert "https://cluster-a.example" in yaml
     assert "https://cluster-b.example" in yaml
     assert "ns-a" in yaml

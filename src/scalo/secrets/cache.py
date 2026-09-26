@@ -137,6 +137,7 @@ class DiskCache:
                     # Wrong key, tampered data, or a legacy (pre-AES-256)
                     # entry that won't parse: treat as a cache miss and
                     # drop the file. The cache re-fills from the backend.
+                    # secret_name names the secret; CacheError never carries the plaintext.
                     logger.warning("Cache decryption failed", extra={"secret_name": secret_name, "error": str(e)})
                     path.unlink(missing_ok=True)
                     return None
@@ -153,18 +154,22 @@ class DiskCache:
             # Check TTL
             if value.is_expired(self._config.ttl_secs):
                 if value.is_within_grace(self._config.ttl_secs, self._config.stale_grace_secs):
+                    # secret_name names the secret; its value never reaches the log.
                     logger.debug("Using stale cached secret", extra={"secret_name": secret_name})
                     return value
                 else:
                     # Expired beyond grace period
+                    # secret_name names the secret; its value never reaches the log.
                     logger.debug("Cache expired beyond grace period", extra={"secret_name": secret_name})
                     path.unlink(missing_ok=True)
                     return None
 
+            # secret_name names the secret; its value never reaches the log.
             logger.debug("Cache hit", extra={"secret_name": secret_name})
             return value
 
         except Exception as e:
+            # secret_name names the secret; no read, decode or parse error here carries the value.
             logger.warning("Cache read failed", extra={"secret_name": secret_name, "error": str(e)})
             return None
 
@@ -219,9 +224,11 @@ class DiskCache:
                 tmp_path.unlink(missing_ok=True)
                 raise
 
+            # secret_name names the secret; its value never reaches the log.
             logger.debug("Cache set", extra={"secret_name": secret_name})
 
         except Exception as e:
+            # secret_name names the secret; no seal or file-write error here carries the value.
             logger.warning("Cache write failed", extra={"secret_name": secret_name, "error": str(e)})
 
     def delete(self, secret_name: str) -> bool:

@@ -43,6 +43,7 @@ def test_aws_config_secret_access_key_redacted():
 def test_azure_config_client_secret_redacted():
     cfg = AzureConfig(vault_url="https://kv.azure.net/", client_secret=SECRET)
     assert SECRET not in repr(cfg)
+    # Substring check on repr() output, not a host allow-list.
     assert "kv.azure.net" in repr(cfg)
 
 

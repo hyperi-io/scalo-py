@@ -199,6 +199,7 @@ class TestGenerateDockerfile:
         c = _full_contract()
         c.native_deps = NativeDepsContract.for_scalo_extras(["kafka"], "ubuntu:24.04")
         df = generate_dockerfile(c)
+        # Substring check on the generated Dockerfile, not a host allow-list.
         assert "packages.confluent.io" in df
         assert "confluent-clients.gpg" in df
         assert "librdkafka1" in df
@@ -316,6 +317,7 @@ class TestGenerateContainerManifest:
         c.native_deps = NativeDepsContract.for_scalo_extras(["kafka"], "ubuntu:24.04")
         manifest = json.loads(generate_container_manifest(c))
         assert len(manifest["runtime_packages"]["apt_repos"]) == 1
+        # Prefix check on the generated manifest, not a host allow-list.
         assert manifest["runtime_packages"]["apt_repos"][0]["url"].startswith("https://packages.confluent.io")
         assert "libssl3" in manifest["runtime_packages"]["apt_packages"]
 
