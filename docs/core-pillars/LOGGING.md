@@ -85,6 +85,18 @@ config path is reported straight after.
 
 ---
 
+## Library loggers
+
+`setup()` raises the stdlib `boto3`, `botocore`, `s3transfer` and `urllib3`
+loggers to WARNING, whatever `level` is. At DEBUG botocore writes request
+params and response bodies, and a Secrets Manager `SecretString` is one of
+them. A level the app already set higher is left alone.
+
+Need their DEBUG output? Set the logger's level yourself AFTER `setup()`,
+and only where nothing reads a secret.
+
+---
+
 ## CI autodetect
 
 `setup()` switches to ASCII-only output and disables colours when any

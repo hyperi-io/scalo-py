@@ -22,7 +22,7 @@ metrics first.
 
 **Post-GA action:** expose `limits: httpx.Limits | None = None` on
 `HttpClient.__init__` / `AsyncHttpClient.__init__`. Document the
-defaults + a tuning recipe in `docs/api/HTTP.md`.
+defaults + a tuning recipe in `docs/api/HTTP-CLIENT.md`.
 
 ## D2: HTTP response body size limit
 

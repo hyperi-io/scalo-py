@@ -563,7 +563,7 @@ def setup(
 
     # Fire-and-forget mode by default -- sinks run on a background thread, so
     # logger.info() returns in ~us even with slow disk/network sinks. Override
-    # with LOG_ENQUEUE=0 for sync semantics (audit logging, unit tests
+    # with <PREFIX>_LOG_ENQUEUE=0 for sync semantics (audit logging, unit tests
     # that assert on captured output, etc.).
     enqueue = control_var("LOG_ENQUEUE", default="1") != "0"
 
@@ -754,7 +754,8 @@ def setup(
 # Smart Auto-Configuration (Zero-Config Pattern)
 # ============================================================================
 # Only auto-configure if explicitly requested.
-# Opt-in: set AUTO_LOGGER_CONFIG=1 (keeps NO_LOGGER_CONFIG as override)
+# Opt-in: set <PREFIX>_AUTO_LOGGER_CONFIG=1 (keeps <PREFIX>_NO_LOGGER_CONFIG as
+# override); with no env prefix both names are bare.
 
 if control_flag("AUTO_LOGGER_CONFIG") and not control_flag("NO_LOGGER_CONFIG"):
     # Smart defaults (auto-detects terminal, RFC 3339, emojis), but no span
