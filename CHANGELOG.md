@@ -3,6 +3,17 @@
 Rendered by CI and committed back at the end of a release -- do not edit by
 hand. Release notes also appear on the GitHub Releases page, one per tag.
 
+## [2.30.5](https://github.com/hyperi-io/scalo-py/compare/v2.30.4...v2.30.5) (2026-09-27)
+
+### Bug Fixes
+
+* clear the charset, sha1 and hadolint warnings ([#49](https://github.com/hyperi-io/scalo-py/issues/49)) ([06d18cc](https://github.com/hyperi-io/scalo-py/commit/06d18cc2a3abd0228d776262e7c9b119dfb98460))
+* config-check checks what run will actually do ([#43](https://github.com/hyperi-io/scalo-py/issues/43)) ([8df7d67](https://github.com/hyperi-io/scalo-py/commit/8df7d671df6a2f858227970c3fd6f59af530ea53)), closes [#29](https://github.com/hyperi-io/scalo-py/issues/29) [#24](https://github.com/hyperi-io/scalo-py/issues/24) [#31](https://github.com/hyperi-io/scalo-py/issues/31) [#25](https://github.com/hyperi-io/scalo-py/issues/25)
+* **kafka:** default the producer codec to zstd, not lz4 ([#44](https://github.com/hyperi-io/scalo-py/issues/44)) ([42c722e](https://github.com/hyperi-io/scalo-py/commit/42c722e7be560478fc4426833394ee9ddbeacc36))
+* **logger:** cap the AWS SDK loggers so DEBUG never logs a secret ([58c1fde](https://github.com/hyperi-io/scalo-py/commit/58c1fdefdcd1b6ba08ffde2fc900f22eea07970e))
+* resolve the code-scanning alerts and the AWS batch-fetch KeyError ([#45](https://github.com/hyperi-io/scalo-py/issues/45)) ([efab823](https://github.com/hyperi-io/scalo-py/commit/efab823abc02ceb1ec34ca63074b59216ab95e7e))
+* stop the test suite killing other processes, clear semgrep, re-vendor the patterns ([#50](https://github.com/hyperi-io/scalo-py/issues/50)) ([9c8f5d6](https://github.com/hyperi-io/scalo-py/commit/9c8f5d638822509ba4fff61083078d916c83bfdc))
+
 ## [2.30.4](https://github.com/hyperi-io/scalo-py/compare/v2.30.3...v2.30.4) (2026-09-24)
 
 ### Bug Fixes
