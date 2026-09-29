@@ -76,7 +76,7 @@ class _BoundCounter:
 
 
 class _BoundGauge:
-    """OTel gauge (UpDownCounter) with pre-bound attribute set."""
+    """OTel gauge with pre-bound attribute set."""
 
     def __init__(self, adapter: OtelGaugeAdapter, attributes: dict[str, Any]) -> None:
         self._adapter = adapter
@@ -129,10 +129,10 @@ class OtelCounterAdapter:
 
 
 class OtelGaugeAdapter:
-    """Wraps an OTel UpDownCounter with prometheus-client-compatible API.
+    """Wraps an OTel Gauge with prometheus-client-compatible API.
 
-    Tracks current per-labelset values to support absolute ``.set()``, since
-    OTel UpDownCounter only accepts deltas.
+    Tracks current per-labelset values so ``.inc()`` and ``.dec()`` can record
+    the running total, since an OTel Gauge only records absolute values.
     """
 
     def __init__(
@@ -148,15 +148,12 @@ class OtelGaugeAdapter:
         return tuple(sorted(attributes.items()))
 
     def _set(self, value: float, attributes: dict[str, Any]) -> None:
-        key = self._key(attributes)
-        delta = value - self._current.get(key, 0.0)
-        self._current[key] = value
-        self._gauge.add(delta, attributes=attributes or None)
+        self._current[self._key(attributes)] = float(value)
+        self._gauge.set(float(value), attributes=attributes or None)
 
     def _add(self, delta: float, attributes: dict[str, Any]) -> None:
-        key = self._key(attributes)
-        self._current[key] = self._current.get(key, 0.0) + delta
-        self._gauge.add(delta, attributes=attributes or None)
+        total = self._current.get(self._key(attributes), 0.0) + delta
+        self._set(value=total, attributes=attributes)
 
     def labels(self, **kwargs: Any) -> _BoundGauge:
         return _BoundGauge(self, self._label_converter(kwargs))
@@ -658,7 +655,10 @@ class OpenTelemetryBackend(MetricsBackend):
 
     def gauge(self, name: str, description: str, labels: list[str] | None = None) -> Any:
         """
-        Create or get an OpenTelemetry Gauge (UpDownCounter).
+        Create or get an OpenTelemetry Gauge.
+
+        Exported as an OTLP Gauge, the same data type scalo-rs emits, so a
+        collector files it with every other service's gauges.
 
         Automatically converts Prometheus metric names to OTEL semantic conventions.
 
@@ -668,7 +668,7 @@ class OpenTelemetryBackend(MetricsBackend):
             labels: Label names
 
         Returns:
-            UpDownCounter instance
+            Gauge adapter with a prometheus-client-compatible API
         """
         if not self.enabled:
             return NoOpMetric()
@@ -679,9 +679,9 @@ class OpenTelemetryBackend(MetricsBackend):
         if cache_key in self._metrics_cache:
             return self._metrics_cache[cache_key]
 
-        gauge = self._meter.create_up_down_counter(
-            name=otel_name,
+        gauge = self._meter.create_gauge(
             description=description,
+            name=otel_name,
             unit="1",
         )
 

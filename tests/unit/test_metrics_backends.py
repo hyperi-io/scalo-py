@@ -4,6 +4,12 @@ Tests for metrics backend abstraction.
 Tests both Prometheus and OpenTelemetry backends with unified API.
 """
 
+import os
+import subprocess
+import sys
+import threading
+from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
+
 import pytest
 
 from scalo.metrics import MetricsManager, create_metrics
@@ -94,6 +100,54 @@ except ImportError:
 
 otel_required = pytest.mark.skipif(not OTEL_INSTALLED, reason="OpenTelemetry not installed")
 
+# Runs in its own interpreter because OTel lets a process set the global
+# MeterProvider once, so a backend built earlier in this run would own the meter.
+_GAUGE_EXPORT_SCRIPT = """
+from scalo.metrics import create_metrics
+
+metrics = create_metrics("gauge-export", backend="opentelemetry")
+depth = metrics.gauge("queue_depth", "Queue depth", labels=["shard"])
+depth.labels(shard="a").set(7)
+depth.labels(shard="a").inc(3)
+depth.labels(shard="a").dec(1)
+depth.set(5)
+metrics.update()
+"""
+
+
+class _OtlpServer(ThreadingHTTPServer):
+    """Local OTLP/HTTP endpoint that keeps every export body posted to it."""
+
+    def __init__(self) -> None:
+        super().__init__(("127.0.0.1", 0), _OtlpHandler)
+        self.bodies: list[bytes] = []
+
+
+class _OtlpHandler(BaseHTTPRequestHandler):
+    """Records an OTLP/HTTP export body and acknowledges it."""
+
+    server: _OtlpServer
+
+    def do_POST(self) -> None:
+        length = int(self.headers["Content-Length"])
+        self.server.bodies.append(self.rfile.read(length))
+        self.send_response(200)
+        self.end_headers()
+
+
+def _exported_metrics(bodies: list[bytes], name: str) -> list:
+    """Every metric called *name* across the OTLP export requests in *bodies*."""
+    from opentelemetry.proto.collector.metrics.v1.metrics_service_pb2 import ExportMetricsServiceRequest
+
+    found = []
+    for body in bodies:
+        request = ExportMetricsServiceRequest()
+        request.ParseFromString(body)
+        for resource_metrics in request.resource_metrics:
+            for scope_metrics in resource_metrics.scope_metrics:
+                found.extend(metric for metric in scope_metrics.metrics if metric.name == name)
+    return found
+
 
 class TestOpenTelemetryBackend:
     """Test OpenTelemetry backend implementation."""
@@ -164,6 +218,43 @@ class TestOpenTelemetryBackend:
         assert gauge._current[key] == 100.0
         gauge.set(50)
         assert gauge._current[key] == 50.0
+
+    @otel_required
+    def test_gauge_exports_as_otlp_gauge(self):
+        """A gauge reaches the collector as an OTLP Gauge holding its current value, not a Sum."""
+        server = _OtlpServer()
+        threading.Thread(daemon=True, target=server.serve_forever).start()
+        env = {
+            **os.environ,
+            "OTEL_EXPORTER_OTLP_ENDPOINT": f"http://127.0.0.1:{server.server_port}",
+            "OTEL_EXPORTER_OTLP_PROTOCOL": "http/protobuf",
+        }
+        try:
+            result = subprocess.run(
+                [sys.executable, "-c", _GAUGE_EXPORT_SCRIPT],
+                capture_output=True,
+                check=False,
+                encoding="utf-8",
+                env=env,
+                errors="replace",
+                text=True,
+                timeout=60,
+            )
+        finally:
+            server.shutdown()
+            server.server_close()
+
+        assert result.returncode == 0, result.stderr
+        exported = _exported_metrics(bodies=server.bodies, name="queue_depth")
+        assert exported, f"no queue_depth export reached the receiver: {result.stderr!r}"
+
+        metric = exported[0]
+        assert metric.WhichOneof("data") == "gauge"
+        values = {}
+        for point in metric.gauge.data_points:
+            labels = tuple((attribute.key, attribute.value.string_value) for attribute in point.attributes)
+            values[labels] = point.as_double
+        assert values == {(("shard", "a"),): 9.0, (): 5.0}
 
     @otel_required
     def test_histogram_prometheus_style_api(self):
