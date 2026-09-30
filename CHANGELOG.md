@@ -3,6 +3,14 @@
 Rendered by CI and committed back at the end of a release -- do not edit by
 hand. Release notes also appear on the GitHub Releases page, one per tag.
 
+## [2.30.7](https://github.com/hyperi-io/scalo-py/compare/v2.30.6...v2.30.7) (2026-09-30)
+
+### Bug Fixes
+
+* **deps:** require pyjwt 2.14.0 for ten new CVEs ([547369b](https://github.com/hyperi-io/scalo-py/commit/547369b220ee81e7008ffd31755085a0565c64d2))
+* **metrics:** export gauges on every collection ([8e1f994](https://github.com/hyperi-io/scalo-py/commit/8e1f99450537b32f4daa2b70e95a2628369dbcd7))
+* **metrics:** resource gauges, HTTP server metrics, real buckets ([6380960](https://github.com/hyperi-io/scalo-py/commit/63809601f486967288fc91ef5917ec75e4db2a3f))
+
 ## [2.30.5](https://github.com/hyperi-io/scalo-py/compare/v2.30.4...v2.30.5) (2026-09-27)
 
 ### Bug Fixes
