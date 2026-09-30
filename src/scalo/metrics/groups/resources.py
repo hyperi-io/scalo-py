@@ -16,7 +16,6 @@ v1) and are left out where there is none, as scalo-rs leaves them out.
 
 import os
 import time
-from collections.abc import Callable
 from pathlib import Path
 from typing import TYPE_CHECKING, Any
 
@@ -97,7 +96,7 @@ class ResourceMetrics:
         self._start_time = time.time()
         self._process = _psutil_process()
 
-        readings: dict[str, tuple[str, Callable[[], float | None]]] = {
+        readings = {
             "process_cpu_seconds_total": ("CPU use in percent of one core since the last read", self.cpu_percent),
             "process_resident_memory_bytes": ("Resident memory size in bytes", self.resident_memory_bytes),
             "process_virtual_memory_bytes": ("Virtual memory size in bytes", self.virtual_memory_bytes),
