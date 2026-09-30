@@ -64,6 +64,56 @@ class TestAppEnvDetection:
 
         assert get_app_env() == "production"
 
+    def test_app_env_strips_leading_whitespace(self, monkeypatch):
+        """A padded value is trimmed, matching scalo-rs."""
+        monkeypatch.setenv("APP_ENV", " production")
+        monkeypatch.delenv("ENVIRONMENT", raising=False)
+        monkeypatch.delenv("ENV", raising=False)
+
+        from scalo.config.config import get_app_env
+
+        assert get_app_env() == "production"
+
+    def test_app_env_strips_trailing_whitespace(self, monkeypatch):
+        """A trailing newline is trimmed, matching scalo-rs."""
+        monkeypatch.setenv("APP_ENV", "production\n")
+        monkeypatch.delenv("ENVIRONMENT", raising=False)
+        monkeypatch.delenv("ENV", raising=False)
+
+        from scalo.config.config import get_app_env
+
+        assert get_app_env() == "production"
+
+    def test_app_env_blank_falls_through(self, monkeypatch):
+        """A blank APP_ENV is treated as unset, falling through to ENVIRONMENT."""
+        monkeypatch.setenv("APP_ENV", "")
+        monkeypatch.setenv("ENVIRONMENT", "production")
+        monkeypatch.delenv("ENV", raising=False)
+
+        from scalo.config.config import get_app_env
+
+        assert get_app_env() == "production"
+
+    def test_app_env_whitespace_only_falls_through(self, monkeypatch):
+        """A whitespace-only APP_ENV is treated as unset."""
+        monkeypatch.setenv("APP_ENV", "   ")
+        monkeypatch.setenv("ENVIRONMENT", "production")
+        monkeypatch.delenv("ENV", raising=False)
+
+        from scalo.config.config import get_app_env
+
+        assert get_app_env() == "production"
+
+    def test_app_env_all_blank_defaults_to_development(self, monkeypatch):
+        """All three variables blank still defaults to 'development'."""
+        monkeypatch.setenv("APP_ENV", "")
+        monkeypatch.setenv("ENVIRONMENT", "  ")
+        monkeypatch.setenv("ENV", "")
+
+        from scalo.config.config import get_app_env
+
+        assert get_app_env() == "development"
+
 
 class TestAppNameDetection:
     """Test get_app_name() priority matches scalo-rs."""
