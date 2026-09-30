@@ -79,6 +79,7 @@ ALL configuration automatically follows this priority (highest to lowest):
     **App name** resolved from: APP_NAME env -> auto-detect -> default "app".
 
     **App env** resolved from: APP_ENV -> ENVIRONMENT -> ENV -> "development".
+    Each candidate is trimmed; blank values are treated as unset.
 
 Quick Start
 ===========
@@ -536,8 +537,18 @@ def get_app_env() -> str:
     2. ENVIRONMENT environment variable
     3. ENV environment variable
     4. Default to "development"
+
+    Each candidate is stripped of surrounding whitespace before use; a
+    value that is empty or whitespace-only is treated as unset and the
+    next variable in the priority order is tried instead.
     """
-    return os.getenv("APP_ENV") or os.getenv("ENVIRONMENT") or os.getenv("ENV") or "development"
+    for name in ("APP_ENV", "ENVIRONMENT", "ENV"):
+        value = os.getenv(name)
+        if value is not None:
+            stripped = value.strip()
+            if stripped:
+                return stripped
+    return "development"
 
 
 APP_ENV = get_app_env()
@@ -930,7 +941,7 @@ def get_standard_env_vars() -> dict:
     # Application standard environment variables
     app_vars = {
         "APP_NAME": os.getenv("APP_NAME") or APP_NAME,
-        "APP_ENV": os.getenv("APP_ENV") or os.getenv("ENVIRONMENT") or os.getenv("ENV") or "development",
+        "APP_ENV": get_app_env(),
         "APP_VERSION": os.getenv("APP_VERSION") or os.getenv("VERSION"),
         "LOG_LEVEL": os.getenv("LOG_LEVEL"),
         "DEBUG": os.getenv("DEBUG"),

@@ -67,7 +67,8 @@ Both `.yaml` and `.yml` extensions are checked (`.yaml` wins on tie).
 App name resolves from the bare `APP_NAME` env var (the K8s/Docker
 convention), then the prefix-aware `<PREFIX>_APP_NAME`, then package
 auto-detect, then `"app"`. App environment resolves from `APP_ENV`,
-`ENVIRONMENT`, `ENV`, then `"development"`.
+`ENVIRONMENT`, `ENV`, then `"development"` -- each candidate is trimmed,
+and a blank value is treated as unset.
 
 ---
 
