@@ -639,9 +639,9 @@ class AWSProvider(VersionedProvider):
             name = entry.get("Name", "")
             results[name] = self._parse_response(entry, name, key=None)
         for err in response.get("Errors", []) or []:
-            # An Errors entry carries the secret's id and AWS's error text, never a SecretString.
             logger.warning(
                 "AWS batch_get error",
+                # codeql[py/clear-text-logging-sensitive-data] an Errors entry holds the name or ARN, never the value
                 extra={
                     "secret_id": err.get("SecretId"),
                     "code": err.get("ErrorCode"),

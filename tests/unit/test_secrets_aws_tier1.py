@@ -13,8 +13,6 @@ A ``mocked_aws`` fixture wraps each test so both sync (boto3) and async
 (aiobotocore) calls go through the same fake AWS backend.
 """
 
-from __future__ import annotations
-
 import os
 
 import pytest
@@ -335,6 +333,18 @@ class TestAWSBatchGet:
         assert errors[0].code == "ResourceNotFoundException"
         assert errors[0].error_message
         assert "value-present" not in " ".join(str(v) for v in vars(errors[0]).values())
+
+    async def test_partial_failure_logs_never_carry_a_secret_value(self, provider, caplog):
+        fake_value = "fake-secret-value-3c9e1a"
+        await provider.create_async("batch-held", fake_value.encode("utf-8"))
+        caplog.set_level("DEBUG", logger="scalo")
+        results = await provider.batch_get_async(["batch-held", "batch-absent"])
+        assert results["batch-held"].data == fake_value.encode("utf-8")
+        scalo_records = [r for r in caplog.records if r.name.startswith("scalo")]
+        assert any(r.getMessage() == "AWS batch_get error" for r in scalo_records)
+        for record in scalo_records:
+            assert fake_value not in record.getMessage()
+            assert fake_value not in " ".join(str(v) for v in vars(record).values())
 
 
 # -------------------------------------------------------------------------
