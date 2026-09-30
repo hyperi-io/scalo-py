@@ -47,7 +47,7 @@ dynamic, and editable.
 
 Each YAML file is one table. Names use forward-slash paths:
 
-```
+```text
 /config/dfe/
 ├── globals.yaml                  # table: "globals"
 ├── loaders/
