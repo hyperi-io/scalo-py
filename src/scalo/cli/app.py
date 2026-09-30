@@ -522,7 +522,7 @@ def _handle_run(service_app: ServiceApp, args: CommonArgs) -> None:
         # Auto-init metrics if available (metrics extra installed)
         try:
             from scalo.metrics import create_metrics
-            from scalo.metrics.groups import AppMetrics
+            from scalo.metrics.groups import AppMetrics, ResourceMetrics
 
             ns = service_app.name.replace("-", "_")
             # Backend knob, then the cascade, then opentelemetry. The OTel
@@ -558,6 +558,7 @@ def _handle_run(service_app: ServiceApp, args: CommonArgs) -> None:
                 print_error(f"scrub-metrics logger re-init failed: {exc}")
                 args.init_logger(config=config, service_name=service_app.name)
             app_metrics = AppMetrics(metrics_manager, info.version, info.commit or "unknown")
+            ResourceMetrics(mgr=metrics_manager)
             service_app._metrics = metrics_manager
             service_app._app_metrics = app_metrics
             logger.debug("metrics auto-initialised", namespace=ns)

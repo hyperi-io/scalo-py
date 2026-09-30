@@ -112,6 +112,7 @@ depth.labels(shard="a").inc(3)
 depth.labels(shard="a").dec(1)
 depth.set(5)
 metrics.update()
+metrics.update()
 """
 
 
@@ -133,6 +134,42 @@ class _OtlpHandler(BaseHTTPRequestHandler):
         self.server.bodies.append(self.rfile.read(length))
         self.send_response(200)
         self.end_headers()
+
+
+def _run_export_script(script: str) -> tuple[subprocess.CompletedProcess, list[bytes]]:
+    """Run *script* in a fresh interpreter pushing OTLP/HTTP to a local receiver."""
+    server = _OtlpServer()
+    threading.Thread(daemon=True, target=server.serve_forever).start()
+    env = {
+        **os.environ,
+        "OTEL_EXPORTER_OTLP_ENDPOINT": f"http://127.0.0.1:{server.server_port}",
+        "OTEL_EXPORTER_OTLP_PROTOCOL": "http/protobuf",
+    }
+    try:
+        result = subprocess.run(
+            [sys.executable, "-c", script],
+            capture_output=True,
+            check=False,
+            encoding="utf-8",
+            env=env,
+            errors="replace",
+            text=True,
+            timeout=60,
+        )
+    finally:
+        server.shutdown()
+        server.server_close()
+    return result, server.bodies
+
+
+_HISTOGRAM_EXPORT_SCRIPT = """
+from scalo.metrics import create_metrics
+
+metrics = create_metrics("histogram-export", backend="opentelemetry")
+metrics.histogram("chosen_duration_seconds", "Chosen buckets", buckets=(0.1, 0.5, 2.0)).observe(0.3)
+metrics.histogram("default_duration_seconds", "Default buckets").observe(0.3)
+metrics.update()
+"""
 
 
 def _exported_metrics(bodies: list[bytes], name: str) -> list:
@@ -221,40 +258,40 @@ class TestOpenTelemetryBackend:
 
     @otel_required
     def test_gauge_exports_as_otlp_gauge(self):
-        """A gauge reaches the collector as an OTLP Gauge holding its current value, not a Sum."""
-        server = _OtlpServer()
-        threading.Thread(daemon=True, target=server.serve_forever).start()
-        env = {
-            **os.environ,
-            "OTEL_EXPORTER_OTLP_ENDPOINT": f"http://127.0.0.1:{server.server_port}",
-            "OTEL_EXPORTER_OTLP_PROTOCOL": "http/protobuf",
-        }
-        try:
-            result = subprocess.run(
-                [sys.executable, "-c", _GAUGE_EXPORT_SCRIPT],
-                capture_output=True,
-                check=False,
-                encoding="utf-8",
-                env=env,
-                errors="replace",
-                text=True,
-                timeout=60,
-            )
-        finally:
-            server.shutdown()
-            server.server_close()
+        """A gauge reaches the collector as an OTLP Gauge holding its current value, on every export."""
+        result, bodies = _run_export_script(script=_GAUGE_EXPORT_SCRIPT)
 
         assert result.returncode == 0, result.stderr
-        exported = _exported_metrics(bodies=server.bodies, name="queue_depth")
-        assert exported, f"no queue_depth export reached the receiver: {result.stderr!r}"
+        exported = _exported_metrics(bodies=bodies, name="queue_depth")
+        # A value set once, like a service's info or start time, must survive the
+        # exports after the one it was set in, or liveness sees the service vanish.
+        assert len(exported) >= 2, f"queue_depth in {len(exported)} export(s): {result.stderr!r}"
 
-        metric = exported[0]
-        assert metric.WhichOneof("data") == "gauge"
-        values = {}
-        for point in metric.gauge.data_points:
-            labels = tuple((attribute.key, attribute.value.string_value) for attribute in point.attributes)
-            values[labels] = point.as_double
-        assert values == {(("shard", "a"),): 9.0, (): 5.0}
+        for metric in exported:
+            assert metric.WhichOneof("data") == "gauge"
+            values = {}
+            for point in metric.gauge.data_points:
+                labels = tuple((attribute.key, attribute.value.string_value) for attribute in point.attributes)
+                values[labels] = point.as_double
+            assert values == {(("shard", "a"),): 9.0, (): 5.0}
+
+    @otel_required
+    def test_histogram_exports_its_buckets_in_seconds(self):
+        """Histogram buckets reach the collector as given, and default to seconds, not milliseconds."""
+        from prometheus_client.metrics import Histogram
+
+        result, bodies = _run_export_script(script=_HISTOGRAM_EXPORT_SCRIPT)
+
+        assert result.returncode == 0, result.stderr
+        chosen = _exported_metrics(bodies=bodies, name="chosen_duration_seconds")
+        default = _exported_metrics(bodies=bodies, name="default_duration_seconds")
+        assert chosen, f"no chosen_duration_seconds export: {result.stderr!r}"
+        assert default, f"no default_duration_seconds export: {result.stderr!r}"
+
+        assert list(chosen[0].histogram.data_points[0].explicit_bounds) == [0.1, 0.5, 2.0]
+        assert chosen[0].unit == "s"
+        prometheus_bounds = [bound for bound in Histogram.DEFAULT_BUCKETS if bound != float("inf")]
+        assert list(default[0].histogram.data_points[0].explicit_bounds) == prometheus_bounds
 
     @otel_required
     def test_histogram_prometheus_style_api(self):

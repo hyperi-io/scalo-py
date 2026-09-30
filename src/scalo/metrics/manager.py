@@ -6,6 +6,7 @@ Default backend is OpenTelemetry with dual export (OTLP push + Prometheus scrape
 Falls back to Prometheus-only if OTel packages are not installed.
 """
 
+from collections.abc import Callable
 from typing import Any
 
 from .._env_compat import control_var
@@ -251,6 +252,20 @@ class MetricsManager:
             >>> queue_size.dec(5)
         """
         return self._backend.gauge(self._ns(name), description, labels)
+
+    def observable_gauge(self, name: str, description: str, callback: Callable[[], float | None]) -> bool:
+        """
+        Register a gauge whose value *callback* reads at every collection.
+
+        Args:
+            name: Metric name (prefixed like every other metric)
+            description: Human-readable description
+            callback: Reads the current value; None reports nothing that collection
+
+        Returns:
+            Whether the backend registered it. Only the OpenTelemetry backend does.
+        """
+        return self._backend.observable_gauge(self._ns(name), description, callback)
 
     def histogram(
         self,
