@@ -112,6 +112,7 @@ depth.labels(shard="a").inc(3)
 depth.labels(shard="a").dec(1)
 depth.set(5)
 metrics.update()
+metrics.update()
 """
 
 
@@ -221,7 +222,7 @@ class TestOpenTelemetryBackend:
 
     @otel_required
     def test_gauge_exports_as_otlp_gauge(self):
-        """A gauge reaches the collector as an OTLP Gauge holding its current value, not a Sum."""
+        """A gauge reaches the collector as an OTLP Gauge holding its current value, on every export."""
         server = _OtlpServer()
         threading.Thread(daemon=True, target=server.serve_forever).start()
         env = {
@@ -246,15 +247,17 @@ class TestOpenTelemetryBackend:
 
         assert result.returncode == 0, result.stderr
         exported = _exported_metrics(bodies=server.bodies, name="queue_depth")
-        assert exported, f"no queue_depth export reached the receiver: {result.stderr!r}"
+        # A value set once, like a service's info or start time, must survive the
+        # exports after the one it was set in, or liveness sees the service vanish.
+        assert len(exported) >= 2, f"queue_depth in {len(exported)} export(s): {result.stderr!r}"
 
-        metric = exported[0]
-        assert metric.WhichOneof("data") == "gauge"
-        values = {}
-        for point in metric.gauge.data_points:
-            labels = tuple((attribute.key, attribute.value.string_value) for attribute in point.attributes)
-            values[labels] = point.as_double
-        assert values == {(("shard", "a"),): 9.0, (): 5.0}
+        for metric in exported:
+            assert metric.WhichOneof("data") == "gauge"
+            values = {}
+            for point in metric.gauge.data_points:
+                labels = tuple((attribute.key, attribute.value.string_value) for attribute in point.attributes)
+                values[labels] = point.as_double
+            assert values == {(("shard", "a"),): 9.0, (): 5.0}
 
     @otel_required
     def test_histogram_prometheus_style_api(self):

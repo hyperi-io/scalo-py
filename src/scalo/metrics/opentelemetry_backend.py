@@ -36,6 +36,7 @@ Configuration (settings.yaml):
 from __future__ import annotations
 
 import os
+import threading
 from dataclasses import dataclass, field
 from typing import Any, Callable
 
@@ -129,31 +130,36 @@ class OtelCounterAdapter:
 
 
 class OtelGaugeAdapter:
-    """Wraps an OTel Gauge with prometheus-client-compatible API.
+    """Backs an OTel observable gauge with a prometheus-client-compatible API.
 
-    Tracks current per-labelset values so ``.inc()`` and ``.dec()`` can record
-    the running total, since an OTel Gauge only records absolute values.
+    Holds the current value of every labelset and reports all of them on each
+    collection. A synchronous OTel Gauge exports a value only in the collection
+    after it was set, so a value set once (a service's info or start time) would
+    vanish from every later export.
     """
 
-    def __init__(
-        self,
-        gauge: Any,
-        label_converter: Callable[[dict[str, Any]], dict[str, Any]],
-    ) -> None:
-        self._gauge = gauge
+    def __init__(self, label_converter: Callable[[dict[str, Any]], dict[str, Any]]) -> None:
         self._label_converter = label_converter
         self._current: dict[tuple[tuple[str, Any], ...], float] = {}
+        self._lock = threading.Lock()
 
     def _key(self, attributes: dict[str, Any]) -> tuple[tuple[str, Any], ...]:
         return tuple(sorted(attributes.items()))
 
     def _set(self, value: float, attributes: dict[str, Any]) -> None:
-        self._current[self._key(attributes)] = float(value)
-        self._gauge.set(float(value), attributes=attributes or None)
+        with self._lock:
+            self._current[self._key(attributes)] = float(value)
 
     def _add(self, delta: float, attributes: dict[str, Any]) -> None:
-        total = self._current.get(self._key(attributes), 0.0) + delta
-        self._set(value=total, attributes=attributes)
+        key = self._key(attributes)
+        with self._lock:
+            self._current[key] = self._current.get(key, 0.0) + delta
+
+    def observe(self, options: Any) -> list[Any]:
+        """Report every labelset's current value; the SDK calls this on each collection."""
+        with self._lock:
+            readings = list(self._current.items())
+        return [Observation(attributes=dict(key) or None, value=value) for key, value in readings]
 
     def labels(self, **kwargs: Any) -> _BoundGauge:
         return _BoundGauge(self, self._label_converter(kwargs))
@@ -197,6 +203,7 @@ class OtelHistogramAdapter:
 try:
     from opentelemetry import metrics
     from opentelemetry.exporter.prometheus import PrometheusMetricReader
+    from opentelemetry.metrics import Observation
     from opentelemetry.sdk.metrics import MeterProvider
     from opentelemetry.sdk.metrics.export import PeriodicExportingMetricReader
     from opentelemetry.sdk.resources import Resource
@@ -679,13 +686,13 @@ class OpenTelemetryBackend(MetricsBackend):
         if cache_key in self._metrics_cache:
             return self._metrics_cache[cache_key]
 
-        gauge = self._meter.create_gauge(
+        adapter = OtelGaugeAdapter(label_converter=self._convert_labels)
+        self._meter.create_observable_gauge(
+            callbacks=[adapter.observe],
             description=description,
             name=otel_name,
             unit="1",
         )
-
-        adapter = OtelGaugeAdapter(gauge, self._convert_labels)
         self._metrics_cache[cache_key] = adapter
         return adapter
 
