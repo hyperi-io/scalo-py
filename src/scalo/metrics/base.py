@@ -6,6 +6,7 @@ enabling backend-agnostic instrumentation.
 """
 
 from abc import ABC, abstractmethod
+from collections.abc import Callable
 from typing import Any
 
 
@@ -60,6 +61,23 @@ class MetricsBackend(ABC):
         Returns:
             Gauge instance (backend-specific)
         """
+
+    def observable_gauge(self, name: str, description: str, callback: Callable[[], float | None]) -> bool:
+        """
+        Register a gauge whose value *callback* reads at every collection.
+
+        The callback returns None to report nothing for that collection.
+
+        Args:
+            name: Metric name
+            description: Human-readable description
+            callback: Reads the current value
+
+        Returns:
+            False here: this backend has no per-collection read, so nothing is
+            registered. Backends that support it override this and return True.
+        """
+        return False
 
     @abstractmethod
     def histogram(

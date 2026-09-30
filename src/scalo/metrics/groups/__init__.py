@@ -31,6 +31,7 @@ from .backpressure import BackpressureMetrics
 from .buffer import BufferMetrics
 from .circuit_breaker import CircuitBreakerMetrics
 from .consumer import ConsumerMetrics
+from .resources import ResourceMetrics
 from .sink import SinkMetrics
 
 __all__ = [
@@ -39,5 +40,6 @@ __all__ = [
     "BufferMetrics",
     "CircuitBreakerMetrics",
     "ConsumerMetrics",
+    "ResourceMetrics",
     "SinkMetrics",
 ]

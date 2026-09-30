@@ -50,6 +50,9 @@ DEFAULT_OTLP_ENDPOINTS = DEFAULT_ENDPOINTS
 # Bound on the shutdown flush, well under a Kubernetes termination grace period.
 SHUTDOWN_FLUSH_MILLIS = 2_000
 
+# prometheus_client's default buckets, without its +Inf (OTLP carries that bucket implicitly).
+DEFAULT_HISTOGRAM_BUCKETS = (0.005, 0.01, 0.025, 0.05, 0.075, 0.1, 0.25, 0.5, 0.75, 1.0, 2.5, 5.0, 7.5, 10.0)
+
 # ---------------------------------------------------------------------------
 # Prometheus-compatible adapter wrappers for OTel instruments
 #
@@ -364,6 +367,7 @@ class OpenTelemetryBackend(MetricsBackend):
         # HTTP Server metrics
         "http_requests_total": "http.server.request.count",
         "http_request_duration_seconds": "http.server.request.duration",
+        "http_server_request_duration_seconds": "http.server.request.duration",
         "http_requests_in_progress": "http.server.active_requests",
         "http_request_size_bytes": "http.server.request.size",
         "http_response_size_bytes": "http.server.response.size",
@@ -406,6 +410,7 @@ class OpenTelemetryBackend(MetricsBackend):
         # HTTP labels
         "method": "http.method",
         "endpoint": "http.route",
+        "status_code": "http.response.status_code",
         "path": "http.target",
         # Task labels
         "task": "task.name",
@@ -696,6 +701,38 @@ class OpenTelemetryBackend(MetricsBackend):
         self._metrics_cache[cache_key] = adapter
         return adapter
 
+    def observable_gauge(self, name: str, description: str, callback: Callable[[], float | None]) -> bool:
+        """
+        Register an OpenTelemetry observable gauge read through *callback* at every collection.
+
+        Args:
+            name: Metric name, reported as given (resource names match scalo-rs's bare names)
+            description: Description
+            callback: Reads the current value; None reports nothing that collection
+
+        Returns:
+            True once registered; False when the backend is disabled.
+        """
+        if not self.enabled:
+            return False
+
+        cache_key = f"observable_gauge:{name}"
+        if cache_key in self._metrics_cache:
+            return True
+
+        def observe(options: Any) -> list[Any]:
+            value = callback()
+            return [] if value is None else [Observation(value=float(value))]
+
+        self._meter.create_observable_gauge(
+            callbacks=[observe],
+            description=description,
+            name=name,
+            unit="1",
+        )
+        self._metrics_cache[cache_key] = observe
+        return True
+
     def histogram(
         self,
         name: str,
@@ -712,7 +749,9 @@ class OpenTelemetryBackend(MetricsBackend):
             name: Metric name (Prometheus format, e.g., "http_request_duration_seconds")
             description: Description
             labels: Label names
-            buckets: Bucket boundaries (handled by views in OTel)
+            buckets: Bucket boundaries in the metric's own unit. Defaults to
+                prometheus_client's seconds buckets, as the Prometheus backend
+                does; the OTel SDK's own default is in milliseconds.
 
         Returns:
             Histogram instance
@@ -727,9 +766,10 @@ class OpenTelemetryBackend(MetricsBackend):
             return self._metrics_cache[cache_key]
 
         histogram = self._meter.create_histogram(
-            name=otel_name,
             description=description,
-            unit="1",
+            explicit_bucket_boundaries_advisory=list(buckets or DEFAULT_HISTOGRAM_BUCKETS),
+            name=otel_name,
+            unit="s" if name.endswith("_seconds") else "1",
         )
 
         adapter = OtelHistogramAdapter(histogram, self._convert_labels)
