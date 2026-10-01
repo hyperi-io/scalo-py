@@ -33,7 +33,7 @@ LOGGER_ENV_VARS = (
 )
 
 # Stdlib loggers setup() strips of their own handlers.
-SELF_HANDLING_LOGGERS = ("uvicorn", "uvicorn.error", "uvicorn.access")
+SELF_HANDLING_LOGGERS = ("uvicorn", "uvicorn.error", "uvicorn.access", "detect-secrets")
 
 
 class StreamDouble(io.StringIO):

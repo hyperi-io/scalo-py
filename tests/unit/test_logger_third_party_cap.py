@@ -6,21 +6,24 @@
 #  License:   Apache-2.0
 #  Copyright: (c) 2026 HYPERI PTY LIMITED
 
-"""setup() caps boto3/botocore/s3transfer/urllib3 at WARNING whatever the app level.
+"""setup() caps boto3/botocore/s3transfer/urllib3/httpx/httpcore at WARNING whatever the app level.
 
 botocore writes request params and raw response bodies at DEBUG, so a Secrets
 Manager SecretString reaches any stdlib handler an app has opened to DEBUG.
+httpx writes every request URL at INFO, presigned query strings included.
 """
 
 import logging
+import sys
 
 import pytest
 from common.fake_secrets import opaque_secret
+from common.log_capture import LOGGER_ENV_VARS, StreamDouble, preserved_stdlib_logging
 from loguru import logger
 
 from scalo.logger.logger import setup
 
-CAPPED = ("boto3", "botocore", "s3transfer", "urllib3")
+CAPPED = ("boto3", "botocore", "s3transfer", "urllib3", "httpx", "httpcore")
 
 
 @pytest.fixture
@@ -35,6 +38,25 @@ def debug_app(monkeypatch, caplog):
         logger.remove()
         for name, level in saved.items():
             logging.getLogger(name).setLevel(level)
+
+
+@pytest.fixture
+def routed(monkeypatch):
+    """Clear the format selectors and put the stdlib loggers setup() rewires back afterwards."""
+    for name in LOGGER_ENV_VARS:
+        monkeypatch.delenv(name, raising=False)
+    with preserved_stdlib_logging():
+        yield
+
+
+def _scalo_stderr(monkeypatch) -> StreamDouble:
+    """Point stderr at a buffer from the test body, where pytest's own capture no longer swaps it.
+
+    setup() routes stdlib records to the scalo console sink, past caplog's handler.
+    """
+    stream = StreamDouble(False)
+    monkeypatch.setattr(sys, "stderr", stream)
+    return stream
 
 
 @pytest.mark.parametrize("name", CAPPED)
@@ -58,14 +80,30 @@ def test_stricter_app_level_is_left_alone(debug_app):
     assert logging.getLogger("urllib3").level == logging.ERROR
 
 
-def test_botocore_debug_record_does_not_reach_root_handler(debug_app):
+def test_botocore_debug_record_does_not_reach_root_handler(debug_app, routed, monkeypatch):
     marker = "response-body-marker-7f3a9c"
+    stream = _scalo_stderr(monkeypatch)
     setup(level="DEBUG", otel_tracing=False)
     logging.getLogger("botocore.parsers").debug("Response body:\n%r", marker)
+    logging.getLogger("botocore.parsers").warning("still routed")
     assert marker not in debug_app.text
+    assert marker not in stream.getvalue()
+    assert "still routed" in stream.getvalue()
 
 
-def test_aws_secret_value_not_logged_at_debug(debug_app, monkeypatch):
+def test_httpx_request_line_with_a_signed_url_is_not_logged(debug_app, routed, monkeypatch):
+    signature = opaque_secret("presigned")
+    stream = _scalo_stderr(monkeypatch)
+    setup(otel_tracing=False)
+    logging.getLogger("httpx").info(
+        'HTTP Request: GET https://bucket.example.com/obj?X-Amz-Signature=%s "HTTP/1.1 200 OK"', signature
+    )
+    logging.getLogger("httpx").warning("still routed")
+    assert signature not in stream.getvalue()
+    assert "still routed" in stream.getvalue()
+
+
+def test_aws_secret_value_not_logged_at_debug(debug_app, routed, monkeypatch):
     """Real boto3 round trip against moto: the value never reaches a DEBUG handler."""
     moto = pytest.importorskip("moto")
     from scalo.secrets.providers.aws import BOTO3_AVAILABLE, AWSProvider
@@ -78,6 +116,7 @@ def test_aws_secret_value_not_logged_at_debug(debug_app, monkeypatch):
     region = "ap-southeast-2"
     monkeypatch.setenv("AWS_DEFAULT_REGION", region)
     secret = opaque_secret("secretstring")
+    stream = _scalo_stderr(monkeypatch)
 
     setup(level="DEBUG", otel_tracing=False)
     with moto.mock_aws():
@@ -86,3 +125,4 @@ def test_aws_secret_value_not_logged_at_debug(debug_app, monkeypatch):
         assert provider.get_sync("cap-probe").data == secret.encode()
 
     assert secret not in debug_app.text
+    assert secret not in stream.getvalue()

@@ -20,6 +20,12 @@ Behaviour and API changes that need a consumer adjustment, indexed by the scalo 
 
 **Consumer adjustment** -- build any `uvicorn.Config` after `setup()` with `log_config=None`, or uvicorn's own handlers come back. An app that relies on its own root handler sets `logging.intercept_stdlib: false`.
 
+### Scrubbed tracebacks, bounded fields, httpx capped (BEHAVIOUR CHANGE)
+
+Tracebacks are now formatted the way the stdlib formats them and scrubbed before any sink writes them, in every format; loguru's extended frames above the `except` are gone. Keys and strings inside a field's containers are scrubbed up to 64 per record, and the rest of a larger list or dict is elided with a count, see [core-pillars/LOGGING.md](core-pillars/LOGGING.md#fields). `httpx` and `httpcore` join the loggers capped at WARNING, because their INFO request lines carry whole URLs.
+
+**Consumer adjustment** -- a sink added with `logger.add()` after `setup()` sees `record["extra"]` as the scrubbed fields in plain JSON data, not the objects passed in. An app that wants httpx's request lines sets `logging.getLogger("httpx").setLevel(logging.INFO)` after `setup()`, knowing a signed URL goes out whole.
+
 ### Internal Kafka group ids derive from the client's config (BEHAVIOUR CHANGE)
 
 The consumer that `KafkaClient`, `AsyncKafkaClient` and `ReadOnlyKafkaClient` build for watermark and offset-for-time queries used fixed group ids of scalo's own: `scalo-offset-lookup-<n>`, `scalo-watermark-<n>`, `scalo-async-<n>`, `scalo-async-wm-<n>` and `scalo-readonly-<n>`, where `<n>` was the Python object id of the client. A broker granting groups by prefix refused all five, logging `GroupAuthorizationFailed`. They are now one id, `<group.id>-admin`, falling back to `<client.id>-admin` and then `scalo-admin`. See [transport/KAFKA.md](transport/KAFKA.md), "Internal consumer groups and broker ACLs".
