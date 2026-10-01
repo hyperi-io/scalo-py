@@ -76,7 +76,7 @@ class CommonArgs:
     """
 
     log_format: str | None = None
-    """Log output format (json, text, auto). ``None`` = not specified."""
+    """Log output format (json, text, auto; console, pretty and human mean text). ``None`` = not specified."""
 
     metrics_addr: str = "0.0.0.0:9090"
     """Metrics server bind address."""
@@ -113,8 +113,9 @@ class CommonArgs:
     def effective_log_format(self, config: Any | None = None) -> str:
         """Resolve the effective log format, same precedence as the level.
 
-        ``auto`` is the hard-coded floor: JSON in a container, human-readable
-        text on a terminal.
+        ``auto`` is the hard-coded floor, resolved by the logger: JSON when
+        ``OTEL_EXPORTER_OTLP_ENDPOINT`` is set, text in CI, text when stderr
+        is a TTY, JSON otherwise.
         """
         if self.log_format:
             return self.log_format
@@ -423,7 +424,7 @@ def _build_typer_app(service_app: ServiceApp) -> Any:
         log_format: str | None = Option(
             None,
             "--log-format",
-            help="Log format (json, text, auto) [default: config, else auto]",
+            help="Log format: json, text, or auto (JSON unless stderr is a TTY) [default: config, else auto]",
             envvar="LOG_FORMAT",
         ),
         metrics_addr: str = Option(

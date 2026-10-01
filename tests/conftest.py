@@ -30,6 +30,20 @@ def _reset_scalo_env_prefix():
     _ec._metric_prefix_override = None
 
 
+@pytest.fixture(scope="session", autouse=True)
+def _drop_logger_sinks_at_session_end():
+    """Remove every loguru sink once the session ends.
+
+    A sink a test left on a since-closed stream would otherwise report each
+    record logged at interpreter exit, OpenTelemetry's shutdown warnings
+    among them, as a loguru handler error.
+    """
+    yield
+    from loguru import logger
+
+    logger.remove()
+
+
 # Enable DEBUG logging for all tests
 os.environ["LOG_LEVEL"] = "DEBUG"
 

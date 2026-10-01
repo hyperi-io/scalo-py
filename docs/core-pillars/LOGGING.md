@@ -23,20 +23,58 @@ except Exception:
 
 ## Format selection
 
-Format is driven by the explicit `LOG_FORMAT` env var, with a TTY
-fallback when unset:
+The console sink writes JSON or text. The first concrete selector wins: the `log_format` argument (`--log-format` on a `ServiceApp`), then `LOG_FORMAT`, then `logging.format`. `auto`, blank and unrecognised values defer to the next one.
 
-| `LOG_FORMAT` | Effect |
-|--------------|--------|
-| `json` | JSON-per-line for log aggregators |
-| `console` | Colourised, human-readable |
-| `text` | Plain text, no colours |
-| `logfmt` | `key=value` pairs |
-| unset | Auto-detect: console on TTY, text otherwise |
+| Selector | Output |
+|----------|--------|
+| `json` | One flat JSON object per line, see [JSON records](#json-records) |
+| `text` | A human-readable line with the fields as `key=value`; `console`, `pretty` and `human` are aliases |
+| `auto`, or nothing set | JSON when `OTEL_EXPORTER_OTLP_ENDPOINT` is set, text in CI, text when stderr is a TTY, JSON otherwise |
 
-CI environments override autodetect to ASCII-only text format. Set
-`NO_LOGGER_CONFIG=1` to disable auto-configuration if you need to wire
-Loguru yourself.
+So a service in a container logs JSON with no configuration, and the same code in a terminal logs text. An unrecognised value is treated as `auto` and reported with a warning once the sinks are up. `json`, `text`, `pretty`, `human` and `auto` are also the values scalo-rs accepts; `console` is scalo-py only.
+
+Set `NO_LOGGER_CONFIG=1` to disable auto-configuration if you need to wire Loguru yourself.
+
+---
+
+## Fields
+
+Keyword arguments and `logger.bind()` context are the record's fields, and every format renders them.
+
+- Text appends them after the message as `key=value`. A value is quoted, JSON-style, when it is empty or holds a space, `=`, `"` or a control character. Non-string values render as JSON: `true`, `null`, `3`. A record with no fields gets nothing appended.
+- JSON puts them under `fields`.
+
+```text
+2026-10-01T20:47:42.256+1000 | WARNING  | app.tls:load:7 - key rejected stderr="openssl: bad key" sigma_id=abc123
+```
+
+The scrub filter runs on the fields before either format sees them. A sensitive key masks its value at any depth, strings are scrubbed at any depth, and any other object is rendered with `str()` and then scrubbed.
+
+---
+
+## JSON records
+
+```json
+{"timestamp": "2026-10-01T10:47:34.727003Z", "level": "WARNING", "target": "app.tls", "function": "load", "line_number": 7, "message": "key rejected", "fields": {"stderr": "openssl: bad key", "sigma_id": "abc123"}}
+```
+
+| Key | Content |
+|-----|---------|
+| `timestamp` | RFC 3339 in UTC, microseconds |
+| `level` | loguru level name: `TRACE`, `DEBUG`, `INFO`, `SUCCESS`, `WARNING`, `ERROR`, `CRITICAL` |
+| `target` | Logger name: the calling module |
+| `function`, `line_number` | Call site |
+| `message` | The scrubbed message, emojis as ASCII tokens |
+| `fields` | The record's fields as an object, `{}` when there are none |
+| `exception` | The formatted traceback, present only when one was logged |
+
+Fields sit under one key so a field named `level` or `message` cannot overwrite the record's own. `timestamp`, `level`, `target`, `line_number` and `fields` are the keys scalo-rs writes too. scalo-rs differs in three places: `message` sits inside `fields`, there is no `function`, and a warning is `WARN`.
+
+---
+
+## Colour
+
+Text is coloured only when stderr is a TTY. `LOG_COLOR` (`true`/`false`) wins, then `NO_COLOR` (set to anything turns colour off), then `logging.color`, then the TTY check. JSON and CI output are never coloured.
 
 ---
 
@@ -44,14 +82,12 @@ Loguru yourself.
 
 ```bash
 LOG_LEVEL=DEBUG              # DEBUG, INFO, WARNING, ERROR, CRITICAL
-LOG_FORMAT=json              # json, text, console, logfmt
-LOG_OUTPUT=stdout            # stdout, stderr, file
-LOG_COLOR=false              # Disable colours (also NO_COLOR=1)
-LOG_TIMESTAMP_FORMAT=rfc3339 # iso8601, rfc3339, unix, epoch
-LOG_CALLER=true              # Source file:line
-LOG_STACKTRACE_LEVEL=ERROR   # Minimum level for tracebacks
+LOG_FORMAT=json              # json, text, auto (console, pretty, human mean text)
+LOG_COLOR=false              # true/false; NO_COLOR=1 also turns colour off
 LOG_ENQUEUE=0                # Sync sinks (default: fire-and-forget)
 ```
+
+`logging.intercept_stdlib` (default `true`) is read from config, see [Stdlib logging](#stdlib-logging). `get_logging_config()` also reads `LOG_OUTPUT`, `LOG_TIMESTAMP_FORMAT`, `LOG_CALLER` and `LOG_STACKTRACE_LEVEL`, but `setup()` does not apply them: the console sink always writes to stderr, with RFC 3339 timestamps and the call site.
 
 `NO_LOGGER_CONFIG` and `LOG_ENQUEUE` are scalo control vars, so they
 take the app's env prefix like every other one: bare by default,
@@ -97,6 +133,18 @@ and only where nothing reads a secret.
 
 ---
 
+## Stdlib logging
+
+Libraries that log through the stdlib `logging` module -- uvicorn, clickhouse_connect, botocore, and scalo's own secrets and config reloader -- go through the same sinks. `setup()` makes the root logger's only handler one that re-emits each record through loguru, so it gets the same format, the same scrubbing, and its `extra=` dict as fields. The call site reported is the library's, not the handler's.
+
+- The root logger's other handlers are removed, so nothing is written twice. The root level follows `level`.
+- `uvicorn`, `uvicorn.error` and `uvicorn.access` lose their own handlers and propagate.
+- uvicorn reattaches its handlers whenever a `uvicorn.Config` is built, so build it with `log_config=None` after `setup()`.
+
+It is on by default. Turn it off with `logging.intercept_stdlib: false` or `setup(intercept_stdlib=False)`; that also removes a handler an earlier `setup()` installed.
+
+---
+
 ## CI autodetect
 
 `setup()` switches to ASCII-only output and disables colours when any
@@ -106,7 +154,8 @@ custom sink that emits workflow commands -- `::error::`, `::warning::`,
 `::debug::` -- so log messages annotate the run UI.
 
 CI mode also implies `use_emojis=False`. Override via `setup(ci_mode=False)`
-if you really need colours in CI.
+if you really need colours in CI. CI turns `auto` into text; an explicit
+`json` still writes JSON.
 
 ---
 
