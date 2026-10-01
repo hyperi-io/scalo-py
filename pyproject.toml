@@ -396,6 +396,10 @@ index-strategy = "unsafe-best-match"
 # version published in the last 7 days. CVE fixes bypass via a temporary
 # per-package exclude-newer-package entry, not by lowering this.
 exclude-newer = "7 days"
+# Temporary CVE bypass: pyjwt 2.15.1 (CVE-2026-101918, uploaded 2026-09-28)
+# and virtualenv 21.14.1 (PYSEC-2026-4011..4014, uploaded 2026-09-29). Remove
+# once the global 7-day cooldown naturally clears both (after 2026-10-06).
+exclude-newer-package = { pyjwt = "2026-10-02", virtualenv = "2026-10-02" }
 # Bleeding-edge policy: force latest majors even when transitive deps
 # specify older lower bounds. Re-evaluate at each /deps pass; remove
 # overrides once the entire transitive tree has caught up.
@@ -408,7 +412,7 @@ override-dependencies = [
     # Security pins (transitive) -- CVE remediation 2026-06-13. Security
     # fixes are exempt from the release-age cooldown.
     "aiohttp>=3.14.3",        # heap OOB read in the C parser, smuggling, unnegotiated deflate (Dependabot 8/9/10)
-    "pyjwt>=2.14.0",          # CVE-2026-101917, CVE-2026-102265..102269, CVE-2026-102271..102274 (pip-audit)
+    "pyjwt>=2.15.0",          # CVE-2026-101917, CVE-2026-101918, CVE-2026-102265..102269, CVE-2026-102271..102274 (pip-audit)
     "pip>=26.2",              # PYSEC-2026-196, PYSEC-2026-3721 -- build-env installer (pip-audit)
     "cryptography>=50.0.0",   # PKCS#7 Bleichenbacher oracle (Dependabot 11)
     "msgpack>=1.2.1",         # GHSA-6v7p-g79w-8964 (pip-audit)
