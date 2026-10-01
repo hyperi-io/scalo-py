@@ -107,6 +107,7 @@ See: get_mount_config(), detect_environment(), get_container_config()
 
 import os
 import tempfile
+import warnings
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Literal
@@ -1096,9 +1097,17 @@ def get_logging_config():
         else:
             log_file = str(Path("/var/log") / APP_NAME / log_file)
 
+    # Only an explicit off value removes the bridge, which is what scrubs stdlib records.
     intercept_stdlib = logging_config.get("intercept_stdlib", True)
     if isinstance(intercept_stdlib, str):
-        intercept_stdlib = intercept_stdlib.lower() in ("true", "1", "yes")
+        word = intercept_stdlib.strip().lower()
+        if word not in ("true", "1", "yes", "on", "false", "0", "no", "off"):
+            warnings.warn(
+                f"logging.intercept_stdlib={intercept_stdlib!r} is not a boolean; keeping the stdlib bridge on",
+                UserWarning,
+                stacklevel=2,
+            )
+        intercept_stdlib = word not in ("false", "0", "no", "off")
 
     return {
         "level": log_level,

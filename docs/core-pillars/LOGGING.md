@@ -48,7 +48,11 @@ Keyword arguments and `logger.bind()` context are the record's fields, and every
 2026-10-01T20:47:42.256+1000 | WARNING  | app.tls:load:7 - key rejected stderr="openssl: bad key" sigma_id=abc123
 ```
 
-The scrub filter runs on the fields before either format sees them. A sensitive key masks its value at any depth, strings are scrubbed at any depth, and any other object is rendered with `str()` and then scrubbed.
+The scrub filter runs on the fields before either format sees them. A sensitive key masks its value at any depth, and so does a sensitive name heading a two-item pair such as `("authorization", "Basic ...")`. Keys and strings are scrubbed at any depth, any other object is rendered with `str()` and then scrubbed, and NaN and the infinities become the strings `"NaN"`, `"Infinity"` and `"-Infinity"`.
+
+The filter never fails the record. A value whose `str()` raises renders as `<unprintable TypeName>`, a reference cycle as `<cycle>`, and nesting past 32 levels as `<depth limit>`. Scrubbing costs about 0.15 ms a string on the caller's thread, so a record scrubs at most 64 keys and strings inside its fields' containers. Past that, the rest of each list becomes `"<elided: N more items>"` and the rest of each dict an `"<elided>"` entry. Top-level fields are never elided.
+
+After the filter has run, `record["extra"]` holds the scrubbed fields as plain JSON data, which is what a sink you add yourself sees.
 
 ---
 
@@ -66,7 +70,7 @@ The scrub filter runs on the fields before either format sees them. A sensitive 
 | `function`, `line_number` | Call site |
 | `message` | The scrubbed message, emojis as ASCII tokens |
 | `fields` | The record's fields as an object, `{}` when there are none |
-| `exception` | The formatted traceback, present only when one was logged |
+| `exception` | The traceback as the stdlib formats it, scrubbed, present only when one was logged |
 
 Fields sit under one key so a field named `level` or `message` cannot overwrite the record's own. `timestamp`, `level`, `target`, `line_number` and `fields` are the keys scalo-rs writes too. scalo-rs differs in three places: `message` sits inside `fields`, there is no `function`, and a warning is `WARN`.
 
@@ -123,10 +127,12 @@ config path is reported straight after.
 
 ## Library loggers
 
-`setup()` raises the stdlib `boto3`, `botocore`, `s3transfer` and `urllib3`
-loggers to WARNING, whatever `level` is. At DEBUG botocore writes request
-params and response bodies, and a Secrets Manager `SecretString` is one of
-them. A level the app already set higher is left alone.
+`setup()` raises the stdlib `boto3`, `botocore`, `s3transfer`, `urllib3`,
+`httpx` and `httpcore` loggers to WARNING, whatever `level` is. At DEBUG
+botocore writes request params and response bodies, and a Secrets Manager
+`SecretString` is one of them. At INFO httpx writes every request URL whole,
+so a presigned S3 or SAS URL goes out with its signature. A level the app
+already set higher is left alone.
 
 Need their DEBUG output? Set the logger's level yourself AFTER `setup()`,
 and only where nothing reads a secret.
@@ -138,8 +144,9 @@ and only where nothing reads a secret.
 Libraries that log through the stdlib `logging` module -- uvicorn, clickhouse_connect, botocore, and scalo's own secrets and config reloader -- go through the same sinks. `setup()` makes the root logger's only handler one that re-emits each record through loguru, so it gets the same format, the same scrubbing, and its `extra=` dict as fields. The call site reported is the library's, not the handler's.
 
 - The root logger's other handlers are removed, so nothing is written twice. The root level follows `level`.
-- `uvicorn`, `uvicorn.error` and `uvicorn.access` lose their own handlers and propagate.
+- `uvicorn`, `uvicorn.error`, `uvicorn.access` and `detect-secrets` lose their own handlers and propagate.
 - uvicorn reattaches its handlers whenever a `uvicorn.Config` is built, so build it with `log_config=None` after `setup()`.
+- A handler a library attaches after `setup()` still writes unscrubbed, and `logging.basicConfig(force=True)` removes the bridge altogether.
 
 It is on by default. Turn it off with `logging.intercept_stdlib: false` or `setup(intercept_stdlib=False)`; that also removes a handler an earlier `setup()` installed.
 

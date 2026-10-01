@@ -22,11 +22,15 @@ ENV overrides:
 See docs/core-pillars/LOGGING.md for examples and configuration details.
 """
 
+import contextlib
 import inspect
 import json
 import logging
+import math
 import os
 import sys
+import traceback
+from collections.abc import Callable
 from datetime import UTC
 
 from loguru import logger as _logger
@@ -223,36 +227,191 @@ def _scrub_level_enabled(level_name: str, log_levels) -> bool:
 
 
 class _Fields(dict):
-    """A record's keyword fields, as loguru's ``record["extra"]``.
+    """A record's keyword fields, as loguru's ``record["extra"]`` once the scrub filter has run.
 
-    It stays a plain dict to every reader. The scrub filter sets
-    :attr:`output`, the scrubbed JSON-native copy both renderers use, and
-    the text formats render it with the ``{extra:fields}`` format spec.
+    Its items are the scrubbed fields as JSON-native data, so every reader sees
+    plain data and an enqueued record pickles whatever the caller passed. The
+    text formats render it with the ``{extra:fields}`` and ``{extra:exception}``
+    format specs.
 
     Attributes:
-        output: Scrubbed, JSON-native copy of the fields, set by the filter.
+        exception_text: The record's traceback, formatted and scrubbed; empty when none was logged.
+        scrubbed_by: Identity of the scrubber that produced it, so a second sink skips the work.
     """
 
-    __slots__ = ("output",)
+    __slots__ = ("exception_text", "scrubbed_by")
+
+    def __init__(self, *args, **kwargs) -> None:
+        super().__init__(*args, **kwargs)
+        self.exception_text = ""
+        self.scrubbed_by = 0
 
     def __format__(self, spec: str) -> str:
         if spec == "fields":
-            return _render_fields(getattr(self, "output", self))
+            return _render_fields(self)
+        if spec == "exception":
+            text = getattr(self, "exception_text", "")
+            return f"\n{text}" if text else ""
         return super().__format__(spec)
 
 
+# Containers nested deeper than this inside a field render as a placeholder.
+_MAX_FIELD_DEPTH = 32
+
+# Strings a record scrubs inside its field containers; each costs ~0.15 ms on the caller's thread.
+_FIELD_SCRUB_BUDGET = 64
+
+_ELIDED = "<elided>"
+
+# Field names one filter remembers scrubbed results for before it starts over.
+_KEY_CACHE_SIZE = 4096
+
+# JSON leaves C1 controls and U+2028/U+2029 raw under ensure_ascii=False, and line splitters break on them.
+_LINE_BREAK_ESCAPES = str.maketrans({code: f"\\u{code:04x}" for code in (*range(0x80, 0xA0), 0x2028, 0x2029)})
+
+
+def _unprintable(value) -> str:
+    """Return the placeholder for a value that could not be rendered."""
+    return f"<unprintable {type(value).__name__}>"
+
+
+def _finite(value: float) -> float | str:
+    """Return ``value``, or its name as a string when it is NaN or infinite, which strict JSON parsers reject."""
+    if math.isfinite(value):
+        return value
+    if math.isnan(value):
+        return "NaN"
+    return "Infinity" if value > 0 else "-Infinity"
+
+
+class _FieldWalker:
+    """Convert one record's fields to scrubbed JSON-native data, never raising.
+
+    A sensitive key, or the name in a ``(name, value)`` pair, masks its value.
+    Keys and strings are scrubbed, any other object is rendered with ``str()``
+    and scrubbed, and a non-finite float becomes a string. Inside containers,
+    a cycle, nesting past :data:`_MAX_FIELD_DEPTH` and anything past the
+    :data:`_FIELD_SCRUB_BUDGET` render as placeholders; top-level fields are
+    never elided.
+    """
+
+    __slots__ = ("_budget", "_path", "_scrub", "_scrub_key", "_sensitive")
+
+    def __init__(self, scrub: Callable[[str], str], scrub_key: Callable[[str], str], sensitive: set[str]) -> None:
+        self._scrub = scrub
+        self._scrub_key = scrub_key
+        self._sensitive = sensitive
+        self._budget = _FIELD_SCRUB_BUDGET
+        self._path: set[int] = set()
+
+    def fields(self, extra: dict) -> dict:
+        """Return the scrubbed copy of a record's top-level fields."""
+        output = {}
+        for key, value in extra.items():
+            name, sensitive = self._key(key, nested=False)
+            output[name] = MASK_VALUE if sensitive else self._value(value, 0)
+        return output
+
+    def _charge(self, nested: bool) -> bool:
+        """Charge one string to the budget when it sits inside a container; False once it is spent."""
+        if not nested:
+            return True
+        if self._budget <= 0:
+            return False
+        self._budget -= 1
+        return True
+
+    def _text(self, text: str, nested: bool) -> str:
+        """Scrub one string value."""
+        return self._scrub(text) if self._charge(nested) else _ELIDED
+
+    def _key(self, key, *, nested: bool) -> tuple[str, bool]:
+        """Return a key's scrubbed text and whether it names a sensitive field."""
+        try:
+            raw = key if isinstance(key, str) else str(key)
+        except Exception:
+            return _unprintable(key), False
+        sensitive = raw.lower() in self._sensitive
+        try:
+            return (self._scrub_key(raw) if self._charge(nested) else _ELIDED), sensitive
+        except Exception:
+            return _unprintable(key), sensitive
+
+    def _value(self, value, depth: int):
+        """Return one value as scrubbed JSON-native data, or a placeholder when it cannot be rendered."""
+        try:
+            if value is None or isinstance(value, (bool, int)):
+                return value
+            if isinstance(value, float):
+                return _finite(value)
+            if isinstance(value, str):
+                return self._text(value, depth > 0)
+            if isinstance(value, (dict, list, tuple)):
+                return self._container(value, depth)
+            return self._text(str(value), depth > 0)
+        except Exception:
+            return _unprintable(value)
+
+    def _container(self, value: dict | list | tuple, depth: int) -> dict | list | str:
+        if depth >= _MAX_FIELD_DEPTH:
+            return "<depth limit>"
+        marker = id(value)
+        if marker in self._path:
+            return "<cycle>"
+        self._path.add(marker)
+        try:
+            if isinstance(value, dict):
+                return self._mapping(value, depth + 1)
+            return self._sequence(value, depth + 1)
+        finally:
+            self._path.discard(marker)
+
+    def _mapping(self, value: dict, depth: int) -> dict:
+        output = {}
+        for index, (key, item) in enumerate(value.items()):
+            if self._budget <= 0:
+                output[_ELIDED] = f"{len(value) - index} more entries"
+                break
+            name, sensitive = self._key(key, nested=True)
+            output[name] = MASK_VALUE if sensitive else self._value(item, depth)
+        return output
+
+    def _sequence(self, value: list | tuple, depth: int) -> list:
+        if len(value) == 2 and self._names_a_secret(value[0]):
+            return [self._value(value[0], depth), MASK_VALUE]
+        output = []
+        for index, item in enumerate(value):
+            if self._budget <= 0:
+                output.append(f"<elided: {len(value) - index} more items>")
+                break
+            output.append(self._value(item, depth))
+        return output
+
+    def _names_a_secret(self, item) -> bool:
+        """Return True when ``item`` is a sensitive name, as in an ``(authorization, value)`` header pair."""
+        if isinstance(item, bytes):
+            item = item.decode("latin-1")
+        return isinstance(item, str) and item.lower() in self._sensitive
+
+
+def _render_exception(exception) -> str:
+    """Format a loguru record's exception as the stdlib prints it, without the trailing newline."""
+    exc_type, value, tb = exception
+    return "".join(traceback.format_exception(exc_type, value, tb)).rstrip("\n")
+
+
 def _render_field_value(value) -> str:
-    """Render one field value for a text line, quoting it when it would not parse back."""
+    """Render one field key or value for a text line, quoting it when it would not parse back."""
     text = value if isinstance(value, str) else json.dumps(value, default=str, ensure_ascii=False)
-    # A space, `=` or `"` would split the pair; a control character would break the line.
+    # A space, `=` or `"` would split the pair; a control or separator character would break the line.
     if not text or not text.isprintable() or any(char in ' ="' for char in text):
-        return json.dumps(text, ensure_ascii=False)
+        return json.dumps(text, ensure_ascii=False).translate(_LINE_BREAK_ESCAPES)
     return text
 
 
 def _render_fields(fields: dict) -> str:
     """Render fields as `` key=value`` pairs, each with a leading space; empty renders nothing."""
-    return "".join(f" {key}={_render_field_value(value)}" for key, value in fields.items())
+    return "".join(f" {_render_field_value(key)}={_render_field_value(value)}" for key, value in fields.items())
 
 
 def _utc_rfc3339(moment) -> str:
@@ -260,7 +419,7 @@ def _utc_rfc3339(moment) -> str:
     return moment.astimezone(UTC).isoformat(timespec="microseconds").replace("+00:00", "Z")
 
 
-def _json_line(record, exception_text: str = "") -> str:
+def _json_line(record) -> str:
     """Render one record as a flat JSON object followed by a newline.
 
     Keys: ``timestamp``, ``level``, ``target`` (the logger name), ``function``,
@@ -275,24 +434,33 @@ def _json_line(record, exception_text: str = "") -> str:
         "function": record["function"],
         "line_number": record["line"],
         "message": record["message"],
-        "fields": getattr(extra, "output", extra),
+        "fields": extra,
     }
+    exception_text = getattr(extra, "exception_text", "")
     if exception_text:
-        entry["exception"] = exception_text.rstrip("\n")
-    return json.dumps(entry, default=str, ensure_ascii=False) + "\n"
+        entry["exception"] = exception_text
+    return json.dumps(entry, default=str, ensure_ascii=False).translate(_LINE_BREAK_ESCAPES) + "\n"
 
 
-def _exception_only_format(_record) -> str:
-    """Format the JSON sink's message as the rendered traceback alone."""
-    return "{exception}"
+def _fixed_format(template: str) -> Callable[[dict], str]:
+    """Return a loguru format callable for ``template``.
+
+    loguru appends its own ``{exception}``, rendered from the live exception and
+    never scrubbed, to a format given as a string, and appends nothing to a
+    callable, so every scalo sink formats through one.
+    """
+
+    def format_record(_record: dict) -> str:
+        return template
+
+    return format_record
 
 
 class _JsonSink:
     """Stream sink writing one :func:`_json_line` per record.
 
-    loguru renders the traceback before an enqueued record leaves the logging
-    thread, so the handler formats with :func:`_exception_only_format` and the
-    sink receives that text as the message.
+    The filter has already formatted and scrubbed the traceback onto the
+    record's fields, so the handler's own format text is empty and unused.
     """
 
     def __init__(self, stream) -> None:
@@ -300,7 +468,7 @@ class _JsonSink:
 
     def write(self, message) -> None:
         """Write the record carried by ``message`` as one JSON line."""
-        self._stream.write(_json_line(message.record, str(message)))
+        self._stream.write(_json_line(message.record))
 
     def flush(self) -> None:
         """Flush the underlying stream."""
@@ -362,90 +530,91 @@ def _add_emoji_to_record(
             return sensitive_filter._mask_sensitive_string(text)
         return text
 
-    def _scrub_value(value, level_name: str, sensitive_keys: set[str]):
-        """Return ``value`` with sensitive keys masked and strings scrubbed at any depth.
+    def _scrub_exception_chain(exc: BaseException | None, level_name: str) -> None:
+        """Scrub the string args of ``exc``, its causes, contexts and group members, in place."""
+        seen: set[int] = set()
+        pending = [exc]
+        while pending:
+            current = pending.pop()
+            if current is None or id(current) in seen:
+                continue
+            seen.add(id(current))
+            # A type with read-only args keeps them; the rendered traceback is scrubbed regardless.
+            with contextlib.suppress(AttributeError, TypeError):
+                current.args = tuple(_scrub_str(a, level_name) if isinstance(a, str) else a for a in current.args)
+            pending.extend((current.__cause__, current.__context__))
+            if isinstance(current, BaseExceptionGroup):
+                pending.extend(current.exceptions)
 
-        Containers come back as new plain dicts, lists and tuples; any other
-        object is returned unchanged and is scrubbed by ``_to_output`` when it
-        is rendered.
-        """
-        if isinstance(value, str):
-            return _scrub_str(value, level_name)
-        if isinstance(value, dict):
-            return {
-                key: MASK_VALUE
-                if str(key).lower() in sensitive_keys
-                else _scrub_value(item, level_name, sensitive_keys)
-                for key, item in value.items()
-            }
-        if isinstance(value, (list, tuple)):
-            items = [_scrub_value(item, level_name, sensitive_keys) for item in value]
-            return items if isinstance(value, list) else tuple(items)
-        return value
+    def _scrubbed_traceback(exception, level_name: str) -> str:
+        """Return the record's traceback formatted and scrubbed, or a placeholder if that fails."""
+        try:
+            _scrub_exception_chain(exception.value, level_name)
+            return _scrub_str(_render_exception(exception), level_name)
+        except Exception as exc:
+            return f"<traceback not logged: {type(exc).__name__} while rendering it>"
 
-    def _to_output(value, level_name: str):
-        """Return JSON-native data for an already-scrubbed field value."""
-        if value is None or isinstance(value, (str, bool, int, float)):
-            return value
-        if isinstance(value, dict):
-            return {str(key): _to_output(item, level_name) for key, item in value.items()}
-        if isinstance(value, (list, tuple)):
-            return [_to_output(item, level_name) for item in value]
-        # str() of an arbitrary object can carry a credential the type-aware pass never saw.
-        return _scrub_str(str(value), level_name)
+    # Every sink setup() adds shares one scrubber, so the first sink's filter does the work for all.
+    scrubbed_by = id(scrubber if scrubber is not None else sensitive_filter)
 
-    def _scrub_extra(record) -> None:
-        """Scrub ``record['extra']`` in place and attach its output copy.
+    # Field names repeat from call to call; a cached result holds only while the sensitive-name set is unchanged.
+    key_cache: dict[tuple[str, str], str] = {}
+    key_cache_names: set[str] = set()
 
-        Key-based redaction runs regardless of scrubber backend and log-level
-        gate; value scrubbing follows the gate. The dict is swapped for a
-        :class:`_Fields` so the text formats can render it.
+    def _scrub_key(text: str, level_name: str, sensitive_keys: set[str]) -> str:
+        """Scrub a field name, reusing the result for a name already seen."""
+        if sensitive_keys != key_cache_names or len(key_cache) >= _KEY_CACHE_SIZE:
+            key_cache.clear()
+            key_cache_names.clear()
+            key_cache_names.update(sensitive_keys)
+        cached = key_cache.get((text, level_name))
+        if cached is None:
+            cached = _scrub_str(text, level_name)
+            key_cache[(text, level_name)] = cached
+        return cached
+
+    def _scrub_record(record) -> None:
+        """Scrub the message, traceback and fields, swapping ``extra`` for a :class:`_Fields`.
+
+        Key-based redaction runs whatever the backend and log-level gate; value
+        scrubbing follows the gate. A part that cannot be scrubbed is replaced
+        by a placeholder, because a filter that raises makes loguru print the
+        raw record to stderr.
         """
         extra = record["extra"]
-        if not isinstance(extra, _Fields):
-            extra = _Fields(extra)
-            record["extra"] = extra
+        if isinstance(extra, _Fields) and getattr(extra, "scrubbed_by", 0) == scrubbed_by:
+            return
 
         level_name = record["level"].name
-        sensitive_keys = SENSITIVE_FIELDS | SensitiveDataFilter._custom_fields
-        for key, value in list(extra.items()):
-            if str(key).lower() in sensitive_keys:
-                extra[key] = MASK_VALUE
-            else:
-                extra[key] = _scrub_value(value, level_name, sensitive_keys)
-        extra.output = {str(key): _to_output(value, level_name) for key, value in extra.items()}
+        try:
+            record["message"] = _scrub_str(record["message"], level_name)
+        except Exception as exc:
+            record["message"] = f"<message not logged: {type(exc).__name__} while scrubbing it>"
 
-    def _scrub_exception_chain(exc: BaseException | None, level_name: str) -> None:
-        """Walk exc chain via __cause__/__context__ and scrub string args in place."""
-        seen: set[int] = set()
-        current = exc
-        while current is not None and id(current) not in seen:
-            seen.add(id(current))
-            if current.args:
-                current.args = tuple(_scrub_str(a, level_name) if isinstance(a, str) else a for a in current.args)
-            current = current.__cause__ or current.__context__
+        fields = _Fields()
+        if record["exception"] is not None:
+            fields.exception_text = _scrubbed_traceback(record["exception"], level_name)
+        try:
+            sensitive_keys = SENSITIVE_FIELDS | SensitiveDataFilter._custom_fields
+            walker = _FieldWalker(
+                lambda text: _scrub_str(text, level_name),
+                lambda text: _scrub_key(text, level_name, sensitive_keys),
+                sensitive_keys,
+            )
+            fields.update(walker.fields(extra))
+        except Exception as exc:
+            fields.clear()
+            fields["<fields not logged>"] = type(exc).__name__
+        fields.scrubbed_by = scrubbed_by
+        record["extra"] = fields
 
     def filter_func(record):
-        """Add emoji to record or convert emojis to text based on settings."""
-        # Apply rate limiting first (before any message modification)
-        # This ensures the rate limit key uses the original message
+        """Scrub the record, then add emoji to it or convert emojis to text."""
+        # Rate limiting keys on the message as the caller wrote it.
         if rate_limit_filter is not None and not rate_limit_filter(record):
-            return False  # Suppress this message
+            return False
 
-        level_name = record["level"].name
-
-        # Apply scrubbing. New path: use Scrubber if provided.
-        # Legacy path: fall back to SensitiveDataFilter._mask_sensitive_string.
-        if isinstance(record["message"], str):
-            record["message"] = _scrub_str(record["message"], level_name)
-
-        # Keyword arguments and bind() context: every format renders these.
-        _scrub_extra(record)
-
-        # Scrub exception chain args (traceback values logged via logger.exception)
-        exc_info = record.get("exception")
-        if exc_info is not None and getattr(exc_info, "value", None) is not None:
-            _scrub_exception_chain(exc_info.value, level_name)
+        _scrub_record(record)
 
         # Then handle emojis
         if use_emojis:
@@ -505,12 +674,13 @@ def _github_actions_sink(message):
         print(text, file=sys.stderr)
 
 
-def _get_log_format(is_file: bool, color_scheme: str = "solarized", ci_mode: bool = False) -> str:
-    """Get log format string based on output type.
+def _get_log_format(is_file: bool, color_scheme: str = "solarized", ci_mode: bool = False) -> Callable[[dict], str]:
+    """Get the loguru format for a text sink.
 
-    Every format ends with the record's keyword fields as `` key=value`` pairs.
-    The record must have passed :func:`_add_emoji_to_record`, which supplies
-    the ``{extra:fields}`` rendering.
+    Every format ends with the record's keyword fields as `` key=value`` pairs,
+    then its scrubbed traceback on the following lines. The record must have
+    passed :func:`_add_emoji_to_record`, which supplies both through the
+    ``{extra:fields}`` and ``{extra:exception}`` format specs.
 
     Args:
         is_file: True if logging to file (ASCII-only), False for console
@@ -518,39 +688,43 @@ def _get_log_format(is_file: bool, color_scheme: str = "solarized", ci_mode: boo
         ci_mode: True to use CI-compatible format (no colors, simple prefix)
 
     Returns:
-        Format string for loguru
+        Format callable for loguru
     """
+    tail = "{extra:fields}{extra:exception}\n"
+
     # File logging: Plain ASCII only (CHARS-POLICY.md requirement)
     if is_file:
-        return "{time:YYYY-MM-DDTHH:mm:ss.SSSZZ} [{level: <8}] {name}:{function}:{line} - {message}{extra:fields}"
+        return _fixed_format(
+            "{time:YYYY-MM-DDTHH:mm:ss.SSSZZ} [{level: <8}] {name}:{function}:{line} - {message}" + tail
+        )
 
     # CI mode: Simple format without ANSI colors for GitHub Actions/GitLab CI
     # Uses prefix format that integrates with CI log parsing
     if ci_mode:
-        return "[{level: <8}] {name}:{function}:{line} - {message}{extra:fields}"
+        return _fixed_format("[{level: <8}] {name}:{function}:{line} - {message}" + tail)
 
     # Console logging with colors
     if color_scheme == "solarized":
-        return (
+        return _fixed_format(
             f"<fg {SOLARIZED['green']}>{{time:YYYY-MM-DDTHH:mm:ss.SSSZZ}}</fg {SOLARIZED['green']}> | "
             f"<level>{{level: <8}}</level> | "
             f"<fg {SOLARIZED['cyan']}>{{name}}</fg {SOLARIZED['cyan']}>:"
             f"<fg {SOLARIZED['cyan']}>{{function}}</fg {SOLARIZED['cyan']}>:"
             f"<fg {SOLARIZED['cyan']}>{{line}}</fg {SOLARIZED['cyan']}> - "
-            f"<level>{{message}}</level>{{extra:fields}}"
+            f"<level>{{message}}</level>" + tail
         )
-    else:
-        return (
-            "<green>{time:YYYY-MM-DDTHH:mm:ss.SSSZZ}</green> | "
-            "<level>{level: <8}</level> | "
-            "<cyan>{name}</cyan>:<cyan>{function}</cyan>:<cyan>{line}</cyan> - "
-            "<level>{message}</level>{extra:fields}"
-        )
+    return _fixed_format(
+        "<green>{time:YYYY-MM-DDTHH:mm:ss.SSSZZ}</green> | "
+        "<level>{level: <8}</level> | "
+        "<cyan>{name}</cyan>:<cyan>{function}</cyan>:<cyan>{line}</cyan> - "
+        "<level>{message}</level>" + tail
+    )
 
 
-# AWS SDK and HTTP pool loggers; at DEBUG botocore writes request params and
-# response bodies, a Secrets Manager SecretString included.
-_CAPPED_LIBRARY_LOGGERS = ("boto3", "botocore", "s3transfer", "urllib3")
+# AWS SDK and HTTP client loggers. At DEBUG botocore writes request params and
+# response bodies, a Secrets Manager SecretString included; at INFO httpx writes
+# every request URL whole, so a presigned URL's signature goes out with it.
+_CAPPED_LIBRARY_LOGGERS = ("boto3", "botocore", "s3transfer", "urllib3", "httpx", "httpcore")
 
 
 def _cap_library_loggers() -> None:
@@ -561,11 +735,14 @@ def _cap_library_loggers() -> None:
             library_logger.setLevel(logging.WARNING)
 
 
-# Loggers that attach their own handlers and stop propagation, so their records never reach the root handler.
-_SELF_HANDLING_LOGGERS = ("uvicorn", "uvicorn.error", "uvicorn.access")
+# Loggers that attach a handler of their own, which writes each record unscrubbed; uvicorn's also stop propagating.
+_SELF_HANDLING_LOGGERS = ("uvicorn", "uvicorn.error", "uvicorn.access", "detect-secrets")
 
 # Attributes every LogRecord carries; anything else on a record came from the caller's ``extra=``.
 _STANDARD_RECORD_ATTRS = frozenset(logging.LogRecord("", 0, "", 0, "", (), None).__dict__) | {"message", "asctime"}
+
+# uvicorn's ``color_message`` repeats the message with ANSI escapes and its ``%`` arguments unformatted.
+_DROPPED_RECORD_ATTRS = _STANDARD_RECORD_ATTRS | {"color_message"}
 
 
 class _InterceptHandler(logging.Handler):
@@ -597,7 +774,7 @@ class _InterceptHandler(logging.Handler):
             if record.stack_info:
                 message = f"{message}\n{record.stack_info}"
             has_exception = bool(record.exc_info) and record.exc_info[0] is not None
-            fields = {key: value for key, value in record.__dict__.items() if key not in _STANDARD_RECORD_ATTRS}
+            fields = {key: value for key, value in record.__dict__.items() if key not in _DROPPED_RECORD_ATTRS}
             logger.bind(**fields).opt(depth=depth, exception=record.exc_info if has_exception else None).log(
                 level, message
             )
@@ -690,10 +867,13 @@ def _resolve_console_format(log_format, config, *, is_tty: bool, ci_mode: bool) 
 
 
 def _unrecognised_format(log_format, config) -> str | None:
-    """Return the first format selector that is not a known ``LOG_FORMAT`` value, if any."""
+    """Return the first unrecognised format selector consulted before a concrete one won, if any."""
     for candidate in _format_candidates(log_format, config):
-        if str(candidate or "").strip().lower() not in _LOG_FORMATS:
+        resolved = _LOG_FORMATS.get(str(candidate or "").strip().lower())
+        if resolved is None:
             return candidate
+        if resolved != "auto":
+            return None
     return None
 
 
@@ -800,16 +980,21 @@ def setup(
               default True)
             - True: The root logger's handlers are replaced by one that
               re-emits through loguru, the root level follows ``level``, and
-              the ``uvicorn`` loggers lose their own handlers and propagate.
+              the ``uvicorn`` and ``detect-secrets`` loggers lose their own
+              handlers and propagate.
               Each stdlib record then gets the same format, ``extra=`` fields
               and scrubbing as a loguru call.
             - False: stdlib logging is left alone, and a handler a previous
               call installed is removed.
 
-    The stdlib ``boto3``, ``botocore``, ``s3transfer`` and ``urllib3`` loggers
-    are raised to WARNING whatever ``level`` is, because botocore writes secret
-    values to DEBUG. An app that needs their DEBUG output sets the level itself
-    after this call.
+    The stdlib ``boto3``, ``botocore``, ``s3transfer``, ``urllib3``, ``httpx``
+    and ``httpcore`` loggers are raised to WARNING whatever ``level`` is,
+    because botocore writes secret values to DEBUG and httpx writes every
+    request URL, signed query string included, to INFO. An app that needs
+    their output sets the level itself after this call.
+
+    Raises:
+        RuntimeError: The console sink is on and ``sys.stderr`` is None.
     """
     # Remove default handler
     logger.remove()
@@ -818,6 +1003,12 @@ def setup(
 
     # Get logging config (lazy import to avoid circular dependency)
     config = _get_logging_config()
+
+    if config.get("console", True) and sys.stderr is None:
+        raise RuntimeError(
+            "The console log sink needs sys.stderr, which is None in this process; "
+            "set logging.console: false or give the process a stderr"
+        )
 
     # A caller-resolved level outranks the config it was resolved from: it has
     # already folded in --verbose/--quiet and the CLI flag.
@@ -911,11 +1102,10 @@ def setup(
             logger.add(
                 _JsonSink(sys.stderr),
                 level=resolved_level,
-                format=_exception_only_format,
+                format=_fixed_format(""),
                 colorize=False,
-                # loguru's diagnose annotations render local-variable VALUES in
-                # tracebacks; those bypass the scrubber (it only sees the record
-                # message/extra/exc.args), so a secret in a local would leak. Off.
+                # loguru still renders its own traceback, which no scalo sink
+                # writes; diagnose would add a repr of every local to that work.
                 diagnose=False,
                 enqueue=enqueue,
                 filter=_add_emoji_to_record(
