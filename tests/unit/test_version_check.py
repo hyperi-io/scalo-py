@@ -315,7 +315,7 @@ class TestLogResponse:
             published_at="2026-01-15T10:00:00Z",
         )
 
-        with caplog.at_level(logging.INFO, logger="hyperi.version_check"):
+        with caplog.at_level(logging.INFO, logger="scalo.version_check"):
             _log_response(config, resp)
 
         assert "new version available" in caplog.text
@@ -334,7 +334,7 @@ class TestLogResponse:
             update_available=True,
         )
 
-        with caplog.at_level(logging.INFO, logger="hyperi.version_check"):
+        with caplog.at_level(logging.INFO, logger="scalo.version_check"):
             _log_response(config, resp)
 
         assert "new version available" in caplog.text
@@ -351,7 +351,7 @@ class TestLogResponse:
             update_available=False,
         )
 
-        with caplog.at_level(logging.DEBUG, logger="hyperi.version_check"):
+        with caplog.at_level(logging.DEBUG, logger="scalo.version_check"):
             _log_response(config, resp)
 
         assert "latest version" in caplog.text

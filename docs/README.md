@@ -19,7 +19,7 @@ Python extras pull in which deps.
 | Import this | And these come along | No need to |
 |-------------|----------------------|------------|
 | `from scalo import config` | 7-layer cascade, env-var nesting, `.env`, sensitive masking | Wire dynaconf, write a settings loader |
-| `from scalo import logger` | Loguru-backed structured logs, JSON-in-container / human-on-TTY autodetect, RFC 3339 timestamps, gitleaks-based secret scrubbing, rate-limit filter, emoji-to-text for CI | Install loguru, format JSON, hand-roll a scrubber |
+| `from scalo import logger` | Loguru-backed structured logs, JSON unless stderr is a TTY, keyword fields in every format, RFC 3339 timestamps, gitleaks-based secret scrubbing, rate-limit filter, emoji-to-text for CI | Install loguru, format JSON, hand-roll a scrubber |
 | `from scalo import metrics` | Prometheus + OpenTelemetry dual backend, `MetricsManager` content + content-type for an app-served `/metrics` route, process collector, cardinality cap, metric groups (consumer/sink/buffer/circuit-breaker) | Stand up an exporter, wire a process collector, hand-roll a cardinality limiter |
 | `from scalo import health` | `/livez` and `/readyz` router, downstream-dep registry, K8s-shaped responses | Write probe handlers, manage dependency state |
 | `from scalo import runtime` | K8s / Docker / bare-metal autodetect, container-aware paths (config_dir, data_dir, cache_dir, run_dir), `CONTAINER_BASE_PATH` override | Read `/.dockerenv`, parse cgroups, pick path defaults |
@@ -99,7 +99,7 @@ flowchart TB
 ### Core pillars (always available)
 
 - [core-pillars/CONFIG.md](core-pillars/CONFIG.md) — 7-layer cascade, registry, sensitive masking
-- [core-pillars/LOGGING.md](core-pillars/LOGGING.md) — loguru setup, JSON/text autodetect, scrub, rate-limit, CI mode
+- [core-pillars/LOGGING.md](core-pillars/LOGGING.md) — loguru setup, JSON/text autodetect, fields, JSON record shape, scrub, rate-limit, CI mode
 - [core-pillars/METRICS.md](core-pillars/METRICS.md) — Prometheus + OTel dual, metric groups, cardinality cap
 - [core-pillars/TRACING.md](core-pillars/TRACING.md) — OTLP span export, sampling, backoff when the collector is absent
 - [core-pillars/HEALTH.md](core-pillars/HEALTH.md) — `HealthManager`, `/livez` / `/readyz`

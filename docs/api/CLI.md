@@ -120,7 +120,7 @@ Standard flags accepted by `run` and `config-check`:
 |------|---------|---------|---------|
 | `--config`, `-c` | `CLI_CONFIG` | — | Path to an extra config file added to the cascade |
 | `--log-level`, `-l` | `LOG_LEVEL` | `info` | Log level |
-| `--log-format` | `LOG_FORMAT` | `auto` | `json`, `text`, or `auto` (TTY-detect) |
+| `--log-format` | `LOG_FORMAT` | config, else `auto` | `json`, `text` or `auto` (JSON unless stderr is a TTY); see [LOGGING.md](../core-pillars/LOGGING.md#format-selection) |
 | `--metrics-addr` | `METRICS_ADDR` | `0.0.0.0:9090` | Bind address for `/metrics` |
 | `--verbose`, `-v` | — | False | Force `DEBUG` |
 | `--quiet`, `-q` | — | False | Suppress non-error output |

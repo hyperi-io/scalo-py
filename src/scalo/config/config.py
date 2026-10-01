@@ -1009,11 +1009,17 @@ def get_api_config():
 def get_logging_config():
     """Get container-aware logging configuration with K8s standard env vars.
 
-    Supports standard K8s/cloud-native logging environment variables:
+    Reads standard K8s/cloud-native logging environment variables. The logger's
+    ``setup()`` applies ``level``, ``format``, ``color``, ``console``, ``file``
+    and ``intercept_stdlib`` (``logging.intercept_stdlib``, default true); the
+    remaining keys are resolved here and are not applied by it.
+
     - LOG_LEVEL: Log level (DEBUG, INFO, WARNING, ERROR, CRITICAL)
-    - LOG_FORMAT: Output format (json, text, console, logfmt)
+    - LOG_FORMAT: Output format (auto, json, text; console, pretty and human
+      are aliases of text)
+    - LOG_COLOR / NO_COLOR: Colour control; unset, ``logging.color`` decides,
+      and with that unset too colour is on only when stderr is a TTY
     - LOG_OUTPUT: Destination (stdout, stderr, file)
-    - LOG_COLOR / NO_COLOR: Color control for output
     - LOG_TIMESTAMP_FORMAT: Timestamp format (iso8601, rfc3339, unix, epoch)
     - LOG_CALLER: Include source location (true/false)
     - LOG_STACKTRACE_LEVEL: Minimum level for stack traces (ERROR, CRITICAL)
@@ -1038,8 +1044,7 @@ def get_logging_config():
     if not log_level:
         log_level = logging_config.get("level", "INFO")
 
-    # LOG_FORMAT: Output format (auto, json, text, console, logfmt)
-    # "auto" detects JSON in containers, text in terminals (matches scalo-rs)
+    # Passed through as given; the logger's setup() resolves "auto".
     log_format = os.getenv("LOG_FORMAT")
     if not log_format:
         log_format = logging_config.get("format", "auto")
@@ -1049,18 +1054,21 @@ def get_logging_config():
     if not log_output:
         log_output = logging_config.get("output", "stderr")
 
-    # LOG_COLOR / NO_COLOR: Color control
-    # NO_COLOR is a standard env var: https://no-color.org/
+    # LOG_COLOR, then NO_COLOR (https://no-color.org/), then logging.color, then the TTY check.
     log_color = os.getenv("LOG_COLOR")
     no_color = os.getenv("NO_COLOR")
+    configured_color = logging_config.get("color")
     if log_color is not None:
         use_color = log_color.lower() in ("true", "1", "yes")
     elif no_color is not None:
-        use_color = False  # NO_COLOR disables colors
-    elif not sys.stderr.isatty():
-        use_color = False  # Disable colors when not a TTY (K8s containers)
+        use_color = False
+    elif isinstance(configured_color, str):
+        use_color = configured_color.lower() in ("true", "1", "yes")
+    elif configured_color is not None:
+        use_color = bool(configured_color)
     else:
-        use_color = logging_config.get("color", True)
+        isatty = getattr(sys.stderr, "isatty", None)
+        use_color = bool(isatty()) if callable(isatty) else False
 
     # LOG_TIMESTAMP_FORMAT: Timestamp format
     timestamp_format = os.getenv("LOG_TIMESTAMP_FORMAT")
@@ -1088,6 +1096,10 @@ def get_logging_config():
         else:
             log_file = str(Path("/var/log") / APP_NAME / log_file)
 
+    intercept_stdlib = logging_config.get("intercept_stdlib", True)
+    if isinstance(intercept_stdlib, str):
+        intercept_stdlib = intercept_stdlib.lower() in ("true", "1", "yes")
+
     return {
         "level": log_level,
         "format": log_format,
@@ -1098,6 +1110,7 @@ def get_logging_config():
         "stacktrace_level": stacktrace_level,
         "console": logging_config.get("console", True),
         "file": log_file,
+        "intercept_stdlib": bool(intercept_stdlib),
     }
 
 

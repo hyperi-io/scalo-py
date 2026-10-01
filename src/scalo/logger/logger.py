@@ -1,9 +1,10 @@
-"""
-Structured logging with auto-configuration on import.
+"""Structured logging with auto-configuration on import.
 
 Auto-configured with production defaults:
 - RFC 3339 timestamps
-- Solarized colors (terminal) / ASCII-only (containers)
+- JSON lines when stderr is not a TTY, human-readable text when it is
+- Keyword fields rendered in every format (``key=value`` in text)
+- Colour only on a TTY unless configured otherwise
 - Sensitive data masking
 - stderr output, INFO level
 
@@ -14,22 +15,25 @@ Usage:
 
 ENV overrides:
     LOG_LEVEL=DEBUG
-    LOG_FORMAT=json
-    LOG_OUTPUT=stdout
+    LOG_FORMAT=json     # json, text, auto
+    LOG_COLOR=false     # also NO_COLOR=1
     NO_LOGGER_CONFIG=1  # Disable auto-config
 
-See docs/LOGGING.md for examples and configuration details.
+See docs/core-pillars/LOGGING.md for examples and configuration details.
 """
 
+import inspect
+import json
 import logging
 import os
 import sys
+from datetime import UTC
 
 from loguru import logger as _logger
 
 from scalo._env_compat import control_flag, control_var
 
-from .filters import RateLimitFilter, get_sensitive_filter
+from .filters import MASK_VALUE, SENSITIVE_FIELDS, RateLimitFilter, SensitiveDataFilter, get_sensitive_filter
 from .scrub import Scrubber as _Scrubber
 from .scrub_resolver import resolve_scrubber
 
@@ -183,7 +187,7 @@ def _is_interactive_console() -> bool:
         return False
 
     # Check if output is a TTY (Docker/K8s stdout is NOT a TTY)
-    if not sys.stderr.isatty():
+    if not _stream_is_tty(sys.stderr):
         return False  # Non-interactive (container, pipe, file)
 
     # Check TERM environment variable
@@ -216,6 +220,91 @@ def _scrub_level_enabled(level_name: str, log_levels) -> bool:
     """Return True if scrubbing is enabled for this loguru level."""
     attr = _LEVEL_NAME_TO_GATE.get(level_name.upper(), "info")
     return bool(getattr(log_levels, attr, True))
+
+
+class _Fields(dict):
+    """A record's keyword fields, as loguru's ``record["extra"]``.
+
+    It stays a plain dict to every reader. The scrub filter sets
+    :attr:`output`, the scrubbed JSON-native copy both renderers use, and
+    the text formats render it with the ``{extra:fields}`` format spec.
+
+    Attributes:
+        output: Scrubbed, JSON-native copy of the fields, set by the filter.
+    """
+
+    __slots__ = ("output",)
+
+    def __format__(self, spec: str) -> str:
+        if spec == "fields":
+            return _render_fields(getattr(self, "output", self))
+        return super().__format__(spec)
+
+
+def _render_field_value(value) -> str:
+    """Render one field value for a text line, quoting it when it would not parse back."""
+    text = value if isinstance(value, str) else json.dumps(value, default=str, ensure_ascii=False)
+    # A space, `=` or `"` would split the pair; a control character would break the line.
+    if not text or not text.isprintable() or any(char in ' ="' for char in text):
+        return json.dumps(text, ensure_ascii=False)
+    return text
+
+
+def _render_fields(fields: dict) -> str:
+    """Render fields as `` key=value`` pairs, each with a leading space; empty renders nothing."""
+    return "".join(f" {key}={_render_field_value(value)}" for key, value in fields.items())
+
+
+def _utc_rfc3339(moment) -> str:
+    """Format an aware datetime as RFC 3339 UTC with microseconds and a ``Z`` suffix."""
+    return moment.astimezone(UTC).isoformat(timespec="microseconds").replace("+00:00", "Z")
+
+
+def _json_line(record, exception_text: str = "") -> str:
+    """Render one record as a flat JSON object followed by a newline.
+
+    Keys: ``timestamp``, ``level``, ``target`` (the logger name), ``function``,
+    ``line_number``, ``message`` and ``fields`` (an object, empty when the
+    record has none), plus ``exception`` when a traceback was logged.
+    """
+    extra = record["extra"]
+    entry = {
+        "timestamp": _utc_rfc3339(record["time"]),
+        "level": record["level"].name,
+        "target": record["name"],
+        "function": record["function"],
+        "line_number": record["line"],
+        "message": record["message"],
+        "fields": getattr(extra, "output", extra),
+    }
+    if exception_text:
+        entry["exception"] = exception_text.rstrip("\n")
+    return json.dumps(entry, default=str, ensure_ascii=False) + "\n"
+
+
+def _exception_only_format(_record) -> str:
+    """Format the JSON sink's message as the rendered traceback alone."""
+    return "{exception}"
+
+
+class _JsonSink:
+    """Stream sink writing one :func:`_json_line` per record.
+
+    loguru renders the traceback before an enqueued record leaves the logging
+    thread, so the handler formats with :func:`_exception_only_format` and the
+    sink receives that text as the message.
+    """
+
+    def __init__(self, stream) -> None:
+        self._stream = stream
+
+    def write(self, message) -> None:
+        """Write the record carried by ``message`` as one JSON line."""
+        self._stream.write(_json_line(message.record, str(message)))
+
+    def flush(self) -> None:
+        """Flush the underlying stream."""
+        self._stream.flush()
 
 
 def _add_emoji_to_record(
@@ -273,29 +362,58 @@ def _add_emoji_to_record(
             return sensitive_filter._mask_sensitive_string(text)
         return text
 
-    def _scrub_extra(extra: dict, level_name: str) -> None:
-        """Mutate loguru ``record['extra']`` in place.
+    def _scrub_value(value, level_name: str, sensitive_keys: set[str]):
+        """Return ``value`` with sensitive keys masked and strings scrubbed at any depth.
 
-        Key-based redaction ALWAYS runs first regardless of scrubber backend;
-        value-scrubbing runs second on non-sensitive keys.
+        Containers come back as new plain dicts, lists and tuples; any other
+        object is returned unchanged and is scrubbed by ``_to_output`` when it
+        is rendered.
         """
-        from .filters import MASK_VALUE, SENSITIVE_FIELDS, SensitiveDataFilter
+        if isinstance(value, str):
+            return _scrub_str(value, level_name)
+        if isinstance(value, dict):
+            return {
+                key: MASK_VALUE
+                if str(key).lower() in sensitive_keys
+                else _scrub_value(item, level_name, sensitive_keys)
+                for key, item in value.items()
+            }
+        if isinstance(value, (list, tuple)):
+            items = [_scrub_value(item, level_name, sensitive_keys) for item in value]
+            return items if isinstance(value, list) else tuple(items)
+        return value
 
+    def _to_output(value, level_name: str):
+        """Return JSON-native data for an already-scrubbed field value."""
+        if value is None or isinstance(value, (str, bool, int, float)):
+            return value
+        if isinstance(value, dict):
+            return {str(key): _to_output(item, level_name) for key, item in value.items()}
+        if isinstance(value, (list, tuple)):
+            return [_to_output(item, level_name) for item in value]
+        # str() of an arbitrary object can carry a credential the type-aware pass never saw.
+        return _scrub_str(str(value), level_name)
+
+    def _scrub_extra(record) -> None:
+        """Scrub ``record['extra']`` in place and attach its output copy.
+
+        Key-based redaction runs regardless of scrubber backend and log-level
+        gate; value scrubbing follows the gate. The dict is swapped for a
+        :class:`_Fields` so the text formats can render it.
+        """
+        extra = record["extra"]
+        if not isinstance(extra, _Fields):
+            extra = _Fields(extra)
+            record["extra"] = extra
+
+        level_name = record["level"].name
         sensitive_keys = SENSITIVE_FIELDS | SensitiveDataFilter._custom_fields
-        for k in list(extra.keys()):
-            if k.lower() in sensitive_keys:
-                extra[k] = MASK_VALUE
-
-        # Value scrubbing for non-sensitive keys
-        if sensitive_filter is not None:
-            masked = sensitive_filter._mask_sensitive_dict(extra)
-            extra.clear()
-            extra.update(masked)
-            return
-        if scrubber is not None and (log_levels is None or _scrub_level_enabled(level_name, log_levels)):
-            for k, v in list(extra.items()):
-                if isinstance(v, str):
-                    extra[k] = scrubber.scrub(v)
+        for key, value in list(extra.items()):
+            if str(key).lower() in sensitive_keys:
+                extra[key] = MASK_VALUE
+            else:
+                extra[key] = _scrub_value(value, level_name, sensitive_keys)
+        extra.output = {str(key): _to_output(value, level_name) for key, value in extra.items()}
 
     def _scrub_exception_chain(exc: BaseException | None, level_name: str) -> None:
         """Walk exc chain via __cause__/__context__ and scrub string args in place."""
@@ -321,9 +439,8 @@ def _add_emoji_to_record(
         if isinstance(record["message"], str):
             record["message"] = _scrub_str(record["message"], level_name)
 
-        # Scrub bind() context dict (logger.bind(api_key=...))
-        if record.get("extra"):
-            _scrub_extra(record["extra"], level_name)
+        # Keyword arguments and bind() context: every format renders these.
+        _scrub_extra(record)
 
         # Scrub exception chain args (traceback values logged via logger.exception)
         exc_info = record.get("exception")
@@ -391,6 +508,10 @@ def _github_actions_sink(message):
 def _get_log_format(is_file: bool, color_scheme: str = "solarized", ci_mode: bool = False) -> str:
     """Get log format string based on output type.
 
+    Every format ends with the record's keyword fields as `` key=value`` pairs.
+    The record must have passed :func:`_add_emoji_to_record`, which supplies
+    the ``{extra:fields}`` rendering.
+
     Args:
         is_file: True if logging to file (ASCII-only), False for console
         color_scheme: Color scheme to use ("solarized" or "loguru")
@@ -401,12 +522,12 @@ def _get_log_format(is_file: bool, color_scheme: str = "solarized", ci_mode: boo
     """
     # File logging: Plain ASCII only (CHARS-POLICY.md requirement)
     if is_file:
-        return "{time:YYYY-MM-DDTHH:mm:ss.SSSZZ} [{level: <8}] {name}:{function}:{line} - {message}"
+        return "{time:YYYY-MM-DDTHH:mm:ss.SSSZZ} [{level: <8}] {name}:{function}:{line} - {message}{extra:fields}"
 
     # CI mode: Simple format without ANSI colors for GitHub Actions/GitLab CI
     # Uses prefix format that integrates with CI log parsing
     if ci_mode:
-        return "[{level: <8}] {name}:{function}:{line} - {message}"
+        return "[{level: <8}] {name}:{function}:{line} - {message}{extra:fields}"
 
     # Console logging with colors
     if color_scheme == "solarized":
@@ -416,14 +537,14 @@ def _get_log_format(is_file: bool, color_scheme: str = "solarized", ci_mode: boo
             f"<fg {SOLARIZED['cyan']}>{{name}}</fg {SOLARIZED['cyan']}>:"
             f"<fg {SOLARIZED['cyan']}>{{function}}</fg {SOLARIZED['cyan']}>:"
             f"<fg {SOLARIZED['cyan']}>{{line}}</fg {SOLARIZED['cyan']}> - "
-            f"<level>{{message}}</level>"
+            f"<level>{{message}}</level>{{extra:fields}}"
         )
     else:
         return (
             "<green>{time:YYYY-MM-DDTHH:mm:ss.SSSZZ}</green> | "
             "<level>{level: <8}</level> | "
             "<cyan>{name}</cyan>:<cyan>{function}</cyan>:<cyan>{line}</cyan> - "
-            "<level>{message}</level>"
+            "<level>{message}</level>{extra:fields}"
         )
 
 
@@ -440,18 +561,140 @@ def _cap_library_loggers() -> None:
             library_logger.setLevel(logging.WARNING)
 
 
-def _resolve_console_format(log_format, config) -> str:
-    """Resolve the console sink format selector.
+# Loggers that attach their own handlers and stop propagation, so their records never reach the root handler.
+_SELF_HANDLING_LOGGERS = ("uvicorn", "uvicorn.error", "uvicorn.access")
 
-    Caller-resolved beats the ``LOG_FORMAT`` env var beats the config value.
-    Unset derives from otel presence: a deployment that ships telemetry logs
-    json, one that does not logs lines -- ``OTEL_EXPORTER_OTLP_ENDPOINT`` is
-    the deploy-layer seam.
+# Attributes every LogRecord carries; anything else on a record came from the caller's ``extra=``.
+_STANDARD_RECORD_ATTRS = frozenset(logging.LogRecord("", 0, "", 0, "", (), None).__dict__) | {"message", "asctime"}
+
+
+class _InterceptHandler(logging.Handler):
+    """Stdlib logging handler that re-emits each record through loguru.
+
+    The record keeps its level, call site, traceback and ``extra=`` fields, so
+    it reaches the same sinks, format and scrubbing as a direct loguru call.
     """
-    resolved = (log_format or os.environ.get("LOG_FORMAT") or config.get("format") or "").strip().lower()
-    if not resolved and os.environ.get("OTEL_EXPORTER_OTLP_ENDPOINT", "").strip():
-        resolved = "json"
-    return resolved
+
+    def emit(self, record: logging.LogRecord) -> None:
+        """Re-emit ``record`` through loguru."""
+        try:
+            try:
+                level = logger.level(record.levelname).name
+            except ValueError:
+                level = record.levelno
+
+            # Step out of the logging package so the reported call site is the caller's.
+            frame, depth = inspect.currentframe(), 0
+            while frame is not None:
+                filename = frame.f_code.co_filename
+                is_frozen_import = "importlib" in filename and "_bootstrap" in filename
+                if depth > 0 and filename != logging.__file__ and not is_frozen_import:
+                    break
+                frame = frame.f_back
+                depth += 1
+
+            message = record.getMessage()
+            if record.stack_info:
+                message = f"{message}\n{record.stack_info}"
+            has_exception = bool(record.exc_info) and record.exc_info[0] is not None
+            fields = {key: value for key, value in record.__dict__.items() if key not in _STANDARD_RECORD_ATTRS}
+            logger.bind(**fields).opt(depth=depth, exception=record.exc_info if has_exception else None).log(
+                level, message
+            )
+        except Exception:
+            self.handleError(record)
+
+
+def _route_stdlib_logging(enabled: bool, level) -> None:
+    """Make the root logger's only handler an :class:`_InterceptHandler`, or remove it.
+
+    Replacing the root handlers, and emptying the self-handling loggers, keeps
+    each record from being written twice: once by a stdlib handler, once by loguru.
+    """
+    root = logging.getLogger()
+    for handler in list(root.handlers):
+        if enabled or isinstance(handler, _InterceptHandler):
+            root.removeHandler(handler)
+    if not enabled:
+        return
+
+    root.addHandler(_InterceptHandler())
+    if isinstance(level, int):
+        root.setLevel(level)
+    else:
+        try:
+            root.setLevel(logger.level(str(level).upper()).no)
+        except ValueError:
+            root.setLevel(logging.NOTSET)
+    for name in _SELF_HANDLING_LOGGERS:
+        library_logger = logging.getLogger(name)
+        library_logger.handlers.clear()
+        library_logger.propagate = True
+
+
+# LOG_FORMAT values: ``pretty`` and ``human`` match scalo-rs's parser, ``console`` is scalo-py only.
+_LOG_FORMATS = {
+    "": "auto",
+    "auto": "auto",
+    "json": "json",
+    "text": "text",
+    "console": "text",
+    "pretty": "text",
+    "human": "text",
+}
+
+
+def _stream_is_tty(stream) -> bool:
+    """Return True if ``stream`` reports itself as a terminal."""
+    isatty = getattr(stream, "isatty", None)
+    if not callable(isatty):
+        return False
+    try:
+        return bool(isatty())
+    except ValueError:
+        # A closed stream raises rather than answering.
+        return False
+
+
+def _format_candidates(log_format, config) -> tuple:
+    """Return the format selectors in precedence order: caller, ``LOG_FORMAT``, config."""
+    return (log_format, os.environ.get("LOG_FORMAT"), config.get("format"))
+
+
+def _resolve_console_format(log_format, config, *, is_tty: bool, ci_mode: bool) -> str:
+    """Resolve the console sink format to ``"json"`` or ``"text"``.
+
+    The first concrete selector wins: caller, then ``LOG_FORMAT``, then config.
+    ``auto``, blank and unrecognised selectors defer to the next one. With none
+    concrete, a set ``OTEL_EXPORTER_OTLP_ENDPOINT`` gives json, a CI run gives
+    text, and otherwise a TTY gets text and anything else json.
+
+    Args:
+        log_format: Caller-resolved selector, or None.
+        config: Logging config dict; its ``format`` key is read.
+        is_tty: Whether the console stream is a terminal.
+        ci_mode: Whether CI output mode is active.
+
+    Returns:
+        ``"json"`` or ``"text"``.
+    """
+    for candidate in _format_candidates(log_format, config):
+        resolved = _LOG_FORMATS.get(str(candidate or "").strip().lower())
+        if resolved in ("json", "text"):
+            return resolved
+    if os.environ.get("OTEL_EXPORTER_OTLP_ENDPOINT", "").strip():
+        return "json"
+    if ci_mode:
+        return "text"
+    return "text" if is_tty else "json"
+
+
+def _unrecognised_format(log_format, config) -> str | None:
+    """Return the first format selector that is not a known ``LOG_FORMAT`` value, if any."""
+    for candidate in _format_candidates(log_format, config):
+        if str(candidate or "").strip().lower() not in _LOG_FORMATS:
+            return candidate
+    return None
 
 
 def setup(
@@ -471,8 +714,9 @@ def setup(
     log_format=None,
     otel_tracing=True,
     service_name=None,
+    intercept_stdlib=None,
 ):
-    """Setup standard logging with RFC 3339 compliance and CHARS-POLICY.md enforcement
+    """Set up standard logging with RFC 3339 compliance and CHARS-POLICY.md enforcement.
 
     Args:
         settings: Optional settings dict (deprecated, use config instead)
@@ -512,6 +756,10 @@ def setup(
             - None (default): Auto-detect from environment (GITHUB_ACTIONS, CI, etc.)
             - True: Force CI mode - use workflow commands (::error::, ::warning::, etc.)
             - False: Force normal mode - standard console output
+        scrubber: A ready-built :class:`Scrubber`; outranks every other scrub
+            argument and config key.
+        scrub_config: A :class:`ScrubConfig` to build the scrubber from;
+            outranks ``mask_sensitive``, ``masking_level`` and config.
         metrics: Optional ``MetricsManager`` for the scrub layers.
             - None (default): scrub metrics stay no-op
             - A manager: the scrub layers emit the metrics named in the
@@ -531,8 +779,13 @@ def setup(
             ``get_config(additional_files=...)``. A caller that HAS loaded such
             a file -- ``ServiceApp``, via ``--config`` -- passes the resolved
             level here instead of hoping the two agree.
-        log_format: Explicit format selector ("json", "text", "console",
-            "auto"), resolved by the caller. Same reasoning as ``level``.
+        log_format: Format selector resolved by the caller: "json", "text"
+            (aliases "console", "pretty", "human") or "auto". Same reasoning
+            as ``level``. "auto" or None defers to ``LOG_FORMAT``, then to
+            ``logging.format``; with none concrete, the console logs JSON
+            when ``OTEL_EXPORTER_OTLP_ENDPOINT`` is set, text in CI, text on
+            a TTY and JSON otherwise. An unrecognised value is treated as
+            "auto" and reported with a warning once the sinks are up.
         otel_tracing: Compose OTLP span export in (default True), so an app that
             calls this and nothing else gets distributed tracing -- matching
             scalo-rs, which wires spans at logger setup. Set False for a context
@@ -542,13 +795,22 @@ def setup(
         service_name: ``service.name`` for the span resource. Without it the
             attribute is left unset rather than defaulted, because a package-name
             default would report every service in the fleet as "scalo".
+        intercept_stdlib: Route stdlib ``logging`` records through these sinks.
+            - None (default): Read from config (``logging.intercept_stdlib``,
+              default True)
+            - True: The root logger's handlers are replaced by one that
+              re-emits through loguru, the root level follows ``level``, and
+              the ``uvicorn`` loggers lose their own handlers and propagate.
+              Each stdlib record then gets the same format, ``extra=`` fields
+              and scrubbing as a loguru call.
+            - False: stdlib logging is left alone, and a handler a previous
+              call installed is removed.
 
     The stdlib ``boto3``, ``botocore``, ``s3transfer`` and ``urllib3`` loggers
     are raised to WARNING whatever ``level`` is, because botocore writes secret
     values to DEBUG. An app that needs their DEBUG output sets the level itself
     after this call.
     """
-
     # Remove default handler
     logger.remove()
 
@@ -567,19 +829,19 @@ def setup(
     # that assert on captured output, etc.).
     enqueue = control_var("LOG_ENQUEUE", default="1") != "0"
 
-    # Explicit selector for the console sink format. Accepted values: "json"
-    # (one JSON object per line via loguru serialize=True), "console" / "text" /
-    # "auto" / "" (human-readable console with colours in a TTY, plain ASCII in
-    # files and CI). Caller-resolved beats the env var beats the config value.
-    resolved_format = _resolve_console_format(log_format, config)
-    serialize_console = resolved_format == "json"
-
     # CI mode: Auto-detect from environment or config, can be overridden by parameter
     # Priority: parameter > config > auto-detect
     if ci_mode is None:
         ci_mode = config.get("ci_mode")  # Check config first
     if ci_mode is None:
         ci_mode = _is_ci_environment()  # Auto-detect from environment
+
+    console_is_tty = _stream_is_tty(sys.stderr)
+    resolved_format = _resolve_console_format(log_format, config, is_tty=console_is_tty, ci_mode=bool(ci_mode))
+    unrecognised_format = _unrecognised_format(log_format, config)
+
+    # get_logging_config() resolves LOG_COLOR, NO_COLOR and logging.color, defaulting to the TTY check.
+    use_color = bool(config.get("color", console_is_tty))
 
     # Use GitHub Actions workflow commands if in GitHub Actions
     use_github_actions_commands = ci_mode and _is_github_actions()
@@ -644,7 +906,29 @@ def setup(
 
     # Add console handler
     if config.get("console", True):
-        if use_github_actions_commands:
+        if resolved_format == "json":
+            # One flat JSON object per line; emojis become ASCII tokens for the aggregator.
+            logger.add(
+                _JsonSink(sys.stderr),
+                level=resolved_level,
+                format=_exception_only_format,
+                colorize=False,
+                # loguru's diagnose annotations render local-variable VALUES in
+                # tracebacks; those bypass the scrubber (it only sees the record
+                # message/extra/exc.args), so a secret in a local would leak. Off.
+                diagnose=False,
+                enqueue=enqueue,
+                filter=_add_emoji_to_record(
+                    False,
+                    convert_to_text=True,
+                    allow_all=False,
+                    mask_sensitive=mask_sensitive,
+                    masking_level=masking_level,
+                    rate_limit_filter=rate_limit_filter,
+                    scrubber=resolved_scrubber,
+                ),
+            )
+        elif use_github_actions_commands:
             # GitHub Actions: Use custom sink for workflow commands (::error::, ::warning::, etc.)
             console_format = _get_log_format(is_file=False, ci_mode=True)
             logger.add(
@@ -652,10 +936,7 @@ def setup(
                 level=resolved_level,
                 format=console_format,
                 colorize=False,
-                # loguru's diagnose annotations render local-variable VALUES in
-                # tracebacks; those bypass the scrubber (it only sees the record
-                # message/extra/exc.args), so a secret in a local would leak. Off.
-                diagnose=False,
+                diagnose=False,  # see note above: diagnose values bypass scrub
                 enqueue=enqueue,
                 filter=_add_emoji_to_record(
                     False,  # No emojis in CI
@@ -675,7 +956,6 @@ def setup(
                 level=resolved_level,
                 format=console_format,
                 colorize=False,
-                serialize=serialize_console,
                 diagnose=False,  # see note above: diagnose values bypass scrub
                 enqueue=enqueue,
                 filter=_add_emoji_to_record(
@@ -689,14 +969,13 @@ def setup(
                 ),
             )
         else:
-            # Normal console: Colors and optional emojis (or JSON when LOG_FORMAT=json)
+            # Human-readable console: colour per use_color, optional emojis.
             console_format = _get_log_format(is_file=False, color_scheme=color_scheme)
             logger.add(
                 sys.stderr,
                 level=resolved_level,
                 format=console_format,
-                colorize=not serialize_console,
-                serialize=serialize_console,
+                colorize=use_color,
                 diagnose=False,  # see note above: diagnose values bypass scrub
                 enqueue=enqueue,
                 filter=_add_emoji_to_record(
@@ -731,6 +1010,17 @@ def setup(
                 rate_limit_filter=rate_limit_filter,
                 scrubber=resolved_scrubber,
             ),  # Convert emojis to text for machine-readable logs
+        )
+
+    if intercept_stdlib is None:
+        intercept_stdlib = config.get("intercept_stdlib", True)
+    _route_stdlib_logging(bool(intercept_stdlib), resolved_level)
+
+    if unrecognised_format is not None:
+        logger.warning(
+            "Unrecognised log format, using auto",
+            log_format=unrecognised_format,
+            accepted="json, text, console, pretty, human, auto",
         )
 
     # Span export last, so whatever it reports goes through the sinks just built.
