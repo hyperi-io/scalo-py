@@ -41,7 +41,7 @@ check_on_startup("dfe-receiver", "1.2.0")
 
 If a newer version is found:
 
-```
+```text
 INFO  new version available: dfe-receiver (current: 1.2.0, latest: 1.3.1)
       [released 12 days ago] — https://releases.example.com/dfe-receiver/1.3.1
 ```

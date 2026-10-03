@@ -35,9 +35,11 @@ class _FakeClient:
         self._macros = macros
         self._clusters = clusters
         self.queries: list[str] = []
+        self.parameters: list[dict | None] = []
 
-    def query(self, sql: str):
+    def query(self, sql: str, parameters: dict | None = None):
         self.queries.append(sql)
+        self.parameters.append(parameters)
         if "cloud_mode" in sql:
             return _Result([[self._cloud]] if self._cloud is not None else [])
         if "system.databases" in sql:
@@ -183,6 +185,18 @@ def test_sensing_is_cached_per_database():
     resolver.resolve(EngineSpec("ReplacingMergeTree"), "db")
 
     assert len(client.queries) == after_first
+
+
+def test_the_database_name_is_bound_never_spliced_into_the_sql():
+    """A name with a quote in it reaches the server as a value, not as SQL."""
+    client = _FakeClient(db_engine="Atomic", macros=())
+    hostile = "db' OR name = 'system"
+    EngineResolver(client=client).resolve(EngineSpec("MergeTree"), hostile)
+
+    lookup = next(i for i, sql in enumerate(client.queries) if "system.databases" in sql)
+    assert hostile not in client.queries[lookup]
+    assert "{database:String}" in client.queries[lookup]
+    assert client.parameters[lookup] == {"database": hostile}
 
 
 def test_a_different_database_is_sensed_again():

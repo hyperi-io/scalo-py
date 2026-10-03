@@ -6,7 +6,7 @@ CEL (Common Expression Language) evaluation backed by the
 by the `scalo` crate — Python and Rust services parse and evaluate
 expressions identically. Zero behavioural drift.
 
-```
+```bash
 pip install scalo[expression]
 ```
 

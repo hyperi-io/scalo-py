@@ -136,9 +136,10 @@ All but `ENV_PREFIX` itself are prefix-aware -- read as
 | `DOTENV_CASCADE` | Load `~/.env` then `./.env` | `false` |
 | `AUTO_DETECT` | Auto-detect container/runtime environment | `true` |
 | `CONTAINER_BASE_PATH` | Override container mount root | unset |
-| `LOG_LEVEL` | Logger level (also a cascade key) | `INFO` |
 | `METRIC_PREFIX` | Prefix on scalo's built-in metrics | bare (no prefix) |
 | `METRICS_BACKEND` | `opentelemetry` or `prometheus` | `opentelemetry` |
+
+The CLI's own flag envs are read bare whatever the prefix, the same names scalo-rs reads: `LOG_LEVEL` (`--log-level`), `LOG_FORMAT` (`--log-format`), `METRICS_ADDR` (`--metrics-addr`) and `CLI_CONFIG` (`--config`). With `ENV_PREFIX=MYAPP`, `MYAPP_LOG_LEVEL` does nothing. Below the flag, the level comes from the cascade key `logging.level`.
 
 ---
 

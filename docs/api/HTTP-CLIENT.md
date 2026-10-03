@@ -7,7 +7,7 @@ hooks are Stamina-library opt-ins you wire at your own site if
 needed. Replaces ad-hoc `requests` / `httpx` usage where Bandit's
 B113 (request without timeout) keeps biting.
 
-```
+```bash
 pip install scalo[http]
 ```
 

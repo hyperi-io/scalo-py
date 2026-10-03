@@ -6,7 +6,7 @@ Secret Manager, Azure Key Vault, and Ansible Vault. One `SecretsManager`
 object, one configuration shape, two-tier caching, stale-grace fallback,
 background refresh, and rotation callbacks.
 
-```
+```bash
 pip install scalo[secrets-vault]        # OpenBao / Vault
 pip install scalo[secrets-aws]          # AWS Secrets Manager
 pip install scalo[secrets-gcp]          # GCP Secret Manager

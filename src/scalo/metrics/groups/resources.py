@@ -72,8 +72,8 @@ class ResourceMetrics:
     Process and container resource gauges, read at every collection.
 
     Registers (under the manager's optional ``metric_prefix``):
-        process_cpu_seconds_total gauge -- CPU use as a percent of one core since the
-            previous collection, the meaning released scalo-rs gives this name
+        process_cpu_seconds_total gauge -- user plus system CPU time this process has
+            used, in seconds, as scalo-rs reports it
         process_resident_memory_bytes gauge
         process_virtual_memory_bytes gauge
         process_open_fds gauge (Linux only)
@@ -97,7 +97,7 @@ class ResourceMetrics:
         self._process = _psutil_process()
 
         readings = {
-            "process_cpu_seconds_total": ("CPU use in percent of one core since the last read", self.cpu_percent),
+            "process_cpu_seconds_total": ("User and system CPU time used, in seconds", self.cpu_seconds),
             "process_resident_memory_bytes": ("Resident memory size in bytes", self.resident_memory_bytes),
             "process_virtual_memory_bytes": ("Virtual memory size in bytes", self.virtual_memory_bytes),
             "process_open_fds": ("Open file descriptors", self.open_fds),
@@ -112,6 +112,13 @@ class ResourceMetrics:
                 self.registered = True
         if self.registered:
             _drop_prometheus_process_collector()
+
+    def cpu_seconds(self) -> float | None:
+        """User plus system CPU time this process has used, in seconds, or None without psutil."""
+        if self._process is None:
+            return None
+        times = self._process.cpu_times()
+        return float(times.user + times.system)
 
     def cpu_percent(self) -> float | None:
         """CPU use in percent of one core since the previous read (100 per busy core), or None without psutil."""

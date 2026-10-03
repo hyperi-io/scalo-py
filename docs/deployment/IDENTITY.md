@@ -176,7 +176,7 @@ by `=== <section-name> ===` headers, all rendered under `io.scalo`:
 
 All sections use the same test inputs:
 
-```
+```text
 source_commit = "0123456789abcdef0123456789abcdef01234567"
 image_ref     = "ghcr.io/hyperi-io/dfe-loader:v2.7.3"
 ```

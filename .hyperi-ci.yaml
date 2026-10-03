@@ -22,6 +22,9 @@ quality:
   # examples/ has its own tests/ -- exclude from quality scans
   exclude_paths:
     - examples/
+  # Seeded verbatim from python-stdnum's id descriptions: native-script data, not prose.
+  charset_exclude:
+    - src/scalo/data/national_ids.toml
   python:
     # vulture: library code has extensive public API that looks "unused"
     vulture: warn
