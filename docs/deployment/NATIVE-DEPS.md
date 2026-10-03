@@ -88,7 +88,7 @@ strings used in `pip install "scalo[...]"`.
 Dedup is built in: `libssl3` and `zlib1g` appear once no matter how
 many extras pull them in.
 
-Example -- a typical DFE service:
+Example -- a typical data-pipeline service:
 
 ```python
 native_deps = NativeDepsContract.for_scalo_extras(
