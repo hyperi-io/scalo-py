@@ -164,6 +164,10 @@ CI mode also implies `use_emojis=False`. Override via `setup(ci_mode=False)`
 if you really need colours in CI. CI turns `auto` into text; an explicit
 `json` still writes JSON.
 
+A `logging.ci_mode` config key is accepted but not applied in this
+release: `setup()` only honours the `ci_mode` keyword argument or its
+own environment auto-detect, so set it there instead.
+
 ---
 
 ## Emoji-to-text
@@ -230,6 +234,10 @@ logging:
       exclude_rules: [generic-api-key]   # a comma-separated string also works, for env vars
 ```
 
+The `logging.scrub.*` form above is accepted but not applied in this
+release: `setup()` never reads it, so use the `scrub_config=` form
+below instead.
+
 ```python
 from scalo.logger import setup
 from scalo.logger.scrub import ScrubConfig, SecretsConfig
@@ -239,7 +247,7 @@ setup(scrub_config=ScrubConfig(secrets=SecretsConfig(exclude_rules=frozenset({"g
 
 The specific rules still catch the credential shapes, so a real GitHub token is still `[GITHUB_PAT_REDACTED]` with `generic-api-key` excluded. L2 still masks by key name, so `CARGO_REGISTRY_TOKEN=...` and `token = "..."` stay masked too. Do not reach for `patterns: minimal` to silence a false positive: it keeps 13 rules and drops cloudflare, npm and pypi detection with it.
 
-An id the rule set does not carry raises a `RuntimeWarning` at startup and excludes nothing. `exclude_rules` applies to `patterns: gitleaks` and `patterns: minimal`; the `detect-secrets` path warns and ignores it. The `logging.scrub.*` keys are read only when `setup()` gets no `mask_sensitive` or `masking_level` argument -- either one selects the legacy mapping and ignores them, so pass `scrub_config=` instead.
+An id the rule set does not carry raises a `RuntimeWarning` at startup and excludes nothing. `exclude_rules` applies to `patterns: gitleaks` and `patterns: minimal`; the `detect-secrets` path warns and ignores it.
 
 ### Layer 2 field-name regex
 
@@ -281,6 +289,9 @@ for order_id in range(1000):
 `rate_limit_similar=True` normalises UUIDs, ISO timestamps, IP
 addresses, hex strings, and large numbers before matching, so
 messages differing only in IDs collapse to one.
+
+A `logging.rate_limit_sec` config key is accepted but not applied in
+this release: pass `rate_limit_sec=` to `setup()` directly instead.
 
 ---
 
