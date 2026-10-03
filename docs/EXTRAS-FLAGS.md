@@ -168,7 +168,7 @@ without committing to a transitive deps tree that may change.
 | Extra | Notes | Doc |
 |---|---|---|
 | `cli` | Base install already ships `typer` + `ServiceApp`. Listing `scalo[cli]` declares CLI dependence without adding deps. | [api/CLI.md](api/CLI.md) |
-| `enhanced` | Reserved. Will bundle a curated "DFE service" feature set once the shape is locked. Currently a no-op marker. | (no doc yet) |
+| `enhanced` | Reserved. Will bundle a curated feature set for data-pipeline services once the shape is locked. Currently a no-op marker. | (no doc yet) |
 
 ### Development
 
@@ -195,7 +195,7 @@ Base install only. Config + logger + runtime + CLI framework.
 dependencies = ["scalo[metrics]>=2.28.3"]
 ```
 
-### Kafka consumer (typical DFE shape)
+### Kafka consumer (data-pipeline shape)
 
 ```toml
 dependencies = [
@@ -203,7 +203,7 @@ dependencies = [
 ]
 ```
 
-### DFE service with Vault secrets
+### Service with Vault secrets
 
 ```toml
 dependencies = [

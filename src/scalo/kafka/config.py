@@ -347,7 +347,8 @@ def internal_sasl_scram(
         brokers: Bootstrap servers (e.g. "kafka.svc:9092")
         username: SASL username
         password: SASL password
-        mechanism: SCRAM variant; defaults to ``SCRAM-SHA-512`` (HyperI standard)
+        mechanism: SCRAM variant; defaults to ``SCRAM-SHA-512`` (the strongest
+            commonly available mechanism)
 
     Returns:
         Configuration dict ready to merge with PRODUCER/CONSUMER/ADMIN_DEFAULTS

@@ -21,8 +21,7 @@ Two layers live here:
   compatibility - nothing below changes its behaviour.
 - The full abstraction (``KafkaProvider`` Protocol + ``KnownProvider`` enum +
   ``ProviderCapabilities`` / ``AuthKind`` / ``MetadataMode`` /
-  ``SchemaRegistry``): the generic, OPEN identity described in
-  dfe-engine's ``docs/superpowers/specs/2026-07-12-kafka-provider-abstraction.md``.
+  ``SchemaRegistry``): a generic, OPEN identity, not a closed set.
   ``KnownProvider`` implements it for the built-in providers via the SAME
   ``derive()`` table, so there is exactly one source of truth for the auth
   facts. A third party (e.g. AutoMQ) plugs in by implementing the
@@ -48,9 +47,9 @@ of the PROVIDER, not a free choice:
 The one hard security floor: PLAIN must ride an encrypted transport (SASL_SSL) -
 never send a PLAIN password over a plaintext connection.
 
-This table is the canonical record for the DFE credential contract (dfe-engine#98)
-and is MIRRORED in scalo-rs (Rust) and dfe-engine (Python). Keep the copies
-identical - change the spec first, then all three.
+This table is the canonical record for this credential contract and is
+MIRRORED in scalo-rs and its Rust consumers. Keep the tables identical -
+change one, then the other.
 
 This module is pure, generic FACT - it holds NO deployment policy. An app that
 wants an opinionated contract ("SCRAM mandatory on brokers we own, never

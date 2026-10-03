@@ -254,7 +254,7 @@ class AzureProvider(VersionedProvider):
             raise ProviderError("azure", f"value is not valid utf-8 (Azure stores strings only): {e}")
 
     def _azure_hint(self) -> str:
-        """Permission hint for Azure per HyperI spec."""
+        """Permission hint for Azure."""
         return "check Key Vault access policy or RBAC role assignment"
 
     def _props_to_metadata(self, props, fallback_name: str | None = None) -> SecretMetadata:

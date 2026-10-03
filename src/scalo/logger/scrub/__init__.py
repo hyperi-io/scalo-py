@@ -23,8 +23,8 @@ dropped because the false-positive rate on logs was unacceptable and
 the per-call cost (5-200ms) was incompatible with structured-logging
 budgets. Both scalo-py and scalo-rs stop at L3.
 
-See ``docs/superpowers/specs/2026-05-13-log-scrub-spec.md`` for the
-full cross-language contract. This module implements the scalo-py side.
+See the Scrub architecture section in ``docs/core-pillars/LOGGING.md`` for
+the full cross-language contract. This module implements the scalo-py side.
 
 Public surface:
 

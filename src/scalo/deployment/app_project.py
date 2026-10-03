@@ -15,8 +15,8 @@ ArgoCD project with restricted ``sourceRepos``, ``destinations``, and
 Mirrors ``scalo::deployment::app_project`` for byte-level
 cross-language parity.
 
-See the spec section 3.5 in
-``docs/superpowers/specs/2026-05-15-argocd-enterprise-enhancements-spec.md``.
+See the Topology section in ``docs/deployment/CONTRACT.md`` for how this
+fits with the per-app deployment contract.
 """
 
 from __future__ import annotations

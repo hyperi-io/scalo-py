@@ -1,6 +1,6 @@
 # Concurrency
 
-Four async primitives every HyperI capability composes — built on
+Four async primitives every scalo capability composes — built on
 AnyIO and asyncer so they work under asyncio (and trio, if you ever
 need it). Ships in the base package — no extras to install.
 

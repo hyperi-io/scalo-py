@@ -7,9 +7,8 @@
 # Copyright: (c) 2026 HYPERI PTY LIMITED
 """Pydantic models for the DeploymentTopology schema.
 
-Schema mirrors the spec at
-``docs/superpowers/specs/2026-05-15-helm-composition-and-deployments-repo-spec.md``
-section 3.3. Each top-level type maps 1:1 with a YAML stanza.
+See the Topology section in ``docs/deployment/CONTRACT.md`` for the
+cross-app context. Each top-level type maps 1:1 with a YAML stanza.
 """
 
 from __future__ import annotations

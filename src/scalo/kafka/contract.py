@@ -19,9 +19,11 @@ you want an opinionated STRICT policy on top:
 - a guard against a hand-set config that WEAKENS a provider's strongest auth
   (e.g. someone hand-setting PLAIN on a provider that supports SCRAM).
 
-This is the DFE credential contract (dfe-engine#98), framed generically so any
-consumer can opt in rather than reinvent it. ``scalo.kafka.providers`` carries
-no policy; this module is where policy lives, by deliberate choice.
+This encodes an opinionated credential contract, framed generically so any
+consumer can opt in rather than reinvent it: any security-conscious operator
+wants "strongest available, never downgraded, only these providers".
+``scalo.kafka.providers`` carries no policy; this module is where policy
+lives, by deliberate choice.
 """
 
 from __future__ import annotations

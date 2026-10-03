@@ -15,7 +15,7 @@ Two questions:
 - **Which integrations?** Kafka? AWS / GCP /
   Azure / Vault secrets?
 
-For a typical DFE service that talks to Kafka, exports Prometheus +
+For a typical data-pipeline service that talks to Kafka, exports Prometheus +
 OTel metrics, uses Vault secrets, and ships container artefacts:
 
 ```toml
@@ -101,10 +101,9 @@ Backend default is OpenTelemetry with a Prometheus exporter on
 prevent label explosions.
 
 For Kafka-shaped or processing-shaped services, use the pre-wired
-**DFE metric groups** in `metrics.groups/` — `AppMetrics`,
+**built-in metric groups** in `metrics.groups/` — `AppMetrics`,
 `ConsumerMetrics`, `BufferMetrics`, `SinkMetrics`, `BackpressureMetrics`,
-`CircuitBreakerMetrics`. They emit the standard HyperI metric names
-and labels.
+`CircuitBreakerMetrics`. They emit standard metric names and labels.
 
 See [core-pillars/METRICS.md](core-pillars/METRICS.md).
 
