@@ -111,7 +111,7 @@ await reloader.stop()
 ```
 
 `reload_count_success` and `reload_count_error` are counters you can
-feed into [AppMetrics.record_config_reload](METRICS.md#dfe-groups).
+feed into [AppMetrics.record_config_reload](METRICS.md#built-in-metric-groups).
 The reloader does not do it for you -- it imports nothing from
 `metrics` or `health`, so read the properties and record them from
 your own code.

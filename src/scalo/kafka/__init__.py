@@ -31,10 +31,9 @@ Async usage (FastAPI, async apps):
 
 # Config and defaults
 # Admin operations
-# Opt-in STRICT credential profile (DFE credential contract, dfe-engine#98).
-# Kept namespaced (``scalo.kafka.contract.require(...)``) rather than
-# flattened - it is POLICY layered on the vanilla facts above, not a fact
-# itself.
+# Opt-in STRICT credential profile. Kept namespaced
+# (``scalo.kafka.contract.require(...)``) rather than flattened - it is
+# POLICY layered on the vanilla facts above, not a fact itself.
 from . import contract
 from .admin import KafkaAdmin, KafkaAdminError
 

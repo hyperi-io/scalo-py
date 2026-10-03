@@ -8,7 +8,7 @@
 
 """Generic async primitives for at-scale Python services.
 
-Four building blocks that every HyperI capability composes:
+Four building blocks that every scalo capability composes:
 
 - :func:`run_blocking` -- sync-to-async bridge (offload to worker thread).
 - :func:`make_async` -- generate the async sibling of a sync method.

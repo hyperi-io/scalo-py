@@ -238,7 +238,7 @@ class GCPProvider(VersionedProvider):
         return f"{secret}/versions/{version}"
 
     def _gcp_hint(self, operation: str) -> str:
-        """IAM permission hint for GCP per HyperI spec."""
+        """IAM permission hint for GCP."""
         return f"check IAM role for secretmanager.secrets.{operation}"
 
     @staticmethod

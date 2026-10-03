@@ -219,8 +219,8 @@ the call site, not via librdkafka transactions.
 ### Identity propagation
 
 Headers carry whatever you pass to `producer.send(headers=...)`. The
-kafka module does **not** inject W3C `traceparent` or any HyperI
-identity headers automatically. For cross-service trace context,
+kafka module does **not** inject W3C `traceparent` or any identity
+headers automatically. For cross-service trace context,
 populate `headers` from the active OTel span yourself.
 
 ---

@@ -33,7 +33,7 @@ assert result is True
 - One Rust implementation means a rule that scores `true` in Python
   scores `true` in Rust. No "the Python and Rust scorers disagree"
   outages.
-- This wrapper adds the **DFE expression profile** — a hard-coded
+- This wrapper adds the **expression profile** — a hard-coded
   subset of CEL that excludes per-element iteration (`map`, `filter`,
   `exists`, `all`) and time functions (`timestamp`, `duration`) because
   they have unpredictable performance on large data-pipeline records.
@@ -64,7 +64,7 @@ errors = validate('amount > 10000 && severity == "critical"')
 assert errors == []
 
 errors = validate('items.map(x, x.size)')
-# ["Function 'map()' is not allowed in the DFE expression profile.
+# ["Function 'map()' is not allowed in the expression profile.
 #   Excluded for performance: per-element iteration or time functions."]
 ```
 
@@ -128,7 +128,7 @@ Catches `RuntimeError`, `ValueError`, `TypeError`, and
 
 ---
 
-## The DFE profile
+## The expression profile
 
 Allowed functions (frozenset, exposed as `ALLOWED_FUNCTIONS`):
 

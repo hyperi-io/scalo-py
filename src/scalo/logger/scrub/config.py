@@ -125,8 +125,8 @@ class PiiConfig:
     (PERSON / LOCATION / ORG). That layer was dropped -- both scalo-py and
     scalo-rs -- because the false-positive rate on log content is
     unacceptable and the cost (5-200ms/call) is incompatible with
-    structured-logging budgets. PII detection in HyperI services is
-    L3 algorithmic + L1 secrets, full stop.
+    structured-logging budgets. scalo's PII detection is L3 algorithmic
+    + L1 secrets, full stop.
     """
 
     enabled: bool = True

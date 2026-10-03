@@ -254,7 +254,7 @@ class AWSProvider(VersionedProvider):
             return {"SecretBinary": value}
 
     def _aws_hint(self, operation: str) -> str:
-        """IAM permission hint per HyperI spec."""
+        """IAM permission hint for this operation."""
         return f"check IAM policy for secretsmanager:{operation} permission"
 
     def _map_client_error(self, error: "ClientError", operation: str, path: str) -> Exception:
@@ -297,7 +297,7 @@ class AWSProvider(VersionedProvider):
 
     @staticmethod
     def _tags_for_aws(tags: dict[str, str] | None) -> list[dict[str, str]] | None:
-        """Encode HyperI tag dict to AWS Tags list shape."""
+        """Encode a tag dict to AWS Tags list shape."""
         if not tags:
             return None
         return [{"Key": k, "Value": v} for k, v in tags.items()]
