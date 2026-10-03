@@ -137,8 +137,7 @@ Run with uvicorn / hypercorn / gunicorn as you would any FastAPI app
 -- the framework used to pick the runner for you; now you pick.
 
 For CLI tools, use [api/CLI.md](../api/CLI.md) -- the Typer-based
-`ServiceApp` is the supported replacement for `Application.cli()`
-(`DfeApp` remains as a deprecated alias).
+`ServiceApp` is the supported replacement for `Application.cli()`.
 
 ---
 

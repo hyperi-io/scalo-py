@@ -1,6 +1,6 @@
 #  Project:      scalo
 #  File:         test_metrics_naming_parity.py
-#  Purpose:      Verify validate_metric_name and validate_dfe_prefix against shared corpus
+#  Purpose:      Verify validate_metric_name and validate_metric_prefix against shared corpus
 #  Language:     Python
 #
 #  License:      Apache-2.0
@@ -8,7 +8,8 @@
 
 """
 Metric naming corpus tests: every entry in the shared naming corpus is run
-against validate_metric_name() and validate_dfe_prefix().
+against validate_metric_name() and validate_metric_prefix() (with the
+corpus's "dfe" prefix).
 
 The corpus is vendored at ``scalo/data/metrics-naming.yaml`` from
 ``hyperi-ai/standards/patterns/`` by ``tools/vendor_patterns.sh``, the same route
@@ -25,7 +26,7 @@ from importlib import resources
 import pytest
 import yaml
 
-from scalo.metrics.naming import validate_dfe_prefix, validate_metric_name
+from scalo.metrics.naming import validate_metric_name, validate_metric_prefix
 
 _FIXTURES_PATH = resources.files("scalo") / "data" / "metrics-naming.yaml"
 
@@ -67,8 +68,8 @@ def test_valid_metric_name_no_warnings(case: dict) -> None:
 
 @pytest.mark.parametrize("case", _valid_cases, ids=_valid_ids(_valid_cases))
 def test_valid_dfe_prefix_no_warnings(case: dict) -> None:
-    """Valid metric names produce no warnings from validate_dfe_prefix."""
-    warnings = validate_dfe_prefix(case["name"], case["app"])
+    """Valid metric names produce no warnings from validate_metric_prefix."""
+    warnings = validate_metric_prefix(case["name"], case["app"], prefix="dfe")
     assert warnings == [], f"[{case['name']}] Expected no prefix warnings for valid metric but got: {warnings}"
 
 
@@ -82,12 +83,12 @@ def test_valid_dfe_prefix_no_warnings(case: dict) -> None:
 def test_invalid_metric_produces_warning(case: dict) -> None:
     """
     Invalid metric names produce at least one warning from validate_metric_name
-    or validate_dfe_prefix (or both).
+    or validate_metric_prefix (or both).
 
     The fixture's 'reason' field documents which rule is violated.
     """
     naming_warnings = validate_metric_name(case["name"], case["type"])
-    prefix_warnings = validate_dfe_prefix(case["name"], case["app"])
+    prefix_warnings = validate_metric_prefix(case["name"], case["app"], prefix="dfe")
     all_warnings = naming_warnings + prefix_warnings
 
     assert len(all_warnings) > 0, (

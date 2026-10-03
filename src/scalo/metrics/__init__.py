@@ -44,7 +44,7 @@ from .groups import (
     SinkMetrics,
 )
 from .manager import MetricsManager, create_metrics
-from .naming import validate_dfe_prefix, validate_metric_name, validate_metric_prefix
+from .naming import validate_metric_name, validate_metric_prefix
 
 # Backward compatibility: Re-export Prometheus-specific classes
 from .prometheus import (
@@ -75,7 +75,6 @@ __all__ = [
     "metric_prefix",
     "set_metric_prefix",
     # Naming validation
-    "validate_dfe_prefix",
     "validate_metric_name",
     "validate_metric_prefix",
 ]

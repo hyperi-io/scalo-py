@@ -95,9 +95,8 @@ deployment must be renamed to `<YOURPREFIX>_*` (or bare). See
 
 ## 5. CLI: `DfeApp` -> `ServiceApp`
 
-The base class is now `ServiceApp`. `DfeApp` remains as a **deprecated
-alias** so existing `class X(DfeApp)` code keeps working during
-migration; prefer `ServiceApp` in new code.
+The base class is now `ServiceApp`. `DfeApp` shipped as a deprecated
+alias for one release and has since been removed.
 
 ```diff
 - from scalo.cli import DfeApp
@@ -136,8 +135,8 @@ or process-wide via `from scalo.metrics import set_metric_prefix; set_metric_pre
 or config `metrics.namespace: dfe`. Dashboards/alerts that assume
 `dfe_*` names keep working unchanged once the namespace is set.
 
-The naming validator `validate_dfe_prefix(name, app)` is kept as a
-deprecated alias; new code should use
+The naming validator `validate_dfe_prefix(name, app)` shipped as a
+deprecated alias and has since been removed; use
 `validate_metric_prefix(name, app, prefix=...)`.
 
 ---
@@ -168,7 +167,7 @@ The deployment generators (`scalo.deployment`) carry no organisation's name. The
 
 - [ ] `hyperi-pylib` -> `scalo` in dependencies; `hyperi_pylib` -> `scalo` in imports.
 - [ ] Rename `HYPERI_*` env vars to `<YOURPREFIX>_*` and set `env_prefix` on your `ServiceApp`.
-- [ ] `DfeApp` -> `ServiceApp` (alias still works).
+- [ ] `DfeApp` -> `ServiceApp` (alias removed).
 - [ ] `metrics.dfe_groups` -> `metrics.groups`.
 - [ ] If you want `dfe_`-prefixed metric names, set the metric namespace to `dfe`.
 - [ ] Replace any use of the removed `database` / `cache` modules.

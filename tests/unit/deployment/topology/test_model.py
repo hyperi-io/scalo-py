@@ -183,7 +183,7 @@ def test_deployment_topology_minimal():
             apps=[AppEntry(name="dfe-loader", version="^1.18")],
         ),
     )
-    assert topo.apiVersion == "hyperi.io/v1"
+    assert topo.apiVersion == "scalo/v1"
     assert topo.kind == "DeploymentTopology"
     assert topo.metadata["name"] == "default"
 
