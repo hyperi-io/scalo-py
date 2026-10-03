@@ -909,11 +909,11 @@ def setup(
             When True, user-provided emojis in log messages pass through unchanged.
             When False, only CHARS-POLICY.md approved emojis are added by logger.
         mask_sensitive: Mask sensitive data in logs (default: True)
-            - None (default): Read from config (logging.mask_sensitive_data)
+            - None (default): masking on; ``logging.mask_sensitive_data`` does not reach ``setup()``
             - True: Enable masking of passwords, tokens, API keys, etc.
             - False: Disable masking (NOT recommended for production)
         masking_level: legacy selector for the field-name filter
-            - None (default): Read from config (logging.masking_level)
+            - None (default): the scrub defaults; ``logging.masking_level`` does not reach ``setup()``
             - "simple": Fast regex on field names (this is the only
               path; ships in core)
             - "advanced" / "advanced-ner": deprecated. NLP/NER
@@ -925,7 +925,7 @@ def setup(
             :class:`Scrubber` from
             :func:`scalo.logger.scrub.build_scrubber`.
         rate_limit_sec: Rate limit period in seconds for repeated messages
-            - None (default): No rate limiting (read from config: logging.rate_limit_sec)
+            - None (default): no rate limiting; ``logging.rate_limit_sec`` does not reach ``setup()``
             - 0: Disable rate limiting
             - 30: Suppress identical messages within 30 seconds (recommended)
         rate_limit_similar: Normalise numbers/UUIDs/IPs for similar message matching
@@ -1020,8 +1020,7 @@ def setup(
     # that assert on captured output, etc.).
     enqueue = control_var("LOG_ENQUEUE", default="1") != "0"
 
-    # CI mode: Auto-detect from environment or config, can be overridden by parameter
-    # Priority: parameter > config > auto-detect
+    # Parameter, then auto-detect: get_logging_config() does not pass ci_mode.
     if ci_mode is None:
         ci_mode = config.get("ci_mode")  # Check config first
     if ci_mode is None:
@@ -1048,12 +1047,9 @@ def setup(
     if allow_all_emojis and not use_emojis:
         allow_all_emojis = False  # Can't allow all if emojis disabled
 
-    # Build a Scrubber per spec Section 2.3. The resolver honours (in order):
-    # explicit `scrubber=` arg -> explicit `scrub_config=` arg -> legacy
-    # `mask_sensitive` / `masking_level` args -> new `logging.scrub.*`
-    # config keys -> legacy `logging.mask_sensitive_data` /
-    # `logging.masking_level` config keys (with deprecation warning) ->
-    # defaults. See logger/scrub_resolver.py.
+    # Resolver order here: `scrubber=`, `scrub_config=`, the `mask_sensitive` /
+    # `masking_level` args, then defaults -- get_logging_config() carries no
+    # scrub keys. See logger/scrub_resolver.py.
     resolved_scrubber = resolve_scrubber(
         scrubber=scrubber,
         scrub_config=scrub_config,
@@ -1071,8 +1067,7 @@ def setup(
     if masking_level is None:
         masking_level = config.get("masking_level", "advanced-ner")
 
-    # Rate limiting (default: disabled)
-    # Read from config if not explicitly set
+    # Rate limiting is off unless the caller passes rate_limit_sec.
     if rate_limit_sec is None:
         rate_limit_sec = config.get("rate_limit_sec", 0)
 
