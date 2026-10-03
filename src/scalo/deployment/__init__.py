@@ -31,6 +31,8 @@ or in ``pyproject.toml``::
 
 from __future__ import annotations
 
+from typing import NoReturn
+
 # Contract Identity v1 has no pydantic dependency -- always available
 # whenever the deployment package can be imported. Keep this import
 # outside the pydantic-gated block so consumers can stamp identities
@@ -54,7 +56,7 @@ except ImportError:
 if not DEPLOYMENT_AVAILABLE:
     # Defer the error until something is actually used so a bare
     # `from scalo import deployment` doesn't break import graphs.
-    def _missing(*_args: object, **_kwargs: object) -> None:
+    def _missing(*_args: object, **_kwargs: object) -> NoReturn:
         from scalo.secrets.exceptions import ProviderNotAvailableError
 
         raise ProviderNotAvailableError(
