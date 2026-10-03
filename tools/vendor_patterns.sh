@@ -7,8 +7,9 @@
 #  License:   BUSL-1.1
 #  Copyright: (c) 2026 HYPERI PTY LIMITED
 #
-# Copies the canonical pattern files from a local hyperi-ai checkout
-# into src/scalo/data/, where the runtime loads them.
+# Copies the canonical pattern files from a local hyperi-ai checkout:
+# runtime patterns into src/scalo/data/, where the runtime loads them, and
+# test corpora into tests/fixtures/patterns/, so the wheel does not ship them.
 #
 # NON-BLOCKING: if hyperi-ai checkout cannot be found, the script
 # prints a warning and exits 0. This is intentional — the build /
@@ -33,20 +34,22 @@ set -uo pipefail
 SCRIPT_DIR=$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)
 PYLIB_ROOT=$(dirname "$SCRIPT_DIR")
 DATA_DIR="$PYLIB_ROOT/src/scalo/data"
+FIXTURES_DIR="$PYLIB_ROOT/tests/fixtures/patterns"
 PATTERNS_RELATIVE="standards/patterns"
 
-# Files to vendor. Add as new pattern files land in hyperi-ai.
+# Runtime pattern files, loaded by the library. Add as new pattern files land in hyperi-ai.
 FILES=(
     "national_ids.toml"
     "gitleaks.toml"
-    "pii_test_fixtures.toml"
-    # Cross-language corpora consumed by the parity tests. Vendored copies are
-    # committed so a PyPI install and a CI run without a hyperi-ai checkout still
-    # have them; --check reports drift from canonical.
-    "masking-patterns.yaml"
-    "metrics-naming.yaml"
     # Future:
     # "field_names.toml"
+)
+
+# Cross-language corpora read only by the parity tests, committed so CI needs no hyperi-ai checkout.
+TEST_FILES=(
+    "pii_test_fixtures.toml"
+    "masking-patterns.yaml"
+    "metrics-naming.yaml"
 )
 
 CHECK_MODE=false
@@ -90,15 +93,23 @@ fi
 
 info "using hyperi-ai checkout at: $checkout"
 
-mkdir -p "$DATA_DIR"
+mkdir -p "$DATA_DIR" "$FIXTURES_DIR"
 
 drift_count=0
 copy_count=0
 miss_count=0
 
+targets=()
 for file in "${FILES[@]}"; do
+    targets+=("$DATA_DIR/$file")
+done
+for file in "${TEST_FILES[@]}"; do
+    targets+=("$FIXTURES_DIR/$file")
+done
+
+for dst in "${targets[@]}"; do
+    file=$(basename "$dst")
     src="$checkout/$PATTERNS_RELATIVE/$file"
-    dst="$DATA_DIR/$file"
 
     if [[ ! -f "$src" ]]; then
         warn "missing in hyperi-ai: $src — skipping (non-blocking)"

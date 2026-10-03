@@ -2,18 +2,18 @@
 #
 # Canonical input -> expected-outcome data for Layer 3 PII validators.
 # Both scalo-py and scalo-rs load this file and run their
-# implementations against it in CI (spec: 2026-05-13 log-scrub Section 3.5).
+# implementations against it in CI.
 #
 # Cross-language parity: both implementations MUST produce identical
 # redaction output (codepoint-equal) for every sample. CI fails on
 # any drift.
 #
-# Sections per validator type. Two reliability tiers (Section 9 of the spec):
+# Sections per validator type. Two reliability tiers:
 #
 # Strong-structural (fires from any context):
 #   credit_card, iban, email, phone
 #
-# Context-required (needs a keyword anchor nearby -- Section 9.2):
+# Context-required (needs a keyword anchor nearby):
 #   au_abn, au_acn, au_tfn, au_medicare
 #
 # Each section uses ``valid`` / ``invalid`` for strong-structural
@@ -23,9 +23,8 @@
 # All samples are synthetic or ATO/scheme-published test examples.
 # None are real personal information.
 #
-# Non-ASCII coverage is mandatory (spec Section 10a): every section that can
-# meaningfully take non-ASCII content includes at least one Unicode
-# sample.
+# Non-ASCII coverage is mandatory: every section that can meaningfully
+# take non-ASCII content includes at least one Unicode sample.
 
 [meta]
 version = "1.0.0"
@@ -81,7 +80,7 @@ valid = [
     "user.name+tag@sub.domain.example.com",
     "user-with-hyphen@example-domain.com",
     "x@y.z",
-    # Non-ASCII (IDN direct form per spec Section 10a.6)
+    # Non-ASCII (IDN direct form -- Unicode domain labels, not Punycode)
     "山田@example.jp",
     "ünïcödé@example.com",
     "user@münchen.de",
