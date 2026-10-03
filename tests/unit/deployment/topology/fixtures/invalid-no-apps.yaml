@@ -1,4 +1,4 @@
-apiVersion: scalo.dev/v1
+apiVersion: scalo/v1
 kind: DeploymentTopology
 metadata:
   name: empty
