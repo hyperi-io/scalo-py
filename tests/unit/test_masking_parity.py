@@ -10,7 +10,7 @@
 Masking corpus tests: every case in the shared field-masking corpus is run
 against SensitiveDataFilter.
 
-The corpus is vendored at ``scalo/data/masking-patterns.yaml`` from
+The corpus is vendored at ``tests/fixtures/patterns/masking-patterns.yaml`` from
 ``hyperi-ai/standards/patterns/`` by ``tools/vendor_patterns.sh``, the same route
 ``pii_test_fixtures.toml`` takes. It used to be read from a
 ``scalo-spec/test-fixtures/`` submodule that does not exist -- no scalo-spec
@@ -21,14 +21,14 @@ Intended as a cross-language corpus, and scalo-rs does not read it yet, so
 passing here proves the Python behaviour only.
 """
 
-from importlib import resources
+from pathlib import Path
 
 import pytest
 import yaml
 
 from scalo.logger.filters import SensitiveDataFilter
 
-_FIXTURES_PATH = resources.files("scalo") / "data" / "masking-patterns.yaml"
+_FIXTURES_PATH = Path(__file__).resolve().parents[1] / "fixtures" / "patterns" / "masking-patterns.yaml"
 
 
 def _load_fixtures() -> dict | None:

@@ -11,7 +11,7 @@ Metric naming corpus tests: every entry in the shared naming corpus is run
 against validate_metric_name() and validate_metric_prefix() (with the
 corpus's "dfe" prefix).
 
-The corpus is vendored at ``scalo/data/metrics-naming.yaml`` from
+The corpus is vendored at ``tests/fixtures/patterns/metrics-naming.yaml`` from
 ``hyperi-ai/standards/patterns/`` by ``tools/vendor_patterns.sh``, the same route
 ``pii_test_fixtures.toml`` takes. It used to be read from a
 ``scalo-spec/test-fixtures/`` submodule that does not exist, so every entry here
@@ -21,14 +21,14 @@ Intended as a cross-language corpus, and scalo-rs does not read it yet, so
 passing here proves the Python behaviour only.
 """
 
-from importlib import resources
+from pathlib import Path
 
 import pytest
 import yaml
 
 from scalo.metrics.naming import validate_metric_name, validate_metric_prefix
 
-_FIXTURES_PATH = resources.files("scalo") / "data" / "metrics-naming.yaml"
+_FIXTURES_PATH = Path(__file__).resolve().parents[1] / "fixtures" / "patterns" / "metrics-naming.yaml"
 
 
 def _load_fixtures() -> dict | None:

@@ -8,7 +8,7 @@
 
 """Cross-language parity tests for L3 PII validators.
 
-Reads ``scalo/data/pii_test_fixtures.toml`` (vendored byte-
+Reads ``tests/fixtures/patterns/pii_test_fixtures.toml`` (vendored byte-
 identical from
 ``hyperi-ai/standards/patterns/pii_test_fixtures.toml``) and verifies
 that scalo-py's validators redact every ``valid`` sample, never redact
@@ -22,7 +22,7 @@ same assertions in Rust. CI fails on any divergence (spec §11).
 from __future__ import annotations
 
 import tomllib
-from importlib import resources
+from pathlib import Path
 
 import pytest
 
@@ -41,7 +41,7 @@ from scalo.logger.scrub import (
 
 
 def _load_fixtures() -> dict:
-    resource = resources.files("scalo") / "data" / "pii_test_fixtures.toml"
+    resource = Path(__file__).resolve().parents[1] / "fixtures" / "patterns" / "pii_test_fixtures.toml"
     with resource.open("rb") as f:
         return tomllib.load(f)
 
