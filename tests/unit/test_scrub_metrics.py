@@ -288,7 +288,8 @@ class TestFactoryEmitsMetrics:
                 raise ValueError("intentional")
 
         s = LayeredScrubber(layers=[_Boom()], metrics=metrics)
-        s.scrub("payload")
+        with pytest.warns(RuntimeWarning, match="Scrub layer _Boom raised ValueError"):
+            s.scrub("payload")
         events = self._events_by_name(backend)
         errors = events["log_scrub_errors_total"]
         assert any(ev[2] == {"layer": "_Boom", "error_type": "ValueError"} for ev in errors)

@@ -61,7 +61,7 @@ kind clusters by accident. CI sets it explicitly on the e2e job.
 
 Canonical skip helper. Writes the line:
 
-```
+```text
 HYPERCI-SKIP[contract-e2e][<tier>]: <test_name>: <reason>
 ```
 

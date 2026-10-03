@@ -1,6 +1,7 @@
 """ResourceMetrics: the process and cgroup readings, and their export over OTLP."""
 
 import sys
+import time
 from pathlib import Path
 
 import pytest
@@ -104,6 +105,21 @@ def test_process_readings_describe_this_process(tmp_path: Path):
         assert resources.open_fds() > 0
     else:
         assert resources.open_fds() is None
+
+
+def test_cpu_seconds_is_the_cpu_time_used_and_never_falls(tmp_path: Path):
+    """process_cpu_seconds_total is accumulated CPU time, as scalo-rs reports it."""
+    resources = _resources(cgroup_root=tmp_path)
+    before = resources.cpu_seconds()
+    deadline = time.process_time() + 0.05
+    while time.process_time() < deadline:
+        pass
+    after = resources.cpu_seconds()
+
+    assert before is not None
+    assert after is not None
+    # psutil reads whole 10 ms ticks; a percent-of-a-core reading would jump by about 100.
+    assert 0.03 <= after - before < 5.0, f"50 ms of busy loop moved CPU time {before} -> {after}"
 
 
 def test_the_prometheus_backend_registers_nothing(tmp_path: Path):

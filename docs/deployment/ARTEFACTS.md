@@ -172,7 +172,7 @@ surface for container provenance).
 Writes a complete Helm chart directory tree. Pass either a `Path` or a
 string for `output_dir`:
 
-```
+```text
 <output_dir>/
   Chart.yaml
   values.yaml

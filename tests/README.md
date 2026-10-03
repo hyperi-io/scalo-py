@@ -4,7 +4,7 @@ Test organisation for scalo following standard testing patterns.
 
 ## Directory Structure
 
-```
+```text
 tests/
 +-- conftest.py           # Shared pytest fixtures and configuration
 +-- unit/                 # Unit tests (fast, isolated)

@@ -211,7 +211,10 @@ class EngineResolver:
 
             # A Replicated/Shared database propagates DDL and replicates data on
             # its own, so the argumentless form is right and ON CLUSTER is not.
-            db_engine = self._scalar(f"SELECT engine FROM system.databases WHERE name = '{database}'")
+            db_engine = self._scalar(
+                "SELECT engine FROM system.databases WHERE name = {database:String}",
+                {"database": database},
+            )
             if db_engine in ("Replicated", "Shared"):
                 return self._cache(database, Topology.REPLICATED)
 
@@ -245,11 +248,14 @@ class EngineResolver:
         self._sensed[database] = topology
         return topology
 
-    def _rows(self, sql: str) -> list:
-        return self._client.query(sql).result_rows
+    def _rows(self, sql: str, parameters: dict[str, str] | None = None) -> list:
+        # A caller's value travels as a server-side bound parameter, never inside the SQL text.
+        if parameters is None:
+            return self._client.query(sql).result_rows
+        return self._client.query(sql, parameters=parameters).result_rows
 
-    def _scalar(self, sql: str) -> str | None:
-        rows = self._rows(sql)
+    def _scalar(self, sql: str, parameters: dict[str, str] | None = None) -> str | None:
+        rows = self._rows(sql, parameters)
         if not rows:
             return None
         value = rows[0][0]
