@@ -220,23 +220,22 @@ contract = DeploymentContract(
     env_prefix="MY_SERVICE",
     metric_prefix="my_service",
     config_mount_path="/etc/my-service.yaml",
+    image_registry="registry.example.com/team",
 )
 
 # Contract Identity v1 labels stamp every artefact:
-identity = ContractIdentity.detect(image_ref="ghcr.io/hyperi-io/my-service:v1.0.0")
+identity = ContractIdentity.detect(image_ref="registry.example.com/team/my-service:v1.0.0")
 
 dockerfile = generate_dockerfile(contract, identity=identity)
 generate_chart(contract, "charts/my-service", identity=identity)
 argo_yaml = generate_argocd_application(
     contract,
-    ArgocdConfig(repo_url="https://github.com/hyperi-io/my-service", target_revision="main"),
+    ArgocdConfig(repo_url="https://git.example.com/team/my-service", target_revision="main"),
     identity=identity,
 )
 ```
 
-That gives you a Dockerfile, a complete Helm chart, an ArgoCD
-`Application` manifest, all carrying the three `io.hyperi.contract.*`
-identity keys (version, source-commit, image-ref).
+That gives you a Dockerfile, a complete Helm chart, an ArgoCD `Application` manifest, all carrying the three `io.scalo.contract.*` identity keys (version, source-commit, image-ref). The contract names no vendor, licence or copyright until you set `OciLabels(vendor=..., licenses=..., copyright=...)`, and `OciLabels(label_namespace=...)` moves scalo's own keys under your reverse-DNS name.
 
 See [deployment/CONTRACT.md](deployment/CONTRACT.md),
 [deployment/ARTEFACTS.md](deployment/ARTEFACTS.md), and

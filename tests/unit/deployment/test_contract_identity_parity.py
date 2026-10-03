@@ -26,7 +26,7 @@ from pathlib import Path
 
 import pytest
 
-from scalo.deployment.contract_identity import ContractIdentity
+from scalo.deployment.contract_identity import DEFAULT_LABEL_NAMESPACE, ContractIdentity
 
 GOLDEN_PATH = Path(__file__).parent.parent.parent / "fixtures" / "contract-parity" / "v1-output.txt"
 
@@ -62,7 +62,7 @@ def test_golden_fixture_exists() -> None:
 def test_dockerfile_labels_match_golden() -> None:
     golden = _parse_golden(GOLDEN_PATH.read_text(encoding="utf-8"))
     ident = ContractIdentity(source_commit=GOLDEN_SHA, image_ref=GOLDEN_REF)
-    actual = ident.as_dockerfile_labels()
+    actual = ident.as_dockerfile_labels(DEFAULT_LABEL_NAMESPACE)
     expected = golden["dockerfile-labels"]
     if actual != expected:
         diff = "\n".join(
@@ -77,7 +77,7 @@ def test_dockerfile_labels_match_golden() -> None:
 def test_yaml_annotations_match_golden(indent: int) -> None:
     golden = _parse_golden(GOLDEN_PATH.read_text(encoding="utf-8"))
     ident = ContractIdentity(source_commit=GOLDEN_SHA, image_ref=GOLDEN_REF)
-    actual = ident.as_yaml_annotations(indent=indent)
+    actual = ident.as_yaml_annotations(DEFAULT_LABEL_NAMESPACE, indent=indent)
     expected = golden[f"yaml-annotations-indent-{indent}"]
     if actual != expected:
         diff = "\n".join(

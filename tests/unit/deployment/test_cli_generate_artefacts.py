@@ -63,8 +63,28 @@ def _sample_contract() -> DeploymentContract:
         env_prefix="TEST_DEPLOY",
         metric_prefix="test",
         config_mount_path="/etc/test/app.yaml",
+        image_registry="registry.example.com",
         entrypoint_args=["--config", "/etc/test/app.yaml"],
     )
+
+
+@pytest.fixture
+def argocd_cascade():
+    """Set the ArgoCD source and namespace in the cascade for one test."""
+    from scalo.config import settings
+
+    settings.set("deployment.argocd.repo_url", "https://git.example.com/team/test-deploy-app")
+    settings.set("deployment.argocd.dest_namespace", "probes")
+    yield
+    settings.unset("DEPLOYMENT")
+
+
+@pytest.fixture
+def silent_cascade() -> None:
+    """Clear any deployment keys from the cascade for one test."""
+    from scalo.config import settings
+
+    settings.unset("DEPLOYMENT")
 
 
 class TestGenerateArtefactsHookDefault:
@@ -89,7 +109,7 @@ class TestGenerateArtefactsHookDefault:
 class TestGenerateArtefactsCli:
     """Invoke the generate-artefacts subcommand and check output files."""
 
-    def test_writes_all_artefacts(self, tmp_path: Path):
+    def test_writes_all_artefacts(self, tmp_path: Path, argocd_cascade):
         AppCls = _build_app_class(_sample_contract)
         app = AppCls()
         # Typer always sys.exit()s in standalone mode -- catch the success exit.
@@ -97,7 +117,7 @@ class TestGenerateArtefactsCli:
             app.cli(["generate-artefacts", "--output-dir", str(tmp_path)])
         assert exc_info.value.code == 0
 
-        # All four artefacts present
+        # All artefacts present
         contract_path = tmp_path / "deployment-contract.json"
         manifest_path = tmp_path / "container-manifest.json"
         runtime_path = tmp_path / "Dockerfile.runtime"
@@ -106,6 +126,7 @@ class TestGenerateArtefactsCli:
         assert contract_path.exists()
         assert manifest_path.exists()
         assert runtime_path.exists()
+        assert (tmp_path / ".dockerignore").exists()
         assert argo_path.exists()
 
         # Contract JSON round-trips
@@ -122,11 +143,27 @@ class TestGenerateArtefactsCli:
         assert "AS runtime" in runtime
         assert "ARG OCI_SOURCE=" in runtime
 
-        # ArgoCD application points at the cascade-derived repo URL
+        # ArgoCD application carries the repo and namespace the cascade names
         argo = argo_path.read_text()
         assert "kind: Application" in argo
         assert "name: test-deploy-app" in argo
-        assert "repoURL: https://github.com/your-org/test-deploy-app" in argo
+        assert "repoURL: https://git.example.com/team/test-deploy-app\n" in argo
+        assert "    namespace: probes\n" in argo
+
+    def test_no_argocd_application_without_a_repo(self, tmp_path: Path, capsys, silent_cascade):
+        """With no repo named for it, the Application is not written and stderr says why."""
+        AppCls = _build_app_class(_sample_contract)
+        with pytest.raises(SystemExit) as exc_info:
+            AppCls().cli(["generate-artefacts", "--output-dir", str(tmp_path)])
+        assert exc_info.value.code == 0
+
+        assert not (tmp_path / "argocd-application.yaml").exists()
+        assert (tmp_path / "Dockerfile.runtime").is_file()
+        err = capsys.readouterr().err
+        assert "deployment.argocd.repo_url is not set" in err
+        # The written-files listing indents each name by two spaces; the warning does not.
+        assert "  Dockerfile.runtime" in err
+        assert "  argocd-application.yaml" not in err
 
     def test_help_does_not_claim_helm_chart(self, capsys):
         # Issue #23: generate-artefacts emits no Helm chart; help must not claim one.

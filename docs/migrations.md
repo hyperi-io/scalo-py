@@ -26,6 +26,34 @@ Tracebacks are now formatted the way the stdlib formats them and scrubbed before
 
 **Consumer adjustment** -- a sink added with `logger.add()` after `setup()` sees `record["extra"]` as the scrubbed fields in plain JSON data, not the objects passed in. An app that wants httpx's request lines sets `logging.getLogger("httpx").setLevel(logging.INFO)` after `setup()`, knowing a signed URL goes out whole.
 
+### Contract names and defaults carry no organisation or product name
+
+The names `scalo.deployment` writes into artefacts, and the defaults it falls back on, named one organisation and one product. They are now scalo's own or the app's, and an app that relied on the old value sets it explicitly. Once it does, every artefact is byte-for-byte what it was with three exceptions: `deployment-contract.json` gains the two new `oci_labels` fields, a secret field's schema gains `x-scalo-secret` and ends with the three marker keys, and `Chart.yaml` names only the app. scalo-rs's section of the same name is the same change.
+
+| Old | New | To keep the old value |
+| --- | --- | --- |
+| Secret schema marker `x-dfe-secret` | `x-scalo-secret`, with `x-dfe-secret` still emitted beside it. Either one in `json_schema_extra` opts a field in. A secret field now ends `"x-scalo-secret": true, "x-dfe-secret": true, "writeOnly": true`, the order scalo-rs's `SensitiveString` emits | Nothing: both are emitted. Move every reader to `x-scalo-secret` |
+| Label keys `io.hyperi.profile`, `io.hyperi.app`, `io.hyperi.metrics_port`, `io.hyperi.contract.*` | `io.scalo.*`, under the new `OciLabels.label_namespace` | `OciLabels(label_namespace="io.hyperi")` |
+| `KEY_PREFIX` (`io.hyperi.contract`) | `KEY_SEGMENT` (`contract`), under the label namespace, and `DEFAULT_LABEL_NAMESPACE` (`io.scalo`) | -- |
+| `ContractIdentity.as_dockerfile_labels()`, `as_yaml_annotations(indent=0)` | take the namespace: `as_dockerfile_labels(namespace)`, `as_yaml_annotations(namespace, indent=0)`. New `as_labels(namespace)` returns the keys as a dict | pass `"io.hyperi"` |
+| `DEFAULT_VENDOR` (`HYPERI PTY LIMITED`), the `OciLabels.vendor` default | removed. `vendor` is empty by default, and an empty vendor writes no label | `OciLabels(vendor="HYPERI PTY LIMITED")` |
+| `DEFAULT_LICENSE` (`Apache-2.0`), the `OciLabels.licenses` default | removed. `licenses` is empty by default, and an empty licence writes no `org.opencontainers.image.licenses` label and no `# License:` line | `OciLabels(licenses="Apache-2.0")`, or the app's own licence |
+| `generate_dockerfile` header `# License:   Apache-2.0` and `# Copyright: (c) 2026 HYPERI PTY LIMITED`, written whatever the contract named | `# License:` follows `OciLabels.licenses` and `# Copyright:` the new `OciLabels.copyright`, each only when set. With neither set the header drops both lines and the `#` after them | `OciLabels(licenses="Apache-2.0", copyright="(c) 2026 HYPERI PTY LIMITED")` writes the header exactly as before. An app that set another licence now gets it in the header too |
+| `DeploymentContract.image_registry` default `localhost:5000`, and `DEFAULT_IMAGE_REGISTRY` | required, with no default. A missing or blank registry raises `ValidationError` when the contract is built. `DEFAULT_IMAGE_REGISTRY` is removed | `image_registry="localhost:5000"`, or the registry the app pushes to |
+| `image_registry_from_cascade() -> str`, falling back to `localhost:5000` | `-> str \| None`, `None` when unset | `image_registry_from_cascade() or "localhost:5000"` |
+| `argocd_repo_url_from_cascade(app_name) -> str`, falling back to `https://github.com/your-org/<app>` | `argocd_repo_url_from_cascade() -> str \| None`. `generate-artefacts` writes no `argocd-application.yaml` without it, and warns on stderr | `deployment.argocd.repo_url` in a config file the cascade reads |
+| `ArgocdConfig().dest_namespace` `dfe` | empty, which deploys into a namespace named after `app_name`. New cascade key `deployment.argocd.dest_namespace`, read by `argocd_dest_namespace_from_cascade()` | `ArgocdConfig(dest_namespace="dfe")`, or `deployment.argocd.dest_namespace: dfe` for `generate-artefacts` |
+| `generate_chart`'s `Chart.yaml` keywords `hyperi` and `dfe`, and maintainer `HyperI` at `https://github.com/hyperi-io` | one keyword, `app_name`, and no `maintainers` block | no setting: an app that wants its own keywords or maintainers edits the generated `Chart.yaml` |
+
+scalo-rs's rows for `KafkaSource` consumer groups, the DLQ paths and topic, and the spool and file-output paths have no counterpart here. scalo-py derives no consumer group (every consumer takes an explicit `group_id`) and has no DLQ, spool or file-output module.
+
+**Consumer adjustment** -- set each value the app relied on, in code or config, before the bump. The ones that break something when missed:
+
+- A contract built without `image_registry` raises `ValidationError`, and so does `DeploymentContract.from_json` on JSON without the key.
+- A call to `argocd_repo_url_from_cascade(app_name)` raises `TypeError`. Call it with no argument and handle `None`.
+- A script that edits the generated `Chart.yaml` by anchoring on the old `keywords:` block finds no anchor.
+- Committed artefacts that `generate_dockerfile`, `generate_runtime_stage`, `generate_container_manifest`, `generate_chart` or `config_schema_json` produced change on regeneration, so regenerate them in the same change as the bump. `check_config_artifact_drift` fails until they are. A committed `argocd-application.yaml` stops regenerating unless `deployment.argocd.repo_url` is set.
+
 ### Internal Kafka group ids derive from the client's config (BEHAVIOUR CHANGE)
 
 The consumer that `KafkaClient`, `AsyncKafkaClient` and `ReadOnlyKafkaClient` build for watermark and offset-for-time queries used fixed group ids of scalo's own: `scalo-offset-lookup-<n>`, `scalo-watermark-<n>`, `scalo-async-<n>`, `scalo-async-wm-<n>` and `scalo-readonly-<n>`, where `<n>` was the Python object id of the client. A broker granting groups by prefix refused all five, logging `GroupAuthorizationFailed`. They are now one id, `<group.id>-admin`, falling back to `<client.id>-admin` and then `scalo-admin`. See [transport/KAFKA.md](transport/KAFKA.md), "Internal consumer groups and broker ACLs".

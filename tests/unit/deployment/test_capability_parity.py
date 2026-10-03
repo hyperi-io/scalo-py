@@ -21,7 +21,7 @@ import json
 from pathlib import Path
 
 import pytest
-from pydantic import BaseModel, SecretStr
+from pydantic import BaseModel, Field, SecretStr
 
 from scalo.deployment import (
     Capability,
@@ -147,10 +147,62 @@ def test_config_schema_marks_secretstr_fields() -> None:
 
     schema = config_schema_json(Cfg)
     pw = schema["properties"]["password"]
+    assert pw.get("x-scalo-secret") is True
     assert pw.get("x-dfe-secret") is True
     assert pw.get("writeOnly") is True
     # Non-secret field untouched.
+    assert "x-scalo-secret" not in schema["properties"]["host"]
     assert "x-dfe-secret" not in schema["properties"]["host"]
+
+
+# The order scalo-rs's SensitiveString emits, per reflectable-config-shape.md "Secret marker".
+SECRET_TAIL = ["x-scalo-secret", "x-dfe-secret", "writeOnly"]
+
+
+@pytest.mark.parametrize(
+    "extra",
+    [{"x-scalo-secret": True}, {"x-dfe-secret": True}, {"x-dfe-secret": True, "writeOnly": True}],
+    ids=["scalo-marker", "earlier-marker", "earlier-marker-and-writeonly"],
+)
+def test_author_marked_secret_ends_with_both_markers_in_order(extra: dict) -> None:
+    """Either marker name opts a field in, and both are emitted after it, in scalo-rs's order."""
+
+    class Cfg(BaseModel):
+        token: str = Field(json_schema_extra=extra)
+
+    token = config_schema_json(Cfg)["properties"]["token"]
+    assert list(token)[-3:] == SECRET_TAIL, token
+    assert all(token[key] is True for key in SECRET_TAIL)
+
+
+def test_secretstr_ends_with_both_markers_in_order() -> None:
+    class Cfg(BaseModel):
+        password: SecretStr
+
+    pw = config_schema_json(Cfg)["properties"]["password"]
+    assert list(pw)[-3:] == SECRET_TAIL, pw
+    assert pw["format"] == "password"
+
+
+def test_a_false_marker_does_not_opt_a_field_in() -> None:
+    class Cfg(BaseModel):
+        note: str = Field(json_schema_extra={"x-scalo-secret": False})
+
+    note = config_schema_json(Cfg)["properties"]["note"]
+    assert note["x-scalo-secret"] is False
+    assert "x-dfe-secret" not in note
+    assert "writeOnly" not in note
+
+
+def test_nested_secret_is_marked_inside_defs() -> None:
+    class Inner(BaseModel):
+        key: SecretStr
+
+    class Outer(BaseModel):
+        inner: Inner
+
+    key = config_schema_json(Outer)["$defs"]["Inner"]["properties"]["key"]
+    assert list(key)[-3:] == SECRET_TAIL, key
 
 
 def _contract_with_catalog() -> DeploymentContract:
@@ -160,6 +212,7 @@ def _contract_with_catalog() -> DeploymentContract:
         env_prefix="DEMO",
         metric_prefix="demo",
         config_mount_path="/etc/demo/demo.yaml",
+        image_registry="registry.example.com",
         config_schema={
             "$schema": "https://json-schema.org/draft/2020-12/schema",
             "type": "object",

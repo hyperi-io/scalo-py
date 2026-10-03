@@ -8,7 +8,7 @@
 
 """Deployment contract and artefact generation for Python apps.
 
-scalo-py is the Tier-2 producer of the HyperI deployment contract (scalo-rs is
+scalo-py is the Tier-2 producer of the scalo deployment contract (scalo-rs is
 Tier 1 for Rust). The serialised JSON stays schema-compatible across both, but
 artefact *generation* here is Python-native (uv venv runtime stage,
 console-script entrypoint, ``python:*-slim`` base) -- it does not emit Rust
@@ -36,7 +36,8 @@ from __future__ import annotations
 # outside the pydantic-gated block so consumers can stamp identities
 # even before installing the ``deployment`` extra.
 from .contract_identity import (
-    KEY_PREFIX,
+    DEFAULT_LABEL_NAMESPACE,
+    KEY_SEGMENT,
     VERSION,
     ContractIdentity,
     IdentityError,
@@ -105,6 +106,7 @@ if not DEPLOYMENT_AVAILABLE:
     image_registry_from_cascade = _missing  # type: ignore[assignment]
     base_image_from_cascade = _missing  # type: ignore[assignment]
     argocd_repo_url_from_cascade = _missing  # type: ignore[assignment]
+    argocd_dest_namespace_from_cascade = _missing  # type: ignore[assignment]
     # Image defaults are plain strings with no pydantic dependency, so they
     # come from the one source even on the degraded-import path -- never
     # re-spelled here, where they would silently drift from the contract.
@@ -113,7 +115,6 @@ if not DEPLOYMENT_AVAILABLE:
         DEFAULT_BASE_IMAGE,
         DEFAULT_BUILDER_IMAGE,
         DEFAULT_DISTRO_CODENAME,
-        DEFAULT_IMAGE_REGISTRY,
         DEFAULT_PYTHON_VERSION,
         default_base_image,
         default_builder_image,
@@ -126,9 +127,7 @@ else:
     )
     from .capability import Capability, FieldSpec, FieldType
     from .contract import (
-        DEFAULT_LICENSE,
         DEFAULT_SCHEMA_VERSION,
-        DEFAULT_VENDOR,
         MAX_SUPPORTED_SCHEMA_VERSION,
         DeploymentContract,
         HealthContract,
@@ -175,8 +174,8 @@ else:
         DEFAULT_BASE_IMAGE,
         DEFAULT_BUILDER_IMAGE,
         DEFAULT_DISTRO_CODENAME,
-        DEFAULT_IMAGE_REGISTRY,
         DEFAULT_PYTHON_VERSION,
+        argocd_dest_namespace_from_cascade,
         argocd_repo_url_from_cascade,
         base_image_from_cascade,
         default_base_image,
@@ -198,10 +197,10 @@ __all__ = [
     "DEFAULT_BASE_IMAGE",
     "DEFAULT_BUILDER_IMAGE",
     "DEFAULT_DISTRO_CODENAME",
-    "DEFAULT_IMAGE_REGISTRY",
+    "DEFAULT_LABEL_NAMESPACE",
     "DEFAULT_PYTHON_VERSION",
     "DEPLOYMENT_AVAILABLE",
-    "KEY_PREFIX",
+    "KEY_SEGMENT",
     "VERSION",
     "WAVE_APPS",
     "WAVE_CRDS",
@@ -229,6 +228,7 @@ __all__ = [
     "PortContract",
     "SecretEnvContract",
     "SecretGroupContract",
+    "argocd_dest_namespace_from_cascade",
     "argocd_repo_url_from_cascade",
     "assert_no_config_artifact_drift",
     "base_image_from_cascade",

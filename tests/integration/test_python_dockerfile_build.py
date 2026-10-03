@@ -89,6 +89,7 @@ def test_generated_python_dockerfile_builds(tmp_path: Path) -> None:
         env_prefix="SMOKE",
         metric_prefix="smoke",
         config_mount_path="/etc/smoke/app.yaml",
+        image_registry="registry.example.com",
         entrypoint_args=["run"],
     )
     (tmp_path / "Dockerfile").write_text(generate_dockerfile(contract), encoding="utf-8", newline="\n")

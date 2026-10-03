@@ -160,11 +160,7 @@ you enable it and point it at a URL you control.
 
 ## 8. Deployment contract: neutral defaults
 
-The deployment generators (`scalo.deployment`) default to neutral,
-overridable values rather than brand-specific ones (e.g. image registry
-`localhost:5000`, repo org `your-org`). Set yours via the `deployment.*`
-config cascade keys (`deployment.image_registry`,
-`deployment.argocd_repo_url`, ...).
+The deployment generators (`scalo.deployment`) carry no organisation's name. There is no default registry, ArgoCD source, vendor, licence or copyright, and scalo's own label keys sit under `io.scalo`. Name yours in the contract (`image_registry`, `oci_labels`) or the `deployment.*` config cascade keys (`deployment.image_registry`, `deployment.argocd.repo_url`, `deployment.argocd.dest_namespace`). See [migrations.md](migrations.md).
 
 ---
 

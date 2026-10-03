@@ -36,14 +36,20 @@ if TYPE_CHECKING:
     from .contract import DeploymentContract
 
 
+_SECRET_MARKERS = ("x-scalo-secret", "x-dfe-secret")
+"""The secret marker, then its earlier name, emitted beside it until every reader keys on the first."""
+
+
 def config_schema_json(model: type[BaseModel]) -> dict[str, Any]:
     """Derive a JSON Schema (draft 2020-12) for a pydantic config model.
 
-    Secret fields are marked ``x-dfe-secret`` so the control plane masks them
+    Secret fields are marked ``x-scalo-secret`` so the control plane masks them
     and routes them through the secrets seam. A field is treated as secret when
     it uses pydantic ``SecretStr`` (schema ``format: password``) or carries an
-    explicit ``json_schema_extra={"x-dfe-secret": True}``. This mirrors scalo's
-    ``SensitiveString`` JsonSchema impl on the Rust side.
+    explicit ``json_schema_extra={"x-scalo-secret": True}`` (or the earlier
+    ``{"x-dfe-secret": True}``). A secret field ends ``"x-scalo-secret": true,
+    "x-dfe-secret": true, "writeOnly": true``, the keys and order scalo-rs's
+    ``SensitiveString`` emits.
     """
     schema = model.model_json_schema()
     _mark_secrets(schema)
@@ -51,11 +57,13 @@ def config_schema_json(model: type[BaseModel]) -> dict[str, Any]:
 
 
 def _mark_secrets(node: Any) -> None:
-    """Recursively add ``x-dfe-secret``/``writeOnly`` to password-format fields."""
+    """Recursively end every secret field with both markers and ``writeOnly``."""
     if isinstance(node, dict):
-        if node.get("format") == "password" or node.get("x-dfe-secret") is True:
-            node["x-dfe-secret"] = True
-            node["writeOnly"] = True
+        is_secret = node.get("format") == "password" or any(node.get(m) is True for m in _SECRET_MARKERS)
+        if is_secret:
+            for key in (*_SECRET_MARKERS, "writeOnly"):
+                node.pop(key, None)
+                node[key] = True
         for value in node.values():
             _mark_secrets(value)
     elif isinstance(node, list):

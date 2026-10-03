@@ -24,7 +24,8 @@ from unittest.mock import patch
 import pytest
 
 from scalo.deployment.contract_identity import (
-    KEY_PREFIX,
+    DEFAULT_LABEL_NAMESPACE,
+    KEY_SEGMENT,
     VERSION,
     ContractIdentity,
     IdentityError,
@@ -33,13 +34,15 @@ from scalo.deployment.errors import DeploymentError
 
 VALID_SHA = "0123456789abcdef0123456789abcdef01234567"
 VALID_REF = "ghcr.io/hyperi-io/dfe-loader:v2.7.3"
+NS = DEFAULT_LABEL_NAMESPACE
 
 
 # ---- Constants ------------------------------------------------------------
 
 
-def test_key_prefix_is_io_hyperi_contract() -> None:
-    assert KEY_PREFIX == "io.hyperi.contract"
+def test_keys_sit_under_io_scalo_contract_by_default() -> None:
+    assert DEFAULT_LABEL_NAMESPACE == "io.scalo"
+    assert KEY_SEGMENT == "contract"
 
 
 def test_version_is_literal_v1() -> None:
@@ -155,24 +158,47 @@ def test_identity_is_immutable() -> None:
 
 def test_as_dockerfile_labels_format() -> None:
     ident = ContractIdentity(source_commit=VALID_SHA, image_ref=VALID_REF)
-    out = ident.as_dockerfile_labels()
+    out = ident.as_dockerfile_labels(NS)
     expected = (
-        f'LABEL io.hyperi.contract.version="v1"\n'
-        f'LABEL io.hyperi.contract.source-commit="{VALID_SHA}"\n'
-        f'LABEL io.hyperi.contract.image-ref="{VALID_REF}"'
+        f'LABEL io.scalo.contract.version="v1"\n'
+        f'LABEL io.scalo.contract.source-commit="{VALID_SHA}"\n'
+        f'LABEL io.scalo.contract.image-ref="{VALID_REF}"'
     )
     assert out == expected
 
 
 def test_as_dockerfile_labels_no_trailing_newline() -> None:
     ident = ContractIdentity(source_commit=VALID_SHA, image_ref=VALID_REF)
-    assert not ident.as_dockerfile_labels().endswith("\n")
+    assert not ident.as_dockerfile_labels(NS).endswith("\n")
 
 
 def test_as_dockerfile_labels_grep_prefix() -> None:
     ident = ContractIdentity(source_commit=VALID_SHA, image_ref=VALID_REF)
-    out = ident.as_dockerfile_labels()
-    assert out.count("io.hyperi.contract.") == 3
+    out = ident.as_dockerfile_labels(NS)
+    assert out.count("io.scalo.contract.") == 3
+
+
+def test_keys_follow_the_namespace() -> None:
+    """An app that sets its own namespace keeps the keys it already ships."""
+    ident = ContractIdentity(source_commit=VALID_SHA, image_ref=VALID_REF)
+    labels = ident.as_labels("com.example")
+    assert list(labels) == [
+        "com.example.contract.version",
+        "com.example.contract.source-commit",
+        "com.example.contract.image-ref",
+    ]
+    for out in (ident.as_dockerfile_labels("com.example"), ident.as_yaml_annotations("com.example", indent=2)):
+        assert out.count("com.example.contract.") == 3, out
+        assert "io.scalo" not in out, out
+
+
+def test_as_labels_values() -> None:
+    ident = ContractIdentity(source_commit=VALID_SHA, image_ref=VALID_REF)
+    assert ident.as_labels(NS) == {
+        "io.scalo.contract.version": "v1",
+        "io.scalo.contract.source-commit": VALID_SHA,
+        "io.scalo.contract.image-ref": VALID_REF,
+    }
 
 
 # ---- as_yaml_annotations --------------------------------------------------
@@ -180,34 +206,34 @@ def test_as_dockerfile_labels_grep_prefix() -> None:
 
 def test_as_yaml_annotations_indent_0() -> None:
     ident = ContractIdentity(source_commit=VALID_SHA, image_ref=VALID_REF)
-    out = ident.as_yaml_annotations(indent=0)
+    out = ident.as_yaml_annotations(NS, indent=0)
     expected = (
-        f'io.hyperi.contract.version: "v1"\n'
-        f'io.hyperi.contract.source-commit: "{VALID_SHA}"\n'
-        f'io.hyperi.contract.image-ref: "{VALID_REF}"'
+        f'io.scalo.contract.version: "v1"\n'
+        f'io.scalo.contract.source-commit: "{VALID_SHA}"\n'
+        f'io.scalo.contract.image-ref: "{VALID_REF}"'
     )
     assert out == expected
 
 
 def test_as_yaml_annotations_indent_4() -> None:
     ident = ContractIdentity(source_commit=VALID_SHA, image_ref=VALID_REF)
-    out = ident.as_yaml_annotations(indent=4)
+    out = ident.as_yaml_annotations(NS, indent=4)
     expected = (
-        f'    io.hyperi.contract.version: "v1"\n'
-        f'    io.hyperi.contract.source-commit: "{VALID_SHA}"\n'
-        f'    io.hyperi.contract.image-ref: "{VALID_REF}"'
+        f'    io.scalo.contract.version: "v1"\n'
+        f'    io.scalo.contract.source-commit: "{VALID_SHA}"\n'
+        f'    io.scalo.contract.image-ref: "{VALID_REF}"'
     )
     assert out == expected
 
 
 def test_as_yaml_annotations_no_trailing_newline() -> None:
     ident = ContractIdentity(source_commit=VALID_SHA, image_ref=VALID_REF)
-    assert not ident.as_yaml_annotations().endswith("\n")
+    assert not ident.as_yaml_annotations(NS).endswith("\n")
 
 
 def test_as_yaml_annotations_values_double_quoted() -> None:
     ident = ContractIdentity(source_commit=VALID_SHA, image_ref=VALID_REF)
-    out = ident.as_yaml_annotations()
+    out = ident.as_yaml_annotations(NS)
     # v1 must be quoted so YAML doesn't parse it as a partial-version literal
     assert '"v1"' in out
     # SHA must be quoted

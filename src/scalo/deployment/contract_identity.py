@@ -13,18 +13,18 @@ Application) with three uniform, greppable keys so the same logical
 contract output is traceable across surfaces and across language tiers
 (scalo-rs / scalo-py / hyperi-ci).
 
-Keys (all under the ``io.hyperi.contract`` prefix):
+Keys (all under ``<namespace>.contract``, where ``<namespace>`` is the
+contract's ``oci_labels.label_namespace``, ``io.scalo`` by default):
 
-- ``io.hyperi.contract.version`` -- schema version, literal ``v1``.
-- ``io.hyperi.contract.source-commit`` -- 40-char lowercase hex git SHA
+- ``io.scalo.contract.version`` -- schema version, literal ``v1``.
+- ``io.scalo.contract.source-commit`` -- 40-char lowercase hex git SHA
   of the consumer app's repo HEAD.
-- ``io.hyperi.contract.image-ref`` -- intended pull reference, either
+- ``io.scalo.contract.image-ref`` -- intended pull reference, either
   ``<registry>/<repo>:<tag>`` (pre-push) or ``<registry>/<repo>@sha256:<digest>``
   (post-push, immutable).
 
-Mirrors ``scalo::deployment::contract_identity`` once that
-module lands. Both implementations consume a shared golden fixture for
-byte-equivalent output verification.
+An app that sets its own namespace keeps its own keys, and every key above
+moves with it. Mirrors ``scalo::deployment::contract_identity``.
 """
 
 from __future__ import annotations
@@ -36,7 +36,12 @@ from dataclasses import dataclass
 
 from scalo.deployment.errors import DeploymentError
 
-KEY_PREFIX = "io.hyperi.contract"
+DEFAULT_LABEL_NAMESPACE = "io.scalo"
+"""Reverse-DNS namespace of the labels and annotations scalo writes itself."""
+
+KEY_SEGMENT = "contract"
+"""Segment under the label namespace that holds the three identity keys."""
+
 VERSION = "v1"
 
 _SHA_RE = re.compile(r"^[0-9a-f]{40}$")
@@ -90,27 +95,49 @@ class ContractIdentity:
             )
         return cls(source_commit=sha, image_ref=image_ref)
 
-    def as_dockerfile_labels(self) -> str:
-        """Three ``LABEL`` lines, canonical order, no trailing newline."""
-        return (
-            f'LABEL {KEY_PREFIX}.version="{VERSION}"\n'
-            f'LABEL {KEY_PREFIX}.source-commit="{self.source_commit}"\n'
-            f'LABEL {KEY_PREFIX}.image-ref="{self.image_ref}"'
-        )
+    def as_labels(self, namespace: str) -> dict[str, str]:
+        """The three keys under ``namespace``, in canonical order.
 
-    def as_yaml_annotations(self, indent: int = 0) -> str:
-        """Three YAML key/value lines, canonical order, indented.
+        Args:
+            namespace: The contract's ``oci_labels.label_namespace``.
+
+        Returns:
+            Key to value, version first, then source-commit and image-ref.
+        """
+        prefix = f"{namespace}.{KEY_SEGMENT}"
+        return {
+            f"{prefix}.version": VERSION,
+            f"{prefix}.source-commit": self.source_commit,
+            f"{prefix}.image-ref": self.image_ref,
+        }
+
+    def as_dockerfile_labels(self, namespace: str) -> str:
+        """Three ``LABEL`` lines under ``namespace``, canonical order, no trailing newline.
+
+        Args:
+            namespace: The contract's ``oci_labels.label_namespace``.
+
+        Returns:
+            The ``LABEL`` lines joined by newlines.
+        """
+        return "\n".join(f'LABEL {key}="{value}"' for key, value in self.as_labels(namespace).items())
+
+    def as_yaml_annotations(self, namespace: str, indent: int = 0) -> str:
+        """Three YAML key/value lines under ``namespace``, canonical order, indented.
 
         Values are always double-quoted so YAML parsers don't coerce
         ``v1`` to a partial-version literal and don't misread refs
         containing ``@sha256:``.
+
+        Args:
+            namespace: The contract's ``oci_labels.label_namespace``.
+            indent: Spaces before each line.
+
+        Returns:
+            The annotation lines joined by newlines.
         """
         pad = " " * indent
-        return (
-            f'{pad}{KEY_PREFIX}.version: "{VERSION}"\n'
-            f'{pad}{KEY_PREFIX}.source-commit: "{self.source_commit}"\n'
-            f'{pad}{KEY_PREFIX}.image-ref: "{self.image_ref}"'
-        )
+        return "\n".join(f'{pad}{key}: "{value}"' for key, value in self.as_labels(namespace).items())
 
 
 def _validate_source_commit(value: str) -> None:
@@ -155,7 +182,8 @@ def _git_head_sha() -> str | None:
 
 
 __all__ = [
-    "KEY_PREFIX",
+    "DEFAULT_LABEL_NAMESPACE",
+    "KEY_SEGMENT",
     "VERSION",
     "ContractIdentity",
     "IdentityError",
