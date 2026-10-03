@@ -6,7 +6,7 @@
 # License:   Apache-2.0
 # Copyright: (c) 2026 HYPERI PTY LIMITED
 
-"""Test the generate-artefacts CLI subcommand wired into DfeApp."""
+"""Test the generate-artefacts CLI subcommand wired into ServiceApp."""
 
 from __future__ import annotations
 
@@ -34,10 +34,10 @@ pytestmark = pytest.mark.skipif(
 
 
 def _build_app_class(contract_factory):
-    """Build a one-off DfeApp subclass that returns the given contract factory."""
-    from scalo.cli import DfeApp, VersionInfo
+    """Build a one-off ServiceApp subclass that returns the given contract factory."""
+    from scalo.cli import ServiceApp, VersionInfo
 
-    class _TestApp(DfeApp):
+    class _TestApp(ServiceApp):
         name = "test-deploy-app"
         env_prefix = "TEST_DEPLOY"
 
@@ -88,12 +88,12 @@ def silent_cascade() -> None:
 
 
 class TestGenerateArtefactsHookDefault:
-    """Default DfeApp.deployment_contract() returns None."""
+    """Default ServiceApp.deployment_contract() returns None."""
 
     def test_default_returns_none(self):
-        from scalo.cli import DfeApp, VersionInfo
+        from scalo.cli import ServiceApp, VersionInfo
 
-        class _Bare(DfeApp):
+        class _Bare(ServiceApp):
             name = "bare"
             env_prefix = "BARE"
 
@@ -173,9 +173,9 @@ class TestGenerateArtefactsCli:
         assert "Helm" not in capsys.readouterr().out
 
     def test_warns_when_contract_is_none(self, tmp_path: Path, capsys):
-        from scalo.cli import DfeApp, VersionInfo
+        from scalo.cli import ServiceApp, VersionInfo
 
-        class _NoContract(DfeApp):
+        class _NoContract(ServiceApp):
             name = "no-contract-app"
             env_prefix = "NCA"
 

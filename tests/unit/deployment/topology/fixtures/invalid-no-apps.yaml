@@ -1,4 +1,4 @@
-apiVersion: hyperi.io/v1
+apiVersion: scalo.dev/v1
 kind: DeploymentTopology
 metadata:
   name: empty

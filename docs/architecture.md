@@ -105,7 +105,7 @@ Each module under `src/scalo/` and what you import from it:
 
 | Module | Public API entry |
 |---|---|
-| `cli` | `ServiceApp` (legacy `DfeApp` alias), standard options, common patterns |
+| `cli` | `ServiceApp`, standard options, common patterns |
 | `concurrency` | `run_blocking`, `Bulkhead`, `gather_with_timeouts` |
 | `config` | `settings`, `get_environment`, `get_app_name`, `init_config_directory` |
 | `data` | data files only -- gitleaks rules + national-ID validators |

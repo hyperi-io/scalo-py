@@ -10,7 +10,6 @@
 
 from scalo._env_compat import metric_prefix, set_metric_prefix
 from scalo.metrics.naming import (
-    validate_dfe_prefix,
     validate_metric_name,
     validate_metric_prefix,
 )
@@ -121,18 +120,3 @@ class TestValidateMetricPrefix:
     def test_empty_name_warns(self):
         """Empty metric name produces a warning."""
         assert len(validate_metric_prefix("", app="loader", prefix="myapp")) >= 1
-
-
-class TestValidateDfePrefixDeprecated:
-    """The deprecated validate_dfe_prefix alias keeps enforcing the dfe_ prefix."""
-
-    def test_correct_prefix_passes(self):
-        assert validate_dfe_prefix("dfe_loader_records_total", "loader") == []
-
-    def test_missing_dfe_prefix_warns(self):
-        warnings = validate_dfe_prefix("loader_records_total", "loader")
-        assert len(warnings) == 1
-        assert "dfe_loader_" in warnings[0]
-
-    def test_platform_metrics_with_no_app(self):
-        assert validate_dfe_prefix("dfe_records_received_total", "") == []

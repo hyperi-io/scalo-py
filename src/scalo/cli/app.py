@@ -808,8 +808,3 @@ def _config_section(config: Any | None, name: str) -> dict[str, Any]:
 def _print_kv(key: str, value: str) -> None:
     """Print a key-value pair in scalo-rs format."""
     print(f"  {key:<16} {value}", file=sys.stderr)
-
-
-# Deprecated alias -- prefer ServiceApp. Kept so existing
-# `class X(DfeApp)` services import unchanged during migration.
-DfeApp = ServiceApp

@@ -164,7 +164,7 @@ class TopologySpec(_StrictModel):
 class DeploymentTopology(_StrictModel):
     """Root model for a ``topologies/<name>/topology.yaml`` file."""
 
-    apiVersion: Literal["hyperi.io/v1"] = "hyperi.io/v1"  # noqa: N815 -- YAML schema requires camelCase
+    apiVersion: Literal["scalo.dev/v1"] = "scalo.dev/v1"  # noqa: N815 -- YAML schema requires camelCase
     kind: Literal["DeploymentTopology"] = "DeploymentTopology"
     metadata: dict[str, str] = Field(default_factory=dict)
     spec: TopologySpec

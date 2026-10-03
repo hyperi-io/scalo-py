@@ -13,9 +13,6 @@ Typer-based CLI framework with two entry shapes:
 Use `ServiceApp` for long-running services; use raw Typer for everything
 else. Ships in the base package — Typer is a core dependency.
 
-> `DfeApp` remains importable as a **deprecated alias** of `ServiceApp` (eases
-> the hyperi-pylib migration); new code should subclass `ServiceApp`.
-
 ```python
 from scalo.cli import (
     Typer, Argument, Option,

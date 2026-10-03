@@ -11,8 +11,8 @@
 #     counter   MUST end _total
 #     histogram MUST end _seconds, _bytes or _ratio
 #     gauge     no suffix rule
-#   validate_dfe_prefix(name, app)    -- name MUST start "dfe_{app}_"
-#                                        (or "dfe_" when app is empty)
+#   validate_metric_prefix(name, app, prefix="dfe") -- name MUST start
+#                                        "dfe_{app}_" (or "dfe_" when app is empty)
 #
 # A `valid` entry must draw NO warning from either validator. An `invalid` entry
 # must draw at least one from either, with `reason` naming the rule it breaks --

@@ -46,9 +46,9 @@ class TestCoreImports:
             pytest.skip("Runtime paths require writable /app/data (CI container)")
 
     def test_import_cli(self):
-        from scalo.cli import DfeApp, VersionInfo
+        from scalo.cli import ServiceApp, VersionInfo
 
-        assert DfeApp is not None
+        assert ServiceApp is not None
         assert VersionInfo is not None
 
 

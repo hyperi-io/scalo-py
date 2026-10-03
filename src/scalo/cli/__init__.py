@@ -3,7 +3,7 @@ scalo CLI framework -- Typer-based command-line interface for services.
 
 Two levels of usage:
 
-**ServiceApp framework** (recommended; ``DfeApp`` is a deprecated alias)::
+**ServiceApp framework** (recommended)::
 
     from scalo.cli import ServiceApp, VersionInfo
 
@@ -27,7 +27,7 @@ Two levels of usage:
     from scalo.cli.options import VERBOSE_OPTION
 
 Modules:
-    - scalo.cli.app - ServiceApp framework (ServiceApp, CommonArgs, run_app; DfeApp deprecated alias)
+    - scalo.cli.app - ServiceApp framework (ServiceApp, CommonArgs, run_app)
     - scalo.cli.error - CLI error types
     - scalo.cli.version_info - Structured version metadata
     - scalo.cli.output - Output formatting utilities
@@ -44,7 +44,6 @@ __all__ = [
     "CommonArgs",
     "ConfigError",
     "Context",
-    "DfeApp",
     "Exit",
     "InvalidArgumentError",
     "LoggerError",
@@ -100,6 +99,6 @@ except ImportError:
 from . import options, output, version
 
 # ServiceApp framework (always available -- errors are clear if Typer missing)
-from .app import CommonArgs, DfeApp, ServiceApp, run_app
+from .app import CommonArgs, ServiceApp, run_app
 from .error import CliError, ConfigError, InvalidArgumentError, LoggerError, ServiceError
 from .version_info import VersionInfo

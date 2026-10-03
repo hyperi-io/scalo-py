@@ -1,14 +1,14 @@
 # Project:   scalo
 # File:      tests/unit/test_cli_app.py
-# Purpose:   Unit tests for DfeApp CLI framework
+# Purpose:   Unit tests for the ServiceApp CLI framework
 # Language:  Python
 #
 # License:   Apache-2.0
 # Copyright: (c) 2026 HYPERI PTY LIMITED
 
-"""Unit tests for the DfeApp CLI framework.
+"""Unit tests for the ServiceApp CLI framework.
 
-Tests CommonArgs, VersionInfo, error types, and DfeApp lifecycle
+Tests CommonArgs, VersionInfo, error types, and ServiceApp lifecycle
 using Typer's CliRunner for CLI integration testing.
 """
 
@@ -19,7 +19,7 @@ from typing import Any
 import pytest
 from typer.testing import CliRunner
 
-from scalo.cli.app import CommonArgs, DfeApp, _build_typer_app, _is_async_overridden
+from scalo.cli.app import CommonArgs, ServiceApp, _build_typer_app, _is_async_overridden
 from scalo.cli.error import (
     CliError,
     ConfigError,
@@ -236,10 +236,10 @@ class TestCliErrors:
             raise ServiceError("boom")
 
 
-# --- DfeApp tests ---
+# --- ServiceApp tests ---
 
 
-class _SyncApp(DfeApp):
+class _SyncApp(ServiceApp):
     """Test app with sync run_service."""
 
     name = "test-sync"
@@ -258,7 +258,7 @@ class _SyncApp(DfeApp):
         self.received_config = config
 
 
-class _AsyncApp(DfeApp):
+class _AsyncApp(ServiceApp):
     """Test app with async run_service_async."""
 
     name = "test-async"
@@ -278,7 +278,7 @@ class _AsyncApp(DfeApp):
         self.ran_async = True
 
 
-class _RefusingApp(DfeApp):
+class _RefusingApp(ServiceApp):
     """Test app whose own validation rejects the loaded settings."""
 
     name = "test-refusing"
@@ -298,7 +298,7 @@ class _RefusingApp(DfeApp):
         self.ran = True
 
 
-class _CustomCommandApp(DfeApp):
+class _CustomCommandApp(ServiceApp):
     """Test app with custom subcommands."""
 
     name = "test-custom"
@@ -324,11 +324,11 @@ class _CustomCommandApp(DfeApp):
             self.custom_ran = True
 
 
-class TestDfeApp:
+class TestServiceApp:
     def test_subclass_requires_name(self):
         with pytest.raises(TypeError, match="must define 'name'"):
 
-            class _BadApp(DfeApp):
+            class _BadApp(ServiceApp):
                 env_prefix = "BAD"
 
                 def version_info(self):
@@ -340,7 +340,7 @@ class TestDfeApp:
     def test_subclass_requires_env_prefix(self):
         with pytest.raises(TypeError, match="must define 'env_prefix'"):
 
-            class _BadApp(DfeApp):
+            class _BadApp(ServiceApp):
                 name = "bad"
 
                 def version_info(self):
@@ -398,7 +398,7 @@ class TestDfeApp:
         assert _is_async_overridden(app) is True
 
     def test_metrics_attributes_initialised_on_dfeapp(self):
-        """DfeApp.__init__ sets _metrics and _app_metrics to None."""
+        """ServiceApp.__init__ sets _metrics and _app_metrics to None."""
         app = _SyncApp()
         assert app._metrics is None
         assert app._app_metrics is None
