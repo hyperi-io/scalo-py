@@ -8,7 +8,7 @@
 
 """Deployment contract Pydantic models for Python apps.
 
-scalo-py is the Tier-2 producer of the HyperI deployment contract (scalo-rs is
+scalo-py is the Tier-2 producer of the scalo deployment contract (scalo-rs is
 Tier 1 for Rust services). Apps build a ``DeploymentContract`` from their
 ``Config`` defaults; generation functions create Python-native deployment
 artefacts (uv/venv runtime-stage Dockerfile, Helm chart, Compose fragment,
@@ -27,9 +27,10 @@ import json
 from enum import StrEnum
 from typing import Any
 
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import BaseModel, ConfigDict, Field, field_validator
 
 from .capability import Capability
+from .contract_identity import DEFAULT_LABEL_NAMESPACE
 from .keda import KedaContract
 from .native_deps import NativeDepsContract
 from .registry import DEFAULT_PYTHON_VERSION, default_base_image, default_builder_image
@@ -59,8 +60,6 @@ class ImageProfile(StrEnum):
 
 # ---- Defaults (module-level so they appear in JSON Schema docs) -------------
 
-DEFAULT_VENDOR = "HYPERI PTY LIMITED"
-DEFAULT_LICENSE = "Apache-2.0"
 # v3: added config_schema + capabilities (scalo-py#3 / scalo-rs#6). Back-compat --
 # old consumers ignore the new optional fields.
 DEFAULT_SCHEMA_VERSION = 3
@@ -82,11 +81,25 @@ class OciLabels(BaseModel):
     description: str = ""
     """Image description."""
 
-    vendor: str = DEFAULT_VENDOR
-    """Image vendor."""
+    vendor: str = ""
+    """Image vendor, the ``org.opencontainers.image.vendor`` label. Empty by
+    default, and an empty vendor writes no label."""
 
-    licenses: str = DEFAULT_LICENSE
-    """License identifier."""
+    label_namespace: str = DEFAULT_LABEL_NAMESPACE
+    """Reverse-DNS namespace of the keys scalo stamps itself:
+    ``<namespace>.profile``, ``<namespace>.app`` and ``<namespace>.metrics_port``
+    on the image, and the three ``<namespace>.contract.*`` identity keys on
+    every artefact. Defaults to ``io.scalo``."""
+
+    licenses: str = ""
+    """The app's licence (SPDX). Drives both the
+    ``org.opencontainers.image.licenses`` label and the generated Dockerfile's
+    ``# License`` header line. Empty by default, and an empty licence writes
+    neither."""
+
+    copyright: str = ""
+    """The app's copyright line for the generated Dockerfile's ``# Copyright``
+    header line. Empty by default, and an empty copyright writes no line."""
 
 
 class HealthContract(BaseModel):
@@ -188,10 +201,11 @@ class DeploymentContract(BaseModel):
     config_mount_path: str
     """Config file mount path (e.g., ``/etc/myapp/config.yaml``)."""
 
-    image_registry: str = "localhost:5000"
-    """Container registry base. Parameterise per app via the
-    ``deployment.image_registry`` cascade key (e.g., ``ghcr.io/your-org``);
-    the default is a neutral local registry."""
+    image_registry: str
+    """Container registry base the image is pushed to and pulled from (e.g.,
+    ``registry.example.com/team``). Required: there is no default, and a blank
+    value is refused. Read it from the cascade with
+    :func:`~scalo.deployment.image_registry_from_cascade`."""
 
     extra_ports: list[PortContract] = Field(default_factory=list)
     """Additional ports beyond metrics (e.g., HTTP data port for receiver)."""
@@ -267,7 +281,7 @@ class DeploymentContract(BaseModel):
     config_schema: dict[str, Any] | None = None
     """Reflectable JSON Schema (draft 2020-12) of the app's full ``Config``,
     derived via pydantic ``model_json_schema`` (scalo-py#3). ``None`` when not
-    provided. Secret fields carry the ``x-dfe-secret`` marker. Also written to
+    provided. Secret fields carry the ``x-scalo-secret`` marker. Also written to
     ``config-schema.{json,yaml}`` by
     :func:`scalo.deployment.emit_config_artifacts`."""
 
@@ -275,6 +289,18 @@ class DeploymentContract(BaseModel):
     """Capability catalog -- the runtime-data surface a schema cannot derive
     (service names + their knobs). Hand-authored per app. Also written to
     ``capability-catalog.{json,yaml}``."""
+
+    @field_validator("image_registry")
+    @classmethod
+    def _registry_is_set(cls, value: str) -> str:
+        """Refuse a blank registry: an image named without one resolves to Docker Hub."""
+        if not value.strip():
+            raise ValueError(
+                "no registry is set, so the chart, compose file and container manifest would "
+                "name an image nothing pushed. Set `image_registry` in the contract, or "
+                "`deployment.image_registry` in the config cascade"
+            )
+        return value
 
     # ---- Convenience accessors (mirror scalo-rs's impl block) ---------------
 
@@ -320,9 +346,7 @@ class DeploymentContract(BaseModel):
 
 
 __all__ = [
-    "DEFAULT_LICENSE",
     "DEFAULT_SCHEMA_VERSION",
-    "DEFAULT_VENDOR",
     "MAX_SUPPORTED_SCHEMA_VERSION",
     "DeploymentContract",
     "HealthContract",

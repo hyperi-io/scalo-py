@@ -4,9 +4,7 @@ FROM python:3.14-slim AS runtime
 # Static OCI labels (from contract)
 LABEL org.opencontainers.image.title="dfe-api"
 LABEL org.opencontainers.image.description="DFE engine API"
-LABEL org.opencontainers.image.vendor="HYPERI PTY LIMITED"
-LABEL org.opencontainers.image.licenses="Apache-2.0"
-LABEL io.hyperi.profile="production"
+LABEL io.scalo.profile="production"
 
 RUN apt-get update && apt-get install -y --no-install-recommends \
     ca-certificates curl netcat-openbsd iputils-ping \

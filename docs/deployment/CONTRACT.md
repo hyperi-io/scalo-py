@@ -1,10 +1,6 @@
 # DeploymentContract
 
-The Pydantic model an app builds once from its `Config.default()`. CI
-validates Helm charts and Dockerfiles against the contract; generators
-emit deployment artefacts from it. Field shape mirrors
-`scalo::deployment::contract` exactly -- the JSON form
-round-trips between the two implementations.
+The Pydantic model an app builds once from its `Config.default()`. CI validates Helm charts and Dockerfiles against the contract, and generators emit deployment artefacts from it. Every field both implementations carry has the same name and JSON shape as in `scalo::deployment::contract`, and `OciLabels` matches field for field. Only scalo-rs has `unbound_listen_paths` and `PortContract.when` / `bound_from`, and only scalo-py has `builder_image`, `python_version` and `emit_healthcheck`.
 
 Import surface (gated on the `[deployment]` extra; importing without
 `pydantic>=2.13` defers and raises `ProviderNotAvailableError`):
@@ -23,16 +19,16 @@ from scalo.deployment import (
 
 | Field | Type | Default | Purpose |
 |---|---|---|---|
-| `schema_version` | `int` | `2` (`DEFAULT_SCHEMA_VERSION`) | CI rejects above `MAX_SUPPORTED_SCHEMA_VERSION` |
+| `schema_version` | `int` | `3` (`DEFAULT_SCHEMA_VERSION`) | CI rejects above `MAX_SUPPORTED_SCHEMA_VERSION` |
 | `app_name` | `str` | required | Matches `Chart.yaml` `name`; image repo segment |
-| `binary_name` | `str` | `""` -> falls back to `app_name` via `.binary()` |
+| `binary_name` | `str` | `""` | Falls back to `app_name` via `.binary()` |
 | `description` | `str` | `""` | Chart description |
 | `metrics_port` | `int` (1..65535) | required | Metrics + health listen port |
 | `health` | `HealthContract` | factory | Probe paths -- see below |
 | `env_prefix` | `str` | required | Dynaconf prefix; `__` is the nesting separator |
 | `metric_prefix` | `str` | required | Prometheus namespace |
 | `config_mount_path` | `str` | required | E.g. `/etc/event-loader/config.yaml` |
-| `image_registry` | `str` | `ghcr.io/hyperi-io` | Container registry base |
+| `image_registry` | `str` | required | Container registry base. A blank value is refused at construction |
 | `extra_ports` | `list[PortContract]` | `[]` | HTTP / gRPC / data ports beyond metrics |
 | `entrypoint_args` | `list[str]` | `[]` | Default `CMD` args |
 | `secrets` | `list[SecretGroupContract]` | `[]` | K8s secret groups |
@@ -44,7 +40,15 @@ from scalo.deployment import (
 | `python_version` | `str` | `3.14` | Drives BOTH default images |
 | `native_deps` | `NativeDepsContract` | factory | See [NATIVE-DEPS.md](NATIVE-DEPS.md) |
 | `image_profile` | `ImageProfile` | `PRODUCTION` | See below |
-| `oci_labels` | `OciLabels` | factory | Static OCI labels |
+| `oci_labels` | `OciLabels` | factory | Static OCI labels and the namespace of scalo's own keys -- see [`OciLabels`](#ocilabels) |
+| `config_schema` | `dict \| None` | `None` | JSON Schema of the app's `Config` (v3) |
+| `capabilities` | `list[Capability]` | `[]` | Runtime-surface catalogue (v3) |
+
+`image_registry` has no default, and scalo-py refuses a missing or blank one when the contract is built. scalo-rs refuses it later, in `validate()`. Read an organisation-wide value from the cascade:
+
+```python
+image_registry=image_registry_from_cascade() or "registry.example.com/team"
+```
 
 `base_image` and `builder_image` both default to empty and resolve
 through their accessors, so `python_version` is the single knob: bump it
@@ -72,6 +76,7 @@ Both fields take a digest-suffixed reference:
 ```python
 DeploymentContract(
     ...,
+    image_registry="registry.example.com/team",
     base_image="python:3.14-slim@sha256:<digest>",
     builder_image="ghcr.io/astral-sh/uv:python3.14-bookworm-slim@sha256:<digest>",
 )
@@ -107,14 +112,29 @@ variants from one contract.
 
 | Field | Default | Notes |
 |---|---|---|
-| `title` | `""` -> falls back to `app_name` in generators |
-| `description` | `""` |
-| `vendor` | `"HYPERI PTY LIMITED"` (`DEFAULT_VENDOR`) |
-| `licenses` | `"Apache-2.0"` (`DEFAULT_LICENSE`) |
+| `title` | `""` | Falls back to `app_name` in generators |
+| `description` | `""` | |
+| `vendor` | `""` | `org.opencontainers.image.vendor`. Empty writes no label |
+| `label_namespace` | `"io.scalo"` (`DEFAULT_LABEL_NAMESPACE`) | Namespace of scalo's own keys, below |
+| `licenses` | `""` | `org.opencontainers.image.licenses` and the Dockerfile `# License` line. Empty writes neither |
+| `copyright` | `""` | The Dockerfile `# Copyright` line. Empty writes no line |
 
 Dynamic labels (`org.opencontainers.image.source`, `revision`,
 `version`, `created`) are CI-injected via `--build-arg`; the static
 labels listed here come from the contract.
+
+`vendor`, `licenses` and `copyright` name the app's vendor, licence and copyright holder. scalo names none of its own, so an app's artefacts carry only the terms the app states.
+
+scalo stamps a few keys of its own beside the standard `org.opencontainers.image.*` labels, all under `label_namespace`:
+
+| Key | Where | Value |
+| --- | --- | --- |
+| `<namespace>.profile` | Dockerfile, runtime stage, container manifest | `production` or `development` |
+| `<namespace>.app` | container manifest | `app_name` |
+| `<namespace>.metrics_port` | container manifest | `metrics_port` |
+| `<namespace>.contract.version` / `.source-commit` / `.image-ref` | Dockerfile, runtime stage, container manifest, `Chart.yaml`, ArgoCD `Application`, when a `ContractIdentity` is passed | see [IDENTITY.md](IDENTITY.md) |
+
+An app that already ships its own namespace keeps it by setting `label_namespace`, and every key above moves with it.
 
 ---
 
@@ -175,8 +195,8 @@ is named `kafka`.
 ## Schema versioning
 
 ```python
-DEFAULT_SCHEMA_VERSION = 2
-MAX_SUPPORTED_SCHEMA_VERSION = 2
+DEFAULT_SCHEMA_VERSION = 3
+MAX_SUPPORTED_SCHEMA_VERSION = 3
 ```
 
 Bumping the schema is a coordinated scalo-rs + scalo-py change. CI parses
@@ -197,6 +217,7 @@ contract = DeploymentContract(
     env_prefix="EVENT_LOADER",
     metric_prefix="loader",
     config_mount_path="/etc/event-loader/config.yaml",
+    image_registry="registry.example.com/team",
 )
 raw = contract.to_json()
 restored = DeploymentContract.from_json(raw)
@@ -225,6 +246,7 @@ def deployment_contract(cfg: AppConfig) -> DeploymentContract:
         env_prefix="EVENT_LOADER",
         metric_prefix="loader",
         config_mount_path=cfg.config_path,
+        image_registry=image_registry_from_cascade() or "registry.example.com/team",
         secrets=[
             SecretGroupContract(
                 group_name="kafka",

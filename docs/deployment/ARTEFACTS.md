@@ -46,11 +46,9 @@ builds -- the convenience composition of `generate_builder_stage` +
 `generate_runtime_stage`, so it is multi-stage. The build toolchain
 stays in the builder and only the venv crosses into the runtime image.
 
-The runtime portion carries the standard `LABEL io.hyperi.profile=...`,
-the APT block (see [NATIVE-DEPS.md](NATIVE-DEPS.md)), an `appuser`
-(uid 1000) created with `useradd` and then selected with `USER`,
-`EXPOSE` for the metrics port plus every `extra_ports` entry, and an
-inline `HEALTHCHECK` hitting `health.liveness_path` over `curl`.
+A `# License` and a `# Copyright` header line appear only when `oci_labels.licenses` and `oci_labels.copyright` are set.
+
+The runtime portion carries the standard `LABEL io.scalo.profile=...` (under `oci_labels.label_namespace`), the APT block (see [NATIVE-DEPS.md](NATIVE-DEPS.md)), an `appuser` (uid 1000) created with `useradd` and then selected with `USER`, `EXPOSE` for the metrics port plus every `extra_ports` entry, and an inline `HEALTHCHECK` hitting `health.liveness_path` over `curl`.
 
 `ENTRYPOINT` is `["<binary>"]`; `entrypoint_args` becomes the trailing
 `CMD [...]` line when non-empty. Both are exec-form, so PID 1 receives
@@ -90,10 +88,7 @@ The runtime stage alone, as a multi-stage fragment starting with
 owns -- CI composes the full Dockerfile by prepending its own builder
 stage that produces `/app/.venv`.
 
-The fragment emits all four `org.opencontainers.image.*` static labels
-and the four `ARG`-fed dynamic labels (`SOURCE`, `REVISION`, `VERSION`,
-`CREATED`) that CI populates via `--build-arg`. It then copies the
-uv-built virtualenv forward and puts it on `PATH`:
+The fragment emits the `org.opencontainers.image.*` static labels (`vendor` and `licenses` only when the contract sets them) and the four `ARG`-fed dynamic labels (`SOURCE`, `REVISION`, `VERSION`, `CREATED`) that CI populates via `--build-arg`. It then copies the uv-built virtualenv forward and puts it on `PATH`:
 
 ```dockerfile
 COPY --from=builder /app /app
@@ -140,7 +135,7 @@ Shape:
   "app_name": "...",
   "binary_name": "...",
   "base_image": "python:{python_version}-slim",
-  "image_registry": "ghcr.io/hyperi-io",
+  "image_registry": "registry.example.com/team",
   "image_profile": "production",
   "runtime_packages": { "apt_repos": [...], "apt_packages": [...] },
   "expose_ports": [9090, 8080],
@@ -149,13 +144,11 @@ Shape:
   "cmd": [...],
   "user": "appuser",
   "uid": 1000,
-  "labels": { "io.hyperi.profile": "...", "io.hyperi.app": "...", "org.opencontainers.image.*": "...", ... }
+  "labels": { "io.scalo.profile": "...", "io.scalo.app": "...", "io.scalo.metrics_port": "...", "org.opencontainers.image.*": "...", ... }
 }
 ```
 
-When `identity` is passed the three Contract Identity Annotation
-Scheme v1 keys (`io.hyperi.contract.version`,
-`.source-commit`, `.image-ref`) land in the `labels` dict.
+The `io.scalo.*` keys follow `oci_labels.label_namespace`, and the `vendor` and `licenses` labels appear only when the contract sets them. When `identity` is passed the three Contract Identity Annotation Scheme v1 keys (`io.scalo.contract.version`, `.source-commit`, `.image-ref`) land in the `labels` dict.
 
 ---
 
@@ -198,7 +191,7 @@ string for `output_dir`:
 
 Key behaviours:
 
-- `Chart.yaml` carries identity annotations when `identity` is passed.
+- `Chart.yaml` carries identity annotations when `identity` is passed. Its only keyword is `app_name`, and it names no maintainer.
 - `values.yaml` always emits a `prometheus.io/scrape` pod annotation
   pinned to `metrics_port` and `health.metrics_path`.
 - `_helpers.tpl` adds a `<group>SecretName` helper per
@@ -238,7 +231,7 @@ in a git repo (typically the chart `generate_chart` just wrote).
 @dataclass
 class ArgocdConfig:
     argocd_namespace: str = "argocd"
-    dest_namespace: str = "dfe"
+    dest_namespace: str = ""   # empty: a namespace named after app_name
     dest_server: str = "https://kubernetes.default.svc"
     repo_url: str = ""         # required
     target_revision: str = "main"
@@ -248,9 +241,9 @@ class ArgocdConfig:
     extra_ignore_differences: list[str] = field(default_factory=list)
 ```
 
-The generated CR carries `metadata.annotations.argocd.argoproj.io/sync-wave`
-set from `ArgocdConfig.sync_wave`; identity annotations land in the
-same block when passed.
+The generated CR carries `metadata.annotations.argocd.argoproj.io/sync-wave` set from `ArgocdConfig.sync_wave`, and identity annotations land in the same block when passed. An empty `dest_namespace` deploys the app into a namespace named after it. Set one to share a namespace.
+
+`generate-artefacts` writes `argocd-application.yaml` only when the cascade sets `deployment.argocd.repo_url`, and warns on stderr when it does not. `deployment.argocd.dest_namespace` sets the destination namespace.
 
 `syncPolicy.automated` defaults: `prune=true`, `selfHeal=true`,
 `allowEmpty=false`. Sync options include `CreateNamespace=true` and
@@ -319,7 +312,7 @@ Values mirror scalo-rs's `scalo::deployment::waves` numerically.
 The generators that take `identity` default it to `None` so
 existing CI doesn't break on upgrade. Pass an explicit
 `ContractIdentity.detect(image_ref=...)` (or constructed instance) to
-stamp the three `io.hyperi.contract.*` keys. Phase 2 will require
+stamp the three `io.scalo.contract.*` keys. Phase 2 will require
 identity at the call sites; Phase 3 drops the wrapper entirely. See
 [IDENTITY.md](IDENTITY.md).
 

@@ -13,8 +13,9 @@ deployment package is available:
 
 ```python
 from scalo.deployment import (
-    KEY_PREFIX,        # "io.hyperi.contract"
-    VERSION,           # "v1"
+    DEFAULT_LABEL_NAMESPACE,  # "io.scalo"
+    KEY_SEGMENT,              # "contract"
+    VERSION,                  # "v1"
     ContractIdentity,
     IdentityError,
 )
@@ -24,11 +25,13 @@ from scalo.deployment import (
 
 ## The three keys
 
+The keys sit under `<namespace>.contract`, where `<namespace>` is the contract's `oci_labels.label_namespace`: `io.scalo` unless the app sets its own. The table shows the default.
+
 | Key | Value form | Validation |
 |---|---|---|
-| `io.hyperi.contract.version` | literal `v1` | constant -- the scheme version |
-| `io.hyperi.contract.source-commit` | 40-char lowercase hex SHA | matches `^[0-9a-f]{40}$` exactly. No `sha256:` prefix, no whitespace |
-| `io.hyperi.contract.image-ref` | `<registry>/<repo>:<tag>` OR `<registry>/<repo>@sha256:<digest>` | non-empty; must include `/`; registry host must contain `.`, a port `:`, or be literal `localhost` |
+| `io.scalo.contract.version` | literal `v1` | constant -- the scheme version |
+| `io.scalo.contract.source-commit` | 40-char lowercase hex SHA | matches `^[0-9a-f]{40}$` exactly. No `sha256:` prefix, no whitespace |
+| `io.scalo.contract.image-ref` | `<registry>/<repo>:<tag>` OR `<registry>/<repo>@sha256:<digest>` | non-empty; must include `/`; registry host must contain `.`, a port `:`, or be literal `localhost` |
 
 The registry validation deliberately forbids implicit `docker.io` --
 ambiguous registries break image provenance. Use the explicit form
@@ -67,28 +70,29 @@ identity = ContractIdentity.detect(
 )
 ```
 
-### `as_dockerfile_labels()` -- emit Dockerfile `LABEL` lines
+### `as_dockerfile_labels(namespace)` -- emit Dockerfile `LABEL` lines
 
-Three lines, canonical order, NO trailing newline:
+Three lines under `namespace`, canonical order, NO trailing newline. `as_dockerfile_labels("io.scalo")`:
 
 ```dockerfile
-LABEL io.hyperi.contract.version="v1"
-LABEL io.hyperi.contract.source-commit="0123456789abcdef0123456789abcdef01234567"
-LABEL io.hyperi.contract.image-ref="ghcr.io/hyperi-io/dfe-loader:v2.7.3"
+LABEL io.scalo.contract.version="v1"
+LABEL io.scalo.contract.source-commit="0123456789abcdef0123456789abcdef01234567"
+LABEL io.scalo.contract.image-ref="ghcr.io/hyperi-io/dfe-loader:v2.7.3"
 ```
 
-### `as_yaml_annotations(indent=0)` -- emit YAML annotation lines
+### `as_yaml_annotations(namespace, indent=0)` -- emit YAML annotation lines
 
-Three lines, canonical order, NO trailing newline, padded with
-`indent` spaces. Values are always double-quoted so YAML parsers
-don't coerce `v1` to a partial version literal and don't misread refs
-containing `@sha256:`.
+Three lines under `namespace`, canonical order, NO trailing newline, padded with `indent` spaces. Values are always double-quoted so YAML parsers don't coerce `v1` to a partial version literal and don't misread refs containing `@sha256:`. `as_yaml_annotations("io.scalo", indent=2)`:
 
 ```yaml
-  io.hyperi.contract.version: "v1"
-  io.hyperi.contract.source-commit: "0123456789abcdef0123456789abcdef01234567"
-  io.hyperi.contract.image-ref: "ghcr.io/hyperi-io/dfe-loader:v2.7.3"
+  io.scalo.contract.version: "v1"
+  io.scalo.contract.source-commit: "0123456789abcdef0123456789abcdef01234567"
+  io.scalo.contract.image-ref: "ghcr.io/hyperi-io/dfe-loader:v2.7.3"
 ```
+
+### `as_labels(namespace)` -- the keys as a dict
+
+The same three keys and values, in the same order, as a `dict[str, str]`. The container manifest merges it into its `labels`. scalo-rs has no equivalent, because its manifest carries no identity keys.
 
 Indent levels used in the generators:
 
@@ -145,11 +149,13 @@ unchanged. Behaviour when `identity` is provided:
 
 | Generator | Where identity lands |
 |---|---|
-| `generate_dockerfile` | three `LABEL` lines after `io.hyperi.profile` |
-| `generate_runtime_stage` | three `LABEL` lines after `io.hyperi.profile`, before the dynamic OCI `ARG`/`LABEL` block |
+| `generate_dockerfile` | three `LABEL` lines after `io.scalo.profile` |
+| `generate_runtime_stage` | three `LABEL` lines after `io.scalo.profile`, before the dynamic OCI `ARG`/`LABEL` block |
 | `generate_container_manifest` | three keys in the `labels` JSON dict |
 | `generate_chart` (Chart.yaml only) | `annotations:` block at the top level of `Chart.yaml` (indent=2) |
 | `generate_argocd_application` | three keys in `metadata.annotations` next to `argocd.argoproj.io/sync-wave` (indent=4) |
+
+Every generator renders the keys under the contract's `oci_labels.label_namespace`.
 
 `generate_compose_fragment` and `generate_argocd_app_project` do NOT
 take `identity` -- Compose has no annotation surface, and AppProjects
@@ -161,12 +167,12 @@ predate any individual contract instance.
 
 The scheme is single-sourced via a golden fixture at
 `tests/fixtures/contract-parity/v1-output.txt`. Four sections, separated
-by `=== <section-name> ===` headers:
+by `=== <section-name> ===` headers, all rendered under `io.scalo`:
 
-- `dockerfile-labels` -- output of `as_dockerfile_labels()`
-- `yaml-annotations-indent-0` -- output of `as_yaml_annotations(0)`
-- `yaml-annotations-indent-2` -- output of `as_yaml_annotations(2)`
-- `yaml-annotations-indent-4` -- output of `as_yaml_annotations(4)`
+- `dockerfile-labels` -- output of `as_dockerfile_labels("io.scalo")`
+- `yaml-annotations-indent-0` -- output of `as_yaml_annotations("io.scalo", 0)`
+- `yaml-annotations-indent-2` -- output of `as_yaml_annotations("io.scalo", 2)`
+- `yaml-annotations-indent-4` -- output of `as_yaml_annotations("io.scalo", 4)`
 
 All sections use the same test inputs:
 
@@ -217,13 +223,7 @@ Phase 3 is a major version bump.
 
 ## Why a separate scheme
 
-OCI has `org.opencontainers.image.source` and
-`.revision` already -- those cover the source repo URL and commit
-SHA, but stop at the container image. Helm charts and ArgoCD
-`Application` CRs are separate surfaces with no equivalent
-convention. The `io.hyperi.contract.*` keys span all three surfaces
-uniformly, and the prefix is namespaced so it can't collide with
-OCI's reserved namespaces.
+OCI has `org.opencontainers.image.source` and `.revision` already -- those cover the source repo URL and commit SHA, but stop at the container image. Helm charts and ArgoCD `Application` CRs are separate surfaces with no equivalent convention. The `<namespace>.contract.*` keys span all three surfaces uniformly, and the reverse-DNS namespace keeps them clear of OCI's reserved namespaces.
 
 ---
 

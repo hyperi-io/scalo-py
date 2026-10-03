@@ -213,6 +213,7 @@ class TestSingleSourcedImageDefaults:
             env_prefix="X",
             metric_prefix="x",
             config_mount_path="/etc/x.yaml",
+            image_registry="registry.example.com",
         )
         assert c.effective_base_image() == DEFAULT_BASE_IMAGE
         assert c.effective_builder_image() == DEFAULT_BUILDER_IMAGE
@@ -224,6 +225,7 @@ class TestSingleSourcedImageDefaults:
             env_prefix="X",
             metric_prefix="x",
             config_mount_path="/etc/x.yaml",
+            image_registry="registry.example.com",
             python_version="3.13",
         )
         assert c.effective_base_image() == "python:3.13-slim"

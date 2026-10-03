@@ -1,7 +1,6 @@
 # contract-parity golden fixture
 
-`v1-output.txt` is the cross-language byte-equivalence reference for the
-**Contract Identity Annotation Scheme v1** (`io.hyperi.contract.*`).
+`v1-output.txt` is the cross-language byte-equivalence reference for the **Contract Identity Annotation Scheme v1** (`<namespace>.contract.*`), rendered under the default label namespace `io.scalo` (`DEFAULT_LABEL_NAMESPACE`).
 
 ## What it contains
 
@@ -9,14 +8,14 @@ Four sections, separated by `=== <section-name> ===` headers:
 
 | Section | Source |
 |---|---|
-| `dockerfile-labels` | `ContractIdentity.as_dockerfile_labels()` |
-| `yaml-annotations-indent-0` | `ContractIdentity.as_yaml_annotations(indent=0)` |
-| `yaml-annotations-indent-2` | `ContractIdentity.as_yaml_annotations(indent=2)` |
-| `yaml-annotations-indent-4` | `ContractIdentity.as_yaml_annotations(indent=4)` |
+| `dockerfile-labels` | `ContractIdentity.as_dockerfile_labels("io.scalo")` |
+| `yaml-annotations-indent-0` | `ContractIdentity.as_yaml_annotations("io.scalo", indent=0)` |
+| `yaml-annotations-indent-2` | `ContractIdentity.as_yaml_annotations("io.scalo", indent=2)` |
+| `yaml-annotations-indent-4` | `ContractIdentity.as_yaml_annotations("io.scalo", indent=4)` |
 
 All sections use the canonical test inputs:
 
-```
+```text
 source_commit = "0123456789abcdef0123456789abcdef01234567"
 image_ref     = "ghcr.io/hyperi-io/dfe-loader:v2.7.3"
 ```
@@ -34,11 +33,7 @@ does.
 
 ## Drift detection
 
-`tests/unit/deployment/test_contract_identity_parity.py` asserts that
-`ContractIdentity` produces byte-identical output to each section of
-this file. Any divergence is a generator regression OR a deliberate
-spec change -- if deliberate, update this file AND scalo-rs's copy AND
-bump `KEY_PREFIX` / `VERSION` in `contract_identity.py`.
+`tests/unit/deployment/test_contract_identity_parity.py` asserts that `ContractIdentity` produces byte-identical output to each section of this file. Any divergence is a generator regression OR a deliberate spec change -- if deliberate, update this file AND scalo-rs's copy, and bump `VERSION` in `contract_identity.py` when the scheme itself breaks.
 
 The other side is
 `hyperi-io/scalo-rs:tests/fixtures/contract-parity/v1-output.txt`. When

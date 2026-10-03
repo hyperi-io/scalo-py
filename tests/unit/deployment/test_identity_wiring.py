@@ -14,8 +14,8 @@ For each of the five generators (`generate_runtime_stage`,
 
 - ``identity=None`` -> output byte-for-byte unchanged from the
   pre-identity baseline (opt-in safety).
-- ``identity=<id>`` -> the three ``io.hyperi.contract.*`` keys land in
-  the expected location.
+- ``identity=<id>`` -> the three ``<namespace>.contract.*`` keys land in
+  the expected location, ``io.scalo`` unless the contract names its own.
 
 A cross-surface grep invariant ensures every artefact carries the
 canonical key prefix when identity is supplied.
@@ -112,20 +112,20 @@ def test_runtime_stage_identity_none_unchanged_from_baseline() -> None:
 
 def test_runtime_stage_identity_none_has_no_contract_keys() -> None:
     out = generate_runtime_stage(_make_contract(), identity=None)
-    assert "io.hyperi.contract" not in out
+    assert "io.scalo.contract" not in out
 
 
 def test_runtime_stage_with_identity_emits_three_labels() -> None:
     out = generate_runtime_stage(_make_contract(), identity=_make_identity())
-    assert f'LABEL io.hyperi.contract.version="v1"' in out
-    assert f'LABEL io.hyperi.contract.source-commit="{VALID_SHA}"' in out
-    assert f'LABEL io.hyperi.contract.image-ref="{VALID_REF}"' in out
+    assert f'LABEL io.scalo.contract.version="v1"' in out
+    assert f'LABEL io.scalo.contract.source-commit="{VALID_SHA}"' in out
+    assert f'LABEL io.scalo.contract.image-ref="{VALID_REF}"' in out
 
 
 def test_runtime_stage_with_identity_inserts_after_profile_label() -> None:
     out = generate_runtime_stage(_make_contract(), identity=_make_identity())
-    profile_pos = out.index("LABEL io.hyperi.profile=")
-    version_pos = out.index("LABEL io.hyperi.contract.version=")
+    profile_pos = out.index("LABEL io.scalo.profile=")
+    version_pos = out.index("LABEL io.scalo.contract.version=")
     assert profile_pos < version_pos, "contract labels must appear after profile label"
 
 
@@ -141,16 +141,16 @@ def test_container_manifest_identity_none_unchanged() -> None:
 
 def test_container_manifest_identity_none_has_no_contract_keys() -> None:
     out = generate_container_manifest(_make_contract(), identity=None)
-    assert "io.hyperi.contract" not in out
+    assert "io.scalo.contract" not in out
 
 
 def test_container_manifest_with_identity_emits_three_labels() -> None:
     out = generate_container_manifest(_make_contract(), identity=_make_identity())
     parsed = json.loads(out)
     labels = parsed["labels"]
-    assert labels["io.hyperi.contract.version"] == "v1"
-    assert labels["io.hyperi.contract.source-commit"] == VALID_SHA
-    assert labels["io.hyperi.contract.image-ref"] == VALID_REF
+    assert labels["io.scalo.contract.version"] == "v1"
+    assert labels["io.scalo.contract.source-commit"] == VALID_SHA
+    assert labels["io.scalo.contract.image-ref"] == VALID_REF
 
 
 # ---------------------------------------------------------------------------
@@ -165,14 +165,14 @@ def test_dockerfile_identity_none_unchanged() -> None:
 
 def test_dockerfile_identity_none_has_no_contract_keys() -> None:
     out = generate_dockerfile(_make_contract(), identity=None)
-    assert "io.hyperi.contract" not in out
+    assert "io.scalo.contract" not in out
 
 
 def test_dockerfile_with_identity_emits_three_labels() -> None:
     out = generate_dockerfile(_make_contract(), identity=_make_identity())
-    assert f'LABEL io.hyperi.contract.version="v1"' in out
-    assert f'LABEL io.hyperi.contract.source-commit="{VALID_SHA}"' in out
-    assert f'LABEL io.hyperi.contract.image-ref="{VALID_REF}"' in out
+    assert f'LABEL io.scalo.contract.version="v1"' in out
+    assert f'LABEL io.scalo.contract.source-commit="{VALID_SHA}"' in out
+    assert f'LABEL io.scalo.contract.image-ref="{VALID_REF}"' in out
 
 
 # ---------------------------------------------------------------------------
@@ -183,7 +183,7 @@ def test_dockerfile_with_identity_emits_three_labels() -> None:
 def test_chart_identity_none_no_annotations_block_in_chart_yaml(tmp_path: Path) -> None:
     generate_chart(_make_contract(), tmp_path, identity=None)
     chart_text = (tmp_path / "Chart.yaml").read_text(encoding="utf-8")
-    assert "io.hyperi.contract" not in chart_text
+    assert "io.scalo.contract" not in chart_text
 
 
 def test_chart_with_identity_emits_annotations_block(tmp_path: Path) -> None:
@@ -191,9 +191,9 @@ def test_chart_with_identity_emits_annotations_block(tmp_path: Path) -> None:
     chart_text = (tmp_path / "Chart.yaml").read_text(encoding="utf-8")
     chart = yaml.safe_load(chart_text)
     annotations = chart["annotations"]
-    assert annotations["io.hyperi.contract.version"] == "v1"
-    assert annotations["io.hyperi.contract.source-commit"] == VALID_SHA
-    assert annotations["io.hyperi.contract.image-ref"] == VALID_REF
+    assert annotations["io.scalo.contract.version"] == "v1"
+    assert annotations["io.scalo.contract.source-commit"] == VALID_SHA
+    assert annotations["io.scalo.contract.image-ref"] == VALID_REF
 
 
 def test_chart_identity_none_byte_unchanged(tmp_path: Path) -> None:
@@ -217,7 +217,7 @@ def test_argocd_identity_none_unchanged() -> None:
 
 def test_argocd_identity_none_has_no_contract_keys() -> None:
     out = generate_argocd_application(_make_contract(), _make_argo(), identity=None)
-    assert "io.hyperi.contract" not in out
+    assert "io.scalo.contract" not in out
 
 
 def test_argocd_with_identity_emits_three_annotations_alongside_sync_wave() -> None:
@@ -225,9 +225,9 @@ def test_argocd_with_identity_emits_three_annotations_alongside_sync_wave() -> N
     parsed = yaml.safe_load(out)
     annotations = parsed["metadata"]["annotations"]
     assert annotations["argocd.argoproj.io/sync-wave"] == "0"
-    assert annotations["io.hyperi.contract.version"] == "v1"
-    assert annotations["io.hyperi.contract.source-commit"] == VALID_SHA
-    assert annotations["io.hyperi.contract.image-ref"] == VALID_REF
+    assert annotations["io.scalo.contract.version"] == "v1"
+    assert annotations["io.scalo.contract.source-commit"] == VALID_SHA
+    assert annotations["io.scalo.contract.image-ref"] == VALID_REF
 
 
 # ---------------------------------------------------------------------------
@@ -235,12 +235,37 @@ def test_argocd_with_identity_emits_three_annotations_alongside_sync_wave() -> N
 # ---------------------------------------------------------------------------
 
 
-def test_all_surfaces_grep_for_io_hyperi_contract(tmp_path: Path) -> None:
+def test_every_scalo_key_follows_the_label_namespace(tmp_path: Path) -> None:
+    """Every key scalo stamps itself moves with label_namespace, and no default key is left behind."""
+    c = _make_contract().model_copy(update={"oci_labels": OciLabels(label_namespace="com.example")})
+    argo = _make_argo()
+    ident = _make_identity()
+    generate_chart(c, tmp_path, identity=ident)
+
+    surfaces = {
+        "dockerfile": generate_dockerfile(c, identity=ident),
+        "runtime_stage": generate_runtime_stage(c, identity=ident),
+        "container_manifest": generate_container_manifest(c, identity=ident),
+        "argocd_application": generate_argocd_application(c, argo, identity=ident),
+        "chart": (tmp_path / "Chart.yaml").read_text(encoding="utf-8"),
+    }
+    for name, text in surfaces.items():
+        assert text.count("com.example.contract.") == 3, f"{name}:\n{text}"
+        assert "io.scalo" not in text, f"{name} kept a default key:\n{text}"
+    assert 'LABEL com.example.profile="production"' in surfaces["dockerfile"]
+    assert 'LABEL com.example.profile="production"' in surfaces["runtime_stage"]
+    labels = json.loads(surfaces["container_manifest"])["labels"]
+    assert labels["com.example.profile"] == "production"
+    assert labels["com.example.app"] == "dfe-loader"
+    assert labels["com.example.metrics_port"] == "9090"
+
+
+def test_all_surfaces_grep_for_io_scalo_contract(tmp_path: Path) -> None:
     c = _make_contract()
     argo = _make_argo()
     ident = _make_identity()
 
-    pattern = re.compile(r"io\.hyperi\.contract")
+    pattern = re.compile(r"io\.scalo\.contract")
 
     surfaces = {
         "dockerfile": generate_dockerfile(c, identity=ident),
@@ -251,7 +276,7 @@ def test_all_surfaces_grep_for_io_hyperi_contract(tmp_path: Path) -> None:
     for name, text in surfaces.items():
         # Each surface must carry all three keys.
         assert len(pattern.findall(text)) >= 3, (
-            f"{name}: expected >=3 occurrences of io.hyperi.contract, got {len(pattern.findall(text))}"
+            f"{name}: expected >=3 occurrences of io.scalo.contract, got {len(pattern.findall(text))}"
         )
 
     # Chart.yaml separately (writes to disk)

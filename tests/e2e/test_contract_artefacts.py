@@ -43,6 +43,7 @@ import pytest
 import yaml
 
 from scalo.deployment import (
+    DEFAULT_LABEL_NAMESPACE,
     ArgocdConfig,
     ContractIdentity,
     DeploymentContract,
@@ -160,7 +161,7 @@ def test_tier_a_dockerfile_builds_and_image_runs() -> None:
         build_dir = Path(tdir)
         dockerfile = (
             "FROM alpine:3.21\n"
-            f"{identity.as_dockerfile_labels()}\n"
+            f"{identity.as_dockerfile_labels(DEFAULT_LABEL_NAMESPACE)}\n"
             "COPY mock-bin /usr/local/bin/mock-bin\n"
             "RUN chmod +x /usr/local/bin/mock-bin\n"
             'ENTRYPOINT ["/usr/local/bin/mock-bin"]\n'
@@ -203,9 +204,9 @@ def test_tier_a_dockerfile_builds_and_image_runs() -> None:
                 timeout=30,
             )
             labels = json.loads(inspect.stdout)
-            assert labels["io.hyperi.contract.version"] == "v1"
-            assert labels["io.hyperi.contract.source-commit"] == VALID_SHA
-            assert labels["io.hyperi.contract.image-ref"] == VALID_REF
+            assert labels["io.scalo.contract.version"] == "v1"
+            assert labels["io.scalo.contract.source-commit"] == VALID_SHA
+            assert labels["io.scalo.contract.image-ref"] == VALID_REF
         finally:
             subprocess.run(
                 ["docker", "rmi", "-f", tag],
@@ -263,9 +264,9 @@ def test_tier_a_chart_lint_and_template() -> None:
         # Chart.yaml annotations carry the three identity keys.
         chart_yaml = yaml.safe_load((chart_dir / "Chart.yaml").read_text(encoding="utf-8"))
         annotations = chart_yaml["annotations"]
-        assert annotations["io.hyperi.contract.version"] == "v1"
-        assert annotations["io.hyperi.contract.source-commit"] == VALID_SHA
-        assert annotations["io.hyperi.contract.image-ref"] == VALID_REF
+        assert annotations["io.scalo.contract.version"] == "v1"
+        assert annotations["io.scalo.contract.source-commit"] == VALID_SHA
+        assert annotations["io.scalo.contract.image-ref"] == VALID_REF
 
 
 @pytest.mark.integration
@@ -300,9 +301,9 @@ def test_tier_a_argocd_application_kubeconform() -> None:
     # Re-parse the YAML to validate annotation presence
     parsed = yaml.safe_load(app_yaml)
     annotations = parsed["metadata"]["annotations"]
-    assert annotations["io.hyperi.contract.version"] == "v1"
-    assert annotations["io.hyperi.contract.source-commit"] == VALID_SHA
-    assert annotations["io.hyperi.contract.image-ref"] == VALID_REF
+    assert annotations["io.scalo.contract.version"] == "v1"
+    assert annotations["io.scalo.contract.source-commit"] == VALID_SHA
+    assert annotations["io.scalo.contract.image-ref"] == VALID_REF
 
 
 # ===========================================================================
@@ -478,8 +479,8 @@ def test_tier_b_argocd_application_sync_on_kind() -> None:
                 timeout=30,
             )
             annotations = json.loads(roundtrip.stdout)
-            assert annotations["io.hyperi.contract.version"] == "v1"
-            assert annotations["io.hyperi.contract.source-commit"] == VALID_SHA
-            assert annotations["io.hyperi.contract.image-ref"] == VALID_REF
+            assert annotations["io.scalo.contract.version"] == "v1"
+            assert annotations["io.scalo.contract.source-commit"] == VALID_SHA
+            assert annotations["io.scalo.contract.image-ref"] == VALID_REF
         finally:
             guard.__exit__(None, None, None)

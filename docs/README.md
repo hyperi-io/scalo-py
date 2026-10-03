@@ -71,7 +71,7 @@ flowchart TB
         DF["Dockerfile"]
         CH["chart/"]
         AC["argocd-application.yaml"]
-        ID["io.hyperi.contract.* labels"]
+        ID["io.scalo.contract.* labels"]
     end
 
     App --> Pillars
