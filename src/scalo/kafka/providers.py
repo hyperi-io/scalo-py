@@ -48,8 +48,7 @@ The one hard security floor: PLAIN must ride an encrypted transport (SASL_SSL) -
 never send a PLAIN password over a plaintext connection.
 
 This table is the canonical record for this credential contract and is
-MIRRORED in scalo-rs and its Rust consumers. Keep the tables identical -
-change one, then the other.
+MIRRORED in scalo-rs. Keep the two identical - change one, then the other.
 
 This module is pure, generic FACT - it holds NO deployment policy. An app that
 wants an opinionated contract ("SCRAM mandatory on brokers we own, never

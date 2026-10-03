@@ -108,13 +108,13 @@ latency.labels(method="GET").observe(0.123)
 
 Composable metric structs that mirror scalo-rs's `groups`. Wire
 the groups your app needs; each registers a fixed set of metrics
-with the standard names and labels every consumer emits.
+with standard names and labels, the same in both languages.
 
 | Group | Registers | For |
 |-------|-----------|-----|
-| `AppMetrics` | `{ns}_info`, `start_time_seconds`, `records_{received,processed,error}_total`, `bytes_{received,written}_total`, `memory_{used,limit}_bytes`, `config_reloads_total` | Mandatory for every app |
+| `AppMetrics` | `{ns}_info`, `start_time_seconds`, `records_{received,processed,error}_total`, `bytes_{received,written}_total`, `memory_{used,limit}_bytes`, `config_reloads_total` | Every app |
 | `ConsumerMetrics` | `consumer_lag`, `consumer_partitions_assigned`, `consumer_rebalance_total`, `consumer_poll_duration_seconds`, `offsets_committed_total` | Kafka consumer apps |
-| `BufferMetrics` | `buffer_bytes`, `buffer_records`, `buffer_flush_total`, `buffer_flush_duration_seconds`, `buffer_flush_trigger_total` | Receiver, loader, archiver |
+| `BufferMetrics` | `buffer_bytes`, `buffer_records`, `buffer_flush_total`, `buffer_flush_duration_seconds`, `buffer_flush_trigger_total` | Apps that batch before a sink |
 | `SinkMetrics` | `sink_duration_seconds`, `sink_errors_total`, `bytes_sent_total`, `concurrent_inserts` | Apps writing to downstream |
 | `BackpressureMetrics` | `backpressure_events_total`, `backpressure_duration_seconds_total` | Pipelines that pause |
 | `CircuitBreakerMetrics` | `circuit_breaker_state` (gauge: 0=closed, 1=open, 2=half_open), `circuit_breaker_transitions_total` | Apps with circuit-protected downstreams |

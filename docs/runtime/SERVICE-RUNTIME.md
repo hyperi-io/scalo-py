@@ -84,7 +84,7 @@ handful of lines, with no framework in between.
 
 ## Why the framework was dropped
 
-- **Not used in production.** Every production service composes the core
+- **Not used in production.** Services compose the core
   modules directly.
 - **Premature abstraction.** The factory methods (`api` / `daemon` /
   `cli`) bundled decisions -- port, lifecycle, signal handling, FastAPI

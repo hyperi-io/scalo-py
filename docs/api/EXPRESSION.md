@@ -128,7 +128,7 @@ Catches `RuntimeError`, `ValueError`, `TypeError`, and
 
 ---
 
-## The profile
+## The expression profile
 
 Allowed functions (frozenset, exposed as `ALLOWED_FUNCTIONS`):
 
