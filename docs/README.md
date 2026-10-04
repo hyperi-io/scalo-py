@@ -130,7 +130,7 @@ flowchart TB
 - [api/CONCURRENCY.md](api/CONCURRENCY.md) — `run_blocking`, `Bulkhead`, `gather_with_timeouts`
 - [api/DIRECTORY-CONFIG.md](api/DIRECTORY-CONFIG.md) — YAML directory store with optional git tracking
 - [api/EXPRESSION.md](api/EXPRESSION.md) — CEL via Rust/PyO3 (Python/Rust evaluation parity)
-- [api/RESILIENCE.md](api/RESILIENCE.md) — `CircuitBreaker` Closed/Open/HalfOpen
+- [api/RESILIENCE.md](api/RESILIENCE.md) — `CircuitBreaker` Closed/Open/HalfOpen, `ReconnectingResilience` for pooled connections
 - [api/VERSION-CHECK.md](api/VERSION-CHECK.md) — Non-blocking startup version probe
 - [api/SCALING.md](api/SCALING.md) — `ScalingPressure` composite score for KEDA
 - [api/CLI.md](api/CLI.md) — Typer-based CLI framework, `ServiceApp`, standard options
