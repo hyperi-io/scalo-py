@@ -15,8 +15,9 @@ Four building blocks that every scalo capability composes:
 - :class:`Bulkhead` -- bounded concurrency limit per downstream dependency.
 - :func:`gather_with_timeouts` -- parallel exec with per-task timeout.
 
-Composable resilience (timeout + retry + circuit breaker + bulkhead)
-lives in :mod:`scalo.resilience` via ``with_resilience()``.
+Resilience (retry, circuit breaker, reconnect-and-retry) lives in
+:mod:`scalo.resilience`; compose it with this module's primitives
+explicitly -- there is no ``with_resilience()`` decorator.
 
 Discipline
 ----------

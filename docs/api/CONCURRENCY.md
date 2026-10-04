@@ -10,8 +10,10 @@ from scalo.concurrency import (
 )
 ```
 
-Composable resilience (timeout + retry + circuit breaker + bulkhead) is
-in [`RESILIENCE.md`](RESILIENCE.md) — this module is the building blocks.
+Composable resilience (retry, circuit breaker, reconnect-and-retry) is
+in [`RESILIENCE.md`](RESILIENCE.md) — this module is the building
+blocks you wrap a resilience layer around (there is no `with_resilience()`
+decorator; compose them explicitly, as RESILIENCE.md's own examples do).
 
 ---
 
@@ -158,7 +160,7 @@ Exception)` to separate success from failure.
 | A sync class you want to expose async methods on | `make_async` (one bind per method) |
 | A downstream service that occasionally goes slow | `Bulkhead` around the call |
 | A bunch of independent async health checks | `gather_with_timeouts` |
-| Retry + timeout + circuit breaker + bulkhead | `with_resilience()` in [`RESILIENCE.md`](RESILIENCE.md) |
+| Retry + circuit breaker + bulkhead | Compose `CircuitBreaker` / `ReconnectingResilience` from [`RESILIENCE.md`](RESILIENCE.md) with `Bulkhead` |
 | Parallel CPU-bound work | Not this module — use `ProcessPoolExecutor` or move to Rust |
 
 ---
