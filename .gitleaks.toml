@@ -33,6 +33,8 @@ paths = [
     # will always fight it. Every value is synthetic -- the flagged one is
     # `eyJhbGciOiJIUzI1NiJ9`, the base64 of the JWT header {"alg":"HS256"}, which
     # is a public constant and not a credential at all.
+    # Its current home, and the path it had before it left the wheel (history scans).
+    '''tests/fixtures/patterns/masking-patterns\.yaml''',
     '''src/scalo/data/masking-patterns\.yaml''',
 ]
 
