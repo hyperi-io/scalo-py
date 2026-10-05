@@ -3,6 +3,30 @@
 Rendered by CI and committed back at the end of a release -- do not edit by
 hand. Release notes also appear on the GitHub Releases page, one per tag.
 
+## [2.31.0](https://github.com/hyperi-io/scalo-py/compare/v2.30.7...v2.31.0) (2026-10-05)
+
+### Features
+
+* **contract:** no vendor or product defaults ([#63](https://github.com/hyperi-io/scalo-py/issues/63)) ([cc75b0f](https://github.com/hyperi-io/scalo-py/commit/cc75b0f9f5c4af2119a8786957ae8050df58710e))
+
+### Bug Fixes
+
+* allowlist the masking corpus at its tests/fixtures path ([#75](https://github.com/hyperi-io/scalo-py/issues/75)) ([fc45b2f](https://github.com/hyperi-io/scalo-py/commit/fc45b2f4affea0d031bdd0d6d5f37fe99b045630)), closes [#68](https://github.com/hyperi-io/scalo-py/issues/68)
+* bind DDL name, CPU seconds parity, CI notices ([#70](https://github.com/hyperi-io/scalo-py/issues/70)) ([9a13f5b](https://github.com/hyperi-io/scalo-py/commit/9a13f5bb52ae82f0c26e24d811d25db3d2f0dfc3)), closes [#33](https://github.com/hyperi-io/scalo-py/issues/33) [#59](https://github.com/hyperi-io/scalo-py/issues/59) [#15](https://github.com/hyperi-io/scalo-py/issues/15)
+* bump pyjwt and virtualenv for pip-audit advisories ([#60](https://github.com/hyperi-io/scalo-py/issues/60)) ([655eae6](https://github.com/hyperi-io/scalo-py/commit/655eae632699220ed4fd01956b7e2cad2873e4a9))
+* correct three file headers to Apache-2.0 ([#73](https://github.com/hyperi-io/scalo-py/issues/73)) ([07e6fcf](https://github.com/hyperi-io/scalo-py/commit/07e6fcf948bf98fcaf93d87116ba12e59405e155))
+* **deps:** raise dulwich to 1.2.15 for four advisories ([301eee5](https://github.com/hyperi-io/scalo-py/commit/301eee59237bb1728d873cc05844c7fa004d9c6c))
+* **docs:** say which logging keys setup() does not read ([2fd8d6f](https://github.com/hyperi-io/scalo-py/commit/2fd8d6f772565af10cc56820c36c6d6c54e1d336))
+* **docs:** setup() says which config keys never reach it ([#66](https://github.com/hyperi-io/scalo-py/issues/66)) ([5f6d7bd](https://github.com/hyperi-io/scalo-py/commit/5f6d7bd5266b940aa2fea86993d8eb98aff2a73b))
+* drop DFE and HyperI names left in scalo-py ([#67](https://github.com/hyperi-io/scalo-py/issues/67)) ([22ade53](https://github.com/hyperi-io/scalo-py/commit/22ade53363519b30ed90ad6c0b891b829d2d2fed))
+* drop DFE-internal references from public docs and comments ([#72](https://github.com/hyperi-io/scalo-py/issues/72)) ([71d1c28](https://github.com/hyperi-io/scalo-py/commit/71d1c283b97ffeaab302d52c7dde48e5ad72bdbc))
+* keep the parity test corpora out of the wheel ([#68](https://github.com/hyperi-io/scalo-py/issues/68)) ([9ee02f0](https://github.com/hyperi-io/scalo-py/commit/9ee02f04387874901b817e4d9c21b68d1ed6d11c))
+* **logger:** harden the scrub filter ([#62](https://github.com/hyperi-io/scalo-py/issues/62)) ([2384795](https://github.com/hyperi-io/scalo-py/commit/23847959999d1bd7c903e34c33c93341b6f688d7))
+* **logger:** render fields and honour auto format ([#61](https://github.com/hyperi-io/scalo-py/issues/61)) ([113f172](https://github.com/hyperi-io/scalo-py/commit/113f172d9cfc7376a928e58e89186b7d923b1430))
+* suppress the false alert on AWS batch logging ([#56](https://github.com/hyperi-io/scalo-py/issues/56)) ([cf73c5d](https://github.com/hyperi-io/scalo-py/commit/cf73c5d78cf2bc3303fe3e9d95e63579e361694d)), closes [#23](https://github.com/hyperi-io/scalo-py/issues/23)
+* trim the app environment and skip blank values ([#55](https://github.com/hyperi-io/scalo-py/issues/55)) ([ac0ee9b](https://github.com/hyperi-io/scalo-py/commit/ac0ee9ba1ed71c876764c244c9046cf767ccee5f))
+* type the deployment import stub as NoReturn ([#71](https://github.com/hyperi-io/scalo-py/issues/71)) ([c428fe9](https://github.com/hyperi-io/scalo-py/commit/c428fe9e3b005b2aa09dc0b5a77aaf63e6e77a60)), closes [#48](https://github.com/hyperi-io/scalo-py/issues/48)
+
 ## [2.30.7](https://github.com/hyperi-io/scalo-py/compare/v2.30.6...v2.30.7) (2026-09-30)
 
 ### Bug Fixes
