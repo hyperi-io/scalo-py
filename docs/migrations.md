@@ -4,7 +4,7 @@ Behaviour and API changes that need a consumer adjustment, indexed by the scalo 
 
 ---
 
-## Unreleased
+## 2.31.0
 
 ### Console logs: JSON off a TTY, fields in text, colour only on a TTY (BEHAVIOUR CHANGE)
 
@@ -53,6 +53,8 @@ scalo-rs's rows for `KafkaSource` consumer groups, the DLQ paths and topic, and 
 - A call to `argocd_repo_url_from_cascade(app_name)` raises `TypeError`. Call it with no argument and handle `None`.
 - A script that edits the generated `Chart.yaml` by anchoring on the old `keywords:` block finds no anchor.
 - Committed artefacts that `generate_dockerfile`, `generate_runtime_stage`, `generate_container_manifest`, `generate_chart` or `config_schema_json` produced change on regeneration, so regenerate them in the same change as the bump. `check_config_artifact_drift` fails until they are. A committed `argocd-application.yaml` stops regenerating unless `deployment.argocd.repo_url` is set.
+
+## 2.30.2
 
 ### Internal Kafka group ids derive from the client's config (BEHAVIOUR CHANGE)
 
