@@ -90,10 +90,7 @@ def _get_health_config() -> dict:
         from scalo.config import settings
 
         health_config = settings.get("kafka.health", {})
-        if hasattr(health_config, "to_dict"):
-            health_config = health_config.to_dict()
-        elif not isinstance(health_config, dict):
-            health_config = {}
+        health_config = dict(health_config) if isinstance(health_config, dict) else {}
     except Exception:
         health_config = {}
 

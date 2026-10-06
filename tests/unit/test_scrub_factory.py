@@ -155,7 +155,8 @@ class TestBuildScrubberEndToEnd:
     """Real text through a default scrubber -- every layer fires."""
 
     @pytest.fixture(scope="class")
-    def s(self):
+    @classmethod
+    def s(cls):
         return build_scrubber()
 
     def test_l1_aws_key_redacted(self, s):

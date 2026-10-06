@@ -195,7 +195,7 @@ class TestBackendComposition:
         from scalo.otel_backoff import GatedMetricExporter
 
         backend = otel_backend("gated", {"opentelemetry": {"endpoint": "http://localhost:4317"}})
-        readers = backend._provider._sdk_config.metric_readers
+        readers = backend._provider._metric_readers
         periodic = [r for r in readers if isinstance(r, PeriodicExportingMetricReader)]
         assert periodic, "no OTLP push reader was installed"
         assert isinstance(periodic[0]._exporter, GatedMetricExporter), (
@@ -209,9 +209,7 @@ class TestBackendComposition:
         )
         from opentelemetry.sdk.metrics.export import PeriodicExportingMetricReader
 
-        periodic = [
-            r for r in backend._provider._sdk_config.metric_readers if isinstance(r, PeriodicExportingMetricReader)
-        ]
+        periodic = [r for r in backend._provider._metric_readers if isinstance(r, PeriodicExportingMetricReader)]
         # The SDK exporter takes seconds; scalo configures milliseconds.
         assert periodic[0]._exporter._inner._timeout == 3.0
 

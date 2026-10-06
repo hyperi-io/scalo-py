@@ -12,13 +12,13 @@ version = "0.1.0"
 description = "Example demonstrating scalo structured logging"
 requires-python = ">=3.14"
 dependencies = [
-    "scalo>=2.14.0",
+    "scalo>=2.31.0",
 ]
 
 [project.optional-dependencies]
 dev = [
-    "pytest>=8.0",
-    "pytest-asyncio>=0.24",
+    "pytest>=9.1.1",
+    "pytest-asyncio>=1.4.0",
 ]
 
 [build-system]

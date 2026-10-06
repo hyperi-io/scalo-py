@@ -97,7 +97,7 @@ The included `docker-compose.yml` starts Kafka in KRaft mode (no Zookeeper):
 ```yaml
 services:
   kafka:
-    image: apache/kafka:3.9.0
+    image: apache/kafka:4.3.1
     environment:
       KAFKA_NODE_ID: 1
       KAFKA_PROCESS_ROLES: broker,controller

@@ -157,7 +157,7 @@ What scalo-py has that scalo-rs doesn't:
 |---|---|---|
 | Runtime entry point | `ServiceRuntime` + service trait | `Application` (deprecated; compose modules directly) |
 | HTTP client | `reqwest` + retry | `httpx` + stamina retry |
-| Circuit breaker | `purgatory` (vendored) | hand-rolled `resilience.CircuitBreaker` |
+| Circuit breaker | hand-rolled `tiered_sink::CircuitBreaker` | hand-rolled `resilience.CircuitBreaker` |
 | Retry | `stamina` (Rust crate) | `stamina` (Python PyPI) |
 | Config | `figment` 7-layer | `dynaconf` 7-layer |
 | Logger | `tracing` | `loguru` |

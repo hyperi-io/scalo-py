@@ -327,7 +327,8 @@ class TestEndToEndAgainstRealSecrets:
     """Full LayeredScrubber default path still catches the canonical fixtures."""
 
     @pytest.fixture(scope="class")
-    def s(self):
+    @classmethod
+    def s(cls):
         return build_scrubber()
 
     def test_aws_key_via_toml(self, s):

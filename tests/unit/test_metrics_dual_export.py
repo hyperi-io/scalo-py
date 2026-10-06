@@ -69,7 +69,7 @@ class TestDualReaderCreation:
 
         # Access the underlying backend's provider to verify readers
         backend = metrics._backend
-        readers = backend._provider._sdk_config.metric_readers
+        readers = backend._provider._metric_readers
         reader_types = [type(r).__name__ for r in readers]
 
         assert "PeriodicExportingMetricReader" in reader_types
@@ -89,7 +89,7 @@ class TestDualReaderCreation:
 
         assert metrics.enabled
         backend = metrics._backend
-        readers = backend._provider._sdk_config.metric_readers
+        readers = backend._provider._metric_readers
         reader_types = [type(r).__name__ for r in readers]
 
         assert "PeriodicExportingMetricReader" in reader_types
@@ -110,7 +110,7 @@ class TestDualReaderCreation:
 
         assert metrics.enabled
         backend = metrics._backend
-        readers = backend._provider._sdk_config.metric_readers
+        readers = backend._provider._metric_readers
         reader_types = [type(r).__name__ for r in readers]
 
         assert "PeriodicExportingMetricReader" not in reader_types

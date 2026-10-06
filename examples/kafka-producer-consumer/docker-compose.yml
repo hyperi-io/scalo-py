@@ -8,7 +8,7 @@
 
 services:
   kafka:
-    image: apache/kafka:3.9.0
+    image: apache/kafka:4.3.1@sha256:77e3df9054047a88b520d0cc46e16696d3b22022e1d580aeccd2632df6532837
     container_name: kafka-example
     environment:
       # KRaft mode configuration (no Zookeeper)
