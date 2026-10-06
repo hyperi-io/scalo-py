@@ -3,6 +3,12 @@
 Rendered by CI and committed back at the end of a release -- do not edit by
 hand. Release notes also appear on the GitHub Releases page, one per tag.
 
+## [2.31.1](https://github.com/hyperi-io/scalo-py/compare/v2.31.0...v2.31.1) (2026-10-06)
+
+### Bug Fixes
+
+* **deps:** update dependencies for GA ([#76](https://github.com/hyperi-io/scalo-py/issues/76)) ([8012067](https://github.com/hyperi-io/scalo-py/commit/80120672f9bf29f426cc17c88a0d088cdb737d47))
+
 ## [2.31.0](https://github.com/hyperi-io/scalo-py/compare/v2.30.7...v2.31.0) (2026-10-05)
 
 ### Features
