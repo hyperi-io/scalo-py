@@ -13,15 +13,16 @@ Loads ``tests/fixtures/contract-parity/v1-output.txt`` and asserts the
 scalo_py ``ContractIdentity`` produces byte-identical output for each
 section. Rustlib's parity test consumes the same file.
 
-When a local scalo_rs checkout has its own copy of the golden file (post
-scalo_rs pathfind), this test additionally diffs the two copies and
-fails on any divergence -- a guardrail against the vendored copy
-drifting from the upstream source.
+When ``SCALO_RS_GOLDEN_PATH`` points at the scalo-rs copy of the golden
+file, this test additionally diffs the two copies and fails on any
+divergence -- a guardrail against the vendored copy drifting from the
+upstream source.
 """
 
 from __future__ import annotations
 
 import difflib
+import os
 from pathlib import Path
 
 import pytest
@@ -30,7 +31,7 @@ from scalo.deployment.contract_identity import DEFAULT_LABEL_NAMESPACE, Contract
 
 GOLDEN_PATH = Path(__file__).parent.parent.parent / "fixtures" / "contract-parity" / "v1-output.txt"
 
-SCALO_RS_GOLDEN_PATH = Path("/projects/scalo-rs/tests/fixtures/contract-parity/v1-output.txt")
+SCALO_RS_GOLDEN_ENV = "SCALO_RS_GOLDEN_PATH"
 
 # Canonical test inputs -- MUST match the golden file's encoded values.
 GOLDEN_SHA = "0123456789abcdef0123456789abcdef01234567"
@@ -94,18 +95,21 @@ def test_golden_file_has_lf_line_endings() -> None:
 
 
 def test_vendored_golden_matches_scalo_rs_when_available() -> None:
-    """If local scalo_rs exposes its golden, our vendored copy must match it.
+    """If SCALO_RS_GOLDEN_PATH names scalo-rs's golden, our vendored copy must match it.
 
-    Skipped (not failed) when scalo-rs's golden isn't on disk -- per the
-    2026-05-22 direction, scalo_rs lands first; until then there's
-    nothing to diff against.
+    Skipped (not failed) when the variable is unset or the file is missing,
+    because there is nothing to diff against.
     """
-    if not SCALO_RS_GOLDEN_PATH.exists():
+    configured = os.environ.get(SCALO_RS_GOLDEN_ENV)
+    if not configured:
         pytest.skip(
-            f"scalo_rs golden not at {SCALO_RS_GOLDEN_PATH}; vendored scalo_py copy is the current source of truth"
+            f"{SCALO_RS_GOLDEN_ENV} is not set; set it to scalo-rs's tests/fixtures/contract-parity/v1-output.txt"
         )
+    scalo_rs_path = Path(configured)
+    if not scalo_rs_path.is_file():
+        pytest.skip(f"{SCALO_RS_GOLDEN_ENV} points at {scalo_rs_path}, which does not exist")
     scalo_py = GOLDEN_PATH.read_text(encoding="utf-8")
-    scalo_rs = SCALO_RS_GOLDEN_PATH.read_text(encoding="utf-8")
+    scalo_rs = scalo_rs_path.read_text(encoding="utf-8")
     if scalo_py != scalo_rs:
         diff = "\n".join(
             difflib.unified_diff(

@@ -19,8 +19,7 @@
 # Checkout discovery (first hit wins):
 #   1. $HYPERI_AI_CHECKOUT env var
 #   2. ../hyperi-ai (sibling to this project)
-#   3. /projects/hyperi-ai (HyperI dev convention)
-#   4. ~/.local/share/hyperi-ai (stealth-mode clone)
+#   3. ~/.local/share/hyperi-ai (stealth-mode clone)
 #
 # Usage:
 #   ./tools/vendor_patterns.sh            # vendor all canonical patterns
@@ -62,7 +61,6 @@ find_checkout() {
     local candidates=(
         "${HYPERI_AI_CHECKOUT:-}"
         "$PYLIB_ROOT/../hyperi-ai"
-        "/projects/hyperi-ai"
         "$HOME/.local/share/hyperi-ai"
     )
     for path in "${candidates[@]}"; do
@@ -86,7 +84,7 @@ info() {
 if ! checkout=$(find_checkout); then
     warn "no hyperi-ai checkout found — patterns will not be vendored."
     warn "Set HYPERI_AI_CHECKOUT or clone hyperi-ai to one of:"
-    warn "    ../hyperi-ai, /projects/hyperi-ai, ~/.local/share/hyperi-ai"
+    warn "    ../hyperi-ai, ~/.local/share/hyperi-ai"
     warn "Skipping (non-blocking)."
     exit 0
 fi
