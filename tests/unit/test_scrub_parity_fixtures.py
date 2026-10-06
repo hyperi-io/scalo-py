@@ -85,7 +85,8 @@ def _was_redacted(out: str, original: str, label: str) -> bool:
 
 class TestCreditCardFixtures:
     @pytest.fixture(scope="class")
-    def s(self):
+    @classmethod
+    def s(cls):
         return _scrubber_only(credit_card=True)
 
     @pytest.mark.parametrize("sample", FIXTURES["credit_card"]["valid"])
@@ -101,7 +102,8 @@ class TestCreditCardFixtures:
 
 class TestIbanFixtures:
     @pytest.fixture(scope="class")
-    def s(self):
+    @classmethod
+    def s(cls):
         return _scrubber_only(iban=True)
 
     @pytest.mark.parametrize("sample", FIXTURES["iban"]["valid"])
@@ -119,7 +121,8 @@ class TestIbanFixtures:
 
 class TestEmailFixtures:
     @pytest.fixture(scope="class")
-    def s(self):
+    @classmethod
+    def s(cls):
         return _scrubber_only(email=True)
 
     @pytest.mark.parametrize("sample", FIXTURES["email"]["valid"])
@@ -135,7 +138,8 @@ class TestEmailFixtures:
 
 class TestPhoneFixtures:
     @pytest.fixture(scope="class")
-    def s(self):
+    @classmethod
+    def s(cls):
         return _scrubber_only(phone=True)
 
     @pytest.mark.parametrize("sample", FIXTURES["phone"]["valid"])
@@ -162,8 +166,9 @@ class _BaseContextRequiredTest:
     country: str = "au"
 
     @pytest.fixture(scope="class")
-    def s(self):
-        return _scrubber_only(national_ids=[self.country])
+    @classmethod
+    def s(cls):
+        return _scrubber_only(national_ids=[cls.country])
 
     def test_valid_with_context_redact(self, s):
         section = FIXTURES[self.section]

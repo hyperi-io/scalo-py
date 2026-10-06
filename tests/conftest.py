@@ -202,7 +202,7 @@ def _get_kafka_config_for_env(force_local: bool = False) -> tuple[dict | None, s
         force_local: If True, skip remote Kafka and use local Docker only.
 
     Priority:
-    1. Remote Kafka from .env (k8s.tyrell.com.au) if reachable (unless force_local)
+    1. Remote Kafka from .env if reachable (unless force_local)
     2. Local Docker Kafka (localhost:9092) if reachable or can be started
 
     Returns:

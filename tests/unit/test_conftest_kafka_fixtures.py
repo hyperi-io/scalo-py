@@ -97,9 +97,9 @@ class TestKafkaConnectionCheck:
         mock_socket = MagicMock()
 
         with patch("socket.socket", return_value=mock_socket):
-            _check_kafka_connection("k8s.tyrell.com.au", 30092, timeout=1.0)
+            _check_kafka_connection("kafka.example.internal", 30092, timeout=1.0)
 
-        mock_socket.connect.assert_called_once_with(("k8s.tyrell.com.au", 30092))
+        mock_socket.connect.assert_called_once_with(("kafka.example.internal", 30092))
 
 
 class TestKafkaContainerRunningCheck:
@@ -170,13 +170,13 @@ class TestKafkaConfigForEnv:
         # Mock the kafka config module
         with patch.dict(
             "os.environ",
-            {"KAFKA_BOOTSTRAP_SERVERS": "k8s.tyrell.com.au:30092"},
+            {"KAFKA_BOOTSTRAP_SERVERS": "kafka.example.internal:30092"},
         ):
             config, source = conftest._get_kafka_config_for_env(force_local=False)
 
         assert source == "remote"
         assert config is not None
-        assert "k8s.tyrell.com.au:30092" in config.get("bootstrap.servers", "")
+        assert "kafka.example.internal:30092" in config.get("bootstrap.servers", "")
         # Should not try to start Docker when remote is available
         mock_start_docker.assert_not_called()
 
@@ -189,7 +189,7 @@ class TestKafkaConfigForEnv:
 
         with patch.dict(
             "os.environ",
-            {"KAFKA_BOOTSTRAP_SERVERS": "k8s.tyrell.com.au:30092"},
+            {"KAFKA_BOOTSTRAP_SERVERS": "kafka.example.internal:30092"},
         ):
             config, source = conftest._get_kafka_config_for_env(force_local=False)
 
@@ -205,7 +205,7 @@ class TestKafkaConfigForEnv:
 
         with patch.dict(
             "os.environ",
-            {"KAFKA_BOOTSTRAP_SERVERS": "k8s.tyrell.com.au:30092"},
+            {"KAFKA_BOOTSTRAP_SERVERS": "kafka.example.internal:30092"},
         ):
             config, source = conftest._get_kafka_config_for_env(force_local=True)
 
@@ -225,7 +225,7 @@ class TestKafkaConfigForEnv:
 
         with patch.dict(
             "os.environ",
-            {"KAFKA_BOOTSTRAP_SERVERS": "k8s.tyrell.com.au:30092"},
+            {"KAFKA_BOOTSTRAP_SERVERS": "kafka.example.internal:30092"},
         ):
             config, source = conftest._get_kafka_config_for_env(force_local=False)
 

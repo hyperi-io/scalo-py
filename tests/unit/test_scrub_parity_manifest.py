@@ -31,7 +31,8 @@ from scalo.logger.scrub.parity_manifest import (
 
 class TestManifestShape:
     @pytest.fixture(scope="class")
-    def m(self):
+    @classmethod
+    def m(cls):
         return build_manifest()
 
     def test_top_level_keys(self, m):

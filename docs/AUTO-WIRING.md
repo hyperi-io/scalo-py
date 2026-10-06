@@ -48,12 +48,12 @@ Read top-to-bottom: install the extra in the first column, get every
 | `scalo` (base) | `config`, `logger`, `runtime`, `cli`, `health`, `version_check`, `concurrency` | Cascade, structured logs, path detection, version probe |
 | `scalo[metrics]` | `metrics` + `prometheus-client` + `psutil` + OTel SDK/exporters | Above + the default OTel backend: OTLP push AND `MetricsManager.content` for the observability server or an app-served `/metrics` route + process collector (cardinality cap is opt-in) |
 | `scalo[opentelemetry]` | OTel SDK + exporters | Subset of `[metrics]`, kept for existing pins |
-| `scalo[http]` | `http` + `httpx` + `stamina` + `purgatory` | Above + HTTP client with retry + circuit breaker + metrics integration |
+| `scalo[http]` | `http` + `httpx` + `stamina` | Above + HTTP client with retry + circuit breaker + metrics integration |
 | `scalo[kafka]` | `kafka` + `confluent-kafka` + `genson` | Above + producer/consumer/admin + schema sampling. Consumer-lag health is MANUAL: `KafkaConsumer` does not install the statistics callback, so `KafkaConsumerHealth` and the `kafka.health.*` keys stay inert until the app wires `create_stats_callback` itself |
 | `scalo[secrets-{vault,aws,gcp,azure,ansible-vault}]` | `secrets` provider | Above + uniform interface, lazy-loaded provider |
 | `scalo[deployment]` | `deployment` + `pydantic` | Above + `DeploymentContract` + generators + `ContractIdentity` + `test_support` |
 | `scalo[expression]` | `expression` + `common-expression-language` | Above + CEL evaluation (Python/Rust parity via PyO3) |
-| `scalo[resilience]` | `resilience` + `stamina` + `purgatory` | Above + standalone circuit breaker (already pulled in by `http`/`secrets-*`) |
+| `scalo[resilience]` | `stamina` | Above + the stamina retry engine without the HTTP client; `scalo.resilience` itself is stdlib-only and needs no extra |
 
 ---
 

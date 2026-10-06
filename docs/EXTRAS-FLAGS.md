@@ -105,12 +105,10 @@ alone. `opentelemetry` is a subset of it, kept so existing
 
 | Extra | Adds | Native deps | Doc |
 |---|---|---|---|
-| `resilience` | `stamina`, `purgatory` | none | [api/RESILIENCE.md](api/RESILIENCE.md) |
-| `http` | `httpx`, `stamina`, `purgatory` | none | [api/HTTP-CLIENT.md](api/HTTP-CLIENT.md) |
+| `resilience` | `stamina` | none | [api/RESILIENCE.md](api/RESILIENCE.md) |
+| `http` | `httpx`, `stamina` | none | [api/HTTP-CLIENT.md](api/HTTP-CLIENT.md) |
 
-`http` carries the retry/breaker deps itself; the `secrets-*` extras do
-NOT pull `resilience` in. Install `resilience` directly if you want the
-standalone circuit breaker without the HTTP client.
+`http` carries its retry dependency itself; the `secrets-*` extras do NOT pull `resilience` in. `scalo.resilience` (circuit breaker, reconnecting client) is stdlib-only and works on the base install.
 
 ### Transport + data
 

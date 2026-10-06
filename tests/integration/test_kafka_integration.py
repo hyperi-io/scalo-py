@@ -11,17 +11,17 @@ Integration tests for scalo.kafka module.
 
 These tests require a running Kafka broker. The test framework automatically:
 
-1. Tries remote Kafka from .env (k8s.tyrell.com.au:30092) if reachable
+1. Tries the remote Kafka named in .env if reachable
 2. Falls back to local Docker Kafka (localhost:9092) if available
 3. Auto-starts Docker Kafka via docker-compose.kafka.yml if needed
 
 Configure remote Kafka via .env:
 
-    KAFKA_BOOTSTRAP_SERVERS=k8s.tyrell.com.au:30092
+    KAFKA_BOOTSTRAP_SERVERS=kafka.example.internal:30092
     KAFKA_SECURITY_PROTOCOL=SASL_PLAINTEXT
     KAFKA_SASL_MECHANISM=SCRAM-SHA-512
-    KAFKA_SASL_USERNAME=admin
-    KAFKA_SASL_PASSWORD=TyrellPOC2024
+    KAFKA_SASL_USERNAME=<username>
+    KAFKA_SASL_PASSWORD=<password>
 
 Or start local Kafka manually:
 

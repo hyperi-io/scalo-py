@@ -12,16 +12,16 @@ version = "0.1.0"
 description = "Example demonstrating scalo Prometheus metrics with FastAPI"
 requires-python = ">=3.14"
 dependencies = [
-    "scalo>=2.14.0",
-    "fastapi>=0.115.0",
-    "uvicorn>=0.32.0",
+    "scalo>=2.31.0",
+    "fastapi>=0.142.2",
+    "uvicorn>=0.54.0",
     "httpx>=0.28.0",  # For testing
 ]
 
 [project.optional-dependencies]
 dev = [
-    "pytest>=8.0",
-    "pytest-asyncio>=0.24",
+    "pytest>=9.1.1",
+    "pytest-asyncio>=1.4.0",
 ]
 
 [build-system]

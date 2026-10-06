@@ -12,7 +12,7 @@
 
 services:
   openbao:
-    image: openbao/openbao:2
+    image: openbao/openbao:2.7.1@sha256:6d2b93856e3fcf7b18ad855a0b51eaba474dc8b79cf554379ea32034797d2acf
     container_name: scalo-openbao
     ports:
       - "8200:8200"
