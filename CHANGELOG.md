@@ -3,6 +3,13 @@
 Rendered by CI and committed back at the end of a release -- do not edit by
 hand. Release notes also appear on the GitHub Releases page, one per tag.
 
+## [2.31.2](https://github.com/hyperi-io/scalo-py/compare/v2.31.1...v2.31.2) (2026-10-07)
+
+### Bug Fixes
+
+* keep test fixtures out of secret scanning. ([#81](https://github.com/hyperi-io/scalo-py/issues/81)) ([a648a04](https://github.com/hyperi-io/scalo-py/commit/a648a0447468fa0465fa5113db32feaf8dea8a15))
+* load only the .env files the config cascade documents ([#84](https://github.com/hyperi-io/scalo-py/issues/84)) ([11d4f4d](https://github.com/hyperi-io/scalo-py/commit/11d4f4dc3827a483c45f6a1094cb8ea7de604dab)), closes [#80](https://github.com/hyperi-io/scalo-py/issues/80)
+
 ## [2.31.1](https://github.com/hyperi-io/scalo-py/compare/v2.31.0...v2.31.1) (2026-10-06)
 
 ### Bug Fixes
