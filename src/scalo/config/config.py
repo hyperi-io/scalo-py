@@ -112,6 +112,7 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Literal
 
+from dotenv import load_dotenv as dotenv_load
 from dynaconf import Dynaconf
 
 from scalo._env_compat import control_flag, control_var, env_prefix
@@ -637,42 +638,54 @@ settings_files.extend(_find_config_files("settings"))
 # Layer 5: settings.{env}.yaml (environment-specific overrides)
 settings_files.extend(_find_config_files(f"settings.{APP_ENV}"))
 
-# Check if .env cascade is enabled globally via environment variable
-# DOTENV_CASCADE=true enables loading ~/.env then ./.env
+
+def _default_dotenv_files(cascade: bool) -> list[str]:
+    """Return the .env files layer 3 reads, lowest priority first.
+
+    That is ./.env, with ~/.env beneath it when cascade is on. Dynaconf's own
+    .env loader stays off because it walks up from the script and the working
+    directory to the filesystem root and loads the first .env it finds.
+    """
+    files = [str(Path.cwd() / ".env")]
+    if cascade:
+        files.insert(0, str(Path.home() / ".env"))
+    return files
+
+
+def _load_dotenv_cascade(dotenv_files: list[str] | None = None) -> None:
+    """Load multiple .env files in cascade order.
+
+    Files are loaded in order, with later files overriding earlier ones.
+    This allows home directory .env to provide defaults, with project
+    .env providing overrides.
+
+    Args:
+        dotenv_files: List of .env file paths to load. If None, uses default
+                     cascade: [~/.env, ./.env]
+    """
+    if dotenv_files is None:
+        dotenv_files = _default_dotenv_files(cascade=True)
+
+    # Higher-priority files are LATER in the list. Load in reverse with
+    # override=False so the higher-priority .env wins among the .env files,
+    # while a real exported ENV var (already in os.environ) beats them all.
+    for env_file in reversed(dotenv_files):
+        path = Path(env_file).expanduser()
+        if path.exists():
+            dotenv_load(path, override=False)
+            _debug_log(f"Loaded .env file: {path}")
+
+
+# DOTENV_CASCADE=true adds ~/.env beneath ./.env
 _DOTENV_CASCADE_ENABLED = control_flag("DOTENV_CASCADE", default=False)
-
-# Pre-load .env files in cascade order if enabled
-_use_dynaconf_dotenv = True
-if _DOTENV_CASCADE_ENABLED:
-    try:
-        from dotenv import load_dotenv as dotenv_load
-
-        # Load project first then home, both override=False, so a real
-        # exported ENV var (already in os.environ) always wins, and project
-        # .env still beats home .env (override=False = first-writer-wins, so
-        # the higher-priority file loads first). Fixes the precedence
-        # inversion where .env clobbered a real ENV var.
-        project_env = Path(".env")
-        if project_env.exists():
-            dotenv_load(project_env, override=False)
-            _debug_log(f"Loaded project .env: {project_env}")
-
-        home_env = Path.home() / ".env"
-        if home_env.exists():
-            dotenv_load(home_env, override=False)
-            _debug_log(f"Loaded home .env: {home_env}")
-
-        # Disable Dynaconf's dotenv since we loaded manually
-        _use_dynaconf_dotenv = False
-    except ImportError:
-        _debug_log("[WARN] python-dotenv not installed, .env cascade disabled")
+_load_dotenv_cascade(_default_dotenv_files(_DOTENV_CASCADE_ENABLED))
 
 # Initialize Dynaconf with discovered settings
 settings = Dynaconf(
     # Bare env vars by default (no prefix); <PREFIX>_<KEY> when an app sets one.
     envvar_prefix=ENV_PREFIX or False,
     settings_files=settings_files if settings_files else [],  # Use discovered files
-    load_dotenv=_use_dynaconf_dotenv,  # Load .env file (3rd priority)
+    load_dotenv=False,  # layer 3 is loaded above
     environments=False,  # Single config approach
     # PRECEDENCE: CLI -> ENV -> .env -> settings files -> default -> hardcoded
 )
@@ -704,36 +717,6 @@ def get_settings():
         Dynaconf settings object with 7-layer cascade built-in
     """
     return settings
-
-
-def _load_dotenv_cascade(dotenv_files: list[str] | None = None) -> None:
-    """Load multiple .env files in cascade order.
-
-    Files are loaded in order, with later files overriding earlier ones.
-    This allows home directory .env to provide defaults, with project
-    .env providing overrides.
-
-    Args:
-        dotenv_files: List of .env file paths to load. If None, uses default
-                     cascade: [~/.env, ./.env]
-    """
-    from dotenv import load_dotenv as dotenv_load
-
-    if dotenv_files is None:
-        # Default cascade: home (base) then project (overlay)
-        dotenv_files = [
-            str(Path.home() / ".env"),  # ~/.env - global defaults
-            ".env",  # ./.env - project overrides (relative to cwd)
-        ]
-
-    # Higher-priority files are LATER in the list. Load in reverse with
-    # override=False so the higher-priority .env wins among the .env files,
-    # while a real exported ENV var (already in os.environ) beats them all.
-    for env_file in reversed(dotenv_files):
-        path = Path(env_file).expanduser()
-        if path.exists():
-            dotenv_load(path, override=False)
-            _debug_log(f"Loaded .env file: {path}")
 
 
 def get_config(
@@ -797,7 +780,7 @@ def get_config(
                          Paths can be absolute or relative to config_dir
         env_prefix: Environment variable prefix (default: bare, or the app-supplied prefix)
                    Example: "TENANT1" -> TENANT1_DATABASE_HOST
-        load_dotenv: Load .env file (default: True)
+        load_dotenv: Load ./.env from the working directory (default: True)
                     Set False for security-sensitive contexts
         merge_existing: Merge with existing settings files (default: True)
                        Set False to use only additional_files
@@ -843,13 +826,8 @@ def get_config(
     # Use provided prefix or default
     prefix = env_prefix or ENV_PREFIX
 
-    # Handle .env cascade loading
-    use_dynaconf_dotenv = load_dotenv
-    if dotenv_cascade or dotenv_files:
-        # Load .env files manually in cascade order
-        _load_dotenv_cascade(dotenv_files)
-        # Disable Dynaconf's built-in dotenv loading to avoid double-loading
-        use_dynaconf_dotenv = False
+    if load_dotenv or dotenv_cascade or dotenv_files:
+        _load_dotenv_cascade(dotenv_files or _default_dotenv_files(dotenv_cascade))
 
     # Build file list
     config_files = []
@@ -874,7 +852,7 @@ def get_config(
     return Dynaconf(
         envvar_prefix=prefix or False,
         settings_files=config_files,
-        load_dotenv=use_dynaconf_dotenv,
+        load_dotenv=False,
         environments=False,
         merge_enabled=True,
     )

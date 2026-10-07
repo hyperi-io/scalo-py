@@ -161,45 +161,73 @@ class TestDotenvCascade:
         # Later file wins
         assert os.environ.get("SHARED") == "from-file2"
 
-    def test_dotenv_cascade_disabled_by_default(self, tmp_path, monkeypatch):
-        """Test that cascade is disabled by default."""
+    def test_default_reads_no_env_above_the_working_directory(self, tmp_path, monkeypatch):
+        """Only ./.env loads by default, even with .env files in every parent."""
         fake_home = tmp_path / "home"
-        fake_home.mkdir()
+        project_dir = fake_home / "project"
+        work_dir = project_dir / "sub"
+        work_dir.mkdir(parents=True)
+        (fake_home / ".env").write_text("WALKUP_HOME=loaded\n")
+        (project_dir / ".env").write_text("WALKUP_PARENT=loaded\n")
 
-        # Create home .env
-        home_env = fake_home / ".env"
-        home_env.write_text("DEFAULT_BEHAVIOR_TEST=should-not-load\n")
-
+        monkeypatch.chdir(work_dir)
         monkeypatch.setenv("HOME", str(fake_home))
-        monkeypatch.delenv("DEFAULT_BEHAVIOR_TEST", raising=False)
-        monkeypatch.delenv("DOTENV_CASCADE", raising=False)
+        for key in ["WALKUP_HOME", "WALKUP_PARENT"]:
+            monkeypatch.delenv(key, raising=False)
 
         from scalo.config import get_config
 
-        # Without dotenv_cascade, home .env should not be loaded
-        # (only project .env via Dynaconf's standard behavior)
-        get_config(merge_existing=False)
+        get_config(merge_existing=False).get("ANY_KEY")
 
-        # Home .env should NOT be loaded by default
-        # (Dynaconf only loads ./.env, not ~/.env)
-        # Note: This test verifies the default behavior hasn't changed
+        assert os.environ.get("WALKUP_HOME") is None
+        assert os.environ.get("WALKUP_PARENT") is None
+
+    def test_default_reads_env_in_the_working_directory(self, tmp_path, monkeypatch):
+        """./.env loads by default and a real exported variable still wins."""
+        (tmp_path / ".env").write_text("CWD_ONLY=from-dotenv\nCWD_SHARED=from-dotenv\n")
+        monkeypatch.chdir(tmp_path)
+        monkeypatch.delenv("CWD_ONLY", raising=False)
+        monkeypatch.setenv("CWD_SHARED", "from-env")
+
+        from scalo.config import get_config
+
+        config = get_config(merge_existing=False)
+
+        assert os.environ.get("CWD_ONLY") == "from-dotenv"
+        assert config.get("CWD_SHARED") == "from-env"
+
+    def test_load_dotenv_false_reads_nothing(self, tmp_path, monkeypatch):
+        """load_dotenv=False skips ./.env."""
+        (tmp_path / ".env").write_text("SKIPPED_DOTENV=loaded\n")
+        monkeypatch.chdir(tmp_path)
+        monkeypatch.delenv("SKIPPED_DOTENV", raising=False)
+
+        from scalo.config import get_config
+
+        get_config(merge_existing=False, load_dotenv=False).get("ANY_KEY")
+
+        assert os.environ.get("SKIPPED_DOTENV") is None
 
 
-class TestDotenvCascadeEnvVar:
-    """Tests for DOTENV_CASCADE environment variable."""
+class TestDefaultDotenvFiles:
+    """The file list module init and get_config load from."""
 
-    def test_env_var_enables_cascade(self, tmp_path, monkeypatch):
-        """Test DOTENV_CASCADE=true enables cascade at module init."""
-        # This test verifies the environment variable works
-        # Note: Module-level initialization happens at import time,
-        # so this is more of a documentation test
+    def test_cascade_off_is_working_directory_only(self, tmp_path, monkeypatch):
+        monkeypatch.chdir(tmp_path)
+
+        from scalo.config.config import _default_dotenv_files
+
+        assert _default_dotenv_files(cascade=False) == [str(tmp_path / ".env")]
+
+    def test_cascade_on_puts_home_beneath_working_directory(self, tmp_path, monkeypatch):
         fake_home = tmp_path / "home"
         fake_home.mkdir()
-        (fake_home / ".env").write_text("ENV_VAR_CASCADE_TEST=from-home\n")
-
+        monkeypatch.chdir(tmp_path)
         monkeypatch.setenv("HOME", str(fake_home))
-        monkeypatch.setenv("DOTENV_CASCADE", "true")
 
-        # The actual cascade would happen at module import time
-        # This test documents the expected behavior
-        assert os.environ.get("DOTENV_CASCADE") == "true"
+        from scalo.config.config import _default_dotenv_files
+
+        assert _default_dotenv_files(cascade=True) == [
+            str(fake_home / ".env"),
+            str(tmp_path / ".env"),
+        ]
