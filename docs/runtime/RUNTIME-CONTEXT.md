@@ -27,17 +27,18 @@ method is stamped into `RuntimePaths.detection_method` for audit trails.
 | 1 | `/var/run/secrets/kubernetes.io/serviceaccount` exists | `k8s_serviceaccount` |
 | 2 | `KUBERNETES_SERVICE_HOST` env var set | `kubernetes` |
 | 3 | `/.dockerenv` exists | `dockerenv` |
-| 4 | `/proc/1/cgroup` or `/proc/self/cgroup` contains `docker` / `kubepods` / `containerd` / `crio` | `cgroups_cgroup` |
-| 5 | `/proc/self/mountinfo` contains `docker` / `kubelet` / `overlay` / `containerd` | `mountinfo` |
+| 4 | `/proc/1/cgroup` or `/proc/self/cgroup` contains `/docker/`, `/kubepods`, `/lxc/`, `/containerd/` or a `docker-<64 hex>.scope` | `cgroups_cgroup` |
+| 5 | The mount at `/` in `/proc/self/mountinfo` is an overlay whose options name `docker`, `containerd` or `kubelet` | `mountinfo` |
 | 6 | `container` / `DOCKER_CONTAINER` / `ECS_CONTAINER_METADATA_URI` env var set | `env_<var>` |
 | 7 | PID 1 with `/proc/1/comm` not in `systemd` / `init` / `launchd` | `pid1_<comm>` |
 
 If none match -- bare-metal local mode (`detection_method="local"`).
 
-The order matters. K8s and Docker indicators are 100% reliable;
-cgroups and mountinfo are very reliable; env vars and PID 1 are
-fallbacks. A container that hides every indicator above PID 1 will
-still be detected when running as init.
+Checks 1 to 6 are the same ones `get_mount_config()` uses; check 7 is only here.
+
+The order matters. K8s and Docker indicators are 100% reliable; cgroups and the root mount are next; env vars and PID 1 are fallbacks. A container that hides every indicator above PID 1 will still be detected when running as init.
+
+Only container evidence counts. A host's daemon cgroups (`docker.service`, `containerd.service`) and the container mounts a docker host lists in its own mountinfo do not match, so a developer machine that runs docker stays in local mode.
 
 ---
 

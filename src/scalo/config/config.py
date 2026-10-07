@@ -76,7 +76,8 @@ ALL configuration automatically follows this priority (highest to lowest):
 
     Both .yaml and .yml checked (.yaml first). All found files merged.
 
-    **App name** resolved from: APP_NAME env -> auto-detect -> default "app".
+    **App name** resolved from: APP_NAME env -> <PREFIX>_APP_NAME -> the
+    program name (``-m`` package or script stem) -> default "app".
 
     **App env** resolved from: APP_ENV -> ENVIRONMENT -> ENV -> "development".
     Each candidate is trimmed; blank values are treated as unset.
@@ -106,6 +107,8 @@ See: get_mount_config(), detect_environment(), get_container_config()
 """
 
 import os
+import re
+import sys
 import tempfile
 import warnings
 from dataclasses import dataclass
@@ -126,65 +129,92 @@ def _debug_log(msg: str) -> None:
         logger.debug(msg)
 
 
-def _is_container() -> tuple[bool, str]:
+# cgroup path segments only a containerised process sits under; host daemons such as docker.service do not match.
+_CONTAINER_CGROUP_MARKERS = ("/docker/", "/kubepods", "/lxc/", "/containerd/")
+_DOCKER_SYSTEMD_SCOPE = re.compile(r"/docker-[0-9a-f]{64}\.scope")
+
+# Runtime names found in the mount options of a container's own root filesystem.
+_CONTAINER_ROOTFS_MARKERS = ("docker", "containerd", "kubelet")
+
+
+def _cgroup_names_container(content: str) -> bool:
+    """Return True when a /proc/<pid>/cgroup body places the process inside a container."""
+    if any(marker in content for marker in _CONTAINER_CGROUP_MARKERS):
+        return True
+    return _DOCKER_SYSTEMD_SCOPE.search(content) is not None
+
+
+def _rootfs_is_container_overlay(mountinfo: str) -> bool:
+    """Return True when the mount at / is an overlay a container runtime built.
+
+    Only the root mount counts: a host that runs containers lists their overlay mounts too.
     """
-    Detect if running inside a container.
+    for line in mountinfo.splitlines():
+        fields = line.split(" ")
+        if len(fields) < 5 or fields[4] != "/":
+            continue
+        _, separator, fs_part = line.partition(" - ")
+        if not separator:
+            continue
+        fs_type = fs_part.split(" ", 1)[0]
+        if "overlay" in fs_type and any(marker in fs_part for marker in _CONTAINER_ROOTFS_MARKERS):
+            return True
+    return False
 
-    Shared detection logic (mirrors runtime.RuntimeEnvironment._is_container).
 
-    Uses layered detection with high-confidence checks first:
-    1. K8s service account token (100% reliable for K8s)
-    2. Kubernetes environment variables
-    3. Docker-specific files
-    4. cgroups inspection (v1 and v2)
-    5. Mountinfo inspection
-    6. Container-specific env vars
+def _is_container(root: Path = Path("/")) -> tuple[bool, str]:
+    """Detect whether this process runs inside a container.
+
+    Only container evidence counts, highest confidence first; the
+    existence of a generic host path such as /data or /cache does not:
+
+    1. K8s service account directory (``k8s_serviceaccount``)
+    2. ``KUBERNETES_SERVICE_HOST`` env var (``kubernetes``)
+    3. ``/.dockerenv`` (``dockerenv``)
+    4. ``/proc/1/cgroup`` or ``/proc/self/cgroup`` under a container
+       cgroup: ``/docker/``, ``/kubepods``, ``/lxc/``, ``/containerd/`` or a
+       ``docker-<id>.scope`` (``cgroups_cgroup``)
+    5. The mount at ``/`` in ``/proc/self/mountinfo`` is an overlay whose
+       options name docker, containerd or kubelet (``mountinfo``)
+    6. ``container``, ``DOCKER_CONTAINER`` or ``ECS_CONTAINER_METADATA_URI``
+       env var (``env_<var>``)
+
+    ``RuntimeEnvironment._is_container`` runs the same checks, then a PID 1 fallback.
+
+    Args:
+        root: Filesystem root the file checks read; tests pass a fake root.
 
     Returns:
         (is_container, detection_method)
     """
-    # HIGH CONFIDENCE CHECKS
-
-    # 1. K8s service account token (100% reliable for K8s)
-    if Path("/var/run/secrets/kubernetes.io/serviceaccount").exists():
+    if (root / "var/run/secrets/kubernetes.io/serviceaccount").exists():
         return True, "k8s_serviceaccount"
 
-    # 2. Kubernetes env vars
     if os.getenv("KUBERNETES_SERVICE_HOST"):
         return True, "kubernetes"
 
-    # 3. Docker-specific file
-    if Path("/.dockerenv").exists():
+    if (root / ".dockerenv").exists():
         return True, "dockerenv"
 
-    # MEDIUM CONFIDENCE CHECKS
-
-    # 4. cgroups v1 and v2
-    for cgroup_file in ["/proc/1/cgroup", "/proc/self/cgroup"]:
+    for cgroup_file in (root / "proc/1/cgroup", root / "proc/self/cgroup"):
         try:
-            with open(cgroup_file, encoding="utf-8") as f:
-                content = f.read()
-                if any(x in content for x in ["docker", "kubepods", "containerd", "crio"]):
-                    return True, f"cgroups_{cgroup_file.split('/')[-1]}"
+            with open(str(cgroup_file), encoding="utf-8") as f:
+                if _cgroup_names_container(f.read()):
+                    return True, f"cgroups_{cgroup_file.name}"
         except (FileNotFoundError, PermissionError):
             pass
 
-    # 5. Mountinfo inspection
     try:
-        with open("/proc/self/mountinfo", encoding="utf-8") as f:
-            content = f.read()
-            if any(x in content for x in ["docker", "kubelet", "overlay", "containerd"]):
+        with open(str(root / "proc/self/mountinfo"), encoding="utf-8") as f:
+            if _rootfs_is_container_overlay(f.read()):
                 return True, "mountinfo"
     except (FileNotFoundError, PermissionError):
         pass
 
-    # 6. Container-specific env vars
-    container_vars = ["container", "DOCKER_CONTAINER", "ECS_CONTAINER_METADATA_URI"]
-    for var in container_vars:
+    for var in ("container", "DOCKER_CONTAINER", "ECS_CONTAINER_METADATA_URI"):
         if os.getenv(var):
             return True, f"env_{var.lower()}"
 
-    # Default: local environment
     return False, "none"
 
 
@@ -228,6 +258,8 @@ class MountConfig:
     Additional DevOps paths (auto-detected if present):
     - cache_dir: Application cache (computed data)
     - run_dir: Runtime state (PID files, sockets)
+
+    Constructing one creates no directories; create the ones you write to.
     """
 
     # Core paths
@@ -242,25 +274,11 @@ class MountConfig:
     run_dir: Path | None = None
 
     def __post_init__(self):
-        """Convert strings to Path objects and ensure directories exist"""
-        # All fields in the dataclass
-        all_fields = ["config_dir", "secrets_dir", "data_dir", "temp_dir", "logs_dir", "cache_dir", "run_dir"]
-
-        # Read-only directories that shouldn't be created
-        read_only_fields = ["config_dir", "secrets_dir"]
-
-        for field in all_fields:
+        """Convert string paths to Path objects."""
+        for field in ("config_dir", "secrets_dir", "data_dir", "temp_dir", "logs_dir", "cache_dir", "run_dir"):
             value = getattr(self, field)
             if isinstance(value, str):
                 setattr(self, field, Path(value))
-
-            # Try to create directory if it doesn't exist (skip read-only dirs)
-            if value and field not in read_only_fields:
-                path = Path(value)
-                try:
-                    path.mkdir(parents=True, exist_ok=True)
-                except (PermissionError, OSError) as e:
-                    _debug_log(f"Could not create {field}: {e}")
 
 
 def detect_helm_deployment() -> bool:
@@ -464,68 +482,73 @@ def get_default_mounts(environment: str, app_name: str, auto_detect: bool = True
 ENV_PREFIX = env_prefix()
 
 
-# Determine app name with proper priority:
-# 1. K8s/Docker standard APP_NAME environment variable
-# 2. APP_NAME override
-# 3. Python package name (if detectable)
-# 4. Default to "app"
-def get_app_name() -> str:
-    """Get application name with proper priority.
+# Program names that say nothing about the application being run.
+_NON_APP_PROGRAM_NAMES = frozenset({"__main__", "pytest", "python"})
 
-    Priority order:
-    1. APP_NAME environment variable (K8s/Docker standard)
-    2. APP_NAME override
-    3. Root application package name (not scalo)
-    4. Main module name from sys.argv[0]
-    5. Default to "app"
+
+def _dash_m_module(argv: list[str]) -> str | None:
+    """Return the module ``python -m`` is locating, while ``sys.argv[0]`` is still ``-m``.
+
+    At that point ``sys.argv`` holds only the script arguments, so the module
+    name is read from ``sys.orig_argv``: the token just before those arguments,
+    either ``pkg`` after a separate ``-m`` or the tail of a joined ``-mpkg``.
     """
-    # Priority 1: K8s/Docker standard
+    orig_argv = getattr(sys, "orig_argv", [])
+    index = len(orig_argv) - len(argv)
+    if index < 1 or orig_argv[index + 1 :] != argv[1:]:
+        return None
+    token = orig_argv[index]
+    if token.startswith("-"):
+        return token.partition("m")[2] or None
+    return token
+
+
+def _app_name_from_argv() -> str | None:
+    """Derive an app name from how the interpreter was started, importing nothing.
+
+    ``python -m pkg[.mod]`` gives ``pkg``, a script or console entry point gives
+    its stem. ``-c``, ``-`` and an empty ``argv[0]`` name no program, and
+    ``__main__``, ``pytest`` and ``python`` are skipped. Underscores become hyphens.
+    """
+    argv = list(getattr(sys, "argv", None) or [""])
+    argv0 = argv[0]
+
+    candidates = []
+    if argv0 == "-m":
+        module = _dash_m_module(argv)
+    else:
+        main_spec = getattr(sys.modules.get("__main__"), "__spec__", None)
+        module = getattr(main_spec, "name", None)
+    if module:
+        candidates.append(module.split(".")[0])
+    if argv0 and not argv0.startswith("-"):
+        candidates.append(Path(argv0).stem)
+
+    for name in candidates:
+        if name and name not in _NON_APP_PROGRAM_NAMES:
+            return name.replace("_", "-")
+    return None
+
+
+def get_app_name() -> str:
+    """Get the application name.
+
+    Priority order (nothing is imported to guess a name):
+
+    1. ``APP_NAME`` environment variable (K8s/Docker standard)
+    2. ``<PREFIX>_APP_NAME`` when the app sets an env prefix
+    3. The program name: the ``-m`` package, else the script stem
+    4. ``"app"``
+    """
     app_name = os.getenv("APP_NAME")
     if app_name:
         return app_name
 
-    # Priority 2: scalo override
     app_name = control_var("APP_NAME")
     if app_name:
         return app_name
 
-    # Priority 3: Try to detect root application package name
-    try:
-        import importlib.metadata
-        import sys
-
-        # Get all installed packages
-        for dist in importlib.metadata.distributions():
-            name = dist.metadata.get("Name", "").lower()
-            # Skip common libraries and scalo itself
-            if name and name not in ("scalo", "pip", "setuptools", "wheel"):
-                # Check if this package is in the current Python path
-                try:
-                    module = __import__(name.replace("-", "_"))
-                    # If we can import it and it's not a standard library module
-                    if hasattr(module, "__file__") and module.__file__:
-                        module_path = Path(module.__file__).parent
-                        # Check if it's in the current working directory or a local package
-                        if str(Path.cwd()) in str(module_path) or "site-packages" not in str(module_path):
-                            return name
-                except (ImportError, AttributeError):
-                    pass
-
-        # Priority 4: Try main module from sys.argv
-        if sys.argv and sys.argv[0]:
-            # If running as module (python -m package)
-            if sys.argv[0] == "-m" and len(sys.argv) > 1:
-                return sys.argv[1].split(".")[0].replace("_", "-")
-            # If running a script
-            main_module = Path(sys.argv[0]).stem
-            if main_module and main_module not in ("__main__", "pytest", "python"):
-                return main_module.replace("_", "-")
-
-    except Exception:  # nosec B110 - Optional app name detection
-        pass
-
-    # Priority 5: Default
-    return "app"
+    return _app_name_from_argv() or "app"
 
 
 APP_NAME = get_app_name()

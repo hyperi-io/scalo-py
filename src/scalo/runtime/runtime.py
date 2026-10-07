@@ -31,8 +31,8 @@ Quick Start
     1. K8s service account token (/var/run/secrets/.../token)
     2. KUBERNETES_SERVICE_HOST env var
     3. /.dockerenv file
-    4. cgroups v1 + v2 (/proc/1/cgroup, /proc/self/cgroup)
-    5. /proc/self/mountinfo for docker/kubelet/overlay/containerd
+    4. A container cgroup in /proc/1/cgroup or /proc/self/cgroup
+    5. An overlay root mount built by docker/containerd/kubelet (/proc/self/mountinfo)
     6. Container env vars (container, DOCKER_CONTAINER, ECS_CONTAINER_METADATA_URI)
     7. PID 1 init-process name check
     Falls back to local mode if none match.
@@ -94,6 +94,7 @@ import tempfile
 from dataclasses import dataclass
 from pathlib import Path
 
+from ..config.config import _is_container as _detect_container
 from ..logger import logger
 
 
@@ -158,7 +159,7 @@ class RuntimeEnvironment:
 
         Detection order:
         1. force_mode override (if set)
-        2. Container detection (cgroups, /.dockerenv, KUBERNETES_SERVICE_HOST)
+        2. Container detection (see _is_container)
         3. Fallback to local mode
         """
 
@@ -182,63 +183,17 @@ class RuntimeEnvironment:
         """
         Detect if running inside a container.
 
-        Uses layered detection with high-confidence checks first:
-        1. K8s service account token (100% reliable for K8s)
-        2. Kubernetes environment variables
-        3. Docker-specific files
-        4. cgroups inspection (v1 and v2)
-        5. Mountinfo inspection
-        6. Container-specific env vars
-        7. Init process check (PID 1)
+        Runs the container-evidence checks ``get_mount_config()`` uses (see
+        ``scalo.config.config._is_container``), then one low-confidence
+        fallback: this process is PID 1 and its name is not a host init.
 
         Returns:
             (is_container, detection_method)
         """
+        is_container, method = _detect_container()
+        if is_container:
+            return is_container, method
 
-        # HIGH CONFIDENCE CHECKS (do these first)
-
-        # 1. K8s service account token (100% reliable for K8s)
-        if Path("/var/run/secrets/kubernetes.io/serviceaccount").exists():
-            return True, "k8s_serviceaccount"
-
-        # 2. Kubernetes env vars
-        if os.getenv("KUBERNETES_SERVICE_HOST"):
-            return True, "kubernetes"
-
-        # 3. Docker-specific file
-        if Path("/.dockerenv").exists():
-            return True, "dockerenv"
-
-        # MEDIUM CONFIDENCE CHECKS
-
-        # 4. cgroups v1 and v2 (both /proc/1/cgroup and /proc/self/cgroup)
-        for cgroup_file in ["/proc/1/cgroup", "/proc/self/cgroup"]:
-            try:
-                with open(cgroup_file, encoding="utf-8") as f:
-                    content = f.read()
-                    if any(x in content for x in ["docker", "kubepods", "containerd", "crio"]):
-                        return True, f"cgroups_{cgroup_file.split('/')[-1]}"
-            except (FileNotFoundError, PermissionError):
-                pass
-
-        # 5. Mountinfo inspection (very reliable)
-        try:
-            with open("/proc/self/mountinfo", encoding="utf-8") as f:
-                content = f.read()
-                if any(x in content for x in ["docker", "kubelet", "overlay", "containerd"]):
-                    return True, "mountinfo"
-        except (FileNotFoundError, PermissionError):
-            pass
-
-        # 6. Container-specific env vars
-        container_vars = ["container", "DOCKER_CONTAINER", "ECS_CONTAINER_METADATA_URI"]
-        for var in container_vars:
-            if os.getenv(var):
-                return True, f"env_{var.lower()}"
-
-        # LOW CONFIDENCE CHECKS (only if nothing else matched)
-
-        # 7. Init process check (PID 1 running non-systemd)
         if os.getpid() == 1:
             try:
                 with open("/proc/1/comm", encoding="utf-8") as f:
