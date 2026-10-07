@@ -5,6 +5,10 @@ scalo-rs's implementation per the unified spec.
 """
 
 import os
+import subprocess
+import sys
+import types
+from importlib.machinery import ModuleSpec
 from pathlib import Path
 from unittest.mock import patch
 
@@ -115,16 +119,179 @@ class TestAppEnvDetection:
         assert get_app_env() == "development"
 
 
+def _set_invocation(monkeypatch, argv, orig_argv=None, main_spec_name=None):
+    """Make the interpreter look as if it was started with ``argv``."""
+    main = types.ModuleType("__main__")
+    main.__spec__ = ModuleSpec(main_spec_name, None) if main_spec_name else None
+    monkeypatch.setitem(sys.modules, "__main__", main)
+    monkeypatch.setattr(sys, "argv", argv)
+    monkeypatch.setattr(sys, "orig_argv", orig_argv if orig_argv is not None else ["/usr/bin/python3", *argv])
+
+
 class TestAppNameDetection:
-    """Test get_app_name() priority matches scalo-rs."""
+    """Test get_app_name(): explicit name first, then the program name, never an import scan."""
+
+    @pytest.fixture(autouse=True)
+    def _no_app_name(self, monkeypatch):
+        monkeypatch.delenv("APP_NAME", raising=False)
 
     def test_app_name_from_env(self, monkeypatch):
-        """APP_NAME (bare, or app-prefixed) takes highest priority."""
+        """APP_NAME takes highest priority."""
         monkeypatch.setenv("APP_NAME", "myapp")
+        _set_invocation(monkeypatch, ["/opt/tools/other_tool.py"])
 
         from scalo.config.config import get_app_name
 
         assert get_app_name() == "myapp"
+
+    def test_prefixed_app_name(self, monkeypatch):
+        """<PREFIX>_APP_NAME is used when APP_NAME is unset."""
+        from scalo._env_compat import set_env_prefix
+        from scalo.config.config import get_app_name
+
+        set_env_prefix("MYAPP")
+        monkeypatch.setenv("MYAPP_APP_NAME", "prefixed")
+        _set_invocation(monkeypatch, ["/opt/tools/other_tool.py"])
+
+        assert get_app_name() == "prefixed"
+
+    def test_python_dash_c_gives_default(self, monkeypatch):
+        """``python -c`` names no program, so the default applies and ``-c`` never becomes a name."""
+        _set_invocation(monkeypatch, ["-c"])
+
+        from scalo.config.config import get_app_name
+
+        assert get_app_name() == "app"
+
+    def test_empty_argv0_gives_default(self, monkeypatch):
+        """An interactive or embedded interpreter has an empty argv[0]."""
+        _set_invocation(monkeypatch, [""])
+
+        from scalo.config.config import get_app_name
+
+        assert get_app_name() == "app"
+
+    def test_dash_m_while_the_package_imports(self, monkeypatch):
+        """While ``python -m my_pkg.cli`` locates the module, argv[0] is ``-m`` and argv holds only user args."""
+        _set_invocation(
+            monkeypatch,
+            ["-m", "serve", "--port", "1"],
+            orig_argv=["/usr/bin/python3", "-X", "utf8", "-m", "my_pkg.cli", "serve", "--port", "1"],
+        )
+
+        from scalo.config.config import get_app_name
+
+        assert get_app_name() == "my-pkg"
+
+    def test_dash_m_joined_form(self, monkeypatch):
+        """``-Bmmy_pkg`` names the module in the same token as the flag."""
+        _set_invocation(monkeypatch, ["-m", "serve"], orig_argv=["/usr/bin/python3", "-Bmmy_pkg", "serve"])
+
+        from scalo.config.config import get_app_name
+
+        assert get_app_name() == "my-pkg"
+
+    def test_dash_m_while_main_runs(self, monkeypatch):
+        """Once ``__main__.py`` runs, argv[0] is its path and ``__main__.__spec__`` names the package."""
+        _set_invocation(
+            monkeypatch,
+            ["/srv/my_pkg/__main__.py", "serve"],
+            orig_argv=["/usr/bin/python3", "-m", "my_pkg", "serve"],
+            main_spec_name="my_pkg.__main__",
+        )
+
+        from scalo.config.config import get_app_name
+
+        assert get_app_name() == "my-pkg"
+
+    def test_script_path_gives_stem(self, monkeypatch):
+        """A script or console entry point is named by its stem."""
+        _set_invocation(monkeypatch, ["/opt/tools/data_sync.py", "--once"])
+
+        from scalo.config.config import get_app_name
+
+        assert get_app_name() == "data-sync"
+
+    def test_pytest_is_not_an_app_name(self, monkeypatch):
+        """Test runners and the bare interpreter are skipped."""
+        _set_invocation(monkeypatch, ["/venv/bin/pytest", "tests/"])
+
+        from scalo.config.config import get_app_name
+
+        assert get_app_name() == "app"
+
+    def test_imports_nothing_to_guess_a_name(self, monkeypatch):
+        """No installed distribution is listed or imported to guess a name."""
+        import importlib.metadata
+
+        def _refuse(*args, **kwargs):
+            raise AssertionError("get_app_name() must not list installed distributions")
+
+        monkeypatch.setattr(importlib.metadata, "distributions", _refuse)
+        _set_invocation(monkeypatch, ["-c"])
+
+        from scalo.config.config import get_app_name
+
+        before = set(sys.modules)
+        assert get_app_name() == "app"
+        assert set(sys.modules) - before == set()
+
+
+class TestAppNameFromRealInterpreter:
+    """Run a real interpreter, so argv, orig_argv and __main__ are what CPython sets."""
+
+    @staticmethod
+    def _minimal_env(home: Path, extra_path: Path | None = None) -> dict[str, str]:
+        env = {"HOME": str(home), "PATH": os.defpath}
+        if extra_path is not None:
+            env["PYTHONPATH"] = str(extra_path)
+        return env
+
+    def test_python_dash_m_package(self, tmp_path):
+        """``python -m my_pkg`` resolves to my-pkg from the package import and from __main__."""
+        pkg = tmp_path / "src" / "my_pkg"
+        pkg.mkdir(parents=True)
+        probe = "from scalo.config.config import get_app_name\nprint(get_app_name())\n"
+        (pkg / "__init__.py").write_text(probe, encoding="utf-8")
+        (pkg / "__main__.py").write_text(probe, encoding="utf-8")
+        home = tmp_path / "home"
+        home.mkdir()
+
+        result = subprocess.run(
+            [sys.executable, "-m", "my_pkg", "serve"],
+            cwd=home,
+            env=self._minimal_env(home, tmp_path / "src"),
+            capture_output=True,
+            text=True,
+            encoding="utf-8",
+            errors="replace",
+            timeout=120,
+            check=False,
+        )
+
+        assert result.returncode == 0, result.stderr[-2000:]
+        assert result.stdout.split() == ["my-pkg", "my-pkg"]
+
+    def test_import_with_dash_c_writes_nothing_under_home(self, tmp_path):
+        """``python -c 'import scalo.config'`` with no APP_NAME names the app "app" and leaves HOME empty."""
+        home = tmp_path / "home"
+        home.mkdir()
+
+        result = subprocess.run(
+            [sys.executable, "-c", "import scalo.config.config as c; print(c.APP_NAME)"],
+            cwd=home,
+            env=self._minimal_env(home),
+            capture_output=True,
+            text=True,
+            encoding="utf-8",
+            errors="replace",
+            timeout=120,
+            check=False,
+        )
+
+        assert result.returncode == 0, result.stderr[-2000:]
+        assert result.stdout.strip() == "app"
+        assert sorted(p.name for p in home.iterdir()) == []
 
 
 class TestLogFormatDefault:

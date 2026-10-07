@@ -156,11 +156,11 @@ class TestRuntimeEnvironment:
             assert is_container is True
             assert method == "cgroups_cgroup"
 
-    def test_container_detection_cgroups_containerd(self):
-        """Test container detection via cgroups with containerd pattern."""
+    def test_container_detection_cgroups_docker_systemd_scope(self):
+        """A docker container under the systemd cgroup driver is detected."""
         runtime = RuntimeEnvironment("test-app")
 
-        mock_open = mock.mock_open(read_data="0::/system.slice/containerd.service")
+        mock_open = mock.mock_open(read_data=f"0::/system.slice/docker-{'a' * 64}.scope")
         with (
             mock.patch("builtins.open", mock_open),
             mock.patch("pathlib.Path.exists", return_value=False),
@@ -171,16 +171,36 @@ class TestRuntimeEnvironment:
             assert is_container is True
             assert method == "cgroups_cgroup"
 
-    def test_container_detection_mountinfo(self):
-        """Test container detection via /proc/self/mountinfo."""
+    def test_host_containerd_service_cgroup_is_not_a_container(self):
+        """The container daemon's own cgroup on a host is not container evidence."""
         runtime = RuntimeEnvironment("test-app")
 
-        # Mock /proc/1/cgroup to not match, then mountinfo to match
+        mock_open = mock.mock_open(read_data="0::/system.slice/containerd.service")
+        with (
+            mock.patch("builtins.open", mock_open),
+            mock.patch("pathlib.Path.exists", return_value=False),
+            mock.patch.dict(os.environ, {}, clear=True),
+            mock.patch("os.getpid", return_value=1234),
+        ):
+            is_container, method = runtime._is_container()
+
+            assert is_container is False
+            assert method == "none"
+
+    def test_container_detection_mountinfo(self):
+        """An overlay root mount built by docker is detected via /proc/self/mountinfo."""
+        runtime = RuntimeEnvironment("test-app")
+
+        root_line = (
+            "612 540 0:61 / / rw,relatime master:220 - overlay overlay "
+            "rw,lowerdir=/var/lib/docker/overlay2/l/ABC,upperdir=/var/lib/docker/overlay2/1/diff\n"
+        )
+
         def mock_open_mountinfo(path, *args, **kwargs):
             if "cgroup" in path:
-                return mock.mock_open(read_data="0::/user.slice")(path, *args, **kwargs)
+                return mock.mock_open(read_data="0::/")(path, *args, **kwargs)
             elif "mountinfo" in path:
-                return mock.mock_open(read_data="overlay /app overlay rw")(path, *args, **kwargs)
+                return mock.mock_open(read_data=root_line)(path, *args, **kwargs)
             else:
                 raise FileNotFoundError
 
@@ -193,6 +213,36 @@ class TestRuntimeEnvironment:
 
             assert is_container is True
             assert method == "mountinfo"
+
+    def test_docker_host_mountinfo_is_not_a_container(self):
+        """A host that runs containers lists their overlays, but its own root is not one."""
+        runtime = RuntimeEnvironment("test-app")
+
+        host_mountinfo = (
+            "27 1 8:1 / / rw,relatime shared:1 - ext4 /dev/sda1 rw\n"
+            "423 176 0:65 / /var/lib/docker/overlay2/1/merged rw,relatime - overlay overlay "
+            "rw,lowerdir=/var/lib/docker/overlay2/l/ABC\n"
+            "439 34 0:5 net:[4026533674] /run/docker/netns/026949dfeea6 rw - nsfs nsfs rw\n"
+        )
+
+        def mock_open_mountinfo(path, *args, **kwargs):
+            if "cgroup" in path:
+                return mock.mock_open(read_data="0::/init.scope")(path, *args, **kwargs)
+            elif "mountinfo" in path:
+                return mock.mock_open(read_data=host_mountinfo)(path, *args, **kwargs)
+            else:
+                raise FileNotFoundError
+
+        with (
+            mock.patch("builtins.open", side_effect=mock_open_mountinfo),
+            mock.patch("pathlib.Path.exists", return_value=False),
+            mock.patch.dict(os.environ, {}, clear=True),
+            mock.patch("os.getpid", return_value=1234),
+        ):
+            is_container, method = runtime._is_container()
+
+            assert is_container is False
+            assert method == "none"
 
     def test_container_detection_env_vars(self):
         """Test container detection via container-specific env vars."""

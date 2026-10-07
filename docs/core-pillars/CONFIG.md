@@ -64,11 +64,9 @@ earlier:
 4. `~/.config/{app_name}/` -- XDG user config
 
 Both `.yaml` and `.yml` extensions are checked (`.yaml` wins on tie).
-App name resolves from the bare `APP_NAME` env var (the K8s/Docker
-convention), then the prefix-aware `<PREFIX>_APP_NAME`, then package
-auto-detect, then `"app"`. App environment resolves from `APP_ENV`,
-`ENVIRONMENT`, `ENV`, then `"development"` -- each candidate is trimmed,
-and a blank value is treated as unset.
+App name resolves from the bare `APP_NAME` env var (the K8s/Docker convention), then the prefix-aware `<PREFIX>_APP_NAME`, then the program name, then `"app"`. The program name is the top-level package for `python -m pkg[.mod]`, else the stem of the script or console entry point, with underscores turned into hyphens. `python -c`, `python -`, an empty `argv[0]`, `__main__`, `pytest` and `python` give no name. Nothing is imported to guess one, so set `APP_NAME` wherever the name matters.
+
+App environment resolves from `APP_ENV`, `ENVIRONMENT`, `ENV`, then `"development"` -- each candidate is trimmed, and a blank value is treated as unset.
 
 ---
 
@@ -130,7 +128,7 @@ All but `ENV_PREFIX` itself are prefix-aware -- read as
 
 | Var | Effect | Default |
 |-----|--------|---------|
-| `APP_NAME` | Service name (used in paths) | auto-detect, else `app` |
+| `APP_NAME` | Service name (used in paths) | program name, else `app` |
 | `ENV_PREFIX` | Env var prefix for everything else | bare (no prefix) |
 | `DEBUG` | Verbose config-loading debug logs | unset |
 | `DOTENV_CASCADE` | Load `~/.env` then `./.env` | `false` |
@@ -164,11 +162,12 @@ data_file = mounts.data_dir / "state.db"
 | `data_dir` | `/data` | `/app/data` | `~/.local/share/{app}` |
 | `logs_dir` | `/logs` | `/app/logs` | `~/.local/share/{app}/logs` |
 | `temp_dir` | `/tmp` | `/tmp/{app}` | `/tmp/{app}` |
+| `cache_dir` | detected, else none | `/app/cache` | `~/.cache/{app}` |
+| `run_dir` | detected, else none | `/run/{app}` | `/run/user/{uid}/{app}` |
 
-Environment detection walks seven indicators (service-account token,
-`/.dockerenv`, cgroups v1/v2, mountinfo, PID 1, container env vars).
-See [runtime/RUNTIME-CONTEXT.md](../runtime/RUNTIME-CONTEXT.md) for
-the full detection contract.
+The layout is computed once, at import, and no directory is created; create the ones you write to.
+
+The environment is a container only on container evidence: a K8s service-account directory, `KUBERNETES_SERVICE_HOST`, `/.dockerenv`, a container cgroup in `/proc/1/cgroup` or `/proc/self/cgroup`, an overlay root mount built by docker, containerd or kubelet, or the `container`, `DOCKER_CONTAINER` or `ECS_CONTAINER_METADATA_URI` env var. A host directory such as `/cache` or `/data`, and the container mounts a docker host lists in its own mountinfo, do not make the host a container. `AUTO_DETECT=false` skips detection and uses a fixed layout: `/app/config`, `/app/secrets`, `/app/data`, `/app/logs` and the system temp dir. See [runtime/RUNTIME-CONTEXT.md](../runtime/RUNTIME-CONTEXT.md) for the checks in order.
 
 ---
 
