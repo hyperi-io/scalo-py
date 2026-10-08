@@ -22,6 +22,9 @@ the *generation* is Python-specific (uv venv, console-script entrypoint,
 """
 
 import json
+import string
+import unicodedata
+from collections.abc import Iterable, Iterator
 from enum import StrEnum
 from typing import Annotated, Any, Literal, Self
 
@@ -72,6 +75,38 @@ _WRITABLE_NAME_PATTERN = r"^[a-z0-9]([-a-z0-9]{0,48}[a-z0-9])?$"
 _CAPABILITY_PATTERN = r"^[A-Z0-9_]+$"
 """An upper-case Linux capability name without the ``CAP_`` prefix, e.g. ``NET_ADMIN``."""
 
+_KUBERNETES_PROTOCOLS = ("TCP", "UDP", "SCTP")
+"""The protocols Kubernetes takes on a container or Service port."""
+
+_MAX_PORT_NAME_LEN = 15
+"""The longest port name Kubernetes takes (an RFC 6335 ``IANA_SVC_NAME``)."""
+
+_MAX_APP_NAME_LEN = 63
+"""The longest Kubernetes Service name (an RFC 1035 label)."""
+
+_DNS_LABEL_CHARS = frozenset(string.ascii_lowercase + string.digits + "-")
+"""The characters a Kubernetes port or Service name is made of."""
+
+
+def _quoted(text: str) -> str:
+    """Return ``text`` in double quotes with control characters escaped, so a message shows what was refused."""
+    return json.dumps(text)
+
+
+def _has_control(text: str) -> bool:
+    """True when ``text`` holds a Unicode control character (category Cc), as Rust's ``char::is_control`` counts one."""
+    return any(unicodedata.category(char) == "Cc" for char in text)
+
+
+def _control_text(texts: Iterable[str]) -> str | None:
+    """Return the first of ``texts`` that holds a control character, or None."""
+    return next((text for text in texts if _has_control(text)), None)
+
+
+def _holds_a_control_character(text: str) -> str:
+    """Describe why ``text`` cannot be printed by a generator onto the one line it gets."""
+    return f"{_quoted(text)} holds a control character, which would break the line a generator prints it on"
+
 
 def _dial_fault(node: Any, path: tuple[str, ...]) -> str | None:
     """Describe the first ``DIAL_KEYWORD`` under ``node`` whose value is not in ``DIAL_TIERS``, or None.
@@ -92,6 +127,69 @@ def _dial_fault(node: Any, path: tuple[str, ...]) -> str | None:
         if fault := _dial_fault(child, (*path, key)):
             return fault
     return None
+
+
+class _BrokenRefError(ValueError):
+    """A ``$ref`` in ``config_schema`` that is not local, points at nothing, or refers to itself."""
+
+    def __init__(self, reference: str, reason: str) -> None:
+        super().__init__(f"config_schema $ref {_quoted(reference)} {reason}")
+
+
+def _local_ref(root: Any, reference: str) -> Any:
+    """Return the node the local ``$ref`` names in ``root``, reading it as a JSON pointer over objects only."""
+    if not reference.startswith("#"):
+        raise _BrokenRefError(reference, "is not local to the schema")
+    node = root
+    for part in reference[1:].split("/"):
+        if not part:
+            continue
+        key = part.replace("~1", "/").replace("~0", "~")
+        if not isinstance(node, dict) or key not in node:
+            raise _BrokenRefError(reference, "points at nothing")
+        node = node[key]
+    return node
+
+
+def _inline_refs(root: Any, node: Any, seen: frozenset[str]) -> None:
+    """Follow every ``$ref`` under ``node`` as inlining a dial does, raising on a broken or self-referring one."""
+    if isinstance(node, list):
+        for item in node:
+            _inline_refs(root, item, seen)
+    elif isinstance(node, dict):
+        reference = node.get("$ref")
+        if isinstance(reference, str):
+            if reference in seen:
+                raise _BrokenRefError(reference, "refers to itself")
+            _inline_refs(root, _local_ref(root, reference), seen | {reference})
+        for key, child in node.items():
+            if key != "$ref":
+                _inline_refs(root, child, seen)
+
+
+def _follow_dial_refs(root: Any, node: Any, seen: frozenset[str]) -> None:
+    """Walk ``node`` as the dial search does, raising on a ``$ref`` it follows that is broken.
+
+    The search takes ``properties``, ``allOf``, ``anyOf``, ``oneOf`` and each ``$ref`` once, and stops at a node
+    marked as a dial, whose whole subtree is then inlined.
+    """
+    if not isinstance(node, dict):
+        return
+    if DIAL_KEYWORD in node:
+        _inline_refs(root, node, frozenset())
+        return
+    reference = node.get("$ref")
+    if isinstance(reference, str) and reference not in seen:
+        _follow_dial_refs(root, _local_ref(root, reference), seen | {reference})
+    properties = node.get("properties")
+    if isinstance(properties, dict):
+        for name in sorted(properties):
+            _follow_dial_refs(root, properties[name], seen)
+    for combinator in ("allOf", "anyOf", "oneOf"):
+        branches = node.get(combinator)
+        if isinstance(branches, list):
+            for branch in branches:
+                _follow_dial_refs(root, branch, seen)
 
 
 class OciLabels(BaseModel):
@@ -198,19 +296,28 @@ type PortCondition = Annotated[
 """When a port's listener exists, as a test on a chart values path, tagged by ``kind``."""
 
 
+def _condition_texts(condition: PortCondition) -> Iterator[str]:
+    """Yield every string a port condition carries: its path, then its value or values."""
+    yield condition.path
+    if isinstance(condition, EqualsCondition):
+        yield condition.value
+    elif isinstance(condition, OneOfCondition):
+        yield from condition.values
+
+
 class PortContract(BaseModel):
     """Additional container port beyond the metrics port."""
 
     model_config = ConfigDict(extra="forbid")
 
     name: str
-    """Port name (e.g., ``http``)."""
+    """Port name (e.g., ``http``): 1 to 15 lowercase letters, digits and single inner hyphens, with a letter."""
 
     port: int = Field(ge=1, le=65535)
     """Port number (e.g., 8080)."""
 
     protocol: str = "TCP"
-    """Protocol (default: ``TCP``)."""
+    """``TCP``, ``UDP`` or ``SCTP``, in any case (default: ``TCP``)."""
 
     when: PortCondition | None = Field(default=None, exclude_if=lambda value: value is None)
     """The values condition under which the listener behind this port exists.
@@ -307,6 +414,20 @@ class WritablePath(BaseModel):
             raise ValueError(f'writable path {self.name}: a persistent path needs a size for its claim, e.g. "1Gi"')
         return self
 
+    @model_validator(mode="after")
+    def _text_holds_no_control_character(self) -> Self:
+        """Refuse a path, size or condition a generator could not print on one line, as scalo-rs's ``validate()`` does."""
+        field = f"writable_paths[{self.name}]"
+        if _has_control(self.path):
+            raise ValueError(f"{field}.path: {_quoted(self.path)} is not an absolute path on one line")
+        # scalo-rs names a fault in size_limit under "size" too.
+        for text in (self.size, self.size_limit):
+            if _has_control(text):
+                raise ValueError(f"{field}.size: {_holds_a_control_character(text)}")
+        if self.when is not None and (text := _control_text(_condition_texts(self.when))) is not None:
+            raise ValueError(f"{field}.when: {_holds_a_control_character(text)}")
+        return self
+
 
 class ResourceList(BaseModel):
     """One CPU and memory pair, as Kubernetes quantities. An empty value is unset."""
@@ -367,6 +488,60 @@ class SecurityContract(BaseModel):
     """Linux capabilities added after every other one is dropped, upper case without ``CAP_``, e.g. ``NET_ADMIN``."""
 
 
+def _label_fault(name: str, max_len: int) -> str | None:
+    """Describe why ``name`` is not 1 to ``max_len`` bytes of lowercase letters, digits and hyphens, or None."""
+    if not name or len(name.encode("utf-8", errors="replace")) > max_len:
+        return f"is not 1 to {max_len} characters long"
+    if not set(name) <= _DNS_LABEL_CHARS:
+        return "holds a character other than a lowercase letter, a digit or '-'"
+    return None
+
+
+def _app_name_fault(name: str) -> str | None:
+    """Describe why ``name`` is not a Kubernetes Service name, or None when it is one."""
+    if fault := _label_fault(name, _MAX_APP_NAME_LEN):
+        return fault
+    if not name[0].isalpha():
+        return "does not start with a lowercase letter"
+    if name.endswith("-"):
+        return "ends with '-'"
+    return None
+
+
+def _port_name_fault(name: str) -> str | None:
+    """Describe why ``name`` is not a port name Kubernetes takes, or None when it is one."""
+    if fault := _label_fault(name, _MAX_PORT_NAME_LEN):
+        return fault
+    if not any(char.isalpha() for char in name):
+        return "has no letter"
+    if name.startswith("-") or name.endswith("-") or "--" in name:
+        return "starts or ends with '-', or has two in a row"
+    return None
+
+
+def _port_fault(index: int, port: PortContract) -> str | None:
+    """Describe why ``port`` cannot be generated into an artefact, or None when it can.
+
+    A port is named by ``index`` until its name is known to be printable.
+    """
+    if fault := _port_name_fault(port.name):
+        return (
+            f"extra_ports[{index}].name: {_quoted(port.name)} {fault}, and Kubernetes takes a port name of "
+            f"1 to {_MAX_PORT_NAME_LEN} lowercase letters, digits and single inner hyphens, with at least one letter"
+        )
+    field = f"extra_ports[{port.name}]"
+    # isascii keeps the fold to ASCII, as Rust's eq_ignore_ascii_case does, since U+017F upper-cases to "S".
+    if not (port.protocol.isascii() and port.protocol.upper() in _KUBERNETES_PROTOCOLS):
+        return f"{field}.protocol: {_quoted(port.protocol)} is not a protocol Kubernetes takes -- use TCP, UDP or SCTP"
+    if port.when is not None and (text := _control_text(_condition_texts(port.when))) is not None:
+        return f"{field}.when: {_holds_a_control_character(text)}"
+    if port.bound_from is not None and _has_control(port.bound_from):
+        return f"{field}.bound_from: {_holds_a_control_character(port.bound_from)}"
+    if _has_control(port.app_protocol):
+        return f"{field}.app_protocol: {_holds_a_control_character(port.app_protocol)}"
+    return None
+
+
 class DeploymentContract(BaseModel):
     """Deployment-facing contract points derived from the app config cascade.
 
@@ -382,7 +557,11 @@ class DeploymentContract(BaseModel):
     """Contract schema version. CI checks this and fails if unsupported."""
 
     app_name: str
-    """Application name (e.g., ``my-loader``) -- matched against ``Chart.yaml`` ``name``."""
+    """Application name (e.g., ``my-loader``) -- matched against ``Chart.yaml`` ``name``.
+
+    Every object the chart renders is named after it, so it is a Kubernetes Service name: 1 to 63 lowercase
+    letters, digits and inner hyphens, starting with a letter.
+    """
 
     binary_name: str = ""
     """Binary name (e.g., ``my-loader``). Defaults to app_name when empty."""
@@ -534,6 +713,18 @@ class DeploymentContract(BaseModel):
     singleton: bool = False
     """Exactly one pod may run: replicas stay at one, nothing autoscales it, and a new pod starts only after the old one has stopped."""
 
+    @field_validator("app_name")
+    @classmethod
+    def _app_name_is_a_service_name(cls, value: str) -> str:
+        """Refuse an ``app_name`` that is not a Kubernetes Service name, as scalo-rs's ``validate()`` does."""
+        if fault := _app_name_fault(value):
+            raise ValueError(
+                f"app_name: {_quoted(value)} {fault}, and every object the chart renders is named after it, so it "
+                f"must be a Kubernetes Service name: 1 to {_MAX_APP_NAME_LEN} lowercase letters, digits and inner "
+                "hyphens, starting with a letter"
+            )
+        return value
+
     @field_validator("config_schema")
     @classmethod
     def _dial_markers_are_tiers(cls, value: dict[str, Any] | None) -> dict[str, Any] | None:
@@ -541,6 +732,22 @@ class DeploymentContract(BaseModel):
         if value is not None and (fault := _dial_fault(value, ())):
             raise ValueError(fault)
         return value
+
+    @field_validator("config_schema")
+    @classmethod
+    def _dial_refs_resolve(cls, value: dict[str, Any] | None) -> dict[str, Any] | None:
+        """Refuse a ``$ref`` the dial search follows that is remote, points at nothing or loops, as scalo-rs's ``validate()`` does."""
+        if value is not None:
+            _follow_dial_refs(value, value, frozenset())
+        return value
+
+    @model_validator(mode="after")
+    def _extra_ports_are_valid(self) -> Self:
+        """Refuse a port Kubernetes would not take, or one a generator could not print, as scalo-rs's ``validate()`` does."""
+        for index, port in enumerate(self.extra_ports):
+            if fault := _port_fault(index, port):
+                raise ValueError(fault)
+        return self
 
     @model_validator(mode="after")
     def _writable_paths_are_unique(self) -> Self:
@@ -562,6 +769,24 @@ class DeploymentContract(BaseModel):
         """Refuse a singleton with KEDA on: a singleton runs exactly one pod."""
         if self.singleton and self.keda is not None and self.keda.enabled:
             raise ValueError("a singleton runs exactly one pod, so KEDA must be off: set keda=None")
+        return self
+
+    @model_validator(mode="after")
+    def _keda_has_a_trigger_to_scale_on(self) -> Self:
+        """Refuse KEDA left on with no trigger, or with CPU as the only one and none to start from, as scalo-rs does."""
+        keda = self.keda
+        if keda is None or not keda.enabled or keda.kafka_trigger.enabled:
+            return self
+        if not keda.cpu_enabled:
+            raise ValueError(
+                "keda: the Kafka lag trigger and the CPU trigger are both off, so KEDA would have nothing to "
+                "scale on; set keda=None to turn autoscaling off"
+            )
+        if keda.min_replicas == 0:
+            raise ValueError(
+                "keda.min_replicas: CPU is the only trigger, and KEDA's CPU scaler cannot wake a workload from "
+                "zero; set min_replicas to 1 or more, or keep the Kafka lag trigger"
+            )
         return self
 
     @field_validator("image_registry")
