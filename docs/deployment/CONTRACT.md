@@ -26,7 +26,7 @@ from scalo.deployment import (
 | Field | Type | Default | Purpose |
 |---|---|---|---|
 | `schema_version` | `int` | `4` (`DEFAULT_SCHEMA_VERSION`) | A reader refuses a version it does not support. The v4 schema accepts only 4 |
-| `app_name` | `str` | required | Matches `Chart.yaml` `name`; image repo segment |
+| `app_name` | `str` | required | Matches `Chart.yaml` `name`; image repo segment. A Kubernetes Service name: 1 to 63 lowercase letters, digits and inner hyphens, starting with a letter. Anything else is refused at construction |
 | `binary_name` | `str` | `""` | Falls back to `app_name` via `.binary()` |
 | `description` | `str` | `""` | Chart description |
 | `metrics_port` | `int` (1..65535) | required | Metrics + health listen port |
@@ -177,6 +177,8 @@ hides a probe still aimed at the old name.
 Generators emit one `containerPort` per entry plus a matching Service
 `port` entry.
 
+Construction refuses a `name` Kubernetes would not take: 1 to 15 lowercase letters, digits and single inner hyphens, with at least one letter. It refuses a `protocol` other than `TCP`, `UDP` or `SCTP` in any case. It also refuses a control character in a `when` condition, `bound_from` or `app_protocol`, because a generator prints each onto one line and a newline there starts an instruction of its own. The refusal reads `extra_ports[<name>].<field>: <reason>`, and names the port by index until its name is valid.
+
 Four optional fields say when the listener exists, which address it serves and how clients reach it. Each is left out of the emitted contract when unset:
 
 | Field | Type | Meaning |
@@ -250,7 +252,7 @@ DeploymentContract(
 
 A chart always adds a scratch `/tmp` beside the declared paths.
 
-Construction refuses what scalo-rs's `validate()` refuses here: a writable path name or path outside the rules above, two writable paths with one name or one mount path (a trailing `/` ignored), a persistent path with a blank `size`, a capability that is not an upper-case name, and a `singleton` with KEDA on.
+Construction refuses what scalo-rs's `validate()` refuses here: a writable path name or path outside the rules above, a control character in a writable path's `path`, `size`, `size_limit` or `when`, two writable paths with one name or one mount path (a trailing `/` ignored), a persistent path with a blank `size`, a capability that is not an upper-case name, a `singleton` with KEDA on, and KEDA on with nothing to scale on (see [KEDA.md](KEDA.md)).
 
 ---
 
@@ -274,6 +276,8 @@ stays on the field. A chart assembler copies each marked node into the
 chart's `values.schema.json` under `config`, so an operator gets a typed,
 bounded value for each dial. `DeploymentContract` refuses an `x-scalo-dial`
 other than `big` or `small` anywhere in `config_schema`.
+
+It also refuses a `$ref` that the search for dials follows and that is not local, points at nothing, or loops back through a dial. The search takes `properties`, `allOf`, `anyOf`, `oneOf` and each `$ref` once, and reads a marked node whole. A broken `$ref` anywhere else in the schema is left alone.
 
 ---
 

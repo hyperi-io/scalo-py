@@ -47,6 +47,8 @@ keda_contract = KedaContract.from_config(my_config.keda)
 
 `enabled=False` generates exactly what `keda=None` does, so off has one meaning. A contract written before `enabled` existed loads with it on.
 
+With `enabled` true, `DeploymentContract` refuses KEDA when the Kafka lag trigger and the CPU trigger are both off, because there is nothing to scale on. It also refuses a CPU-only KEDA with `min_replicas` of 0, because KEDA's CPU scaler cannot wake a workload from zero.
+
 `kafka_trigger` (`KafkaLagTrigger`) says where the Kafka lag trigger reads its connection details in the chart's values. Each path is dotted and `.Values`-relative:
 
 | Field | Default |

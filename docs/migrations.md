@@ -28,6 +28,18 @@ Behaviour and API changes that need a consumer adjustment, indexed by the scalo 
 
 **Consumer adjustment** -- an emitted contract now carries `schema_version: 4`, `termination_grace_seconds`, `security`, `singleton` and `health.startup_budget_seconds`, so a committed `deployment-contract.json` changes on regeneration. An app that passes `schema_version=3` passes nothing, or `DEFAULT_SCHEMA_VERSION`, because a v4 chart assembler refuses version 3. Construction now refuses a malformed writable path, a capability that is not an upper-case name, a singleton with KEDA on, and an `x-scalo-dial` other than `big` or `small`.
 
+### Construction refuses the rest of what scalo-rs's `validate()` refuses (BEHAVIOUR CHANGE)
+
+`DeploymentContract` now refuses five more things when it is built or parsed. Each was accepted before:
+
+- An `app_name` that is not a Kubernetes Service name: 1 to 63 lowercase letters, digits and inner hyphens, starting with a letter.
+- A port `name` that is not 1 to 15 lowercase letters, digits and single inner hyphens with a letter, or a `protocol` that is not `TCP`, `UDP` or `SCTP` in any case.
+- A control character in a port's `when`, `bound_from` or `app_protocol`, or in a writable path's `path`, `size`, `size_limit` or `when`.
+- KEDA on with no trigger, or with CPU the only trigger and `min_replicas` of 0.
+- A `$ref` in `config_schema` that the dial search follows and that is remote, points at nothing or loops through a dial.
+
+**Consumer adjustment** -- an app that builds one of these gets a `ValidationError` reading `<field>: <reason>`, and fixes the value in the same change as the bump. See [deployment/CONTRACT.md](deployment/CONTRACT.md).
+
 ## 2.31.0
 
 ### Console logs: JSON off a TTY, fields in text, colour only on a TTY (BEHAVIOUR CHANGE)
