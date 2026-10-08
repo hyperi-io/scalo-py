@@ -266,6 +266,6 @@ def test_emit_is_deterministic(tmp_path: Path) -> None:
         assert (a / name).read_text() == (b / name).read_text()
 
 
-def test_contract_schema_version_is_v3() -> None:
+def test_contract_schema_version_is_v4() -> None:
     contract = _contract_with_catalog()
-    assert contract.schema_version == 3
+    assert contract.schema_version == 4

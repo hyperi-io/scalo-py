@@ -170,6 +170,8 @@ dev = [
     "pre-commit>=4.6.0",
     "tiktoken>=0.14.0",
     "faker>=40.0.0",
+    # Validates emitted contracts against the vendored scalo-rs contract schema (draft 2020-12).
+    "jsonschema>=4.26.0",
 ]
 docs = [
     "sphinx>=9.1.0,<10",

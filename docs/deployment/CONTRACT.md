@@ -4,6 +4,8 @@ The Pydantic model an app builds once from its `Config.default()`. CI validates 
 
 `tests/fixtures/contract-parity/deployment-contract.json` is a contract scalo-rs emitted with every optional field set, copied from scalo-rs's own `tests/fixtures/contract-parity/`. `tests/unit/deployment/test_contract_parity.py` parses it, re-emits it and checks nothing changed, so a field scalo-rs adds fails here until scalo-py carries it.
 
+`src/scalo/deployment/data/contract.schema.json` ships in the wheel. It is scalo-rs's `charts/scalo-service/schema/deployment-contract.v4.schema.json`, the JSON Schema a chart assembler validates every contract against, copied byte for byte. `.hyperi-ci-vendor.lock` records the source repo, path, ref and sha256 of the copy. `tests/unit/deployment/test_contract_schema.py` checks the copy against the lock and validates what scalo-py emits against it. Update the copy from scalo-rs, never by hand.
+
 Import surface (gated on the `[deployment]` extra; importing without
 `pydantic>=2.13` defers and raises `ProviderNotAvailableError`):
 
@@ -12,7 +14,8 @@ from scalo.deployment import (
     DeploymentContract, HealthContract, OciLabels,
     PortContract, SecretGroupContract, SecretEnvContract,
     EnabledCondition, EqualsCondition, OneOfCondition,
-    ImageProfile,
+    WritablePath, ResourcesContract, ResourceList, SecurityContract,
+    ImageProfile, DIAL_KEYWORD, DIAL_TIERS,
 )
 ```
 
@@ -22,7 +25,7 @@ from scalo.deployment import (
 
 | Field | Type | Default | Purpose |
 |---|---|---|---|
-| `schema_version` | `int` | `3` (`DEFAULT_SCHEMA_VERSION`) | CI rejects above `MAX_SUPPORTED_SCHEMA_VERSION` |
+| `schema_version` | `int` | `4` (`DEFAULT_SCHEMA_VERSION`) | A reader refuses a version it does not support. The v4 schema accepts only 4 |
 | `app_name` | `str` | required | Matches `Chart.yaml` `name`; image repo segment |
 | `binary_name` | `str` | `""` | Falls back to `app_name` via `.binary()` |
 | `description` | `str` | `""` | Chart description |
@@ -30,7 +33,7 @@ from scalo.deployment import (
 | `health` | `HealthContract` | factory | Probe paths -- see below |
 | `env_prefix` | `str` | required | Dynaconf prefix; `__` is the nesting separator |
 | `metric_prefix` | `str` | required | Prometheus namespace |
-| `config_mount_path` | `str` | required | E.g. `/etc/event-loader/config.yaml` |
+| `config_mount_path` | `str` | `""` | E.g. `/etc/event-loader/config.yaml`. Empty means the app reads no config file (v4) |
 | `image_registry` | `str` | required | Container registry base. A blank value is refused at construction |
 | `extra_ports` | `list[PortContract]` | `[]` | HTTP / gRPC / data ports beyond metrics |
 | `unbound_listen_paths` | `list[str]` | `[]`, left out when empty | `default_config` listen paths that need no port, e.g. a send-only client's bind address |
@@ -45,8 +48,13 @@ from scalo.deployment import (
 | `native_deps` | `NativeDepsContract` | factory | See [NATIVE-DEPS.md](NATIVE-DEPS.md) |
 | `image_profile` | `ImageProfile` | `PRODUCTION` | See below |
 | `oci_labels` | `OciLabels` | factory | Static OCI labels and the namespace of scalo's own keys -- see [`OciLabels`](#ocilabels) |
-| `config_schema` | `dict \| None` | `None` | JSON Schema of the app's `Config` (v3) |
+| `config_schema` | `dict \| None` | `None` | JSON Schema of the app's `Config` (v3). Dials carry `x-scalo-dial` (v4) -- see [Dials](#dials) |
 | `capabilities` | `list[Capability]` | `[]` | Runtime-surface catalogue (v3) |
+| `writable_paths` | `list[WritablePath]` | `[]`, left out when empty | Directories the app writes, so the root filesystem stays read-only (v4) -- see [Writable paths, resources and security](#writable-paths-resources-and-security) |
+| `termination_grace_seconds` | `int` (0..2^32-1) | `45` | Seconds between SIGTERM and SIGKILL (v4) |
+| `resources` | `ResourcesContract` | empty, left out when empty | The app's own requests and limits. Empty leaves the chart default (v4) |
+| `security` | `SecurityContract` | uid/gid/fsGroup 1000, read-only root | Identity and capabilities the image runs with (v4) |
+| `singleton` | `bool` | `False` | Exactly one pod: nothing autoscales it, and a new pod starts only after the old one stops (v4) |
 
 `image_registry` has no default, and scalo-py refuses a missing or blank one when the contract is built. scalo-rs refuses it later, in `validate()`. Read an organisation-wide value from the cascade:
 
@@ -149,9 +157,10 @@ An app that already ships its own namespace keeps it by setting `label_namespace
 | `liveness_path` | `/livez` | Used by Dockerfile `HEALTHCHECK` and Helm `livenessProbe` |
 | `readiness_path` | `/readyz` | Helm `readinessProbe` |
 | `metrics_path` | `/metrics` | Prometheus scrape annotation in `values.yaml` |
+| `startup_budget_seconds` | `150` | How long the scalo-service startup probe waits for the liveness path before a restart, at least 1 (v4) |
 
 The Helm `startupProbe` also points at `liveness_path`. There is no separate
-startup field and no `/startupz`: Kubernetes suspends liveness until the
+startup path and no `/startupz`: Kubernetes suspends liveness until the
 startup probe passes, so one path gives both a generous boot budget and a
 tight liveness period without the two drifting apart.
 
@@ -168,12 +177,14 @@ hides a probe still aimed at the old name.
 Generators emit one `containerPort` per entry plus a matching Service
 `port` entry.
 
-Two optional fields say when the listener exists and which address it serves. Each is left out of the emitted contract when unset:
+Four optional fields say when the listener exists, which address it serves and how clients reach it. Each is left out of the emitted contract when unset:
 
 | Field | Type | Meaning |
 | --- | --- | --- |
 | `when` | `EnabledCondition \| EqualsCondition \| OneOfCondition \| None` | The values condition under which the listener exists. None means it always listens |
 | `bound_from` | `str \| None` | Dotted `default_config` path of the listen address, e.g. `grpc.listen` |
+| `public` | `bool` | Clients outside the cluster connect here. The scalo-service chart puts such ports on a load balancer when the deployment asks for one (v4) |
+| `app_protocol` | `str` | Written to the Service port's `appProtocol`, e.g. `kubernetes.io/h2c` so a proxy speaks HTTP/2 to a plain-text gRPC port (v4) |
 
 The condition is tagged by `kind`, as scalo-rs's `PortCondition` serialises it. `path` is dotted and `.Values`-relative, e.g. `config.grpc.enabled`:
 
@@ -183,7 +194,7 @@ The condition is tagged by `kind`, as scalo-rs's `PortCondition` serialises it. 
 | `EqualsCondition(path=..., value=...)` | `{"kind": "equals", "path": ..., "value": ...}` |
 | `OneOfCondition(path=..., values=[...])` | `{"kind": "one_of", "path": ..., "values": [...]}` |
 
-scalo-py's generators read neither field yet: the Dockerfile `EXPOSE`, the container manifest, the Compose fragment and the chart carry every port unconditionally, where scalo-rs's keep a gated port out of `EXPOSE` and render it only while its condition holds.
+scalo-py's generators read none of the four yet: the Dockerfile `EXPOSE`, the container manifest, the Compose fragment and the chart carry every port unconditionally, where scalo-rs's keep a gated port out of `EXPOSE` and render it only while its condition holds.
 
 `SecretEnvContract` -- one env var fed from a K8s Secret:
 
@@ -195,7 +206,74 @@ scalo-py's generators read neither field yet: the Dockerfile `EXPOSE`, the conta
 `group_name` becomes the `values.yaml` section name and the
 `{group}SecretName` helper. Generators emit one `Secret` template per
 group plus a KEDA `TriggerAuthentication` automatically when the group
-is named `kafka`.
+is named `kafka`. `optional=True` (v4) lets the app start without the group,
+so a missing Secret or key leaves the variable unset. It is left out of the
+emitted contract when false.
+
+---
+
+## Writable paths, resources and security
+
+These v4 fields describe what the container needs from the pod. The
+scalo-service library chart in scalo-rs renders them, and `generate_chart`
+does not read them.
+
+```python
+DeploymentContract(
+    ...,
+    writable_paths=[
+        WritablePath(
+            name="spool",
+            path="/var/lib/event-loader/spool",
+            size_limit="2Gi",
+            when=EnabledCondition(path="config.spool.enabled"),
+        ),
+        WritablePath(name="state", path="/var/lib/event-loader/state", persistent=True, size="5Gi"),
+    ],
+    security=SecurityContract(capabilities_add=["NET_BIND_SERVICE"]),
+    singleton=True,
+)
+```
+
+| Model | Field | Default | Notes |
+| --- | --- | --- | --- |
+| `WritablePath` | `name` | required | 1 to 50 lowercase letters, digits and inner hyphens. A persistent path's claim is `<chart name>-<name>` |
+| | `path` | required | Absolute mount path, starting with `/` |
+| | `size_limit` | `""` | Cap on an ephemeral path, a Kubernetes quantity. Empty is no cap |
+| | `persistent` | `False` | A claim that outlives the pod instead of an `emptyDir` |
+| | `size` | `"1Gi"` | The claim's requested size |
+| | `when` | `None` | A port condition, read as for ports. None is always |
+| `ResourcesContract` | `requests`, `limits` | empty | Each a `ResourceList` of `cpu` and `memory` quantities. Empty is unset and left out |
+| `SecurityContract` | `run_as_user`, `run_as_group`, `fs_group` | `1000` | 0 to 2^32-1. uid 0 lets the process run as root |
+| | `read_only_root_filesystem` | `True` | Writes go to `writable_paths` |
+| | `capabilities_add` | `[]` | Upper-case Linux capability names without `CAP_`, added after every other one is dropped |
+
+A chart always adds a scratch `/tmp` beside the declared paths.
+
+Construction refuses what scalo-rs's `validate()` refuses here: a writable path name or path outside the rules above, two writable paths with one name or one mount path (a trailing `/` ignored), a persistent path with a blank `size`, a capability that is not an upper-case name, and a `singleton` with KEDA on.
+
+---
+
+## Dials
+
+A dial is a config setting an operator is expected to tune per deployment.
+Mark it in the app's config model with the `x-scalo-dial` keyword
+(`DIAL_KEYWORD`) through `json_schema_extra`, the way `x-scalo-secret` is set,
+with `big` (most deployments tune it) or `small` (a few do). Constraints stay
+plain JSON Schema:
+
+```python
+class Buffer(BaseModel):
+    flush_rows: int = Field(default=20_000, ge=1, le=10_000_000, json_schema_extra={DIAL_KEYWORD: "big"})
+    level: str | None = Field(default=None, json_schema_extra={DIAL_KEYWORD: "small"})
+```
+
+`config_schema_json` carries the marker through to `config_schema`. On an
+`int | None` dial pydantic puts `minimum` inside `anyOf` while the marker
+stays on the field. A chart assembler copies each marked node into the
+chart's `values.schema.json` under `config`, so an operator gets a typed,
+bounded value for each dial. `DeploymentContract` refuses an `x-scalo-dial`
+other than `big` or `small` anywhere in `config_schema`.
 
 ---
 
@@ -216,16 +294,20 @@ is named `kafka`.
 ## Schema versioning
 
 ```python
-DEFAULT_SCHEMA_VERSION = 3
-MAX_SUPPORTED_SCHEMA_VERSION = 3
+DEFAULT_SCHEMA_VERSION = 4
+MAX_SUPPORTED_SCHEMA_VERSION = 4
 ```
 
-Bumping the schema is a coordinated scalo-rs + scalo-py change. CI parses
-`schema_version` first and fails fast when a consumer writes a contract
-above the version scalo-py supports -- forward-compat is intentional and
-only one step deep. When you add a field, bump
-`MAX_SUPPORTED_SCHEMA_VERSION` on both sides AND mirror the field in
-scalo-rs in the same change set.
+`schema_version` is the handshake between whatever writes a contract and
+whatever reads it, and it equals scalo-rs's `CONTRACT_SCHEMA_VERSION`. The
+vendored JSON Schema pins it to 4, so a chart assembler refuses any other
+version. `DeploymentContract` itself reads a v3 contract with every v4 field at
+its default, as scalo-rs's types do.
+
+scalo-rs owns the contract shape. A new field lands there first, with a new
+parity fixture and, for a breaking change, a new schema version. scalo-py then
+mirrors the field, copies the fixture and the schema, and bumps both
+constants.
 
 ---
 
@@ -248,8 +330,11 @@ assert restored == contract
 `exclude_none=False` so a parsed contract round-trips byte-equal to the
 emitted JSON. CI uses this to diff a freshly emitted contract against
 the one committed in the repo. The fields scalo-rs leaves out when unset are
-left out here too: `unbound_listen_paths`, a port's `when` and `bound_from`,
-and `native_deps.distro`, `unresolved_base_image` and `contradicted_base_image`.
+left out here too: `unbound_listen_paths`, a port's `when`, `bound_from`,
+`public` and `app_protocol`, a secret group's `optional`, `writable_paths`
+and a writable path's `size_limit`, `persistent` and `when`, `resources` and
+its empty halves, `security.capabilities_add`, and `native_deps.distro`,
+`unresolved_base_image` and `contradicted_base_image`.
 
 ---
 

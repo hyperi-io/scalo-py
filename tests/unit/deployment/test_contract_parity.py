@@ -33,6 +33,12 @@ from scalo.deployment import (
     NativeDepsContract,
     OneOfCondition,
     PortContract,
+    ResourceList,
+    ResourcesContract,
+    SecretEnvContract,
+    SecretGroupContract,
+    SecurityContract,
+    WritablePath,
     generate_chart,
 )
 
@@ -146,6 +152,39 @@ def test_the_scalo_rs_contract_parses() -> None:
     assert contract.native_deps.contradicted_base_image == "debian:bookworm-slim"
 
 
+def test_the_scalo_rs_contract_parses_every_v4_field() -> None:
+    contract = DeploymentContract.model_validate(_raw())
+    assert contract.schema_version == 4
+    assert contract.health.startup_budget_seconds == 120
+    assert [(p.public, p.app_protocol) for p in contract.extra_ports] == [
+        (True, ""),
+        (False, "kubernetes.io/h2c"),
+        (False, ""),
+        (False, ""),
+    ]
+    assert contract.secrets[0].optional is True
+    assert contract.writable_paths == [
+        WritablePath(
+            name="spool",
+            path="/var/lib/parity-app/spool",
+            size_limit="2Gi",
+            when=EnabledCondition(path="config.spool.enabled"),
+        ),
+        WritablePath(name="state", path="/var/lib/parity-app/state", persistent=True, size="5Gi"),
+    ]
+    assert contract.termination_grace_seconds == 60
+    assert contract.resources == ResourcesContract(
+        requests=ResourceList(cpu="250m", memory="256Mi"),
+        limits=ResourceList(cpu="2", memory="1Gi"),
+    )
+    assert contract.security == SecurityContract(
+        run_as_user=1001, run_as_group=1002, fs_group=1003, capabilities_add=["NET_BIND_SERVICE"]
+    )
+    assert contract.singleton is False
+    assert contract.config_schema is not None
+    assert contract.config_schema["$defs"]["SourceSection"]["properties"]["batch_size"]["x-scalo-dial"] == "big"
+
+
 def test_the_scalo_rs_contract_round_trips() -> None:
     first = DeploymentContract.model_validate(_raw())
     again = DeploymentContract.from_json(first.to_json())
@@ -181,6 +220,12 @@ def test_the_secret_field_carries_the_scalo_marker() -> None:
         "native_deps",
         "health",
         "oci_labels",
+        "secrets.0",
+        "writable_paths.0",
+        "writable_paths.0.when",
+        "resources",
+        "resources.requests",
+        "security",
     ],
 )
 def test_an_unknown_key_is_refused(parent: str) -> None:
@@ -207,6 +252,19 @@ def test_an_unknown_key_is_refused(parent: str) -> None:
         ("native_deps.distro", "plucky", "enum"),
         ("native_deps.unresolved_base_image", 1, "string_type"),
         ("native_deps.contradicted_base_image", ["debian"], "string_type"),
+        ("health.startup_budget_seconds", "soon", "int_parsing"),
+        ("extra_ports.0.public", "maybe", "bool_parsing"),
+        ("extra_ports.1.app_protocol", 2, "string_type"),
+        ("secrets.0.optional", "maybe", "bool_parsing"),
+        ("writable_paths", {"name": "spool"}, "list_type"),
+        ("writable_paths.0.when.kind", "always", "union_tag_invalid"),
+        ("termination_grace_seconds", -1, "greater_than_equal"),
+        ("termination_grace_seconds", 2**32, "less_than_equal"),
+        ("resources.limits.cpu", 2, "string_type"),
+        ("security.run_as_user", -1, "greater_than_equal"),
+        ("security.read_only_root_filesystem", "maybe", "bool_parsing"),
+        ("security.capabilities_add", "NET_ADMIN", "list_type"),
+        ("singleton", "maybe", "bool_parsing"),
     ],
 )
 def test_a_wrong_type_is_refused(path: str, value: Any, kind: str) -> None:
@@ -217,6 +275,95 @@ def test_a_wrong_type_is_refused(path: str, value: Any, kind: str) -> None:
 def test_a_condition_missing_its_value_is_refused() -> None:
     errors = _error_locs(_delete(_raw(), "extra_ports.2.when.value"))
     assert errors == [("missing", "extra_ports.2.when.equals.value")]
+
+
+# ---- What v4 refuses ------------------------------------------------------------
+
+DIAL = "config_schema.$defs.SourceSection.properties.batch_size.x-scalo-dial"
+
+
+def test_a_startup_budget_of_zero_is_refused() -> None:
+    errors = _error_locs(_set(_raw(), "health.startup_budget_seconds", 0))
+    assert errors == [("greater_than_equal", "health.startup_budget_seconds")]
+
+
+def test_a_writable_path_not_starting_with_a_slash_is_refused() -> None:
+    errors = _error_locs(_set(_raw(), "writable_paths.0.path", "var/lib/parity-app/spool"))
+    assert errors == [("string_pattern_mismatch", "writable_paths.0.path")]
+
+
+@pytest.mark.parametrize("tier", ["huge", "Big", "", True, 1, None, ["big"]])
+def test_a_dial_marker_outside_big_and_small_is_refused(tier: Any) -> None:
+    with pytest.raises(ValidationError) as caught:
+        DeploymentContract.model_validate(_set(_raw(), DIAL, tier))
+    errors = caught.value.errors()
+    assert [(err["type"], err["loc"]) for err in errors] == [("value_error", ("config_schema",))]
+    assert "$defs.SourceSection.properties.batch_size: x-scalo-dial is" in errors[0]["msg"]
+
+
+@pytest.mark.parametrize("tier", ["big", "small"])
+def test_a_dial_marker_of_big_or_small_is_kept(tier: str) -> None:
+    emitted = json.loads(DeploymentContract.model_validate(_set(_raw(), DIAL, tier)).to_json())
+    batch_size = emitted["config_schema"]["$defs"]["SourceSection"]["properties"]["batch_size"]
+    assert batch_size["x-scalo-dial"] == tier
+
+
+def test_a_dial_marker_is_checked_at_any_depth() -> None:
+    schema = {"type": "array", "items": [{"anyOf": [{"type": "integer", "x-scalo-dial": "medium"}]}]}
+    errors = _error_locs(_set(_raw(), "config_schema", schema))
+    assert errors == [("value_error", "config_schema")]
+
+
+@pytest.mark.parametrize(
+    ("path", "value"),
+    [
+        ("writable_paths.0.name", "Spool_Dir"),
+        ("writable_paths.0.name", "-spool"),
+        ("writable_paths.0.name", "spool-"),
+        ("writable_paths.0.name", ""),
+        ("writable_paths.0.name", "a" * 51),
+        ("writable_paths.0.path", ""),
+        ("security.capabilities_add.0", "net_bind_service"),
+        ("security.capabilities_add.0", "CAP NET"),
+        ("security.capabilities_add.0", ""),
+    ],
+)
+def test_a_name_outside_its_pattern_is_refused(path: str, value: str) -> None:
+    errors = _error_locs(_set(_raw(), path, value))
+    assert errors == [("string_pattern_mismatch", path)]
+
+
+def test_a_fifty_character_writable_name_is_taken() -> None:
+    contract = DeploymentContract.model_validate(_set(_raw(), "writable_paths.0.name", "a" * 50))
+    assert contract.writable_paths[0].name == "a" * 50
+
+
+@pytest.mark.parametrize(
+    ("path", "value", "message"),
+    [
+        ("writable_paths.1.name", "spool", "writable_paths[spool].name is declared twice"),
+        ("writable_paths.1.path", "/var/lib/parity-app/spool/", "is mounted by another path"),
+        ("singleton", True, "KEDA must be off"),
+    ],
+)
+def test_a_contract_breaking_a_cross_field_rule_is_refused(path: str, value: Any, message: str) -> None:
+    with pytest.raises(ValidationError) as caught:
+        DeploymentContract.model_validate(_set(_raw(), path, value))
+    errors = caught.value.errors()
+    assert [err["type"] for err in errors] == ["value_error"]
+    assert message in errors[0]["msg"]
+
+
+def test_a_persistent_path_without_a_size_is_refused() -> None:
+    errors = _error_locs(_set(_raw(), "writable_paths.1.size", " "))
+    assert errors == [("value_error", "writable_paths.1")]
+
+
+def test_a_singleton_with_keda_off_or_absent_is_taken() -> None:
+    off = _set(_set(_raw(), "singleton", True), "keda.enabled", False)
+    assert DeploymentContract.model_validate(off).singleton is True
+    absent = _set(_set(_raw(), "singleton", True), "keda", None)
+    assert DeploymentContract.model_validate(absent).keda is None
 
 
 # ---- Fields left unset keep the contract's earlier shape ------------------------
@@ -240,6 +387,74 @@ def test_a_contract_without_the_listener_fields_omits_their_keys() -> None:
     assert set(emitted["extra_ports"][0]) == {"name", "port", "protocol"}
     for key in ("distro", "unresolved_base_image", "contradicted_base_image"):
         assert key not in emitted["native_deps"]
+
+
+def test_a_contract_without_the_v4_fields_emits_their_defaults_as_scalo_rs_does() -> None:
+    bare = _bare().model_copy(
+        update={
+            "secrets": [
+                SecretGroupContract(
+                    group_name="source",
+                    env_vars=[SecretEnvContract(env_var="BARE__PASSWORD", key_name="password", secret_key="pw")],
+                )
+            ]
+        }
+    )
+    emitted = json.loads(bare.to_json())
+    assert emitted["schema_version"] == 4
+    assert emitted["health"]["startup_budget_seconds"] == 150
+    assert emitted["termination_grace_seconds"] == 45
+    assert emitted["security"] == {
+        "run_as_user": 1000,
+        "run_as_group": 1000,
+        "fs_group": 1000,
+        "read_only_root_filesystem": True,
+    }
+    assert emitted["singleton"] is False
+    assert "writable_paths" not in emitted
+    assert "resources" not in emitted
+    assert "optional" not in emitted["secrets"][0]
+
+
+def test_unset_parts_of_v4_fields_are_left_out() -> None:
+    contract = _bare().model_copy(
+        update={
+            "writable_paths": [WritablePath(name="spool", path="/var/lib/bare/spool")],
+            "resources": ResourcesContract(limits=ResourceList(memory="1Gi")),
+        }
+    )
+    emitted = json.loads(contract.to_json())
+    assert emitted["writable_paths"] == [{"name": "spool", "path": "/var/lib/bare/spool", "size": "1Gi"}]
+    assert emitted["resources"] == {"limits": {"memory": "1Gi"}}
+
+
+def test_a_v3_contract_loads_with_the_v4_defaults() -> None:
+    raw = _set(_raw(), "schema_version", 3)
+    for path in (
+        "writable_paths",
+        "termination_grace_seconds",
+        "resources",
+        "security",
+        "singleton",
+        "config_mount_path",
+        "health.startup_budget_seconds",
+        "extra_ports.0.public",
+        "extra_ports.1.app_protocol",
+        "secrets.0.optional",
+    ):
+        raw = _delete(raw, path)
+    contract = DeploymentContract.model_validate(raw)
+    assert contract.schema_version == 3
+    assert contract.writable_paths == []
+    assert contract.termination_grace_seconds == 45
+    assert contract.resources.is_empty()
+    assert contract.security == SecurityContract()
+    assert contract.singleton is False
+    assert contract.config_mount_path == ""
+    assert contract.health.startup_budget_seconds == 150
+    assert contract.extra_ports[0].public is False
+    assert contract.extra_ports[1].app_protocol == ""
+    assert contract.secrets[0].optional is False
 
 
 def test_a_keda_contract_from_before_enabled_and_kafka_trigger_loads_as_on() -> None:

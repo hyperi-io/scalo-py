@@ -25,10 +25,11 @@ import json
 from enum import StrEnum
 from typing import Annotated, Any, Literal, Self
 
-from pydantic import BaseModel, ConfigDict, Field, field_validator
+from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
 
 from .capability import Capability
 from .contract_identity import DEFAULT_LABEL_NAMESPACE
+from .emit import DIAL_KEYWORD, DIAL_TIERS
 from .keda import KedaContract
 from .native_deps import NativeDepsContract
 from .registry import DEFAULT_PYTHON_VERSION, default_base_image, default_builder_image
@@ -58,10 +59,39 @@ class ImageProfile(StrEnum):
 
 # ---- Defaults (module-level so they appear in JSON Schema docs) -------------
 
-# v3: added config_schema + capabilities (scalo-py#3 / scalo-rs#6). Back-compat --
-# old consumers ignore the new optional fields.
-DEFAULT_SCHEMA_VERSION = 3
-MAX_SUPPORTED_SCHEMA_VERSION = 3
+# Must equal scalo-rs's CONTRACT_SCHEMA_VERSION, the version data/contract.schema.json pins.
+DEFAULT_SCHEMA_VERSION = 4
+MAX_SUPPORTED_SCHEMA_VERSION = 4
+
+_U32_MAX = 2**32 - 1
+"""The largest value scalo-rs reads into a ``u32`` field."""
+
+_WRITABLE_NAME_PATTERN = r"^[a-z0-9]([-a-z0-9]{0,48}[a-z0-9])?$"
+"""1 to 50 lowercase letters, digits and inner hyphens, so ``writable-<name>`` stays a 63-character volume name."""
+
+_CAPABILITY_PATTERN = r"^[A-Z0-9_]+$"
+"""An upper-case Linux capability name without the ``CAP_`` prefix, e.g. ``NET_ADMIN``."""
+
+
+def _dial_fault(node: Any, path: tuple[str, ...]) -> str | None:
+    """Describe the first ``DIAL_KEYWORD`` under ``node`` whose value is not in ``DIAL_TIERS``, or None.
+
+    Every object and array is searched, as the contract's JSON Schema checks
+    the keyword wherever it appears.
+    """
+    if isinstance(node, dict):
+        if DIAL_KEYWORD in node and node[DIAL_KEYWORD] not in DIAL_TIERS:
+            where = ".".join(path) or "the schema root"
+            return f'{where}: {DIAL_KEYWORD} is {json.dumps(node[DIAL_KEYWORD])}, and it must be "big" or "small"'
+        children = [(str(key), child) for key, child in node.items() if key != DIAL_KEYWORD]
+    elif isinstance(node, list):
+        children = [(str(index), child) for index, child in enumerate(node)]
+    else:
+        return None
+    for key, child in children:
+        if fault := _dial_fault(child, (*path, key)):
+            return fault
+    return None
 
 
 class OciLabels(BaseModel):
@@ -114,6 +144,12 @@ class HealthContract(BaseModel):
     liveness_path: str = "/livez"
     readiness_path: str = "/readyz"
     metrics_path: str = "/metrics"
+
+    startup_budget_seconds: int = Field(default=150, ge=1, le=_U32_MAX)
+    """Longest the app may take from start to a passing liveness probe, in seconds.
+
+    The chart's startup probe allows this long before it restarts the pod.
+    """
 
 
 class EnabledCondition(BaseModel):
@@ -188,6 +224,20 @@ class PortContract(BaseModel):
     Left out of the emitted contract when unset.
     """
 
+    public: bool = Field(default=False, exclude_if=lambda value: not value)
+    """Clients outside the cluster connect here.
+
+    A chart can put such ports on a load balancer, and whether it does is a
+    deployment choice. Left out of the emitted contract when false.
+    """
+
+    app_protocol: str = Field(default="", exclude_if=lambda value: not value)
+    """The application protocol a proxy speaks to this port, e.g. ``kubernetes.io/h2c`` for gRPC without TLS.
+
+    Written to the Service port's ``appProtocol``. Empty writes none and is
+    left out of the emitted contract.
+    """
+
 
 class SecretEnvContract(BaseModel):
     """A single environment variable sourced from a K8s Secret."""
@@ -214,6 +264,107 @@ class SecretGroupContract(BaseModel):
 
     env_vars: list[SecretEnvContract]
     """Environment variables injected from this secret group."""
+
+    optional: bool = Field(default=False, exclude_if=lambda value: not value)
+    """The app starts without this group, so a missing Secret or key leaves the variable unset.
+
+    Left out of the emitted contract when false.
+    """
+
+
+class WritablePath(BaseModel):
+    """A directory the app writes at run time.
+
+    A chart mounts each one as a volume, so the container's root filesystem can
+    stay read-only. An ephemeral path is an ``emptyDir``, and a persistent one
+    is a claim that outlives the pod.
+    """
+
+    model_config = ConfigDict(extra="forbid")
+
+    name: str = Field(pattern=_WRITABLE_NAME_PATTERN)
+    """Volume name, e.g. ``spool``. A persistent path's claim is named ``<chart name>-<name>``."""
+
+    path: str = Field(pattern=r"^/")
+    """Absolute mount path, e.g. ``/var/lib/my-app/spool``."""
+
+    size_limit: str = Field(default="", exclude_if=lambda value: not value)
+    """Size cap for an ephemeral path, as a Kubernetes quantity (e.g. ``2Gi``). Empty means no cap."""
+
+    persistent: bool = Field(default=False, exclude_if=lambda value: not value)
+    """Keep the contents across pod restarts with a persistent volume claim."""
+
+    size: str = "1Gi"
+    """Requested size of a persistent path's claim, as a Kubernetes quantity."""
+
+    when: PortCondition | None = Field(default=None, exclude_if=lambda value: value is None)
+    """The values condition under which the app writes here. None means always."""
+
+    @model_validator(mode="after")
+    def _persistent_has_a_size(self) -> Self:
+        """Refuse a persistent path with no claim size, as scalo-rs's ``validate()`` does."""
+        if self.persistent and not self.size.strip():
+            raise ValueError(f'writable path {self.name}: a persistent path needs a size for its claim, e.g. "1Gi"')
+        return self
+
+
+class ResourceList(BaseModel):
+    """One CPU and memory pair, as Kubernetes quantities. An empty value is unset."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    cpu: str = Field(default="", exclude_if=lambda value: not value)
+    """CPU, e.g. ``250m`` or ``2``."""
+
+    memory: str = Field(default="", exclude_if=lambda value: not value)
+    """Memory, e.g. ``256Mi``."""
+
+    def is_empty(self) -> bool:
+        """True when neither CPU nor memory is set."""
+        return not self.cpu and not self.memory
+
+
+class ResourcesContract(BaseModel):
+    """CPU and memory requests and limits, as Kubernetes quantities."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    requests: ResourceList = Field(default_factory=ResourceList, exclude_if=lambda value: value.is_empty())
+    """What the scheduler reserves for the container."""
+
+    limits: ResourceList = Field(default_factory=ResourceList, exclude_if=lambda value: value.is_empty())
+    """The most the container may use."""
+
+    def is_empty(self) -> bool:
+        """True when no request or limit is set."""
+        return self.requests.is_empty() and self.limits.is_empty()
+
+
+class SecurityContract(BaseModel):
+    """The identity and privileges the container runs with.
+
+    The defaults match the image the Dockerfile generator writes: uid and gid
+    1000, a read-only root filesystem and no added capability.
+    """
+
+    model_config = ConfigDict(extra="forbid")
+
+    run_as_user: int = Field(default=1000, ge=0, le=_U32_MAX)
+    """Numeric user the process runs as. 0 lets it run as root."""
+
+    run_as_group: int = Field(default=1000, ge=0, le=_U32_MAX)
+    """Numeric primary group."""
+
+    fs_group: int = Field(default=1000, ge=0, le=_U32_MAX)
+    """Group that owns mounted volumes."""
+
+    read_only_root_filesystem: bool = True
+    """Mount the root filesystem read-only, so writes go to ``writable_paths``."""
+
+    capabilities_add: list[Annotated[str, Field(pattern=_CAPABILITY_PATTERN)]] = Field(
+        default_factory=list, exclude_if=lambda value: not value
+    )
+    """Linux capabilities added after every other one is dropped, upper case without ``CAP_``, e.g. ``NET_ADMIN``."""
 
 
 class DeploymentContract(BaseModel):
@@ -254,8 +405,11 @@ class DeploymentContract(BaseModel):
     metric_prefix: str
     """Prometheus metric namespace/prefix (e.g., ``loader``)."""
 
-    config_mount_path: str
-    """Config file mount path (e.g., ``/etc/myapp/config.yaml``)."""
+    config_mount_path: str = ""
+    """Config file mount path (e.g., ``/etc/myapp/config.yaml``).
+
+    Empty means the app reads no config file, so no ConfigMap is mounted.
+    """
 
     image_registry: str
     """Container registry base the image is pushed to and pulled from (e.g.,
@@ -343,14 +497,72 @@ class DeploymentContract(BaseModel):
     config_schema: dict[str, Any] | None = None
     """Reflectable JSON Schema (draft 2020-12) of the app's full ``Config``,
     derived via pydantic ``model_json_schema`` (scalo-py#3). ``None`` when not
-    provided. Secret fields carry the ``x-scalo-secret`` marker. Also written to
-    ``config-schema.{json,yaml}`` by
+    provided. Secret fields carry the ``x-scalo-secret`` marker, and operator
+    dials carry ``x-scalo-dial`` (``big`` or ``small``, see ``DIAL_KEYWORD``).
+    Also written to ``config-schema.{json,yaml}`` by
     :func:`scalo.deployment.emit_config_artifacts`."""
 
     capabilities: list[Capability] = Field(default_factory=list)
     """Capability catalog -- the runtime-data surface a schema cannot derive
     (service names + their knobs). Hand-authored per app. Also written to
     ``capability-catalog.{json,yaml}``."""
+
+    writable_paths: list[WritablePath] = Field(default_factory=list, exclude_if=lambda value: not value)
+    """Directories the app writes at run time, so the root filesystem can stay read-only.
+
+    A chart always adds a scratch ``/tmp`` beside these. Left out of the
+    emitted contract when empty.
+    """
+
+    termination_grace_seconds: int = Field(default=45, ge=0, le=_U32_MAX)
+    """Seconds between SIGTERM and SIGKILL.
+
+    The default leaves time for a pre-stop pause, a gRPC drain and a final
+    commit after the endpoints drop the pod.
+    """
+
+    resources: ResourcesContract = Field(default_factory=ResourcesContract, exclude_if=lambda value: value.is_empty())
+    """The app's own CPU and memory requests and limits.
+
+    Empty values leave the chart's defaults in place, and deployment values
+    override both. Left out of the emitted contract when empty.
+    """
+
+    security: SecurityContract = Field(default_factory=SecurityContract)
+    """The user, group and Linux capabilities the image runs with."""
+
+    singleton: bool = False
+    """Exactly one pod may run: replicas stay at one, nothing autoscales it, and a new pod starts only after the old one has stopped."""
+
+    @field_validator("config_schema")
+    @classmethod
+    def _dial_markers_are_tiers(cls, value: dict[str, Any] | None) -> dict[str, Any] | None:
+        """Refuse an ``x-scalo-dial`` marker that is not ``big`` or ``small``, wherever it sits."""
+        if value is not None and (fault := _dial_fault(value, ())):
+            raise ValueError(fault)
+        return value
+
+    @model_validator(mode="after")
+    def _writable_paths_are_unique(self) -> Self:
+        """Refuse two writable paths with one name or one mount path, as scalo-rs's ``validate()`` does."""
+        names: set[str] = set()
+        paths: set[str] = set()
+        for writable in self.writable_paths:
+            if writable.name in names:
+                raise ValueError(f"writable_paths[{writable.name}].name is declared twice")
+            mount = writable.path.rstrip("/")
+            if mount in paths:
+                raise ValueError(f"writable_paths[{writable.name}].path {writable.path!r} is mounted by another path")
+            names.add(writable.name)
+            paths.add(mount)
+        return self
+
+    @model_validator(mode="after")
+    def _singleton_leaves_keda_off(self) -> Self:
+        """Refuse a singleton with KEDA on: a singleton runs exactly one pod."""
+        if self.singleton and self.keda is not None and self.keda.enabled:
+            raise ValueError("a singleton runs exactly one pod, so KEDA must be off: set keda=None")
+        return self
 
     @field_validator("image_registry")
     @classmethod
@@ -419,6 +631,10 @@ __all__ = [
     "OneOfCondition",
     "PortCondition",
     "PortContract",
+    "ResourceList",
+    "ResourcesContract",
     "SecretEnvContract",
     "SecretGroupContract",
+    "SecurityContract",
+    "WritablePath",
 ]

@@ -971,7 +971,7 @@ class TestContractValidation:
             image_registry="registry.example.com",
         )
         # Defaults applied
-        assert c.schema_version == 3
+        assert c.schema_version == 4
         # base_image defaults empty; resolved to python:{python_version}-slim.
         assert c.base_image == ""
         assert c.effective_base_image() == "python:3.14-slim"
