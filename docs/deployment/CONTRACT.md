@@ -386,18 +386,6 @@ def deployment_contract(cfg: AppConfig) -> DeploymentContract:
 
 ---
 
-## Topology
-
-The `deployment.topology` submodule (`model.py` + `loader.py`) loads a
-YAML manifest describing cross-app deployment topology -- shared
-operators, AppProjects, sync-wave bands. It's a separate concern from
-the per-app contract documented here. Topology configs are consumed by
-`hyperi-ci` and the gitops bootstrap path, not by app code; see the
-`AppProjectContract` reference in [ARTEFACTS.md](ARTEFACTS.md) for the
-intersection point.
-
----
-
 ## Related
 
 - [ARTEFACTS.md](ARTEFACTS.md)
