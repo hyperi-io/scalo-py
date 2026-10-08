@@ -6,6 +6,12 @@ Behaviour and API changes that need a consumer adjustment, indexed by the scalo 
 
 ## Unreleased
 
+### `scalo.deployment.topology` is removed (API CHANGE)
+
+The module (`DeploymentTopology`, `load_topology` and its errors) loaded a cross-app topology manifest for a `hyperi-ci` command that no longer exists, and nothing else read it. `scalo.deployment` never exported it.
+
+**Consumer adjustment** -- an import of `scalo.deployment.topology` fails. Copy the model into the project that still reads such a manifest, or stay on 2.31.x.
+
 ### The secret schema marker is `x-scalo-secret` alone (BEHAVIOUR CHANGE)
 
 `config_schema_json` no longer writes `x-dfe-secret`, and `json_schema_extra={"x-dfe-secret": True}` no longer opts a field in. A secret field now ends `"x-scalo-secret": true, "writeOnly": true`, as scalo-rs's `SensitiveString` emits.
