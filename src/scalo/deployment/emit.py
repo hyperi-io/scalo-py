@@ -98,8 +98,8 @@ def _render(contract: DeploymentContract) -> list[tuple[str, str]]:
 
 
 def _to_json(value: Any) -> str:
-    """Pretty JSON with a single trailing newline (POSIX text file)."""
-    return json.dumps(value, indent=2, ensure_ascii=False, sort_keys=False) + "\n"
+    """Pretty JSON with a single trailing newline (POSIX text file); NaN and Infinity raise, since no JSON reader takes them."""
+    return json.dumps(value, indent=2, ensure_ascii=False, sort_keys=False, allow_nan=False) + "\n"
 
 
 def _to_yaml(value: Any) -> str:

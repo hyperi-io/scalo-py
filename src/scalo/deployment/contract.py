@@ -167,8 +167,16 @@ def _inline_refs(root: Any, node: Any, seen: frozenset[str]) -> None:
                 _inline_refs(root, child, seen)
 
 
-def _follow_dial_refs(root: Any, node: Any, seen: frozenset[str]) -> None:
-    """Walk ``node`` as the dial search does, raising on a ``$ref`` it follows that is broken.
+_VALUE_KEY_CHARS = frozenset(string.ascii_letters + string.digits + "_-")
+
+
+def _is_value_key(name: str) -> bool:
+    """Whether ``name`` can be a Helm value key: a ``.`` would split it, and a newline or space would break its line."""
+    return bool(name) and all(char in _VALUE_KEY_CHARS for char in name)
+
+
+def _follow_dial_refs(root: Any, node: Any, seen: frozenset[str], path: tuple[str, ...] = ()) -> None:
+    """Walk ``node`` as the dial search does, raising on a ``$ref`` it follows that is broken or a dial name that is not a value key.
 
     The search takes ``properties``, ``allOf``, ``anyOf``, ``oneOf`` and each ``$ref`` once, and stops at a node
     marked as a dial, whose whole subtree is then inlined.
@@ -176,20 +184,25 @@ def _follow_dial_refs(root: Any, node: Any, seen: frozenset[str]) -> None:
     if not isinstance(node, dict):
         return
     if DIAL_KEYWORD in node:
+        if (name := next((name for name in path if not _is_value_key(name)), None)) is not None:
+            raise ValueError(
+                f"config.{_quoted('.'.join(path))}: the dial path holds {_quoted(name)}, and a dial name is one or "
+                "more letters, digits, '_' or '-', because it becomes a key in the chart's values"
+            )
         _inline_refs(root, node, frozenset())
         return
     reference = node.get("$ref")
     if isinstance(reference, str) and reference not in seen:
-        _follow_dial_refs(root, _local_ref(root, reference), seen | {reference})
+        _follow_dial_refs(root, _local_ref(root, reference), seen | {reference}, path)
     properties = node.get("properties")
     if isinstance(properties, dict):
         for name in sorted(properties):
-            _follow_dial_refs(root, properties[name], seen)
+            _follow_dial_refs(root, properties[name], seen, (*path, str(name)))
     for combinator in ("allOf", "anyOf", "oneOf"):
         branches = node.get(combinator)
         if isinstance(branches, list):
             for branch in branches:
-                _follow_dial_refs(root, branch, seen)
+                _follow_dial_refs(root, branch, seen, path)
 
 
 class OciLabels(BaseModel):
@@ -735,7 +748,7 @@ class DeploymentContract(BaseModel):
     @field_validator("config_schema")
     @classmethod
     def _dial_refs_resolve(cls, value: dict[str, Any] | None) -> dict[str, Any] | None:
-        """Refuse a ``$ref`` the dial search follows that is remote, points at nothing or loops, as scalo-rs's ``validate()`` does."""
+        """Refuse a ``$ref`` the dial search follows that is remote, points at nothing or loops, or a dial name that is not a value key, as scalo-rs's ``validate()`` does."""
         if value is not None:
             _follow_dial_refs(value, value, frozenset())
         return value
