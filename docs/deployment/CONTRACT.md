@@ -1,6 +1,8 @@
 # DeploymentContract
 
-The Pydantic model an app builds once from its `Config.default()`. CI validates Helm charts and Dockerfiles against the contract, and generators emit deployment artefacts from it. Every field both implementations carry has the same name and JSON shape as in `scalo::deployment::contract`, and `OciLabels` matches field for field. Only scalo-rs has `unbound_listen_paths` and `PortContract.when` / `bound_from`, and only scalo-py has `builder_image`, `python_version` and `emit_healthcheck`.
+The Pydantic model an app builds once from its `Config.default()`. CI validates Helm charts and Dockerfiles against the contract, and generators emit deployment artefacts from it. scalo-py parses every field scalo-rs's `scalo::deployment::contract` writes, under the same name and JSON shape, and writes it back unchanged. Only scalo-py has `builder_image`, `python_version`, `emit_healthcheck` and `native_deps.distro_codename`, which scalo-rs ignores.
+
+`tests/fixtures/contract-parity/deployment-contract.json` is a contract scalo-rs emitted with every optional field set, copied from scalo-rs's own `tests/fixtures/contract-parity/`. `tests/unit/deployment/test_contract_parity.py` parses it, re-emits it and checks nothing changed, so a field scalo-rs adds fails here until scalo-py carries it.
 
 Import surface (gated on the `[deployment]` extra; importing without
 `pydantic>=2.13` defers and raises `ProviderNotAvailableError`):
@@ -9,6 +11,7 @@ Import surface (gated on the `[deployment]` extra; importing without
 from scalo.deployment import (
     DeploymentContract, HealthContract, OciLabels,
     PortContract, SecretGroupContract, SecretEnvContract,
+    EnabledCondition, EqualsCondition, OneOfCondition,
     ImageProfile,
 )
 ```
@@ -30,6 +33,7 @@ from scalo.deployment import (
 | `config_mount_path` | `str` | required | E.g. `/etc/event-loader/config.yaml` |
 | `image_registry` | `str` | required | Container registry base. A blank value is refused at construction |
 | `extra_ports` | `list[PortContract]` | `[]` | HTTP / gRPC / data ports beyond metrics |
+| `unbound_listen_paths` | `list[str]` | `[]`, left out when empty | `default_config` listen paths that need no port, e.g. a send-only client's bind address |
 | `entrypoint_args` | `list[str]` | `[]` | Default `CMD` args |
 | `secrets` | `list[SecretGroupContract]` | `[]` | K8s secret groups |
 | `default_config` | `Any \| None` | `None` | Embedded `values.yaml` `config:` block |
@@ -164,6 +168,23 @@ hides a probe still aimed at the old name.
 Generators emit one `containerPort` per entry plus a matching Service
 `port` entry.
 
+Two optional fields say when the listener exists and which address it serves. Each is left out of the emitted contract when unset:
+
+| Field | Type | Meaning |
+| --- | --- | --- |
+| `when` | `EnabledCondition \| EqualsCondition \| OneOfCondition \| None` | The values condition under which the listener exists. None means it always listens |
+| `bound_from` | `str \| None` | Dotted `default_config` path of the listen address, e.g. `grpc.listen` |
+
+The condition is tagged by `kind`, as scalo-rs's `PortCondition` serialises it. `path` is dotted and `.Values`-relative, e.g. `config.grpc.enabled`:
+
+| Model | JSON |
+| --- | --- |
+| `EnabledCondition(path=...)` | `{"kind": "enabled", "path": ...}` -- true is anything but false, null, zero or empty |
+| `EqualsCondition(path=..., value=...)` | `{"kind": "equals", "path": ..., "value": ...}` |
+| `OneOfCondition(path=..., values=[...])` | `{"kind": "one_of", "path": ..., "values": [...]}` |
+
+scalo-py's generators read neither field yet: the Dockerfile `EXPOSE`, the container manifest, the Compose fragment and the chart carry every port unconditionally, where scalo-rs's keep a gated port out of `EXPOSE` and render it only while its condition holds.
+
 `SecretEnvContract` -- one env var fed from a K8s Secret:
 
 - `env_var` -- full env-var name (e.g. `EVENT_LOADER__KAFKA__PASSWORD`)
@@ -226,7 +247,9 @@ assert restored == contract
 
 `exclude_none=False` so a parsed contract round-trips byte-equal to the
 emitted JSON. CI uses this to diff a freshly emitted contract against
-the one committed in the repo.
+the one committed in the repo. The fields scalo-rs leaves out when unset are
+left out here too: `unbound_listen_paths`, a port's `when` and `bound_from`,
+and `native_deps.distro`, `unresolved_base_image` and `contradicted_base_image`.
 
 ---
 

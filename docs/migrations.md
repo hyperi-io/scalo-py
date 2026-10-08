@@ -4,6 +4,24 @@ Behaviour and API changes that need a consumer adjustment, indexed by the scalo 
 
 ---
 
+## Unreleased
+
+### The secret schema marker is `x-scalo-secret` alone (BEHAVIOUR CHANGE)
+
+`config_schema_json` no longer writes `x-dfe-secret`, and `json_schema_extra={"x-dfe-secret": True}` no longer opts a field in. A secret field now ends `"x-scalo-secret": true, "writeOnly": true`, as scalo-rs's `SensitiveString` emits.
+
+**Consumer adjustment** -- a field marked with `x-dfe-secret` is marked with `x-scalo-secret` in the same change as the bump, or its schema stops calling it a secret. A reader that keyed on `x-dfe-secret` keys on `x-scalo-secret`. A committed `config-schema.*` loses the old marker on regeneration, so `check_config_artifact_drift` fails until it is regenerated.
+
+### The contract carries every field scalo-rs writes (BEHAVIOUR CHANGE)
+
+`DeploymentContract` parses a contract scalo-rs emitted, where it used to refuse it with `extra_forbidden`. New fields, each with scalo-rs's name, type and default: `unbound_listen_paths`, `PortContract.when` (`EnabledCondition`, `EqualsCondition` or `OneOfCondition`) and `bound_from`, `KedaContract.enabled` and `kafka_trigger` (`KafkaLagTrigger`), and `NativeDepsContract.distro` (`BaseDistro`), `unresolved_base_image` and `contradicted_base_image`. See [deployment/CONTRACT.md](deployment/CONTRACT.md).
+
+- An emitted contract with a `keda` block gains `keda.enabled` and `keda.kafka_trigger`.
+- One built through `for_scalo_extras` or `for_scalo_features` gains `native_deps.distro`.
+- `KedaContract.from_config` copies `enabled`, where it dropped it, and `generate_chart` treats `enabled=False` as no KEDA.
+
+**Consumer adjustment** -- an app that builds `KedaContract.from_config` from a `KedaConfig` with `enabled=False` now gets a chart with no `ScaledObject`. A committed `deployment-contract.json` changes on regeneration as above.
+
 ## 2.31.0
 
 ### Console logs: JSON off a TTY, fields in text, colour only on a TTY (BEHAVIOUR CHANGE)

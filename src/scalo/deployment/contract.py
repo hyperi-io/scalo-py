@@ -21,11 +21,9 @@ the *generation* is Python-specific (uv venv, console-script entrypoint,
 ``python:*-slim`` base) -- it does not produce Rust artefacts.
 """
 
-from __future__ import annotations
-
 import json
 from enum import StrEnum
-from typing import Any
+from typing import Annotated, Any, Literal, Self
 
 from pydantic import BaseModel, ConfigDict, Field, field_validator
 
@@ -118,6 +116,52 @@ class HealthContract(BaseModel):
     metrics_path: str = "/metrics"
 
 
+class EnabledCondition(BaseModel):
+    """The listener exists while the value at ``path`` counts as true.
+
+    True is anything but false, null, zero or empty, as the chart reads it.
+    """
+
+    model_config = ConfigDict(extra="forbid")
+
+    kind: Literal["enabled"] = "enabled"
+    path: str
+    """Dotted ``.Values`` path of the switch, e.g. ``config.grpc.enabled``."""
+
+
+class EqualsCondition(BaseModel):
+    """The listener exists while the value at ``path``, as a string, equals ``value``."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    kind: Literal["equals"] = "equals"
+    path: str
+    """Dotted ``.Values`` path of the setting."""
+
+    value: str
+    """The value that turns the listener on."""
+
+
+class OneOfCondition(BaseModel):
+    """The listener exists while the value at ``path``, as a string, is one of ``values``."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    kind: Literal["one_of"] = "one_of"
+    path: str
+    """Dotted ``.Values`` path of the setting."""
+
+    values: list[str]
+    """The values that turn the listener on."""
+
+
+type PortCondition = Annotated[
+    EnabledCondition | EqualsCondition | OneOfCondition,
+    Field(discriminator="kind"),
+]
+"""When a port's listener exists, as a test on a chart values path, tagged by ``kind``."""
+
+
 class PortContract(BaseModel):
     """Additional container port beyond the metrics port."""
 
@@ -131,6 +175,18 @@ class PortContract(BaseModel):
 
     protocol: str = "TCP"
     """Protocol (default: ``TCP``)."""
+
+    when: PortCondition | None = Field(default=None, exclude_if=lambda value: value is None)
+    """The values condition under which the listener behind this port exists.
+
+    None means it always listens, and is left out of the emitted contract.
+    """
+
+    bound_from: str | None = Field(default=None, exclude_if=lambda value: value is None)
+    """Dotted ``default_config`` path of the listen address this port serves, e.g. ``grpc.listen``.
+
+    Left out of the emitted contract when unset.
+    """
 
 
 class SecretEnvContract(BaseModel):
@@ -209,6 +265,12 @@ class DeploymentContract(BaseModel):
 
     extra_ports: list[PortContract] = Field(default_factory=list)
     """Additional ports beyond metrics (e.g., HTTP data port for receiver)."""
+
+    unbound_listen_paths: list[str] = Field(default_factory=list, exclude_if=lambda value: not value)
+    """``default_config`` listen paths that need no port, e.g. the bind address of a client that only sends.
+
+    Left out of the emitted contract when empty.
+    """
 
     entrypoint_args: list[str] = Field(default_factory=list)
     """Default ENTRYPOINT args (e.g., ``["--config", "/etc/app/loader.yaml"]``)."""
@@ -335,12 +397,12 @@ class DeploymentContract(BaseModel):
         """Serialise to indent=2 JSON for ``--emit-contract`` CLI support."""
         return self.model_dump_json(indent=2, by_alias=False, exclude_none=False)
 
-    def with_dev_profile(self) -> DeploymentContract:
+    def with_dev_profile(self) -> Self:
         """Return a clone with ``ImageProfile.DEVELOPMENT`` set."""
         return self.model_copy(update={"image_profile": ImageProfile.DEVELOPMENT}, deep=True)
 
     @classmethod
-    def from_json(cls, raw: str) -> DeploymentContract:
+    def from_json(cls, raw: str) -> Self:
         """Parse a contract from a JSON string."""
         return cls.model_validate(json.loads(raw))
 
@@ -349,9 +411,13 @@ __all__ = [
     "DEFAULT_SCHEMA_VERSION",
     "MAX_SUPPORTED_SCHEMA_VERSION",
     "DeploymentContract",
+    "EnabledCondition",
+    "EqualsCondition",
     "HealthContract",
     "ImageProfile",
     "OciLabels",
+    "OneOfCondition",
+    "PortCondition",
     "PortContract",
     "SecretEnvContract",
     "SecretGroupContract",

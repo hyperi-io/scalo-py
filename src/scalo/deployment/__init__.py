@@ -29,8 +29,6 @@ or in ``pyproject.toml``::
     dev = ["scalo[deployment]>=2.28.0"]
 """
 
-from __future__ import annotations
-
 from typing import NoReturn
 
 # Contract Identity v1 has no pydantic dependency -- always available
@@ -76,12 +74,18 @@ if not DEPLOYMENT_AVAILABLE:
     HealthContract = _missing  # type: ignore[assignment]
     ImageProfile = _missing  # type: ignore[assignment]
     OciLabels = _missing  # type: ignore[assignment]
+    EnabledCondition = _missing  # type: ignore[assignment]
+    EqualsCondition = _missing  # type: ignore[assignment]
+    OneOfCondition = _missing  # type: ignore[assignment]
+    PortCondition = _missing  # type: ignore[assignment]
     PortContract = _missing  # type: ignore[assignment]
     SecretEnvContract = _missing  # type: ignore[assignment]
     SecretGroupContract = _missing  # type: ignore[assignment]
+    KafkaLagTrigger = _missing  # type: ignore[assignment]
     KedaConfig = _missing  # type: ignore[assignment]
     KedaContract = _missing  # type: ignore[assignment]
     AptRepoContract = _missing  # type: ignore[assignment]
+    BaseDistro = _missing  # type: ignore[assignment]
     NativeDepsContract = _missing  # type: ignore[assignment]
     ArgocdConfig = _missing  # type: ignore[assignment]
     AppProjectContract = _missing  # type: ignore[assignment]
@@ -132,9 +136,13 @@ else:
         DEFAULT_SCHEMA_VERSION,
         MAX_SUPPORTED_SCHEMA_VERSION,
         DeploymentContract,
+        EnabledCondition,
+        EqualsCondition,
         HealthContract,
         ImageProfile,
         OciLabels,
+        OneOfCondition,
+        PortCondition,
         PortContract,
         SecretEnvContract,
         SecretGroupContract,
@@ -165,10 +173,11 @@ else:
         generate_dockerignore,
         generate_runtime_stage,
     )
-    from .keda import KedaConfig, KedaContract
+    from .keda import KafkaLagTrigger, KedaConfig, KedaContract
     from .native_deps import (
         CONFLUENT_KEY_FINGERPRINT,
         AptRepoContract,
+        BaseDistro,
         NativeDepsContract,
         libgit2_runtime_package,
     )
@@ -213,20 +222,26 @@ __all__ = [
     "AppProjectDestination",
     "AptRepoContract",
     "ArgocdConfig",
+    "BaseDistro",
     "Capability",
     "ContractIdentity",
     "ContractMismatch",
     "DeploymentContract",
     "DeploymentError",
+    "EnabledCondition",
+    "EqualsCondition",
     "FieldSpec",
     "FieldType",
     "HealthContract",
     "IdentityError",
     "ImageProfile",
+    "KafkaLagTrigger",
     "KedaConfig",
     "KedaContract",
     "NativeDepsContract",
     "OciLabels",
+    "OneOfCondition",
+    "PortCondition",
     "PortContract",
     "SecretEnvContract",
     "SecretGroupContract",

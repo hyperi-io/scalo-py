@@ -6,19 +6,37 @@
 # License:   Apache-2.0
 # Copyright: (c) 2026 HYPERI PTY LIMITED
 
-"""Runtime native dependency contracts -- mirrors scalo-rs's
-``scalo::deployment::native_deps``.
+"""Runtime native dependency contracts -- mirrors scalo-rs's ``scalo::deployment::native_deps``.
 
 For Python apps, the equivalent of scalo-rs's ``for_scalo_features`` is
 ``for_scalo_extras`` -- pass the list of scalo-py optional extras the app uses,
 get back the runtime APT packages and any custom repos needed.
 """
 
-from __future__ import annotations
+from enum import StrEnum
+from typing import Any, Self
 
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import BaseModel, ConfigDict, Field, model_validator
 
 from .registry import DEFAULT_DISTRO_CODENAME
+
+
+class BaseDistro(StrEnum):
+    """A distro release scalo resolves runtime package names for (scalo-rs ``BaseDistro``)."""
+
+    TRIXIE = "trixie"
+    BOOKWORM = "bookworm"
+    NOBLE = "noble"
+    JAMMY = "jammy"
+    FOCAL = "focal"
+
+
+def _known_distro(codename: str) -> BaseDistro | None:
+    """The release ``codename`` names, or None for one scalo has no package names for."""
+    try:
+        return BaseDistro(codename)
+    except ValueError:
+        return None
 
 
 def libgit2_runtime_package(codename: str) -> str:
@@ -85,13 +103,40 @@ class NativeDepsContract(BaseModel):
     apt_packages: list[str] = Field(default_factory=list)
     """APT packages to install from default repos."""
 
+    distro: BaseDistro | None = Field(default=None, exclude_if=lambda value: value is None)
+    """The release the package names were resolved for, as scalo-rs records it.
+
+    None, and left out of the emitted contract, when the contract does not say.
+    """
+
+    unresolved_base_image: str | None = Field(default=None, exclude_if=lambda value: value is None)
+    """The base image whose release could not be derived, so the default was assumed.
+
+    Left out of the emitted contract when unset.
+    """
+
+    contradicted_base_image: str | None = Field(default=None, exclude_if=lambda value: value is None)
+    """The base image that names a different release from the one config stated.
+
+    Left out of the emitted contract when unset.
+    """
+
     distro_codename: str = DEFAULT_DISTRO_CODENAME
     """Base-image distro suite the package names were selected for.
 
     Stated explicitly rather than sniffed from the base-image string, and
     recorded in the emitted contract so CI can audit which suite an image
-    targets. Drives soname-versioned package names (e.g. libgit2).
+    targets. Drives soname-versioned package names (e.g. libgit2). A contract
+    that names ``distro`` but not this takes it from ``distro``.
     """
+
+    @model_validator(mode="before")
+    @classmethod
+    def _codename_follows_distro(cls, data: Any) -> Any:
+        """Read ``distro_codename`` from ``distro`` when only ``distro`` is given, as scalo-rs writes it."""
+        if isinstance(data, dict) and data.get("distro") is not None and "distro_codename" not in data:
+            return {**data, "distro_codename": data["distro"]}
+        return data
 
     def is_empty(self) -> bool:
         """True if there are no native deps to install."""
@@ -104,7 +149,7 @@ class NativeDepsContract(BaseModel):
         base_image: str,
         *,
         distro_codename: str = DEFAULT_DISTRO_CODENAME,
-    ) -> NativeDepsContract:
+    ) -> Self:
         """Build runtime native deps from a list of scalo optional extras.
 
         Pass the same extra strings used in ``pyproject.toml`` (e.g.
@@ -141,7 +186,12 @@ class NativeDepsContract(BaseModel):
             add("libssl3")
             add("zlib1g")
 
-        return cls(apt_repos=apt_repos, apt_packages=packages, distro_codename=distro_codename)
+        return cls(
+            apt_repos=apt_repos,
+            apt_packages=packages,
+            distro=_known_distro(distro_codename),
+            distro_codename=distro_codename,
+        )
 
     @classmethod
     def for_scalo_features(
@@ -150,7 +200,7 @@ class NativeDepsContract(BaseModel):
         base_image: str,
         *,
         distro_codename: str = DEFAULT_DISTRO_CODENAME,
-    ) -> NativeDepsContract:
+    ) -> Self:
         """Build runtime native deps from a list of scalo-rs feature flags.
 
         Mirrors scalo-rs's ``NativeDepsContract::for_scalo_features`` for
@@ -194,7 +244,12 @@ class NativeDepsContract(BaseModel):
         if "directory-config-git" in features:
             add(libgit2_runtime_package(distro_codename))
 
-        return cls(apt_repos=apt_repos, apt_packages=packages, distro_codename=distro_codename)
+        return cls(
+            apt_repos=apt_repos,
+            apt_packages=packages,
+            distro=_known_distro(distro_codename),
+            distro_codename=distro_codename,
+        )
 
 
 # OpenPGP v4 fingerprint of the Confluent clients signing key, shared with
@@ -238,6 +293,7 @@ __all__ = [
     "CONFLUENT_KEY_FINGERPRINT",
     "DEFAULT_DISTRO_CODENAME",
     "AptRepoContract",
+    "BaseDistro",
     "NativeDepsContract",
     "libgit2_runtime_package",
 ]

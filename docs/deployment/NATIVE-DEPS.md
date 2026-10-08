@@ -24,7 +24,12 @@ the explicitly C-linked transports.
 |---|---|---|
 | `apt_repos` | `list[AptRepoContract]` | `[]` |
 | `apt_packages` | `list[str]` | `[]` |
+| `distro` | `BaseDistro \| None` | `None`, left out when unset |
+| `unresolved_base_image` | `str \| None` | `None`, left out when unset |
+| `contradicted_base_image` | `str \| None` | `None`, left out when unset |
 | `distro_codename` | `str` | `trixie` |
+
+`distro`, `unresolved_base_image` and `contradicted_base_image` carry what scalo-rs records: the release the package names were resolved for (`trixie`, `bookworm`, `noble`, `jammy` or `focal`), the base image whose release could not be derived, and the base image that names a different release from the one config stated. Both factories set `distro` from `distro_codename` when scalo knows that release. A contract that names `distro` but not `distro_codename` takes `distro_codename` from it.
 
 - `is_empty()` -- shortcut the Dockerfile generator uses to emit a
   smaller APT block when there's nothing extra.

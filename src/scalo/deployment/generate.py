@@ -21,8 +21,6 @@ either uniformly. Artefact text is built with deterministic f-strings (no
 timestamps/random ids) so golden snapshots and CI drift-diffs are stable.
 """
 
-from __future__ import annotations
-
 import json
 from dataclasses import dataclass, field
 from pathlib import Path
@@ -30,12 +28,20 @@ from pathlib import Path
 from .contract import DeploymentContract, ImageProfile, OciLabels
 from .contract_identity import ContractIdentity
 from .errors import CreateDirError, WriteFileError
+from .keda import KedaContract
 from .native_deps import NativeDepsContract
 from .waves import WAVE_APPS
 
 # ============================================================================
 # Helpers
 # ============================================================================
+
+
+def _enabled_keda(contract: DeploymentContract) -> KedaContract | None:
+    """The KEDA contract when it turns KEDA on; None when absent or disabled, so off has one meaning."""
+    keda = contract.keda
+    return keda if keda is not None and keda.enabled else None
+
 
 # Diagnostic tools installed in development images.
 _DEV_TOOLS = (
@@ -591,7 +597,7 @@ def generate_chart(
     _write_file(templates / "secret.yaml", _gen_secret_yaml(contract))
     _write_file(templates / "hpa.yaml", _gen_hpa_yaml(contract))
 
-    if contract.keda is not None:
+    if _enabled_keda(contract) is not None:
         _write_file(templates / "keda-scaledobject.yaml", _gen_keda_scaledobject_yaml(contract))
         _write_file(templates / "keda-triggerauth.yaml", _gen_keda_triggerauth_yaml(contract))
 
@@ -733,34 +739,35 @@ def _gen_values_yaml(c: DeploymentContract) -> str:
             parts.append(f'  {env.key_name}: ""\n')
         parts.append("\n")
 
-    if c.keda is not None:
+    keda = _enabled_keda(c)
+    if keda is not None:
         parts.append(
             f"# -- KEDA autoscaling (requires KEDA operator installed)\n"
             f"keda:\n"
             f"  enabled: true\n"
-            f"  minReplicaCount: {c.keda.min_replicas}\n"
-            f"  maxReplicaCount: {c.keda.max_replicas}\n"
-            f"  pollingInterval: {c.keda.polling_interval}\n"
-            f"  cooldownPeriod: {c.keda.cooldown_period}\n"
+            f"  minReplicaCount: {keda.min_replicas}\n"
+            f"  maxReplicaCount: {keda.max_replicas}\n"
+            f"  pollingInterval: {keda.polling_interval}\n"
+            f"  cooldownPeriod: {keda.cooldown_period}\n"
             f"  kafka:\n"
             f"    # -- Scale when consumer group lag exceeds this per partition\n"
-            f'    lagThreshold: "{c.keda.kafka_lag_threshold}"\n'
+            f'    lagThreshold: "{keda.kafka_lag_threshold}"\n'
             f"    # -- Wake from zero replicas when lag exceeds this\n"
-            f'    activationLagThreshold: "{c.keda.activation_lag_threshold}"\n'
+            f'    activationLagThreshold: "{keda.activation_lag_threshold}"\n'
             f"    # -- Override topic (default: first topic from config)\n"
             f'    topic: ""\n'
             f"    # -- Override consumer group (default: from config)\n"
             f'    consumerGroup: ""\n'
             f"  cpu:\n"
-            f"    enabled: {str(c.keda.cpu_enabled).lower()}\n"
+            f"    enabled: {str(keda.cpu_enabled).lower()}\n"
             f"    # -- CPU utilisation percentage threshold\n"
-            f'    threshold: "{c.keda.cpu_threshold}"\n'
+            f'    threshold: "{keda.cpu_threshold}"\n'
             f"\n"
         )
     else:
         # Stub keda block so templates dereferencing .Values.keda.enabled don't
-        # nil-pointer when the contract has no KedaContract. The autoscaling
-        # block below carries the actual HPA fallback values.
+        # nil-pointer when the contract has no enabled KedaContract. The
+        # autoscaling block below carries the actual HPA fallback values.
         parts.append("# -- KEDA autoscaling disabled (no KedaContract on this deployment)\nkeda:\n  enabled: false\n\n")
 
     parts.append(

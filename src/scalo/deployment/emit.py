@@ -20,8 +20,6 @@ can be drift-checked against a fresh regeneration. See
 ``docs/reflectable-config-shape.md`` in scalo-rs for the cross-language shape.
 """
 
-from __future__ import annotations
-
 import json
 from pathlib import Path
 from typing import TYPE_CHECKING, Any
@@ -36,8 +34,8 @@ if TYPE_CHECKING:
     from .contract import DeploymentContract
 
 
-_SECRET_MARKERS = ("x-scalo-secret", "x-dfe-secret")
-"""The secret marker, then its earlier name, emitted beside it until every reader keys on the first."""
+_SECRET_MARKER = "x-scalo-secret"  # noqa: S105 - a schema keyword, not a credential
+"""The schema keyword that marks a field as credential material."""
 
 
 def config_schema_json(model: type[BaseModel]) -> dict[str, Any]:
@@ -46,9 +44,8 @@ def config_schema_json(model: type[BaseModel]) -> dict[str, Any]:
     Secret fields are marked ``x-scalo-secret`` so the control plane masks them
     and routes them through the secrets seam. A field is treated as secret when
     it uses pydantic ``SecretStr`` (schema ``format: password``) or carries an
-    explicit ``json_schema_extra={"x-scalo-secret": True}`` (or the earlier
-    ``{"x-dfe-secret": True}``). A secret field ends ``"x-scalo-secret": true,
-    "x-dfe-secret": true, "writeOnly": true``, the keys and order scalo-rs's
+    explicit ``json_schema_extra={"x-scalo-secret": True}``. A secret field ends
+    ``"x-scalo-secret": true, "writeOnly": true``, the keys and order scalo-rs's
     ``SensitiveString`` emits.
     """
     schema = model.model_json_schema()
@@ -57,11 +54,11 @@ def config_schema_json(model: type[BaseModel]) -> dict[str, Any]:
 
 
 def _mark_secrets(node: Any) -> None:
-    """Recursively end every secret field with both markers and ``writeOnly``."""
+    """Recursively end every secret field with the marker and ``writeOnly``."""
     if isinstance(node, dict):
-        is_secret = node.get("format") == "password" or any(node.get(m) is True for m in _SECRET_MARKERS)
+        is_secret = node.get("format") == "password" or node.get(_SECRET_MARKER) is True
         if is_secret:
-            for key in (*_SECRET_MARKERS, "writeOnly"):
+            for key in (_SECRET_MARKER, "writeOnly"):
                 node.pop(key, None)
                 node[key] = True
         for value in node.values():
