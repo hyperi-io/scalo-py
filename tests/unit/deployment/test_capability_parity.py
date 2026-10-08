@@ -15,8 +15,6 @@ path. The golden below is the shared shape from
 Rust encodings have diverged.
 """
 
-from __future__ import annotations
-
 import json
 from pathlib import Path
 
@@ -148,40 +146,44 @@ def test_config_schema_marks_secretstr_fields() -> None:
     schema = config_schema_json(Cfg)
     pw = schema["properties"]["password"]
     assert pw.get("x-scalo-secret") is True
-    assert pw.get("x-dfe-secret") is True
     assert pw.get("writeOnly") is True
     # Non-secret field untouched.
     assert "x-scalo-secret" not in schema["properties"]["host"]
-    assert "x-dfe-secret" not in schema["properties"]["host"]
 
 
 # The order scalo-rs's SensitiveString emits, per reflectable-config-shape.md "Secret marker".
-SECRET_TAIL = ["x-scalo-secret", "x-dfe-secret", "writeOnly"]
+SECRET_TAIL = ["x-scalo-secret", "writeOnly"]
+
+
+def _vendor_keys(node: dict) -> list[str]:
+    return [key for key in node if key.startswith("x-")]
 
 
 @pytest.mark.parametrize(
     "extra",
-    [{"x-scalo-secret": True}, {"x-dfe-secret": True}, {"x-dfe-secret": True, "writeOnly": True}],
-    ids=["scalo-marker", "earlier-marker", "earlier-marker-and-writeonly"],
+    [{"x-scalo-secret": True}, {"x-scalo-secret": True, "writeOnly": True}],
+    ids=["marker", "marker-and-writeonly"],
 )
-def test_author_marked_secret_ends_with_both_markers_in_order(extra: dict) -> None:
-    """Either marker name opts a field in, and both are emitted after it, in scalo-rs's order."""
+def test_author_marked_secret_ends_with_the_marker_in_order(extra: dict) -> None:
+    """The marker opts a field in, and is emitted last but for ``writeOnly``, in scalo-rs's order."""
 
     class Cfg(BaseModel):
         token: str = Field(json_schema_extra=extra)
 
     token = config_schema_json(Cfg)["properties"]["token"]
-    assert list(token)[-3:] == SECRET_TAIL, token
+    assert list(token)[-2:] == SECRET_TAIL, token
     assert all(token[key] is True for key in SECRET_TAIL)
+    assert _vendor_keys(token) == ["x-scalo-secret"], token
 
 
-def test_secretstr_ends_with_both_markers_in_order() -> None:
+def test_secretstr_ends_with_the_marker_in_order() -> None:
     class Cfg(BaseModel):
         password: SecretStr
 
     pw = config_schema_json(Cfg)["properties"]["password"]
-    assert list(pw)[-3:] == SECRET_TAIL, pw
+    assert list(pw)[-2:] == SECRET_TAIL, pw
     assert pw["format"] == "password"
+    assert _vendor_keys(pw) == ["x-scalo-secret"], pw
 
 
 def test_a_false_marker_does_not_opt_a_field_in() -> None:
@@ -190,7 +192,15 @@ def test_a_false_marker_does_not_opt_a_field_in() -> None:
 
     note = config_schema_json(Cfg)["properties"]["note"]
     assert note["x-scalo-secret"] is False
-    assert "x-dfe-secret" not in note
+    assert "writeOnly" not in note
+
+
+def test_an_unknown_vendor_key_does_not_opt_a_field_in() -> None:
+    class Cfg(BaseModel):
+        note: str = Field(json_schema_extra={"x-other-secret": True})
+
+    note = config_schema_json(Cfg)["properties"]["note"]
+    assert "x-scalo-secret" not in note
     assert "writeOnly" not in note
 
 
@@ -202,7 +212,7 @@ def test_nested_secret_is_marked_inside_defs() -> None:
         inner: Inner
 
     key = config_schema_json(Outer)["$defs"]["Inner"]["properties"]["key"]
-    assert list(key)[-3:] == SECRET_TAIL, key
+    assert list(key)[-2:] == SECRET_TAIL, key
 
 
 def _contract_with_catalog() -> DeploymentContract:

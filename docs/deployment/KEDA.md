@@ -37,20 +37,32 @@ Cascade env-var overrides follow the standard `__` nesting:
 
 ## `KedaContract` -- deploy
 
-Same fields minus `enabled` (the contract is only attached when KEDA
-is on). Built from `KedaConfig` via:
+The same fields, plus `kafka_trigger`. Built from `KedaConfig` via:
 
 ```python
 keda_contract = KedaContract.from_config(my_config.keda)
 ```
 
-`from_config` strips `enabled` and copies the rest verbatim.
+`from_config` copies every field verbatim, `enabled` included, and takes the default `kafka_trigger`.
+
+`enabled=False` generates exactly what `keda=None` does, so off has one meaning. A contract written before `enabled` existed loads with it on.
+
+`kafka_trigger` (`KafkaLagTrigger`) says where the Kafka lag trigger reads its connection details in the chart's values. Each path is dotted and `.Values`-relative:
+
+| Field | Default |
+|---|---|
+| `enabled` | `True` |
+| `brokers_path` | `config.kafka.brokers` |
+| `group_path` | `config.kafka.group_id` |
+| `topics_path` | `config.kafka.topics` |
+
+`KafkaLagTrigger.under("config.source")` reads the three under another section, and `KafkaLagTrigger.disabled()` says there is no Kafka lag trigger. Both serialise as scalo-rs's `KafkaLagTrigger` does. scalo-py's chart generator does not read `kafka_trigger` yet: its trigger always reads the `config.kafka` paths below.
 
 ---
 
 ## Generated artefacts
 
-When `DeploymentContract.keda is not None`, `generate_chart` writes
+When `DeploymentContract.keda` is set and enabled, `generate_chart` writes
 two extra templates:
 
 - `templates/keda-scaledobject.yaml` -- the `keda.sh/v1alpha1
@@ -99,7 +111,7 @@ values override.
 so the HPA only materialises when:
 
 - `autoscaling.enabled=true` AND
-- `keda.enabled=false` (or the chart was generated without
+- `keda.enabled=false` (or the chart was generated without an enabled
   `contract.keda`)
 
 KEDA's `ScaledObject` creates its own HPA internally; the two are

@@ -14,8 +14,6 @@ and key fragments -- enough to catch regressions while the contract is
 being shaped.
 """
 
-from __future__ import annotations
-
 import json
 
 import pytest
@@ -675,11 +673,13 @@ class TestRegistryCascade:
 
 
 class TestKedaContract:
-    def test_from_config_strips_enabled(self):
+    def test_from_config_carries_the_thresholds_and_enabled(self):
         cfg = KedaConfig(kafka_lag_threshold=5000, cpu_threshold=90)
         contract = KedaContract.from_config(cfg)
         assert contract.kafka_lag_threshold == 5000
         assert contract.cpu_threshold == 90
+        assert contract.enabled is True
+        assert KedaContract.from_config(KedaConfig(enabled=False)).enabled is False
 
     def test_keda_contract_defaults_match_config_defaults(self):
         from_default = KedaContract.from_config(KedaConfig())
