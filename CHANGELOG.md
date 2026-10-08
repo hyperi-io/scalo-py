@@ -3,6 +3,18 @@
 Rendered by CI and committed back at the end of a release -- do not edit by
 hand. Release notes also appear on the GitHub Releases page, one per tag.
 
+## [2.31.3](https://github.com/hyperi-io/scalo-py/compare/v2.31.2...v2.31.3) (2026-10-08)
+
+### Bug Fixes
+
+* app name and container detection at import ([#85](https://github.com/hyperi-io/scalo-py/issues/85)) ([8de0dd4](https://github.com/hyperi-io/scalo-py/commit/8de0dd4c628292ec0ac2ae07b76af51f7f6449bb)), closes [#83](https://github.com/hyperi-io/scalo-py/issues/83)
+* parse and emit deployment contract schema 4 ([#87](https://github.com/hyperi-io/scalo-py/issues/87)) ([d23f007](https://github.com/hyperi-io/scalo-py/commit/d23f0076650d210c227d70ed497db34f9d5014e9))
+* parse scalo-rs contracts, drop x-dfe-secret ([#86](https://github.com/hyperi-io/scalo-py/issues/86)) ([0dee0d7](https://github.com/hyperi-io/scalo-py/commit/0dee0d79405c1433071ff7ebabfcf401bd234864))
+* refuse a dial name that is not a Helm value key, and NaN in emitted JSON ([#92](https://github.com/hyperi-io/scalo-py/issues/92)) ([0d8145f](https://github.com/hyperi-io/scalo-py/commit/0d8145f64a5ced9827ec0c972bdf60c08b23bb67))
+* refuse the contracts scalo-rs refuses ([#88](https://github.com/hyperi-io/scalo-py/issues/88)) ([7ef5a7c](https://github.com/hyperi-io/scalo-py/commit/7ef5a7cd0d4ed7d6666f6276050646ee0627fc4b))
+* remove the unused deployment.topology module ([#91](https://github.com/hyperi-io/scalo-py/issues/91)) ([d63eb5d](https://github.com/hyperi-io/scalo-py/commit/d63eb5da8a152c77c341ef67ba22348fb226f134))
+* sync the contract schema to scalo-rs and name size_limit in its own refusal ([#89](https://github.com/hyperi-io/scalo-py/issues/89)) ([8c2826e](https://github.com/hyperi-io/scalo-py/commit/8c2826e7eaf282a0aa73215a34120b53061a54ad))
+
 ## [2.31.2](https://github.com/hyperi-io/scalo-py/compare/v2.31.1...v2.31.2) (2026-10-07)
 
 ### Bug Fixes
