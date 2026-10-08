@@ -213,7 +213,7 @@ def test_a_control_character_in_a_writable_size_is_refused() -> None:
 
 
 def test_a_control_character_in_a_writable_size_limit_is_refused() -> None:
-    assert _refused_field(lambda: _with_writable(size_limit="2\nGi")).startswith("writable_paths[spool].")
+    assert _refused_field(lambda: _with_writable(size_limit="2\nGi")) == "writable_paths[spool].size_limit"
 
 
 def test_a_control_character_in_a_writable_condition_is_refused() -> None:
