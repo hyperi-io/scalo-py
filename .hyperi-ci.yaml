@@ -9,9 +9,6 @@ license: Apache-2.0
 # the package is already public.
 classification: oss
 
-build:
-  type: package
-
 release:
   enabled: true
 

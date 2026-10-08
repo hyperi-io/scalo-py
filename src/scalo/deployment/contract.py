@@ -420,10 +420,9 @@ class WritablePath(BaseModel):
         field = f"writable_paths[{self.name}]"
         if _has_control(self.path):
             raise ValueError(f"{field}.path: {_quoted(self.path)} is not an absolute path on one line")
-        # scalo-rs names a fault in size_limit under "size" too.
-        for text in (self.size, self.size_limit):
+        for part, text in (("size", self.size), ("size_limit", self.size_limit)):
             if _has_control(text):
-                raise ValueError(f"{field}.size: {_holds_a_control_character(text)}")
+                raise ValueError(f"{field}.{part}: {_holds_a_control_character(text)}")
         if self.when is not None and (text := _control_text(_condition_texts(self.when))) is not None:
             raise ValueError(f"{field}.when: {_holds_a_control_character(text)}")
         return self

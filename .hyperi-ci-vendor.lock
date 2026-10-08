@@ -2,6 +2,6 @@
 files:
   src/scalo/deployment/data/contract.schema.json:
     path: charts/scalo-service/schema/deployment-contract.v4.schema.json
-    ref: 108b1aa3b583c7d80f7036cd7f4893e3003e4351
-    sha256: 53703ba8a751e8d965c33e700a86a4f595f3fcb657921b4ac4e6bbbb3e41f163
+    ref: 9294e3290ecfbfcd190e53a4345fcef9526271fb
+    sha256: 9f1c520c415c1128a132452447b0106da7ae4937f369e4804a28307e41f07ec8
     source: hyperi-io/scalo-rs
