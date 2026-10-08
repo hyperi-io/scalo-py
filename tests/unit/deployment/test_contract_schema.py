@@ -39,7 +39,7 @@ from scalo.deployment.contract import (
     SecurityContract,
     WritablePath,
 )
-from scalo.deployment.emit import DIAL_KEYWORD, config_schema_json
+from scalo.deployment.emit import DIAL_KEYWORD, config_schema_json, emit_config_artifacts
 from scalo.deployment.keda import KedaContract
 
 ROOT = Path(__file__).parents[3]
@@ -222,3 +222,11 @@ def test_a_dial_tier_outside_big_and_small_fails_the_contract_and_the_schema() -
             config_schema=schema,
         )
     assert _errors(_with(_fixture(), "config_schema", schema)) != []
+
+
+def test_emitting_a_config_schema_with_an_infinite_default_refuses(tmp_path: Path) -> None:
+    contract = _full_contract().model_copy(
+        update={"config_schema": {"properties": {"limit": {"type": "number", "default": float("inf")}}}}
+    )
+    with pytest.raises(ValueError, match="not JSON compliant"):
+        emit_config_artifacts(contract, tmp_path)

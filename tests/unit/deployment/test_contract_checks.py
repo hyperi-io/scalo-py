@@ -319,6 +319,24 @@ def test_a_broken_ref_reached_through_the_schema_is_refused(schema: dict[str, An
     assert _refusal(lambda: _contract(config_schema=schema)).endswith('"#/$defs/Missing" points at nothing')
 
 
+@pytest.mark.parametrize("name", ["batch.size", "flush rows", "rows\n", "", "röws"])
+def test_a_dial_whose_path_holds_a_name_that_is_not_a_value_key_is_refused(name: str) -> None:
+    schema = {"properties": {"buffer": {"properties": {name: {"type": "integer", "x-scalo-dial": "big"}}}}}
+    message = _refusal(lambda: _contract(config_schema=schema))
+    assert message.startswith(f"config.{json.dumps('buffer.' + name)}: the dial path holds {json.dumps(name)}")
+
+
+def test_only_names_on_a_dial_path_are_checked() -> None:
+    schema = {
+        "properties": {
+            "flush_rows": {"type": "integer", "x-scalo-dial": "big"},
+            "max-age": {"type": "integer", "x-scalo-dial": "small"},
+            "odd name": {"type": "string"},
+        }
+    }
+    assert _contract(config_schema=schema).config_schema == schema
+
+
 def test_a_dial_referring_to_itself_is_refused() -> None:
     schema = {
         "properties": {"a": {"$ref": "#/$defs/Loop", "x-scalo-dial": "big"}},
