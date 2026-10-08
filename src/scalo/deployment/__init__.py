@@ -79,8 +79,12 @@ if not DEPLOYMENT_AVAILABLE:
     OneOfCondition = _missing  # type: ignore[assignment]
     PortCondition = _missing  # type: ignore[assignment]
     PortContract = _missing  # type: ignore[assignment]
+    ResourceList = _missing  # type: ignore[assignment]
+    ResourcesContract = _missing  # type: ignore[assignment]
     SecretEnvContract = _missing  # type: ignore[assignment]
     SecretGroupContract = _missing  # type: ignore[assignment]
+    SecurityContract = _missing  # type: ignore[assignment]
+    WritablePath = _missing  # type: ignore[assignment]
     KafkaLagTrigger = _missing  # type: ignore[assignment]
     KedaConfig = _missing  # type: ignore[assignment]
     KedaContract = _missing  # type: ignore[assignment]
@@ -113,10 +117,11 @@ if not DEPLOYMENT_AVAILABLE:
     base_image_from_cascade = _missing  # type: ignore[assignment]
     argocd_repo_url_from_cascade = _missing  # type: ignore[assignment]
     argocd_dest_namespace_from_cascade = _missing  # type: ignore[assignment]
-    # Image defaults are plain strings with no pydantic dependency, so they
-    # come from the one source even on the degraded-import path -- never
-    # re-spelled here, where they would silently drift from the contract.
     libgit2_runtime_package = _missing  # type: ignore[assignment]
+    # The dial keyword and image defaults are plain strings with no pydantic
+    # dependency, so they come from the one source even on the degraded-import
+    # path -- never re-spelled here, where they would silently drift.
+    from .emit import DIAL_KEYWORD, DIAL_TIERS
     from .registry import (
         DEFAULT_BASE_IMAGE,
         DEFAULT_BUILDER_IMAGE,
@@ -144,10 +149,16 @@ else:
         OneOfCondition,
         PortCondition,
         PortContract,
+        ResourceList,
+        ResourcesContract,
         SecretEnvContract,
         SecretGroupContract,
+        SecurityContract,
+        WritablePath,
     )
     from .emit import (
+        DIAL_KEYWORD,
+        DIAL_TIERS,
         assert_no_config_artifact_drift,
         check_config_artifact_drift,
         config_schema_json,
@@ -211,6 +222,8 @@ __all__ = [
     "DEFAULT_LABEL_NAMESPACE",
     "DEFAULT_PYTHON_VERSION",
     "DEPLOYMENT_AVAILABLE",
+    "DIAL_KEYWORD",
+    "DIAL_TIERS",
     "KEY_SEGMENT",
     "VERSION",
     "WAVE_APPS",
@@ -243,8 +256,12 @@ __all__ = [
     "OneOfCondition",
     "PortCondition",
     "PortContract",
+    "ResourceList",
+    "ResourcesContract",
     "SecretEnvContract",
     "SecretGroupContract",
+    "SecurityContract",
+    "WritablePath",
     "argocd_dest_namespace_from_cascade",
     "argocd_repo_url_from_cascade",
     "assert_no_config_artifact_drift",

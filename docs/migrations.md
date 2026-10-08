@@ -22,6 +22,12 @@ Behaviour and API changes that need a consumer adjustment, indexed by the scalo 
 
 **Consumer adjustment** -- an app that builds `KedaContract.from_config` from a `KedaConfig` with `enabled=False` now gets a chart with no `ScaledObject`. A committed `deployment-contract.json` changes on regeneration as above.
 
+### Deployment contract schema 4 (BEHAVIOUR CHANGE)
+
+`DEFAULT_SCHEMA_VERSION` and `MAX_SUPPORTED_SCHEMA_VERSION` are 4, matching scalo-rs. `DeploymentContract` gains `writable_paths` (`WritablePath`), `termination_grace_seconds` (45), `resources` (`ResourcesContract`, `ResourceList`), `security` (`SecurityContract`) and `singleton`. `HealthContract` gains `startup_budget_seconds` (150, at least 1), `PortContract` gains `public` and `app_protocol`, and `SecretGroupContract` gains `optional`. `config_mount_path` may be omitted or empty, meaning no config file. An app marks an operator dial with `json_schema_extra={DIAL_KEYWORD: "big"}` or `"small"`. The wheel ships scalo-rs's v4 contract JSON Schema. See [deployment/CONTRACT.md](deployment/CONTRACT.md).
+
+**Consumer adjustment** -- an emitted contract now carries `schema_version: 4`, `termination_grace_seconds`, `security`, `singleton` and `health.startup_budget_seconds`, so a committed `deployment-contract.json` changes on regeneration. An app that passes `schema_version=3` passes nothing, or `DEFAULT_SCHEMA_VERSION`, because a v4 chart assembler refuses version 3. Construction now refuses a malformed writable path, a capability that is not an upper-case name, a singleton with KEDA on, and an `x-scalo-dial` other than `big` or `small`.
+
 ## 2.31.0
 
 ### Console logs: JSON off a TTY, fields in text, colour only on a TTY (BEHAVIOUR CHANGE)

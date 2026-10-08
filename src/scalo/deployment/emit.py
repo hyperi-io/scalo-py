@@ -37,6 +37,12 @@ if TYPE_CHECKING:
 _SECRET_MARKER = "x-scalo-secret"  # noqa: S105 - a schema keyword, not a credential
 """The schema keyword that marks a field as credential material."""
 
+DIAL_KEYWORD = "x-scalo-dial"
+"""The schema keyword that marks a config setting as an operator dial, set with ``json_schema_extra``."""
+
+DIAL_TIERS = ("big", "small")
+"""The values ``DIAL_KEYWORD`` takes: a setting most deployments tune, and one a few do."""
+
 
 def config_schema_json(model: type[BaseModel]) -> dict[str, Any]:
     """Derive a JSON Schema (draft 2020-12) for a pydantic config model.
@@ -161,6 +167,8 @@ assert_no_config_artifact_drift = check_config_artifact_drift
 
 
 __all__ = [
+    "DIAL_KEYWORD",
+    "DIAL_TIERS",
     "assert_no_config_artifact_drift",
     "check_config_artifact_drift",
     "config_schema_json",
