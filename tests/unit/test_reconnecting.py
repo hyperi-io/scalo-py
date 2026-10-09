@@ -6,6 +6,7 @@ wall clock.
 
 import pytest
 
+from scalo.logger import logger
 from scalo.resilience import (
     OutageState,
     ReconnectingResilience,
@@ -38,6 +39,71 @@ def _build(clock, *, config=None, reconnect=None, on_connect_failure=None):
         sleep=clock.sleep,
         now=clock.now,
     )
+
+
+@pytest.fixture
+def records():
+    """Every record logged while the test runs."""
+    seen: list[dict] = []
+    sink_id = logger.add(lambda message: seen.append(message.record), level="DEBUG")
+    yield seen
+    logger.remove(sink_id)
+
+
+def _logged(records: list[dict], message: str) -> dict:
+    return next(record for record in records if record["message"] == message)
+
+
+def _always_down(calls: list[int]):
+    def op():
+        calls.append(1)
+        raise ConnectionError("down")
+
+    return op
+
+
+def test_a_zero_budget_reports_the_one_attempt_it_made(records):
+    """No budget still makes the first call: the message and the log say one, not zero."""
+    calls: list[int] = []
+    r = _build(FakeClock(), config=ResilienceConfig(budget_seconds=0.0))
+
+    with pytest.raises(ServiceUnavailable) as ei:
+        r.run(_always_down(calls))
+
+    assert len(calls) == 1
+    assert str(ei.value) == "Test unreachable after 0s (1 attempt): down"
+    assert _logged(records, "Test unavailable after resilience budget exhausted")["extra"]["attempts"] == 1
+
+
+def test_an_exhausted_budget_reports_every_attempt_it_made(records):
+    """The first call and each retry inside the budget all count."""
+    calls: list[int] = []
+    r = _build(
+        FakeClock(),
+        config=ResilienceConfig(wait_initial=1.0, wait_max=1.0, budget_seconds=3.0),
+    )
+
+    with pytest.raises(ServiceUnavailable) as ei:
+        r.run(_always_down(calls))
+
+    assert len(calls) == 4
+    assert str(ei.value) == "Test unreachable after 3s (4 attempts): down"
+    assert _logged(records, "Test unavailable after resilience budget exhausted")["extra"]["attempts"] == 4
+
+
+def test_a_recovery_reports_every_attempt_it_took(records):
+    """Two failures then a success is three attempts."""
+    calls: list[int] = []
+
+    def op():
+        calls.append(1)
+        if len(calls) < 3:
+            raise ConnectionError("down")
+        return "ok"
+
+    assert _build(FakeClock()).run(op) == "ok"
+    assert len(calls) == 3
+    assert _logged(records, "Test recovered")["extra"]["attempts"] == 3
 
 
 def test_success_first_try_is_healthy():

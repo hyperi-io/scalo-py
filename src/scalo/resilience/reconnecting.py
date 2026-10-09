@@ -18,8 +18,6 @@ today, another pooled connection tomorrow). Tracks an :class:`OutageState` a
 readiness surface can read.
 """
 
-from __future__ import annotations
-
 import time
 from collections.abc import Callable
 from dataclasses import dataclass
@@ -171,12 +169,13 @@ class ReconnectingResilience:
         deadline = self._now() + budget
         wait = self._config.wait_initial
         last_exc: Exception = first_exc
-        attempt = 0
+        # The call that raised first_exc is attempt one, so the count is calls made, not retries.
+        attempts = 1
 
         while self._now() < deadline:
             remaining = deadline - self._now()
             self._sleep(min(wait, max(0.0, remaining)))
-            attempt += 1
+            attempts += 1
             try:
                 if is_conn:
                     self._reconnect()  # rebuild the pooled client (connection outage only)
@@ -189,7 +188,7 @@ class ReconnectingResilience:
                 wait = min(wait * self._config.wait_multiplier, self._config.wait_max)
                 continue
             else:
-                logger.info(f"{self._name} recovered", attempts=attempt, was_waking=waking)
+                logger.info(f"{self._name} recovered", attempts=attempts, was_waking=waking)
                 self._mark_healthy()
                 return result
 
@@ -197,11 +196,12 @@ class ReconnectingResilience:
         logger.error(
             f"{self._name} unavailable after resilience budget exhausted",
             budget_seconds=budget,
-            attempts=attempt,
+            attempts=attempts,
             was_waking=waking,
         )
+        noun = "attempt" if attempts == 1 else "attempts"
         raise self._unavailable_exc(
-            f"{self._name} unreachable after {budget:.0f}s ({attempt} attempts): {last_exc}",
+            f"{self._name} unreachable after {budget:.0f}s ({attempts} {noun}): {last_exc}",
             waking=waking,
         ) from last_exc
 
