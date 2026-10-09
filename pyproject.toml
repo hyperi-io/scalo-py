@@ -423,4 +423,6 @@ dev = [
     "azure-keyvault-secrets>=4.9.0",
     "fastapi>=0.142.2",
     "google-cloud-secret-manager>=2.26.0",
+    # starlette's TestClient uses httpx2 and warns when it has to fall back to httpx.
+    "httpx2>=2.13.1",
 ]

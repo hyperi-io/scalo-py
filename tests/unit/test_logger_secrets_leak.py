@@ -8,8 +8,6 @@
 
 """Tests for the gitleaks-style security-artefact filter."""
 
-from __future__ import annotations
-
 import pytest
 from common.fake_secrets import (
     aws_access_key,
@@ -34,7 +32,8 @@ class TestSecretsLeakFilterDetection:
     """Each detector type catches the expected pattern."""
 
     @pytest.fixture(scope="class")
-    def f(self):
+    @classmethod
+    def f(cls):
         return SecretsLeakFilter(level="full")
 
     def test_aws_access_key(self, f):

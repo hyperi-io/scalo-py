@@ -43,6 +43,7 @@ Run with:
     pytest tests/integration/test_secrets_cloud_providers.py -v -m integration
 """
 
+import functools
 import os
 from pathlib import Path
 
@@ -77,6 +78,10 @@ VAULT_TOKEN = os.environ.get("TEST_VAULT_TOKEN", "")
 VAULT_PATH = os.environ.get("TEST_VAULT_PATH", "secret/data/scalo-test")
 VAULT_KEY = os.environ.get("TEST_VAULT_KEY", "api_key")
 
+_GCP_SCOPES = ["https://www.googleapis.com/auth/cloud-platform"]
+# google-auth waits 120s by default; a skip check must not.
+_GCP_REFRESH_TIMEOUT_SECONDS = 10.0
+
 EXPECTED_API_KEY = "test-value-abc123"
 EXPECTED_OTHER_KEY = "other-value"
 
@@ -103,6 +108,31 @@ def _gcp_creds_available() -> bool:
     return home_adc.exists()
 
 
+def _gcp_unusable_reason() -> str | None:
+    """Why the GCP ADC cannot be used now, or None when it mints a token.
+
+    An ADC file that exists is not an ADC that works: an expired login leaves the
+    file in place and fails every call after a long retry. One token refresh, which
+    is the first thing each call does, tells the two apart.
+    """
+    if not _gcp_creds_available():
+        return "GCP ADC not configured (run: gcloud auth application-default login)"
+
+    import google.auth
+    from google.auth.exceptions import GoogleAuthError
+    from google.auth.transport.requests import Request
+
+    try:
+        credentials, _project = google.auth.default(scopes=_GCP_SCOPES)
+        credentials.refresh(functools.partial(Request(), timeout=_GCP_REFRESH_TIMEOUT_SECONDS))
+    except GoogleAuthError as exc:
+        return (
+            f"GCP ADC cannot mint a token ({type(exc).__name__}): "
+            "check the network, or run: gcloud auth application-default login"
+        )
+    return None
+
+
 def _azure_creds_available() -> bool:
     """True when Azure CLI credentials are present and no stale client secret overrides them."""
     if os.environ.get("AZURE_CLIENT_SECRET"):
@@ -123,10 +153,16 @@ requires_aws = pytest.mark.skipif(
     reason="AWS credentials not available (need AWS_ACCESS_KEY_ID + AWS_SECRET_ACCESS_KEY + AWS_SESSION_TOKEN)",
 )
 
-requires_gcp = pytest.mark.skipif(
-    not _gcp_creds_available(),
-    reason="GCP ADC not configured (run: gcloud auth application-default login)",
-)
+
+@pytest.fixture(scope="session")
+def gcp_adc() -> None:
+    """Skip the dependent tests unless the GCP ADC can mint a token."""
+    reason = _gcp_unusable_reason()
+    if reason is not None:
+        pytest.skip(reason)
+
+
+requires_gcp = pytest.mark.usefixtures("gcp_adc")
 
 requires_azure = pytest.mark.skipif(
     not _azure_creds_available(),
@@ -254,7 +290,7 @@ class TestAWSProviderIntegration:
 
 
 class TestGCPProviderIntegration:
-    """Real GCP Secret Manager tests -- skipped when ADC not configured."""
+    """Real GCP Secret Manager tests -- skipped when the ADC is absent or cannot mint a token."""
 
     def _provider(self) -> "GCPProvider":
         return GCPProvider(GCPConfig(project_id=GCP_PROJECT_ID))
