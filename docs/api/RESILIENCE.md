@@ -354,6 +354,8 @@ was a known warm-up, so the surface can say "warming up" instead of
 "down". Pass a subclass as `unavailable_exc` to raise a backend-specific
 type instead.
 
+The message counts the calls `run()` made, the first one included, so a `budget_seconds=0.0` outage reads `ClickHouse unreachable after 0s (1 attempt): <last error>`. The `<name> recovered` and `<name> unavailable after resilience budget exhausted` log lines carry the same count in their `attempts` field.
+
 ### When to reach for which
 
 | You have | Reach for |
