@@ -231,7 +231,8 @@ the OTel SDK's own hook (LIFO order) to flush pending metrics; see
 from fastapi import FastAPI, Response
 from scalo.metrics import create_metrics
 
-app = FastAPI()
+# fastapi 0.142+ otherwise reads OTEL_EXPORTER_OTLP_ENDPOINT and adds http/protobuf exporters, which fail against a gRPC collector.
+app = FastAPI(telemetry={"auto_configure": False})
 m = create_metrics("my_service")
 
 @app.get("/metrics")

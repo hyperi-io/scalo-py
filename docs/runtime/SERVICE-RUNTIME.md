@@ -67,7 +67,8 @@ requests = m.counter("requests_total", "Total requests", ["method", "status"])
 
 # 5. Health -- /livez and /readyz
 health = HealthManager()
-app = FastAPI()
+# fastapi 0.142+ otherwise reads OTEL_EXPORTER_OTLP_ENDPOINT and adds http/protobuf exporters, which fail against a gRPC collector.
+app = FastAPI(telemetry={"auto_configure": False})
 app.include_router(create_health_router(health))
 
 # 6. Mark ready once dependencies are up
@@ -123,7 +124,8 @@ from scalo.metrics import create_metrics
 from scalo.health import HealthManager, create_health_router
 from scalo.runtime import get_runtime_paths
 
-app = FastAPI()
+# fastapi 0.142+ otherwise reads OTEL_EXPORTER_OTLP_ENDPOINT and adds http/protobuf exporters, which fail against a gRPC collector.
+app = FastAPI(telemetry={"auto_configure": False})
 health = HealthManager()
 app.include_router(create_health_router(health))
 

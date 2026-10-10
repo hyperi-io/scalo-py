@@ -116,7 +116,8 @@ from fastapi import FastAPI
 from scalo.health import HealthManager, create_health_router
 
 health = HealthManager()
-app = FastAPI()
+# fastapi 0.142+ otherwise reads OTEL_EXPORTER_OTLP_ENDPOINT and adds http/protobuf exporters, which fail against a gRPC collector.
+app = FastAPI(telemetry={"auto_configure": False})
 app.include_router(create_health_router(health))
 
 # At startup, after dependencies are connected:
