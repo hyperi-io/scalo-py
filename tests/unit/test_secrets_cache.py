@@ -11,7 +11,11 @@ from scalo.secrets.types import CacheConfig, SecretValue
 
 
 class TestDiskCache:
-    """Tests for DiskCache."""
+    """Tests for DiskCache.
+
+    Tests of the disk tier's mechanics opt in to the plaintext disk path, which
+    is off by default.
+    """
 
     def test_cache_disabled(self, tmp_path):
         """Test that disabled cache always returns None."""
@@ -27,7 +31,7 @@ class TestDiskCache:
 
     def test_set_and_get(self, tmp_path):
         """Test basic set and get."""
-        config = CacheConfig(enabled=True, directory=str(tmp_path))
+        config = CacheConfig(enabled=True, directory=str(tmp_path), allow_plaintext_disk_cache=True)
         cache = DiskCache(config)
 
         value = SecretValue(
@@ -46,7 +50,7 @@ class TestDiskCache:
 
     def test_cache_miss(self, tmp_path):
         """Test cache miss returns None."""
-        config = CacheConfig(enabled=True, directory=str(tmp_path))
+        config = CacheConfig(enabled=True, directory=str(tmp_path), allow_plaintext_disk_cache=True)
         cache = DiskCache(config)
 
         assert cache.get("nonexistent") is None
@@ -56,6 +60,7 @@ class TestDiskCache:
         config = CacheConfig(
             enabled=True,
             directory=str(tmp_path),
+            allow_plaintext_disk_cache=True,
             ttl_secs=60,
             stale_grace_secs=0,  # No grace period
         )
@@ -75,6 +80,7 @@ class TestDiskCache:
         config = CacheConfig(
             enabled=True,
             directory=str(tmp_path),
+            allow_plaintext_disk_cache=True,
             ttl_secs=60,  # 1 minute TTL
             stale_grace_secs=3600,  # 1 hour grace
         )
@@ -95,6 +101,7 @@ class TestDiskCache:
         config = CacheConfig(
             enabled=True,
             directory=str(tmp_path),
+            allow_plaintext_disk_cache=True,
             ttl_secs=60,
             stale_grace_secs=60,  # Only 1 minute grace
         )
@@ -111,7 +118,7 @@ class TestDiskCache:
 
     def test_delete(self, tmp_path):
         """Test deleting cache entry."""
-        config = CacheConfig(enabled=True, directory=str(tmp_path))
+        config = CacheConfig(enabled=True, directory=str(tmp_path), allow_plaintext_disk_cache=True)
         cache = DiskCache(config)
 
         value = SecretValue(data=b"data", fetched_at=datetime.now(UTC))
@@ -123,7 +130,7 @@ class TestDiskCache:
 
     def test_delete_nonexistent(self, tmp_path):
         """Test deleting nonexistent entry."""
-        config = CacheConfig(enabled=True, directory=str(tmp_path))
+        config = CacheConfig(enabled=True, directory=str(tmp_path), allow_plaintext_disk_cache=True)
         cache = DiskCache(config)
 
         # Should not raise, returns True (idempotent)
@@ -131,7 +138,7 @@ class TestDiskCache:
 
     def test_clear(self, tmp_path):
         """Test clearing all cache entries."""
-        config = CacheConfig(enabled=True, directory=str(tmp_path))
+        config = CacheConfig(enabled=True, directory=str(tmp_path), allow_plaintext_disk_cache=True)
         cache = DiskCache(config)
 
         # Add multiple entries
@@ -220,7 +227,7 @@ class TestDiskCache:
 
     def test_special_characters_in_name(self, tmp_path):
         """Test handling secret names with special characters."""
-        config = CacheConfig(enabled=True, directory=str(tmp_path))
+        config = CacheConfig(enabled=True, directory=str(tmp_path), allow_plaintext_disk_cache=True)
         cache = DiskCache(config)
 
         # Names that might cause filesystem issues
@@ -263,7 +270,7 @@ class TestDiskCache:
 
     def test_atomic_write(self, tmp_path):
         """Test that writes are atomic (temp file then rename)."""
-        config = CacheConfig(enabled=True, directory=str(tmp_path))
+        config = CacheConfig(enabled=True, directory=str(tmp_path), allow_plaintext_disk_cache=True)
         cache = DiskCache(config)
 
         value = SecretValue(data=b"data", fetched_at=datetime.now(UTC))
@@ -287,7 +294,7 @@ class TestDiskCache:
 
     def test_binary_data_roundtrip(self, tmp_path):
         """Test caching binary data with various byte values."""
-        config = CacheConfig(enabled=True, directory=str(tmp_path))
+        config = CacheConfig(enabled=True, directory=str(tmp_path), allow_plaintext_disk_cache=True)
         cache = DiskCache(config)
 
         # Include all byte values
@@ -318,9 +325,17 @@ class TestDiskCacheLogsNameNotValue:
     def _entry(self, fetched_at: datetime) -> SecretValue:
         return SecretValue(data=self.VALUE, fetched_at=fetched_at)
 
+    def _plaintext_cache(self, caplog, directory: Path, **overrides) -> DiskCache:
+        """Build an opted-in plaintext cache and drop its construction warning, which names no secret."""
+        cache = DiskCache(
+            CacheConfig(enabled=True, directory=str(directory), allow_plaintext_disk_cache=True, **overrides)
+        )
+        caplog.clear()
+        return cache
+
     def test_hit_stale_and_expired_paths(self, tmp_path, caplog):
         caplog.set_level("DEBUG", logger="scalo.secrets.cache")
-        cache = DiskCache(CacheConfig(enabled=True, directory=str(tmp_path), ttl_secs=60, stale_grace_secs=600))
+        cache = self._plaintext_cache(caplog, tmp_path, ttl_secs=60, stale_grace_secs=600)
         cache.set(self.NAME, self._entry(datetime.now(UTC)))
         assert cache.get(self.NAME) is not None
         cache.set(self.NAME, self._entry(datetime.now(UTC) - timedelta(minutes=5)))
@@ -345,7 +360,7 @@ class TestDiskCacheLogsNameNotValue:
     )
     def test_read_failure_does_not_log_the_value(self, tmp_path, caplog, corrupt):
         caplog.set_level("DEBUG", logger="scalo.secrets.cache")
-        cache = DiskCache(CacheConfig(enabled=True, directory=str(tmp_path)))
+        cache = self._plaintext_cache(caplog, tmp_path)
         cache.set(self.NAME, self._entry(datetime.now(UTC)))
         cache._key_to_path(self.NAME).write_bytes(corrupt)
         assert cache.get(self.NAME) is None
@@ -365,7 +380,7 @@ class TestDiskCacheLogsNameNotValue:
     def test_write_failure_does_not_log_the_value(self, tmp_path, caplog):
         caplog.set_level("DEBUG", logger="scalo.secrets.cache")
         cache_dir = tmp_path / "cache"
-        cache = DiskCache(CacheConfig(enabled=True, directory=str(cache_dir)))
+        cache = self._plaintext_cache(caplog, cache_dir)
         cache_dir.rmdir()
         cache.set(self.NAME, self._entry(datetime.now(UTC)))
         assert any(r.getMessage() == "Cache write failed" for r in caplog.records)

@@ -107,7 +107,6 @@ async def test_enabled_cache_serves_repeat_reads_from_cache(tmp_path, use_async)
     assert await _get(manager, secret_file, use_async=use_async) == b"v1"
 
     assert provider.reads == 1
-    assert len(list((tmp_path / "cache").glob("*.cache"))) == 1
 
 
 @both_paths

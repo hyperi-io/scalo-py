@@ -129,6 +129,7 @@ class TestCacheConfig:
         assert config.refresh_interval_secs == 1800
         assert config.refresh_jitter_secs == 300
         assert config.encryption_key is None
+        assert config.allow_plaintext_disk_cache is False
 
     def test_custom_values(self):
         """Test CacheConfig with custom values."""

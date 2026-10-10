@@ -26,7 +26,9 @@ from scalo.secrets.types import CacheConfig, SecretValue
 
 @pytest.fixture
 def cache(tmp_path):
-    cfg = CacheConfig(enabled=True, directory=str(tmp_path), ttl_secs=3600, stale_grace_secs=0)
+    cfg = CacheConfig(
+        enabled=True, directory=str(tmp_path), ttl_secs=3600, stale_grace_secs=0, allow_plaintext_disk_cache=True
+    )
     return DiskCache(cfg)
 
 
@@ -44,7 +46,13 @@ def test_cache_file_has_0o600_mode(cache, tmp_path):
 
 @pytest.mark.skipif(sys.platform == "win32", reason="POSIX mode semantics only")
 def test_cache_dir_has_0o700_mode(tmp_path):
-    cfg = CacheConfig(enabled=True, directory=str(tmp_path / "fresh"), ttl_secs=3600, stale_grace_secs=0)
+    cfg = CacheConfig(
+        enabled=True,
+        directory=str(tmp_path / "fresh"),
+        ttl_secs=3600,
+        stale_grace_secs=0,
+        allow_plaintext_disk_cache=True,
+    )
     DiskCache(cfg)
     mode = stat.S_IMODE((tmp_path / "fresh").stat().st_mode)
     assert mode == 0o700, f"expected 0o700, got {oct(mode)}"

@@ -64,7 +64,8 @@ sm = SecretsManager.from_config({
         "ttl_secs": 3600,
         "stale_grace_secs": 86400,
         "refresh_interval_secs": 1800,
-        "encryption_key": "...",  # optional cache-at-rest encryption
+        "encryption_key": "...",  # seals disk entries; without it the disk tier is off
+        "allow_plaintext_disk_cache": False,  # True permits unencrypted disk entries; refused in production
     },
     "env_prefix": "MYSVC",
     "sources": {
@@ -123,7 +124,9 @@ For `env_prefix="DFE"` and source `db_password`, the manager checks
 
 ## Caching
 
-Two tiers, both on by default: an in-process memory cache, one per `SecretsManager` instance, and a disk cache, written in plaintext unless `encryption_key` is set, which seals each entry with AES-256-GCM (via the `cryptography` package; there is no `[cache]` extra). Both tiers expire on `ttl_secs`. On provider failure the manager returns the cached value while it is within `stale_grace_secs` past TTL, so your service keeps running through a secrets-backend outage.
+Two tiers: an in-process memory cache, one per `SecretsManager` instance, and a disk cache. Both expire on `ttl_secs`. On provider failure the manager returns the most recent cached value from either tier while it is within `stale_grace_secs` past TTL, so your service keeps running through a secrets-backend outage.
+
+The disk tier writes only when `encryption_key` is set, which seals each entry with AES-256-GCM (via the `cryptography` package; there is no `[cache]` extra), or when `allow_plaintext_disk_cache` is True. Without either it is off, the cache is memory-only, and a plaintext file found in the cache directory is not read. The plaintext opt-in is ignored once `encryption_key` is set, and refused at startup when the app environment (`APP_ENV`, `ENVIRONMENT`, `ENV`) is `production` or `prod`.
 
 `"enabled": False` turns off both tiers. Every read goes to the provider, nothing is held in memory or written to disk, there is no stale-grace fallback, and a provider failure raises. Use it where a secret rotates and a stale value is worse than an error.
 

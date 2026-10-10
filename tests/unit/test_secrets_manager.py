@@ -120,7 +120,8 @@ class TestSecretsManager:
         cache_dir = tmp_path / "cache"
         secret_file.write_text("persistent-value")
 
-        cache_config = CacheConfig(enabled=True, directory=str(cache_dir))
+        # The disk tier writes only sealed entries unless plaintext is opted in.
+        cache_config = CacheConfig(enabled=True, directory=str(cache_dir), encryption_key=b"k" * 32)
 
         # First manager - populate cache
         manager1 = SecretsManager(cache=cache_config)
@@ -258,6 +259,7 @@ class TestSecretsManager:
         cache_config = CacheConfig(
             enabled=True,
             directory=str(tmp_path / "cache"),
+            encryption_key=b"k" * 32,
         )
 
         # First instance

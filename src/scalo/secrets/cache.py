@@ -10,6 +10,7 @@ from datetime import UTC, datetime
 from pathlib import Path
 
 from .._env_compat import control_var
+from .exceptions import CacheError
 from .types import CacheConfig, SecretValue
 
 logger = logging.getLogger(__name__)
@@ -31,14 +32,23 @@ _CACHE_FILE_MODE = 0o600
 _CACHE_DIR_MODE = 0o700
 
 
+def _is_production() -> bool:
+    """Return True when the app environment is ``production`` or ``prod``, matching scalo-rs."""
+    # Imported on use: scalo.config.config resolves settings files when it is first imported.
+    from scalo.config.config import get_app_env
+
+    return get_app_env().lower() in ("production", "prod")
+
+
 class DiskCache:
     """Disk-based cache for secrets with optional encryption.
 
     Features:
     - TTL-based expiration with stale grace period
-    - Optional AES-256-GCM encryption at rest (CNSA 2.0 symmetric target;
+    - AES-256-GCM encryption at rest (CNSA 2.0 symmetric target;
       shares the wire format with the scalo-rs secrets cache, see
-      :mod:`scalo.secrets.crypto`)
+      :mod:`scalo.secrets.crypto`). Without ``encryption_key`` the disk
+      tier is off unless ``allow_plaintext_disk_cache`` is set.
     - Atomic writes via unique tempfile + fsync + os.replace
     - Owner-only file permissions (0o600) on cache files
 
@@ -68,7 +78,15 @@ class DiskCache:
                 "Cache encryption requested but cryptography not installed. Install with: pip install cryptography"
             )
 
-        if config.enabled:
+        plaintext = config.allow_plaintext_disk_cache and not config.encryption_key
+        if config.enabled and plaintext and _is_production():
+            raise CacheError(
+                "allow_plaintext_disk_cache is not permitted in production -- set encryption_key, "
+                "or leave the disk tier off (memory-only)"
+            )
+        self._disk_enabled = config.enabled and (self._enc_key is not None or plaintext)
+
+        if self._disk_enabled:
             self._directory.mkdir(parents=True, exist_ok=True)
             # Tighten dir perms even if mkdir's mode arg was ignored
             # under umask. No-op on Windows (chmod sets read-only only).
@@ -76,6 +94,13 @@ class DiskCache:
                 self._directory.chmod(_CACHE_DIR_MODE)
             except (OSError, NotImplementedError):
                 pass
+            if plaintext:
+                logger.warning(
+                    "Secrets disk cache is writing UNENCRYPTED secrets (allow_plaintext_disk_cache, no encryption_key)",
+                    extra={"directory": str(self._directory)},
+                )
+        elif config.enabled:
+            logger.debug("Secrets disk cache is off (no encryption_key); caching in memory only")
 
     @property
     def config(self) -> CacheConfig:
@@ -120,7 +145,7 @@ class DiskCache:
         Returns:
             SecretValue if cache hit and not expired, None otherwise.
         """
-        if not self._config.enabled:
+        if not self._disk_enabled:
             return None
 
         path = self._key_to_path(secret_name)
@@ -180,8 +205,11 @@ class DiskCache:
         racing on the same secret name no longer share a ``.tmp`` path,
         and a crash mid-write can't leave the final path pointing at
         truncated data. File mode is set to 0o600 before rename.
+
+        Writes nothing unless the entry can be sealed with ``encryption_key`` or
+        ``allow_plaintext_disk_cache`` is set; the memory tier still serves it.
         """
-        if not self._config.enabled:
+        if not self._disk_enabled:
             return
 
         path = self._key_to_path(secret_name)

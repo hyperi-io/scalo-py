@@ -214,6 +214,7 @@ class SecretsManager:
             refresh_interval_secs=cache_cfg.get("refresh_interval_secs", 1800),
             refresh_jitter_secs=cache_cfg.get("refresh_jitter_secs", 300),
             encryption_key=encryption_key,
+            allow_plaintext_disk_cache=cache_cfg.get("allow_plaintext_disk_cache", False),
         )
 
         env_prefix = config.get("env_prefix") or control_var("SECRETS_ENV_PREFIX")
@@ -734,14 +735,17 @@ class SecretsManager:
         return p
 
     def _memory_get(self, cache_key: _CacheKey) -> SecretValue | None:
-        """Return the fresh memory-cache entry, or None when absent, expired or caching is disabled."""
+        """Return the memory-cache entry at any age, or None when absent or caching is disabled."""
         if not self._cache.config.enabled:
             return None
         with self._memory_cache_lock:
-            cached = self._memory_cache.get(cache_key)
-        if cached is None or cached.is_expired(self._cache.config.ttl_secs):
-            return None
-        return cached
+            return self._memory_cache.get(cache_key)
+
+    def _stale_fallback(self, *candidates: SecretValue | None) -> SecretValue | None:
+        """Return the most recently fetched candidate still inside the stale-grace window, or None."""
+        cfg = self._cache.config
+        usable = [c for c in candidates if c is not None and c.is_within_grace(cfg.ttl_secs, cfg.stale_grace_secs)]
+        return max(usable, key=lambda c: c.fetched_at, default=None)
 
     def _memory_put(self, cache_key: _CacheKey, value: SecretValue) -> SecretValue | None:
         """Store a value in the memory cache and return the entry it replaced.
@@ -829,10 +833,10 @@ class SecretsManager:
         cache_key = _CacheKey(provider_name, path, key or "")
         disk_key = cache_key.to_disk_str()
 
-        cached = self._memory_get(cache_key)
-        if cached is not None:
+        remembered = self._memory_get(cache_key)
+        if remembered is not None and not remembered.is_expired(self._cache.config.ttl_secs):
             logger.debug("Memory cache hit", extra={"key": disk_key})
-            return cached
+            return remembered
 
         # Check disk cache
         cached = self._cache.get(disk_key)
@@ -860,16 +864,13 @@ class SecretsManager:
             return value
 
         except (SecretNotFoundError, ProviderError) as e:
-            # Try stale cache fallback
-            if cached and cached.is_within_grace(
-                self._cache.config.ttl_secs,
-                self._cache.config.stale_grace_secs,
-            ):
+            stale = self._stale_fallback(remembered, cached)
+            if stale is not None:
                 logger.warning(
                     "Provider failed, using stale cache",
                     extra={"provider": provider_name, "error": str(e), "key": disk_key},
                 )
-                return cached
+                return stale
             raise
 
     def _get_from_provider_sync(
@@ -882,9 +883,9 @@ class SecretsManager:
         cache_key = _CacheKey(provider_name, path, key or "")
         disk_key = cache_key.to_disk_str()
 
-        cached = self._memory_get(cache_key)
-        if cached is not None:
-            return cached
+        remembered = self._memory_get(cache_key)
+        if remembered is not None and not remembered.is_expired(self._cache.config.ttl_secs):
+            return remembered
 
         # Check disk cache
         cached = self._cache.get(disk_key)
@@ -910,16 +911,13 @@ class SecretsManager:
             return value
 
         except (SecretNotFoundError, ProviderError) as e:
-            # Try stale cache fallback
-            if cached and cached.is_within_grace(
-                self._cache.config.ttl_secs,
-                self._cache.config.stale_grace_secs,
-            ):
+            stale = self._stale_fallback(remembered, cached)
+            if stale is not None:
                 logger.warning(
                     "Provider failed, using stale cache",
                     extra={"provider": provider_name, "error": str(e)},
                 )
-                return cached
+                return stale
             raise
 
     def on_rotation(
