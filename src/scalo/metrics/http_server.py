@@ -14,6 +14,9 @@ template and status code. Its count gives the request and error rates and its
 buckets the latency percentiles. Over OTLP it exports as
 ``http.server.request.duration``.
 
+fastapi 0.142+ records the same instrument, so pass ``"metrics": False`` in
+``FastAPI(telemetry=...)`` or each request is counted twice.
+
 Example:
     >>> app.add_middleware(HttpServerMetricsMiddleware, metrics=metrics_manager)
 """

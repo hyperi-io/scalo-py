@@ -248,6 +248,22 @@ In OTLP-only mode (`prometheus_scrape: false`, no Prometheus reader),
 the endpoint returns an informational message -- scraping is
 unnecessary because metrics push to the collector.
 
+### Request metrics
+
+`HttpServerMetricsMiddleware` records one histogram,
+`http_server_request_duration_seconds` (`http.server.request.duration`
+over OTLP), labelled by method, route template and status code.
+
+fastapi 0.142+ records the same instrument itself, so turn its copy off
+or every request is counted twice:
+
+```python
+from scalo.metrics.http_server import HttpServerMetricsMiddleware
+
+app = FastAPI(telemetry={"auto_configure": False, "metrics": False})
+app.add_middleware(HttpServerMetricsMiddleware, metrics=m)
+```
+
 ---
 
 ## Process and container collectors
