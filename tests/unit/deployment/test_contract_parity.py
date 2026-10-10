@@ -38,6 +38,7 @@ from scalo.deployment import (
     SecretEnvContract,
     SecretGroupContract,
     SecurityContract,
+    ServiceAccount,
     WritablePath,
     generate_chart,
 )
@@ -181,6 +182,7 @@ def test_the_scalo_rs_contract_parses_every_v4_field() -> None:
         run_as_user=1001, run_as_group=1002, fs_group=1003, capabilities_add=["NET_BIND_SERVICE"]
     )
     assert contract.singleton is False
+    assert contract.service_account is ServiceAccount.NONE
     assert contract.config_schema is not None
     assert contract.config_schema["$defs"]["SourceSection"]["properties"]["batch_size"]["x-scalo-dial"] == "big"
 
@@ -265,6 +267,9 @@ def test_an_unknown_key_is_refused(parent: str) -> None:
         ("security.read_only_root_filesystem", "maybe", "bool_parsing"),
         ("security.capabilities_add", "NET_ADMIN", "list_type"),
         ("singleton", "maybe", "bool_parsing"),
+        ("service_account", "external", "enum"),
+        ("service_account", "None", "enum"),
+        ("service_account", True, "enum"),
     ],
 )
 def test_a_wrong_type_is_refused(path: str, value: Any, kind: str) -> None:
@@ -411,9 +416,20 @@ def test_a_contract_without_the_v4_fields_emits_their_defaults_as_scalo_rs_does(
         "read_only_root_filesystem": True,
     }
     assert emitted["singleton"] is False
+    assert "service_account" not in emitted
     assert "writable_paths" not in emitted
     assert "resources" not in emitted
     assert "optional" not in emitted["secrets"][0]
+
+
+def test_service_account_none_is_emitted_and_own_is_left_out() -> None:
+    none = _bare().model_copy(update={"service_account": ServiceAccount.NONE})
+    assert json.loads(none.to_json())["service_account"] == "none"
+    assert DeploymentContract.from_json(none.to_json()).service_account is ServiceAccount.NONE
+    own = DeploymentContract.model_validate({**json.loads(_bare().to_json()), "service_account": "own"})
+    assert own.service_account is ServiceAccount.OWN
+    assert "service_account" not in json.loads(own.to_json())
+    assert _bare().service_account is ServiceAccount.OWN
 
 
 def test_unset_parts_of_v4_fields_are_left_out() -> None:
@@ -436,6 +452,7 @@ def test_a_v3_contract_loads_with_the_v4_defaults() -> None:
         "resources",
         "security",
         "singleton",
+        "service_account",
         "config_mount_path",
         "health.startup_budget_seconds",
         "extra_ports.0.public",
@@ -450,6 +467,7 @@ def test_a_v3_contract_loads_with_the_v4_defaults() -> None:
     assert contract.resources.is_empty()
     assert contract.security == SecurityContract()
     assert contract.singleton is False
+    assert contract.service_account is ServiceAccount.OWN
     assert contract.config_mount_path == ""
     assert contract.health.startup_budget_seconds == 150
     assert contract.extra_ports[0].public is False

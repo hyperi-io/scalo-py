@@ -15,7 +15,7 @@ from scalo.deployment import (
     PortContract, SecretGroupContract, SecretEnvContract,
     EnabledCondition, EqualsCondition, OneOfCondition,
     WritablePath, ResourcesContract, ResourceList, SecurityContract,
-    ImageProfile, DIAL_KEYWORD, DIAL_TIERS,
+    ServiceAccount, ImageProfile, DIAL_KEYWORD, DIAL_TIERS,
 )
 ```
 
@@ -55,6 +55,7 @@ from scalo.deployment import (
 | `resources` | `ResourcesContract` | empty, left out when empty | The app's own requests and limits. Empty leaves the chart default (v4) |
 | `security` | `SecurityContract` | uid/gid/fsGroup 1000, read-only root | Identity and capabilities the image runs with (v4) |
 | `singleton` | `bool` | `False` | Exactly one pod: nothing autoscales it, and a new pod starts only after the old one stops (v4) |
+| `service_account` | `ServiceAccount` | `OWN`, left out while `own` | `NONE` for an app that calls no Kubernetes API: the scalo-service chart creates no ServiceAccount and the pod names none (v4) |
 
 `image_registry` has no default, and scalo-py refuses a missing or blank one when the contract is built. scalo-rs refuses it later, in `validate()`. Read an organisation-wide value from the cascade:
 
@@ -251,6 +252,8 @@ DeploymentContract(
 | | `capabilities_add` | `[]` | Upper-case Linux capability names without `CAP_`, added after every other one is dropped |
 
 A chart always adds a scratch `/tmp` beside the declared paths.
+
+`service_account=ServiceAccount.NONE` (`"none"` in the JSON) is for an app with no Kubernetes client and no use for a token. The scalo-service chart then creates no ServiceAccount and leaves `serviceAccountName` off the pod, so it runs as the namespace's `default` account with the token still unmounted. Construction refuses any value other than `own` or `none`.
 
 Construction refuses what scalo-rs's `validate()` refuses here: a writable path name or path outside the rules above, a control character in a writable path's `path`, `size`, `size_limit` or `when`, two writable paths with one name or one mount path (a trailing `/` ignored), a persistent path with a blank `size`, a capability that is not an upper-case name, a `singleton` with KEDA on, and KEDA on with nothing to scale on (see [KEDA.md](KEDA.md)).
 

@@ -84,6 +84,7 @@ if not DEPLOYMENT_AVAILABLE:
     SecretEnvContract = _missing  # type: ignore[assignment]
     SecretGroupContract = _missing  # type: ignore[assignment]
     SecurityContract = _missing  # type: ignore[assignment]
+    ServiceAccount = _missing  # type: ignore[assignment]
     WritablePath = _missing  # type: ignore[assignment]
     KafkaLagTrigger = _missing  # type: ignore[assignment]
     KedaConfig = _missing  # type: ignore[assignment]
@@ -154,6 +155,7 @@ else:
         SecretEnvContract,
         SecretGroupContract,
         SecurityContract,
+        ServiceAccount,
         WritablePath,
     )
     from .emit import (
@@ -261,6 +263,7 @@ __all__ = [
     "SecretEnvContract",
     "SecretGroupContract",
     "SecurityContract",
+    "ServiceAccount",
     "WritablePath",
     "argocd_dest_namespace_from_cascade",
     "argocd_repo_url_from_cascade",
