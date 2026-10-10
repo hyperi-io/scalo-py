@@ -30,6 +30,12 @@ With no `encryption_key` the disk cache wrote each secret as hex JSON. It now wr
 
 **Consumer adjustment** -- none. A consumer that must hide a user-at-IPv4 value masks its field by name with `SensitiveDataFilter.add_sensitive_fields`.
 
+### An unreachable OpenBao fails login as `ProviderError` (BEHAVIOUR CHANGE)
+
+The AppRole and Kubernetes logins raised `AuthenticationError` for every failure, a refusal and a connection error alike, with the cause dropped. A 4xx answer is still `AuthenticationError`. A server that cannot be reached, answers 5xx or sends a body that is not JSON now raises plain `ProviderError`. Both chain the underlying `httpx` error as `__cause__`.
+
+**Consumer adjustment** -- code that catches `AuthenticationError` to handle an outage catches `ProviderError` as well, or instead. `AuthenticationError` subclasses `ProviderError`, so a handler for `ProviderError` still sees both.
+
 ### Rotation events need a version on both sides (BEHAVIOUR CHANGE)
 
 A `RotationEvent` fires only when the cached and the fetched `SecretValue.version` are both set and differ, so `new_version` is never `None` and an unversioned value no longer reports every fetch as a rotation.
