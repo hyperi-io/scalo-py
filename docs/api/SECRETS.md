@@ -60,6 +60,7 @@ sm = SecretsManager.from_config({
     "aws": {"region": "ap-southeast-2"},
     "azure": {"vault_url": "https://my-vault.vault.azure.net/"},
     "cache": {
+        "enabled": True,  # False turns off the memory and disk tiers
         "ttl_secs": 3600,
         "stale_grace_secs": 86400,
         "refresh_interval_secs": 1800,
@@ -122,12 +123,9 @@ For `env_prefix="DFE"` and source `db_password`, the manager checks
 
 ## Caching
 
-Two-tier: in-process memory cache (per-`SecretsManager`, class-level
-shared) plus optional encrypted disk cache (AES-256-GCM, via the
-`cryptography` package; there is no `[cache]` extra). On
-provider failure the manager returns the cached value if still within
-`stale_grace_secs` past TTL — your service keeps running through a
-Vault outage.
+Two tiers, both on by default: an in-process memory cache, one per `SecretsManager` instance, and a disk cache, written in plaintext unless `encryption_key` is set, which seals each entry with AES-256-GCM (via the `cryptography` package; there is no `[cache]` extra). Both tiers expire on `ttl_secs`. On provider failure the manager returns the cached value while it is within `stale_grace_secs` past TTL, so your service keeps running through a secrets-backend outage.
+
+`"enabled": False` turns off both tiers. Every read goes to the provider, nothing is held in memory or written to disk, there is no stale-grace fallback, and a provider failure raises. Use it where a secret rotates and a stale value is worse than an error.
 
 ```python
 # Background refresh prevents cold-cache thundering herds
@@ -138,6 +136,8 @@ await sm.stop_refresh()   # on shutdown
 
 Background refresh adds jitter (`refresh_jitter_secs`, default 5 min) so
 a fleet doesn't slam the secrets backend at the same instant.
+
+Refresh re-reads the secrets held in the memory cache, so with `"enabled": False` it has nothing to refresh.
 
 ---
 
@@ -157,6 +157,8 @@ sm.on_rotation(on_rotate, names=["db_password"])  # None = all secrets
 Triggered when the cached `SecretValue.version` differs from the freshly
 fetched value. File provider derives version from `mtime:size`; cloud
 providers use the native version ID.
+
+With `"enabled": False` there is no cached version to compare against, so no rotation event fires.
 
 ---
 

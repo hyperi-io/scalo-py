@@ -168,7 +168,7 @@ class TestSecretsManager:
             events.append(event)
 
         cache_config = CacheConfig(
-            enabled=False,  # Disable disk caching to simplify test
+            enabled=True,  # Rotation compares against the cached version
             directory=str(tmp_path / "cache"),
             ttl_secs=0,  # TTL of 0 means always re-fetch
         )

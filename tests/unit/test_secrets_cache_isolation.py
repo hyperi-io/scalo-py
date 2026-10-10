@@ -37,18 +37,15 @@ def test_two_managers_with_distinct_file_providers_do_not_share_cache(tmp_path):
     _write(secret_path_a, b"TENANT_A_SECRET")
     _write(secret_path_b, b"TENANT_B_SECRET")
 
-    # Disable disk cache so memory cache is the only path
-    disabled_cache = CacheConfig(enabled=False)
-
     mgr_a = SecretsManager(
         providers={"file": FileProvider()},
         sources={"shared": SourceConfig(provider=ProviderType.FILE, path=str(secret_path_a))},
-        cache_config=disabled_cache,
+        cache_config=CacheConfig(enabled=True, directory=str(tmp_path / "cache_a")),
     )
     mgr_b = SecretsManager(
         providers={"file": FileProvider()},
         sources={"shared": SourceConfig(provider=ProviderType.FILE, path=str(secret_path_b))},
-        cache_config=disabled_cache,
+        cache_config=CacheConfig(enabled=True, directory=str(tmp_path / "cache_b")),
     )
 
     val_a = mgr_a.get_sync("shared")
@@ -80,7 +77,7 @@ def test_same_provider_name_different_path_no_bleed(tmp_path):
             "one": SourceConfig(provider=ProviderType.FILE, path=str(p1)),
             "two": SourceConfig(provider=ProviderType.FILE, path=str(p2)),
         },
-        cache_config=CacheConfig(enabled=False),
+        cache_config=CacheConfig(enabled=True, directory=str(tmp_path / "cache")),
     )
 
     assert mgr.get_sync("one").data == b"VALUE_ONE"
@@ -98,7 +95,7 @@ def test_path_containing_colons_round_trips(tmp_path):
     mgr = SecretsManager(
         providers={"file": FileProvider()},
         sources={"weird": SourceConfig(provider=ProviderType.FILE, path=str(weird_path))},
-        cache_config=CacheConfig(enabled=False),
+        cache_config=CacheConfig(enabled=True, directory=str(tmp_path / "cache")),
     )
 
     val = mgr.get_sync("weird")

@@ -71,7 +71,7 @@ class CacheConfig:
     """Configuration for secrets caching."""
 
     enabled: bool = True
-    """Enable caching."""
+    """Enable caching. False turns off the memory and disk tiers and the stale-grace fallback."""
 
     directory: str | None = None
     """Cache directory. None = auto-detect."""

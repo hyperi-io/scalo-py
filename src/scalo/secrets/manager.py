@@ -56,7 +56,7 @@ class SecretsManager:
 
     Features:
     - Multi-provider support (file, OpenBao/Vault, AWS)
-    - Two-tier caching (memory + disk)
+    - Two-tier caching (memory + disk); ``CacheConfig(enabled=False)`` turns both off
     - Stale cache fallback when providers unavailable
     - Background refresh with jitter
     - Rotation detection and callbacks
@@ -733,6 +733,29 @@ class SecretsManager:
             raise ProviderNotConfiguredError(provider_name)
         return p
 
+    def _memory_get(self, cache_key: _CacheKey) -> SecretValue | None:
+        """Return the fresh memory-cache entry, or None when absent, expired or caching is disabled."""
+        if not self._cache.config.enabled:
+            return None
+        with self._memory_cache_lock:
+            cached = self._memory_cache.get(cache_key)
+        if cached is None or cached.is_expired(self._cache.config.ttl_secs):
+            return None
+        return cached
+
+    def _memory_put(self, cache_key: _CacheKey, value: SecretValue) -> SecretValue | None:
+        """Store a value in the memory cache and return the entry it replaced.
+
+        Stores nothing and returns None when caching is disabled, so rotation
+        detection has no previous version to compare against.
+        """
+        if not self._cache.config.enabled:
+            return None
+        with self._memory_cache_lock:
+            old_value = self._memory_cache.get(cache_key)
+            self._memory_cache[cache_key] = value
+        return old_value
+
     def _env_fallback_var(self, name: str, source: SourceConfig) -> str | None:
         """Compute the ENV var name to use as fallback for a source.
 
@@ -806,19 +829,15 @@ class SecretsManager:
         cache_key = _CacheKey(provider_name, path, key or "")
         disk_key = cache_key.to_disk_str()
 
-        # Check memory cache
-        with self._memory_cache_lock:
-            if cache_key in self._memory_cache:
-                cached = self._memory_cache[cache_key]
-                if not cached.is_expired(self._cache.config.ttl_secs):
-                    logger.debug("Memory cache hit", extra={"key": disk_key})
-                    return cached
+        cached = self._memory_get(cache_key)
+        if cached is not None:
+            logger.debug("Memory cache hit", extra={"key": disk_key})
+            return cached
 
         # Check disk cache
         cached = self._cache.get(disk_key)
         if cached and not cached.is_expired(self._cache.config.ttl_secs):
-            with self._memory_cache_lock:
-                self._memory_cache[cache_key] = cached
+            self._memory_put(cache_key, cached)
             logger.debug("Disk cache hit", extra={"key": disk_key})
             return cached
 
@@ -830,11 +849,7 @@ class SecretsManager:
         try:
             value = await provider.get_async(path, key)
 
-            # Update caches
-            with self._memory_cache_lock:
-                old_value = self._memory_cache.get(cache_key)
-                self._memory_cache[cache_key] = value
-
+            old_value = self._memory_put(cache_key, value)
             self._cache.set(disk_key, value)
 
             # Check for rotation
@@ -867,18 +882,14 @@ class SecretsManager:
         cache_key = _CacheKey(provider_name, path, key or "")
         disk_key = cache_key.to_disk_str()
 
-        # Check memory cache
-        with self._memory_cache_lock:
-            if cache_key in self._memory_cache:
-                cached = self._memory_cache[cache_key]
-                if not cached.is_expired(self._cache.config.ttl_secs):
-                    return cached
+        cached = self._memory_get(cache_key)
+        if cached is not None:
+            return cached
 
         # Check disk cache
         cached = self._cache.get(disk_key)
         if cached and not cached.is_expired(self._cache.config.ttl_secs):
-            with self._memory_cache_lock:
-                self._memory_cache[cache_key] = cached
+            self._memory_put(cache_key, cached)
             return cached
 
         # Fetch from provider
@@ -889,11 +900,7 @@ class SecretsManager:
         try:
             value = provider.get_sync(path, key)
 
-            # Update caches
-            with self._memory_cache_lock:
-                old_value = self._memory_cache.get(cache_key)
-                self._memory_cache[cache_key] = value
-
+            old_value = self._memory_put(cache_key, value)
             self._cache.set(disk_key, value)
 
             # Check for rotation
