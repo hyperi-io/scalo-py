@@ -12,6 +12,30 @@ The classmethod did nothing. The memory cache belongs to each instance, so there
 
 **Consumer adjustment** -- call `clear_cache()` on the instance, which empties its memory and disk tiers. `SecretsManager.clear_memory_cache()` now raises `AttributeError`.
 
+### `CacheConfig(enabled=False)` turns off the memory cache too (BEHAVIOUR CHANGE)
+
+`enabled=False` used to switch off only the disk tier, and the in-process memory cache still served each value for `ttl_secs`. Now every read goes to the provider, there is no stale-grace fallback, and a provider failure raises. See [api/SECRETS.md](api/SECRETS.md#caching).
+
+**Consumer adjustment** -- a consumer that wants in-process caching sets `enabled: true`. One that turned caching off so a rotated secret is read at once needs no change.
+
+### The secrets disk tier writes only sealed entries, or plaintext under an opt-in (BEHAVIOUR CHANGE)
+
+With no `encryption_key` the disk cache wrote each secret as hex JSON. It now writes only with `encryption_key` set or `allow_plaintext_disk_cache: true`, and otherwise caches in memory only and does not read a plaintext file it finds. The opt-in is refused when the app environment is `production` or `prod`.
+
+**Consumer adjustment** -- a consumer that needs cached secrets to survive a restart sets `encryption_key`. Plaintext entries already on disk are no longer read, so delete them.
+
+### L3 email redaction needs a letter in the domain's last label (BEHAVIOUR CHANGE)
+
+`pkg@1.2.3`, npm and pip specs such as `@scope/pkg@2.0.0`, and `user@10.0.0.1` now pass through unredacted. Literal, `%40` and `%2540` addresses are redacted as before. See [core-pillars/LOGGING.md](core-pillars/LOGGING.md#layer-3-email-addresses).
+
+**Consumer adjustment** -- none. A consumer that must hide a user-at-IPv4 value masks its field by name with `SensitiveDataFilter.add_sensitive_fields`.
+
+### Rotation events need a version on both sides (BEHAVIOUR CHANGE)
+
+A `RotationEvent` fires only when the cached and the fetched `SecretValue.version` are both set and differ, so `new_version` is never `None` and an unversioned value no longer reports every fetch as a rotation.
+
+**Consumer adjustment** -- none, unless a callback relied on events from a provider that returns no version.
+
 ### `scalo.deployment.topology` is removed (API CHANGE)
 
 The module (`DeploymentTopology`, `load_topology` and its errors) loaded a cross-app topology manifest for a `hyperi-ci` command that no longer exists, and nothing else read it. `scalo.deployment` never exported it.
