@@ -36,6 +36,12 @@ The AppRole and Kubernetes logins raised `AuthenticationError` for every failure
 
 **Consumer adjustment** -- code that catches `AuthenticationError` to handle an outage catches `ProviderError` as well, or instead. `AuthenticationError` subclasses `ProviderError`, so a handler for `ProviderError` still sees both.
 
+### HTTP retry logs name the error by class and status (BEHAVIOUR CHANGE)
+
+stamina's default retry hooks recorded `repr()` of the httpx error, which carries the request URL. `HttpClient` and `AsyncHttpClient` now hand them a carrier whose repr is the class plus any status, so `stamina.caused_by` reads `HTTPStatusError(status=503)` or `ConnectError`. The Prometheus `stamina_retries_total` `error_type` label for these retries reads `scalo.http.client._RetriedHTTPError` where it read `httpx.HTTPStatusError`, `httpx.ConnectError` and so on. Callers still receive the original httpx exception. See [api/HTTP-CLIENT.md](api/HTTP-CLIENT.md#observability).
+
+**Consumer adjustment** -- a dashboard or alert that filters retries on an httpx `error_type` value filters on `scalo.http.client._RetriedHTTPError`, and reads the class and status from the log field.
+
 ### Rotation events need a version on both sides (BEHAVIOUR CHANGE)
 
 A `RotationEvent` fires only when the cached and the fetched `SecretValue.version` are both set and differ, so `new_version` is never `None` and an unversioned value no longer reports every fetch as a rotation.

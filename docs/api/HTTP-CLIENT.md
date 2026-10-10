@@ -2,9 +2,7 @@
 
 Sync and async HTTP clients built on `httpx`, with `stamina`-driven
 retries (exponential backoff + jitter) and a 30 s default timeout.
-Pylib wires `httpx + stamina + loguru`; Prometheus / structlog
-hooks are Stamina-library opt-ins you wire at your own site if
-needed. Replaces ad-hoc `requests` / `httpx` usage where Bandit's
+stamina's own retry hooks log and count each retry (see [Observability](#observability)). Replaces ad-hoc `requests` / `httpx` usage where Bandit's
 B113 (request without timeout) keeps biting.
 
 ```bash
@@ -32,9 +30,7 @@ data = response.json()
 - Stamina retries cover the cases everyone forgets: transport errors and
   5xx server errors, with exponential backoff and jitter. 4xx errors
   surface immediately — retrying client errors is a bug.
-- Stamina exposes Prometheus / structlog hooks; scalo-py does not wire
-  them. If you want retry attempts on `/metrics`, follow Stamina's
-  own setup at your site.
+- A retry is logged and counted by stamina's default hooks, which name the error by class and status only, never the request URL.
 - `stamina.set_testing(True)` disables backoff in tests so suites stay
   fast and deterministic.
 
@@ -162,10 +158,9 @@ finally:
 
 ## Observability
 
-Pylib wires the HTTP client to `httpx + stamina + loguru` only.
-Stamina has its own Prometheus / structlog integration hooks --
-opt in at your own site if you want retry-attempt metrics or
-structured retry logs. Pylib doesn't auto-wire them.
+scalo-py adds no retry hooks of its own. stamina enables its defaults whatever the app does: a `stamina.retry_scheduled` warning on the `stamina` logger (through structlog instead when structlog is installed), and a Prometheus retry counter when `prometheus_client` is importable. Call `stamina.instrumentation.set_on_retry_hooks` to change them.
+
+The error those hooks record is named by class, plus the status for an `HTTPStatusError`: `HTTPStatusError(status=503)` or `ConnectError`. An httpx error's own repr carries the request URL, which can hold user ids, so it never reaches them. The Prometheus counter's `error_type` label for these retries is `scalo.http.client._RetriedHTTPError`. The caller still receives the original httpx exception.
 
 For request-level metrics (latency histograms, status-code counters)
 wire the HTTP middleware from
