@@ -8,31 +8,54 @@
 
 """Email validator -- strong-structural.
 
-Detects email addresses via a pragmatic RFC 5322 subset. python-stdnum
-has no email module; the structural regex IS the validation -- we
-trust the pattern (no separate is_valid() call). False-positive rate
-is low for the structural shape.
+Detects email addresses via a pragmatic RFC 5322 subset, both literal and
+percent-encoded the way a URL query string carries them: ``%40`` or the
+double-encoded ``%2540`` for ``@``, and ``%2B`` / ``%252B`` for ``+`` in the
+local part, hex in either case. Only the address is redacted, so an escape
+just before it (the ``%22`` of an encoded quote, the ``%3D`` of an encoded
+``=``) survives. python-stdnum has no email module; the structural regex IS
+the validation -- we trust the pattern (no separate is_valid() call).
 """
 
-from __future__ import annotations
-
 import re
+from typing import override
 
 from ._base import _Validator
 
+_HEX = "[0-9A-Fa-f]"
+
 
 class EmailValidator(_Validator):
-    """Email addresses per RFC 5322 subset."""
+    """Email addresses per RFC 5322 subset, literal or percent-encoded."""
 
     LABEL = "EMAIL"
-    # Pragmatic RFC 5322 subset. Allow Unicode in local part and domain
-    # (IDN supported in direct form per spec Section 10a.6). \w includes
-    # Unicode word characters by default in Python 3.
+    # \w is Unicode-aware, so IDN local parts and domains match in direct form (spec Section 10a.6).
     PATTERN = re.compile(
-        r"\b[\w.+\-]+@[\w\-]+(?:\.[\w\-]+)+\b",
-        re.UNICODE,
+        rf"""
+        (?:                                            # the address starts at
+            \b(?!(?<=%){_HEX}{{2}})                    #   a word boundary that is not inside a %XX escape,
+          | (?<=%{_HEX}{{2}})(?!(?<=%25){_HEX}{{2}})   #   the end of a %XX escape that does not open %25XX,
+          | (?<=%25{_HEX}{{2}})                        #   or the end of a double-encoded %25XX escape
+        )
+        [\w.+\-]+(?:%(?:25)?2[Bb][\w.+\-]*)*           # local part; %2B and %252B are an encoded +
+        (?:@|%(?:25)?40)                               # @, %40, or %2540
+        [\w\-]+(?:\.[\w\-]+)+\b                        # domain with at least one dot
+        """,
+        re.UNICODE | re.VERBOSE,
     )
 
+    @override
+    def scrub(self, text: str) -> str:
+        """Return ``text`` with email addresses redacted.
+
+        Every match contains ``@``, ``%40`` or ``%2540``, so a string with none
+        of them returns unchanged without running the regex.
+        """
+        if "@" not in text and "%40" not in text and "%2540" not in text:
+            return text
+        return super().scrub(text)
+
+    @override
     def validate(self, candidate: str) -> bool:
         # The structural regex is the validator. No separate stdnum
         # check for emails. Return True for any pattern hit.

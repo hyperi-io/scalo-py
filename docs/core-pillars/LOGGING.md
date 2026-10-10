@@ -201,7 +201,7 @@ Three layers fire in order on every log message. Built from
 |-------|--------|---------|
 | L1 secrets | `scrub/secrets.py` + `gitleaks.toml` rules | AWS keys, GitHub tokens, JWTs, private keys, third-party API keys |
 | L2 fields | `scrub/field_names.py` (regex on key names) | `password=...`, `"token":"..."`, `CARGO_REGISTRY_TOKEN=...`, `token = "..."`, bearer tokens, DB URLs |
-| L3 PII | `scrub/pii/` validators (Luhn, mod-97, libphonenumber) | Credit cards, IBANs, emails, phones, AU ABN, AU TFN |
+| L3 PII | `scrub/pii/` validators (Luhn, mod-97, libphonenumber, structural regex) | Credit cards, IBANs, emails (literal and percent-encoded), phones, AU ABN, ACN, TFN and Medicare |
 
 There is no L4 -- NLP/NER scrubbing was dropped from scope (the
 false-positive rate on logs was unacceptable, and per-call cost of
@@ -218,7 +218,7 @@ from scalo.logger import setup
 from scalo.logger.scrub import ScrubConfig, build_scrubber
 
 scrubber = build_scrubber(ScrubConfig(
-    hash_redaction=True,    # ***REDACTED:a3f2*** lets you correlate without leaking
+    hash_redaction=True,    # [EMAIL_a3f5b2] lets you correlate without leaking
 ))
 setup(scrubber=scrubber)
 ```
@@ -266,6 +266,21 @@ A quoted value after `=`, or a single-quoted one after `:`, is masked whole with
 The legacy `SensitiveDataFilter` in `logger.filters` ships the L2
 field set as a backwards-compatible shim. Add custom fields with
 `SensitiveDataFilter.add_sensitive_fields({"employee_id", "ssn"})`.
+
+### Layer 3 email addresses
+
+L3 redacts an email address written literally or percent-encoded, the way a URL or an HTTP or IdP error carries it: `@` as `%40` or `%2540`, and `+` in the local part as `%2B` or `%252B`, hex in either case. Only the address is replaced, so an escape before it survives:
+
+| Input | Output |
+|-------|--------|
+| `userKey=sentinel.user%40example.com` | `userKey=[EMAIL_REDACTED]` |
+| `filter=login%20eq%20%22sentinel.user%40example.com%22` | `filter=login%20eq%20%22[EMAIL_REDACTED]%22` |
+| `next=%253Fuser%253Dsentinel.user%2540example.com` | `next=%253Fuser%253D[EMAIL_REDACTED]` |
+| `discount=50%40off` | unchanged, no dot in the domain |
+
+Both forms need a local part, a separator and a dotted domain, so a package spec such as `lodash%404.17.21` is redacted too.
+
+L3 cannot detect an opaque provider user id such as Okta's `00u1sentinel2abc3`. Mask it by field name: `SensitiveDataFilter.add_sensitive_fields({"okta_user_id"})` masks a bound `okta_user_id` field and `okta_user_id=...` in message text.
 
 ---
 
