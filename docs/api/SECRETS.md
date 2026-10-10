@@ -117,8 +117,8 @@ variable named after the source. Lookup order:
 2. `{env_prefix}_{NAME.upper()}` if `SecretsManager(env_prefix=...)`
 3. `NAME.upper()` (no prefix)
 
-For `env_prefix="DFE"` and source `db_password`, the manager checks
-`DFE_DB_PASSWORD`. Logged at WARN level so it shows up in dashboards.
+For `env_prefix="APP"` and source `db_password`, the manager checks
+`APP_DB_PASSWORD`. Logged at WARN level so it shows up in dashboards.
 
 ---
 

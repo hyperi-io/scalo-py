@@ -102,7 +102,7 @@ Base path defaults to `/app`, overridable via `CONTAINER_BASE_PATH`.
 | `run_dir` | `/run/{app_name}` | EmptyDir or `medium: Memory` |
 | `log_dir` | `None` | stdout / stderr (container runtime captures) |
 
-`CONTAINER_BASE_PATH` lets you mount at `/mnt`, `/dfe`, `/opt/app`,
+`CONTAINER_BASE_PATH` lets you mount at `/mnt`, `/srv`, `/opt/app`,
 etc. without code changes:
 
 ```bash

@@ -235,7 +235,7 @@ librdkafka will not build a consumer without a `group.id`, and a consumer asks t
 | `AsyncKafkaClient` | `describe_topic`, `get_watermark_offsets`, `get_topic_message_count` | as above | Never |
 | `ReadOnlyKafkaClient` | `describe_topic`, `get_watermark_offsets`, `get_topic_message_count` | as above | Never |
 
-A client given `group.id: dfe-engine` gets `dfe-engine-admin`, and one given only `client.id: dfe-engine` gets the same, both inside a `dfe-` grant. With neither set the anchor is `scalo`, and `scalo-admin` sits outside any app prefix, so set one of the two on a client that talks to a broker enforcing group ACLs. The anchor order and the `-admin` suffix match scalo-rs's `KafkaAdmin`.
+A client given `group.id: orders-api` gets `orders-api-admin`, and one given only `client.id: orders-api` gets the same, both inside an `orders-` grant. With neither set the anchor is `scalo`, and `scalo-admin` sits outside any app prefix, so set one of the two on a client that talks to a broker enforcing group ACLs. The anchor order and the `-admin` suffix match scalo-rs's `KafkaAdmin`.
 
 The group you pass to `get_consumer_lag` or a `KafkaAdmin` offset reset is used as named, so the grant has to cover it too. The lag read fetches that group's committed offsets; the resets commit to it.
 

@@ -79,17 +79,16 @@ configurable env-var prefix that is **bare ("") by default**:
 
   class MyService(ServiceApp):
       name = "my-service"
-      env_prefix = "DFE"        # -> DFE_DEBUG, DFE_DATABASE__HOST, ...
+      env_prefix = "APP"        # -> APP_DEBUG, APP_DATABASE__HOST, ...
   ```
 
-  or imperatively via `set_env_prefix("DFE")` (importable today only from
+  or imperatively via `set_env_prefix("APP")` (importable today only from
   `scalo._env_compat` - a public re-export is on the review list),
   or via the bare `ENV_PREFIX` environment variable.
 
-**Action for downstream apps:** pick your prefix (e.g. `DFE`, `DFE_CP`)
+**Action for downstream apps:** pick your prefix (e.g. `APP`, `ORDERS_API`)
 and set it on your `ServiceApp`. Any `HYPERI_*` env vars in your
-deployment must be renamed to `<YOURPREFIX>_*` (or bare). See
-`hyperi-io/dfe-engine#58`.
+deployment must be renamed to `<YOURPREFIX>_*` (or bare).
 
 ---
 

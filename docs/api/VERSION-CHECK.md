@@ -27,7 +27,7 @@ from scalo.version_check.checker import VersionCheckConfig
 # On by default; the app supplies only its endpoint, and any config
 # layer can still turn the check off.
 check_on_startup(
-    "dfe-receiver",
+    "orders-api",
     "1.2.0",
     config=VersionCheckConfig.from_cascade_or(
         api_url="https://releases.example.com/api/v1/check",
@@ -36,14 +36,14 @@ check_on_startup(
 # Returns immediately. The check runs in a background daemon thread.
 
 # Without an endpoint the call is inert (returns None, one DEBUG line).
-check_on_startup("dfe-receiver", "1.2.0")
+check_on_startup("orders-api", "1.2.0")
 ```
 
 If a newer version is found:
 
 ```text
-INFO  new version available: dfe-receiver (current: 1.2.0, latest: 1.3.1)
-      [released 12 days ago] — https://releases.example.com/dfe-receiver/1.3.1
+INFO  new version available: orders-api (current: 1.2.0, latest: 1.3.1)
+      [released 12 days ago] — https://releases.example.com/orders-api/1.3.1
 ```
 
 If you're up to date, the log goes out at DEBUG.
@@ -75,7 +75,7 @@ def check_on_startup(
 
 | Arg | Meaning |
 |-----|---------|
-| `product` | Stable identifier (e.g. `"dfe-receiver"`). |
+| `product` | Stable identifier (e.g. `"orders-api"`). |
 | `version` | Current version string (e.g. `"1.2.0"`). |
 | `deployment` | Optional local context (`"k8s"`, `"docker"`, `"systemd"`). Never sent -- see Payload. |
 | `config` | Optional `VersionCheckConfig` override. |
@@ -119,7 +119,7 @@ from scalo.version_check.checker import VersionCheckConfig
 cfg = VersionCheckConfig.from_cascade_or(
     api_url="https://releases.example.com/api/v1/check",
 )
-check_on_startup("dfe-receiver", "1.2.0", config=cfg)
+check_on_startup("orders-api", "1.2.0", config=cfg)
 ```
 
 The check is auto-skipped when:
@@ -160,7 +160,7 @@ POST body:
 
 ```json
 {
-  "product": "dfe-receiver",
+  "product": "orders-api",
   "current_version": "1.2.0",
   "os": "Linux",
   "arch": "x86_64",
@@ -180,7 +180,7 @@ Response:
 {
   "latest_version": "1.3.1",
   "update_available": true,
-  "release_url": "https://releases.example.com/dfe-receiver/1.3.1",
+  "release_url": "https://releases.example.com/orders-api/1.3.1",
   "published_at": "2026-05-13T09:30:00Z",
   "message": "Security fixes — recommend prompt upgrade."
 }

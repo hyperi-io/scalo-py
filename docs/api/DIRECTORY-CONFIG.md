@@ -16,9 +16,9 @@ from scalo.config import DirectoryConfigStore
 ```python
 from scalo.config import DirectoryConfigStore
 
-store = DirectoryConfigStore("/config/dfe", refresh_interval=30)
+store = DirectoryConfigStore("/config/app", refresh_interval=30)
 store.start()
-host = store.get("loaders/dfe-loader", "database.host")
+host = store.get("loaders/ingest-loader", "database.host")
 store.stop()
 ```
 
@@ -48,10 +48,10 @@ dynamic, and editable.
 Each YAML file is one table. Names use forward-slash paths:
 
 ```text
-/config/dfe/
+/config/app/
 ├── globals.yaml                  # table: "globals"
 ├── loaders/
-│   ├── dfe-loader.yaml          # table: "loaders/dfe-loader"
+│   ├── ingest-loader.yaml       # table: "loaders/ingest-loader"
 │   └── kafka-loader.yaml        # table: "loaders/kafka-loader"
 └── monitoring/
     └── alerts/
@@ -66,15 +66,15 @@ Both `.yaml` and `.yml` extensions are recognised.
 
 ```python
 # Whole table as a dict
-loader_cfg = store.get("loaders/dfe-loader")
+loader_cfg = store.get("loaders/ingest-loader")
 
 # One key via dot notation
-host = store.get("loaders/dfe-loader", "database.host")
-port = store.get("loaders/dfe-loader", "database.port", default=5432)
+host = store.get("loaders/ingest-loader", "database.host")
+port = store.get("loaders/ingest-loader", "database.port", default=5432)
 
 # Discover what's there
 tables = store.list_tables()
-# ["globals", "loaders/dfe-loader", "loaders/kafka-loader",
+# ["globals", "loaders/ingest-loader", "loaders/kafka-loader",
 #  "monitoring/alerts/thresholds"]
 ```
 
@@ -87,15 +87,15 @@ cache. Thread-safe via `RLock`.
 
 ```python
 store.set(
-    "loaders/dfe-loader",
+    "loaders/ingest-loader",
     "database.host",
     "new-host",
     message="rotate db host post-migration",
-    author="derek@hyperi.io",
+    author="Ops <ops@example.com>",
 )
 
-store.delete("loaders/dfe-loader", "database.password",
-             author="derek@hyperi.io")
+store.delete("loaders/ingest-loader", "database.password",
+             author="Ops <ops@example.com>")
 ```
 
 Writes take an advisory file lock (`fcntl.LOCK_EX`), update the YAML
@@ -118,7 +118,7 @@ standard `"Name <email>"` format.
 
 ```python
 store = DirectoryConfigStore(
-    "/config/dfe",
+    "/config/app",
     git_branch="staging",   # checkout on init; create if missing
     git_push=True,          # push to origin after each commit
 )
@@ -143,7 +143,7 @@ gets logged at ERROR level.
 ## Hot-reload via background polling
 
 ```python
-store = DirectoryConfigStore("/config/dfe", refresh_interval=30)
+store = DirectoryConfigStore("/config/app", refresh_interval=30)
 store.start()
 ```
 
@@ -165,7 +165,7 @@ def on_loader_change(table: str, data: dict) -> None:
     logger.info("Loader config changed", table=table)
     loader.reload(data)
 
-store.on_change("loaders/dfe-loader", on_loader_change)
+store.on_change("loaders/ingest-loader", on_loader_change)
 ```
 
 Callbacks fire from the polling thread when the new YAML parses
@@ -182,11 +182,11 @@ update its own config and react in the same callback.
 
 ```python
 # Context manager — calls start() / stop() for you
-with DirectoryConfigStore("/config/dfe") as store:
-    host = store.get("loaders/dfe-loader", "database.host")
+with DirectoryConfigStore("/config/app") as store:
+    host = store.get("loaders/ingest-loader", "database.host")
 
 # Manual
-store = DirectoryConfigStore("/config/dfe")
+store = DirectoryConfigStore("/config/app")
 store.start()
 try:
     ...

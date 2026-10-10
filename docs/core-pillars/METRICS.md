@@ -4,7 +4,7 @@ Backend-agnostic metric API with OpenTelemetry as the default and
 Prometheus as the fallback. Call `create_metrics(app_name)`, register
 counters/gauges/histograms, and the manager handles exporter lifecycle
 (OTLP push + Prometheus scrape simultaneously), cardinality capping,
-and the standard DFE metric catalogue. The same code path serves
+and the standard metric groups (`scalo.metrics.groups`). The same code path serves
 `/metrics` for scrape and pushes to an OTel collector at the same
 time.
 
@@ -125,7 +125,7 @@ from scalo.metrics.groups import (
     AppMetrics, ConsumerMetrics, BufferMetrics, SinkMetrics,
 )
 
-m = create_metrics("dfe_loader")
+m = create_metrics("ingest-loader")
 app = AppMetrics(m, version="1.0.0", commit="abc123")
 consumer = ConsumerMetrics(m)
 buffer = BufferMetrics(m)
@@ -148,7 +148,7 @@ how scalo-rs behaves.
 If you want the names themselves namespaced, set it explicitly:
 
 ```python
-create_metrics("dfe-loader", metric_prefix="dfe_loader")
+create_metrics("ingest-loader", metric_prefix="ingest_loader")
 ```
 
 `app_name` only names the backend/meter and supplies the `app` label

@@ -137,9 +137,7 @@ already covered for config/registry state by `config.DirectoryConfigStore`
 (in-memory + background refresh + last-known-good).
 
 **Why deferred:** no current live-fetch-from-flaky-remote read path needs
-it. dfe-engine resolves auth groups upstream (Envoy) + in-memory, loads
-config once into memory, and its only per-request remote reads are to
-same-cluster ClickHouse (already locally TTL-cached). Caching authz would
+it. The consumers we know of resolve auth groups upstream (at the proxy) and in memory, load config once into memory, and make per-request remote reads only to a same-cluster datastore that is already TTL-cached locally. Caching authz would
 be a net negative (delayed revocation).
 
 **Post-GA action:** if such a path appears, add a small LOCAL

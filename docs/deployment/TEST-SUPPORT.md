@@ -78,10 +78,10 @@ aggregation.
 
 | Platform | Path |
 |---|---|
-| Linux / macOS / WSL / Git Bash | `~/.cache/hyperi-ai/contract-e2e-skips.log` |
-| Native Windows | `%LOCALAPPDATA%\hyperi-ai\Cache\contract-e2e-skips.log` |
+| Linux / macOS / WSL / Git Bash | `~/.cache/scalo/contract-e2e-skips.log` |
+| Native Windows | `%LOCALAPPDATA%\scalo\Cache\contract-e2e-skips.log` |
 
-NEVER `/tmp` -- AGENT-RULES Rule 4. The parent dir is mkdir-p'd on
+Never `/tmp`, which is world-readable and cleaned unpredictably. The parent dir is mkdir-p'd on
 first write. File mode is append, UTF-8, LF newlines.
 
 ---
@@ -164,7 +164,7 @@ finally:
 
 `tests/e2e/test_contract_artefacts.py` is dual-purpose: it self-tests
 scalo-py's own deployment subsystem AND serves as the template Python
-DFE consumers copy into their own `tests/e2e/`. Five test functions:
+consumers copy into their own `tests/e2e/`. Five test functions:
 
 ### Tier A (cluster-less; runs anywhere the tool is present)
 

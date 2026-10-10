@@ -66,7 +66,7 @@ If none yield a 40-char lowercase hex SHA, raises `IdentityError`.
 
 ```python
 identity = ContractIdentity.detect(
-    image_ref="ghcr.io/hyperi-io/dfe-loader:v2.7.3",
+    image_ref="ghcr.io/example-org/orders-api:v2.7.3",
 )
 ```
 
@@ -77,7 +77,7 @@ Three lines under `namespace`, canonical order, NO trailing newline. `as_dockerf
 ```dockerfile
 LABEL io.scalo.contract.version="v1"
 LABEL io.scalo.contract.source-commit="0123456789abcdef0123456789abcdef01234567"
-LABEL io.scalo.contract.image-ref="ghcr.io/hyperi-io/dfe-loader:v2.7.3"
+LABEL io.scalo.contract.image-ref="ghcr.io/example-org/orders-api:v2.7.3"
 ```
 
 ### `as_yaml_annotations(namespace, indent=0)` -- emit YAML annotation lines
@@ -87,7 +87,7 @@ Three lines under `namespace`, canonical order, NO trailing newline, padded with
 ```yaml
   io.scalo.contract.version: "v1"
   io.scalo.contract.source-commit: "0123456789abcdef0123456789abcdef01234567"
-  io.scalo.contract.image-ref: "ghcr.io/hyperi-io/dfe-loader:v2.7.3"
+  io.scalo.contract.image-ref: "ghcr.io/example-org/orders-api:v2.7.3"
 ```
 
 ### `as_labels(namespace)` -- the keys as a dict
@@ -121,8 +121,8 @@ Two valid forms for `image_ref`:
 
 | Form | When | Example |
 |---|---|---|
-| Tag | Pre-push, mutable | `ghcr.io/hyperi-io/dfe-loader:v2.7.3` |
-| Digest | Post-push, immutable | `ghcr.io/hyperi-io/dfe-loader@sha256:abc123...` |
+| Tag | Pre-push, mutable | `ghcr.io/example-org/orders-api:v2.7.3` |
+| Digest | Post-push, immutable | `ghcr.io/example-org/orders-api@sha256:abc123...` |
 
 CI typically stamps the tag form during build (the digest doesn't
 exist yet) and re-stamps the digest form post-push for the production
@@ -178,7 +178,7 @@ All sections use the same test inputs:
 
 ```text
 source_commit = "0123456789abcdef0123456789abcdef01234567"
-image_ref     = "ghcr.io/hyperi-io/dfe-loader:v2.7.3"
+image_ref     = "ghcr.io/example-org/orders-api:v2.7.3"
 ```
 
 `tests/unit/deployment/test_contract_identity_parity.py` diffs

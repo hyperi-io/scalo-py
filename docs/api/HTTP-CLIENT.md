@@ -45,7 +45,7 @@ data = response.json()
 Pick by call site:
 
 ```python
-# Sync — startup probes, CLI tools, hyperi-ci checks
+# Sync — startup probes, CLI tools, CI checks
 from scalo.http import HttpClient
 
 with HttpClient(base_url="https://api.example.com") as client:

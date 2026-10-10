@@ -21,7 +21,7 @@ is now per-module and happens at first use.
 | `health` | First `HealthManager()` instantiation | Probe handlers ready; `/livez` is unconditionally 200; `/readyz` returns 503 until `set_ready()` is called and all registered downstream checks pass |
 | scrub metrics | `ServiceApp` `run`, once the metrics manager exists | The log scrub layers emit `log_scrub_matches_total` / `redactions` / `errors` / `skipped` / `duration` / `pattern_version` (spec 8, parity manifest). `ServiceApp` re-runs `logger.setup(metrics=...)` after `create_metrics` to wire it; outside `ServiceApp` pass `metrics=` to `setup()` yourself, or the layers stay no-op. Honours `scrub.metrics_enabled` and `scrub.metrics_type_cardinality_cap` |
 | observability port | `ServiceApp` `run` (unless `serve_observability = False`) | Binds `--metrics-addr` (default `0.0.0.0:9090`) and serves `/metrics`, `/livez` and `/readyz` -- and nothing else -- off `app.health()` and the auto-initialised metrics manager. A bind failure is fatal by design |
-| `version_check` | `check_on_startup(product, version)` call | Daemon thread fires-and-forgets a probe to HyperI version API; never blocks, never raises |
+| `version_check` | `check_on_startup(product, version)` call | Daemon thread fires-and-forgets a probe to the app's configured `version_check.api_url`, and does nothing without one; never blocks, never raises |
 | `secrets` | `SecretsManager.from_config(...)` | Provider class selected from `settings.secrets.provider`; backend extras (`secrets-vault`, `secrets-aws`, etc.) imported lazily |
 
 ---
