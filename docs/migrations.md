@@ -6,6 +6,12 @@ Behaviour and API changes that need a consumer adjustment, indexed by the scalo 
 
 ## Unreleased
 
+### `SecretsManager.clear_memory_cache` is removed (API CHANGE)
+
+The classmethod did nothing. The memory cache belongs to each instance, so there was no class-level cache for it to clear.
+
+**Consumer adjustment** -- call `clear_cache()` on the instance, which empties its memory and disk tiers. `SecretsManager.clear_memory_cache()` now raises `AttributeError`.
+
 ### `scalo.deployment.topology` is removed (API CHANGE)
 
 The module (`DeploymentTopology`, `load_topology` and its errors) loaded a cross-app topology manifest for a `hyperi-ci` command that no longer exists, and nothing else read it. `scalo.deployment` never exported it.

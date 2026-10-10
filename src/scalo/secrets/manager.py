@@ -1042,14 +1042,6 @@ class SecretsManager:
         self._cache.clear()
         logger.info("Cache cleared")
 
-    @classmethod
-    def clear_memory_cache(cls) -> None:
-        """Deprecated no-op. The memory cache is per-instance now (tenant
-        isolation) -- there is no class-level cache to clear, and the old
-        body raised AttributeError. Use the instance method ``clear_cache()``.
-        """
-        return None
-
     async def close(self) -> None:
         """Close manager and release resources."""
         await self.stop_refresh()
