@@ -744,8 +744,19 @@ class SecretsManager:
     def _stale_fallback(self, *candidates: SecretValue | None) -> SecretValue | None:
         """Return the most recently fetched candidate still inside the stale-grace window, or None."""
         cfg = self._cache.config
-        usable = [c for c in candidates if c is not None and c.is_within_grace(cfg.ttl_secs, cfg.stale_grace_secs)]
-        return max(usable, key=lambda c: c.fetched_at, default=None)
+        freshest: SecretValue | None = None
+        for candidate in candidates:
+            if candidate is None or not candidate.is_within_grace(cfg.ttl_secs, cfg.stale_grace_secs):
+                continue
+            if freshest is None or candidate.fetched_at > freshest.fetched_at:
+                freshest = candidate
+        return freshest
+
+    def _check_rotation(self, name: str, old_value: SecretValue | None, value: SecretValue) -> None:
+        """Emit a rotation event only when both versions are known and they differ."""
+        old_version = old_value.version if old_value is not None else None
+        if old_version is not None and value.version is not None and old_version != value.version:
+            self._emit_rotation(name, old_version, value.version)
 
     def _memory_put(self, cache_key: _CacheKey, value: SecretValue) -> SecretValue | None:
         """Store a value in the memory cache and return the entry it replaced.
@@ -855,10 +866,7 @@ class SecretsManager:
 
             old_value = self._memory_put(cache_key, value)
             self._cache.set(disk_key, value)
-
-            # Check for rotation
-            if old_value and old_value.version != value.version:
-                self._emit_rotation(disk_key, old_value.version, value.version)
+            self._check_rotation(disk_key, old_value, value)
 
             logger.debug("Provider fetch", extra={"key": disk_key, "provider": provider_name})
             return value
@@ -903,10 +911,7 @@ class SecretsManager:
 
             old_value = self._memory_put(cache_key, value)
             self._cache.set(disk_key, value)
-
-            # Check for rotation
-            if old_value and old_value.version != value.version:
-                self._emit_rotation(disk_key, old_value.version, value.version)
+            self._check_rotation(disk_key, old_value, value)
 
             return value
 

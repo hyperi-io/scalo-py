@@ -157,8 +157,7 @@ def on_rotate(event):
 sm.on_rotation(on_rotate, names=["db_password"])  # None = all secrets
 ```
 
-Triggered when the cached `SecretValue.version` differs from the freshly
-fetched value. File provider derives version from `mtime:size`; cloud
+Triggered when the cached and the freshly fetched `SecretValue.version` are both set and differ. A value with no version never reports a rotation. File provider derives version from `mtime:size`; cloud
 providers use the native version ID.
 
 With `"enabled": False` there is no cached version to compare against, so no rotation event fires.
