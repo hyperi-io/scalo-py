@@ -107,9 +107,7 @@ LAST_LABEL_VECTORS: tuple[tuple[str, str, str], ...] = (
     ("pct2540_address", "kim%2540example.com", "[EMAIL_REDACTED]"),
 )
 
-_PARAMS = [
-    pytest.param(text, expected, id=vector_id) for vector_id, text, expected in VECTORS + LAST_LABEL_VECTORS
-]
+_PARAMS = [pytest.param(text, expected, id=vector_id) for vector_id, text, expected in VECTORS + LAST_LABEL_VECTORS]
 
 
 @pytest.mark.parametrize(("text", "expected"), _PARAMS)
