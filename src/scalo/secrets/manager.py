@@ -752,6 +752,20 @@ class SecretsManager:
                 freshest = candidate
         return freshest
 
+    def _store_fetched(self, cache_key: _CacheKey, value: SecretValue) -> None:
+        """Cache a value fresh from its provider, reporting a rotation against the value it replaces."""
+        disk_key = cache_key.to_disk_str()
+        old_value = self._memory_put(cache_key, value)
+        self._cache.set(disk_key, value)
+        self._check_rotation(disk_key, old_value, value)
+
+    async def _fetch(self, cache_key: _CacheKey) -> SecretValue:
+        """Read ``cache_key`` from its provider, skipping both cache tiers, and cache the result."""
+        provider = self._get_provider(cache_key.provider)
+        value = await provider.get_async(cache_key.path, cache_key.key or None)
+        self._store_fetched(cache_key, value)
+        return value
+
     def _check_rotation(self, name: str, old_value: SecretValue | None, value: SecretValue) -> None:
         """Emit a rotation event only when both versions are known and they differ."""
         old_version = old_value.version if old_value is not None else None
@@ -856,18 +870,8 @@ class SecretsManager:
             logger.debug("Disk cache hit", extra={"key": disk_key})
             return cached
 
-        # Fetch from provider
-        provider = self._providers.get(provider_name)
-        if provider is None:
-            raise ProviderNotConfiguredError(provider_name)
-
         try:
-            value = await provider.get_async(path, key)
-
-            old_value = self._memory_put(cache_key, value)
-            self._cache.set(disk_key, value)
-            self._check_rotation(disk_key, old_value, value)
-
+            value = await self._fetch(cache_key)
             logger.debug("Provider fetch", extra={"key": disk_key, "provider": provider_name})
             return value
 
@@ -901,18 +905,10 @@ class SecretsManager:
             self._memory_put(cache_key, cached)
             return cached
 
-        # Fetch from provider
-        provider = self._providers.get(provider_name)
-        if provider is None:
-            raise ProviderNotConfiguredError(provider_name)
-
+        provider = self._get_provider(provider_name)
         try:
             value = provider.get_sync(path, key)
-
-            old_value = self._memory_put(cache_key, value)
-            self._cache.set(disk_key, value)
-            self._check_rotation(disk_key, old_value, value)
-
+            self._store_fetched(cache_key, value)
             return value
 
         except (SecretNotFoundError, ProviderError) as e:
@@ -995,17 +991,13 @@ class SecretsManager:
             await self._refresh_all()
 
     async def _refresh_all(self) -> None:
-        """Refresh all cached secrets."""
+        """Re-fetch every secret held in the memory cache from its provider, fresh entries included."""
         with self._memory_cache_lock:
             keys = list(self._memory_cache.keys())
 
         for cache_key in keys:
             try:
-                await self._get_from_provider(
-                    cache_key.provider,
-                    cache_key.path,
-                    cache_key.key or None,
-                )
+                await self._fetch(cache_key)
             except Exception as e:
                 logger.warning(
                     "Refresh failed",

@@ -140,7 +140,7 @@ await sm.stop_refresh()   # on shutdown
 Background refresh adds jitter (`refresh_jitter_secs`, default 5 min) so
 a fleet doesn't slam the secrets backend at the same instant.
 
-Refresh re-reads the secrets held in the memory cache, so with `"enabled": False` it has nothing to refresh.
+Each refresh re-reads every secret held in the memory cache from its provider, fresh entries included, replaces the cached value and reports any rotation it finds. A secret whose provider fails keeps its cached value, and the failure is logged. With `"enabled": False` the memory cache is empty, so there is nothing to refresh.
 
 ---
 

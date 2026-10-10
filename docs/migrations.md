@@ -36,6 +36,12 @@ The AppRole and Kubernetes logins raised `AuthenticationError` for every failure
 
 **Consumer adjustment** -- code that catches `AuthenticationError` to handle an outage catches `ProviderError` as well, or instead. `AuthenticationError` subclasses `ProviderError`, so a handler for `ProviderError` still sees both.
 
+### Background refresh re-fetches fresh secrets (BEHAVIOUR CHANGE)
+
+`start_refresh()` read each cached secret back through the normal read path, which answered from the memory cache while the entry was fresh. With the default `refresh_interval_secs` (1800) under `ttl_secs` (3600) it never reached a provider. Each refresh now fetches every cached secret from its provider, replaces the cached value and reports a rotation when the version changed.
+
+**Consumer adjustment** -- expect one provider read per cached secret per refresh interval. Lengthen `refresh_interval_secs` if that is more load than the secrets backend should take.
+
 ### HTTP retry logs name the error by class and status (BEHAVIOUR CHANGE)
 
 stamina's default retry hooks recorded `repr()` of the httpx error, which carries the request URL. `HttpClient` and `AsyncHttpClient` now hand them a carrier whose repr is the class plus any status, so `stamina.caused_by` reads `HTTPStatusError(status=503)` or `ConnectError`. The Prometheus `stamina_retries_total` `error_type` label for these retries reads `scalo.http.client._RetriedHTTPError` where it read `httpx.HTTPStatusError`, `httpx.ConnectError` and so on. Callers still receive the original httpx exception. See [api/HTTP-CLIENT.md](api/HTTP-CLIENT.md#observability).
