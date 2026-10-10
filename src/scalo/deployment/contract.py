@@ -60,6 +60,19 @@ class ImageProfile(StrEnum):
     procps, dnsutils, net-tools). Same binary, same linking."""
 
 
+class ServiceAccount(StrEnum):
+    """Whether the chart gives the pod a ServiceAccount of its own, as scalo-rs's ``ServiceAccount``."""
+
+    OWN = "own"
+    """The chart creates a ServiceAccount named after the app and runs the pod as it."""
+
+    NONE = "none"
+    """The chart creates no ServiceAccount and names none, so the pod runs as its namespace's ``default`` account.
+
+    For an app that calls no Kubernetes API.
+    """
+
+
 # ---- Defaults (module-level so they appear in JSON Schema docs) -------------
 
 # Must equal scalo-rs's CONTRACT_SCHEMA_VERSION, the version data/contract.schema.json pins.
@@ -725,6 +738,14 @@ class DeploymentContract(BaseModel):
     singleton: bool = False
     """Exactly one pod may run: replicas stay at one, nothing autoscales it, and a new pod starts only after the old one has stopped."""
 
+    service_account: ServiceAccount = Field(
+        default=ServiceAccount.OWN, exclude_if=lambda value: value == ServiceAccount.OWN
+    )
+    """Whether the chart gives the pod a ServiceAccount of its own; ``none`` is for an app that calls no Kubernetes API.
+
+    Left out of the emitted contract while it is ``own``, as scalo-rs does.
+    """
+
     @field_validator("app_name")
     @classmethod
     def _app_name_is_a_service_name(cls, value: str) -> str:
@@ -873,5 +894,6 @@ __all__ = [
     "SecretEnvContract",
     "SecretGroupContract",
     "SecurityContract",
+    "ServiceAccount",
     "WritablePath",
 ]
