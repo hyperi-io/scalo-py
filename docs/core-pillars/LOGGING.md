@@ -277,8 +277,10 @@ L3 redacts an email address written literally or percent-encoded, the way a URL 
 | `filter=login%20eq%20%22sentinel.user%40example.com%22` | `filter=login%20eq%20%22[EMAIL_REDACTED]%22` |
 | `next=%253Fuser%253Dsentinel.user%2540example.com` | `next=%253Fuser%253D[EMAIL_REDACTED]` |
 | `discount=50%40off` | unchanged, no dot in the domain |
+| `pkg@1.2.3`, `lodash%404.17.21` | unchanged, no letter in the last domain label |
+| `user@10.0.0.1` | unchanged, an IPv4 host is not an email domain |
 
-Both forms need a local part, a separator and a dotted domain, so a package spec such as `lodash%404.17.21` is redacted too.
+Both forms need a local part, a separator and a dotted domain whose last label contains a letter. Package version pins and npm or pip specs therefore pass through, and so does `user@10.0.0.1`.
 
 L3 cannot detect an opaque provider user id such as Okta's `00u1sentinel2abc3`. Mask it by field name: `SensitiveDataFilter.add_sensitive_fields({"okta_user_id"})` masks a bound `okta_user_id` field and `okta_user_id=...` in message text.
 

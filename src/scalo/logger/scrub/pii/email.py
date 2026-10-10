@@ -13,8 +13,11 @@ percent-encoded the way a URL query string carries them: ``%40`` or the
 double-encoded ``%2540`` for ``@``, and ``%2B`` / ``%252B`` for ``+`` in the
 local part, hex in either case. Only the address is redacted, so an escape
 just before it (the ``%22`` of an encoded quote, the ``%3D`` of an encoded
-``=``) survives. python-stdnum has no email module; the structural regex IS
-the validation -- we trust the pattern (no separate is_valid() call).
+``=``) survives. The domain needs at least one dot and a letter in its last
+label, so a package version pin (``pkg@1.2.3``) or an IPv4 host
+(``user@10.0.0.1``) is not an address. python-stdnum has no email module; the
+structural regex IS the validation -- we trust the pattern (no separate
+is_valid() call).
 """
 
 import re
@@ -39,7 +42,8 @@ class EmailValidator(_Validator):
         )
         [\w.+\-]+(?:%(?:25)?2[Bb][\w.+\-]*)*           # local part; %2B and %252B are an encoded +
         (?:@|%(?:25)?40)                               # @, %40, or %2540
-        [\w\-]+(?:\.[\w\-]+)+\b                        # domain with at least one dot
+        [\w\-]+(?:\.[\w\-]+)*                          # domain labels,
+        \.[\w\-]*[^\W\d_][\w\-]*\b                     #   the last of which holds a letter
         """,
         re.UNICODE | re.VERBOSE,
     )
