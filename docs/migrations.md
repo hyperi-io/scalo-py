@@ -4,13 +4,15 @@ Behaviour and API changes that need a consumer adjustment, indexed by the scalo 
 
 ---
 
-## Unreleased
+## 2.31.6
 
 ### scalo writes no Helm chart or ArgoCD Application (API CHANGE)
 
 The chart generator, the ArgoCD generator and the chart check are removed: `generate_chart`, `generate_argocd_application`, `ArgocdConfig`, `argocd_repo_url_from_cascade`, `argocd_dest_namespace_from_cascade`, `validate_helm_values`, `ParseYamlError` and `scalo.deployment.generate.to_camel_suffix`, along with the `templates/helm/scalo-app` scaffold. `generate-artefacts` stops writing `argocd-application.yaml` and reads no `deployment.argocd.*` key. The Kubernetes objects come from the thin chart a chart assembler builds from `deployment-contract.json` on the [scalo-service](https://github.com/hyperi-io/scalo-rs/blob/main/charts/scalo-service/README.md) library chart. To preview a service's chart locally, run `hyperi-ci chart assemble` -- see [deployment/ARTEFACTS.md](deployment/ARTEFACTS.md#kubernetes-objects). `generate_argocd_app_project`, the sync-wave constants and `ContractIdentity.as_yaml_annotations` stay.
 
 **Consumer adjustment** -- remove every call to the removed names and the tests that make them, in the same change as the bump, along with any committed `chart/` or `argocd-application.yaml` and any `deployment.argocd.*` setting. Deploy from the thin chart.
+
+## 2.31.4
 
 ### `SecretsManager.clear_memory_cache` is removed (API CHANGE)
 
@@ -61,6 +63,8 @@ stamina's default retry hooks recorded `repr()` of the httpx error, which carrie
 A `RotationEvent` fires only when the cached and the fetched `SecretValue.version` are both set and differ, so `new_version` is never `None` and an unversioned value no longer reports every fetch as a rotation.
 
 **Consumer adjustment** -- none, unless a callback relied on events from a provider that returns no version.
+
+## 2.31.3
 
 ### `scalo.deployment.topology` is removed (API CHANGE)
 
