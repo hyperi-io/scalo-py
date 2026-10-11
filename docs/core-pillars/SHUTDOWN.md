@@ -154,12 +154,17 @@ import atexit
 
 def _graceful_shutdown():
     try:
-        meter_provider.shutdown(timeout_millis=5000)
+        meter_provider.shutdown(timeout_millis=2000)
     except Exception:
         pass
 
 atexit.register(_graceful_shutdown)
 ```
+
+Span export registers its own `atexit` hook when `logger.setup()`
+turns it on. It flushes buffered spans and stops the tracer provider,
+bounded at 2 seconds for both, and drops what is still queued at the
+bound. See [TRACING.md](TRACING.md#bounded-so-a-missing-collector-costs-telemetry-and-nothing-else).
 
 If the OTel collector is unreachable at shutdown, the flush will
 fail and the process exits with code 1 even if everything else

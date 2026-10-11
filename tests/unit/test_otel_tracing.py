@@ -14,6 +14,12 @@ so it cannot eat a termination grace period.
 """
 
 import importlib.util
+import subprocess
+import sys
+import threading
+import time
+from collections.abc import Iterator
+from pathlib import Path
 from typing import Any
 
 import pytest
@@ -65,6 +71,98 @@ def _span_exporters(provider: Any) -> list[Any]:
     processors = provider._active_span_processor._span_processors
     exporters = [processor.span_exporter for processor in processors]
     return [getattr(exporter, "_inner", exporter) for exporter in exporters]
+
+
+class _Collector:
+    """A real OTLP gRPC trace receiver on loopback, so exports cross the wire.
+
+    With ``stall`` set, every Export call blocks until :meth:`stop`, standing in
+    for a collector that accepts the connection and never answers.
+    """
+
+    def __init__(self, *, stall: bool = False) -> None:
+        from concurrent import futures
+
+        import grpc
+        from opentelemetry.proto.collector.trace.v1 import trace_service_pb2, trace_service_pb2_grpc
+
+        self.received: list[str] = []
+        self.called = threading.Event()
+        self._release = threading.Event()
+        if not stall:
+            self._release.set()
+        collector = self
+
+        class _Receiver(trace_service_pb2_grpc.TraceServiceServicer):
+            def Export(self, request, context):  # noqa: N802 - name fixed by the generated servicer
+                collector.called.set()
+                collector._release.wait(30)
+                for resource_spans in request.resource_spans:
+                    for scope_spans in resource_spans.scope_spans:
+                        collector.received.extend(span.name for span in scope_spans.spans)
+                return trace_service_pb2.ExportTraceServiceResponse()
+
+        self._server = grpc.server(futures.ThreadPoolExecutor(max_workers=2))
+        trace_service_pb2_grpc.add_TraceServiceServicer_to_server(_Receiver(), self._server)
+        port = self._server.add_insecure_port("127.0.0.1:0")
+        self.endpoint = f"http://127.0.0.1:{port}"
+        self._server.start()
+
+    def stop(self) -> None:
+        self._release.set()
+        self._server.stop(grace=None)
+
+
+@pytest.fixture
+def collector() -> Iterator[_Collector]:
+    receiver = _Collector()
+    yield receiver
+    receiver.stop()
+
+
+@pytest.fixture
+def stalled_collector() -> Iterator[_Collector]:
+    receiver = _Collector(stall=True)
+    yield receiver
+    receiver.stop()
+
+
+def _exit_flush_config(endpoint: str) -> OtelTracingConfig:
+    """Every span sampled, and a schedule so long that only the exit flush can export."""
+    return OtelTracingConfig(
+        endpoint=endpoint, service_name="exit-test", sample_ratio=1.0, batch_scheduled_delay_millis=600_000
+    )
+
+
+# Run in a child interpreter, so the flush happens on a real exit through atexit.
+_EXITING_CHILD = """
+import sys
+
+from scalo import otel_tracing
+from scalo.otel_tracing import OtelTracingConfig
+
+config = OtelTracingConfig(
+    endpoint=sys.argv[1], service_name="exit-test", sample_ratio=1.0, batch_scheduled_delay_millis=600_000
+)
+if not otel_tracing.setup_tracing(config):
+    sys.exit("span export did not start")
+with otel_tracing.tracer("exit-test").start_as_current_span("at-exit"):
+    pass
+print("span ended", flush=True)
+"""
+
+
+def _start_exiting_child(endpoint: str, cwd: Path) -> subprocess.Popen[str]:
+    # An empty cwd, so the child's config cascade cannot load a stray .env.
+    return subprocess.Popen(
+        [sys.executable, "-c", _EXITING_CHILD, endpoint],
+        cwd=cwd,
+        stdout=subprocess.PIPE,
+        stderr=subprocess.PIPE,
+        text=True,
+        encoding="utf-8",
+        errors="replace",
+    )
 
 
 class TestDefaults:
@@ -240,6 +338,54 @@ class TestComposition:
 
 
 @pytest.mark.skipif(not _otel_available(), reason="opentelemetry not installed")
+class TestTheExitFlush:
+    """Spans still buffered at exit reach the collector, and a stalled collector cannot hold exit open."""
+
+    BOUND_SECONDS = otel_tracing.SHUTDOWN_TIMEOUT_MILLIS / 1000
+
+    def test_buffered_spans_are_exported_by_shutdown(self, collector):
+        assert otel_tracing.setup_tracing(_exit_flush_config(collector.endpoint)) is True
+        with otel_tracing._PROVIDER.get_tracer("exit-test").start_as_current_span("buffered"):
+            pass
+        otel_tracing.shutdown()
+        assert collector.received == ["buffered"]
+
+    def test_a_stalled_collector_cannot_hold_shutdown_past_the_bound(self, stalled_collector):
+        assert otel_tracing.setup_tracing(_exit_flush_config(stalled_collector.endpoint)) is True
+        with otel_tracing._PROVIDER.get_tracer("exit-test").start_as_current_span("stalled"):
+            pass
+
+        started = time.monotonic()
+        otel_tracing.shutdown()
+        elapsed = time.monotonic() - started
+
+        assert stalled_collector.called.is_set(), "shutdown never tried to flush"
+        assert self.BOUND_SECONDS - 0.2 <= elapsed < self.BOUND_SECONDS + 1.0, elapsed
+
+    def test_buffered_spans_reach_the_collector_when_the_process_exits(self, collector, tmp_path):
+        child = _start_exiting_child(collector.endpoint, tmp_path)
+        out, err = child.communicate(timeout=60)
+        assert child.returncode == 0, err
+        assert out.strip() == "span ended"
+        assert collector.received == ["at-exit"], err
+
+    def test_a_stalled_collector_cannot_hold_process_exit_past_the_bound(self, stalled_collector, tmp_path):
+        child = _start_exiting_child(stalled_collector.endpoint, tmp_path)
+        try:
+            assert child.stdout is not None
+            assert child.stdout.readline().strip() == "span ended"
+            started = time.monotonic()
+            _, err = child.communicate(timeout=60)
+            elapsed = time.monotonic() - started
+        finally:
+            child.kill()
+
+        assert child.returncode == 0, err
+        assert stalled_collector.called.is_set(), f"the exit flush never reached the collector: {err}"
+        assert self.BOUND_SECONDS - 0.2 <= elapsed < self.BOUND_SECONDS + 1.5, elapsed
+
+
+@pytest.mark.skipif(not _otel_available(), reason="opentelemetry not installed")
 class TestTheExporterMatchesTheProtocol:
     """The exporter built must speak the protocol scalo reports, or every export to the collector fails."""
 
@@ -287,36 +433,13 @@ class TestTheExporterMatchesTheProtocol:
         assert otel_tracing.setup_tracing(OtelTracingConfig(service_name="grpc-test")) is True
         assert [_transport(e) for e in _span_exporters(otel_tracing._PROVIDER)] == ["grpc"]
 
-    def test_spans_reach_a_grpc_collector(self):
-        """A real OTLP gRPC receiver stands in for the collector, so the export crosses the wire."""
-        from concurrent import futures
-
-        import grpc
-        from opentelemetry.proto.collector.trace.v1 import trace_service_pb2, trace_service_pb2_grpc
-
-        received: list[str] = []
-
-        class _Receiver(trace_service_pb2_grpc.TraceServiceServicer):
-            def Export(self, request, context):  # noqa: N802 - name fixed by the generated servicer
-                for resource_spans in request.resource_spans:
-                    for scope_spans in resource_spans.scope_spans:
-                        received.extend(span.name for span in scope_spans.spans)
-                return trace_service_pb2.ExportTraceServiceResponse()
-
-        server = grpc.server(futures.ThreadPoolExecutor(max_workers=1))
-        trace_service_pb2_grpc.add_TraceServiceServicer_to_server(_Receiver(), server)
-        port = server.add_insecure_port("127.0.0.1:0")
-        server.start()
-        try:
-            config = OtelTracingConfig(endpoint=f"http://127.0.0.1:{port}", service_name="wire-test", sample_ratio=1.0)
-            assert otel_tracing.setup_tracing(config) is True
-            with otel_tracing._PROVIDER.get_tracer("wire-test").start_as_current_span("over-grpc"):
-                pass
-            assert otel_tracing._PROCESSOR.force_flush()
-        finally:
-            otel_tracing.shutdown()
-            server.stop(grace=None)
-        assert received == ["over-grpc"]
+    def test_spans_reach_a_grpc_collector(self, collector):
+        config = OtelTracingConfig(endpoint=collector.endpoint, service_name="wire-test", sample_ratio=1.0)
+        assert otel_tracing.setup_tracing(config) is True
+        with otel_tracing._PROVIDER.get_tracer("wire-test").start_as_current_span("over-grpc"):
+            pass
+        assert otel_tracing._PROVIDER.force_flush()
+        assert collector.received == ["over-grpc"]
 
     @pytest.mark.parametrize("env_protocol", [None, "grpc", "http/protobuf"])
     def test_spans_and_metrics_agree_on_the_protocol(self, monkeypatch, env_protocol):

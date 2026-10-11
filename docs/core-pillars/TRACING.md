@@ -88,14 +88,15 @@ OTEL_TRACES_SAMPLER_ARG=1.0
 - **Failures back off.** Same gate as the metric exporter: doubling to a
   15-minute ceiling with jitter, one warning per outage, reset on
   success. See [METRICS.md](METRICS.md#when-the-collector-is-not-there).
-- **The flush on exit is bounded at 2 seconds**, well inside a
-  Kubernetes termination grace period. The bound is applied to the
-  processor, because `TracerProvider.shutdown()` takes no timeout and
-  would let the SDK's 30-second default stand, and scalo's exporter
-  wrapper declares `timeout_millis` so the processor forwards what is
-  left of that budget to the exporter as well. An exporter whose
-  signature is copied from the `SpanExporter` base gets called bare and
-  silently drops the bound.
+- **Spans still buffered at exit are flushed, bounded at 2 seconds** for
+  the flush and the provider shutdown together, well inside a Kubernetes
+  termination grace period. scalo registers its own `atexit` hook in
+  place of the SDK's, which would wait 30 seconds. The SDK bounds
+  neither step -- `BatchSpanProcessor.force_flush()` ignores its timeout
+  and `TracerProvider.shutdown()` takes none -- so both run on a daemon
+  thread that exit stops waiting for at the bound. Spans still queued
+  then are dropped. Call `scalo.otel_tracing.shutdown()` to flush
+  earlier; it is the same bounded path, and a second call does nothing.
 - **Startup never fails on telemetry.** A collector that is missing or
   misconfigured degrades tracing and the service still starts.
 
