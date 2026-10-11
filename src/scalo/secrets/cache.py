@@ -15,9 +15,8 @@ from .types import CacheConfig, SecretValue
 
 logger = logging.getLogger(__name__)
 
-# Optional at-rest encryption. `crypto` imports `cryptography` at module
-# top, so a missing dependency degrades to unencrypted caching with a
-# warning (same posture as before, now AES-256-GCM instead of Fernet).
+# Optional at-rest encryption. `crypto` imports `cryptography` at module top, so with an
+# encryption_key set a missing dependency turns the disk tier off (memory-only) with a warning.
 try:
     from . import crypto
 

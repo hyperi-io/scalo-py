@@ -22,7 +22,9 @@ The classmethod did nothing. The memory cache belongs to each instance, so there
 
 With no `encryption_key` the disk cache wrote each secret as hex JSON. It now writes only with `encryption_key` set or `allow_plaintext_disk_cache: true`, and otherwise caches in memory only and does not read a plaintext file it finds. The opt-in is refused when the app environment is `production` or `prod`.
 
-**Consumer adjustment** -- a consumer that needs cached secrets to survive a restart sets `encryption_key`. Plaintext entries already on disk are no longer read, so delete them.
+With `enabled=True` the stale-grace fallback now serves from the in-memory tier as well as the disk tier, taking the most recently fetched value still inside `stale_grace_secs`. It used to consult only the disk entry. Without `encryption_key` or the opt-in there is no disk entry, so a stale value no longer survives a restart: after one, a provider failure raises until the first successful read.
+
+**Consumer adjustment** -- a consumer that needs cached secrets, or the stale-grace fallback, to survive a restart sets `encryption_key`. Plaintext entries already on disk are no longer read, so delete them.
 
 ### L3 email redaction needs a letter in the domain's last label (BEHAVIOUR CHANGE)
 
@@ -32,7 +34,7 @@ With no `encryption_key` the disk cache wrote each secret as hex JSON. It now wr
 
 ### An unreachable OpenBao fails login as `ProviderError` (BEHAVIOUR CHANGE)
 
-The AppRole and Kubernetes logins raised `AuthenticationError` for every failure, a refusal and a connection error alike, with the cause dropped. A 4xx answer is still `AuthenticationError`. A server that cannot be reached, answers 5xx or sends a body that is not JSON now raises plain `ProviderError`. Both chain the underlying `httpx` error as `__cause__`.
+The AppRole and Kubernetes logins raised `AuthenticationError` for every failure, a refusal and a connection error alike, with the cause dropped. A 400-499 answer other than 429 is still `AuthenticationError`. A server that cannot be reached, rate limits the login (429), redirects it (3xx), answers 5xx or sends a body that is not JSON now raises plain `ProviderError`. Both chain the underlying `httpx` error as `__cause__`.
 
 **Consumer adjustment** -- code that catches `AuthenticationError` to handle an outage catches `ProviderError` as well, or instead. `AuthenticationError` subclasses `ProviderError`, so a handler for `ProviderError` still sees both.
 

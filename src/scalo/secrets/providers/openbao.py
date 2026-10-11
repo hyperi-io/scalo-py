@@ -239,15 +239,16 @@ class OpenBaoProvider(VersionedProvider):
         self._set_token_from_auth(data)
 
     def _login_error(self, method: str, exc: Exception) -> ProviderError:
-        """Classify a failed login: a 4xx answer is a refusal, anything else means the store failed.
+        """Classify a failed login: a 4xx other than 429 is a refusal, anything else means the store did not answer.
 
-        Returns AuthenticationError (a ProviderError subclass) when OpenBao answered and refused the
-        credentials, and a plain ProviderError when it was unreachable, failed with a 5xx, or sent a
-        body that is not JSON. Callers raise the result ``from exc``.
+        Returns AuthenticationError (a ProviderError subclass) when OpenBao answered 400-499, other than
+        429, and so refused the credentials. Returns a plain ProviderError when it was rate limited
+        (429), redirected (3xx), failed with a 5xx, was unreachable, or sent a body that is not JSON.
+        Callers raise the result ``from exc``.
         """
         if isinstance(exc, httpx.HTTPStatusError):
             status = exc.response.status_code
-            if status < 500:
+            if 400 <= status < 500 and status != 429:
                 return AuthenticationError(self.name, f"{method} login refused: HTTP {status}")
             return ProviderError(self.name, f"{method} login failed: OpenBao returned HTTP {status}")
         if isinstance(exc, httpx.TransportError):

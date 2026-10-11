@@ -245,10 +245,10 @@ outages in `/readyz`.
 |-----------|------|
 | `SecretsError` | base class |
 | `SecretNotFoundError` | path doesn't exist |
-| `ProviderError` | transport / API call failed, including an OpenBao login that could not reach the server or got a 5xx |
+| `ProviderError` | transport / API call failed, including an OpenBao login that could not reach the server or got a 429, 3xx or 5xx |
 | `ProviderNotConfiguredError` | requested provider not in `from_config` |
 | `ProviderNotAvailableError` | provider extra not installed |
-| `AuthenticationError` | the provider refused the credentials (a `ProviderError` subclass, so catch it first) |
+| `AuthenticationError` | the provider refused the credentials, for OpenBao a 400-499 login answer other than 429 (a `ProviderError` subclass, so catch it first) |
 | `SecretPermissionError` | read-only token tried a write |
 | `SecretAlreadyExistsError` | `create()` on existing path |
 | `SecretVersionNotFoundError` | `get_version()` for unknown version |
