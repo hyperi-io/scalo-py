@@ -3,6 +3,12 @@
 Rendered by CI and committed back at the end of a release -- do not edit by
 hand. Release notes also appear on the GitHub Releases page, one per tag.
 
+## [2.31.6](https://github.com/hyperi-io/scalo-py/compare/v2.31.5...v2.31.6) (2026-10-11)
+
+### Bug Fixes
+
+* retire the chart and argocd generators ([#104](https://github.com/hyperi-io/scalo-py/issues/104)) ([f18eee5](https://github.com/hyperi-io/scalo-py/commit/f18eee5ce031cc25b8051cadf887e57489236237))
+
 ## [2.31.5](https://github.com/hyperi-io/scalo-py/compare/v2.31.4...v2.31.5) (2026-10-11)
 
 ### Bug Fixes
