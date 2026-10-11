@@ -1,7 +1,7 @@
 """scalo -- Opinionated, drop-in toolkit for production Python services.
 
-An integrated runtime for control-plane services. Attach and 'enterprise-up'
-your application.
+Opinionated-for-scale integrated runtime of config, logging, secrets, cli and more
+for control-plane services.
 
 Opinionated, drop-in, working out of the box. The patterns from blog posts,
 watercooler chats and beers with your Google mates as actual library -- not
