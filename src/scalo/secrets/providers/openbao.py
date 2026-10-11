@@ -39,7 +39,7 @@ def _parse_iso_datetime(value: str | None) -> datetime | None:
         return None
     try:
         return datetime.fromisoformat(value.replace("Z", "+00:00"))
-    except (ValueError, AttributeError):
+    except ValueError, AttributeError:
         return None
 
 
@@ -925,7 +925,7 @@ class OpenBaoProvider(VersionedProvider):
         for v_str, v_meta in versions.items():
             try:
                 v_int = int(v_str)
-            except (TypeError, ValueError):
+            except TypeError, ValueError:
                 continue
             items.append(
                 SecretMetadata(

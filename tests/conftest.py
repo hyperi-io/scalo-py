@@ -88,7 +88,7 @@ def _check_kafka_connection(host: str, port: int, timeout: float = 2.0) -> bool:
         sock.connect((host, port))
         sock.close()
         return True
-    except (TimeoutError, OSError):
+    except TimeoutError, OSError:
         return False
 
 
@@ -102,7 +102,7 @@ def _is_our_kafka_container_running() -> bool:
             timeout=10,
         )
         return result.returncode == 0 and "true" in result.stdout.lower()
-    except (subprocess.SubprocessError, FileNotFoundError):
+    except subprocess.SubprocessError, FileNotFoundError:
         return False
 
 
@@ -322,7 +322,7 @@ def _is_our_openbao_container_running() -> bool:
             timeout=10,
         )
         return result.returncode == 0 and "true" in result.stdout.lower()
-    except (subprocess.SubprocessError, FileNotFoundError):
+    except subprocess.SubprocessError, FileNotFoundError:
         return False
 
 

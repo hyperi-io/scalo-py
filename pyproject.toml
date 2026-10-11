@@ -243,7 +243,7 @@ exclude_lines = [
 fail_under = 80
 
 [tool.ruff]
-target-version = "py312"
+target-version = "py314"
 line-length = 120
 indent-width = 4
 src = ["src"]

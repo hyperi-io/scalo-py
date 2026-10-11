@@ -38,7 +38,7 @@ async def test_real_librdkafka_buffer_error_propagates_when_unrecoverable():
     finally:
         try:
             await asyncio.wait_for(producer.flush(timeout=0.1), timeout=0.5)
-        except (TimeoutError, Exception):
+        except TimeoutError, Exception:
             pass
 
 
@@ -52,5 +52,5 @@ async def test_real_librdkafka_send_and_wait_times_out_no_broker():
     finally:
         try:
             await asyncio.wait_for(producer.flush(timeout=0.1), timeout=0.5)
-        except (TimeoutError, Exception):
+        except TimeoutError, Exception:
             pass

@@ -59,7 +59,7 @@ def _shell_ok(args: list[str], timeout: float = 10.0) -> bool:
             check=False,
             timeout=timeout,
         )
-    except (FileNotFoundError, subprocess.TimeoutExpired, OSError):
+    except FileNotFoundError, subprocess.TimeoutExpired, OSError:
         return False
     return result.returncode == 0
 
@@ -247,7 +247,7 @@ def docker_host() -> str | None:
             check=False,
             timeout=10.0,
         )
-    except (FileNotFoundError, subprocess.TimeoutExpired, OSError):
+    except FileNotFoundError, subprocess.TimeoutExpired, OSError:
         return None
     host = result.stdout.strip()
     return host if result.returncode == 0 and host else None
@@ -286,7 +286,7 @@ def _cli_plugin_dirs() -> list[str]:
     real_config = Path(os.environ.get("DOCKER_CONFIG") or Path.home() / ".docker") / "config.json"
     try:
         declared = json.loads(real_config.read_text(encoding="utf-8")).get("cliPluginsExtraDirs")
-    except (OSError, ValueError, AttributeError):
+    except OSError, ValueError, AttributeError:
         declared = None
     if isinstance(declared, list):
         candidates.extend(str(d) for d in declared)

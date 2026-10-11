@@ -206,5 +206,5 @@ def evaluate_condition(expr: str, data: dict[str, Any]) -> bool:
         program = compile_expression(expr)
         result = program.execute(data)
         return bool(result)
-    except (RuntimeError, ValueError, TypeError, ExpressionError):
+    except RuntimeError, ValueError, TypeError, ExpressionError:
         return False

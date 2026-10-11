@@ -171,7 +171,7 @@ class AzureProvider(VersionedProvider):
             raise SecretNotFoundError(path, self.name)
         except ClientAuthenticationError as e:
             raise ProviderError(self.name, f"authentication error: {e}")
-        except (SecretNotFoundError, ProviderError):
+        except SecretNotFoundError, ProviderError:
             raise
         except Exception as e:
             raise ProviderError(self.name, f"request failed: {e}")
@@ -200,7 +200,7 @@ class AzureProvider(VersionedProvider):
             raise SecretNotFoundError(path, self.name)
         except ClientAuthenticationError as e:
             raise ProviderError(self.name, f"authentication error: {e}")
-        except (SecretNotFoundError, ProviderError):
+        except SecretNotFoundError, ProviderError:
             raise
         except Exception as e:
             raise ProviderError(self.name, f"request failed: {e}")
@@ -320,7 +320,7 @@ class AzureProvider(VersionedProvider):
             if self._is_403(e):
                 raise SecretPermissionError(self.name, "list", "*", self._azure_hint())
             raise ProviderError(self.name, f"list failed: {e}")
-        except (SecretPermissionError, ProviderError):
+        except SecretPermissionError, ProviderError:
             raise
         except Exception as e:
             raise ProviderError(self.name, f"list failed: {e}")
@@ -342,7 +342,7 @@ class AzureProvider(VersionedProvider):
             if self._is_403(e):
                 raise SecretPermissionError(self.name, "list", "*", self._azure_hint())
             raise ProviderError(self.name, f"list failed: {e}")
-        except (SecretPermissionError, ProviderError):
+        except SecretPermissionError, ProviderError:
             raise
         except Exception as e:
             raise ProviderError(self.name, f"list failed: {e}")
@@ -371,7 +371,7 @@ class AzureProvider(VersionedProvider):
             if self._is_403(e):
                 raise SecretPermissionError(self.name, "get", path, self._azure_hint())
             raise ProviderError(self.name, f"get_metadata {path} failed: {e}")
-        except (SecretNotFoundError, SecretPermissionError, ProviderError):
+        except SecretNotFoundError, SecretPermissionError, ProviderError:
             raise
         except Exception as e:
             raise ProviderError(self.name, f"get_metadata {path} failed: {e}")
@@ -389,7 +389,7 @@ class AzureProvider(VersionedProvider):
             if self._is_403(e):
                 raise SecretPermissionError(self.name, "get", path, self._azure_hint())
             raise ProviderError(self.name, f"get_metadata {path} failed: {e}")
-        except (SecretNotFoundError, SecretPermissionError, ProviderError):
+        except SecretNotFoundError, SecretPermissionError, ProviderError:
             raise
         except Exception as e:
             raise ProviderError(self.name, f"get_metadata {path} failed: {e}")
@@ -437,7 +437,7 @@ class AzureProvider(VersionedProvider):
             if self._is_403(e):
                 raise SecretPermissionError(self.name, "set", path, self._azure_hint())
             raise ProviderError(self.name, f"set {path} failed: {e}")
-        except (ProviderError, SecretPermissionError):
+        except ProviderError, SecretPermissionError:
             raise
         except Exception as e:
             raise ProviderError(self.name, f"set {path} failed: {e}")
@@ -454,7 +454,7 @@ class AzureProvider(VersionedProvider):
             if self._is_403(e):
                 raise SecretPermissionError(self.name, "set", path, self._azure_hint())
             raise ProviderError(self.name, f"set {path} failed: {e}")
-        except (ProviderError, SecretPermissionError):
+        except ProviderError, SecretPermissionError:
             raise
         except Exception as e:
             raise ProviderError(self.name, f"set {path} failed: {e}")
@@ -496,7 +496,7 @@ class AzureProvider(VersionedProvider):
             if self._is_403(e):
                 raise SecretPermissionError(self.name, "delete", path, self._azure_hint())
             raise ProviderError(self.name, f"delete {path} failed: {e}")
-        except (SecretNotFoundError, SecretPermissionError, ProviderError):
+        except SecretNotFoundError, SecretPermissionError, ProviderError:
             raise
         except Exception as e:
             raise ProviderError(self.name, f"delete {path} failed: {e}")
@@ -514,7 +514,7 @@ class AzureProvider(VersionedProvider):
             if self._is_403(e):
                 raise SecretPermissionError(self.name, "delete", path, self._azure_hint())
             raise ProviderError(self.name, f"delete {path} failed: {e}")
-        except (SecretNotFoundError, SecretPermissionError, ProviderError):
+        except SecretNotFoundError, SecretPermissionError, ProviderError:
             raise
         except Exception as e:
             raise ProviderError(self.name, f"delete {path} failed: {e}")
@@ -544,7 +544,7 @@ class AzureProvider(VersionedProvider):
             if self._is_403(e):
                 raise SecretPermissionError(self.name, "get", path, self._azure_hint())
             raise ProviderError(self.name, f"get_version {path}@{version} failed: {e}")
-        except (SecretNotFoundError, SecretVersionNotFoundError, SecretPermissionError, ProviderError):
+        except SecretNotFoundError, SecretVersionNotFoundError, SecretPermissionError, ProviderError:
             raise
         except Exception as e:
             raise ProviderError(self.name, f"get_version {path}@{version} failed: {e}")
@@ -567,7 +567,7 @@ class AzureProvider(VersionedProvider):
             if self._is_403(e):
                 raise SecretPermissionError(self.name, "get", path, self._azure_hint())
             raise ProviderError(self.name, f"get_version {path}@{version} failed: {e}")
-        except (SecretNotFoundError, SecretVersionNotFoundError, SecretPermissionError, ProviderError):
+        except SecretNotFoundError, SecretVersionNotFoundError, SecretPermissionError, ProviderError:
             raise
         except Exception as e:
             raise ProviderError(self.name, f"get_version {path}@{version} failed: {e}")
@@ -594,7 +594,7 @@ class AzureProvider(VersionedProvider):
             if self._is_403(e):
                 raise SecretPermissionError(self.name, "list", path, self._azure_hint())
             raise ProviderError(self.name, f"list_versions {path} failed: {e}")
-        except (SecretNotFoundError, SecretPermissionError, ProviderError):
+        except SecretNotFoundError, SecretPermissionError, ProviderError:
             raise
         except Exception as e:
             raise ProviderError(self.name, f"list_versions {path} failed: {e}")
@@ -617,7 +617,7 @@ class AzureProvider(VersionedProvider):
             if self._is_403(e):
                 raise SecretPermissionError(self.name, "list", path, self._azure_hint())
             raise ProviderError(self.name, f"list_versions {path} failed: {e}")
-        except (SecretNotFoundError, SecretPermissionError, ProviderError):
+        except SecretNotFoundError, SecretPermissionError, ProviderError:
             raise
         except Exception as e:
             raise ProviderError(self.name, f"list_versions {path} failed: {e}")

@@ -141,7 +141,7 @@ class ConfigReloader:
         try:
             self._prev_sighup = signal.getsignal(signal.SIGHUP)
             signal.signal(signal.SIGHUP, lambda *_: self.reload_now())
-        except (OSError, AttributeError, ValueError):
+        except OSError, AttributeError, ValueError:
             # SIGHUP unavailable (Windows), or not on the main thread.
             self._prev_sighup = None
 
@@ -159,5 +159,5 @@ class ConfigReloader:
             return
         try:
             signal.signal(signal.SIGHUP, prev)
-        except (OSError, AttributeError, ValueError):
+        except OSError, AttributeError, ValueError:
             pass

@@ -161,7 +161,7 @@ def detect_file_type(file_path: Path) -> str:
             if "[" in content[:100] and "=" in content[:100]:
                 return "ini"
 
-        except (UnicodeDecodeError, PermissionError):
+        except UnicodeDecodeError, PermissionError:
             pass
 
     # Default to text
@@ -386,7 +386,7 @@ def merge_files(
         raise ValueError(f"Invalid JSON in {source}: {e}") from e
     except yaml.YAMLError as e:
         raise ValueError(f"Invalid YAML in {source}: {e}") from e
-    except (PermissionError, OSError, UnicodeDecodeError, UnicodeEncodeError):
+    except PermissionError, OSError, UnicodeDecodeError, UnicodeEncodeError:
         # Re-raise specific I/O exceptions without wrapping
         raise
     except Exception as e:

@@ -257,7 +257,7 @@ class AWSProvider(VersionedProvider):
         """IAM permission hint for this operation."""
         return f"check IAM policy for secretsmanager:{operation} permission"
 
-    def _map_client_error(self, error: "ClientError", operation: str, path: str) -> Exception:
+    def _map_client_error(self, error: ClientError, operation: str, path: str) -> Exception:
         """Map a botocore ClientError to the appropriate domain exception."""
         code = error.response.get("Error", {}).get("Code", "")
         if code == "ResourceNotFoundException":

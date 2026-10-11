@@ -46,7 +46,7 @@ class Message:
             return None
         try:
             return json.loads(self.value.decode("utf-8"))
-        except (json.JSONDecodeError, UnicodeDecodeError):
+        except json.JSONDecodeError, UnicodeDecodeError:
             return None
 
     def value_as_str(self, encoding: str = "utf-8") -> str | None:

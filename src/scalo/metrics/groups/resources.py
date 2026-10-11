@@ -162,7 +162,7 @@ class ResourceMetrics:
         if self._cgroup_v2:
             try:
                 quota, period = (self._cgroup_root / "cpu.max").read_text(encoding="utf-8").split()
-            except (OSError, ValueError):
+            except OSError, ValueError:
                 return None
             if quota == "max":
                 return None

@@ -780,7 +780,7 @@ def _config_section(config: Any | None, name: str) -> dict[str, Any]:
     # not a dict subclass on every version, so convert rather than assume.
     try:
         return dict(section)
-    except (TypeError, ValueError):
+    except TypeError, ValueError:
         return {}
 
 

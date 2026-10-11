@@ -175,7 +175,7 @@ def _git_head_sha() -> str | None:
             check=False,
             timeout=10,
         )
-    except (FileNotFoundError, subprocess.TimeoutExpired):
+    except FileNotFoundError, subprocess.TimeoutExpired:
         return None
     if result.returncode != 0:
         return None
