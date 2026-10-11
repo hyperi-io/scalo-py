@@ -25,7 +25,9 @@ Sibling concerns:
 
 - **Transport** -- Kafka producer/consumer/admin (sync + async wrappers).
 - **Deployment** -- `DeploymentContract` Pydantic model and the
-  Dockerfile / Helm / ArgoCD / Compose generators.
+  Dockerfile / container manifest / Compose / ArgoCD AppProject
+  generators. The scalo-service chart renders the Kubernetes objects
+  from the serialised contract.
 
 ---
 

@@ -67,14 +67,14 @@ Core, always installed:
 By extra: `http` (retry with jitter), `metrics` (Prometheus + process and container
 gauges), `expression` (CEL), `kafka` (produce, consume, schema inference),
 `opentelemetry` (OTLP traces and metrics), `secrets` (OpenBao/Vault, AWS, GCP,
-Azure), `deployment` (Dockerfile, Helm, Argo, compose generators).
+Azure), `deployment` (Dockerfile, container manifest, compose generators).
 
 Wired together already, which is the part you would otherwise build: config,
 logging and metrics are global singletons with no init dance; the cascade feeds the
 CLI so `run`, `version` and `config-check` work without you parsing an argument;
-the metrics and health wiring feeds the Kubernetes probes; the deployment contract
-writes your chart, Dockerfile and Argo manifests from the config the app already
-declares.
+the metrics and health wiring feeds the Kubernetes probes; the deployment contract,
+built from the config the app already declares, writes your Dockerfile and drives
+the scalo-service chart that renders your Kubernetes objects.
 
 ## Documentation
 
@@ -140,7 +140,6 @@ cases inside the overlap.
 |------|---------------|
 | `src/scalo/<module>/` | One directory per module: `config`, `logger`, `metrics`, `health`, `http`, `kafka`, `secrets`, `deployment`, `cli` |
 | `src/scalo/data/` | Vendored corpora and rule files, landed by `tools/vendor_patterns.sh` |
-| `templates/helm/scalo-app/` | The chart the deployment generators render against |
 | `tests/{unit,integration,e2e,smoke}/` | Split by what each needs in order to run |
 | `docs/architecture.md` | Layering, the module dependency graph, and what scalo-rs has that this does not |
 

@@ -158,7 +158,7 @@ you enable it and point it at a URL you control.
 
 ## 8. Deployment contract: neutral defaults
 
-The deployment generators (`scalo.deployment`) carry no organisation's name. There is no default registry, ArgoCD source, vendor, licence or copyright, and scalo's own label keys sit under `io.scalo`. Name yours in the contract (`image_registry`, `oci_labels`) or the `deployment.*` config cascade keys (`deployment.image_registry`, `deployment.argocd.repo_url`, `deployment.argocd.dest_namespace`). See [migrations.md](migrations.md).
+The deployment generators (`scalo.deployment`) carry no organisation's name. There is no default registry, vendor, licence or copyright, and scalo's own label keys sit under `io.scalo`. Name yours in the contract (`image_registry`, `oci_labels`) or the `deployment.*` config cascade keys (`deployment.image_registry`, `deployment.base_image`). scalo writes no Helm chart or ArgoCD `Application`: the scalo-service chart renders the Kubernetes objects from the contract. See [migrations.md](migrations.md).
 
 ---
 

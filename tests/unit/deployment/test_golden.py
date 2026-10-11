@@ -13,8 +13,6 @@ under ``tests/fixtures/deployment/``. Drift fails the build -- regenerate the
 fixtures (and review the diff) when the generator output legitimately changes.
 """
 
-from __future__ import annotations
-
 from pathlib import Path
 
 import pytest
@@ -24,8 +22,6 @@ from .support import py_contract
 try:
     from scalo.deployment import (
         DEPLOYMENT_AVAILABLE,
-        ArgocdConfig,
-        generate_argocd_application,
         generate_builder_stage,
         generate_container_manifest,
         generate_runtime_stage,
@@ -58,11 +54,6 @@ def test_builder_stage_golden():
 
 def test_container_manifest_golden():
     _check("container-manifest.json", generate_container_manifest(py_contract()))
-
-
-def test_argocd_golden():
-    argo = ArgocdConfig(repo_url="https://github.com/hyperi-io/dfe-api")
-    _check("argocd-application.yaml", generate_argocd_application(py_contract(), argo))
 
 
 def test_runtime_stage_deterministic():

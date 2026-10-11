@@ -147,7 +147,7 @@ returns an entered `KindClusterGuard` or calls `skip(...)` with a
 detailed reason listing the missing pieces:
 
 ```python
-guard = ensure_kind_cluster("test_tier_b_helm_install_on_kind")
+guard = ensure_kind_cluster("test_tier_b_service_starts_on_kind")
 if guard is None:
     return  # unreachable -- ensure_kind_cluster raised pytest.skip
 try:
@@ -164,37 +164,26 @@ finally:
 
 `tests/e2e/test_contract_artefacts.py` is dual-purpose: it self-tests
 scalo-py's own deployment subsystem AND serves as the template Python
-consumers copy into their own `tests/e2e/`. Five test functions:
-
-### Tier A (cluster-less; runs anywhere the tool is present)
+consumers copy into their own `tests/e2e/`. One test function:
 
 | Test | Exercises | Tool required |
 |---|---|---|
 | `test_tier_a_dockerfile_builds_and_image_runs` | identity `LABEL`s survive `docker build` -> `docker inspect` round-trip | `docker` |
-| `test_tier_a_chart_lint_and_template` | `helm template` renders the chart; `Chart.yaml` annotations carry identity | `helm` |
-| `test_tier_a_argocd_application_kubeconform` | `kubeconform -strict` accepts the generated Application; YAML re-parse shows identity annotations | `kubeconform` |
 
-Each test calls `skip("tier-a", test_name, reason)` when its tool is
-missing -- never silently passes.
-
-### Tier B (env-gated; brings up a real kind cluster)
-
-| Test | Exercises | Tools required |
-|---|---|---|
-| `test_tier_b_helm_install_on_kind` | full `helm install` on a kind cluster with a public canary image (`public.ecr.aws/docker/library/nginx:alpine` -- no creds needed) | `helm` + `kind` + `kubectl` + `E2E_CLUSTER=1` |
-| `test_tier_b_argocd_application_sync_on_kind` | `kubectl apply` the generated Application against a kind cluster with ArgoCD installed; round-trip the identity annotations through `kubectl get application -o jsonpath` | `kubectl` + `kind` + `E2E_CLUSTER=1` |
-
-The ArgoCD install manifest is pinned to a specific upstream tag --
-consumers updating that should bump intentionally.
+It calls `skip("tier-a", test_name, reason)` when docker is missing --
+never silently passes. The Kubernetes objects come from the
+scalo-service library chart in scalo-rs, whose own tests render and
+validate them, so the template carries no chart or cluster test. The
+Tier B helpers above stay for a consumer that brings up its own cluster.
 
 ---
 
 ## Markers + tier mapping
 
-The template uses two pytest markers, declared in `pyproject.toml`:
+Two pytest markers, declared in `pyproject.toml`, map to the tiers:
 
-- `@pytest.mark.integration` -- Tier A. Runs in CI's integration job
-  with docker-compose services available.
+- `@pytest.mark.integration` -- Tier A, which the template uses. Runs in
+  CI's integration job with docker-compose services available.
 - `@pytest.mark.e2e` -- Tier B. Env-gated and only runs in the
   dedicated e2e job that has kind installed.
 
@@ -210,12 +199,10 @@ runner already knows how to split them into the right CI jobs.
 2. Replace `_mock_binary_script()` with your real entrypoint (e.g.
    `pip install -e .` in the build context + invoke your
    console-script via `--entrypoint`).
-3. Replace `_make_contract()` / `_make_argo()` with your actual
-   contract + ArgoCD config.
+3. Replace the hand-built `Dockerfile` in the test body with your app's
+   generated one (`generate_dockerfile(contract, identity=identity)`).
 4. Keep `VALID_SHA` / `VALID_REF` constants -- they're test
    placeholders, not production values.
-5. Wire the e2e job in your CI to set `E2E_CLUSTER=1` and
-   install `kind` + `kubectl` + `helm` + `kubeconform`.
 
 ---
 

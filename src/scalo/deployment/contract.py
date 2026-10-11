@@ -11,9 +11,10 @@
 scalo-py is the Tier-2 producer of the scalo deployment contract (scalo-rs is
 Tier 1 for Rust services). Apps build a ``DeploymentContract`` from their
 ``Config`` defaults; generation functions create Python-native deployment
-artefacts (uv/venv runtime-stage Dockerfile, Helm chart, Compose fragment,
-ArgoCD Application) and validation functions check existing artefacts against
-the contract.
+artefacts (uv/venv runtime-stage Dockerfile, container manifest, Compose
+fragment), ``validate_dockerfile`` checks a committed Dockerfile against the
+contract, and the scalo-service library chart renders the Kubernetes objects
+from the serialised contract.
 
 The serialised JSON (``deployment-contract.json`` / ``container-manifest.json``)
 stays schema-compatible with scalo-rs's so CI tooling reads either uniformly;
@@ -570,10 +571,11 @@ def _port_fault(index: int, port: PortContract) -> str | None:
 class DeploymentContract(BaseModel):
     """Deployment-facing contract points derived from the app config cascade.
 
-    Apps build this from their ``Config.default()``. Validation functions
-    compare Helm charts and Dockerfiles against these values. Generation
-    functions create deployment artefacts (Dockerfile, Helm chart, Compose
-    fragment) from scratch.
+    Apps build this from their ``Config.default()``. ``validate_dockerfile``
+    compares a Dockerfile against these values, the generation functions create
+    the Dockerfile, Compose fragment and container manifest from scratch, and
+    the scalo-service library chart renders the Kubernetes objects from the
+    serialised contract.
     """
 
     model_config = ConfigDict(extra="forbid")

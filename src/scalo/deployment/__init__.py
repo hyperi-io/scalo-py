@@ -92,7 +92,6 @@ if not DEPLOYMENT_AVAILABLE:
     AptRepoContract = _missing  # type: ignore[assignment]
     BaseDistro = _missing  # type: ignore[assignment]
     NativeDepsContract = _missing  # type: ignore[assignment]
-    ArgocdConfig = _missing  # type: ignore[assignment]
     AppProjectContract = _missing  # type: ignore[assignment]
     AppProjectDestination = _missing  # type: ignore[assignment]
     generate_argocd_app_project = _missing  # type: ignore[assignment]
@@ -108,16 +107,11 @@ if not DEPLOYMENT_AVAILABLE:
     generate_runtime_stage = _missing  # type: ignore[assignment]
     generate_container_manifest = _missing  # type: ignore[assignment]
     generate_compose_fragment = _missing  # type: ignore[assignment]
-    generate_chart = _missing  # type: ignore[assignment]
-    generate_argocd_application = _missing  # type: ignore[assignment]
     validate_base_image = _missing  # type: ignore[assignment]
     validate_dockerfile = _missing  # type: ignore[assignment]
-    validate_helm_values = _missing  # type: ignore[assignment]
     generate_dockerignore = _missing  # type: ignore[assignment]
     image_registry_from_cascade = _missing  # type: ignore[assignment]
     base_image_from_cascade = _missing  # type: ignore[assignment]
-    argocd_repo_url_from_cascade = _missing  # type: ignore[assignment]
-    argocd_dest_namespace_from_cascade = _missing  # type: ignore[assignment]
     libgit2_runtime_package = _missing  # type: ignore[assignment]
     # The dial keyword and image defaults are plain strings with no pydantic
     # dependency, so they come from the one source even on the degraded-import
@@ -171,15 +165,11 @@ else:
         CreateDirError,
         DeploymentError,
         NotFoundError,
-        ParseYamlError,
         ReadFileError,
         WriteFileError,
     )
     from .generate import (
-        ArgocdConfig,
-        generate_argocd_application,
         generate_builder_stage,
-        generate_chart,
         generate_compose_fragment,
         generate_container_manifest,
         generate_dockerfile,
@@ -199,14 +189,12 @@ else:
         DEFAULT_BUILDER_IMAGE,
         DEFAULT_DISTRO_CODENAME,
         DEFAULT_PYTHON_VERSION,
-        argocd_dest_namespace_from_cascade,
-        argocd_repo_url_from_cascade,
         base_image_from_cascade,
         default_base_image,
         default_builder_image,
         image_registry_from_cascade,
     )
-    from .validate import validate_base_image, validate_dockerfile, validate_helm_values
+    from .validate import validate_base_image, validate_dockerfile
     from .waves import (
         WAVE_APPS,
         WAVE_CRDS,
@@ -236,7 +224,6 @@ __all__ = [
     "AppProjectContract",
     "AppProjectDestination",
     "AptRepoContract",
-    "ArgocdConfig",
     "BaseDistro",
     "Capability",
     "ContractIdentity",
@@ -265,8 +252,6 @@ __all__ = [
     "SecurityContract",
     "ServiceAccount",
     "WritablePath",
-    "argocd_dest_namespace_from_cascade",
-    "argocd_repo_url_from_cascade",
     "assert_no_config_artifact_drift",
     "base_image_from_cascade",
     "check_config_artifact_drift",
@@ -275,9 +260,7 @@ __all__ = [
     "default_builder_image",
     "emit_config_artifacts",
     "generate_argocd_app_project",
-    "generate_argocd_application",
     "generate_builder_stage",
-    "generate_chart",
     "generate_compose_fragment",
     "generate_container_manifest",
     "generate_dockerfile",
@@ -287,5 +270,4 @@ __all__ = [
     "libgit2_runtime_package",
     "validate_base_image",
     "validate_dockerfile",
-    "validate_helm_values",
 ]

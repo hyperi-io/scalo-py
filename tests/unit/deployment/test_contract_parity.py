@@ -40,7 +40,6 @@ from scalo.deployment import (
     SecurityContract,
     ServiceAccount,
     WritablePath,
-    generate_chart,
 )
 
 FIXTURE = Path(__file__).parents[2] / "fixtures" / "contract-parity" / "deployment-contract.json"
@@ -559,18 +558,3 @@ def test_native_deps_constructors_record_the_distro() -> None:
     )
     assert bookworm.distro is BaseDistro.BOOKWORM
     assert NativeDepsContract.for_scalo_extras([], "x", distro_codename="plucky").distro is None
-
-
-# ---- KEDA off generates what no KEDA contract does -----------------------------
-
-
-def test_a_disabled_keda_contract_generates_no_scaled_object(tmp_path: Path) -> None:
-    off = _bare().model_copy(update={"keda": KedaContract(enabled=False)})
-    none = _bare()
-    generate_chart(off, tmp_path / "off")
-    generate_chart(none, tmp_path / "none")
-    assert not (tmp_path / "off" / "templates" / "keda-scaledobject.yaml").exists()
-    assert not (tmp_path / "off" / "templates" / "keda-triggerauth.yaml").exists()
-    values_off = (tmp_path / "off" / "values.yaml").read_text(encoding="utf-8")
-    values_none = (tmp_path / "none" / "values.yaml").read_text(encoding="utf-8")
-    assert values_off == values_none

@@ -19,16 +19,10 @@ Cascade keys::
     deployment:
       image_registry: registry.example.com/team          # no default -- required
       base_image: python:3.14-slim                       # default: python:3.14-slim
-      argocd:
-        repo_url: https://git.example.com/team/my-app    # no default -- no Application without it
-        dest_namespace: my-namespace                     # default: the app name
 
-There is no default registry or ArgoCD source: where an organisation pushes
-its images and keeps its charts is not something a library can guess, and a
-guess sends images and syncs to someone else's.
+There is no default registry: where an organisation pushes its images is not
+something a library can guess, and a guess sends images to someone else's.
 """
-
-from __future__ import annotations
 
 DEFAULT_PYTHON_VERSION = "3.14"
 """Default Python version driving both the runtime base and builder images.
@@ -119,39 +113,11 @@ def base_image_from_cascade() -> str:
     return _from_settings("deployment.base_image") or DEFAULT_BASE_IMAGE
 
 
-def argocd_repo_url_from_cascade() -> str | None:
-    """Read the git repo URL for ArgoCD generation from the config cascade.
-
-    Reads ``deployment.argocd.repo_url``. ``None`` when it is not set: where an
-    app's chart lives is not something a library can guess, so
-    ``generate-artefacts`` writes no ArgoCD ``Application`` without it.
-
-    Returns:
-        The repo URL, or ``None`` when the cascade names none.
-    """
-    return _from_settings("deployment.argocd.repo_url")
-
-
-def argocd_dest_namespace_from_cascade() -> str | None:
-    """Read the ArgoCD destination namespace from the config cascade.
-
-    Reads ``deployment.argocd.dest_namespace``. ``None`` when it is not set,
-    which leaves ``ArgocdConfig.dest_namespace`` empty and deploys the app
-    into a namespace named after it.
-
-    Returns:
-        The namespace, or ``None`` when the cascade names none.
-    """
-    return _from_settings("deployment.argocd.dest_namespace")
-
-
 __all__ = [
     "DEFAULT_BASE_IMAGE",
     "DEFAULT_BUILDER_IMAGE",
     "DEFAULT_DISTRO_CODENAME",
     "DEFAULT_PYTHON_VERSION",
-    "argocd_dest_namespace_from_cascade",
-    "argocd_repo_url_from_cascade",
     "base_image_from_cascade",
     "default_base_image",
     "default_builder_image",

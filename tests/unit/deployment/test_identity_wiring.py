@@ -1,6 +1,6 @@
 # Project:   scalo
 # File:      tests/unit/deployment/test_identity_wiring.py
-# Purpose:   Verify ContractIdentity wiring into the five deployment generators
+# Purpose:   Verify ContractIdentity wiring into the three image generators
 # Language:  Python
 #
 # License:   Apache-2.0
@@ -8,9 +8,8 @@
 
 """Wiring tests for Contract Identity v1.
 
-For each of the five generators (`generate_runtime_stage`,
-`generate_container_manifest`, `generate_dockerfile`, `generate_chart`,
-`generate_argocd_application`):
+For each of the three generators (`generate_runtime_stage`,
+`generate_container_manifest`, `generate_dockerfile`):
 
 - ``identity=None`` -> output byte-for-byte unchanged from the
   pre-identity baseline (opt-in safety).
@@ -21,17 +20,10 @@ A cross-surface grep invariant ensures every artefact carries the
 canonical key prefix when identity is supplied.
 """
 
-from __future__ import annotations
-
 import json
 import re
-from pathlib import Path
-
-import pytest
-import yaml
 
 from scalo.deployment import (
-    ArgocdConfig,
     DeploymentContract,
     HealthContract,
     ImageProfile,
@@ -40,8 +32,6 @@ from scalo.deployment import (
     OciLabels,
     SecretEnvContract,
     SecretGroupContract,
-    generate_argocd_application,
-    generate_chart,
     generate_container_manifest,
     generate_dockerfile,
     generate_runtime_stage,
@@ -88,14 +78,6 @@ def _make_contract() -> DeploymentContract:
         image_profile=ImageProfile.PRODUCTION,
         oci_labels=OciLabels(),
         schema_version=2,
-    )
-
-
-def _make_argo() -> ArgocdConfig:
-    return ArgocdConfig(
-        repo_url="https://github.com/hyperi-io/dfe-loader",
-        target_revision="main",
-        chart_path="charts/dfe-loader",
     )
 
 
@@ -176,78 +158,19 @@ def test_dockerfile_with_identity_emits_three_labels() -> None:
 
 
 # ---------------------------------------------------------------------------
-# generate_chart (writes Chart.yaml + values.yaml + templates)
-# ---------------------------------------------------------------------------
-
-
-def test_chart_identity_none_no_annotations_block_in_chart_yaml(tmp_path: Path) -> None:
-    generate_chart(_make_contract(), tmp_path, identity=None)
-    chart_text = (tmp_path / "Chart.yaml").read_text(encoding="utf-8")
-    assert "io.scalo.contract" not in chart_text
-
-
-def test_chart_with_identity_emits_annotations_block(tmp_path: Path) -> None:
-    generate_chart(_make_contract(), tmp_path, identity=_make_identity())
-    chart_text = (tmp_path / "Chart.yaml").read_text(encoding="utf-8")
-    chart = yaml.safe_load(chart_text)
-    annotations = chart["annotations"]
-    assert annotations["io.scalo.contract.version"] == "v1"
-    assert annotations["io.scalo.contract.source-commit"] == VALID_SHA
-    assert annotations["io.scalo.contract.image-ref"] == VALID_REF
-
-
-def test_chart_identity_none_byte_unchanged(tmp_path: Path) -> None:
-    out_a = tmp_path / "a"
-    out_b = tmp_path / "b"
-    generate_chart(_make_contract(), out_a, identity=None)
-    generate_chart(_make_contract(), out_b)
-    assert (out_a / "Chart.yaml").read_text(encoding="utf-8") == (out_b / "Chart.yaml").read_text(encoding="utf-8")
-
-
-# ---------------------------------------------------------------------------
-# generate_argocd_application
-# ---------------------------------------------------------------------------
-
-
-def test_argocd_identity_none_unchanged() -> None:
-    c = _make_contract()
-    argo = _make_argo()
-    assert generate_argocd_application(c, argo, identity=None) == generate_argocd_application(c, argo)
-
-
-def test_argocd_identity_none_has_no_contract_keys() -> None:
-    out = generate_argocd_application(_make_contract(), _make_argo(), identity=None)
-    assert "io.scalo.contract" not in out
-
-
-def test_argocd_with_identity_emits_three_annotations_alongside_sync_wave() -> None:
-    out = generate_argocd_application(_make_contract(), _make_argo(), identity=_make_identity())
-    parsed = yaml.safe_load(out)
-    annotations = parsed["metadata"]["annotations"]
-    assert annotations["argocd.argoproj.io/sync-wave"] == "0"
-    assert annotations["io.scalo.contract.version"] == "v1"
-    assert annotations["io.scalo.contract.source-commit"] == VALID_SHA
-    assert annotations["io.scalo.contract.image-ref"] == VALID_REF
-
-
-# ---------------------------------------------------------------------------
 # Cross-surface grep invariant
 # ---------------------------------------------------------------------------
 
 
-def test_every_scalo_key_follows_the_label_namespace(tmp_path: Path) -> None:
+def test_every_scalo_key_follows_the_label_namespace() -> None:
     """Every key scalo stamps itself moves with label_namespace, and no default key is left behind."""
     c = _make_contract().model_copy(update={"oci_labels": OciLabels(label_namespace="com.example")})
-    argo = _make_argo()
     ident = _make_identity()
-    generate_chart(c, tmp_path, identity=ident)
 
     surfaces = {
         "dockerfile": generate_dockerfile(c, identity=ident),
         "runtime_stage": generate_runtime_stage(c, identity=ident),
         "container_manifest": generate_container_manifest(c, identity=ident),
-        "argocd_application": generate_argocd_application(c, argo, identity=ident),
-        "chart": (tmp_path / "Chart.yaml").read_text(encoding="utf-8"),
     }
     for name, text in surfaces.items():
         assert text.count("com.example.contract.") == 3, f"{name}:\n{text}"
@@ -260,9 +183,8 @@ def test_every_scalo_key_follows_the_label_namespace(tmp_path: Path) -> None:
     assert labels["com.example.metrics_port"] == "9090"
 
 
-def test_all_surfaces_grep_for_io_scalo_contract(tmp_path: Path) -> None:
+def test_all_surfaces_grep_for_io_scalo_contract() -> None:
     c = _make_contract()
-    argo = _make_argo()
     ident = _make_identity()
 
     pattern = re.compile(r"io\.scalo\.contract")
@@ -271,16 +193,9 @@ def test_all_surfaces_grep_for_io_scalo_contract(tmp_path: Path) -> None:
         "dockerfile": generate_dockerfile(c, identity=ident),
         "runtime_stage": generate_runtime_stage(c, identity=ident),
         "container_manifest": generate_container_manifest(c, identity=ident),
-        "argocd_application": generate_argocd_application(c, argo, identity=ident),
     }
     for name, text in surfaces.items():
         # Each surface must carry all three keys.
         assert len(pattern.findall(text)) >= 3, (
             f"{name}: expected >=3 occurrences of io.scalo.contract, got {len(pattern.findall(text))}"
         )
-
-    # Chart.yaml separately (writes to disk)
-    chart_dir = tmp_path / "chart"
-    generate_chart(c, chart_dir, identity=ident)
-    chart_text = (chart_dir / "Chart.yaml").read_text(encoding="utf-8")
-    assert len(pattern.findall(chart_text)) >= 3

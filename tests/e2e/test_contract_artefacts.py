@@ -18,20 +18,14 @@ This file is BOTH:
 Tier A (default; runs anywhere the tool is present):
 
 - ``test_tier_a_dockerfile_builds_and_image_runs``
-- ``test_tier_a_chart_lint_and_template``
-- ``test_tier_a_argocd_application_kubeconform``
 
-Tier B (env-gated by ``E2E_CLUSTER=1``):
+The Kubernetes objects come from the scalo-service library chart in
+scalo-rs, which renders and validates them from the serialised contract.
 
-- ``test_tier_b_helm_install_on_kind``
-- ``test_tier_b_argocd_application_sync_on_kind``
-
-Each test skips cleanly with a ``HYPERCI-SKIP[contract-e2e][<tier>]:``
+The test skips cleanly with a ``HYPERCI-SKIP[contract-e2e][tier-a]:``
 prefix if its tool prerequisites are absent. The hyperi-ci runner greps
 those lines into a top-of-stage summary.
 """
-
-from __future__ import annotations
 
 import json
 import os
@@ -40,44 +34,18 @@ import tempfile
 from pathlib import Path
 
 import pytest
-import yaml
 
 from scalo.deployment import (
     DEFAULT_LABEL_NAMESPACE,
-    ArgocdConfig,
     ContractIdentity,
-    DeploymentContract,
-    HealthContract,
-    ImageProfile,
-    KedaContract,
-    NativeDepsContract,
-    OciLabels,
-    generate_argocd_application,
-    generate_chart,
 )
 from scalo.deployment.test_support import (
     docker_available,
     docker_build_cmd,
     docker_empty_creds_json,
     docker_env,
-    ensure_kind_cluster,
-    helm_available,
-    kubeconform_available,
-    kubectl_available,
     skip,
-    wait_until,
 )
-
-# Pinned ArgoCD upstream tag for Tier B install. Update intentionally -- but do
-# update: this sat on v2.13.1 while ArgoCD went to 3.x, so the manifests the
-# Application resources were validated against were two majors behind anything
-# a cluster would run.
-# renovate: datasource=github-releases depName=argoproj/argo-cd
-ARGOCD_INSTALL_MANIFEST = "https://raw.githubusercontent.com/argoproj/argo-cd/v3.4.5/manifests/install.yaml"
-
-# A public canary image used in Tier B helm-install (no registry creds needed).
-PUBLIC_CANARY_IMAGE_REPO = "public.ecr.aws/docker/library/nginx"
-PUBLIC_CANARY_IMAGE_TAG = "alpine"
 
 VALID_SHA = "0123456789abcdef0123456789abcdef01234567"
 VALID_REF = "ghcr.io/hyperi-io/dfe-loader:v2.7.3"
@@ -96,34 +64,6 @@ def _mock_binary_script() -> str:
         '  --help|-h) echo "mock scalo-py e2e binary: ok"; exit 0 ;;\n'
         '  *) echo "mock scalo-py e2e binary"; exit 0 ;;\n'
         "esac\n"
-    )
-
-
-def _make_contract(app_name: str = "scalo-py-e2e-app") -> DeploymentContract:
-    return DeploymentContract(
-        app_name=app_name,
-        binary_name=app_name,
-        description="scalo-py deployment contract e2e canary",
-        metrics_port=9090,
-        health=HealthContract(),
-        env_prefix="SCALO_E2E",
-        metric_prefix="scalo_py_e2e",
-        config_mount_path=f"/etc/{app_name}.yaml",
-        image_registry="ghcr.io/hyperi-io",
-        base_image="ubuntu:24.04",
-        keda=KedaContract(),
-        native_deps=NativeDepsContract(),
-        image_profile=ImageProfile.PRODUCTION,
-        oci_labels=OciLabels(),
-        schema_version=2,
-    )
-
-
-def _make_argo(app_name: str = "scalo-py-e2e-app") -> ArgocdConfig:
-    return ArgocdConfig(
-        repo_url=f"https://github.com/hyperi-io/{app_name}",
-        target_revision="main",
-        chart_path=f"charts/{app_name}",
     )
 
 
@@ -217,270 +157,3 @@ def test_tier_a_dockerfile_builds_and_image_runs() -> None:
                 errors="replace",
                 timeout=30,
             )
-
-
-@pytest.mark.integration
-def test_tier_a_chart_lint_and_template() -> None:
-    """``helm template`` renders the chart; ``Chart.yaml`` annotations carry identity.
-
-    Uses ``--set`` overrides to provide minimal kafka config required by
-    the keda template; the contract's default ``default_config`` is
-    empty by design. Consumer e2e tests provide their own values.
-    """
-    if not helm_available():
-        skip(
-            "tier-a",
-            "test_tier_a_chart_lint_and_template",
-            "helm CLI not installed",
-        )
-
-    contract = _make_contract()
-    identity = _make_identity()
-
-    with tempfile.TemporaryDirectory() as tdir:
-        chart_dir = Path(tdir) / "chart"
-        generate_chart(contract, chart_dir, identity=identity)
-
-        rendered = subprocess.run(
-            [
-                "helm",
-                "template",
-                "test-release",
-                str(chart_dir),
-                "--set",
-                "config.kafka.brokers=localhost:9092",
-                "--set",
-                "config.kafka.topics={canary}",
-            ],
-            check=True,
-            capture_output=True,
-            encoding="utf-8",
-            errors="replace",
-            timeout=60,
-        )
-        # Sanity: helm rendered something
-        assert "kind:" in rendered.stdout
-
-        # Chart.yaml annotations carry the three identity keys.
-        chart_yaml = yaml.safe_load((chart_dir / "Chart.yaml").read_text(encoding="utf-8"))
-        annotations = chart_yaml["annotations"]
-        assert annotations["io.scalo.contract.version"] == "v1"
-        assert annotations["io.scalo.contract.source-commit"] == VALID_SHA
-        assert annotations["io.scalo.contract.image-ref"] == VALID_REF
-
-
-@pytest.mark.integration
-def test_tier_a_argocd_application_kubeconform() -> None:
-    if not kubeconform_available():
-        skip(
-            "tier-a",
-            "test_tier_a_argocd_application_kubeconform",
-            "kubeconform CLI not installed",
-        )
-
-    contract = _make_contract()
-    argo = _make_argo()
-    identity = _make_identity()
-    app_yaml = generate_argocd_application(contract, argo, identity=identity)
-
-    with tempfile.NamedTemporaryFile(suffix=".yaml", mode="w", encoding="utf-8", newline="\n", delete=False) as fh:
-        fh.write(app_yaml)
-        app_path = fh.name
-    try:
-        subprocess.run(
-            ["kubeconform", "-strict", "-summary", "-ignore-missing-schemas", app_path],
-            check=True,
-            capture_output=True,
-            encoding="utf-8",
-            errors="replace",
-            timeout=60,
-        )
-    finally:
-        os.unlink(app_path)
-
-    # Re-parse the YAML to validate annotation presence
-    parsed = yaml.safe_load(app_yaml)
-    annotations = parsed["metadata"]["annotations"]
-    assert annotations["io.scalo.contract.version"] == "v1"
-    assert annotations["io.scalo.contract.source-commit"] == VALID_SHA
-    assert annotations["io.scalo.contract.image-ref"] == VALID_REF
-
-
-# ===========================================================================
-# Tier B -- env-gated; brings up a real kind cluster
-# ===========================================================================
-
-
-@pytest.mark.e2e
-def test_tier_b_helm_install_on_kind() -> None:
-    if not helm_available():
-        skip(
-            "tier-b",
-            "test_tier_b_helm_install_on_kind",
-            "helm CLI not installed",
-        )
-    guard = ensure_kind_cluster("test_tier_b_helm_install_on_kind")
-    if guard is None:
-        return  # unreachable; ensure_kind_cluster raised pytest.skip
-
-    contract = _make_contract()
-    identity = _make_identity()
-
-    with tempfile.TemporaryDirectory() as tdir:
-        chart_dir = Path(tdir) / "chart"
-        generate_chart(contract, chart_dir, identity=identity)
-
-        kc_path = Path(tdir) / "kubeconfig"
-        subprocess.run(
-            ["kind", "create", "cluster", "--name", guard.name, "--kubeconfig", str(kc_path)],
-            check=True,
-            capture_output=True,
-            encoding="utf-8",
-            errors="replace",
-            timeout=300,
-        )
-        guard.kubeconfig = kc_path
-        try:
-            subprocess.run(
-                [
-                    "helm",
-                    "install",
-                    contract.app_name,
-                    str(chart_dir),
-                    "--kubeconfig",
-                    str(kc_path),
-                    "--set",
-                    f"image.repository={PUBLIC_CANARY_IMAGE_REPO}",
-                    "--set",
-                    f"image.tag={PUBLIC_CANARY_IMAGE_TAG}",
-                    "--wait",
-                    "--timeout",
-                    "120s",
-                ],
-                check=True,
-                capture_output=True,
-                encoding="utf-8",
-                errors="replace",
-                timeout=180,
-            )
-            list_out = subprocess.run(
-                ["helm", "list", "--kubeconfig", str(kc_path), "-o", "json"],
-                check=True,
-                capture_output=True,
-                encoding="utf-8",
-                errors="replace",
-                timeout=30,
-            )
-            releases = json.loads(list_out.stdout)
-            assert any(r["name"] == contract.app_name for r in releases)
-        finally:
-            guard.__exit__(None, None, None)
-
-
-@pytest.mark.e2e
-def test_tier_b_argocd_application_sync_on_kind() -> None:
-    if not kubectl_available():
-        skip(
-            "tier-b",
-            "test_tier_b_argocd_application_sync_on_kind",
-            "kubectl CLI not installed",
-        )
-    guard = ensure_kind_cluster("test_tier_b_argocd_application_sync_on_kind")
-    if guard is None:
-        return
-
-    contract = _make_contract()
-    argo = _make_argo()
-    identity = _make_identity()
-
-    with tempfile.TemporaryDirectory() as tdir:
-        kc_path = Path(tdir) / "kubeconfig"
-        subprocess.run(
-            ["kind", "create", "cluster", "--name", guard.name, "--kubeconfig", str(kc_path)],
-            check=True,
-            capture_output=True,
-            encoding="utf-8",
-            errors="replace",
-            timeout=300,
-        )
-        guard.kubeconfig = kc_path
-        try:
-            subprocess.run(
-                ["kubectl", "create", "namespace", "argocd", "--kubeconfig", str(kc_path)],
-                check=True,
-                capture_output=True,
-                encoding="utf-8",
-                errors="replace",
-                timeout=30,
-            )
-            subprocess.run(
-                ["kubectl", "apply", "-n", "argocd", "--kubeconfig", str(kc_path), "-f", ARGOCD_INSTALL_MANIFEST],
-                check=True,
-                capture_output=True,
-                encoding="utf-8",
-                errors="replace",
-                timeout=120,
-            )
-
-            def server_ready() -> bool:
-                r = subprocess.run(
-                    [
-                        "kubectl",
-                        "get",
-                        "deployment",
-                        "argocd-server",
-                        "-n",
-                        "argocd",
-                        "--kubeconfig",
-                        str(kc_path),
-                        "-o",
-                        "jsonpath={.status.availableReplicas}",
-                    ],
-                    capture_output=True,
-                    text=True,
-                    encoding="utf-8",
-                    errors="replace",
-                    check=False,
-                    timeout=15,
-                )
-                return r.returncode == 0 and r.stdout.strip().isdigit() and int(r.stdout) >= 1
-
-            assert wait_until(deadline_seconds=300, interval_seconds=5, predicate=server_ready)
-
-            app_yaml = generate_argocd_application(contract, argo, identity=identity)
-            app_file = Path(tdir) / "application.yaml"
-            app_file.write_text(app_yaml, encoding="utf-8", newline="\n")
-            subprocess.run(
-                ["kubectl", "apply", "--kubeconfig", str(kc_path), "-f", str(app_file)],
-                check=True,
-                capture_output=True,
-                encoding="utf-8",
-                errors="replace",
-                timeout=30,
-            )
-
-            roundtrip = subprocess.run(
-                [
-                    "kubectl",
-                    "get",
-                    "application",
-                    contract.app_name,
-                    "-n",
-                    "argocd",
-                    "--kubeconfig",
-                    str(kc_path),
-                    "-o",
-                    "jsonpath={.metadata.annotations}",
-                ],
-                check=True,
-                capture_output=True,
-                encoding="utf-8",
-                errors="replace",
-                timeout=30,
-            )
-            annotations = json.loads(roundtrip.stdout)
-            assert annotations["io.scalo.contract.version"] == "v1"
-            assert annotations["io.scalo.contract.source-commit"] == VALID_SHA
-            assert annotations["io.scalo.contract.image-ref"] == VALID_REF
-        finally:
-            guard.__exit__(None, None, None)

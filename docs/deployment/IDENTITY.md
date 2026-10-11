@@ -1,10 +1,10 @@
 # Contract Identity Annotation Scheme v1
 
-Three greppable keys stamped onto every deployment artefact so the
-same logical contract output is traceable across surfaces (Dockerfile
-`LABEL`, Helm `Chart.yaml` annotations, ArgoCD `Application`
-annotations, container manifest JSON `labels`) and across language
-tiers (scalo-rs, scalo-py, hyperi-ci). Mirrors
+Three greppable keys stamped onto the image so the same logical
+contract output is traceable across surfaces (Dockerfile `LABEL`,
+container manifest JSON `labels`, and YAML annotations on a chart or
+ArgoCD `Application` built elsewhere) and across language tiers
+(scalo-rs, scalo-py, hyperi-ci). Mirrors
 `scalo::deployment::contract_identity` byte-for-byte; both
 implementations are diffed against a shared golden fixture.
 
@@ -94,10 +94,7 @@ Three lines under `namespace`, canonical order, NO trailing newline, padded with
 
 The same three keys and values, in the same order, as a `dict[str, str]`. The container manifest merges it into its `labels`. scalo-rs has no equivalent, because its manifest carries no identity keys.
 
-Indent levels used in the generators:
-
-- `indent=2` -- Helm `Chart.yaml` top-level `annotations:` block.
-- `indent=4` -- ArgoCD `Application` `metadata.annotations:` block.
+No scalo-py generator calls `as_yaml_annotations`. It is for code that builds a YAML surface itself: `indent=2` fits a `Chart.yaml` top-level `annotations:` block, and `indent=4` an ArgoCD `Application` `metadata.annotations:` block.
 
 ---
 
@@ -133,15 +130,13 @@ guarantee filter by the presence of `@sha256:` in the value.
 
 ## Wiring into the generators
 
-All five identity-aware generators take `identity` as a keyword-only
+All three identity-aware generators take `identity` as a keyword-only
 opt-in, default `None`:
 
 ```python
 generate_dockerfile(contract, identity=identity)
 generate_runtime_stage(contract, identity=identity)
 generate_container_manifest(contract, identity=identity)
-generate_chart(contract, output_dir, identity=identity)
-generate_argocd_application(contract, argo, identity=identity)
 ```
 
 Behaviour when `identity=None`: pre-identity output, byte-for-byte
@@ -152,8 +147,6 @@ unchanged. Behaviour when `identity` is provided:
 | `generate_dockerfile` | three `LABEL` lines after `io.scalo.profile` |
 | `generate_runtime_stage` | three `LABEL` lines after `io.scalo.profile`, before the dynamic OCI `ARG`/`LABEL` block |
 | `generate_container_manifest` | three keys in the `labels` JSON dict |
-| `generate_chart` (Chart.yaml only) | `annotations:` block at the top level of `Chart.yaml` (indent=2) |
-| `generate_argocd_application` | three keys in `metadata.annotations` next to `argocd.argoproj.io/sync-wave` (indent=4) |
 
 Every generator renders the keys under the contract's `oci_labels.label_namespace`.
 
@@ -223,7 +216,7 @@ Phase 3 is a major version bump.
 
 ## Why a separate scheme
 
-OCI has `org.opencontainers.image.source` and `.revision` already -- those cover the source repo URL and commit SHA, but stop at the container image. Helm charts and ArgoCD `Application` CRs are separate surfaces with no equivalent convention. The `<namespace>.contract.*` keys span all three surfaces uniformly, and the reverse-DNS namespace keeps them clear of OCI's reserved namespaces.
+OCI has `org.opencontainers.image.source` and `.revision` already -- those cover the source repo URL and commit SHA, but stop at the container image. Helm charts and ArgoCD `Application` CRs are separate surfaces with no equivalent convention. The `<namespace>.contract.*` keys carry the same values onto any of the three, and the reverse-DNS namespace keeps them clear of OCI's reserved namespaces.
 
 ---
 

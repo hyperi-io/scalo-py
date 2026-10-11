@@ -362,8 +362,7 @@ class ServiceApp(ABC):
         Override to return a ``scalo.deployment.DeploymentContract``
         instance; ``generate-artefacts`` will then emit
         deployment-contract.json, container-manifest.json,
-        Dockerfile.runtime and .dockerignore into the output directory, and
-        argocd-application.yaml when ``deployment.argocd.repo_url`` is set.
+        Dockerfile.runtime and .dockerignore into the output directory.
 
         Default returns ``None`` -- the subcommand then prints a warning and
         emits nothing. Apps that don't ship as containers can leave it as
@@ -483,7 +482,7 @@ def _build_typer_app(service_app: ServiceApp) -> Any:
     def generate_artefacts(
         output_dir: str = Option("ci", "--output-dir", "-o", help="Output directory for generated artefacts"),
     ) -> None:
-        """Generate deployment artefacts (contract JSON, container manifest, runtime Dockerfile, ArgoCD app) from contract."""
+        """Generate deployment artefacts (contract JSON, container manifest, runtime Dockerfile) from contract."""
         _handle_generate_artefacts(service_app, output_dir)
 
     # Let app register custom subcommands
@@ -689,9 +688,7 @@ def _handle_generate_artefacts(service_app: ServiceApp, output_dir: str) -> None
     Mirrors scalo-rs's ``generate_artefacts`` CLI command: writes
     ``deployment-contract.json``, ``container-manifest.json``,
     ``Dockerfile.runtime`` and ``.dockerignore`` into ``output_dir`` based on
-    the app's ``deployment_contract()`` return value. ``argocd-application.yaml``
-    is written only when the cascade sets ``deployment.argocd.repo_url``, and a
-    warning on stderr says so when it does not.
+    the app's ``deployment_contract()`` return value.
     """
     from pathlib import Path
 
@@ -706,16 +703,12 @@ def _handle_generate_artefacts(service_app: ServiceApp, output_dir: str) -> None
             f"[warn] {type(service_app).__name__}.deployment_contract() returned None for "
             f"`{service_app.name}` -- no deployment artefacts emitted. Override the method "
             f"to emit deployment-contract.json, container-manifest.json, "
-            f"Dockerfile.runtime, .dockerignore and argocd-application.yaml."
+            f"Dockerfile.runtime and .dockerignore."
         )
         return
 
     try:
         from scalo.deployment import (
-            ArgocdConfig,
-            argocd_dest_namespace_from_cascade,
-            argocd_repo_url_from_cascade,
-            generate_argocd_application,
             generate_container_manifest,
             generate_dockerignore,
             generate_runtime_stage,
@@ -730,20 +723,6 @@ def _handle_generate_artefacts(service_app: ServiceApp, output_dir: str) -> None
     (out / ".dockerignore").write_text(generate_dockerignore(contract), encoding="utf-8", newline="\n")
 
     written = ["deployment-contract.json", "container-manifest.json", "Dockerfile.runtime", ".dockerignore"]
-
-    # An Application with no source repo syncs nothing, so it is written only when the cascade names one.
-    repo_url = argocd_repo_url_from_cascade()
-    if repo_url is not None:
-        argo = ArgocdConfig(repo_url=repo_url, dest_namespace=argocd_dest_namespace_from_cascade() or "")
-        (out / "argocd-application.yaml").write_text(
-            generate_argocd_application(contract, argo), encoding="utf-8", newline="\n"
-        )
-        written.append("argocd-application.yaml")
-    else:
-        print_error(
-            "deployment.argocd.repo_url is not set, so no argocd-application.yaml was "
-            "written. Set it to the git repo that holds the chart"
-        )
 
     print_success(f"deployment artefacts written to {out}/")
     if not service_app._common_args.quiet:

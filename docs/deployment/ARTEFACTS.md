@@ -1,25 +1,28 @@
 # Artefact generators
 
-Six generator entrypoints turn a `DeploymentContract` into the files
-CI commits to the gitops repo. All output is f-string assembled (not
+These generators turn a `DeploymentContract` into the files CI builds
+and ships the image from. All output is f-string assembled (not
 templated) so it stays byte-equivalent with scalo-rs's `format!()`
 output across the two implementations.
 
 ```python
 from scalo.deployment import (
     generate_dockerfile,
+    generate_builder_stage,
     generate_runtime_stage,
+    generate_dockerignore,
     generate_container_manifest,
     generate_compose_fragment,
-    generate_chart,
-    generate_argocd_application,
     generate_argocd_app_project,
-    ArgocdConfig, AppProjectContract, AppProjectDestination,
+    AppProjectContract, AppProjectDestination,
     WAVE_APPS, WAVE_CRDS, WAVE_OPERATORS, WAVE_POST, WAVE_TOPICS,
 )
 ```
 
-Every generator that emits a Dockerfile, Chart.yaml, or Application CR
+scalo-py writes no Helm chart. The Kubernetes objects come from the
+scalo-service library chart -- see [Kubernetes objects](#kubernetes-objects).
+
+Every generator that emits a Dockerfile or the container manifest
 takes an opt-in `identity: ContractIdentity | None = None` kwarg --
 see [IDENTITY.md](IDENTITY.md) for the wiring.
 
@@ -30,11 +33,11 @@ see [IDENTITY.md](IDENTITY.md) for the wiring.
 | Function | Output | Consumer | Identity-aware |
 |---|---|---|---|
 | `generate_dockerfile` | one-shot `Dockerfile` (string) | dev / local build | yes |
+| `generate_builder_stage` | uv builder stage (string) | CI multi-stage compose | no |
 | `generate_runtime_stage` | runtime stage fragment (string) | CI multi-stage compose | yes |
+| `generate_dockerignore` | `.dockerignore` (string) | docker build context | no |
 | `generate_container_manifest` | manifest JSON (string) | hyperi-ci build planner | yes |
 | `generate_compose_fragment` | `services:` block (string) | local `docker-compose.yml` | no |
-| `generate_chart` | writes `Chart.yaml`, `values.yaml`, `templates/` | gitops repo | yes (on Chart.yaml) |
-| `generate_argocd_application` | `Application` CR (string) | gitops repo | yes |
 | `generate_argocd_app_project` | `AppProject` CR (string) | bootstrap repo | no |
 
 ---
@@ -167,99 +170,20 @@ surface for container provenance).
 
 ---
 
-## `generate_chart`
+## Kubernetes objects
 
-Writes a complete Helm chart directory tree. Pass either a `Path` or a
-string for `output_dir`:
+The [scalo-service](https://github.com/hyperi-io/scalo-rs/blob/main/charts/scalo-service/README.md)
+library chart in scalo-rs renders them from `deployment-contract.json`:
+the Deployment, Services, ConfigMaps, ServiceAccount, claims, disruption
+budget, KEDA ScaledObject and TriggerAuthentication, fallback HPA and
+NetworkPolicy. Its README lists what each contract field and value
+renders, and how to assemble the thin chart a service ships.
 
-```text
-<output_dir>/
-  Chart.yaml
-  values.yaml
-  templates/
-    _helpers.tpl
-    deployment.yaml
-    service.yaml
-    serviceaccount.yaml
-    configmap.yaml
-    secret.yaml
-    hpa.yaml
-    keda-scaledobject.yaml         # when contract.keda is set
-    keda-triggerauth.yaml          # when contract.keda is set
-    NOTES.txt
-```
-
-Key behaviours:
-
-- `Chart.yaml` carries identity annotations when `identity` is passed. Its only keyword is `app_name`, and it names no maintainer.
-- `values.yaml` always emits a `prometheus.io/scrape` pod annotation
-  pinned to `metrics_port` and `health.metrics_path`.
-- `_helpers.tpl` adds a `<group>SecretName` helper per
-  `SecretGroupContract` -- camel-cased via `to_camel_suffix` so
-  `dlq-kafka` becomes `dlqKafkaSecretName`.
-- `deployment.yaml` wires `livenessProbe`, `readinessProbe`, AND a
-  `startupProbe`, all pointed at `health.liveness_path` over the
-  `metrics` named port.
-- `deployment.yaml` emits a pod-level and a container-level
-  `securityContext`, both wired to values so an operator can tune (or
-  empty the map to opt out). `values.yaml` ships the non-root floor on
-  by default: `podSecurityContext` = `runAsNonRoot` / `runAsUser 1000` /
-  `fsGroup 1000`, and `securityContext` = `allowPrivilegeEscalation:
-  false` + `capabilities.drop: [ALL]`. A restricted-PodSecurity
-  namespace rejects the pod without these. `readOnlyRootFilesystem` is
-  deliberately NOT set -- a service that mints a key or writes a cache
-  to the image rootfs needs a writable FS, so it is an opt-in once that
-  state lives on a mount.
-- `secret.yaml` is one `Secret` per group, gated by
-  `{{- if not .Values.<group>.existingSecret }}` so users can BYO.
-- `hpa.yaml` only renders when both `autoscaling.enabled` and NOT
-  `keda.enabled`. KEDA wins when both are set.
-- `default_config` (if set) is embedded under `config:` in
-  `values.yaml` via lazy-imported `yaml.safe_dump`. If pyyaml is
-  missing AND you have a `default_config`, generation raises
-  `WriteFileError`.
-- Errors mkdir/write through `CreateDirError` / `WriteFileError`.
-
----
-
-## `generate_argocd_application` + `ArgocdConfig`
-
-Emits an `argoproj.io/v1alpha1 Application` pointing at a Helm chart
-in a git repo (typically the chart `generate_chart` just wrote).
-
-```python
-@dataclass
-class ArgocdConfig:
-    argocd_namespace: str = "argocd"
-    dest_namespace: str = ""   # empty: a namespace named after app_name
-    dest_server: str = "https://kubernetes.default.svc"
-    repo_url: str = ""         # required
-    target_revision: str = "main"
-    chart_path: str = "chart"
-    project: str = "default"
-    sync_wave: int = WAVE_APPS
-    extra_ignore_differences: list[str] = field(default_factory=list)
-```
-
-The generated CR carries `metadata.annotations.argocd.argoproj.io/sync-wave` set from `ArgocdConfig.sync_wave`, and identity annotations land in the same block when passed. An empty `dest_namespace` deploys the app into a namespace named after it. Set one to share a namespace.
-
-`generate-artefacts` writes `argocd-application.yaml` only when the cascade sets `deployment.argocd.repo_url`, and warns on stderr when it does not. `deployment.argocd.dest_namespace` sets the destination namespace.
-
-`syncPolicy.automated` defaults: `prune=true`, `selfHeal=true`,
-`allowEmpty=false`. Sync options include `CreateNamespace=true` and
-`ServerSideApply=true`. Retry is 5x with 5s -> 3m backoff.
-
-Canonical `ignoreDifferences` (always emitted):
-
-- `apps/Deployment` -> `/spec/replicas` (HPA / KEDA mutates)
-- `""/Service` -> `/spec/clusterIP`, `/spec/clusterIPs` (cluster-assigned)
-- `admissionregistration.k8s.io/ValidatingWebhookConfiguration` ->
-  `.webhooks[].clientConfig.caBundle` (cert-manager injects)
-
-`extra_ignore_differences` is the consumer extension point: each entry
-is a raw YAML fragment matching the ArgoCD shape, with two-space
-internal indentation. The generator indents your entries by four
-spaces so they land directly under `ignoreDifferences:`.
+`generate-artefacts` writes the contract (see
+[../api/CLI.md](../api/CLI.md)), and a chart assembler turns it into
+that thin chart. To preview a service's chart locally, run
+`hyperi-ci chart assemble --image <repo>:<tag>@sha256:<digest>`, then
+`helm dependency build` and `helm template` on the directory it prints.
 
 ---
 
@@ -320,15 +244,17 @@ identity at the call sites; Phase 3 drops the wrapper entirely. See
 
 ## Errors
 
-All file-writing generators raise specific subclasses of
-`DeploymentError`:
+The generators here return strings, so none of them raises a file
+error. The deployment error types mirror scalo-rs's `DeploymentError`,
+all subclasses of `DeploymentError`:
 
-- `CreateDirError(path, OSError)` -- mkdir failed
-- `WriteFileError(path, OSError)` -- write failed
-- `ContractMismatch` -- validation comparison failure (validation
-  helpers, not the generators here)
-- `ParseYamlError`, `ReadFileError`, `NotFoundError` -- consumer-side
-  loader errors
+- `CreateDirError(path, OSError)`, `WriteFileError(path, OSError)`,
+  `ReadFileError(path, OSError)`, `NotFoundError(path)` -- for code
+  that writes or reads artefact files
+- `IdentityError` -- a `ContractIdentity` field failed validation
+
+`ContractMismatch` is not an exception: it is one drift finding in the
+list `validate_dockerfile` returns.
 
 Catch `DeploymentError` for the broad case; subclasses are exposed for
 fine-grained handling.

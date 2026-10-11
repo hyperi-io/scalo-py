@@ -9,8 +9,7 @@
 
 Convention for the order in which ArgoCD applies resources during a
 sync. Lower waves run first. Used as the ``argocd.argoproj.io/sync-wave``
-annotation on Application resources and as the default for
-:class:`scalo.deployment.ArgocdConfig.sync_wave`.
+annotation on Application resources.
 
 The numeric values are gaps wide enough that consumer projects can
 slot custom waves (e.g. ``-15`` for "between operators and CRDs",
@@ -21,8 +20,6 @@ dependency-driven.
 Mirrors ``scalo::deployment::waves`` for byte-level
 cross-language parity. The numeric values match.
 """
-
-from __future__ import annotations
 
 WAVE_OPERATORS: int = -20
 """Operators that must install before everything else (Strimzi, ESO).
