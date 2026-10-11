@@ -13,9 +13,8 @@ unreachable collector costs spans and never memory, and a bounded flush on exit
 so it cannot eat a termination grace period.
 """
 
-from __future__ import annotations
-
 import importlib.util
+from typing import Any
 
 import pytest
 
@@ -28,6 +27,10 @@ def _clear_otel_env(monkeypatch):
     for name in (
         "OTEL_EXPORTER_OTLP_ENDPOINT",
         "OTEL_EXPORTER_OTLP_PROTOCOL",
+        "OTEL_EXPORTER_OTLP_TRACES_ENDPOINT",
+        "OTEL_EXPORTER_OTLP_TRACES_PROTOCOL",
+        "OTEL_TRACES_EXPORTER",
+        "OTEL_SDK_DISABLED",
         "OTEL_SERVICE_NAME",
         "OTEL_TRACES_SAMPLER_ARG",
         "APP_ENV",
@@ -46,6 +49,22 @@ def _no_leaked_provider():
 
 def _otel_available() -> bool:
     return importlib.util.find_spec("opentelemetry") is not None
+
+
+def _fastapi_available() -> bool:
+    return _otel_available() and importlib.util.find_spec("fastapi") is not None
+
+
+def _transport(exporter: Any) -> str:
+    """The OTLP transport an exporter speaks, from ``opentelemetry.exporter.otlp.proto.<transport>``."""
+    return type(exporter).__module__.split(".")[4]
+
+
+def _span_exporters(provider: Any) -> list[Any]:
+    """Every span exporter on a provider, unwrapped from scalo's backoff gate."""
+    processors = provider._active_span_processor._span_processors
+    exporters = [processor.span_exporter for processor in processors]
+    return [getattr(exporter, "_inner", exporter) for exporter in exporters]
 
 
 class TestDefaults:
@@ -218,6 +237,132 @@ class TestComposition:
         otel_tracing.setup_tracing(OtelTracingConfig(service_name="shutdown-test"))
         otel_tracing.shutdown()
         otel_tracing.shutdown()
+
+
+@pytest.mark.skipif(not _otel_available(), reason="opentelemetry not installed")
+class TestTheExporterMatchesTheProtocol:
+    """The exporter built must speak the protocol scalo reports, or every export to the collector fails."""
+
+    @pytest.mark.parametrize(
+        ("env_protocol", "config_protocol", "expected"),
+        [
+            (None, "grpc", "grpc"),
+            (None, "http", "http"),
+            ("grpc", "http", "grpc"),
+            ("http/protobuf", "grpc", "http"),
+        ],
+    )
+    def test_the_span_exporter_speaks_the_resolved_protocol(self, monkeypatch, env_protocol, config_protocol, expected):
+        if env_protocol is not None:
+            monkeypatch.setenv("OTEL_EXPORTER_OTLP_PROTOCOL", env_protocol)
+        resolved = resolve(OtelTracingConfig(protocol=config_protocol))
+        exporter = otel_tracing._build_span_exporter(resolved)
+        try:
+            assert resolved.protocol == expected
+            assert _transport(exporter) == expected
+        finally:
+            exporter.shutdown()
+
+    def test_grpc_dials_the_endpoint_as_given(self):
+        exporter = otel_tracing._build_span_exporter(
+            OtelTracingConfig(endpoint="http://collector:4317", protocol="grpc")
+        )
+        try:
+            assert exporter._endpoint == "collector:4317"
+        finally:
+            exporter.shutdown()
+
+    def test_http_posts_to_the_traces_path(self):
+        exporter = otel_tracing._build_span_exporter(
+            OtelTracingConfig(endpoint="http://collector:4318", protocol="http")
+        )
+        try:
+            assert exporter._endpoint == "http://collector:4318/v1/traces"
+        finally:
+            exporter.shutdown()
+
+    def test_setup_installs_only_a_grpc_exporter_when_just_the_endpoint_is_set(self, monkeypatch):
+        """The deployment shape in scalo-py#79: the endpoint env var set, the protocol left at its default."""
+        monkeypatch.setenv("OTEL_EXPORTER_OTLP_ENDPOINT", "http://collector:4317")
+        assert otel_tracing.setup_tracing(OtelTracingConfig(service_name="grpc-test")) is True
+        assert [_transport(e) for e in _span_exporters(otel_tracing._PROVIDER)] == ["grpc"]
+
+    def test_spans_reach_a_grpc_collector(self):
+        """A real OTLP gRPC receiver stands in for the collector, so the export crosses the wire."""
+        from concurrent import futures
+
+        import grpc
+        from opentelemetry.proto.collector.trace.v1 import trace_service_pb2, trace_service_pb2_grpc
+
+        received: list[str] = []
+
+        class _Receiver(trace_service_pb2_grpc.TraceServiceServicer):
+            def Export(self, request, context):  # noqa: N802 - name fixed by the generated servicer
+                for resource_spans in request.resource_spans:
+                    for scope_spans in resource_spans.scope_spans:
+                        received.extend(span.name for span in scope_spans.spans)
+                return trace_service_pb2.ExportTraceServiceResponse()
+
+        server = grpc.server(futures.ThreadPoolExecutor(max_workers=1))
+        trace_service_pb2_grpc.add_TraceServiceServicer_to_server(_Receiver(), server)
+        port = server.add_insecure_port("127.0.0.1:0")
+        server.start()
+        try:
+            config = OtelTracingConfig(endpoint=f"http://127.0.0.1:{port}", service_name="wire-test", sample_ratio=1.0)
+            assert otel_tracing.setup_tracing(config) is True
+            with otel_tracing._PROVIDER.get_tracer("wire-test").start_as_current_span("over-grpc"):
+                pass
+            assert otel_tracing._PROCESSOR.force_flush()
+        finally:
+            otel_tracing.shutdown()
+            server.stop(grace=None)
+        assert received == ["over-grpc"]
+
+    @pytest.mark.parametrize("env_protocol", [None, "grpc", "http/protobuf"])
+    def test_spans_and_metrics_agree_on_the_protocol(self, monkeypatch, env_protocol):
+        from scalo.metrics.opentelemetry_backend import _create_otlp_exporter, resolve_otel_config
+
+        if env_protocol is not None:
+            monkeypatch.setenv("OTEL_EXPORTER_OTLP_PROTOCOL", env_protocol)
+        span_resolved = resolve(OtelTracingConfig())
+        metric_resolved = resolve_otel_config({})
+        assert span_resolved.protocol == metric_resolved.protocol
+
+        span_exporter = otel_tracing._build_span_exporter(span_resolved)
+        metric_exporter = _create_otlp_exporter(metric_resolved.protocol, metric_resolved.endpoint, 10_000, {})
+        try:
+            assert _transport(span_exporter) == _transport(metric_exporter) == span_resolved.protocol
+        finally:
+            span_exporter.shutdown()
+            metric_exporter.shutdown()
+
+
+@pytest.mark.skipif(not _fastapi_available(), reason="fastapi not installed")
+class TestBesideFastApi:
+    """fastapi 0.142+ adds http/protobuf exporters from ``OTEL_EXPORTER_OTLP_ENDPOINT`` unless told not to."""
+
+    @staticmethod
+    def _start(telemetry: dict[str, Any]) -> list[Any]:
+        from fastapi import FastAPI
+        from fastapi.testclient import TestClient
+
+        # A zero ratio records no spans, so neither processor dials anything on shutdown.
+        assert otel_tracing.setup_tracing(OtelTracingConfig(service_name="fastapi-test", sample_ratio=0.0)) is True
+        provider = otel_tracing._PROVIDER
+        # The OTel global tracer provider can be set once per process, so FastAPI is handed scalo's directly.
+        app = FastAPI(telemetry={"tracer_provider": provider, "metrics": False, "logs": False, **telemetry})
+        with TestClient(app):
+            pass
+        return _span_exporters(provider)
+
+    def test_its_default_adds_an_http_exporter_beside_scalo_s_grpc_one(self, monkeypatch):
+        """The cause of scalo-py#79: the collector's gRPC port resets every export from the HTTP one."""
+        monkeypatch.setenv("OTEL_EXPORTER_OTLP_ENDPOINT", "http://127.0.0.1:4317")
+        assert sorted(_transport(e) for e in self._start({})) == ["grpc", "http"]
+
+    def test_the_documented_setting_leaves_only_scalo_s_grpc_exporter(self, monkeypatch):
+        monkeypatch.setenv("OTEL_EXPORTER_OTLP_ENDPOINT", "http://127.0.0.1:4317")
+        assert [_transport(e) for e in self._start({"auto_configure": False})] == ["grpc"]
 
 
 @pytest.mark.skipif(not _otel_available(), reason="opentelemetry not installed")

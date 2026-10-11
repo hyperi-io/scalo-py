@@ -101,6 +101,18 @@ OTEL_TRACES_SAMPLER_ARG=1.0
 
 ---
 
+## Beside FastAPI
+
+fastapi 0.142+ reads `OTEL_EXPORTER_OTLP_ENDPOINT` as the app starts and adds its own span, metric and log exporters to the providers scalo installed. It only builds http/protobuf exporters, and with `OTEL_EXPORTER_OTLP_PROTOCOL` unset it assumes http/protobuf whatever the port. Pointed at scalo's default gRPC collector on 4317, each of its span exports ends in "Failed to export spans batch due to timeout, max retries or shutdown", logged beside scalo's own gRPC exporter.
+
+Turn FastAPI's environment setup off. Its request spans still record, into scalo's provider:
+
+```python
+app = FastAPI(telemetry={"auto_configure": False})
+```
+
+---
+
 ## Parity note
 
 scalo-rs filters its own export path (tonic, hyper, h2) out of the OTel

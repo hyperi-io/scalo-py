@@ -24,7 +24,7 @@ framework.
 
 | Old | New |
 |-----|-----|
-| `Application.api(name=..., port=...)` | `FastAPI()` + `create_health_router(...)` + `create_metrics(...)` |
+| `Application.api(name=..., port=...)` | `FastAPI(telemetry={"auto_configure": False})` + `create_health_router(...)` + `create_metrics(...)` |
 | `Application.daemon(name=...)` | `from scalo import logger, config, runtime` + your loop |
 | `Application.cli(name=...)` | `from scalo.cli import ServiceApp` (Typer-based) |
 | `app.profile_overrides({...})` | `scalo.config` 7-layer cascade -- env / `settings.<env>.yaml` |
