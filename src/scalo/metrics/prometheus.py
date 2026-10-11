@@ -305,7 +305,7 @@ class ProcessMetrics:
                 try:
                     fds = self.process.num_fds()
                     self.fds_open.set(fds)
-                except (AttributeError, OSError):
+                except AttributeError, OSError:
                     pass
 
             # Uptime
@@ -442,7 +442,7 @@ class ContainerMetrics:
 
             return limit
 
-        except (FileNotFoundError, ValueError, PermissionError):
+        except FileNotFoundError, ValueError, PermissionError:
             return None
 
     def _read_cgroup_memory_usage(self) -> int | None:
@@ -451,7 +451,7 @@ class ContainerMetrics:
             with open("/sys/fs/cgroup/memory.current", encoding="utf-8") as f:
                 usage_str = f.read().strip()
             return int(usage_str)
-        except (FileNotFoundError, ValueError, PermissionError):
+        except FileNotFoundError, ValueError, PermissionError:
             return None
 
     def _read_cgroup_cpu_quota(self) -> float | None:
@@ -471,7 +471,7 @@ class ContainerMetrics:
 
             return None
 
-        except (FileNotFoundError, ValueError, PermissionError):
+        except FileNotFoundError, ValueError, PermissionError:
             return None
 
     def update(self):
@@ -531,7 +531,7 @@ class ContainerMetrics:
                         stats[key] = int(value)
                     except ValueError:
                         continue
-        except (FileNotFoundError, PermissionError):
+        except FileNotFoundError, PermissionError:
             return {}
         return stats
 
@@ -543,7 +543,7 @@ class ContainerMetrics:
                     if line.startswith("oom_kill"):
                         _, value = line.strip().split(" ", 1)
                         return int(value)
-        except (FileNotFoundError, PermissionError, ValueError):
+        except FileNotFoundError, PermissionError, ValueError:
             return None
         return None
 

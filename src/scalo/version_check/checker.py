@@ -261,7 +261,7 @@ def _format_age(published_at: str) -> str:
         if remaining == 0:
             return f"released {years}y ago"
         return f"released {years}y {remaining}m ago"
-    except (ValueError, TypeError):
+    except ValueError, TypeError:
         return ""
 
 

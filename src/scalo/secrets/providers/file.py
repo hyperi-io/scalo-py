@@ -102,7 +102,7 @@ class FileProvider(SecretProvider):
                 source=self.name,
             )
 
-        except (SecretNotFoundError, ProviderError):
+        except SecretNotFoundError, ProviderError:
             raise
         except OSError as e:
             raise ProviderError(self.name, f"failed to read {path}: {e}")

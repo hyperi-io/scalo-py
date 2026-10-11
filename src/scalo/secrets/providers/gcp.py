@@ -162,7 +162,7 @@ class GCPProvider(VersionedProvider):
             raise SecretNotFoundError(path, self.name)
         except (PermissionDenied, Unauthenticated) as e:
             raise ProviderError(self.name, f"authentication/permission error: {e}")
-        except (SecretNotFoundError, ProviderError):
+        except SecretNotFoundError, ProviderError:
             raise
         except Exception as e:
             raise ProviderError(self.name, f"request failed: {e}")
@@ -192,7 +192,7 @@ class GCPProvider(VersionedProvider):
             raise SecretNotFoundError(path, self.name)
         except (PermissionDenied, Unauthenticated) as e:
             raise ProviderError(self.name, f"authentication/permission error: {e}")
-        except (SecretNotFoundError, ProviderError):
+        except SecretNotFoundError, ProviderError:
             raise
         except Exception as e:
             raise ProviderError(self.name, f"request failed: {e}")
@@ -296,7 +296,7 @@ class GCPProvider(VersionedProvider):
                 seconds = getattr(proto_ts, "seconds", 0)
                 nanos = getattr(proto_ts, "nanos", 0)
                 return datetime.fromtimestamp(seconds + nanos / 1e9, tz=UTC)
-            except (TypeError, ValueError):
+            except TypeError, ValueError:
                 return None
 
     @staticmethod
@@ -334,7 +334,7 @@ class GCPProvider(VersionedProvider):
             async for secret in page_result:
                 names.append(self._short_name(secret.name))
             return self._post_filter(names, filter)
-        except (PermissionDenied, Unauthenticated):
+        except PermissionDenied, Unauthenticated:
             raise SecretPermissionError(
                 self.name, "list", filter.prefix if filter and filter.prefix else "*", self._gcp_hint("list")
             )
@@ -352,7 +352,7 @@ class GCPProvider(VersionedProvider):
             for secret in client.list_secrets(request=request):
                 names.append(self._short_name(secret.name))
             return self._post_filter(names, filter)
-        except (PermissionDenied, Unauthenticated):
+        except PermissionDenied, Unauthenticated:
             raise SecretPermissionError(
                 self.name, "list", filter.prefix if filter and filter.prefix else "*", self._gcp_hint("list")
             )
@@ -380,9 +380,9 @@ class GCPProvider(VersionedProvider):
             return meta
         except NotFound:
             raise SecretNotFoundError(path, self.name)
-        except (PermissionDenied, Unauthenticated):
+        except PermissionDenied, Unauthenticated:
             raise SecretPermissionError(self.name, "get", path, self._gcp_hint("get"))
-        except (SecretNotFoundError, SecretPermissionError):
+        except SecretNotFoundError, SecretPermissionError:
             raise
         except Exception as e:
             raise ProviderError(self.name, f"get_metadata {path} failed: {e}")
@@ -404,9 +404,9 @@ class GCPProvider(VersionedProvider):
             return meta
         except NotFound:
             raise SecretNotFoundError(path, self.name)
-        except (PermissionDenied, Unauthenticated):
+        except PermissionDenied, Unauthenticated:
             raise SecretPermissionError(self.name, "get", path, self._gcp_hint("get"))
-        except (SecretNotFoundError, SecretPermissionError):
+        except SecretNotFoundError, SecretPermissionError:
             raise
         except Exception as e:
             raise ProviderError(self.name, f"get_metadata {path} failed: {e}")
@@ -429,9 +429,9 @@ class GCPProvider(VersionedProvider):
             return meta
         except AlreadyExists:
             raise SecretAlreadyExistsError(path, self.name)
-        except (PermissionDenied, Unauthenticated):
+        except PermissionDenied, Unauthenticated:
             raise SecretPermissionError(self.name, "create", path, self._gcp_hint("create"))
-        except (SecretAlreadyExistsError, SecretPermissionError):
+        except SecretAlreadyExistsError, SecretPermissionError:
             raise
         except Exception as e:
             raise ProviderError(self.name, f"create {path} failed: {e}")
@@ -449,9 +449,9 @@ class GCPProvider(VersionedProvider):
             return meta
         except AlreadyExists:
             raise SecretAlreadyExistsError(path, self.name)
-        except (PermissionDenied, Unauthenticated):
+        except PermissionDenied, Unauthenticated:
             raise SecretPermissionError(self.name, "create", path, self._gcp_hint("create"))
-        except (SecretAlreadyExistsError, SecretPermissionError):
+        except SecretAlreadyExistsError, SecretPermissionError:
             raise
         except Exception as e:
             raise ProviderError(self.name, f"create {path} failed: {e}")
@@ -473,9 +473,9 @@ class GCPProvider(VersionedProvider):
             return meta
         except NotFound:
             raise SecretNotFoundError(path, self.name)
-        except (PermissionDenied, Unauthenticated):
+        except PermissionDenied, Unauthenticated:
             raise SecretPermissionError(self.name, "update", path, self._gcp_hint("update"))
-        except (SecretNotFoundError, SecretPermissionError):
+        except SecretNotFoundError, SecretPermissionError:
             raise
         except Exception as e:
             raise ProviderError(self.name, f"update {path} failed: {e}")
@@ -490,9 +490,9 @@ class GCPProvider(VersionedProvider):
             return meta
         except NotFound:
             raise SecretNotFoundError(path, self.name)
-        except (PermissionDenied, Unauthenticated):
+        except PermissionDenied, Unauthenticated:
             raise SecretPermissionError(self.name, "update", path, self._gcp_hint("update"))
-        except (SecretNotFoundError, SecretPermissionError):
+        except SecretNotFoundError, SecretPermissionError:
             raise
         except Exception as e:
             raise ProviderError(self.name, f"update {path} failed: {e}")
@@ -506,9 +506,9 @@ class GCPProvider(VersionedProvider):
             await async_client.delete_secret(request={"name": self._secret_name(path)})
         except NotFound:
             raise SecretNotFoundError(path, self.name)
-        except (PermissionDenied, Unauthenticated):
+        except PermissionDenied, Unauthenticated:
             raise SecretPermissionError(self.name, "delete", path, self._gcp_hint("delete"))
-        except (SecretNotFoundError, SecretPermissionError):
+        except SecretNotFoundError, SecretPermissionError:
             raise
         except Exception as e:
             raise ProviderError(self.name, f"delete {path} failed: {e}")
@@ -519,9 +519,9 @@ class GCPProvider(VersionedProvider):
             client.delete_secret(request={"name": self._secret_name(path)})
         except NotFound:
             raise SecretNotFoundError(path, self.name)
-        except (PermissionDenied, Unauthenticated):
+        except PermissionDenied, Unauthenticated:
             raise SecretPermissionError(self.name, "delete", path, self._gcp_hint("delete"))
-        except (SecretNotFoundError, SecretPermissionError):
+        except SecretNotFoundError, SecretPermissionError:
             raise
         except Exception as e:
             raise ProviderError(self.name, f"delete {path} failed: {e}")
@@ -543,9 +543,9 @@ class GCPProvider(VersionedProvider):
             except SecretNotFoundError:
                 raise SecretNotFoundError(path, self.name)
             raise SecretVersionNotFoundError(path, version, self.name)
-        except (PermissionDenied, Unauthenticated):
+        except PermissionDenied, Unauthenticated:
             raise SecretPermissionError(self.name, "get", path, self._gcp_hint("get"))
-        except (SecretNotFoundError, SecretVersionNotFoundError, SecretPermissionError, ProviderError):
+        except SecretNotFoundError, SecretVersionNotFoundError, SecretPermissionError, ProviderError:
             raise
         except Exception as e:
             raise ProviderError(self.name, f"get_version {path}@{version} failed: {e}")
@@ -562,9 +562,9 @@ class GCPProvider(VersionedProvider):
             except SecretNotFoundError:
                 raise SecretNotFoundError(path, self.name)
             raise SecretVersionNotFoundError(path, version, self.name)
-        except (PermissionDenied, Unauthenticated):
+        except PermissionDenied, Unauthenticated:
             raise SecretPermissionError(self.name, "get", path, self._gcp_hint("get"))
-        except (SecretNotFoundError, SecretVersionNotFoundError, SecretPermissionError, ProviderError):
+        except SecretNotFoundError, SecretVersionNotFoundError, SecretPermissionError, ProviderError:
             raise
         except Exception as e:
             raise ProviderError(self.name, f"get_version {path}@{version} failed: {e}")
@@ -581,9 +581,9 @@ class GCPProvider(VersionedProvider):
             return items
         except NotFound:
             raise SecretNotFoundError(path, self.name)
-        except (PermissionDenied, Unauthenticated):
+        except PermissionDenied, Unauthenticated:
             raise SecretPermissionError(self.name, "list", path, self._gcp_hint("list"))
-        except (SecretNotFoundError, SecretPermissionError):
+        except SecretNotFoundError, SecretPermissionError:
             raise
         except Exception as e:
             raise ProviderError(self.name, f"list_versions {path} failed: {e}")
@@ -599,9 +599,9 @@ class GCPProvider(VersionedProvider):
             return items
         except NotFound:
             raise SecretNotFoundError(path, self.name)
-        except (PermissionDenied, Unauthenticated):
+        except PermissionDenied, Unauthenticated:
             raise SecretPermissionError(self.name, "list", path, self._gcp_hint("list"))
-        except (SecretNotFoundError, SecretPermissionError):
+        except SecretNotFoundError, SecretPermissionError:
             raise
         except Exception as e:
             raise ProviderError(self.name, f"list_versions {path} failed: {e}")

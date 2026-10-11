@@ -91,7 +91,7 @@ class DiskCache:
             # under umask. No-op on Windows (chmod sets read-only only).
             try:
                 self._directory.chmod(_CACHE_DIR_MODE)
-            except (OSError, NotImplementedError):
+            except OSError, NotImplementedError:
                 pass
             if plaintext:
                 logger.warning(
@@ -243,7 +243,7 @@ class DiskCache:
                     os.fsync(fh.fileno())
                 try:
                     os.chmod(tmp_path, _CACHE_FILE_MODE)
-                except (OSError, NotImplementedError):
+                except OSError, NotImplementedError:
                     pass
                 os.replace(tmp_path, path)
             except Exception:

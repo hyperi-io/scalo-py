@@ -200,7 +200,7 @@ class RuntimeEnvironment:
                     init_name = f.read().strip()
                     if init_name not in ["systemd", "init", "launchd"]:
                         return True, f"pid1_{init_name}"
-            except (FileNotFoundError, PermissionError):
+            except FileNotFoundError, PermissionError:
                 return True, "pid1"
 
         # Default: local environment

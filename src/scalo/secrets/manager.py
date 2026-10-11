@@ -825,7 +825,7 @@ class SecretsManager:
 
         try:
             return await self._get_from_provider(provider_name, path, source.key)
-        except (ProviderError, ProviderNotConfiguredError, SecretNotFoundError):
+        except ProviderError, ProviderNotConfiguredError, SecretNotFoundError:
             fallback = self._resolve_env_fallback(name, source)
             if fallback is not None:
                 return fallback
@@ -842,7 +842,7 @@ class SecretsManager:
 
         try:
             return self._get_from_provider_sync(provider_name, path, source.key)
-        except (ProviderError, ProviderNotConfiguredError, SecretNotFoundError):
+        except ProviderError, ProviderNotConfiguredError, SecretNotFoundError:
             fallback = self._resolve_env_fallback(name, source)
             if fallback is not None:
                 return fallback

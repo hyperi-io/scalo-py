@@ -201,14 +201,14 @@ def _is_container(root: Path = Path("/")) -> tuple[bool, str]:
             with open(str(cgroup_file), encoding="utf-8") as f:
                 if _cgroup_names_container(f.read()):
                     return True, f"cgroups_{cgroup_file.name}"
-        except (FileNotFoundError, PermissionError):
+        except FileNotFoundError, PermissionError:
             pass
 
     try:
         with open(str(root / "proc/self/mountinfo"), encoding="utf-8") as f:
             if _rootfs_is_container_overlay(f.read()):
                 return True, "mountinfo"
-    except (FileNotFoundError, PermissionError):
+    except FileNotFoundError, PermissionError:
         pass
 
     for var in ("container", "DOCKER_CONTAINER", "ECS_CONTAINER_METADATA_URI"):

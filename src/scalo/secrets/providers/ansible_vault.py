@@ -234,7 +234,7 @@ class AnsibleVaultProvider(SecretProvider):
         # Key requested -- must be a YAML dict
         try:
             parsed = yaml.safe_load(decrypted.decode("utf-8"))
-        except (yaml.YAMLError, UnicodeDecodeError):
+        except yaml.YAMLError, UnicodeDecodeError:
             raise ProviderError("ansible_vault", f"key '{key}' requested but content is not valid YAML")
 
         if not isinstance(parsed, dict):

@@ -54,7 +54,7 @@ class VersionInfo:
     scalo_version: str = field(default_factory=_get_scalo_version)
 
     @classmethod
-    def from_env(cls, name: str, version: str) -> "VersionInfo":
+    def from_env(cls, name: str, version: str) -> VersionInfo:
         """Create VersionInfo with auto-detected metadata from environment.
 
         Checks env vars: GIT_COMMIT, BUILD_COMMIT for commit hash (GIT_COMMIT takes precedence).
@@ -74,22 +74,22 @@ class VersionInfo:
             platform=platform.platform(),
         )
 
-    def with_commit(self, commit: str) -> "VersionInfo":
+    def with_commit(self, commit: str) -> VersionInfo:
         """Set git commit SHA."""
         self.commit = commit
         return self
 
-    def with_build_date(self, date: str) -> "VersionInfo":
+    def with_build_date(self, date: str) -> VersionInfo:
         """Set build date."""
         self.build_date = date
         return self
 
-    def with_python_version(self, version: str | None = None) -> "VersionInfo":
+    def with_python_version(self, version: str | None = None) -> VersionInfo:
         """Set Python version (auto-detects if not provided)."""
         self.python_version = version or f"{sys.version_info.major}.{sys.version_info.minor}.{sys.version_info.micro}"
         return self
 
-    def with_platform(self, plat: str | None = None) -> "VersionInfo":
+    def with_platform(self, plat: str | None = None) -> VersionInfo:
         """Set platform/target (auto-detects if not provided)."""
         self.platform = plat or platform.platform()
         return self

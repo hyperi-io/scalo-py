@@ -304,7 +304,7 @@ def _int_env(name: str, fallback: Any) -> int:
             logger.warning(f"{name}={raw!r} is not an integer -- using {fallback}")
     try:
         return int(fallback)
-    except (TypeError, ValueError):
+    except TypeError, ValueError:
         return 0
 
 

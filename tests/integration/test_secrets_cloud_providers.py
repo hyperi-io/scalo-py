@@ -210,7 +210,7 @@ except ImportError as _e:
 class TestAWSProviderIntegration:
     """Real AWS Secrets Manager tests -- skipped when credentials not available."""
 
-    def _provider(self) -> "AWSProvider":
+    def _provider(self) -> AWSProvider:
         return AWSProvider(AWSConfig(region=AWS_REGION))
 
     @requires_aws
@@ -292,7 +292,7 @@ class TestAWSProviderIntegration:
 class TestGCPProviderIntegration:
     """Real GCP Secret Manager tests -- skipped when the ADC is absent or cannot mint a token."""
 
-    def _provider(self) -> "GCPProvider":
+    def _provider(self) -> GCPProvider:
         return GCPProvider(GCPConfig(project_id=GCP_PROJECT_ID))
 
     @requires_gcp
@@ -374,7 +374,7 @@ class TestGCPProviderIntegration:
 class TestAzureProviderIntegration:
     """Real Azure Key Vault tests -- skipped when CLI credentials not configured."""
 
-    def _provider(self) -> "AzureProvider":
+    def _provider(self) -> AzureProvider:
         return AzureProvider(AzureConfig(vault_url=AZURE_VAULT_URL))
 
     @requires_azure
@@ -464,7 +464,7 @@ class TestAzureProviderIntegration:
 class TestVaultProviderIntegration:
     """Real OpenBao/Vault tests -- skipped when VAULT_ADDR and VAULT_TOKEN not set."""
 
-    def _provider(self) -> "OpenBaoProvider":
+    def _provider(self) -> OpenBaoProvider:
         return OpenBaoProvider(
             OpenBaoConfig(
                 address=VAULT_ADDR,

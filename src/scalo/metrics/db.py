@@ -78,7 +78,7 @@ def db_query(
     metrics: MetricsManager,
     db_type: str,
     operation: str,
-) -> Generator[None, None, None]:
+) -> Generator[None]:
     """Context manager for tracking DB query metrics.
 
     Args:

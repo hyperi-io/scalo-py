@@ -250,7 +250,7 @@ def _parse_scrub_dict(d: dict[str, Any]) -> ScrubConfig:
             return default
         try:
             return int(value)
-        except (TypeError, ValueError):
+        except TypeError, ValueError:
             return default
 
     return ScrubConfig(
