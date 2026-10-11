@@ -33,3 +33,17 @@ quality:
     - tool: semgrep
       id: python.lang.compatibility.python37.python37-compatibility-importlib2
       reason: "Flags importlib.resources as Python 3.7+ only; requires-python is >=3.14, so no supported interpreter lacks it."
+    # The security pass runs `ruff check --select S`, which drops pyproject's
+    # ruff ignore list, so the S relaxations accepted there are repeated here.
+    - tool: ruff
+      id: S104
+      reason: "Bind-all default: a container serves probes and scrapes on the pod IP."
+    - tool: ruff
+      id: S110
+      reason: "try-except-pass only where telemetry, metrics or optional detection must never break the caller."
+    - tool: ruff
+      id: S311
+      reason: "random drives retry jitter and message sampling, never a secret."
+    - tool: ruff
+      ids: [S603, S607]
+      reason: "Fixed argv to git, docker and kind from PATH; no caller input reaches a subprocess."
