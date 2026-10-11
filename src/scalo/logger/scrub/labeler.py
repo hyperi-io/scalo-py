@@ -27,12 +27,9 @@ to avoid a build-time Rust-wheel dep in scalo-py for what is functionally
 a short-label hash.
 """
 
-from __future__ import annotations
-
 import hashlib
 import secrets
 from collections.abc import Callable
-from typing import TypeAlias
 
 from ..._env_compat import control_var
 

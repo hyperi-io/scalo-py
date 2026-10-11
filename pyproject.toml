@@ -362,7 +362,12 @@ exclude = ["*.md"]
 exclude = ["examples/", "docs/"]
 
 [tool.ty.environment]
-python-version = "3.12"
+python-version = "3.14"
+
+[tool.vulture]
+# Below 80 vulture reports the library's own public API (every exported function
+# and method is "unused" inside the package), which buries the real leftovers.
+min_confidence = 80
 
 [tool.bandit]
 exclude_dirs = [

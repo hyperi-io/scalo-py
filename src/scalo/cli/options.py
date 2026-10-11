@@ -245,6 +245,8 @@ def enum_option(
     """
     if not HAS_TYPER:
         raise ImportError("Typer not installed. Install with: pip install scalo[cli]")
+    if default is not None and not isinstance(default, enum_class):
+        raise TypeError(f"default {default!r} is not a member of {enum_class.__name__}")
 
     return Option(
         default,

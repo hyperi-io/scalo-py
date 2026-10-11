@@ -29,7 +29,6 @@ try:
     from azure.core.exceptions import (
         ClientAuthenticationError,
         HttpResponseError,
-        ResourceExistsError,
         ResourceNotFoundError,
     )
     from azure.identity import ClientSecretCredential, DefaultAzureCredential
@@ -39,7 +38,6 @@ try:
 except ImportError:
     AZURE_AVAILABLE = False
     ResourceNotFoundError = Exception  # type: ignore[assignment,misc]
-    ResourceExistsError = Exception  # type: ignore[assignment,misc]
     HttpResponseError = Exception  # type: ignore[assignment,misc]
     ClientAuthenticationError = Exception  # type: ignore[assignment,misc]
     DefaultAzureCredential = None  # type: ignore[assignment]
