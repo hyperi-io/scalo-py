@@ -258,7 +258,8 @@ class HttpClient:
                         raise _RetriedHTTPError(e) from e
                     return response
         except _RetriedHTTPError as retried:
-            raise retried.error from None
+            # Re-raised from its own cause: callers read the socket error under it to say why a call got no answer.
+            raise retried.error from retried.error.__cause__
         # Unreachable: stamina.retry_context always raises on exhaustion
         raise RuntimeError("retry context exhausted without raising")  # pragma: no cover
 
@@ -457,7 +458,8 @@ class AsyncHttpClient:
                         raise _RetriedHTTPError(e) from e
                     return response
         except _RetriedHTTPError as retried:
-            raise retried.error from None
+            # Re-raised from its own cause: callers read the socket error under it to say why a call got no answer.
+            raise retried.error from retried.error.__cause__
         raise RuntimeError("retry context exhausted without raising")  # pragma: no cover
 
     async def get(self, url: str, **kwargs: Any) -> httpx.Response:
