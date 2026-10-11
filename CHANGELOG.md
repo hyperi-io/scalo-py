@@ -3,6 +3,12 @@
 Rendered by CI and committed back at the end of a release -- do not edit by
 hand. Release notes also appear on the GitHub Releases page, one per tag.
 
+## [2.31.5](https://github.com/hyperi-io/scalo-py/compare/v2.31.4...v2.31.5) (2026-10-11)
+
+### Bug Fixes
+
+* keep the socket error under a retried http error ([#103](https://github.com/hyperi-io/scalo-py/issues/103)) ([4fbfcd7](https://github.com/hyperi-io/scalo-py/commit/4fbfcd7cf5e132e5adad2dc1ccd9fb8358e4c815))
+
 ## [2.31.4](https://github.com/hyperi-io/scalo-py/compare/v2.31.3...v2.31.4) (2026-10-11)
 
 ### Bug Fixes
