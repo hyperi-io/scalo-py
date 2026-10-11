@@ -4,7 +4,9 @@ build-backend = "uv_build"
 
 [project]
 name = "scalo"
-version = "2.28.5"
+# Placeholder: CI stamps the released version here at build time and commits
+# only VERSION back, so a real number in this file goes stale on the next release.
+version = "0.0.0"
 description = "Opinionated-for-scale integrated runtime of config, logging, secrets, cli and more for control-plane services."
 readme = "README.md"
 authors = [

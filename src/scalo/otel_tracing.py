@@ -36,11 +36,9 @@ prevents that: ``BatchSpanProcessor`` attaches
 transport does not re-enter. No equivalent filter is needed here.
 """
 
-from __future__ import annotations
-
 import threading
 from dataclasses import dataclass, replace
-from typing import Any
+from typing import Any, cast
 
 # loguru directly rather than ``scalo.logger``: this module is imported from
 # inside ``logger.setup()``, so importing back through the package would run
@@ -224,9 +222,8 @@ def _build_span_exporter(resolved: OtelTracingConfig) -> Any:
     return OTLPSpanExporter(endpoint=resolved.endpoint, timeout=timeout_seconds)
 
 
-# Tracer provider and its processor, retained for the bounded flush on shutdown.
+# Tracer provider, retained for the bounded flush on shutdown.
 _PROVIDER: Any = None
-_PROCESSOR: Any = None
 _PROVIDER_LOCK = threading.Lock()
 
 
@@ -285,7 +282,7 @@ def _build_provider(resolved: OtelTracingConfig) -> Any:
     from opentelemetry import trace
     from opentelemetry.sdk.resources import Resource
     from opentelemetry.sdk.trace import TracerProvider
-    from opentelemetry.sdk.trace.export import BatchSpanProcessor
+    from opentelemetry.sdk.trace.export import BatchSpanProcessor, SpanExporter
     from opentelemetry.sdk.trace.sampling import ParentBased, TraceIdRatioBased
 
     from .otel_backoff import GatedSpanExporter
@@ -296,7 +293,8 @@ def _build_provider(resolved: OtelTracingConfig) -> Any:
     exporter = GatedSpanExporter(exporter, resolved.batch_scheduled_delay_millis / 1000)
 
     processor = BatchSpanProcessor(
-        exporter,
+        # Duck-typed, not a subclass: otel_backoff loads on a base install, which has no SDK.
+        cast(SpanExporter, exporter),
         max_queue_size=resolved.batch_max_queue_size,
         schedule_delay_millis=resolved.batch_scheduled_delay_millis,
         max_export_batch_size=resolved.batch_max_export_batch_size,
@@ -323,8 +321,6 @@ def _build_provider(resolved: OtelTracingConfig) -> Any:
     provider.add_span_processor(processor)
     trace.set_tracer_provider(provider)
 
-    global _PROCESSOR
-    _PROCESSOR = processor
     atexit.register(shutdown)
     return provider
 
@@ -347,23 +343,42 @@ def tracer(name: str = "scalo") -> Any:
 
 
 def shutdown() -> None:
-    """Flush and stop the tracer provider, if one was built.
+    """Flush buffered spans and stop the tracer provider, if one was built.
 
-    Bounded so an unreachable collector cannot eat a termination grace period:
-    queued spans are dropped rather than waited on. The bound has to be applied
-    to the processor -- ``TracerProvider.shutdown()`` takes no timeout and lets
-    the processor's 30s default stand.
+    Bounded at :data:`SHUTDOWN_TIMEOUT_MILLIS` for the flush and the stop
+    together, so a stalled or unreachable collector cannot eat a termination
+    grace period: spans still queued when the bound passes are dropped. Both
+    run on a daemon thread because the SDK bounds neither --
+    ``BatchSpanProcessor.force_flush()`` ignores its timeout and
+    ``TracerProvider.shutdown()`` takes none.
+
+    Raises:
+        Exception: Whatever the flush or the stop raised, when it finished
+            inside the bound. An exporter reports an outage as a failed export,
+            so an exception here is a defect and is not hidden.
     """
-    global _PROCESSOR, _PROVIDER
+    global _PROVIDER
 
     with _PROVIDER_LOCK:
-        provider, processor = _PROVIDER, _PROCESSOR
-        _PROVIDER = _PROCESSOR = None
+        provider, _PROVIDER = _PROVIDER, None
     if provider is None:
         return
-    try:
-        if processor is not None:
-            processor.shutdown(timeout_millis=SHUTDOWN_TIMEOUT_MILLIS)
-        provider.shutdown()
-    except Exception as exc:
-        logger.debug(f"OTel tracer provider shutdown: {exc}")
+
+    failures: list[Exception] = []
+
+    def _flush_then_stop() -> None:
+        try:
+            provider.force_flush(timeout_millis=SHUTDOWN_TIMEOUT_MILLIS)
+            provider.shutdown()
+        except Exception as exc:
+            # Carried back to the calling thread, which re-raises it.
+            failures.append(exc)
+
+    worker = threading.Thread(target=_flush_then_stop, name="scalo-otel-span-shutdown", daemon=True)
+    worker.start()
+    worker.join(SHUTDOWN_TIMEOUT_MILLIS / 1000)
+    if worker.is_alive():
+        logger.debug(f"OTel span flush still running after {SHUTDOWN_TIMEOUT_MILLIS}ms; dropping the spans left")
+        return
+    if failures:
+        raise failures[0]
