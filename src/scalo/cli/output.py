@@ -45,7 +45,6 @@ __all__ = [
 try:
     from rich.console import Console
     from rich.json import JSON
-    from rich.panel import Panel
     from rich.table import Table
 
     HAS_RICH = True
