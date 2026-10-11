@@ -3,6 +3,13 @@
 Rendered by CI and committed back at the end of a release -- do not edit by
 hand. Release notes also appear on the GitHub Releases page, one per tag.
 
+## [2.31.7](https://github.com/hyperi-io/scalo-py/compare/v2.31.6...v2.31.7) (2026-10-11)
+
+### Bug Fixes
+
+* clear vulture's real findings and check against Python 3.14 ([#108](https://github.com/hyperi-io/scalo-py/issues/108)) ([6f08c1f](https://github.com/hyperi-io/scalo-py/commit/6f08c1fba93d6c4f4a55a877096d94b4037f18ff))
+* publish the current one-line description ([#110](https://github.com/hyperi-io/scalo-py/issues/110)) ([a2ca67b](https://github.com/hyperi-io/scalo-py/commit/a2ca67b58f7ea41bc8bf1f54c045c77e5e87fed0))
+
 ## [2.31.6](https://github.com/hyperi-io/scalo-py/compare/v2.31.5...v2.31.6) (2026-10-11)
 
 ### Bug Fixes
