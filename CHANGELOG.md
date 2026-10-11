@@ -3,6 +3,16 @@
 Rendered by CI and committed back at the end of a release -- do not edit by
 hand. Release notes also appear on the GitHub Releases page, one per tag.
 
+## [2.31.4](https://github.com/hyperi-io/scalo-py/compare/v2.31.3...v2.31.4) (2026-10-11)
+
+### Bug Fixes
+
+* count the first call in ReconnectingResilience's attempts ([#93](https://github.com/hyperi-io/scalo-py/issues/93)) ([54730be](https://github.com/hyperi-io/scalo-py/commit/54730be8a1e5f56d2454a5e549ce066182805a81))
+* parse the contract's service_account field ([#95](https://github.com/hyperi-io/scalo-py/issues/95)) ([fe8dd20](https://github.com/hyperi-io/scalo-py/commit/fe8dd205c4ca93f1892318b9ca97a88352f5bfeb)), closes [hyperi-io/scalo-rs#317](https://github.com/hyperi-io/scalo-rs/issues/317)
+* redact percent-encoded emails in log scrub ([#98](https://github.com/hyperi-io/scalo-py/issues/98)) ([e54fed4](https://github.com/hyperi-io/scalo-py/commit/e54fed4153073314e991319836a18898a9703e9d))
+* secrets cache, rotation and email scrub ([#99](https://github.com/hyperi-io/scalo-py/issues/99)) ([4e008e1](https://github.com/hyperi-io/scalo-py/commit/4e008e1203fbb203cd1e90982b18205bf78ce64c))
+* skip the GCP tests on an unusable login and clear two test warnings ([#94](https://github.com/hyperi-io/scalo-py/issues/94)) ([185ad77](https://github.com/hyperi-io/scalo-py/commit/185ad779745dace3a042cda180306352aa0f6aa9))
+
 ## [2.31.3](https://github.com/hyperi-io/scalo-py/compare/v2.31.2...v2.31.3) (2026-10-08)
 
 ### Bug Fixes
