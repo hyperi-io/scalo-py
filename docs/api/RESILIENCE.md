@@ -257,8 +257,7 @@ from scalo.resilience import ReconnectingResilience, ResilienceConfig, ServiceUn
 
 ### Quick start
 
-Real call site, from `dfe-engine`'s hunt runner waiting out a ClickHouse
-that is down or does not know its user yet (`src/dfe_engine/hunt_runner/connect.py`):
+A call site that waits out a ClickHouse which is down or does not know its user yet:
 
 ```python
 from scalo.resilience import ReconnectingResilience, ResilienceConfig

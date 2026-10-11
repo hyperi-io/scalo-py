@@ -60,10 +60,12 @@ sm = SecretsManager.from_config({
     "aws": {"region": "ap-southeast-2"},
     "azure": {"vault_url": "https://my-vault.vault.azure.net/"},
     "cache": {
+        "enabled": True,  # False turns off the memory and disk tiers
         "ttl_secs": 3600,
         "stale_grace_secs": 86400,
         "refresh_interval_secs": 1800,
-        "encryption_key": "...",  # optional cache-at-rest encryption
+        "encryption_key": "...",  # seals disk entries; without it the disk tier is off
+        "allow_plaintext_disk_cache": False,  # True permits unencrypted disk entries; refused in production
     },
     "env_prefix": "MYSVC",
     "sources": {
@@ -115,19 +117,18 @@ variable named after the source. Lookup order:
 2. `{env_prefix}_{NAME.upper()}` if `SecretsManager(env_prefix=...)`
 3. `NAME.upper()` (no prefix)
 
-For `env_prefix="DFE"` and source `db_password`, the manager checks
-`DFE_DB_PASSWORD`. Logged at WARN level so it shows up in dashboards.
+For `env_prefix="APP"` and source `db_password`, the manager checks
+`APP_DB_PASSWORD`. Logged at WARN level so it shows up in dashboards.
 
 ---
 
 ## Caching
 
-Two-tier: in-process memory cache (per-`SecretsManager`, class-level
-shared) plus optional encrypted disk cache (AES-256-GCM, via the
-`cryptography` package; there is no `[cache]` extra). On
-provider failure the manager returns the cached value if still within
-`stale_grace_secs` past TTL — your service keeps running through a
-Vault outage.
+Two tiers: an in-process memory cache, one per `SecretsManager` instance, and a disk cache. Both expire on `ttl_secs`. On provider failure the manager returns the most recent cached value from either tier while it is within `stale_grace_secs` past TTL, so your service keeps running through a secrets-backend outage.
+
+The disk tier writes only when `encryption_key` is set, which seals each entry with AES-256-GCM (via the `cryptography` package; there is no `[cache]` extra), or when `allow_plaintext_disk_cache` is True. Without either it is off, the cache is memory-only, and a plaintext file found in the cache directory is not read. The plaintext opt-in is ignored once `encryption_key` is set, and refused at startup when the app environment (`APP_ENV`, `ENVIRONMENT`, `ENV`) is `production` or `prod`.
+
+`"enabled": False` turns off both tiers. Every read goes to the provider, nothing is held in memory or written to disk, there is no stale-grace fallback, and a provider failure raises. Use it where a secret rotates and a stale value is worse than an error.
 
 ```python
 # Background refresh prevents cold-cache thundering herds
@@ -138,6 +139,8 @@ await sm.stop_refresh()   # on shutdown
 
 Background refresh adds jitter (`refresh_jitter_secs`, default 5 min) so
 a fleet doesn't slam the secrets backend at the same instant.
+
+Each refresh re-reads every secret held in the memory cache from its provider, fresh entries included, replaces the cached value and reports any rotation it finds. A secret whose provider fails keeps its cached value, and the failure is logged. With `"enabled": False` the memory cache is empty, so there is nothing to refresh.
 
 ---
 
@@ -154,9 +157,10 @@ def on_rotate(event):
 sm.on_rotation(on_rotate, names=["db_password"])  # None = all secrets
 ```
 
-Triggered when the cached `SecretValue.version` differs from the freshly
-fetched value. File provider derives version from `mtime:size`; cloud
+Triggered when the cached and the freshly fetched `SecretValue.version` are both set and differ. A value with no version never reports a rotation. File provider derives version from `mtime:size`; cloud
 providers use the native version ID.
+
+With `"enabled": False` there is no cached version to compare against, so no rotation event fires.
 
 ---
 
@@ -241,10 +245,10 @@ outages in `/readyz`.
 |-----------|------|
 | `SecretsError` | base class |
 | `SecretNotFoundError` | path doesn't exist |
-| `ProviderError` | transport / API call failed |
+| `ProviderError` | transport / API call failed, including an OpenBao login that could not reach the server or got a 429, 3xx or 5xx |
 | `ProviderNotConfiguredError` | requested provider not in `from_config` |
 | `ProviderNotAvailableError` | provider extra not installed |
-| `AuthenticationError` | provider auth failed |
+| `AuthenticationError` | the provider refused the credentials, for OpenBao a 400-499 login answer other than 429 (a `ProviderError` subclass, so catch it first) |
 | `SecretPermissionError` | read-only token tried a write |
 | `SecretAlreadyExistsError` | `create()` on existing path |
 | `SecretVersionNotFoundError` | `get_version()` for unknown version |

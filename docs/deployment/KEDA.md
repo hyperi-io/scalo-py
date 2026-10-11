@@ -31,7 +31,7 @@ at deploy.
 | `cpu_threshold` | `80` (percent) | `1..100` |
 
 Cascade env-var overrides follow the standard `__` nesting:
-`DFE_LOADER__KEDA__KAFKA_LAG_THRESHOLD=5000`.
+`APP__KEDA__KAFKA_LAG_THRESHOLD=5000`.
 
 ---
 

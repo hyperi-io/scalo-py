@@ -71,7 +71,7 @@ class CacheConfig:
     """Configuration for secrets caching."""
 
     enabled: bool = True
-    """Enable caching."""
+    """Enable caching. False turns off the memory and disk tiers and the stale-grace fallback."""
 
     directory: str | None = None
     """Cache directory. None = auto-detect."""
@@ -89,7 +89,16 @@ class CacheConfig:
     """Randomize refresh timing (default: 5 min)."""
 
     encryption_key: bytes | None = None
-    """Optional encryption key for cache at rest."""
+    """Key that seals disk-cache entries with AES-256-GCM. Without one the disk tier is off (memory-only)
+    unless ``allow_plaintext_disk_cache`` is set."""
+
+    allow_plaintext_disk_cache: bool = False
+    """Permit UNENCRYPTED disk-cache entries when no ``encryption_key`` is set: written, and read back.
+
+    Default False: without a key the disk tier is skipped rather than persisting plaintext secrets, and a
+    plaintext file in the cache directory is not read. Ignored once ``encryption_key`` is set. Refused at
+    construction when the app environment (APP_ENV, ENVIRONMENT, ENV) is ``production`` or ``prod``.
+    """
 
 
 @dataclass

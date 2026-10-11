@@ -120,7 +120,8 @@ class TestSecretsManager:
         cache_dir = tmp_path / "cache"
         secret_file.write_text("persistent-value")
 
-        cache_config = CacheConfig(enabled=True, directory=str(cache_dir))
+        # The disk tier writes only sealed entries unless plaintext is opted in.
+        cache_config = CacheConfig(enabled=True, directory=str(cache_dir), encryption_key=b"k" * 32)
 
         # First manager - populate cache
         manager1 = SecretsManager(cache=cache_config)
@@ -168,7 +169,7 @@ class TestSecretsManager:
             events.append(event)
 
         cache_config = CacheConfig(
-            enabled=False,  # Disable disk caching to simplify test
+            enabled=True,  # Rotation compares against the cached version
             directory=str(tmp_path / "cache"),
             ttl_secs=0,  # TTL of 0 means always re-fetch
         )
@@ -250,14 +251,18 @@ class TestSecretsManager:
         result = manager.get_sync(str(secret_file))
         assert result.source == "file"
 
-    def test_class_level_cache(self, tmp_path):
-        """Test that memory cache is class-level (shared across instances)."""
+    def test_second_manager_reads_the_shared_disk_cache(self, tmp_path):
+        """A second manager on the same cache directory and key reads the first manager's disk entry.
+
+        The memory cache is per instance, so the shared value can only come from the disk tier.
+        """
         secret_file = tmp_path / "secret.txt"
         secret_file.write_text("shared-value")
 
         cache_config = CacheConfig(
             enabled=True,
             directory=str(tmp_path / "cache"),
+            encryption_key=b"k" * 32,
         )
 
         # First instance
@@ -267,11 +272,10 @@ class TestSecretsManager:
         # Modify file
         secret_file.write_text("new-value")
 
-        # Second instance should still get cached value from class-level cache
+        # A fresh instance has an empty memory cache, so this read is served from disk
         manager2 = SecretsManager(cache=cache_config)
         result = manager2.get_sync(str(secret_file))
 
-        # Class-level memory cache should return original value
         assert result.decode() == "shared-value"
 
     def test_explicit_file_provider(self, tmp_path):

@@ -173,11 +173,9 @@ class OpenBaoProvider(VersionedProvider):
             )
             response.raise_for_status()
             data = response.json()
-            self._set_token_from_auth(data)
-        except httpx.HTTPStatusError as e:
-            raise AuthenticationError(self.name, f"AppRole auth failed: {e.response.status_code}")
-        except Exception as e:
-            raise AuthenticationError(self.name, f"AppRole auth failed: {e}")
+        except (httpx.HTTPError, ValueError) as e:
+            raise self._login_error("AppRole", e) from e
+        self._set_token_from_auth(data)
 
     def _auth_approle_sync(self, client: httpx.Client) -> None:
         """Authenticate with AppRole (sync)."""
@@ -194,11 +192,9 @@ class OpenBaoProvider(VersionedProvider):
             )
             response.raise_for_status()
             data = response.json()
-            self._set_token_from_auth(data)
-        except httpx.HTTPStatusError as e:
-            raise AuthenticationError(self.name, f"AppRole auth failed: {e.response.status_code}")
-        except Exception as e:
-            raise AuthenticationError(self.name, f"AppRole auth failed: {e}")
+        except (httpx.HTTPError, ValueError) as e:
+            raise self._login_error("AppRole", e) from e
+        self._set_token_from_auth(data)
 
     async def _auth_kubernetes_async(self, client: httpx.AsyncClient) -> None:
         """Authenticate with Kubernetes service account."""
@@ -217,11 +213,9 @@ class OpenBaoProvider(VersionedProvider):
             response = await client.post(url, json={"role": self._config.role, "jwt": jwt})
             response.raise_for_status()
             data = response.json()
-            self._set_token_from_auth(data)
-        except httpx.HTTPStatusError as e:
-            raise AuthenticationError(self.name, f"Kubernetes auth failed: {e.response.status_code}")
-        except Exception as e:
-            raise AuthenticationError(self.name, f"Kubernetes auth failed: {e}")
+        except (httpx.HTTPError, ValueError) as e:
+            raise self._login_error("Kubernetes", e) from e
+        self._set_token_from_auth(data)
 
     def _auth_kubernetes_sync(self, client: httpx.Client) -> None:
         """Authenticate with Kubernetes service account (sync)."""
@@ -240,11 +234,26 @@ class OpenBaoProvider(VersionedProvider):
             response = client.post(url, json={"role": self._config.role, "jwt": jwt})
             response.raise_for_status()
             data = response.json()
-            self._set_token_from_auth(data)
-        except httpx.HTTPStatusError as e:
-            raise AuthenticationError(self.name, f"Kubernetes auth failed: {e.response.status_code}")
-        except Exception as e:
-            raise AuthenticationError(self.name, f"Kubernetes auth failed: {e}")
+        except (httpx.HTTPError, ValueError) as e:
+            raise self._login_error("Kubernetes", e) from e
+        self._set_token_from_auth(data)
+
+    def _login_error(self, method: str, exc: Exception) -> ProviderError:
+        """Classify a failed login: a 4xx other than 429 is a refusal, anything else means the store did not answer.
+
+        Returns AuthenticationError (a ProviderError subclass) when OpenBao answered 400-499, other than
+        429, and so refused the credentials. Returns a plain ProviderError when it was rate limited
+        (429), redirected (3xx), failed with a 5xx, was unreachable, or sent a body that is not JSON.
+        Callers raise the result ``from exc``.
+        """
+        if isinstance(exc, httpx.HTTPStatusError):
+            status = exc.response.status_code
+            if 400 <= status < 500 and status != 429:
+                return AuthenticationError(self.name, f"{method} login refused: HTTP {status}")
+            return ProviderError(self.name, f"{method} login failed: OpenBao returned HTTP {status}")
+        if isinstance(exc, httpx.TransportError):
+            return ProviderError(self.name, f"{method} login failed: OpenBao unreachable: {exc}")
+        return ProviderError(self.name, f"{method} login failed: unreadable response: {exc}")
 
     def _set_token_from_auth(self, data: dict) -> None:
         """Extract and set token from auth response."""

@@ -6,6 +6,56 @@ Behaviour and API changes that need a consumer adjustment, indexed by the scalo 
 
 ## Unreleased
 
+### `SecretsManager.clear_memory_cache` is removed (API CHANGE)
+
+The classmethod did nothing. The memory cache belongs to each instance, so there was no class-level cache for it to clear.
+
+**Consumer adjustment** -- call `clear_cache()` on the instance, which empties its memory and disk tiers. `SecretsManager.clear_memory_cache()` now raises `AttributeError`.
+
+### `CacheConfig(enabled=False)` turns off the memory cache too (BEHAVIOUR CHANGE)
+
+`enabled=False` used to switch off only the disk tier, and the in-process memory cache still served each value for `ttl_secs`. Now every read goes to the provider, there is no stale-grace fallback, and a provider failure raises. See [api/SECRETS.md](api/SECRETS.md#caching).
+
+**Consumer adjustment** -- a consumer that wants in-process caching sets `enabled: true`. One that turned caching off so a rotated secret is read at once needs no change.
+
+### The secrets disk tier writes only sealed entries, or plaintext under an opt-in (BEHAVIOUR CHANGE)
+
+With no `encryption_key` the disk cache wrote each secret as hex JSON. It now writes only with `encryption_key` set or `allow_plaintext_disk_cache: true`, and otherwise caches in memory only and does not read a plaintext file it finds. The opt-in is refused when the app environment is `production` or `prod`.
+
+With `enabled=True` the stale-grace fallback now serves from the in-memory tier as well as the disk tier, taking the most recently fetched value still inside `stale_grace_secs`. It used to consult only the disk entry. Without `encryption_key` or the opt-in there is no disk entry, so a stale value no longer survives a restart: after one, a provider failure raises until the first successful read.
+
+**Consumer adjustment** -- a consumer that needs cached secrets, or the stale-grace fallback, to survive a restart sets `encryption_key`. Plaintext entries already on disk are no longer read, so delete them.
+
+### L3 email redaction needs a letter in the domain's last label (BEHAVIOUR CHANGE)
+
+`pkg@1.2.3`, npm and pip specs such as `@scope/pkg@2.0.0`, and `user@10.0.0.1` now pass through unredacted. Literal, `%40` and `%2540` addresses are redacted as before. See [core-pillars/LOGGING.md](core-pillars/LOGGING.md#layer-3-email-addresses).
+
+**Consumer adjustment** -- none. A consumer that must hide a user-at-IPv4 value masks its field by name with `SensitiveDataFilter.add_sensitive_fields`.
+
+### An unreachable OpenBao fails login as `ProviderError` (BEHAVIOUR CHANGE)
+
+The AppRole and Kubernetes logins raised `AuthenticationError` for every failure, a refusal and a connection error alike, with the cause dropped. A 400-499 answer other than 429 is still `AuthenticationError`. A server that cannot be reached, rate limits the login (429), redirects it (3xx), answers 5xx or sends a body that is not JSON now raises plain `ProviderError`. Both chain the underlying `httpx` error as `__cause__`.
+
+**Consumer adjustment** -- code that catches `AuthenticationError` to handle an outage catches `ProviderError` as well, or instead. `AuthenticationError` subclasses `ProviderError`, so a handler for `ProviderError` still sees both.
+
+### Background refresh re-fetches fresh secrets (BEHAVIOUR CHANGE)
+
+`start_refresh()` read each cached secret back through the normal read path, which answered from the memory cache while the entry was fresh. With the default `refresh_interval_secs` (1800) under `ttl_secs` (3600) it never reached a provider. Each refresh now fetches every cached secret from its provider, replaces the cached value and reports a rotation when the version changed.
+
+**Consumer adjustment** -- expect one provider read per cached secret per refresh interval. Lengthen `refresh_interval_secs` if that is more load than the secrets backend should take.
+
+### HTTP retry logs name the error by class and status (BEHAVIOUR CHANGE)
+
+stamina's default retry hooks recorded `repr()` of the httpx error, which carries the request URL. `HttpClient` and `AsyncHttpClient` now hand them a carrier whose repr is the class plus any status, so `stamina.caused_by` reads `HTTPStatusError(status=503)` or `ConnectError`. The Prometheus `stamina_retries_total` `error_type` label for these retries reads `scalo.http.client._RetriedHTTPError` where it read `httpx.HTTPStatusError`, `httpx.ConnectError` and so on. Callers still receive the original httpx exception. See [api/HTTP-CLIENT.md](api/HTTP-CLIENT.md#observability).
+
+**Consumer adjustment** -- a dashboard or alert that filters retries on an httpx `error_type` value filters on `scalo.http.client._RetriedHTTPError`, and reads the class and status from the log field.
+
+### Rotation events need a version on both sides (BEHAVIOUR CHANGE)
+
+A `RotationEvent` fires only when the cached and the fetched `SecretValue.version` are both set and differ, so `new_version` is never `None` and an unversioned value no longer reports every fetch as a rotation.
+
+**Consumer adjustment** -- none, unless a callback relied on events from a provider that returns no version.
+
 ### `scalo.deployment.topology` is removed (API CHANGE)
 
 The module (`DeploymentTopology`, `load_topology` and its errors) loaded a cross-app topology manifest for a `hyperi-ci` command that no longer exists, and nothing else read it. `scalo.deployment` never exported it.

@@ -72,8 +72,39 @@ def _apply_crypto_posture(
         client_kwargs["verify"] = ssl_context(crypto_profile, cafile=cafile, capath=capath)
 
 
+def _describe(error: httpx.HTTPError) -> str:
+    """Name an HTTP error by class, and status where there is one; its own repr carries the request URL."""
+    name = type(error).__name__
+    if isinstance(error, httpx.HTTPStatusError):
+        return f"{name}(status={error.response.status_code})"
+    return name
+
+
+class _RetriedHTTPError(Exception):
+    """Carries an httpx error through stamina, so retry instrumentation logs only ``_describe`` of it.
+
+    stamina's logging and structlog hooks record ``repr(caused_by)``, and an httpx
+    error's repr includes the request URL, which can hold user ids. The client
+    unwraps this before returning, so callers only ever see the httpx error.
+
+    Attributes:
+        error: The httpx error being retried.
+    """
+
+    def __init__(self, error: httpx.HTTPError) -> None:
+        """Wrap ``error``; the message is the class-and-status description."""
+        super().__init__(_describe(error))
+        self.error = error
+
+    def __repr__(self) -> str:
+        """Return the class-and-status description, never the URL."""
+        return _describe(self.error)
+
+
 def _is_retryable(exc: BaseException) -> bool:
     """Retry on transport errors and 5xx server errors. Never retry on 4xx client errors."""
+    if isinstance(exc, _RetriedHTTPError):
+        exc = exc.error
     if isinstance(exc, httpx.TransportError):
         return True
     if isinstance(exc, httpx.HTTPStatusError):
@@ -211,17 +242,23 @@ class HttpClient:
             httpx.HTTPError: On non-retryable errors or after retries exhausted
         """
         _apply_request_headers(kwargs, traceparent, idempotency_key)
-        for attempt in stamina.retry_context(
-            on=_is_retryable,
-            attempts=self._retries,
-            wait_initial=0.5,
-            wait_max=10.0,
-            wait_jitter=1.0,
-        ):
-            with attempt:
-                response = self._client.request(method, url, **kwargs)
-                response.raise_for_status()
-                return response
+        try:
+            for attempt in stamina.retry_context(
+                on=_is_retryable,
+                attempts=self._retries,
+                wait_initial=0.5,
+                wait_max=10.0,
+                wait_jitter=1.0,
+            ):
+                with attempt:
+                    try:
+                        response = self._client.request(method, url, **kwargs)
+                        response.raise_for_status()
+                    except httpx.HTTPError as e:
+                        raise _RetriedHTTPError(e) from e
+                    return response
+        except _RetriedHTTPError as retried:
+            raise retried.error from None
         # Unreachable: stamina.retry_context always raises on exhaustion
         raise RuntimeError("retry context exhausted without raising")  # pragma: no cover
 
@@ -404,17 +441,23 @@ class AsyncHttpClient:
         idempotency_key semantics.
         """
         _apply_request_headers(kwargs, traceparent, idempotency_key)
-        async for attempt in stamina.retry_context(
-            on=_is_retryable,
-            attempts=self._retries,
-            wait_initial=0.5,
-            wait_max=10.0,
-            wait_jitter=1.0,
-        ):
-            with attempt:
-                response = await self._client.request(method, url, **kwargs)
-                response.raise_for_status()
-                return response
+        try:
+            async for attempt in stamina.retry_context(
+                on=_is_retryable,
+                attempts=self._retries,
+                wait_initial=0.5,
+                wait_max=10.0,
+                wait_jitter=1.0,
+            ):
+                with attempt:
+                    try:
+                        response = await self._client.request(method, url, **kwargs)
+                        response.raise_for_status()
+                    except httpx.HTTPError as e:
+                        raise _RetriedHTTPError(e) from e
+                    return response
+        except _RetriedHTTPError as retried:
+            raise retried.error from None
         raise RuntimeError("retry context exhausted without raising")  # pragma: no cover
 
     async def get(self, url: str, **kwargs: Any) -> httpx.Response:

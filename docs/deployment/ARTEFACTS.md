@@ -300,7 +300,7 @@ waves; pick a canonical band where possible.
 | `WAVE_OPERATORS` | `-20` | Operators (Strimzi, ESO) whose CRDs others need |
 | `WAVE_CRDS` | `-10` | Standalone CRDs that aren't operator-shipped |
 | `WAVE_TOPICS` | `-5` | KafkaTopic, KafkaUser, cross-app topology |
-| `WAVE_APPS` | `0` | DFE apps -- the default |
+| `WAVE_APPS` | `0` | Application services -- the default |
 | `WAVE_POST` | `10` | Smoke tests, webhook registrations, alerts |
 
 Values mirror scalo-rs's `scalo::deployment::waves` numerically.

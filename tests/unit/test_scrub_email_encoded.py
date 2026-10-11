@@ -12,6 +12,9 @@ One vector table drives the validator, the default scrub chain and a logger
 record. Every row carries at least one encoded address that must be redacted,
 so each row fails against a pattern that only knows the literal ``@``. A
 lookalike row also checks that a ``%40`` with no address shape is left alone.
+
+A second table pins the domain rule: the domain's last label must contain a
+letter, so a package version pin or an IPv4 host is not an address.
 """
 
 import io
@@ -93,7 +96,18 @@ VECTORS: tuple[tuple[str, str, str], ...] = (
     ),
 )
 
-_PARAMS = [pytest.param(text, expected, id=vector_id) for vector_id, text, expected in VECTORS]
+# (id, input, expected output)
+LAST_LABEL_VECTORS: tuple[tuple[str, str, str], ...] = (
+    ("npm_version_pin", "pkg@1.2.3", "pkg@1.2.3"),
+    ("npm_scoped_spec", "@scope/pkg@2.0.0", "@scope/pkg@2.0.0"),
+    ("pip_pin", "name==1.2.3", "name==1.2.3"),
+    ("ipv4_host", "user@10.0.0.1", "user@10.0.0.1"),
+    ("literal_address", "kim@example.com", "[EMAIL_REDACTED]"),
+    ("pct40_address", "kim%40example.com", "[EMAIL_REDACTED]"),
+    ("pct2540_address", "kim%2540example.com", "[EMAIL_REDACTED]"),
+)
+
+_PARAMS = [pytest.param(text, expected, id=vector_id) for vector_id, text, expected in VECTORS + LAST_LABEL_VECTORS]
 
 
 @pytest.mark.parametrize(("text", "expected"), _PARAMS)

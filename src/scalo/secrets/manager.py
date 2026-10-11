@@ -56,7 +56,7 @@ class SecretsManager:
 
     Features:
     - Multi-provider support (file, OpenBao/Vault, AWS)
-    - Two-tier caching (memory + disk)
+    - Two-tier caching (memory + disk); ``CacheConfig(enabled=False)`` turns both off
     - Stale cache fallback when providers unavailable
     - Background refresh with jitter
     - Rotation detection and callbacks
@@ -214,6 +214,7 @@ class SecretsManager:
             refresh_interval_secs=cache_cfg.get("refresh_interval_secs", 1800),
             refresh_jitter_secs=cache_cfg.get("refresh_jitter_secs", 300),
             encryption_key=encryption_key,
+            allow_plaintext_disk_cache=cache_cfg.get("allow_plaintext_disk_cache", False),
         )
 
         env_prefix = config.get("env_prefix") or control_var("SECRETS_ENV_PREFIX")
@@ -733,6 +734,57 @@ class SecretsManager:
             raise ProviderNotConfiguredError(provider_name)
         return p
 
+    def _memory_get(self, cache_key: _CacheKey) -> SecretValue | None:
+        """Return the memory-cache entry at any age, or None when absent or caching is disabled."""
+        if not self._cache.config.enabled:
+            return None
+        with self._memory_cache_lock:
+            return self._memory_cache.get(cache_key)
+
+    def _stale_fallback(self, *candidates: SecretValue | None) -> SecretValue | None:
+        """Return the most recently fetched candidate still inside the stale-grace window, or None."""
+        cfg = self._cache.config
+        freshest: SecretValue | None = None
+        for candidate in candidates:
+            if candidate is None or not candidate.is_within_grace(cfg.ttl_secs, cfg.stale_grace_secs):
+                continue
+            if freshest is None or candidate.fetched_at > freshest.fetched_at:
+                freshest = candidate
+        return freshest
+
+    def _store_fetched(self, cache_key: _CacheKey, value: SecretValue) -> None:
+        """Cache a value fresh from its provider, reporting a rotation against the value it replaces."""
+        disk_key = cache_key.to_disk_str()
+        old_value = self._memory_put(cache_key, value)
+        self._cache.set(disk_key, value)
+        self._check_rotation(disk_key, old_value, value)
+
+    async def _fetch(self, cache_key: _CacheKey) -> SecretValue:
+        """Read ``cache_key`` from its provider, skipping both cache tiers, and cache the result."""
+        provider = self._get_provider(cache_key.provider)
+        value = await provider.get_async(cache_key.path, cache_key.key or None)
+        self._store_fetched(cache_key, value)
+        return value
+
+    def _check_rotation(self, name: str, old_value: SecretValue | None, value: SecretValue) -> None:
+        """Emit a rotation event only when both versions are known and they differ."""
+        old_version = old_value.version if old_value is not None else None
+        if old_version is not None and value.version is not None and old_version != value.version:
+            self._emit_rotation(name, old_version, value.version)
+
+    def _memory_put(self, cache_key: _CacheKey, value: SecretValue) -> SecretValue | None:
+        """Store a value in the memory cache and return the entry it replaced.
+
+        Stores nothing and returns None when caching is disabled, so rotation
+        detection has no previous version to compare against.
+        """
+        if not self._cache.config.enabled:
+            return None
+        with self._memory_cache_lock:
+            old_value = self._memory_cache.get(cache_key)
+            self._memory_cache[cache_key] = value
+        return old_value
+
     def _env_fallback_var(self, name: str, source: SourceConfig) -> str | None:
         """Compute the ENV var name to use as fallback for a source.
 
@@ -806,55 +858,31 @@ class SecretsManager:
         cache_key = _CacheKey(provider_name, path, key or "")
         disk_key = cache_key.to_disk_str()
 
-        # Check memory cache
-        with self._memory_cache_lock:
-            if cache_key in self._memory_cache:
-                cached = self._memory_cache[cache_key]
-                if not cached.is_expired(self._cache.config.ttl_secs):
-                    logger.debug("Memory cache hit", extra={"key": disk_key})
-                    return cached
+        remembered = self._memory_get(cache_key)
+        if remembered is not None and not remembered.is_expired(self._cache.config.ttl_secs):
+            logger.debug("Memory cache hit", extra={"key": disk_key})
+            return remembered
 
         # Check disk cache
         cached = self._cache.get(disk_key)
         if cached and not cached.is_expired(self._cache.config.ttl_secs):
-            with self._memory_cache_lock:
-                self._memory_cache[cache_key] = cached
+            self._memory_put(cache_key, cached)
             logger.debug("Disk cache hit", extra={"key": disk_key})
             return cached
 
-        # Fetch from provider
-        provider = self._providers.get(provider_name)
-        if provider is None:
-            raise ProviderNotConfiguredError(provider_name)
-
         try:
-            value = await provider.get_async(path, key)
-
-            # Update caches
-            with self._memory_cache_lock:
-                old_value = self._memory_cache.get(cache_key)
-                self._memory_cache[cache_key] = value
-
-            self._cache.set(disk_key, value)
-
-            # Check for rotation
-            if old_value and old_value.version != value.version:
-                self._emit_rotation(disk_key, old_value.version, value.version)
-
+            value = await self._fetch(cache_key)
             logger.debug("Provider fetch", extra={"key": disk_key, "provider": provider_name})
             return value
 
         except (SecretNotFoundError, ProviderError) as e:
-            # Try stale cache fallback
-            if cached and cached.is_within_grace(
-                self._cache.config.ttl_secs,
-                self._cache.config.stale_grace_secs,
-            ):
+            stale = self._stale_fallback(remembered, cached)
+            if stale is not None:
                 logger.warning(
                     "Provider failed, using stale cache",
                     extra={"provider": provider_name, "error": str(e), "key": disk_key},
                 )
-                return cached
+                return stale
             raise
 
     def _get_from_provider_sync(
@@ -867,52 +895,30 @@ class SecretsManager:
         cache_key = _CacheKey(provider_name, path, key or "")
         disk_key = cache_key.to_disk_str()
 
-        # Check memory cache
-        with self._memory_cache_lock:
-            if cache_key in self._memory_cache:
-                cached = self._memory_cache[cache_key]
-                if not cached.is_expired(self._cache.config.ttl_secs):
-                    return cached
+        remembered = self._memory_get(cache_key)
+        if remembered is not None and not remembered.is_expired(self._cache.config.ttl_secs):
+            return remembered
 
         # Check disk cache
         cached = self._cache.get(disk_key)
         if cached and not cached.is_expired(self._cache.config.ttl_secs):
-            with self._memory_cache_lock:
-                self._memory_cache[cache_key] = cached
+            self._memory_put(cache_key, cached)
             return cached
 
-        # Fetch from provider
-        provider = self._providers.get(provider_name)
-        if provider is None:
-            raise ProviderNotConfiguredError(provider_name)
-
+        provider = self._get_provider(provider_name)
         try:
             value = provider.get_sync(path, key)
-
-            # Update caches
-            with self._memory_cache_lock:
-                old_value = self._memory_cache.get(cache_key)
-                self._memory_cache[cache_key] = value
-
-            self._cache.set(disk_key, value)
-
-            # Check for rotation
-            if old_value and old_value.version != value.version:
-                self._emit_rotation(disk_key, old_value.version, value.version)
-
+            self._store_fetched(cache_key, value)
             return value
 
         except (SecretNotFoundError, ProviderError) as e:
-            # Try stale cache fallback
-            if cached and cached.is_within_grace(
-                self._cache.config.ttl_secs,
-                self._cache.config.stale_grace_secs,
-            ):
+            stale = self._stale_fallback(remembered, cached)
+            if stale is not None:
                 logger.warning(
                     "Provider failed, using stale cache",
                     extra={"provider": provider_name, "error": str(e)},
                 )
-                return cached
+                return stale
             raise
 
     def on_rotation(
@@ -985,17 +991,13 @@ class SecretsManager:
             await self._refresh_all()
 
     async def _refresh_all(self) -> None:
-        """Refresh all cached secrets."""
+        """Re-fetch every secret held in the memory cache from its provider, fresh entries included."""
         with self._memory_cache_lock:
             keys = list(self._memory_cache.keys())
 
         for cache_key in keys:
             try:
-                await self._get_from_provider(
-                    cache_key.provider,
-                    cache_key.path,
-                    cache_key.key or None,
-                )
+                await self._fetch(cache_key)
             except Exception as e:
                 logger.warning(
                     "Refresh failed",
@@ -1036,14 +1038,6 @@ class SecretsManager:
             self._memory_cache.clear()
         self._cache.clear()
         logger.info("Cache cleared")
-
-    @classmethod
-    def clear_memory_cache(cls) -> None:
-        """Deprecated no-op. The memory cache is per-instance now (tenant
-        isolation) -- there is no class-level cache to clear, and the old
-        body raised AttributeError. Use the instance method ``clear_cache()``.
-        """
-        return None
 
     async def close(self) -> None:
         """Close manager and release resources."""
