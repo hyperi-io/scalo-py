@@ -3,6 +3,13 @@
 Rendered by CI and committed back at the end of a release -- do not edit by
 hand. Release notes also appear on the GitHub Releases page, one per tag.
 
+## [2.31.8](https://github.com/hyperi-io/scalo-py/compare/v2.31.7...v2.31.8) (2026-10-11)
+
+### Bug Fixes
+
+* flush buffered spans on exit within the 2s bound ([#113](https://github.com/hyperi-io/scalo-py/issues/113)) ([eac4dcb](https://github.com/hyperi-io/scalo-py/commit/eac4dcb739b628e70c6796f464a11d0355301c11))
+* prove span export protocol, document FastAPI ([#111](https://github.com/hyperi-io/scalo-py/issues/111)) ([1f8b015](https://github.com/hyperi-io/scalo-py/commit/1f8b015d83c1e78ec8732445593145b33d3b530b)), closes [#79](https://github.com/hyperi-io/scalo-py/issues/79)
+
 ## [2.31.7](https://github.com/hyperi-io/scalo-py/compare/v2.31.6...v2.31.7) (2026-10-11)
 
 ### Bug Fixes
