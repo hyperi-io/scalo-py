@@ -9,8 +9,6 @@
 """Deployment validation and generation error types -- mirrors scalo-rs's
 ``scalo::deployment::error``."""
 
-from __future__ import annotations
-
 from dataclasses import dataclass
 
 
@@ -57,15 +55,6 @@ class CreateDirError(DeploymentError):
         super().__init__(f"failed to create directory {path}: {source}")
 
 
-class ParseYamlError(DeploymentError):
-    """Failed to parse YAML."""
-
-    def __init__(self, path: str, source: Exception) -> None:
-        self.path = path
-        self.source = source
-        super().__init__(f"failed to parse YAML in {path}: {source}")
-
-
 class NotFoundError(DeploymentError):
     """File not found."""
 
@@ -79,7 +68,6 @@ __all__ = [
     "CreateDirError",
     "DeploymentError",
     "NotFoundError",
-    "ParseYamlError",
     "ReadFileError",
     "WriteFileError",
 ]

@@ -21,7 +21,6 @@ import pytest
 try:
     from scalo.deployment import (
         DEPLOYMENT_AVAILABLE,
-        ArgocdConfig,
         DeploymentContract,
         HealthContract,
         ImageProfile,
@@ -32,8 +31,6 @@ try:
         PortContract,
         SecretEnvContract,
         SecretGroupContract,
-        generate_argocd_application,
-        generate_chart,
         generate_compose_fragment,
         generate_container_manifest,
         generate_dockerfile,
@@ -450,219 +447,32 @@ class TestGenerateComposeFragment:
 
 
 # -----------------------------------------------------------------------------
-# Helm chart
-# -----------------------------------------------------------------------------
-
-
-class TestGenerateChart:
-    def test_writes_expected_files(self, tmp_path):
-        generate_chart(_full_contract(), tmp_path)
-
-        expected = [
-            "Chart.yaml",
-            "values.yaml",
-            "templates/_helpers.tpl",
-            "templates/deployment.yaml",
-            "templates/service.yaml",
-            "templates/serviceaccount.yaml",
-            "templates/configmap.yaml",
-            "templates/secret.yaml",
-            "templates/hpa.yaml",
-            "templates/keda-scaledobject.yaml",
-            "templates/keda-triggerauth.yaml",
-            "templates/NOTES.txt",
-        ]
-        for rel in expected:
-            assert (tmp_path / rel).exists(), f"missing {rel}"
-
-    def test_chart_yaml_content(self, tmp_path):
-        generate_chart(_full_contract(), tmp_path)
-        text = (tmp_path / "Chart.yaml").read_text()
-        assert "name: dfe-loader" in text
-        assert "description: High-performance Kafka to ClickHouse data loader" in text
-
-    def test_chart_yaml_names_only_the_app(self, tmp_path):
-        # The only keyword is the app's own name, and no maintainer is written for it.
-        generate_chart(_full_contract(), tmp_path)
-        text = (tmp_path / "Chart.yaml").read_text()
-        assert text.endswith('appVersion: "1.0.0"\n\nkeywords:\n  - dfe-loader\n'), text
-        assert "maintainers" not in text
-
-    def test_values_yaml_content(self, tmp_path):
-        generate_chart(_full_contract(), tmp_path)
-        text = (tmp_path / "values.yaml").read_text()
-        assert "port: 9090" in text
-        assert 'prometheus.io/port: "9090"' in text
-        assert 'prometheus.io/path: "/metrics"' in text
-        assert 'lagThreshold: "1000"' in text
-        assert "kafka-username" in text
-        assert "kafka-password" in text
-        assert "clickhouse-password" in text
-
-    def test_helpers_contain_secret_helpers(self, tmp_path):
-        generate_chart(_full_contract(), tmp_path)
-        text = (tmp_path / "templates/_helpers.tpl").read_text()
-        assert "kafkaSecretName" in text
-        assert "clickhouseSecretName" in text
-
-    def test_deployment_contains_env_vars_and_probes(self, tmp_path):
-        generate_chart(_full_contract(), tmp_path)
-        text = (tmp_path / "templates/deployment.yaml").read_text()
-        assert "DFE_LOADER__KAFKA__USERNAME" in text
-        assert "DFE_LOADER__KAFKA__PASSWORD" in text
-        assert "DFE_LOADER__CLICKHOUSE__PASSWORD" in text
-        assert "path: /livez" in text
-        assert "path: /readyz" in text
-        assert "/etc/dfe" in text
-
-    def test_no_keda_files_when_disabled(self, tmp_path):
-        c = _full_contract()
-        c.keda = None
-        generate_chart(c, tmp_path)
-        assert not (tmp_path / "templates/keda-scaledobject.yaml").exists()
-        assert not (tmp_path / "templates/keda-triggerauth.yaml").exists()
-
-    def test_deployment_wires_security_context(self, tmp_path):
-        # Both the pod-level and container-level securityContext blocks are
-        # emitted, wired to values so an operator can tune (or opt out).
-        generate_chart(_full_contract(), tmp_path)
-        text = (tmp_path / "templates/deployment.yaml").read_text()
-        assert "with .Values.podSecurityContext" in text
-        assert "with .Values.securityContext" in text
-
-    def test_values_ship_nonroot_security_floor(self, tmp_path):
-        # Secure-by-default: the generated values carry the non-root floor and
-        # the container hardening, so a service gets them without opting in.
-        generate_chart(_full_contract(), tmp_path)
-        text = (tmp_path / "values.yaml").read_text()
-        assert "runAsNonRoot: true" in text
-        assert "runAsUser: 1000" in text
-        assert "fsGroup: 1000" in text
-        assert "allowPrivilegeEscalation: false" in text
-        assert "- ALL" in text  # capabilities.drop
-
-
-# -----------------------------------------------------------------------------
-# ArgoCD Application
-# -----------------------------------------------------------------------------
-
-
-class TestGenerateArgocd:
-    def test_default_config(self):
-        argo = ArgocdConfig(repo_url="https://github.com/hyperi-io/dfe-loader")
-        text = generate_argocd_application(_full_contract(), argo)
-        assert "apiVersion: argoproj.io/v1alpha1" in text
-        assert "kind: Application" in text
-        assert "name: dfe-loader" in text
-        assert "namespace: argocd" in text
-        assert "repoURL: https://github.com/hyperi-io/dfe-loader" in text
-        assert "targetRevision: main" in text
-        assert "path: chart" in text
-        assert "CreateNamespace=true" in text
-        assert "Schema version:" in text
-
-    def test_custom_namespace_and_path(self):
-        argo = ArgocdConfig(
-            repo_url="https://github.com/hyperi-io/dfe-loader",
-            dest_namespace="production",
-            chart_path="deploy/chart",
-            target_revision="v1.0.0",
-            sync_wave=5,
-        )
-        text = generate_argocd_application(_full_contract(), argo)
-        assert "namespace: production" in text
-        assert "path: deploy/chart" in text
-        assert "targetRevision: v1.0.0" in text
-        assert 'sync-wave: "5"' in text
-
-    def test_destination_defaults_to_the_app_name(self):
-        assert ArgocdConfig().dest_namespace == ""
-        text = generate_argocd_application(_full_contract(), ArgocdConfig(repo_url="https://git.example.com/t/x"))
-        assert "  destination:\n    server: https://kubernetes.default.svc\n    namespace: dfe-loader\n" in text
-
-    def test_argocd_config_default_uses_wave_apps(self):
-        from scalo.deployment import WAVE_APPS
-
-        cfg = ArgocdConfig()
-        assert cfg.sync_wave == WAVE_APPS
-
-    def test_argocd_config_default_has_no_extra_ignore_differences(self):
-        cfg = ArgocdConfig()
-        assert cfg.extra_ignore_differences == []
-
-    def test_generate_argocd_application_emits_default_ignore_differences(self):
-        argo = ArgocdConfig(repo_url="https://github.com/hyperi-io/dfe-loader")
-        yaml = generate_argocd_application(_full_contract(), argo)
-        assert "ignoreDifferences:" in yaml
-        assert "/spec/replicas" in yaml
-        assert "/spec/clusterIP" in yaml
-        assert ".webhooks[].clientConfig.caBundle" in yaml
-
-    def test_regenerate_header_references_real_command(self):
-        # Issue #23: header must reference the real generate-artefacts command.
-        argo = ArgocdConfig(repo_url="https://github.com/hyperi-io/dfe-loader")
-        yaml = generate_argocd_application(_full_contract(), argo)
-        assert "emit-argocd" not in yaml
-        assert "generate-artefacts" in yaml
-
-    def test_generate_argocd_application_appends_extra_ignore_differences(self):
-        argo = ArgocdConfig(
-            repo_url="https://github.com/hyperi-io/dfe-loader",
-            extra_ignore_differences=[
-                "- group: apps\n  kind: Deployment\n  jsonPointers:\n    - /spec/template/spec/containers/0/image",
-            ],
-        )
-        yaml = generate_argocd_application(_full_contract(), argo)
-        assert "/spec/template/spec/containers/0/image" in yaml
-
-    def test_generate_argocd_application_sync_wave_annotation_uses_config_value(self):
-        from scalo.deployment.waves import WAVE_TOPICS
-
-        argo = ArgocdConfig(
-            repo_url="https://github.com/hyperi-io/dfe-loader",
-            sync_wave=WAVE_TOPICS,
-        )
-        yaml = generate_argocd_application(_full_contract(), argo)
-        assert 'argocd.argoproj.io/sync-wave: "-5"' in yaml
-
-
-# -----------------------------------------------------------------------------
 # Cascade readers
 # -----------------------------------------------------------------------------
 
 
 class TestRegistryCascade:
-    def test_no_registry_or_argocd_default_when_the_cascade_is_silent(self):
+    def test_no_registry_default_when_the_cascade_is_silent(self):
         from scalo.config import settings
         from scalo.deployment import (
             DEFAULT_BASE_IMAGE,
-            argocd_dest_namespace_from_cascade,
-            argocd_repo_url_from_cascade,
             base_image_from_cascade,
             image_registry_from_cascade,
         )
 
         settings.unset("DEPLOYMENT")
         assert image_registry_from_cascade() is None
-        assert argocd_repo_url_from_cascade() is None
-        assert argocd_dest_namespace_from_cascade() is None
         assert base_image_from_cascade() == DEFAULT_BASE_IMAGE
 
     def test_readers_return_what_the_cascade_names(self):
         from scalo.config import settings
-        from scalo.deployment import (
-            argocd_dest_namespace_from_cascade,
-            argocd_repo_url_from_cascade,
-            image_registry_from_cascade,
-        )
+        from scalo.deployment import base_image_from_cascade, image_registry_from_cascade
 
         settings.set("deployment.image_registry", "registry.example.com/team")
-        settings.set("deployment.argocd.repo_url", "https://git.example.com/team/app")
-        settings.set("deployment.argocd.dest_namespace", "apps")
+        settings.set("deployment.base_image", "python:3.14-slim-trixie")
         try:
             assert image_registry_from_cascade() == "registry.example.com/team"
-            assert argocd_repo_url_from_cascade() == "https://git.example.com/team/app"
-            assert argocd_dest_namespace_from_cascade() == "apps"
+            assert base_image_from_cascade() == "python:3.14-slim-trixie"
         finally:
             settings.unset("DEPLOYMENT")
 
@@ -739,90 +549,20 @@ class TestNativeDepsForRustlibFeatures:
 
 
 class TestGeneratedYamlParses:
-    """Every ``.yaml`` artefact must round-trip through ``yaml.safe_load``.
+    """The Compose fragment must round-trip through ``yaml.safe_load``.
 
     Catches structural regressions that substring-only checks miss (mismatched
-    indents, unquoted special characters, missing colons). Helm templates use
-    ``{{ }}`` Go-template syntax which is NOT YAML-valid -- we strip those
-    sections before parsing.
+    indents, unquoted special characters, missing colons).
     """
-
-    def _yaml_safe(self, text: str) -> object:
-        """Parse YAML after stripping Helm Go-template directives."""
-        import re
-
-        import yaml
-
-        # Replace the contents of any {{ ... }} block with a placeholder so the
-        # remainder is structurally valid YAML.
-        scrubbed = re.sub(r"\{\{[^}]*\}\}", "PLACEHOLDER", text)
-        # Drop full-line {{- ... -}} control flow blocks too.
-        scrubbed = re.sub(r"^\s*PLACEHOLDER\s*$", "", scrubbed, flags=re.MULTILINE)
-        return yaml.safe_load(scrubbed)
 
     def test_compose_fragment_is_valid_yaml(self):
         text = generate_compose_fragment(_full_contract())
-        # Compose has no Helm placeholders -- straight parse
         import yaml
 
         data = yaml.safe_load(text)
         assert isinstance(data, dict)
         assert "services" in data
         assert "dfe-loader" in data["services"]
-
-    def test_argocd_application_is_valid_yaml(self):
-        argo = ArgocdConfig(repo_url="https://github.com/hyperi-io/dfe-loader")
-        text = generate_argocd_application(_full_contract(), argo)
-        import yaml
-
-        data = yaml.safe_load(text)
-        assert data["apiVersion"] == "argoproj.io/v1alpha1"
-        assert data["kind"] == "Application"
-        assert data["metadata"]["name"] == "dfe-loader"
-        assert data["spec"]["source"]["repoURL"] == "https://github.com/hyperi-io/dfe-loader"
-
-    def test_chart_yaml_is_valid_yaml(self, tmp_path):
-        generate_chart(_full_contract(), tmp_path)
-        text = (tmp_path / "Chart.yaml").read_text()
-        import yaml
-
-        data = yaml.safe_load(text)
-        assert data["name"] == "dfe-loader"
-        assert data["apiVersion"] == "v2"
-        assert data["type"] == "application"
-
-    def test_values_yaml_is_valid_yaml(self, tmp_path):
-        generate_chart(_full_contract(), tmp_path)
-        text = (tmp_path / "values.yaml").read_text()
-        # values.yaml has no Helm directives
-        import yaml
-
-        data = yaml.safe_load(text)
-        assert data["service"]["port"] == 9090
-        assert data["keda"]["enabled"] is True
-        assert data["keda"]["kafka"]["lagThreshold"] == "1000"
-        assert data["kafka"]["secretKeys"]["password"] == "kafka-password"
-
-    def test_helm_template_yamls_parse_after_directive_strip(self, tmp_path):
-        """deployment/service/configmap/secret/hpa with placeholder substitution."""
-        generate_chart(_full_contract(), tmp_path)
-        for rel in (
-            "templates/deployment.yaml",
-            "templates/service.yaml",
-            "templates/serviceaccount.yaml",
-            "templates/configmap.yaml",
-            "templates/hpa.yaml",
-            "templates/keda-scaledobject.yaml",
-            "templates/keda-triggerauth.yaml",
-        ):
-            text = (tmp_path / rel).read_text()
-            data = self._yaml_safe(text)
-            # Each template is a dict with apiVersion / kind / metadata
-            assert isinstance(data, dict), f"{rel} did not parse to a mapping"
-            # apiVersion may be the placeholder string after scrubbing in some
-            # templates wrapped in {{- if ... }} -- accept either real value or
-            # placeholder; the structural check is what matters.
-            assert "kind" in data or "PLACEHOLDER" in str(data), f"{rel} missing 'kind' field after directive scrub"
 
 
 class TestGeneratorDeterminism:
@@ -844,29 +584,6 @@ class TestGeneratorDeterminism:
     def test_compose_fragment_deterministic(self):
         c = _full_contract()
         assert generate_compose_fragment(c) == generate_compose_fragment(c)
-
-    def test_argocd_deterministic(self):
-        c = _full_contract()
-        argo = ArgocdConfig(repo_url="https://example.com")
-        assert generate_argocd_application(c, argo) == generate_argocd_application(c, argo)
-
-    def test_chart_deterministic(self, tmp_path):
-        a = tmp_path / "a"
-        b = tmp_path / "b"
-        c = _full_contract()
-        generate_chart(c, a)
-        generate_chart(c, b)
-
-        for rel in (
-            "Chart.yaml",
-            "values.yaml",
-            "templates/_helpers.tpl",
-            "templates/deployment.yaml",
-            "templates/service.yaml",
-            "templates/configmap.yaml",
-            "templates/secret.yaml",
-        ):
-            assert (a / rel).read_text() == (b / rel).read_text(), f"{rel} differs across two generate_chart() calls"
 
 
 class TestContractValidation:
@@ -1022,17 +739,7 @@ class TestMinimalContractGenerators:
         # No command line when entrypoint_args is empty
         assert "command:" not in text
 
-    def test_chart_works_on_minimal(self, tmp_path):
-        generate_chart(self._minimal(), tmp_path)
-        # No KEDA files
-        assert not (tmp_path / "templates/keda-scaledobject.yaml").exists()
-        # secret.yaml present but empty
-        secret_text = (tmp_path / "templates/secret.yaml").read_text()
-        assert "No secrets defined" in secret_text
-
-    def test_compose_and_chart_name_the_contract_registry(self, tmp_path):
-        generate_chart(self._minimal(), tmp_path)
-        assert "repository: registry.example.com/minimal-app\n" in (tmp_path / "values.yaml").read_text()
+    def test_compose_names_the_contract_registry(self):
         assert "image: registry.example.com/minimal-app:" in generate_compose_fragment(self._minimal())
 
     def test_container_manifest_works_on_minimal(self):

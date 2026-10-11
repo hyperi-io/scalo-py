@@ -1,6 +1,6 @@
 # DeploymentContract
 
-The Pydantic model an app builds once from its `Config.default()`. CI validates Helm charts and Dockerfiles against the contract, and generators emit deployment artefacts from it. scalo-py parses every field scalo-rs's `scalo::deployment::contract` writes, under the same name and JSON shape, and writes it back unchanged. Only scalo-py has `builder_image`, `python_version`, `emit_healthcheck` and `native_deps.distro_codename`, which scalo-rs ignores.
+The Pydantic model an app builds once from its `Config.default()`. `validate_dockerfile` checks a committed Dockerfile against it, generators emit the image artefacts from it, and the [scalo-service](https://github.com/hyperi-io/scalo-rs/blob/main/charts/scalo-service/README.md) library chart renders the Kubernetes objects from its JSON. scalo-py parses every field scalo-rs's `scalo::deployment::contract` writes, under the same name and JSON shape, and writes it back unchanged. Only scalo-py has `builder_image`, `python_version`, `emit_healthcheck` and `native_deps.distro_codename`, which scalo-rs ignores.
 
 `tests/fixtures/contract-parity/deployment-contract.json` is a contract scalo-rs emitted with every optional field set, copied from scalo-rs's own `tests/fixtures/contract-parity/`. `tests/unit/deployment/test_contract_parity.py` parses it, re-emits it and checks nothing changed, so a field scalo-rs adds fails here until scalo-py carries it.
 
@@ -145,7 +145,7 @@ scalo stamps a few keys of its own beside the standard `org.opencontainers.image
 | `<namespace>.profile` | Dockerfile, runtime stage, container manifest | `production` or `development` |
 | `<namespace>.app` | container manifest | `app_name` |
 | `<namespace>.metrics_port` | container manifest | `metrics_port` |
-| `<namespace>.contract.version` / `.source-commit` / `.image-ref` | Dockerfile, runtime stage, container manifest, `Chart.yaml`, ArgoCD `Application`, when a `ContractIdentity` is passed | see [IDENTITY.md](IDENTITY.md) |
+| `<namespace>.contract.version` / `.source-commit` / `.image-ref` | Dockerfile, runtime stage, container manifest, when a `ContractIdentity` is passed; `ContractIdentity.as_yaml_annotations` renders the same keys for a chart or `Application` built elsewhere | see [IDENTITY.md](IDENTITY.md) |
 
 An app that already ships its own namespace keeps it by setting `label_namespace`, and every key above moves with it.
 
@@ -157,7 +157,7 @@ An app that already ships its own namespace keeps it by setting `label_namespace
 |---|---|---|
 | `liveness_path` | `/livez` | Used by Dockerfile `HEALTHCHECK` and Helm `livenessProbe` |
 | `readiness_path` | `/readyz` | Helm `readinessProbe` |
-| `metrics_path` | `/metrics` | Prometheus scrape annotation in `values.yaml` |
+| `metrics_path` | `/metrics` | Prometheus scrape annotation on the pod |
 | `startup_budget_seconds` | `150` | How long the scalo-service startup probe waits for the liveness path before a restart, at least 1 (v4) |
 
 The Helm `startupProbe` also points at `liveness_path`. There is no separate
@@ -175,8 +175,9 @@ hides a probe still aimed at the old name.
 
 `PortContract` -- additional container port beyond `metrics_port`.
 `name` (e.g. `http`), `port` (1..65535), `protocol` (default `TCP`).
-Generators emit one `containerPort` per entry plus a matching Service
-`port` entry.
+The Dockerfile `EXPOSE`, the container manifest and the Compose fragment
+carry each entry, and the scalo-service chart renders a `containerPort`
+and a matching Service port for it.
 
 Construction refuses a `name` Kubernetes would not take: 1 to 15 lowercase letters, digits and single inner hyphens, with at least one letter. It refuses a `protocol` other than `TCP`, `UDP` or `SCTP` in any case. It also refuses a control character in a `when` condition, `bound_from` or `app_protocol`, because a generator prints each onto one line and a newline there starts an instruction of its own. The refusal reads `extra_ports[<name>].<field>: <reason>`, and names the port by index until its name is valid.
 
@@ -197,19 +198,20 @@ The condition is tagged by `kind`, as scalo-rs's `PortCondition` serialises it. 
 | `EqualsCondition(path=..., value=...)` | `{"kind": "equals", "path": ..., "value": ...}` |
 | `OneOfCondition(path=..., values=[...])` | `{"kind": "one_of", "path": ..., "values": [...]}` |
 
-scalo-py's generators read none of the four yet: the Dockerfile `EXPOSE`, the container manifest, the Compose fragment and the chart carry every port unconditionally, where scalo-rs's keep a gated port out of `EXPOSE` and render it only while its condition holds.
+scalo-py's generators read none of the four yet: the Dockerfile `EXPOSE`, the container manifest and the Compose fragment carry every port unconditionally, where scalo-rs's keep a gated port out of `EXPOSE`. The scalo-service chart renders a gated port only while its condition holds.
 
 `SecretEnvContract` -- one env var fed from a K8s Secret:
 
 - `env_var` -- full env-var name (e.g. `EVENT_LOADER__KAFKA__PASSWORD`)
-- `key_name` -- key in `values.yaml` `secretKeys`
+- `key_name` -- the values key `secrets.<group>.keys.<key_name>` that overrides the data key
 - `secret_key` -- default K8s Secret key (e.g. `kafka-password`)
 
 `SecretGroupContract` -- a group of secrets from the same K8s Secret.
-`group_name` becomes the `values.yaml` section name and the
-`{group}SecretName` helper. Generators emit one `Secret` template per
-group plus a KEDA `TriggerAuthentication` automatically when the group
-is named `kafka`. `optional=True` (v4) lets the app start without the group,
+`group_name` names the scalo-service chart's `secrets.<group>` values
+section, and the Secret defaults to `<fullname>-<group>`. The chart's KEDA
+`TriggerAuthentication` takes its credentials from
+`keda.triggerAuthentication.secretTargetRef`, not from a group -- see
+[KEDA.md](KEDA.md). `optional=True` (v4) lets the app start without the group,
 so a missing Secret or key leaves the variable unset. It is left out of the
 emitted contract when false.
 
@@ -218,8 +220,7 @@ emitted contract when false.
 ## Writable paths, resources and security
 
 These v4 fields describe what the container needs from the pod. The
-scalo-service library chart in scalo-rs renders them, and `generate_chart`
-does not read them.
+scalo-service library chart in scalo-rs renders them.
 
 ```python
 DeploymentContract(
@@ -291,8 +292,8 @@ It also refuses a `$ref` that the search for dials follows and that is not local
   (e.g. `loader.yaml`).
 - `config_dir()` -- parent directory (e.g. `/etc/event-loader`). Used for the
   K8s `volumeMounts.mountPath`.
-- `to_json()` -- pretty-printed JSON; the wire format for
-  `--emit-contract` CLI commands.
+- `to_json()` -- pretty-printed JSON; the `deployment-contract.json`
+  that `generate-artefacts` writes.
 - `from_json(raw)` -- inverse. Round-trips losslessly.
 - `with_dev_profile()` -- deep-copied clone with development profile.
 
@@ -349,9 +350,10 @@ its empty halves, `security.capabilities_add`, and `native_deps.distro`,
 
 The opinionated path: have your app's `Config.default()` build a
 `DeploymentContract` rather than building artefacts ad-hoc. CI invokes
-`<your-binary> emit-contract` to produce the JSON, then feeds that into
-the generators in this package -- so the same defaults flow into both
-the running app and the deployment artefacts.
+`<your-binary> generate-artefacts` to write the JSON and the image
+artefacts, and a chart assembler renders the Kubernetes objects from the
+same JSON -- so the same defaults flow into both the running app and the
+deployment artefacts.
 
 ```python
 def deployment_contract(cfg: AppConfig) -> DeploymentContract:

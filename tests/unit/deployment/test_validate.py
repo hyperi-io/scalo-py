@@ -1,14 +1,12 @@
 # Project:   scalo
 # File:      tests/unit/deployment/test_validate.py
-# Purpose:   Tests for validate_dockerfile / validate_helm_values drift checks
+# Purpose:   Tests for the validate_dockerfile drift check
 # Language:  Python
 #
 # License:   Apache-2.0
 # Copyright: (c) 2026 HYPERI PTY LIMITED
 
 """Drift-detection tests for the deployment validate_* functions."""
-
-from __future__ import annotations
 
 from pathlib import Path
 
@@ -19,10 +17,8 @@ from .support import py_contract
 try:
     from scalo.deployment import (
         DEPLOYMENT_AVAILABLE,
-        generate_chart,
         generate_runtime_stage,
         validate_dockerfile,
-        validate_helm_values,
     )
 
     deployment_importable = DEPLOYMENT_AVAILABLE
@@ -79,8 +75,3 @@ def test_validate_dockerfile_flags_arg_default_that_drifts(tmp_path: Path):
     p = tmp_path / "Dockerfile.runtime"
     p.write_text(f"ARG BASE_IMAGE=ubuntu:24.04\n{runtime}", encoding="utf-8")
     assert any(m.field == "base_image" for m in validate_dockerfile(py_contract(), p))
-
-
-def test_validate_helm_values_clean(tmp_path: Path):
-    generate_chart(py_contract(), tmp_path)
-    assert validate_helm_values(py_contract(), tmp_path) == []

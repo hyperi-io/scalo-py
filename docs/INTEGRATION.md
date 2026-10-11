@@ -204,13 +204,13 @@ See [transport/KAFKA.md](transport/KAFKA.md).
 
 ## 9. Deployment contract
 
-Define the contract once, generate every artefact:
+Define the contract once, generate the image artefacts from it:
 
 ```python
 from scalo.deployment import (
     DeploymentContract, HealthContract, OciLabels,
-    generate_dockerfile, generate_chart, generate_argocd_application,
-    ContractIdentity, ArgocdConfig,
+    generate_dockerfile, generate_container_manifest,
+    ContractIdentity,
 )
 
 contract = DeploymentContract(
@@ -223,19 +223,16 @@ contract = DeploymentContract(
     image_registry="registry.example.com/team",
 )
 
-# Contract Identity v1 labels stamp every artefact:
+# Contract Identity v1 labels stamp the image:
 identity = ContractIdentity.detect(image_ref="registry.example.com/team/my-service:v1.0.0")
 
 dockerfile = generate_dockerfile(contract, identity=identity)
-generate_chart(contract, "charts/my-service", identity=identity)
-argo_yaml = generate_argocd_application(
-    contract,
-    ArgocdConfig(repo_url="https://git.example.com/team/my-service", target_revision="main"),
-    identity=identity,
-)
+manifest = generate_container_manifest(contract, identity=identity)
 ```
 
-That gives you a Dockerfile, a complete Helm chart, an ArgoCD `Application` manifest, all carrying the three `io.scalo.contract.*` identity keys (version, source-commit, image-ref). The contract names no vendor, licence or copyright until you set `OciLabels(vendor=..., licenses=..., copyright=...)`, and `OciLabels(label_namespace=...)` moves scalo's own keys under your reverse-DNS name.
+That gives you a Dockerfile and a container manifest, both carrying the three `io.scalo.contract.*` identity keys (version, source-commit, image-ref). The contract names no vendor, licence or copyright until you set `OciLabels(vendor=..., licenses=..., copyright=...)`, and `OciLabels(label_namespace=...)` moves scalo's own keys under your reverse-DNS name.
+
+The Kubernetes objects come from the scalo-service library chart, which renders the `deployment-contract.json` that `generate-artefacts` writes. To preview a service's chart locally, run `hyperi-ci chart assemble` -- see [deployment/ARTEFACTS.md](deployment/ARTEFACTS.md#kubernetes-objects).
 
 See [deployment/CONTRACT.md](deployment/CONTRACT.md),
 [deployment/ARTEFACTS.md](deployment/ARTEFACTS.md), and
@@ -255,10 +252,9 @@ uv run pytest -m e2e           # full K8s harness (kind) — env-gated
 
 For the deployment contract subsystem, an e2e TEMPLATE lives at
 [`tests/e2e/test_contract_artefacts.py`](../tests/e2e/test_contract_artefacts.py).
-It runs Tier A (cluster-less: docker build, helm template, kubeconform)
-locally when those tools are present, and Tier B (kind cluster + helm
-install + ArgoCD apply) when `E2E_CLUSTER=1` is set. Skips
-emit a canonical `HYPERCI-SKIP[contract-e2e][...]:` prefix; see
+It runs Tier A (cluster-less: docker build and run) locally when
+docker is present. Skips emit a canonical
+`HYPERCI-SKIP[contract-e2e][...]:` prefix; see
 [deployment/TEST-SUPPORT.md](deployment/TEST-SUPPORT.md).
 
 Run the full pipeline locally — same code path as CI:

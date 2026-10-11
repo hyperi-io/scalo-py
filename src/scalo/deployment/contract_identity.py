@@ -8,10 +8,11 @@
 
 """Contract Identity Annotation Scheme v1.
 
-Stamps every deployment artefact (Dockerfile, Helm Chart.yaml, ArgoCD
-Application) with three uniform, greppable keys so the same logical
-contract output is traceable across surfaces and across language tiers
-(scalo-rs / scalo-py / hyperi-ci).
+Stamps the OCI image (Dockerfile, runtime stage, container manifest) with
+three uniform, greppable keys, and renders the same three keys as YAML
+annotations for a chart or ArgoCD Application built elsewhere, so the same
+logical contract output is traceable across surfaces and across language
+tiers (scalo-rs / scalo-py / hyperi-ci).
 
 Keys (all under ``<namespace>.contract``, where ``<namespace>`` is the
 contract's ``oci_labels.label_namespace``, ``io.scalo`` by default):

@@ -11,7 +11,8 @@
 ``KedaConfig`` lives in the app's config cascade so thresholds are
 overridable via env vars (e.g., ``MYAPP__KEDA__KAFKA_LAG_THRESHOLD=5000``).
 
-``KedaContract`` is the subset validated against Helm ``values.yaml``.
+``KedaContract`` is the subset the scalo-service chart renders into its
+ScaledObject.
 """
 
 from typing import Self
@@ -97,7 +98,7 @@ class KafkaLagTrigger(BaseModel):
 
 
 class KedaContract(BaseModel):
-    """KEDA contract points validated against Helm ``values.yaml``.
+    """KEDA contract points the scalo-service chart renders into its ScaledObject.
 
     Built from ``KedaConfig`` defaults via ``KedaContract.from_config``.
     Field validation mirrors ``KedaConfig`` so a contract carrying nonsense
@@ -107,7 +108,7 @@ class KedaContract(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
     enabled: bool = True
-    """Whether the chart turns KEDA on. False generates exactly what ``keda=None`` does."""
+    """Whether the chart turns KEDA on. False renders exactly what ``keda=None`` does."""
 
     min_replicas: int = Field(default=1, ge=0)
     max_replicas: int = Field(default=10, ge=1)

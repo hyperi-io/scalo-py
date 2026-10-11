@@ -48,7 +48,7 @@ That gives you:
 my-service run                  # start the service
 my-service version              # print version
 my-service config-check         # validate config and exit
-my-service generate-artefacts   # write Dockerfile + ArgoCD manifest
+my-service generate-artefacts   # write the contract JSON + runtime Dockerfile
 my-service --help
 ```
 
@@ -109,7 +109,7 @@ class MyService(ServiceApp):
 | `run` (default) | Initialise logger + config + metrics, then call `run_service` / `run_service_async`. |
 | `version` | Print the `VersionInfo` and exit. |
 | `config-check` | Validate the cascade loads cleanly, print a key-value summary to stderr, exit. |
-| `generate-artefacts` | Write `deployment-contract.json`, `container-manifest.json`, `Dockerfile.runtime`, `argocd-application.yaml` to the output dir (default `ci/`). Requires `ServiceApp.deployment_contract()` to be overridden. |
+| `generate-artefacts` | Write `deployment-contract.json`, `container-manifest.json`, `Dockerfile.runtime` and `.dockerignore` to the output dir (default `ci/`). Requires `ServiceApp.deployment_contract()` to be overridden. |
 
 Standard flags accepted by `run` and `config-check`:
 
@@ -149,10 +149,14 @@ app.
 Override `deployment_contract()` to return a
 `scalo.deployment.DeploymentContract`. `my-service
 generate-artefacts -o ci/` then writes `deployment-contract.json`,
-`container-manifest.json`, `Dockerfile.runtime`, and
-`argocd-application.yaml`. Requires `scalo[deployment]`. The
-default `None` return prints a warning and emits nothing — services
+`container-manifest.json`, `Dockerfile.runtime` and `.dockerignore`.
+Requires `scalo[deployment]`. The
+default `None` return prints a warning and emits nothing -- services
 that don't ship as containers can leave it unset.
+
+A chart assembler turns `deployment-contract.json` into a thin chart on
+the scalo-service library chart, which renders the Kubernetes objects.
+See [../deployment/ARTEFACTS.md](../deployment/ARTEFACTS.md#kubernetes-objects).
 
 ---
 
