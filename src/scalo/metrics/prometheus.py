@@ -25,7 +25,8 @@ Quick Start
     from fastapi import FastAPI, Response
     from prometheus_client import generate_latest, CONTENT_TYPE_LATEST
 
-    app = FastAPI()
+    # Otherwise fastapi 0.142+ adds http/protobuf exporters that fail against a gRPC collector.
+    app = FastAPI(telemetry={"auto_configure": False})
 
     @app.get("/metrics")
     def metrics_endpoint():

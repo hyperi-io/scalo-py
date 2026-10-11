@@ -19,7 +19,8 @@ Usage::
     from scalo.health import create_health_router, HealthManager
 
     manager = HealthManager()
-    app = FastAPI()
+    # Otherwise fastapi 0.142+ adds http/protobuf exporters that fail against a gRPC collector.
+    app = FastAPI(telemetry={"auto_configure": False})
     app.include_router(create_health_router(manager))
 
     # Later, during startup:
