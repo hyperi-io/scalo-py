@@ -103,6 +103,25 @@ async def test_a_retried_transport_error_logs_class_only(caplog, use_async):
     assert getattr(record, "stamina.caused_by") == "ConnectError"
 
 
+def _cause_chain(exc: BaseException) -> list[type[BaseException]]:
+    chain: list[type[BaseException]] = []
+    link: BaseException | None = exc
+    while link is not None and type(link) not in chain:
+        chain.append(type(link))
+        link = link.__cause__ or link.__context__
+    return chain
+
+
+@both_paths
+async def test_a_transport_error_keeps_the_socket_error_under_it(use_async):
+    """Callers say why a call got no answer from the socket error's class, never its message."""
+    with pytest.raises(httpx.ConnectError) as caught:
+        await _get(f"http://127.0.0.1:{_closed_port()}", "/health", use_async=use_async)
+
+    assert caught.value.__cause__ is not None
+    assert ConnectionRefusedError in _cause_chain(caught.value)
+
+
 @both_paths
 async def test_a_4xx_is_raised_at_once_without_a_retry(server, caplog, use_async):
     caplog.set_level(logging.WARNING, logger="stamina")
