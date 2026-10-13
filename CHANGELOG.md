@@ -3,6 +3,12 @@
 Rendered by CI and committed back at the end of a release -- do not edit by
 hand. Release notes also appear on the GitHub Releases page, one per tag.
 
+## [2.31.10](https://github.com/hyperi-io/scalo-py/compare/v2.31.9...v2.31.10) (2026-10-13)
+
+### Bug Fixes
+
+* take each OTel meter from its own provider, and correct METRICS.md ([#119](https://github.com/hyperi-io/scalo-py/issues/119)) ([dc62806](https://github.com/hyperi-io/scalo-py/commit/dc62806d6544c5186bf6ad79cb9e434c31d2695b))
+
 ## [2.31.9](https://github.com/hyperi-io/scalo-py/compare/v2.31.8...v2.31.9) (2026-10-13)
 
 ### Bug Fixes
