@@ -268,19 +268,32 @@ app.add_middleware(HttpServerMetricsMiddleware, metrics=m)
 
 ## Process and container collectors
 
-The Prometheus backend automatically registers:
+The two backends register different sets.
 
-- `process_cpu_seconds_total`
-- `process_resident_memory_bytes`
-- `process_open_fds`, `process_max_fds`
-- `process_virtual_memory_bytes`
-- `process_start_time_seconds`
+**Prometheus backend.** Its own psutil collector, on the backend's private registry:
 
-In containers, it also registers `container_memory_usage_bytes`,
-`container_memory_limit_bytes`, `container_cpu_usage_seconds_total`,
-`container_cpu_quota`, `container_cpu_period` -- read from the
-cgroup files the runtime detector walks. OTel backend leaves
-process/container metrics to the OTel SDK's resource attributes.
+- `process_info` (app name, pid, Python version, platform, container detection)
+- `process_cpu_percent`, `process_cpu_seconds_total`
+- `process_memory_rss_bytes`, `process_memory_vms_bytes`, `process_memory_percent`
+- `process_threads_total`, `process_fds_open`, `process_uptime_seconds`
+
+In a container it adds `container_memory_limit_bytes`, `container_memory_usage_bytes`,
+`container_memory_available_bytes`, `container_memory_pressure_percent`,
+`container_oom_kills_total`, `container_cpu_quota` and
+`container_cpu_throttled_seconds_total`, read from the cgroup files the runtime detector walks.
+
+**OpenTelemetry backend.** `ResourceMetrics` (`scalo.metrics.groups`), which `ServiceApp`
+registers automatically. It reads each value fresh at every collection and pushes it over OTLP
+as a gauge, under the bare names scalo-rs uses:
+
+- `process_cpu_seconds_total`, `process_resident_memory_bytes`, `process_virtual_memory_bytes`
+- `process_open_fds` (Linux only), `process_start_time_seconds`
+- in a cgroup: `container_memory_usage_bytes`, `container_memory_limit_bytes` (unlimited is
+  2^64 - 1, as scalo-rs reports it), `container_cpu_limit_cores`
+
+Registering them unregisters prometheus_client's default process collector, so `/metrics`
+on this backend serves each `process_*` name once. `process_cpu_seconds_total` is a gauge
+there, not prometheus_client's counter.
 
 ---
 

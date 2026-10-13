@@ -508,7 +508,8 @@ class OpenTelemetryBackend(MetricsBackend):
 
                     otlp_exporter = GatedMetricExporter(otlp_exporter, resolved.export_interval_millis / 1000)
                     otlp_reader = PeriodicExportingMetricReader(
-                        exporter=otlp_exporter,
+                        # Duck-typed on purpose: the reader must see the inner exporter's preferences (otel_backoff.py).
+                        exporter=otlp_exporter,  # ty: ignore[invalid-argument-type]
                         export_interval_millis=resolved.export_interval_millis,
                         export_timeout_millis=resolved.export_timeout_millis,
                     )
@@ -540,8 +541,10 @@ class OpenTelemetryBackend(MetricsBackend):
             # Set global meter provider
             metrics.set_meter_provider(self._provider)
 
-            # Get meter for this app
-            self._meter = metrics.get_meter(app_name)
+            # From this manager's own provider: set_meter_provider only takes the first
+            # provider in a process, so a global lookup would put a second manager's
+            # instruments on the first one's readers.
+            self._meter = self._provider.get_meter(app_name)
 
             # Cache for created metrics
             self._metrics_cache: dict[str, Any] = {}
@@ -816,7 +819,7 @@ class OpenTelemetryBackend(MetricsBackend):
         every scrape, so an AttributeError here would turn a missing extra
         into a 500.
         """
-        if getattr(self, "_prometheus_reader", None) is not None and CONTENT_TYPE_LATEST:
+        if getattr(self, "_prometheus_reader", None) is not None:
             return CONTENT_TYPE_LATEST
         return "text/plain; version=0.0.4"
 

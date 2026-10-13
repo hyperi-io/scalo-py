@@ -1,5 +1,7 @@
 """ResourceMetrics: the process and cgroup readings, and their export over OTLP."""
 
+import os
+import subprocess
 import sys
 import time
 from pathlib import Path
@@ -98,11 +100,19 @@ def test_process_readings_describe_this_process(tmp_path: Path):
     resources = _resources(cgroup_root=tmp_path)
 
     resources.cpu_percent()
-    assert resources.cpu_percent() >= 0
-    assert resources.resident_memory_bytes() > 0
-    assert resources.virtual_memory_bytes() >= resources.resident_memory_bytes()
+    cpu_percent = resources.cpu_percent()
+    resident = resources.resident_memory_bytes()
+    virtual = resources.virtual_memory_bytes()
+    assert cpu_percent is not None
+    assert cpu_percent >= 0
+    assert resident is not None
+    assert resident > 0
+    assert virtual is not None
+    assert virtual >= resident
     if sys.platform == "linux":
-        assert resources.open_fds() > 0
+        open_fds = resources.open_fds()
+        assert open_fds is not None
+        assert open_fds > 0
     else:
         assert resources.open_fds() is None
 
@@ -148,3 +158,33 @@ def test_resource_gauges_reach_every_otlp_export():
         assert len(exported) >= 2, f"{name} in {len(exported)} export(s): {result.stderr!r}"
         assert all(metric.WhichOneof("data") == "gauge" for metric in exported)
         assert exported[-1].gauge.data_points[0].as_double > 0
+
+
+_RESOURCE_SCRAPE_SCRIPT = """
+from scalo.metrics import create_metrics
+from scalo.metrics.groups import ResourceMetrics
+
+metrics = create_metrics("resource-scrape", backend="opentelemetry")
+ResourceMetrics(mgr=metrics)
+body = metrics.get_metrics()
+print(body.decode() if isinstance(body, bytes) else body)
+"""
+
+
+@otel_required
+def test_the_otel_backend_serves_process_cpu_once_as_a_gauge():
+    # A subprocess, because ResourceMetrics unregisters prometheus_client's process collector process-wide.
+    result = subprocess.run(
+        [sys.executable, "-c", _RESOURCE_SCRAPE_SCRIPT],
+        capture_output=True,
+        text=True,
+        encoding="utf-8",
+        errors="replace",
+        env={**os.environ, "OTEL_EXPORTER_OTLP_ENDPOINT": ""},
+        timeout=120,
+        check=False,
+    )
+
+    assert result.returncode == 0, result.stderr
+    declared = [line for line in result.stdout.splitlines() if line.startswith("# TYPE process_cpu_seconds_total ")]
+    assert declared == ["# TYPE process_cpu_seconds_total gauge"], result.stdout

@@ -285,6 +285,20 @@ class TestBackwardCompatibility:
         metrics.stop_auto_update()
 
 
+class TestEachBackendOwnsItsProvider:
+    """Instruments come from the backend's own MeterProvider, never the process-global one."""
+
+    def test_a_second_backend_takes_its_meter_from_its_own_provider(self):
+        from scalo.metrics.opentelemetry_backend import OpenTelemetryBackend
+
+        first = OpenTelemetryBackend("own-provider-first")
+        second = OpenTelemetryBackend("own-provider-second")
+
+        assert first._provider is not second._provider
+        assert first._meter is first._provider.get_meter("own-provider-first")
+        assert second._meter is second._provider.get_meter("own-provider-second")
+
+
 class TestOTelNotInstalled:
     """Test behaviour when OTel packages are missing (simulated)."""
 
