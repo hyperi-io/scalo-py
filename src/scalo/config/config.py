@@ -18,14 +18,15 @@ ALL configuration automatically follows this priority (highest to lowest):
     6. defaults.yaml      -> Safe fallback defaults (local dev)
     7. Hard-coded         -> Last resort in code (fallback values)
 
-**.env Cascade Mode (Optional):**
+**.env Layer (loaded on request):**
 
-    By default, only ./.env is loaded. Enable cascade mode to aggregate
-    multiple .env files (home as base, project as overlay):
+    Importing scalo reads no .env file and leaves os.environ untouched.
+    Layer 3 loads when the app asks for it: get_config() (load_dotenv=True
+    by default) or ServiceApp.cli(). Either loads ./.env into os.environ,
+    beneath every variable already set.
 
-    Set DOTENV_CASCADE=true or use get_config(dotenv_cascade=True)
-
-    When enabled, loads in order (later overrides earlier):
+    Set DOTENV_CASCADE=true or use get_config(dotenv_cascade=True) to add
+    ~/.env beneath ./.env (later overrides earlier):
         1. ~/.env          -> Home directory (global API keys, credentials)
         2. ./.env          -> Project directory (project-specific overrides)
 
@@ -699,19 +700,35 @@ def _load_dotenv_cascade(dotenv_files: list[str] | None = None) -> None:
             _debug_log(f"Loaded .env file: {path}")
 
 
-# DOTENV_CASCADE=true adds ~/.env beneath ./.env
-_DOTENV_CASCADE_ENABLED = control_flag("DOTENV_CASCADE", default=False)
-_load_dotenv_cascade(_default_dotenv_files(_DOTENV_CASCADE_ENABLED))
-
 # Initialize Dynaconf with discovered settings
 settings = Dynaconf(
     # Bare env vars by default (no prefix); <PREFIX>_<KEY> when an app sets one.
     envvar_prefix=ENV_PREFIX or False,
     settings_files=settings_files if settings_files else [],  # Use discovered files
-    load_dotenv=False,  # layer 3 is loaded above
+    load_dotenv=False,  # layer 3 loads on request, in _load_dotenv_layer
     environments=False,  # Single config approach
     # PRECEDENCE: CLI -> ENV -> .env -> settings files -> default -> hardcoded
 )
+
+
+def _load_dotenv_layer(cascade: bool = False, dotenv_files: list[str] | None = None) -> None:
+    """Load layer 3 into os.environ, beneath every variable already set.
+
+    Called from get_config() and ServiceApp.cli(), never at import, so a
+    process that only imports scalo keeps the environment it started with.
+    The DOTENV_CASCADE flag adds ~/.env exactly as ``cascade=True`` does.
+
+    Args:
+        cascade: Put ~/.env beneath ./.env.
+        dotenv_files: Files to load instead of the defaults, lowest priority first.
+    """
+    before = dict(os.environ)
+    if not dotenv_files:
+        dotenv_files = _default_dotenv_files(cascade or control_flag("DOTENV_CASCADE"))
+    _load_dotenv_cascade(dotenv_files)
+    # Dynaconf snapshots the environment on first access, so a settings object already read would miss the load.
+    if settings.configured and dict(os.environ) != before:
+        settings.reload()
 
 
 # =============================================================================
@@ -735,6 +752,9 @@ def get_settings():
     The cascade is AUTOMATIC - just access values:
         settings.database.host    # ENV > .env > yaml > defaults
         settings.get("api.timeout", 30)
+
+    The .env layer is present once get_config() or ServiceApp.cli() has
+    loaded it. Importing scalo loads none.
 
     Returns:
         Dynaconf settings object with 7-layer cascade built-in
@@ -803,13 +823,15 @@ def get_config(
                          Paths can be absolute or relative to config_dir
         env_prefix: Environment variable prefix (default: bare, or the app-supplied prefix)
                    Example: "TENANT1" -> TENANT1_DATABASE_HOST
-        load_dotenv: Load ./.env from the working directory (default: True)
+        load_dotenv: Load ./.env from the working directory into os.environ
+                    (default: True). Importing scalo loads none, so this or
+                    ServiceApp.cli() is where layer 3 is read.
                     Set False for security-sensitive contexts
         merge_existing: Merge with existing settings files (default: True)
                        Set False to use only additional_files
-        dotenv_cascade: Enable .env cascade loading (default: False)
-                       When True, loads ~/.env then ./.env (home as base,
-                       project as overlay). Implies load_dotenv=True.
+        dotenv_cascade: Enable .env cascade loading (default: False, or the
+                       DOTENV_CASCADE flag). When on, loads ~/.env then ./.env
+                       (home as base, project as overlay). Implies load_dotenv=True.
         dotenv_files: Custom list of .env files to load in order (optional)
                      Later files override earlier ones. Implies load_dotenv=True.
                      Example: ["~/.env", "/etc/myapp/.env", ".env"]
@@ -850,7 +872,7 @@ def get_config(
     prefix = env_prefix or ENV_PREFIX
 
     if load_dotenv or dotenv_cascade or dotenv_files:
-        _load_dotenv_cascade(dotenv_files or _default_dotenv_files(dotenv_cascade))
+        _load_dotenv_layer(dotenv_cascade, dotenv_files)
 
     # Build file list
     config_files = []

@@ -332,13 +332,24 @@ class TestLogLevelDefault:
 class TestDotenvCascadeDefault:
     """Test .env cascade is opt-in (disabled by default)."""
 
-    def test_dotenv_cascade_disabled_by_default(self, monkeypatch):
+    def test_dotenv_cascade_disabled_by_default(self, tmp_path, monkeypatch):
         """Home .env loading must be opt-in (matches scalo-rs load_home_dotenv=false)."""
+        fake_home = tmp_path / "home"
+        fake_home.mkdir()
+        (fake_home / ".env").write_text("PARITY_HOME_DOTENV_PROBE=from-home\n", encoding="utf-8")
+        monkeypatch.chdir(tmp_path)
+        monkeypatch.setenv("HOME", str(fake_home))
         monkeypatch.delenv("DOTENV_CASCADE", raising=False)
+        monkeypatch.setenv("PARITY_HOME_DOTENV_PROBE", "")
+        monkeypatch.delenv("PARITY_HOME_DOTENV_PROBE")
 
-        from scalo.config.config import _DOTENV_CASCADE_ENABLED
+        from scalo.config import get_config
 
-        assert not _DOTENV_CASCADE_ENABLED
+        get_config(merge_existing=False)
+
+        # Bound first so a failure prints the value, not all of os.environ.
+        loaded = os.environ.get("PARITY_HOME_DOTENV_PROBE")
+        assert loaded is None
 
 
 class TestMultiLayerFileDiscovery:

@@ -14,7 +14,8 @@ is now per-module and happens at first use.
 
 | Module | Wired at | What's automatic |
 |---|---|---|
-| `config` | First `from scalo.config import settings` | Dynaconf cascade construction, `.env` loading, sensitive masking, `RuntimePaths.config_dir` selection |
+| `config` | First `from scalo.config import settings` | Dynaconf cascade construction, sensitive masking, `RuntimePaths.config_dir` selection |
+| `.env` layer | `get_config()` or `ServiceApp.cli()` | `./.env` (plus `~/.env` under `DOTENV_CASCADE`) loaded into `os.environ` beneath variables already set. Importing scalo reads no `.env` and never writes `os.environ` |
 | `logger` | First import | Loguru sink installed, JSON/text autodetect (TTY vs not), RFC 3339 format, level from `LOG_LEVEL` env (default INFO), scrub filters loaded from `data/gitleaks.toml` + `data/national_ids.toml`, CI mode autodetect (GitHub Actions / GitLab CI / Jenkins) for ASCII-only output |
 | `runtime` | First `get_runtime_paths()` call | K8s / Docker / BareMetal detection (7 indicators), path-set materialisation, `CONTAINER_BASE_PATH` env override |
 | `metrics` | First `create_metrics(namespace)` call | Backend selection (OTel default, Prometheus fallback if OTel not installed), `MetricsManager` content + content-type for the observability server (or an app-served route), process collector (RSS, CPU, FDs via psutil). The cardinality cap is NOT automatic -- see [core-pillars/METRICS.md](core-pillars/METRICS.md) |
@@ -63,7 +64,8 @@ Read top-to-bottom: install the extra in the first column, get every
 flowchart TB
     Start["Process start"]
     Import["import scalo.{config,logger,runtime}"]
-    Cascade["config: load 7 layers"]
+    Cascade["config: build cascade, read no .env"]
+    DotEnv["get_config() / ServiceApp.cli(): load .env"]
     LogFmt["logger: detect TTY/CI, install sink"]
     RtDetect["runtime: detect K8s/Docker/BareMetal"]
     AppInit["App startup logic"]
@@ -81,7 +83,8 @@ flowchart TB
     Import --> Cascade
     Import --> LogFmt
     Import --> RtDetect
-    Cascade --> AppInit
+    Cascade --> DotEnv
+    DotEnv --> AppInit
     LogFmt --> AppInit
     RtDetect --> AppInit
     AppInit --> Metrics
@@ -97,9 +100,9 @@ flowchart TB
 
 Three points:
 
-- The import-time work is cheap (no I/O except cascade file reads).
-  Apps can `import scalo.config` from a `__init__.py` without
-  startup latency surprises.
+- The import-time work is cheap (no I/O except cascade file reads)
+  and never writes `os.environ`. Apps can `import scalo.config` from a
+  `__init__.py` without startup latency surprises.
 - `set_ready()` is explicit, not inferred. Until you call it, `/readyz`
   returns 503 — which is the desired K8s rolling-update behaviour.
 - SIGTERM handling is the app's job. We expose `concurrency` primitives

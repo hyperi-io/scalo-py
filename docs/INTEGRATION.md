@@ -52,6 +52,8 @@ brokers = settings.get("kafka.brokers", "localhost:9092")
 batch_size = settings.get("processor.batch_size", 100)
 ```
 
+Importing reads no `.env`. The `.env` layer loads when the app calls `get_config()` or runs under `ServiceApp.cli()`, so an app that reads `settings` directly calls `get_config()` once at startup.
+
 Env-var nesting follows the cascade rule: `KAFKA__BROKERS=...` maps to
 `settings.kafka.brokers`. Cross-cutting envs (`LOG_LEVEL`,
 `DOTENV_CASCADE`, `CONTAINER_BASE_PATH`) override defaults without
