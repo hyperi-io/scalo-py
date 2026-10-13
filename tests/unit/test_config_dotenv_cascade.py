@@ -1,9 +1,172 @@
 """Unit tests for .env cascade functionality."""
 
+import json
 import os
+import subprocess
+import sys
 from pathlib import Path
+from typing import Any
 
 import pytest
+
+from scalo.cli.app import ServiceApp
+from scalo.cli.version_info import VersionInfo
+
+# Prints every os.environ key whose value differs before and after importing the module in argv[1].
+_IMPORT_PROBE = """
+import importlib, json, os, sys
+before = dict(os.environ)
+importlib.import_module(sys.argv[1])
+after = dict(os.environ)
+print(json.dumps({k: [before.get(k), after.get(k)] for k in sorted(set(before) | set(after)) if before.get(k) != after.get(k)}))
+"""
+
+_IMPORT_PROBE_VARS = ("SCALO_IMPORT_PROBE_CWD", "SCALO_IMPORT_PROBE_HOME")
+
+
+def _clear_env(monkeypatch: pytest.MonkeyPatch, *names: str) -> None:
+    """Unset each name and restore its original state at teardown, including absence."""
+    for name in names:
+        monkeypatch.setenv(name, "")
+        monkeypatch.delenv(name)
+
+
+def _fresh_interpreter_env(home: Path, extra: dict[str, str]) -> dict[str, str]:
+    """Return a child environment without the probe, dotenv control or suite logging variables."""
+    env = dict(os.environ)
+    for name in (
+        *_IMPORT_PROBE_VARS,
+        "DOTENV_CASCADE",
+        "ENV_PREFIX",
+        "AUTO_LOGGER_CONFIG",
+        "NO_LOGGER_CONFIG",
+        "LOG_LEVEL",
+        "DEBUG",
+    ):
+        env.pop(name, None)
+    env["HOME"] = str(home)
+    env.update(extra)
+    return env
+
+
+class TestImportLoadsNoDotenv:
+    """Importing scalo leaves os.environ alone, and the .env layer loads only when the app asks."""
+
+    @pytest.mark.parametrize("module", ["scalo", "scalo.config", "scalo.logger"])
+    @pytest.mark.parametrize(
+        "extra_env",
+        [{}, {"DOTENV_CASCADE": "true", "AUTO_LOGGER_CONFIG": "1"}],
+        ids=["defaults", "cascade-and-auto-logger"],
+    )
+    def test_import_leaves_environ_unchanged(self, tmp_path, module, extra_env):
+        fake_home = tmp_path / "home"
+        fake_home.mkdir()
+        work_dir = tmp_path / "work"
+        work_dir.mkdir()
+        (work_dir / ".env").write_text("SCALO_IMPORT_PROBE_CWD=planted\n", encoding="utf-8")
+        (fake_home / ".env").write_text("SCALO_IMPORT_PROBE_HOME=planted\n", encoding="utf-8")
+
+        result = subprocess.run(
+            [sys.executable, "-c", _IMPORT_PROBE, module],
+            cwd=work_dir,
+            env=_fresh_interpreter_env(fake_home, extra_env),
+            capture_output=True,
+            text=True,
+            encoding="utf-8",
+            errors="replace",
+            timeout=120,
+            check=False,
+        )
+
+        assert result.returncode == 0, result.stderr
+        changed = json.loads(result.stdout.strip().splitlines()[-1])
+        assert changed == {}
+
+    def test_get_config_loads_dotenv_from_working_directory(self, tmp_path, monkeypatch):
+        (tmp_path / ".env").write_text("SCALO_GET_CONFIG_PROBE=planted\n", encoding="utf-8")
+        monkeypatch.chdir(tmp_path)
+        _clear_env(monkeypatch, "SCALO_GET_CONFIG_PROBE")
+
+        from scalo.config import get_config
+
+        config = get_config(load_dotenv=True, merge_existing=False)
+
+        # Bound first so a failure prints the value, not all of os.environ.
+        loaded = os.environ.get("SCALO_GET_CONFIG_PROBE")
+        assert loaded == "planted"
+        assert config.get("SCALO_GET_CONFIG_PROBE") == "planted"
+
+    def test_get_config_honours_dotenv_cascade_flag(self, tmp_path, monkeypatch):
+        fake_home = tmp_path / "home"
+        fake_home.mkdir()
+        (fake_home / ".env").write_text("SCALO_HOME_DOTENV_PROBE=from-home\n", encoding="utf-8")
+        monkeypatch.chdir(tmp_path)
+        monkeypatch.setenv("HOME", str(fake_home))
+        monkeypatch.setenv("DOTENV_CASCADE", "true")
+        _clear_env(monkeypatch, "SCALO_HOME_DOTENV_PROBE")
+
+        from scalo.config import get_config
+
+        get_config(merge_existing=False)
+
+        loaded = os.environ.get("SCALO_HOME_DOTENV_PROBE")
+        assert loaded == "from-home"
+
+    def test_settings_read_before_the_load_sees_dotenv_after_it(self, tmp_path):
+        fake_home = tmp_path / "home"
+        fake_home.mkdir()
+        (tmp_path / ".env").write_text("SCALO_SETTINGS_PROBE=planted\n", encoding="utf-8")
+        probe = (
+            "from scalo.config import get_config, settings\n"
+            "settings.get('ANY_KEY')\n"
+            "get_config()\n"
+            "print(settings.get('SCALO_SETTINGS_PROBE'))\n"
+        )
+
+        result = subprocess.run(
+            [sys.executable, "-c", probe],
+            cwd=tmp_path,
+            env=_fresh_interpreter_env(fake_home, {}),
+            capture_output=True,
+            text=True,
+            encoding="utf-8",
+            errors="replace",
+            timeout=120,
+            check=False,
+        )
+
+        assert result.returncode == 0, result.stderr
+        assert result.stdout.strip().splitlines()[-1] == "planted"
+
+
+class _DotenvApp(ServiceApp):
+    """Minimal service for driving the CLI entry point."""
+
+    name = "dotenv-probe"
+    env_prefix = "DOTENV_PROBE"
+
+    def version_info(self) -> VersionInfo:
+        return VersionInfo(self.name, "0.0.1")
+
+    def run_service(self, config: Any) -> None:
+        pass
+
+
+class TestServiceAppLoadsDotenv:
+    """ServiceApp.cli() loads ./.env before its env-backed flags are parsed."""
+
+    def test_dotenv_reaches_env_backed_flags(self, tmp_path, monkeypatch):
+        (tmp_path / ".env").write_text("METRICS_ADDR=127.0.0.1:19097\n", encoding="utf-8")
+        monkeypatch.chdir(tmp_path)
+        _clear_env(monkeypatch, "METRICS_ADDR", "LOG_LEVEL", "LOG_FORMAT")
+        app = _DotenvApp()
+
+        # No capsys: config-check installs a logger sink on sys.stderr, which must outlive this test.
+        with pytest.raises(SystemExit) as exit_info:
+            app.cli(["config-check"])
+
+        assert exit_info.value.code == 0
+        assert app._common_args.metrics_addr == "127.0.0.1:19097"
 
 
 class TestDotenvCascade:
@@ -210,7 +373,7 @@ class TestDotenvCascade:
 
 
 class TestDefaultDotenvFiles:
-    """The file list module init and get_config load from."""
+    """The file list get_config and ServiceApp load from."""
 
     def test_cascade_off_is_working_directory_only(self, tmp_path, monkeypatch):
         monkeypatch.chdir(tmp_path)

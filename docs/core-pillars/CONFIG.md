@@ -22,6 +22,12 @@ identically across daemons, CLIs, and Kafka consumers.
 | 6 | `defaults.yaml` | Safe fallback | Local dev |
 | 7 | Hard-coded | `settings.get("k", "default")` | Last resort |
 
+### When `.env` loads
+
+Importing scalo reads no `.env` and never writes `os.environ`. Layer 3 loads when the app asks: `get_config()` (default `load_dotenv=True`) or `ServiceApp.cli()`, which loads before parsing so `LOG_LEVEL`, `LOG_FORMAT`, `METRICS_ADDR` and `CLI_CONFIG` see it.
+
+Loaded values go into `os.environ` beneath every variable already exported, and `settings` reloads if something read it first. An app that reads only `settings` calls `get_config()` once at startup. `get_config(load_dotenv=False)` skips the layer.
+
 ---
 
 ## Read it like a dict
@@ -131,7 +137,7 @@ All but `ENV_PREFIX` itself are prefix-aware -- read as
 | `APP_NAME` | Service name (used in paths) | program name, else `app` |
 | `ENV_PREFIX` | Env var prefix for everything else | bare (no prefix) |
 | `DEBUG` | Verbose config-loading debug logs | unset |
-| `DOTENV_CASCADE` | Load `~/.env` then `./.env` | `false` |
+| `DOTENV_CASCADE` | Add `~/.env` beneath `./.env` when the `.env` layer loads | `false` |
 | `AUTO_DETECT` | Auto-detect container/runtime environment | `true` |
 | `CONTAINER_BASE_PATH` | Override container mount root | unset |
 | `METRIC_PREFIX` | Prefix on scalo's built-in metrics | bare (no prefix) |

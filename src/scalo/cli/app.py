@@ -35,8 +35,6 @@ Example::
         MyService().cli()
 """
 
-from __future__ import annotations
-
 import asyncio
 import os
 import sys
@@ -377,9 +375,16 @@ class ServiceApp(ABC):
 
         This is the main entrypoint. Call from ``if __name__ == "__main__"``.
 
+        Loads ./.env (and ~/.env under ``DOTENV_CASCADE``) before parsing, so
+        the env-backed flags -- ``LOG_LEVEL``, ``LOG_FORMAT``, ``METRICS_ADDR``,
+        ``CLI_CONFIG`` -- read it the same way they read the environment.
+
         Args:
             args: CLI arguments (defaults to sys.argv). Pass explicitly for testing.
         """
+        from scalo.config.config import _load_dotenv_layer
+
+        _load_dotenv_layer()
         typer_app = _build_typer_app(self)
         typer_app(args, standalone_mode=True)
 
