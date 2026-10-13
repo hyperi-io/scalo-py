@@ -6,7 +6,7 @@ Demonstrates scalo's 7-layer configuration cascade system.
 
 - Automatic configuration merging from multiple sources
 - Environment variable override support
-- YAML/JSON/TOML configuration files
+- YAML configuration files
 - Dynaconf-based settings management
 
 ## Quick Start
@@ -19,7 +19,11 @@ uv sync
 uv run python main.py
 
 # Override with environment variables
-DATABASE_HOST=prod-db.example.com uv run python main.py
+DATABASE__HOST=prod-db.example.com uv run python main.py
+
+# Load local values from .env
+cp .env.example .env
+uv run python main.py
 
 # Run tests
 uv run pytest
@@ -28,12 +32,14 @@ uv run pytest
 ## Configuration Cascade (Priority Order)
 
 1. **CLI arguments** (highest priority)
-2. **Environment variables** - `MYAPP_DATABASE_HOST`
-3. **.env file** - Local secrets (gitignored)
-4. **settings.local.yaml** - Local overrides
-5. **settings.{env}.yaml** - Environment-specific (dev, prod)
-6. **settings.yaml** - Project base config
+2. **Environment variables** - `DATABASE__HOST`
+3. **.env file** - Local secrets (gitignored), loaded by the `get_config()` call at the top of `main()`
+4. **settings.{env}.yaml** - Environment-specific, picked by `APP_ENV` (`APP_ENV=dev` loads `settings.dev.yaml`)
+5. **settings.yaml** - Project base config
+6. **defaults.yaml** - Safe fallback defaults
 7. **Hard-coded defaults** (lowest priority)
+
+Importing scalo reads no `.env`. An app that reads `settings` directly calls `get_config()` once at startup, as `main()` does here.
 
 ## Files in This Example
 
@@ -49,29 +55,34 @@ config-cascade/
 
 ## Environment Variables
 
-Environment variables use the prefix from your app name:
+Variable names are bare by default. A double underscore nests the key:
 
 ```bash
 # For settings.database.host
-export MYAPP_DATABASE_HOST=localhost
+export DATABASE__HOST=localhost
 
 # For settings.api.timeout
-export MYAPP_API_TIMEOUT=30
+export API__TIMEOUT=30
 ```
+
+With `ENV_PREFIX=MYAPP` set, the same keys read as `MYAPP_DATABASE__HOST` and `MYAPP_API__TIMEOUT`.
 
 ## Example Output
 
-```
-=== Configuration Sources ===
-Base config (settings.yaml):
-  database.host = localhost
-  database.port = 5432
+`DATABASE__HOST=prod-db uv run python main.py` ends with:
 
-With environment override (DATABASE_HOST=prod-db):
-  database.host = prod-db
-  database.port = 5432
+```
+=== Environment Variable Override ===
+Resolved database.host: prod-db
+DATABASE__HOST env var: prod-db
+(Environment variable takes precedence over config file)
+
+=== Summary ===
+Database: prod-db:5432
+API: 0.0.0.0:8000
+Cache: memory (TTL: 300s)
 ```
 
 ## See Also
 
-- [scalo Configuration Documentation](../../docs/CONFIG.md)
+- [scalo Configuration Documentation](../../docs/core-pillars/CONFIG.md)

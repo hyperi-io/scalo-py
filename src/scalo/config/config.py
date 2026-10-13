@@ -118,16 +118,20 @@ from typing import Literal
 
 from dotenv import load_dotenv as dotenv_load
 from dynaconf import Dynaconf
+from loguru import logger as _loguru_logger
 
 from scalo._env_compat import control_flag, control_var, env_prefix
 
 
 def _debug_log(msg: str) -> None:
-    """Log debug message if DEBUG is set. Uses lazy import to avoid circular dependency."""
-    if control_var("DEBUG") or (os.getenv("LOG_LEVEL") == "DEBUG"):
-        from scalo.logger import logger
+    """Log a debug message when DEBUG is set or LOG_LEVEL is DEBUG.
 
-        logger.debug(msg)
+    Logs through the loguru singleton that scalo.logger wraps, because importing
+    scalo.logger here runs its AUTO_LOGGER_CONFIG setup, which needs
+    get_logging_config() from this module before it has finished importing.
+    """
+    if control_var("DEBUG") or (os.getenv("LOG_LEVEL") == "DEBUG"):
+        _loguru_logger.debug(msg)
 
 
 # cgroup path segments only a containerised process sits under; host daemons such as docker.service do not match.

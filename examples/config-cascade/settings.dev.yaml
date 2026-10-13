@@ -6,7 +6,7 @@
 # License:   Apache-2.0
 # Copyright: (c) 2026 HYPERI PTY LIMITED
 
-# Development overrides - loaded when ENV_FOR_DYNACONF=dev
+# Development overrides - loaded when APP_ENV=dev
 database:
   host: "localhost"
   pool_size: 2
