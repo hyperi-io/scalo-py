@@ -16,7 +16,7 @@ Run with: uv run python main.py
 import os
 from pathlib import Path
 
-from scalo.config import get_settings, settings
+from scalo.config import get_config, settings
 from scalo.logger import info
 
 
@@ -62,18 +62,17 @@ def demonstrate_env_override() -> None:
     """Show how environment variables override config files."""
     print("\n=== Environment Variable Override ===")
 
-    # Get current value
-    original = settings.get("database.host", "localhost")
-    print(f"Original database.host: {original}")
+    resolved = settings.get("database.host", "localhost")
+    print(f"Resolved database.host: {resolved}")
 
-    # Show that env vars take precedence
-    env_value = os.environ.get("DATABASE_HOST")
+    # A double underscore nests the key: DATABASE__HOST is database.host.
+    env_value = os.environ.get("DATABASE__HOST")
     if env_value:
-        print(f"DATABASE_HOST env var: {env_value}")
+        print(f"DATABASE__HOST env var: {env_value}")
         print("(Environment variable takes precedence over config file)")
     else:
-        print("No DATABASE_HOST env var set")
-        print("Set it with: DATABASE_HOST=prod-db uv run python main.py")
+        print("No DATABASE__HOST env var set")
+        print("Set it with: DATABASE__HOST=prod-db uv run python main.py")
 
 
 def demonstrate_config_files() -> None:
@@ -105,6 +104,8 @@ def get_all_config() -> dict:
 
 def main() -> None:
     """Run the configuration demonstration."""
+    # Importing scalo reads no .env, so load that layer before reading settings.
+    get_config()
     info("Config cascade example starting")
 
     print("=== scalo Configuration Cascade Demo ===\n")

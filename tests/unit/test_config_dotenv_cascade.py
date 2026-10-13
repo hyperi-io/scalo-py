@@ -2,6 +2,7 @@
 
 import json
 import os
+import shutil
 import subprocess
 import sys
 from pathlib import Path
@@ -11,6 +12,8 @@ import pytest
 
 from scalo.cli.app import ServiceApp
 from scalo.cli.version_info import VersionInfo
+
+_CONFIG_CASCADE_EXAMPLE = Path(__file__).resolve().parents[2] / "examples" / "config-cascade"
 
 # Prints every os.environ key whose value differs before and after importing the module in argv[1].
 _IMPORT_PROBE = """
@@ -139,6 +142,34 @@ class TestImportLoadsNoDotenv:
         assert result.stdout.strip().splitlines()[-1] == "planted"
 
 
+class TestConfigCascadeExampleLoadsDotenv:
+    """The config-cascade example reads its .env layer, as its README says."""
+
+    def test_dotenv_value_reaches_the_summary(self, tmp_path):
+        work_dir = tmp_path / "config-cascade"
+        shutil.copytree(_CONFIG_CASCADE_EXAMPLE, work_dir, ignore=shutil.ignore_patterns("tests", ".env"))
+        (work_dir / ".env").write_text("DATABASE__HOST=from-dotenv\n", encoding="utf-8")
+        fake_home = tmp_path / "home"
+        fake_home.mkdir()
+        env = _fresh_interpreter_env(fake_home, {})
+        env.pop("DATABASE__HOST", None)
+
+        result = subprocess.run(
+            [sys.executable, "main.py"],
+            cwd=work_dir,
+            env=env,
+            capture_output=True,
+            text=True,
+            encoding="utf-8",
+            errors="replace",
+            timeout=120,
+            check=False,
+        )
+
+        assert result.returncode == 0, result.stderr
+        assert "Database: from-dotenv:5432" in result.stdout, result.stdout
+
+
 class _DotenvApp(ServiceApp):
     """Minimal service for driving the CLI entry point."""
 
@@ -200,13 +231,18 @@ class TestDotenvCascade:
 
         _load_dotenv_cascade([str(home_env), str(project_env)])
 
+        api_key = os.environ.get("API_KEY")
+        home_only = os.environ.get("HOME_ONLY")
+        debug = os.environ.get("DEBUG")
+        project_only = os.environ.get("PROJECT_ONLY")
+
         # Home values should be loaded
-        assert os.environ.get("API_KEY") == "home-key"
-        assert os.environ.get("HOME_ONLY") == "yes"
+        assert api_key == "home-key"
+        assert home_only == "yes"
 
         # Project values should override home
-        assert os.environ.get("DEBUG") == "true"  # Overridden
-        assert os.environ.get("PROJECT_ONLY") == "yes"
+        assert debug == "true"  # Overridden
+        assert project_only == "yes"
 
     def test_load_dotenv_cascade_missing_files(self, tmp_path, monkeypatch):
         """Test cascade handles missing files gracefully."""
@@ -230,7 +266,8 @@ class TestDotenvCascade:
             ]
         )
 
-        assert os.environ.get("ONLY_PROJECT") == "value"
+        only_project = os.environ.get("ONLY_PROJECT")
+        assert only_project == "value"
 
     def test_load_dotenv_cascade_custom_files(self, tmp_path, monkeypatch):
         """Test custom .env file list."""
@@ -262,12 +299,17 @@ class TestDotenvCascade:
             ]
         )
 
+        level = os.environ.get("LEVEL")
+        system_var = os.environ.get("SYSTEM_VAR")
+        user_var = os.environ.get("USER_VAR")
+        project_var = os.environ.get("PROJECT_VAR")
+
         # Project has highest priority (loaded last)
-        assert os.environ.get("LEVEL") == "project"
+        assert level == "project"
         # All files contribute unique vars
-        assert os.environ.get("SYSTEM_VAR") == "yes"
-        assert os.environ.get("USER_VAR") == "yes"
-        assert os.environ.get("PROJECT_VAR") == "yes"
+        assert system_var == "yes"
+        assert user_var == "yes"
+        assert project_var == "yes"
 
     def test_get_config_with_dotenv_cascade(self, tmp_path, monkeypatch):
         """Test get_config with dotenv_cascade=True."""
@@ -297,8 +339,10 @@ class TestDotenvCascade:
         )
 
         # Verify env vars were loaded (they're now in os.environ)
-        assert os.environ.get("CASCADE_TEST_HOME") == "from-home"
-        assert os.environ.get("CASCADE_TEST_PROJECT") == "from-project"
+        from_home = os.environ.get("CASCADE_TEST_HOME")
+        from_project = os.environ.get("CASCADE_TEST_PROJECT")
+        assert from_home == "from-home"
+        assert from_project == "from-project"
 
     def test_get_config_with_custom_dotenv_files(self, tmp_path, monkeypatch):
         """Test get_config with explicit dotenv_files list."""
@@ -318,11 +362,15 @@ class TestDotenvCascade:
             merge_existing=False,
         )
 
+        custom_file_1 = os.environ.get("CUSTOM_FILE_1")
+        custom_file_2 = os.environ.get("CUSTOM_FILE_2")
+        shared = os.environ.get("SHARED")
+
         # Both files loaded
-        assert os.environ.get("CUSTOM_FILE_1") == "value1"
-        assert os.environ.get("CUSTOM_FILE_2") == "value2"
+        assert custom_file_1 == "value1"
+        assert custom_file_2 == "value2"
         # Later file wins
-        assert os.environ.get("SHARED") == "from-file2"
+        assert shared == "from-file2"
 
     def test_default_reads_no_env_above_the_working_directory(self, tmp_path, monkeypatch):
         """Only ./.env loads by default, even with .env files in every parent."""
@@ -342,8 +390,10 @@ class TestDotenvCascade:
 
         get_config(merge_existing=False).get("ANY_KEY")
 
-        assert os.environ.get("WALKUP_HOME") is None
-        assert os.environ.get("WALKUP_PARENT") is None
+        walkup_home = os.environ.get("WALKUP_HOME")
+        walkup_parent = os.environ.get("WALKUP_PARENT")
+        assert walkup_home is None
+        assert walkup_parent is None
 
     def test_default_reads_env_in_the_working_directory(self, tmp_path, monkeypatch):
         """./.env loads by default and a real exported variable still wins."""
@@ -356,7 +406,8 @@ class TestDotenvCascade:
 
         config = get_config(merge_existing=False)
 
-        assert os.environ.get("CWD_ONLY") == "from-dotenv"
+        cwd_only = os.environ.get("CWD_ONLY")
+        assert cwd_only == "from-dotenv"
         assert config.get("CWD_SHARED") == "from-env"
 
     def test_load_dotenv_false_reads_nothing(self, tmp_path, monkeypatch):
@@ -369,7 +420,8 @@ class TestDotenvCascade:
 
         get_config(merge_existing=False, load_dotenv=False).get("ANY_KEY")
 
-        assert os.environ.get("SKIPPED_DOTENV") is None
+        skipped = os.environ.get("SKIPPED_DOTENV")
+        assert skipped is None
 
 
 class TestDefaultDotenvFiles:

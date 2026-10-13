@@ -43,10 +43,10 @@ from .scrub_resolver import resolve_scrubber
 
 
 def _get_logging_config():
-    """Lazy import of get_logging_config to avoid circular dependency.
+    """Import get_logging_config at call time.
 
-    The config module imports logger for debug logging, and logger imports
-    config for get_logging_config. Using lazy import breaks the cycle.
+    scalo.config imports this module (its directory store logs through it), so
+    a module-level import of scalo.config here would be circular.
     """
     from ..config import get_logging_config
 

@@ -21,9 +21,8 @@ Lazy imports (inside a function or method) are fine and are not reported -- they
 are how the config/logger cycle is deliberately broken.
 """
 
-from __future__ import annotations
-
 import ast
+import os
 import subprocess
 import sys
 from pathlib import Path
@@ -200,3 +199,43 @@ class TestImportsFirstInAFreshInterpreter:
         if result.returncode != 0 and "No module named" in result.stderr:
             pytest.skip(f"{module} needs an extra that is not installed")
         assert result.returncode == 0, f"`import {module}` failed alone:\n{result.stderr}"
+
+
+# Variables that steer config debug logging and the logger's import-time setup.
+_LOGGER_CONTROL_VARS = frozenset(
+    {"ENV_PREFIX", "AUTO_DETECT", "AUTO_LOGGER_CONFIG", "NO_LOGGER_CONFIG", "LOG_LEVEL", "DEBUG"}
+)
+
+
+@pytest.mark.smoke
+class TestImportWithDebugLoggingAndAutoLoggerConfig:
+    """Config's import-time debug logging must not run the logger's auto-setup.
+
+    That setup reads get_logging_config(), which does not exist yet while
+    scalo.config is still importing.
+    """
+
+    @pytest.mark.parametrize(
+        "debug_env",
+        [{"LOG_LEVEL": "DEBUG"}, {"DEBUG": "1"}],
+        ids=["log-level-debug", "debug-flag"],
+    )
+    def test_import_scalo_succeeds(self, tmp_path, debug_env):
+        env = {name: value for name, value in os.environ.items() if name not in _LOGGER_CONTROL_VARS}
+        env.update(debug_env)
+        env["AUTO_LOGGER_CONFIG"] = "1"
+
+        result = subprocess.run(
+            [sys.executable, "-c", "import scalo"],
+            cwd=tmp_path,
+            env=env,
+            capture_output=True,
+            text=True,
+            encoding="utf-8",
+            errors="replace",
+            timeout=120,
+            check=False,
+        )
+
+        assert result.returncode == 0, f"`import scalo` failed:\n{result.stderr}"
+        assert "Environment detected" in result.stderr, "config's import-time debug line was not logged"
