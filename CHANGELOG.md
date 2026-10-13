@@ -3,6 +3,13 @@
 Rendered by CI and committed back at the end of a release -- do not edit by
 hand. Release notes also appear on the GitHub Releases page, one per tag.
 
+## [2.31.9](https://github.com/hyperi-io/scalo-py/compare/v2.31.8...v2.31.9) (2026-10-13)
+
+### Bug Fixes
+
+* break the config debug-log import cycle ([#117](https://github.com/hyperi-io/scalo-py/issues/117)) ([549ca72](https://github.com/hyperi-io/scalo-py/commit/549ca72f6d84699304ca81b689ca9e6dd9246045)), closes [#116](https://github.com/hyperi-io/scalo-py/issues/116)
+* stop importing scalo.config from loading .env into os.environ ([#116](https://github.com/hyperi-io/scalo-py/issues/116)) ([b01cfeb](https://github.com/hyperi-io/scalo-py/commit/b01cfeb705b4019354cc96a905b50c608df576ba)), closes [#115](https://github.com/hyperi-io/scalo-py/issues/115)
+
 ## [2.31.8](https://github.com/hyperi-io/scalo-py/compare/v2.31.7...v2.31.8) (2026-10-11)
 
 ### Bug Fixes
