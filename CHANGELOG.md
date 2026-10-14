@@ -3,6 +3,14 @@
 Rendered by CI and committed back at the end of a release -- do not edit by
 hand. Release notes also appear on the GitHub Releases page, one per tag.
 
+## [2.31.13](https://github.com/hyperi-io/scalo-py/compare/v2.31.12...v2.31.13) (2026-10-14)
+
+### Bug Fixes
+
+* mask credential values that never close ([#129](https://github.com/hyperi-io/scalo-py/issues/129)) ([7197840](https://github.com/hyperi-io/scalo-py/commit/71978400ef0ea34ff0f85f7587b427d258449efb))
+* mask Name(...) values, vendor masking corpus ([#128](https://github.com/hyperi-io/scalo-py/issues/128)) ([b833423](https://github.com/hyperi-io/scalo-py/commit/b833423524c4f3a6ab7e9323d6a9bd2254141463))
+* mask quoted values past escaped quotes ([#127](https://github.com/hyperi-io/scalo-py/issues/127)) ([c82849b](https://github.com/hyperi-io/scalo-py/commit/c82849bab918fa0aa2bd2844100175de6e5d99ac))
+
 ## [2.31.12](https://github.com/hyperi-io/scalo-py/compare/v2.31.11...v2.31.12) (2026-10-14)
 
 ### Bug Fixes
