@@ -3,6 +3,12 @@
 Rendered by CI and committed back at the end of a release -- do not edit by
 hand. Release notes also appear on the GitHub Releases page, one per tag.
 
+## [2.31.11](https://github.com/hyperi-io/scalo-py/compare/v2.31.10...v2.31.11) (2026-10-14)
+
+### Bug Fixes
+
+* one substring matcher for credential names ([#123](https://github.com/hyperi-io/scalo-py/issues/123)) ([b7f1e40](https://github.com/hyperi-io/scalo-py/commit/b7f1e40f5618982bc35bc53fac26023c0923025b)), closes [#51](https://github.com/hyperi-io/scalo-py/issues/51)
+
 ## [2.31.10](https://github.com/hyperi-io/scalo-py/compare/v2.31.9...v2.31.10) (2026-10-13)
 
 ### Bug Fixes
