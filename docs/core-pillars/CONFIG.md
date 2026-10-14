@@ -179,11 +179,11 @@ The environment is a container only on container evidence: a K8s service-account
 
 ## Sensitive masking
 
-Config dumps and the optional `/config` admin endpoint mask values
-whose keys match the sensitive-field set (`password`, `token`,
-`api_key`, `secret`, etc.). The masker shares the field list with
-the logger's L2 scrubber -- see
-[LOGGING.md](LOGGING.md#layer-2-field-name-regex).
+scalo has no `/config` endpoint, and `config-check` prints the service name, the config path, the log level and format, and the metrics address, never a config value.
+
+The config accessors return values as set, unmasked: `settings.database.password` is the password, and `get_container_config()` and `get_standard_env_vars()` include `POSTGRES_PASSWORD`, `MYSQL_PASSWORD`, `MONGO_PASSWORD` and `CLICKHOUSE_PASSWORD` when the environment sets them.
+
+The logger masks a value by its key, at any depth: `logger.info("loaded", database=settings.database)` logs `database.password` as `***REDACTED***`, and `get_container_config()` logged the same way loses its passwords. Code that prints config or serves it judges each key with `scalo.logger.filters.is_credential_name(name, parent)`, the matcher the logger uses, and masks a URL password in a value with `scalo.logger.filters.mask_url_userinfo`. See [LOGGING.md](LOGGING.md#layer-2-field-name-regex).
 
 ---
 
@@ -208,7 +208,7 @@ cascade.
 
 ## Related
 
-- [LOGGING.md](LOGGING.md) -- shares the sensitive-field list
+- [LOGGING.md](LOGGING.md) -- how a logged config value is masked
 - [METRICS.md](METRICS.md) -- `AppMetrics.record_config_reload` (record it yourself)
 - [HEALTH.md](HEALTH.md) -- register a readiness check against reload errors
 - [api/DIRECTORY-CONFIG.md](../api/DIRECTORY-CONFIG.md) -- YAML directory store

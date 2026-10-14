@@ -297,7 +297,9 @@ class _FieldWalker:
     """Convert one record's fields to scrubbed JSON-native data, never raising.
 
     A key :func:`~scalo.logger.filters.is_credential_name` calls a credential,
-    or such a name heading a ``(name, value)`` pair, masks its value. Keys and
+    or such a name heading a ``(name, value)`` pair, masks its value. A pair is
+    a two-item tuple, or a two-item list held in a list or tuple, as a header
+    list carries them; a two-item list under a key is a list. Keys and
     strings are scrubbed, any other object is rendered with ``str()`` and
     scrubbed, and a non-finite float becomes a string. Inside containers, a
     cycle, nesting past :data:`_MAX_FIELD_DEPTH` and anything past the
@@ -349,10 +351,11 @@ class _FieldWalker:
         except Exception:
             return raw, _unprintable(key), sensitive
 
-    def _value(self, value, depth: int, parent: str = ""):
+    def _value(self, value, depth: int, parent: str = "", *, entry: bool = False):
         """Return one value as scrubbed JSON-native data, or a placeholder when it cannot be rendered.
 
         ``parent`` is the name the value sits under, which qualifies a bare ``key`` or ``value`` inside it.
+        ``entry`` is True when the value is an item of a list or tuple, where a two-item list is a pair.
         """
         try:
             if value is None or isinstance(value, (bool, int)):
@@ -362,12 +365,12 @@ class _FieldWalker:
             if isinstance(value, str):
                 return self._text(value, depth > 0)
             if isinstance(value, (dict, list, tuple)):
-                return self._container(value, depth, parent)
+                return self._container(value, depth, parent, entry)
             return self._text(str(value), depth > 0)
         except Exception:
             return _unprintable(value)
 
-    def _container(self, value: dict | list | tuple, depth: int, parent: str) -> dict | list | str:
+    def _container(self, value: dict | list | tuple, depth: int, parent: str, entry: bool) -> dict | list | str:
         if depth >= _MAX_FIELD_DEPTH:
             return "<depth limit>"
         marker = id(value)
@@ -377,7 +380,7 @@ class _FieldWalker:
         try:
             if isinstance(value, dict):
                 return self._mapping(value, depth + 1, parent)
-            return self._sequence(value, depth + 1, parent)
+            return self._sequence(value, depth + 1, parent, entry)
         finally:
             self._path.discard(marker)
 
@@ -391,8 +394,9 @@ class _FieldWalker:
             output[name] = MASK_VALUE if sensitive else self._value(item, depth, raw)
         return output
 
-    def _sequence(self, value: list | tuple, depth: int, parent: str) -> list:
-        if len(value) == 2 and self._names_a_secret(value[0], parent):
+    def _sequence(self, value: list | tuple, depth: int, parent: str, entry: bool) -> list:
+        is_pair = len(value) == 2 and (entry or isinstance(value, tuple))
+        if is_pair and self._names_a_secret(value[0], parent):
             return [self._value(value[0], depth), MASK_VALUE]
         output = []
         for index, item in enumerate(value):
@@ -400,7 +404,7 @@ class _FieldWalker:
                 output.append(f"<elided: {len(value) - index} more items>")
                 break
             # An entry is judged under the list's own name
-            output.append(self._value(item, depth, parent))
+            output.append(self._value(item, depth, parent, entry=True))
         return output
 
     def _names_a_secret(self, item, parent: str) -> bool:

@@ -12,7 +12,9 @@ Every value is built at runtime, so no secret-shaped literal sits in source.
 """
 
 import json
+import random
 import sys
+import time
 
 import pytest
 from common.fake_secrets import opaque_secret
@@ -20,7 +22,7 @@ from common.log_capture import LOGGER_ENV_VARS, StreamDouble, preserved_stdlib_l
 from loguru import logger
 
 from scalo.kafka.config import mask_credentials
-from scalo.logger.filters import MASK_VALUE, SensitiveDataFilter
+from scalo.logger.filters import MASK_VALUE, SensitiveDataFilter, mask_url_userinfo
 from scalo.logger.logger import setup
 from scalo.logger.scrub import FieldNameScrubber, build_scrubber
 
@@ -155,6 +157,41 @@ def test_a_two_item_pair_named_as_a_credential_masks_its_value(monkeypatch):
     assert headers == [["X-Api-Key", MASK_VALUE], ["accept", "application/json"]]
 
 
+@pytest.mark.parametrize(
+    "header",
+    [
+        pytest.param(("Authorization", SECRET), id="tuple-field"),
+        pytest.param({"upstream": ("Authorization", SECRET)}, id="tuple-under-a-key"),
+        pytest.param([("Authorization", SECRET)], id="tuple-in-a-list"),
+        pytest.param([["Authorization", SECRET]], id="list-in-a-list"),
+    ],
+)
+def test_a_name_value_pair_headed_by_a_credential_masks_its_value(monkeypatch, header):
+    stream = _json_logger(monkeypatch)
+
+    logger.warning("upstream", header=header)
+
+    assert SECRET not in stream.getvalue()
+
+
+def test_a_list_of_field_names_is_shown(monkeypatch):
+    stream = _json_logger(monkeypatch)
+
+    logger.info("auth.account.updated", details={"fields": ["email", "name"]}, columns=["password", "username"])
+
+    fields = _fields(stream)
+    assert fields["details"] == {"fields": ["email", "name"]}
+    assert fields["columns"] == ["password", "username"]
+
+
+def test_a_two_item_tuple_of_names_is_read_as_a_pair(monkeypatch):
+    stream = _json_logger(monkeypatch)
+
+    logger.info("missing", columns=("email", "name"))
+
+    assert _fields(stream)["columns"] == ["email", MASK_VALUE]
+
+
 def test_a_url_password_holding_an_at_sign_is_masked_in_a_message(monkeypatch):
     stream = _json_logger(monkeypatch)
     password = "p" + "@" + SECRET
@@ -163,6 +200,17 @@ def test_a_url_password_holding_an_at_sign_is_masked_in_a_message(monkeypatch):
     logger.warning(f"connecting to postgres://svc:{password}@db:5432/app")
 
     assert SECRET not in stream.getvalue()
+
+
+@pytest.mark.parametrize("separator", ["/", "?", "#"])
+def test_a_url_password_holding_an_at_sign_and_a_separator_is_masked_in_a_message(monkeypatch, separator):
+    stream = _json_logger(monkeypatch)
+    password = "ab" + "@" + SECRET + separator + "ef"
+
+    logger.warning(f"connecting to postgres://svc:{password}@db/app")
+
+    assert SECRET not in stream.getvalue()
+    assert "postgres://svc:" + MASK_VALUE + "@db/app" in stream.getvalue()
 
 
 # ---------------------------------------------------------------------------
@@ -276,19 +324,152 @@ def test_the_default_chain_never_leaves_part_of_a_number_under_a_named_key(line,
             f"amqp://guest:{MASK_VALUE}@broker/vhost",
             id="slash-in-password",
         ),
+        pytest.param("postgres://u:ab@cd/ef@host/db", f"postgres://u:{MASK_VALUE}@host/db", id="at-and-slash-literal"),
+        pytest.param(
+            "postgres://u:ab@{secret}/ef@host/db",
+            f"postgres://u:{MASK_VALUE}@host/db",
+            id="at-and-slash-in-password",
+        ),
+        pytest.param(
+            "postgres://u:ab@{secret}?ef@host/db",
+            f"postgres://u:{MASK_VALUE}@host/db",
+            id="at-and-query-mark-in-password",
+        ),
+        pytest.param(
+            "postgres://u:ab@{secret}#ef@host/db",
+            f"postgres://u:{MASK_VALUE}@host/db",
+            id="at-and-hash-in-password",
+        ),
+        pytest.param("postgres://u:{secret}?x@host/db", f"postgres://u:{MASK_VALUE}@host/db", id="query-in-password"),
+        pytest.param("postgres://u:{secret}#x@host/db", f"postgres://u:{MASK_VALUE}@host/db", id="hash-in-password"),
         pytest.param("redis://:{pw}@cache:6379/0", f"redis://:{MASK_VALUE}@cache:6379/0", id="no-user"),
         pytest.param(
             "https://svc:{pw}@api.example.com/v1?notify=ops@example.com",
-            f"https://svc:{MASK_VALUE}@api.example.com/v1?notify=ops@example.com",
-            id="at-sign-in-query",
+            f"https://svc:{MASK_VALUE}@example.com",
+            id="at-sign-in-query-masks-to-the-last-at",
         ),
+        pytest.param("https://host:8443/@scope/pkg", f"https://host:{MASK_VALUE}@scope/pkg", id="scoped-npm-path"),
         pytest.param("https://api.example.com:8443/health", "https://api.example.com:8443/health", id="no-userinfo"),
+        pytest.param("ssh://git@host/repo.git", "ssh://git@host/repo.git", id="user-with-no-password"),
+        pytest.param(
+            '{{"a":"x://u:{secret}@h1","b":"y://v:{secret}@h2"}}',
+            f'{{"a":"x://u:{MASK_VALUE}@h1","b":"y://v:{MASK_VALUE}@h2"}}',
+            id="two-urls-in-one-json-line",
+        ),
     ],
 )
 def test_url_userinfo_is_masked_up_to_the_host(line, expected):
     text = line.format(pw="p" + "@" + SECRET, secret=SECRET)
 
     assert FieldNameScrubber().scrub(text) == expected
+
+
+# ---------------------------------------------------------------------------
+# the public URL masker
+# ---------------------------------------------------------------------------
+
+# Characters that end a URL's host.
+_HOST_ENDS = "/?#"
+
+
+def _host_follows(text: str, at: int) -> bool:
+    """Return whether a host follows the `@` at ``at``: no `@` in it, and it ends at a host end, whitespace or the end."""
+    end = at + 1
+    while end < len(text) and not text[end].isspace() and text[end] not in "@" + _HOST_ENDS:
+        end += 1
+    return end == len(text) or text[end].isspace() or text[end] in _HOST_ENDS
+
+
+def _reference_mask(text: str, mask: str, *, keep_user: bool) -> str:
+    """Mask URL userinfo by reading the grammar one step at a time, as a check on the regex.
+
+    A URL starts at `://`. The user holds no whitespace, `:`, `/` or `@` and ends at a `:`. The password runs to the
+    last `@` a host follows, and never past whitespace or the next `://`. The next URL is looked for from that `@`.
+    """
+    out = []
+    copied = 0
+    head = text.find("://")
+    while head != -1:
+        colon = head + 3
+        while colon < len(text) and not text[colon].isspace() and text[colon] not in ":/@":
+            colon += 1
+        if colon < len(text) and text[colon] == ":":
+            run_end = colon + 1
+            while run_end < len(text) and not text[run_end].isspace() and not text.startswith("://", run_end):
+                run_end += 1
+            ats = [at for at in range(colon + 1, run_end) if text[at] == "@" and _host_follows(text, at)]
+            if ats:
+                at = ats[-1]
+                if not keep_user:
+                    out.append(text[copied:head] + "://" + mask)
+                elif at > colon + 1:
+                    out.append(text[copied : colon + 1] + mask)
+                else:
+                    out.append(text[copied:at])
+                copied = at
+                head = text.find("://", at)
+                continue
+        head = text.find("://", head + 1)
+    out.append(text[copied:])
+    return "".join(out)
+
+
+def test_the_url_masker_masks_the_password_to_the_last_at_sign_a_host_follows():
+    assert mask_url_userinfo("postgres://u:ab@cd/ef@host/db") == f"postgres://u:{MASK_VALUE}@host/db"
+    assert mask_url_userinfo("kafka://svc:pw@b1:9092,b2:9092", "***") == "kafka://svc:***@b1:9092,b2:9092"
+
+
+def test_the_url_masker_can_mask_the_whole_userinfo():
+    line = "Push to http://deploy:s3c@r/t@forge.svc:3000/deploy.git successful."
+
+    masked = mask_url_userinfo(line, "***", keep_user=False)
+
+    assert masked == "Push to http://***@forge.svc:3000/deploy.git successful."
+
+
+@pytest.mark.parametrize(
+    ("keep_user", "expected"),
+    [pytest.param(True, "http://user:@host/x", id="keep-user"), pytest.param(False, "http://***@host/x", id="whole")],
+)
+def test_an_empty_password_leaves_only_the_user_to_mask(keep_user, expected):
+    assert mask_url_userinfo("http://user:@host/x", "***", keep_user=keep_user) == expected
+
+
+def test_the_mask_is_inserted_as_written():
+    assert mask_url_userinfo("x://u:p@h", r"\1\g<0>") == r"x://u:\1\g<0>@h"
+
+
+def test_the_url_masker_reads_random_text_as_the_grammar_does():
+    rng = random.Random(124)
+    alphabet = ["a", "B", "1", ".", ",", ":", ":", "/", "/", "@", "@", "?", "#", " ", "\\", "://"]
+    for _ in range(20_000):
+        text = "".join(rng.choices(alphabet, k=rng.randint(0, 24)))
+        assert mask_url_userinfo(text) == _reference_mask(text, MASK_VALUE, keep_user=True), repr(text)
+        whole = mask_url_userinfo(text, "***", keep_user=False)
+        assert whole == _reference_mask(text, "***", keep_user=False), repr(text)
+
+
+@pytest.mark.parametrize(
+    "text",
+    [
+        pytest.param("A" * 200_000 + " a://x", id="letter-run"),
+        pytest.param("a://:" + "A" * 200_000, id="after-userinfo"),
+        pytest.param("1a" * 100_000 + " b://x", id="mixed-run"),
+        pytest.param("a://:" + "@" * 200_000, id="at-signs"),
+        pytest.param("a://:" + "@a" * 100_000, id="short-hosts"),
+        pytest.param("a://:" + "@" + "a" * 200_000 + "@", id="one-long-host"),
+        pytest.param("://a:" * 50_000, id="repeated-heads"),
+        pytest.param("://" + "a" * 200_000, id="user-with-no-colon"),
+    ],
+)
+def test_a_long_line_is_read_in_linear_time(text):
+    started = time.perf_counter()
+    mask_url_userinfo(text)
+    mask_url_userinfo(text, keep_user=False)
+    elapsed = time.perf_counter() - started
+
+    # A quadratic scan of 200,000 characters takes minutes, so the bound sits far above a linear one.
+    assert elapsed < 2.0
 
 
 # ---------------------------------------------------------------------------

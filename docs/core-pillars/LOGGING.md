@@ -48,7 +48,9 @@ Keyword arguments and `logger.bind()` context are the record's fields, and every
 2026-10-01T20:47:42.256+1000 | WARNING  | app.tls:load:7 - key rejected stderr="openssl: bad key" sigma_id=abc123
 ```
 
-The scrub filter runs on the fields before either format sees them. A key naming a credential masks its value at any depth, and so does such a name heading a two-item pair such as `("authorization", "Basic ...")`. A name is a credential by the rule in [Layer 2](#layer-2-field-name-regex). Keys and strings are scrubbed at any depth, any other object is rendered with `str()` and then scrubbed, and NaN and the infinities become the strings `"NaN"`, `"Infinity"` and `"-Infinity"`.
+The scrub filter runs on the fields before either format sees them. A key naming a credential masks its value at any depth. A name is a credential by the rule in [Layer 2](#layer-2-field-name-regex). Keys and strings are scrubbed at any depth, any other object is rendered with `str()` and then scrubbed, and NaN and the infinities become the strings `"NaN"`, `"Infinity"` and `"-Infinity"`.
+
+Such a name heading a pair masks the value beside it. A pair is a two-item tuple such as `("authorization", "Basic ...")`, or a two-item list inside a list or tuple, the shape a JSON header list takes. A two-item list under a key is a list, so `{"fields": ["email", "name"]}` is logged whole, while a tuple of two names, `("email", "name")`, has its second masked.
 
 The filter never fails the record. A value whose `str()` raises renders as `<unprintable TypeName>`, a reference cycle as `<cycle>`, and nesting past 32 levels as `<depth limit>`. Scrubbing costs about 0.15 ms a string on the caller's thread, so a record scrubs at most 64 keys and strings inside its fields' containers. Past that, the rest of each list becomes `"<elided: N more items>"` and the rest of each dict an `"<elided>"` entry. Top-level fields are never elided.
 
@@ -255,7 +257,7 @@ A key is masked when a field in `SENSITIVE_FIELDS` sits anywhere in it, case-ins
 
 One matcher decides every case, `scalo.logger.filters.is_credential_name`. Record fields, dicts, message text and Kafka config reprs all call it. A bare `key` or `value` is judged with the name of the mapping or list holding it, so `tls={"key": ...}` and `accepted_headers=[{"values": [...]}]` mask while `partitioner={"key": ...}` does not.
 
-The password in `scheme://user:password@host` is masked up to the `@` the host follows, so a password holding `@` is masked whole.
+The password in `scheme://user:password@host` is masked up to the last `@` a host follows, so one holding `@`, `/`, `?` or `#` is masked whole. Nothing tells such a password from an `@` later in the path or query, so `https://u:p@host/x?to=ops@example.com` is masked through to `example.com`. `scalo.logger.filters.mask_url_userinfo(text, mask, keep_user=True)` applies the same rule to any string; `keep_user=False` masks the whole `user:password`.
 
 | Shape | Input | Output |
 |-------|-------|--------|
@@ -343,7 +345,7 @@ flowchart LR
 
 ## Related
 
-- [CONFIG.md](CONFIG.md) -- shares the sensitive-field list and cascade
+- [CONFIG.md](CONFIG.md) -- the cascade, and how a config value is masked
 - [METRICS.md](METRICS.md) -- scrub metrics surface as `log_scrub_*`
 - [HEALTH.md](HEALTH.md) -- probes log via the same logger
 - [SHUTDOWN.md](SHUTDOWN.md) -- log flush on SIGTERM

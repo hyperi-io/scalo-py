@@ -4,6 +4,16 @@ Behaviour and API changes that need a consumer adjustment, indexed by the scalo 
 
 ---
 
+## 2.31.12
+
+### URL passwords mask to the last `@`, and a list of two names is not a pair (BEHAVIOUR CHANGE)
+
+The password in `scheme://user:password@host` is masked up to the last `@` a host follows, so `postgres://u:ab@cd/ef@host/db`, which logged `cd/ef`, now logs as `postgres://u:***REDACTED***@host/db`. The same holds when `?` or `#` follows an `@` in the password. `scalo.logger.filters.mask_url_userinfo` applies the rule to any string. See [core-pillars/LOGGING.md](core-pillars/LOGGING.md#layer-2-field-name-regex).
+
+A two-item list under a key is no longer read as a `(name, value)` pair, so `{"fields": ["email", "name"]}` is logged whole. A two-item tuple, and a two-item list inside a list or tuple, stay pairs. See [core-pillars/LOGGING.md](core-pillars/LOGGING.md#fields).
+
+**Consumer adjustment** -- an `@` later in the path or query of a URL that carries a password is masked with it: `https://u:p@host/x?to=ops@example.com` logs as `https://u:***REDACTED***@example.com`. Code carrying its own URL-password regex calls `mask_url_userinfo` instead.
+
 ## 2.31.11
 
 ### Credential names match by substring, in any spelling (BEHAVIOUR CHANGE)
