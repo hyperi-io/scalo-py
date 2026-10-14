@@ -218,12 +218,12 @@ class TestSensitiveDataFilter:
         """Test that non-sensitive fields are preserved."""
         filter_inst = SensitiveDataFilter()
 
-        input_text = "username=admin&email=admin@example.com&role=superuser"
+        input_text = "username=admin&region=ap-southeast-2&role=superuser"
         result = filter_inst._mask_sensitive_string(input_text)
 
         # These should NOT be masked
         assert "username=admin" in result
-        assert "email=admin@example.com" in result
+        assert "region=ap-southeast-2" in result
         assert "role=superuser" in result
 
     def test_custom_sensitive_fields_class_level(self):
@@ -281,7 +281,7 @@ class TestSensitiveDataFilter:
         input_dict = {
             "service": "api",
             "config": {
-                "authentication": {  # Changed from "auth" (which is sensitive)
+                "identity_provider": {  # A key holding "auth", as "authentication" does, is masked whole
                     "type": "oauth2",
                     "client_secret": "very_secret",
                     "access_token": "jwt_token_here",
@@ -304,13 +304,13 @@ class TestSensitiveDataFilter:
         result = filter_inst._mask_sensitive_dict(input_dict)
 
         # Check that sensitive fields are masked
-        assert result["config"]["authentication"]["client_secret"] == MASK_VALUE
-        assert result["config"]["authentication"]["access_token"] == MASK_VALUE
+        assert result["config"]["identity_provider"]["client_secret"] == MASK_VALUE
+        assert result["config"]["identity_provider"]["access_token"] == MASK_VALUE
         assert result["config"]["database"]["connection"]["password"] == MASK_VALUE
 
         # Check that non-sensitive fields are preserved
         assert result["service"] == "api"
-        assert result["config"]["authentication"]["type"] == "oauth2"
+        assert result["config"]["identity_provider"]["type"] == "oauth2"
         assert result["config"]["database"]["host"] == "localhost"
         assert result["config"]["database"]["port"] == 5432
         assert result["config"]["database"]["connection"]["username"] == "admin"
@@ -325,7 +325,7 @@ class TestSensitiveDataFilter:
 
         assert "username=admin" in result
         assert f"password={MASK_VALUE}" in result
-        assert "email=admin@example.com" in result
+        assert f"email={MASK_VALUE}" in result
         assert f"token={MASK_VALUE}" in result
 
     def test_mask_empty_values(self):

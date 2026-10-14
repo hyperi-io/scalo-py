@@ -326,7 +326,7 @@ def test_a_token_used_as_a_key_is_scrubbed(monkeypatch, log_format):
     stream = _setup(monkeypatch, log_format)
     token = github_classic_pat()
 
-    logger.warning("cache", sessions={token: "alice"})
+    logger.warning("cache", owners={token: "alice"})
     logger.bind(**{token: 1}).warning("bound")
 
     output = stream.getvalue()

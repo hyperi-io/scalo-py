@@ -28,6 +28,7 @@ import json
 import logging
 import math
 import os
+import re
 import sys
 import traceback
 from collections.abc import Callable
@@ -37,7 +38,15 @@ from loguru import logger as _logger
 
 from scalo._env_compat import control_flag, control_var
 
-from .filters import MASK_VALUE, SENSITIVE_FIELDS, RateLimitFilter, SensitiveDataFilter, get_sensitive_filter
+from .filters import (
+    MASK_VALUE,
+    SENSITIVE_FIELDS,
+    RateLimitFilter,
+    SensitiveDataFilter,
+    _names_credential,
+    _term_pattern,
+    get_sensitive_filter,
+)
 from .scrub import Scrubber as _Scrubber
 from .scrub_resolver import resolve_scrubber
 
@@ -287,20 +296,23 @@ def _finite(value: float) -> float | str:
 class _FieldWalker:
     """Convert one record's fields to scrubbed JSON-native data, never raising.
 
-    A sensitive key, or the name in a ``(name, value)`` pair, masks its value.
-    Keys and strings are scrubbed, any other object is rendered with ``str()``
-    and scrubbed, and a non-finite float becomes a string. Inside containers,
-    a cycle, nesting past :data:`_MAX_FIELD_DEPTH` and anything past the
+    A key :func:`~scalo.logger.filters.is_credential_name` calls a credential,
+    or such a name heading a ``(name, value)`` pair, masks its value. Keys and
+    strings are scrubbed, any other object is rendered with ``str()`` and
+    scrubbed, and a non-finite float becomes a string. Inside containers, a
+    cycle, nesting past :data:`_MAX_FIELD_DEPTH` and anything past the
     :data:`_FIELD_SCRUB_BUDGET` render as placeholders; top-level fields are
     never elided.
     """
 
-    __slots__ = ("_budget", "_path", "_scrub", "_scrub_key", "_sensitive")
+    __slots__ = ("_budget", "_credential", "_path", "_scrub", "_scrub_key")
 
-    def __init__(self, scrub: Callable[[str], str], scrub_key: Callable[[str], str], sensitive: set[str]) -> None:
+    def __init__(
+        self, scrub: Callable[[str], str], scrub_key: Callable[[str], str], credential: re.Pattern[str]
+    ) -> None:
         self._scrub = scrub
         self._scrub_key = scrub_key
-        self._sensitive = sensitive
+        self._credential = credential
         self._budget = _FIELD_SCRUB_BUDGET
         self._path: set[int] = set()
 
@@ -308,8 +320,8 @@ class _FieldWalker:
         """Return the scrubbed copy of a record's top-level fields."""
         output = {}
         for key, value in extra.items():
-            name, sensitive = self._key(key, nested=False)
-            output[name] = MASK_VALUE if sensitive else self._value(value, 0)
+            raw, name, sensitive = self._key(key, nested=False, parent="")
+            output[name] = MASK_VALUE if sensitive else self._value(value, 0, raw)
         return output
 
     def _charge(self, nested: bool) -> bool:
@@ -325,20 +337,23 @@ class _FieldWalker:
         """Scrub one string value."""
         return self._scrub(text) if self._charge(nested) else _ELIDED
 
-    def _key(self, key, *, nested: bool) -> tuple[str, bool]:
-        """Return a key's scrubbed text and whether it names a sensitive field."""
+    def _key(self, key, *, nested: bool, parent: str) -> tuple[str, str, bool]:
+        """Return a key's text, its scrubbed text, and whether it names a credential under ``parent``."""
         try:
             raw = key if isinstance(key, str) else str(key)
         except Exception:
-            return _unprintable(key), False
-        sensitive = raw.lower() in self._sensitive
+            return "", _unprintable(key), False
+        sensitive = _names_credential(raw, parent, self._credential)
         try:
-            return (self._scrub_key(raw) if self._charge(nested) else _ELIDED), sensitive
+            return raw, (self._scrub_key(raw) if self._charge(nested) else _ELIDED), sensitive
         except Exception:
-            return _unprintable(key), sensitive
+            return raw, _unprintable(key), sensitive
 
-    def _value(self, value, depth: int):
-        """Return one value as scrubbed JSON-native data, or a placeholder when it cannot be rendered."""
+    def _value(self, value, depth: int, parent: str = ""):
+        """Return one value as scrubbed JSON-native data, or a placeholder when it cannot be rendered.
+
+        ``parent`` is the name the value sits under, which qualifies a bare ``key`` or ``value`` inside it.
+        """
         try:
             if value is None or isinstance(value, (bool, int)):
                 return value
@@ -347,12 +362,12 @@ class _FieldWalker:
             if isinstance(value, str):
                 return self._text(value, depth > 0)
             if isinstance(value, (dict, list, tuple)):
-                return self._container(value, depth)
+                return self._container(value, depth, parent)
             return self._text(str(value), depth > 0)
         except Exception:
             return _unprintable(value)
 
-    def _container(self, value: dict | list | tuple, depth: int) -> dict | list | str:
+    def _container(self, value: dict | list | tuple, depth: int, parent: str) -> dict | list | str:
         if depth >= _MAX_FIELD_DEPTH:
             return "<depth limit>"
         marker = id(value)
@@ -361,37 +376,38 @@ class _FieldWalker:
         self._path.add(marker)
         try:
             if isinstance(value, dict):
-                return self._mapping(value, depth + 1)
-            return self._sequence(value, depth + 1)
+                return self._mapping(value, depth + 1, parent)
+            return self._sequence(value, depth + 1, parent)
         finally:
             self._path.discard(marker)
 
-    def _mapping(self, value: dict, depth: int) -> dict:
+    def _mapping(self, value: dict, depth: int, parent: str) -> dict:
         output = {}
         for index, (key, item) in enumerate(value.items()):
             if self._budget <= 0:
                 output[_ELIDED] = f"{len(value) - index} more entries"
                 break
-            name, sensitive = self._key(key, nested=True)
-            output[name] = MASK_VALUE if sensitive else self._value(item, depth)
+            raw, name, sensitive = self._key(key, nested=True, parent=parent)
+            output[name] = MASK_VALUE if sensitive else self._value(item, depth, raw)
         return output
 
-    def _sequence(self, value: list | tuple, depth: int) -> list:
-        if len(value) == 2 and self._names_a_secret(value[0]):
+    def _sequence(self, value: list | tuple, depth: int, parent: str) -> list:
+        if len(value) == 2 and self._names_a_secret(value[0], parent):
             return [self._value(value[0], depth), MASK_VALUE]
         output = []
         for index, item in enumerate(value):
             if self._budget <= 0:
                 output.append(f"<elided: {len(value) - index} more items>")
                 break
-            output.append(self._value(item, depth))
+            # An entry is judged under the list's own name
+            output.append(self._value(item, depth, parent))
         return output
 
-    def _names_a_secret(self, item) -> bool:
-        """Return True when ``item`` is a sensitive name, as in an ``(authorization, value)`` header pair."""
+    def _names_a_secret(self, item, parent: str) -> bool:
+        """Return True when ``item`` is a credential name, as in an ``(authorization, value)`` header pair."""
         if isinstance(item, bytes):
             item = item.decode("latin-1")
-        return isinstance(item, str) and item.lower() in self._sensitive
+        return isinstance(item, str) and _names_credential(item, parent, self._credential)
 
 
 def _render_exception(exception) -> str:
@@ -599,7 +615,7 @@ def _add_emoji_to_record(
             walker = _FieldWalker(
                 lambda text: _scrub_str(text, level_name),
                 lambda text: _scrub_key(text, level_name, sensitive_keys),
-                sensitive_keys,
+                _term_pattern(frozenset(sensitive_keys)),
             )
             fields.update(walker.fields(extra))
         except Exception as exc:

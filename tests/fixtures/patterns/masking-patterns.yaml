@@ -15,17 +15,14 @@
 # a field here that either side drops fails.
 #
 # Known divergence, recorded rather than papered over:
-#   Python only: id_token, session_token, api_token, api_secret,
-#     secret_access_key, aws_secret_access_key, session_id, sessionid,
-#     certificate, cert, ssl_cert, creds, db_password, database_password,
-#     connection_string
-#   Rust only:   pass, api-key, access_key, privatekey, credential, ssn,
-#     credit_card, creditcard, cvv, pin
-# The two also match differently: Python compiles per-field regexes against four
-# shapes (quoted JSON, unquoted-key JSON, form data, bare key-value), Rust does
-# case-insensitive SUBSTRING matching on the field name. Substring matching
-# masks `my_api_key_extra`; the Python patterns need a word boundary. Cases
-# below stay inside the overlap so they cannot depend on which rule applies.
+#   Python only: cert, creds, connection_string, session, cookie, csrf,
+#     private, jaas_config, the qualified keys (signing_key, ssl_key, tls_key
+#     and the rest), header_value, tfn, medicare, card_number, email, phone
+#   Rust only:   none
+# Both match by case-insensitive SUBSTRING on the field name, so
+# `my_api_key_extra` and `tokenizer` are masked on both sides. Python also
+# reads a name's words apart, so `secretAccessKey` and `api.key` match there.
+# Cases below stay inside the overlap so they cannot depend on which side runs.
 #
 # `should_mask` is deliberately coarse -- output differs from input, or does not.
 # Asserting the exact replacement string would encode each language's mask
@@ -149,6 +146,13 @@ test_cases:
     should_mask: false
 
   - name: unrelated_key_untouched
-    description: A key that is not in the sensitive set.
-    input: '{"tokenizer":"whitespace"}'
+    description: A key that holds no sensitive field anywhere in it.
+    input: '{"analyzer":"whitespace"}'
     should_mask: false
+
+  - name: key_containing_a_field_masked
+    description: >-
+      Substring matching masks a key that only contains a sensitive field.
+      The over-masking is accepted on both sides.
+    input: '{"tokenizer":"whitespace"}'
+    should_mask: true
