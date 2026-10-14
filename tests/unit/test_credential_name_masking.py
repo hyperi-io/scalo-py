@@ -306,6 +306,156 @@ def test_the_default_chain_never_leaves_part_of_a_number_under_a_named_key(line,
     assert digits not in build_scrubber().scrub(line)
 
 
+# ---------------------------------------------------------------------------
+# quoted values through L2
+# ---------------------------------------------------------------------------
+
+
+@pytest.mark.parametrize(
+    ("line", "expected"),
+    [
+        pytest.param(r'{"password": "a\"b"}', f'{{"password": "{MASK_VALUE}"}}', id="json-mid"),
+        pytest.param(r'password="a\"b" next=1', f"password={MASK_VALUE} next=1", id="equals-mid"),
+        pytest.param(
+            r'{"password": "\"ab", "user": "bob"}', f'{{"password": "{MASK_VALUE}", "user": "bob"}}', id="json-start"
+        ),
+        pytest.param(
+            r'{"password": "ab\"", "user": "bob"}', f'{{"password": "{MASK_VALUE}", "user": "bob"}}', id="json-end"
+        ),
+        pytest.param(
+            r'{"password": "a\\", "user": "bob"}',
+            f'{{"password": "{MASK_VALUE}", "user": "bob"}}',
+            id="json-escaped-backslash-closes",
+        ),
+        pytest.param(
+            r'{"password": "a\\\"b", "user": "bob"}',
+            f'{{"password": "{MASK_VALUE}", "user": "bob"}}',
+            id="json-escaped-backslash-then-quote",
+        ),
+        pytest.param(
+            '{"password": "a\\\nb", "user": "bob"}',
+            f'{{"password": "{MASK_VALUE}", "user": "bob"}}',
+            id="json-escaped-line-break",
+        ),
+        pytest.param(r'password="\"ab" next=1', f"password={MASK_VALUE} next=1", id="equals-start"),
+        pytest.param(r'password="ab\"" next=1', f"password={MASK_VALUE} next=1", id="equals-end"),
+        pytest.param(r'password="a\\" next=1', f"password={MASK_VALUE} next=1", id="equals-escaped-backslash-closes"),
+        pytest.param(r"password='a\'b' next=1", f"password={MASK_VALUE} next=1", id="equals-single-quoted"),
+        pytest.param(
+            r"{'password': 'a\'b', 'user': 'bob'}", f"{{'password': {MASK_VALUE}, 'user': 'bob'}}", id="python-repr"
+        ),
+        pytest.param('password="a\\\nb" next=1', f'password={MASK_VALUE}\nb" next=1', id="equals-never-crosses-a-line"),
+    ],
+)
+def test_an_escaped_quote_does_not_end_a_quoted_value(line, expected):
+    assert FieldNameScrubber().scrub(line) == expected
+
+
+@pytest.mark.parametrize(
+    ("line", "expected"),
+    [
+        pytest.param(r'{"password": "abc\"}', f'{{"password": "{MASK_VALUE}"}}', id="json"),
+        pytest.param(r'password="a b\"', f"password={MASK_VALUE}", id="equals"),
+    ],
+)
+def test_a_quoted_value_with_no_unescaped_close_is_masked_to_its_next_quote(line, expected):
+    assert FieldNameScrubber().scrub(line) == expected
+
+
+def _quoted_end(text: str, start: int, *, multiline: bool) -> int | None:
+    """Return the end of the quoted value opening at ``start``, past backslash escapes, or None when it never closes."""
+    quote = text[start]
+    at = start + 1
+    while at < len(text):
+        char = text[at]
+        if char == "\\":
+            if at + 1 == len(text) or (text[at + 1] == "\n" and not multiline):
+                return None
+            at += 2
+            continue
+        if char == "\n" and not multiline:
+            return None
+        if char == quote:
+            return at + 1
+        at += 1
+    return None
+
+
+def _plain_quoted_end(text: str, start: int, *, multiline: bool) -> int | None:
+    """Return the end of the quoted value opening at ``start`` at its next quote, escaped or not."""
+    close = text.find(text[start], start + 1)
+    if close == -1 or (not multiline and "\n" in text[start:close]):
+        return None
+    return close + 1
+
+
+def _reference_equals(value: str) -> str:
+    """Mask ``password=<value>`` by reading the value one character at a time, as a check on the regex."""
+    start = len(value) - len(value.lstrip(" \t"))
+    end = None
+    if value[start : start + 1] in ('"', "'"):
+        end = _quoted_end(value, start, multiline=False) or _plain_quoted_end(value, start, multiline=False)
+    if end is None:
+        end = start
+        while end < len(value) and not value[end].isspace() and value[end] != "&":
+            end += 1
+    return "password=" + value[:start] + MASK_VALUE + value[end:]
+
+
+def _reference_colon(value: str) -> str:
+    """Mask ``{"password": <value>`` by reading the value one character at a time, as a check on the regex."""
+    head = '{"password": '
+    start = len(value) - len(value.lstrip())
+    first = value[start : start + 1]
+    if first == '"':
+        end = _quoted_end(value, start, multiline=True) or _plain_quoted_end(value, start, multiline=True)
+        if end is None:
+            return head + value
+        return head + value[:start] + f'"{MASK_VALUE}"' + value[end:]
+    end = None
+    if first == "'":
+        end = _quoted_end(value, start, multiline=False) or _plain_quoted_end(value, start, multiline=False)
+    if end is None:
+        end = start
+        while end < len(value) and not value[end].isspace() and value[end] not in ',"}':
+            end += 1
+        if end == start or value[end : end + 1] == '"':
+            return head + value
+    return head + value[:start] + MASK_VALUE + value[end:]
+
+
+def test_a_quoted_value_is_read_as_a_scanner_reads_it():
+    rng = random.Random(17)
+    alphabet = ["a", "b", " ", "\n", '"', '"', "'", "'", "\\", "\\"]
+    scrubber = FieldNameScrubber()
+    for _ in range(10_000):
+        value = "".join(rng.choices(alphabet, k=rng.randint(0, 16)))
+        assert scrubber.scrub("password=" + value) == _reference_equals(value), repr(value)
+        assert scrubber.scrub('{"password": ' + value) == _reference_colon(value), repr(value)
+
+
+@pytest.mark.parametrize(
+    "text",
+    [
+        pytest.param('password: "' + "\\" * 200_000, id="backslashes"),
+        pytest.param('password: "' + '\\"' * 100_000, id="escaped-quotes"),
+        pytest.param('password="' + '\\"' * 100_000, id="equals-escaped-quotes"),
+        pytest.param("password: '" + "\\'" * 100_000, id="escaped-single-quotes"),
+        pytest.param('{"password": "' + "\\\\" * 100_000 + '"}', id="escaped-backslashes"),
+        pytest.param('password: "' + 'password: \\"' * 16_000, id="escaped-quote-heads"),
+        pytest.param('password="\\" ' * 15_000, id="repeated-equals-heads"),
+        pytest.param('"\\' * 100_000, id="no-key"),
+    ],
+)
+def test_a_long_line_of_backslashes_and_quotes_is_masked_in_linear_time(text):
+    started = time.perf_counter()
+    FieldNameScrubber().scrub(text)
+    elapsed = time.perf_counter() - started
+
+    # A quadratic scan of 200,000 characters takes minutes, so the bound sits far above a linear one.
+    assert elapsed < 2.0
+
+
 @pytest.mark.parametrize(
     ("line", "expected"),
     [

@@ -267,7 +267,7 @@ The password in `scheme://user:password@host` is masked up to the last `@` a hos
 | Python repr | `{'password': 'abc'}` | `{'password': ***REDACTED***}` |
 | YAML, HTTP header | `x-auth-token: abc` | `x-auth-token: ***REDACTED***` |
 
-A quoted value after `=`, or a single-quoted one after `:`, is masked whole with its quotes. A double-quoted JSON value keeps its quotes so the line stays valid JSON. Whitespace around `=` never crosses a line, and `==` and `=>` are not read as assignments.
+A quoted value after `=`, or a single-quoted one after `:`, is masked whole with its quotes. A double-quoted JSON value keeps its quotes so the line stays valid JSON. A quoted value runs to the first quote no backslash escapes, so `password="a\"b"` and `{"password": "a\"b"}` are masked whole; one with no such quote is masked to its next quote. Whitespace around `=` never crosses a line, and `==` and `=>` are not read as assignments.
 
 The legacy `SensitiveDataFilter` in `logger.filters` ships the L2
 field set as a backwards-compatible shim. Add custom fields with
