@@ -160,22 +160,20 @@ _PLAIN_DOUBLE_QUOTED_LINE = r'"[^"\n]*"'
 _PLAIN_SINGLE_QUOTED_LINE = r"'[^'\n]*'"
 # `key: "value"` (JSON): the quotes stay so the line is still valid JSON
 _JSON_VALUE_RE = re.compile(f"{_DOUBLE_QUOTED}|{_PLAIN_DOUBLE_QUOTED}")
-# `key: 'value'` (Python repr) or `key: value` (YAML, headers)
-_COLON_VALUE_RE = re.compile(
-    f"{_SINGLE_QUOTED_LINE}|{_PLAIN_SINGLE_QUOTED_LINE}|"
-    + r"""[^\s,"}]+"""
-    + _DIGIT_GROUPS.format(chars=r"""[^\s,"}]""")
-    + r"(?=[\s,}]|$)"
+_JSON_MASK = f'"{MASK_VALUE}"'
+# `key: 'value'` (Python repr)
+_SINGLE_QUOTED_VALUE_RE = re.compile(f"{_SINGLE_QUOTED_LINE}|{_PLAIN_SINGLE_QUOTED_LINE}")
+# `key: value` (YAML, headers)
+_COLON_UNQUOTED_RE = re.compile(r"""[^\s,"}]+""" + _DIGIT_GROUPS.format(chars=r"""[^\s,"}]""") + r"(?=[\s,}]|$)")
+# `key="value"` (env, form data, TOML, INI): a quoted value goes whole, quotes included
+_EQUALS_QUOTED_RE = re.compile(
+    f"{_DOUBLE_QUOTED_LINE}|{_SINGLE_QUOTED_LINE}|{_PLAIN_DOUBLE_QUOTED_LINE}|{_PLAIN_SINGLE_QUOTED_LINE}"
 )
-# `key=value` (env, form data, TOML, INI): a quoted value goes whole, quotes included
-_EQUALS_VALUE_RE = re.compile(
-    f"{_DOUBLE_QUOTED_LINE}|{_SINGLE_QUOTED_LINE}|{_PLAIN_DOUBLE_QUOTED_LINE}|{_PLAIN_SINGLE_QUOTED_LINE}|"
-    + r"[^\s&]*"
-    + _DIGIT_GROUPS.format(chars=r"[^\s&]")
-)
-# The longest `Name(...)` value read as one value, in UTF-8 bytes as scalo-rs counts it; a longer one is read as unquoted text.
+# `key=value`, which may be empty
+_EQUALS_UNQUOTED_RE = re.compile(r"[^\s&]*" + _DIGIT_GROUPS.format(chars=r"[^\s&]"))
+# The longest `Name(...)` value read as one value, in UTF-8 bytes as scalo-rs counts it.
 _MAX_WRAPPER_LEN = 4096
-_WRAPPER_OPEN_RE = re.compile(r"[A-Za-z_][A-Za-z0-9_]*\(")
+_WRAPPER_OPEN_RE = re.compile(r"[A-Za-z0-9_]+\(")
 # A parenthesis, or a quote with the backslashes before it; an even run escapes nothing, so the quote can close a string.
 _WRAPPER_TOKEN_RE = re.compile(r"""[()]|(?<!\\)(\\*+)["']""")
 
@@ -309,18 +307,20 @@ def _url_userinfo(text: str) -> Iterator[tuple[int, int, int]]:
 class _Wrappers:
     """Find where each ``Name(...)`` value in one text ends, such as ``Some("...")`` or ``Token(value='...')``.
 
-    Parentheses nest, and a string inside, single or double quoted, is skipped
-    past its backslash escapes and may span lines.
+    Parentheses nest, and a string inside, single or double quoted, may span
+    lines. A string closes at its first quote no backslash escapes or, when the
+    text holds no such quote after it, at its next quote.
 
     The walk on from any parenthesis or quote is the same whichever value
     reached it, so one pass from the right records, for every such token, the
-    first token on its walk one nesting level further out. A group ends just
-    before that token as seen from the token after its ``(``. The pass costs
-    linear time and 9 bytes a token, and runs only for a text holding a
-    ``Name(`` value.
+    first token on its walk one nesting level further out, and whether a
+    string on the way closed at an escaped quote. A group ends just before
+    that token as seen from the token after its ``(``. The pass costs linear
+    time and 10 bytes a token, and runs only for a text holding a ``Name(``
+    value.
     """
 
-    __slots__ = ("_positions", "_rises", "_text")
+    __slots__ = ("_escaped", "_positions", "_rises", "_text")
 
     def __init__(self, text: str) -> None:
         self._text = text
@@ -328,15 +328,33 @@ class _Wrappers:
         self._positions = array.array(typecode)
         # Token index -> the first token further out on its walk, or -1 when an unclosed string ends the walk first.
         self._rises = array.array(typecode)
+        # Token index -> whether a string on that walk closed at a quote a backslash escapes.
+        self._escaped = bytearray()
 
-    def end(self, start: int) -> int | None:
-        """Return the end of the ``Name(...)`` value at ``start``, or None when none closes within the window."""
+    def read(self, start: int, never: int) -> tuple[int | None, int | None]:
+        """Return where a pass ends the ``Name(...)`` value at ``start``, and how far the value runs.
+
+        A pass ends the value at its close only when the name starts with a
+        letter or ``_``, every string in it closes at a quote no backslash
+        escapes, and it closes within the window; otherwise the first is None.
+        The value runs to its close, or to ``never`` when it does not close
+        within the window. Both are None when no ``Name(`` starts at ``start``.
+        """
         opened = _WRAPPER_OPEN_RE.match(self._text, start)
         if opened is None:
-            return None
+            return None, None
+        close = self._close(start, opened.end())
+        if close is None:
+            return None, never
+        end, escaped = close
+        return (None if escaped or self._text[start].isdigit() else end), end
+
+    def _close(self, start: int, inside: int) -> tuple[int, bool] | None:
+        """Return where the value at ``start``, whose ``(`` ends at ``inside``, closes within the window, and whether a string in it closed at an escaped quote."""
         if not self._rises:
             self._index()
-        rise = self._rises[bisect.bisect_left(self._positions, opened.end() - 1) + 1]
+        token = bisect.bisect_left(self._positions, inside - 1) + 1
+        rise = self._rises[token]
         if rise < 0:
             return None
         end = self._positions[rise - 1] + 1
@@ -346,7 +364,7 @@ class _Wrappers:
         if end - start > _MAX_WRAPPER_LEN // 4:
             if len(self._text[start:end].encode("utf-8", "surrogatepass")) > _MAX_WRAPPER_LEN:
                 return None
-        return end
+        return end, bool(self._escaped[token])
 
     def _index(self) -> None:
         """Run the pass from the right over every parenthesis and quote in the text."""
@@ -358,68 +376,194 @@ class _Wrappers:
         count = len(positions)
         # Index `count` stands for the end of the text, which nothing lies beyond.
         rises = array.array(positions.typecode, [-1]) * (count + 1)
-        # The nearest quote ahead that can close a string, by quote character.
+        escaped = bytearray(count + 1)
+        # The nearest quote ahead that can close a string, and the nearest of either kind, by quote character.
         closer = {'"': -1, "'": -1}
+        nearest = {'"': -1, "'": -1}
         for index in range(count - 1, -1, -1):
             char = text[positions[index]]
             if char == ")":
                 rises[index] = index + 1
             elif char == "(":
                 inside = rises[index + 1]
-                rises[index] = rises[inside] if inside >= 0 else -1
+                if inside >= 0:
+                    rises[index] = rises[inside]
+                    escaped[index] = escaped[index + 1] | escaped[inside]
             else:
                 close = closer[char]
-                rises[index] = rises[close + 1] if close >= 0 else -1
+                plain = close < 0
+                if plain:
+                    close = nearest[char]
+                if close >= 0:
+                    rises[index] = rises[close + 1]
+                    escaped[index] = plain | escaped[close + 1]
                 if closable[index]:
                     closer[char] = index
+                nearest[char] = index
         self._rises = rises
+        self._escaped = escaped
 
 
-def _value_end(text: str, start: int, values: tuple[tuple[re.Pattern[str], str], ...]) -> tuple[int, str] | None:
-    """Return where the first of ``values`` that matches at ``start`` ends, and what replaces it."""
-    for value_re, replacement in values:
-        value = value_re.match(text, start)
-        if value is not None:
-            return value.end(), replacement
-    return None
+# A span of text and what replaces it; None cuts it, for a run straight after a mask.
+type _Span = tuple[int, int, str | None]
 
 
-def _mask_pairs(
-    text: str,
-    head_re: re.Pattern[str],
-    values: tuple[tuple[re.Pattern[str], str], ...],
-    pattern: re.Pattern[str],
-) -> str:
-    """Mask the value after every ``head_re`` key that names a credential.
+class _Values:
+    """Read the value after each key in one text, keys taken in rising order of position.
+
+    A read returns where the pass ends the value, or None when it replaces
+    nothing; the mask that replaces it; and how far the value runs. A quoted
+    value that never closes runs to the end of its line, or, when its reading
+    may cross lines, as a double-quoted value after ``:`` and a ``Name(...)``
+    value may, to the end of the text short of a line break that ends it. A
+    ``Name(...)`` value runs to its close, or to the end of the text when it
+    does not close within the window.
+    """
+
+    __slots__ = ("_line_end", "_text", "_text_end", "_wrappers")
+
+    def __init__(self, text: str) -> None:
+        self._text = text
+        self._wrappers = _Wrappers(text)
+        self._line_end = -1
+        self._text_end = len(text) - 1 if text.endswith("\n") else len(text)
+
+    def colon(self, start: int) -> tuple[int | None, str, int]:
+        """Read the value after a colon at ``start``."""
+        text = self._text
+        if text.startswith('"', start):
+            found = _JSON_VALUE_RE.match(text, start)
+            if found is not None:
+                return found.end(), _JSON_MASK, found.end()
+            return None, _JSON_MASK, self._text_end
+        found = _SINGLE_QUOTED_VALUE_RE.match(text, start)
+        if found is not None:
+            return found.end(), MASK_VALUE, found.end()
+        unquoted = _COLON_UNQUOTED_RE.match(text, start)
+        end = None if unquoted is None else unquoted.end()
+        if text.startswith("'", start):
+            return end, MASK_VALUE, self._line(start)
+        return self._unquoted(start, end)
+
+    def equals(self, start: int) -> tuple[int | None, str, int]:
+        """Read the value after an equals sign at ``start``."""
+        text = self._text
+        found = _EQUALS_QUOTED_RE.match(text, start)
+        if found is not None:
+            return found.end(), MASK_VALUE, found.end()
+        unquoted = _EQUALS_UNQUOTED_RE.match(text, start)
+        end = start if unquoted is None else unquoted.end()
+        if text.startswith(('"', "'"), start):
+            return end, MASK_VALUE, self._line(start)
+        return self._unquoted(start, end)
+
+    def _unquoted(self, start: int, end: int | None) -> tuple[int | None, str, int]:
+        """Read an unquoted value ending at ``end``, or further when a ``Name(...)`` value starts at ``start``."""
+        wrapped, reach = self._wrappers.read(start, self._text_end)
+        if wrapped is not None and (end is None or wrapped > end):
+            end = wrapped
+        low = start if end is None else end
+        return end, MASK_VALUE, low if reach is None else max(low, reach)
+
+    def _line(self, start: int) -> int:
+        """Return where the line holding ``start`` ends: its line break, or the end of the text."""
+        if start > self._line_end:
+            found = self._text.find("\n", start)
+            self._line_end = len(self._text) if found == -1 else found
+        return self._line_end
+
+
+def _pair_spans(
+    text: str, head_re: re.Pattern[str], colon: bool, pattern: re.Pattern[str]
+) -> tuple[list[tuple[int, int, str]], list[_Span]]:
+    """Return the value after every ``head_re`` key that names a credential, and the run past each one.
 
     Only a credential key's value is consumed, so a key inside another pair's
-    value, as in ``config:password:x``, is still judged. ``values`` pairs a
-    value shape with what replaces it, tried in order. A ``Name(...)`` value
-    such as ``Some("a b")`` goes whole whenever it runs further than that
-    shape, so a Rust ``Debug`` dump or a Python repr of a wrapped credential
-    is masked.
+    value, as in ``config:password:x``, is still judged.
     """
-    out: list[str] = []
-    pos = 0
-    wrappers = _Wrappers(text)
+    values = _Values(text)
+    read = values.colon if colon else values.equals
+    spans: list[tuple[int, int, str]] = []
+    runs: list[_Span] = []
+    copied = 0
     for head in head_re.finditer(text):
-        if head.start() < pos or not _names_credential(head["key"], "", pattern):
+        if head.start() < copied or not _names_credential(head["key"], "", pattern):
             continue
-        value = _value_end(text, head.end(), values)
-        wrapped = wrappers.end(head.end())
-        if wrapped is not None and (value is None or wrapped > value[0]):
-            value = (wrapped, MASK_VALUE)
-        if value is None:
-            continue
-        out.append(text[pos : head.end()])
-        out.append(value[1])
-        pos = value[0]
-    out.append(text[pos:])
+        start = head.end()
+        end, mask, reach = read(start)
+        if end is not None:
+            spans.append((start, end, mask))
+            copied = end
+        low = start if end is None else end
+        if reach > low:
+            runs.append((low, reach, None if end is not None else mask))
+    return spans, runs
+
+
+def _after(runs: list[_Span], spans: list[tuple[int, int, str]]) -> list[_Span]:
+    """Return ``runs``, placed in the text ``spans`` were read from, as they sit once each span is replaced by its mask.
+
+    A run ending inside a span ends after that span's mask.
+    """
+    starts = [start for start, _end, _mask in spans]
+    mask_ends = []
+    moved = 0
+    for start, end, mask in spans:
+        moved += len(mask) - (end - start)
+        mask_ends.append(end + moved)
+
+    def place(at: int) -> int:
+        index = bisect.bisect_right(starts, at) - 1
+        if index < 0:
+            return at
+        start, end, mask = spans[index]
+        if at >= end:
+            return mask_ends[index] + at - end
+        if at > start:
+            return mask_ends[index]
+        return mask_ends[index] - len(mask)
+
+    return [(place(start), place(end), mask) for start, end, mask in runs]
+
+
+def _apply(text: str, spans: Iterable[_Span]) -> str:
+    """Return ``text`` with each span replaced by its mask, or cut when it has none.
+
+    Spans that overlap or touch merge, and the first of them decides the mask,
+    so a value and the run past it come out as one mask.
+    """
+    ordered = sorted(spans, key=lambda span: (span[0], span[2] is None))
+    out: list[str] = []
+    copied = 0
+    index = 0
+    while index < len(ordered):
+        start, end, mask = ordered[index]
+        index += 1
+        while index < len(ordered) and ordered[index][0] <= end:
+            end = max(end, ordered[index][1])
+            index += 1
+        out.append(text[copied:start])
+        if mask is not None:
+            out.append(mask)
+        copied = end
+    out.append(text[copied:])
     return "".join(out)
 
 
-_COLON_VALUES = ((_JSON_VALUE_RE, f'"{MASK_VALUE}"'), (_COLON_VALUE_RE, MASK_VALUE))
-_EQUALS_VALUES = ((_EQUALS_VALUE_RE, MASK_VALUE),)
+def _mask_pairs(text: str, pattern: re.Pattern[str]) -> str:
+    """Mask the value after every ``key: value``, then every ``key=value``, whose key ``pattern`` names a credential.
+
+    Each pass replaces a value only as far as its first reading goes, and the
+    equals pass reads the colon pass's output. The run past a value that never
+    closes, or past a ``Name(...)`` value that first reading does not take
+    whole, is masked after both passes, so a key inside a run is still read
+    and its value still masked.
+    """
+    spans, runs = _pair_spans(text, _COLON_HEAD_RE, True, pattern)
+    text = _apply(text, spans)
+    runs = _after(runs, spans)
+    spans, more = _pair_spans(text, _EQUALS_HEAD_RE, False, pattern)
+    return _apply(text, [*spans, *more, *runs])
 
 
 class SensitiveDataFilter(logging.Filter):
@@ -540,7 +684,9 @@ class SensitiveDataFilter(logging.Filter):
 
         A key is masked when :func:`is_credential_name` says so, so
         `CARGO_REGISTRY_TOKEN`, `x-api-key` and `secretAccessKey` are masked,
-        and so are `token_count` and `tokenizer`.
+        and so are `token_count` and `tokenizer`. A quoted or `Name(...)`
+        value that never closes is masked to the end of its line, or to the
+        end of the text when its reading may cross lines.
 
         Runs the secrets-leak scrubber first (if configured), then
         applies the field-name regex pass.
@@ -560,9 +706,7 @@ class SensitiveDataFilter(logging.Filter):
 
         masked = mask_url_userinfo(text)
         masked = _BEARER_RE.sub(f"bearer {MASK_VALUE}", masked)
-        pattern = self._credential_pattern()
-        masked = _mask_pairs(masked, _COLON_HEAD_RE, _COLON_VALUES, pattern)
-        return _mask_pairs(masked, _EQUALS_HEAD_RE, _EQUALS_VALUES, pattern)
+        return _mask_pairs(masked, self._credential_pattern())
 
     def _mask_sensitive_dict(self, data: dict[Any, Any], parent: str = "") -> dict[Any, Any]:
         """
