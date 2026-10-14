@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 #  Project:   scalo
 #  File:      tools/vendor_patterns.sh
-#  Purpose:   Vendor canonical pattern TOMLs from hyperi-ai into pylib's data/
+#  Purpose:   Vendor canonical pattern files and test corpora from hyperi-ai and scalo-rs
 #  Language:  Bash
 #
 #  License:   Apache-2.0
@@ -10,16 +10,22 @@
 # Copies the canonical pattern files from a local hyperi-ai checkout:
 # runtime patterns into src/scalo/data/, where the runtime loads them, and
 # test corpora into tests/fixtures/patterns/, so the wheel does not ship them.
+# Copies the corpora scalo-rs holds the source of truth for from a local
+# scalo-rs checkout's tests/fixtures/ into tests/fixtures/patterns/ too.
 #
-# NON-BLOCKING: if hyperi-ai checkout cannot be found, the script
-# prints a warning and exits 0. This is intentional — the build /
-# install path must continue to work for consumers who don't have
-# hyperi-ai checked out (e.g. installing from PyPI).
+# NON-BLOCKING: a checkout that cannot be found is skipped with a warning,
+# and the script exits 0 when neither is found. The build / install path
+# must keep working for consumers with neither checked out (e.g.
+# installing from PyPI).
 #
-# Checkout discovery (first hit wins):
+# hyperi-ai checkout discovery (first hit wins):
 #   1. $HYPERI_AI_CHECKOUT env var
 #   2. ../hyperi-ai (sibling to this project)
 #   3. ~/.local/share/hyperi-ai (stealth-mode clone)
+#
+# scalo-rs checkout discovery (first hit wins), which should be on main:
+#   1. $SCALO_RS_CHECKOUT env var
+#   2. ../scalo-rs (sibling to this project)
 #
 # Usage:
 #   ./tools/vendor_patterns.sh            # vendor all canonical patterns
@@ -51,6 +57,12 @@ TEST_FILES=(
     "metrics-naming.yaml"
 )
 
+# Corpora scalo-rs holds the source of truth for, read only by the parity tests.
+SCALO_RS_RELATIVE="tests/fixtures"
+SCALO_RS_TEST_FILES=(
+    "credential_masking_parity.json"
+)
+
 CHECK_MODE=false
 if [[ "${1:-}" == "--check" ]]; then
     CHECK_MODE=true
@@ -72,6 +84,21 @@ find_checkout() {
     return 1
 }
 
+# Discover scalo-rs checkout
+find_scalo_rs_checkout() {
+    local candidates=(
+        "${SCALO_RS_CHECKOUT:-}"
+        "$PYLIB_ROOT/../scalo-rs"
+    )
+    for path in "${candidates[@]}"; do
+        if [[ -n "$path" && -d "$path/$SCALO_RS_RELATIVE" ]]; then
+            echo "$path"
+            return 0
+        fi
+    done
+    return 1
+}
+
 warn() {
     # Match scalo's WARN log style for grep-ability
     printf '[WARN] vendor_patterns.sh: %s\n' "$*" >&2
@@ -81,15 +108,40 @@ info() {
     printf '[INFO] vendor_patterns.sh: %s\n' "$*" >&2
 }
 
-if ! checkout=$(find_checkout); then
-    warn "no hyperi-ai checkout found — patterns will not be vendored."
+sources=()
+targets=()
+
+if checkout=$(find_checkout); then
+    info "using hyperi-ai checkout at: $checkout"
+    for file in "${FILES[@]}"; do
+        sources+=("$checkout/$PATTERNS_RELATIVE/$file")
+        targets+=("$DATA_DIR/$file")
+    done
+    for file in "${TEST_FILES[@]}"; do
+        sources+=("$checkout/$PATTERNS_RELATIVE/$file")
+        targets+=("$FIXTURES_DIR/$file")
+    done
+else
+    warn "no hyperi-ai checkout found - hyperi-ai patterns will not be vendored."
     warn "Set HYPERI_AI_CHECKOUT or clone hyperi-ai to one of:"
     warn "    ../hyperi-ai, ~/.local/share/hyperi-ai"
+fi
+
+if scalo_rs=$(find_scalo_rs_checkout); then
+    info "using scalo-rs checkout at: $scalo_rs"
+    for file in "${SCALO_RS_TEST_FILES[@]}"; do
+        sources+=("$scalo_rs/$SCALO_RS_RELATIVE/$file")
+        targets+=("$FIXTURES_DIR/$file")
+    done
+else
+    warn "no scalo-rs checkout found - scalo-rs corpora will not be vendored."
+    warn "Set SCALO_RS_CHECKOUT or clone scalo-rs to ../scalo-rs"
+fi
+
+if [[ ${#targets[@]} -eq 0 ]]; then
     warn "Skipping (non-blocking)."
     exit 0
 fi
-
-info "using hyperi-ai checkout at: $checkout"
 
 mkdir -p "$DATA_DIR" "$FIXTURES_DIR"
 
@@ -97,20 +149,13 @@ drift_count=0
 copy_count=0
 miss_count=0
 
-targets=()
-for file in "${FILES[@]}"; do
-    targets+=("$DATA_DIR/$file")
-done
-for file in "${TEST_FILES[@]}"; do
-    targets+=("$FIXTURES_DIR/$file")
-done
-
-for dst in "${targets[@]}"; do
+for index in "${!targets[@]}"; do
+    src="${sources[$index]}"
+    dst="${targets[$index]}"
     file=$(basename "$dst")
-    src="$checkout/$PATTERNS_RELATIVE/$file"
 
     if [[ ! -f "$src" ]]; then
-        warn "missing in hyperi-ai: $src — skipping (non-blocking)"
+        warn "missing upstream: $src - skipping (non-blocking)"
         miss_count=$((miss_count + 1))
         continue
     fi

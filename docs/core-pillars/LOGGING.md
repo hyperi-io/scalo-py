@@ -269,6 +269,10 @@ The password in `scheme://user:password@host` is masked up to the last `@` a hos
 
 A quoted value after `=`, or a single-quoted one after `:`, is masked whole with its quotes. A double-quoted JSON value keeps its quotes so the line stays valid JSON. A quoted value runs to the first quote no backslash escapes, so `password="a\"b"` and `{"password": "a\"b"}` are masked whole; one with no such quote is masked to its next quote. Whitespace around `=` never crosses a line, and `==` and `=>` are not read as assignments.
 
+A `Name(...)` value, as a Rust `Debug` dump or a Python repr writes one, is masked whole up to its closing parenthesis, so `db_password: Some("a b")` and `token=Token(value='a b')` leave nothing of the value behind. Parentheses nest, and a quoted string inside may hold `)` and span lines. A value longer than 4096 UTF-8 bytes, or one that never closes, is read as unquoted text.
+
+These rules are checked against scalo-rs's credential-masking corpus, vendored as `tests/fixtures/patterns/credential_masking_parity.json`, so scalo-py and scalo-rs mask the same text the same way.
+
 The legacy `SensitiveDataFilter` in `logger.filters` ships the L2
 field set as a backwards-compatible shim. Add custom fields with
 `SensitiveDataFilter.add_sensitive_fields({"employee_id", "ssn"})`.

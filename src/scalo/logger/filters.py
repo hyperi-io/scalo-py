@@ -25,6 +25,8 @@ Use :func:`get_sensitive_filter` for the legacy three-tier selector --
 return the field-name filter.
 """
 
+import array
+import bisect
 import functools
 import logging
 import re
@@ -136,7 +138,10 @@ _BARE_NAMES = frozenset({"key", "keys", "value", "values"})
 _NEVER = re.compile(r"(?!)")
 
 # The password runs to the last `@` a host follows, and stops at whitespace or `://` so a long line scans in linear time.
-_URL_USERINFO_RE = re.compile(r"(?P<head>://[^\s:/@]*:)(?P<password>(?:(?!://)\S)*)(?=@[^\s@/?#]*(?:[/?#\s]|\Z))")
+# Its runs between colons are single-class repeats, which hold no stack frame, so memory grows with a password's colons, not its length.
+_URL_USERINFO_RE = re.compile(
+    r"(?P<head>://[^\s:/@]*:)(?P<password>[^\s:]*(?::(?!//)[^\s:]*)*)(?=@[^\s@/?#]*(?:[/?#\s]|\Z))"
+)
 _BEARER_RE = re.compile(r"\bbearer\s+([^\s]+)", re.IGNORECASE)
 
 # A key in text: a run of name characters no other name character precedes, then an optional closing quote.
@@ -168,6 +173,11 @@ _EQUALS_VALUE_RE = re.compile(
     + r"[^\s&]*"
     + _DIGIT_GROUPS.format(chars=r"[^\s&]")
 )
+# The longest `Name(...)` value read as one value, in UTF-8 bytes as scalo-rs counts it; a longer one is read as unquoted text.
+_MAX_WRAPPER_LEN = 4096
+_WRAPPER_OPEN_RE = re.compile(r"[A-Za-z_][A-Za-z0-9_]*\(")
+# A parenthesis, or a quote with the backslashes before it; an even run escapes nothing, so the quote can close a string.
+_WRAPPER_TOKEN_RE = re.compile(r"""[()]|(?<!\\)(\\*+)["']""")
 
 
 def _spellings(name: str) -> tuple[str, str]:
@@ -250,6 +260,84 @@ def mask_url_userinfo(text: str, mask: str = MASK_VALUE, *, keep_user: bool = Tr
     return _URL_USERINFO_RE.sub(lambda _found: "://" + mask, text)
 
 
+class _Wrappers:
+    """Find where each ``Name(...)`` value in one text ends, such as ``Some("...")`` or ``Token(value='...')``.
+
+    Parentheses nest, and a string inside, single or double quoted, is skipped
+    past its backslash escapes and may span lines.
+
+    The walk on from any parenthesis or quote is the same whichever value
+    reached it, so one pass from the right records, for every such token, the
+    first token on its walk one nesting level further out. A group ends just
+    before that token as seen from the token after its ``(``. The pass costs
+    linear time and 9 bytes a token, and runs only for a text holding a
+    ``Name(`` value.
+    """
+
+    __slots__ = ("_positions", "_rises", "_text")
+
+    def __init__(self, text: str) -> None:
+        self._text = text
+        typecode = "i" if len(text) < 2**31 else "q"
+        self._positions = array.array(typecode)
+        # Token index -> the first token further out on its walk, or -1 when an unclosed string ends the walk first.
+        self._rises = array.array(typecode)
+
+    def end(self, start: int) -> int | None:
+        """Return the end of the ``Name(...)`` value at ``start``, or None when none closes within the window."""
+        opened = _WRAPPER_OPEN_RE.match(self._text, start)
+        if opened is None:
+            return None
+        if not self._rises:
+            self._index()
+        rise = self._rises[bisect.bisect_left(self._positions, opened.end() - 1) + 1]
+        if rise < 0:
+            return None
+        end = self._positions[rise - 1] + 1
+        if end - start > _MAX_WRAPPER_LEN:
+            return None
+        # A character is at most 4 UTF-8 bytes, so only a longer value needs counting.
+        if end - start > _MAX_WRAPPER_LEN // 4:
+            if len(self._text[start:end].encode("utf-8", "surrogatepass")) > _MAX_WRAPPER_LEN:
+                return None
+        return end
+
+    def _index(self) -> None:
+        """Run the pass from the right over every parenthesis and quote in the text."""
+        text, positions = self._text, self._positions
+        closable = bytearray()
+        for found in _WRAPPER_TOKEN_RE.finditer(text):
+            positions.append(found.end() - 1)
+            closable.append(found[1] is not None and len(found[1]) % 2 == 0)
+        count = len(positions)
+        # Index `count` stands for the end of the text, which nothing lies beyond.
+        rises = array.array(positions.typecode, [-1]) * (count + 1)
+        # The nearest quote ahead that can close a string, by quote character.
+        closer = {'"': -1, "'": -1}
+        for index in range(count - 1, -1, -1):
+            char = text[positions[index]]
+            if char == ")":
+                rises[index] = index + 1
+            elif char == "(":
+                inside = rises[index + 1]
+                rises[index] = rises[inside] if inside >= 0 else -1
+            else:
+                close = closer[char]
+                rises[index] = rises[close + 1] if close >= 0 else -1
+                if closable[index]:
+                    closer[char] = index
+        self._rises = rises
+
+
+def _value_end(text: str, start: int, values: tuple[tuple[re.Pattern[str], str], ...]) -> tuple[int, str] | None:
+    """Return where the first of ``values`` that matches at ``start`` ends, and what replaces it."""
+    for value_re, replacement in values:
+        value = value_re.match(text, start)
+        if value is not None:
+            return value.end(), replacement
+    return None
+
+
 def _mask_pairs(
     text: str,
     head_re: re.Pattern[str],
@@ -260,20 +348,26 @@ def _mask_pairs(
 
     Only a credential key's value is consumed, so a key inside another pair's
     value, as in ``config:password:x``, is still judged. ``values`` pairs a
-    value shape with what replaces it, tried in order.
+    value shape with what replaces it, tried in order. A ``Name(...)`` value
+    such as ``Some("a b")`` goes whole whenever it runs further than that
+    shape, so a Rust ``Debug`` dump or a Python repr of a wrapped credential
+    is masked.
     """
     out: list[str] = []
     pos = 0
+    wrappers = _Wrappers(text)
     for head in head_re.finditer(text):
         if head.start() < pos or not _names_credential(head["key"], "", pattern):
             continue
-        for value_re, replacement in values:
-            value = value_re.match(text, head.end())
-            if value is not None:
-                out.append(text[pos : head.end()])
-                out.append(replacement)
-                pos = value.end()
-                break
+        value = _value_end(text, head.end(), values)
+        wrapped = wrappers.end(head.end())
+        if wrapped is not None and (value is None or wrapped > value[0]):
+            value = (wrapped, MASK_VALUE)
+        if value is None:
+            continue
+        out.append(text[pos : head.end()])
+        out.append(value[1])
+        pos = value[0]
     out.append(text[pos:])
     return "".join(out)
 
@@ -395,6 +489,7 @@ class SensitiveDataFilter(logging.Filter):
         - Python repr: `'field': 'value'`
         - Key-value pairs: `field: value` or `field=value`
         - Env, TOML and INI: `PREFIX_FIELD=value`, `field = "value"`
+        - Rust `Debug` and Python repr wrappers: `field: Some("value")`
         - URL userinfo: `://user:password@host`
 
         A key is masked when :func:`is_credential_name` says so, so
