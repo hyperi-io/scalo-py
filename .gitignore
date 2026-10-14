@@ -137,7 +137,7 @@ Desktop.ini
 # removed.
 .env
 .env.*
-!.env*.example
+!.env.example
 !.env.example.*
 !.env.sample
 !*.example
@@ -166,9 +166,9 @@ tests/.env.integration
 ci-local/logs/
 .test-*
 
-# Local working files (not committed)
-# Mirrored in .git/info/exclude, because a tracked .gitignore alone does not
-# protect a clone that has not pulled it yet.
+# AI agent working files -- local-only, never committed. Mirrored in
+# .git/info/exclude, because a tracked .gitignore alone does not protect a
+# clone that has not pulled it yet.
 docs/superpowers/
 .hyperi-ai
 hyperi-ai/
@@ -184,11 +184,6 @@ GEMINI.md
 .cursor/
 .gemini/
 .cursorrules
-.superpowers/
-.playwright-mcp/
-.kube/
-.secrets/
-.benchmarks/
 
 # Local scratch / tmp (CORE.md: scratch goes here, gitignored, NOT
 # /tmp). Bare patterns (no leading slash) match a tmp dir at ANY
