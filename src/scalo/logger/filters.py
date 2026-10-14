@@ -380,12 +380,13 @@ class SensitiveDataFilter(logging.Filter):
         masked = _mask_pairs(masked, _COLON_HEAD_RE, _COLON_VALUES, pattern)
         return _mask_pairs(masked, _EQUALS_HEAD_RE, _EQUALS_VALUES, pattern)
 
-    def _mask_sensitive_dict(self, data: dict[str, Any], parent: str = "") -> dict[str, Any]:
+    def _mask_sensitive_dict(self, data: dict[Any, Any], parent: str = "") -> dict[Any, Any]:
         """
         Recursively mask sensitive fields in a dictionary.
 
         Args:
-            data: Dictionary potentially containing sensitive fields
+            data: Dictionary potentially containing sensitive fields; a
+                key that is not a string is judged by its ``str()``
             parent: Name of the mapping or list holding ``data``, which
                 qualifies a bare ``key`` or ``value`` in it
 
@@ -395,7 +396,7 @@ class SensitiveDataFilter(logging.Filter):
         if not isinstance(data, dict):
             return data
 
-        masked_data = {}
+        masked_data: dict[Any, Any] = {}
         pattern = self._credential_pattern()
 
         for key, value in data.items():
