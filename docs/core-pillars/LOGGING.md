@@ -257,7 +257,7 @@ A key is masked when a field in `SENSITIVE_FIELDS` sits anywhere in it, case-ins
 
 One matcher decides every case, `scalo.logger.filters.is_credential_name`. Record fields, dicts, message text and Kafka config reprs all call it. A bare `key` or `value` is judged with the name of the mapping or list holding it, so `tls={"key": ...}` and `accepted_headers=[{"values": [...]}]` mask while `partitioner={"key": ...}` does not.
 
-The password in `scheme://user:password@host` is masked up to the last `@` a host follows, so one holding `@`, `/`, `?` or `#` is masked whole. Nothing tells such a password from an `@` later in the path or query, so `https://u:p@host/x?to=ops@example.com` is masked through to `example.com`. `scalo.logger.filters.mask_url_userinfo(text, mask, keep_user=True)` applies the same rule to any string; `keep_user=False` masks the whole `user:password`.
+The password in `scheme://user:password@host` is masked up to the last `@` a host follows, so one holding `@`, `/`, `?` or `#` is masked whole. Nothing tells such a password from an `@` later in the path or query, so `https://u:p@host/x?to=ops@example.com` is masked through to `example.com`. `scalo.logger.filters.mask_url_userinfo(text, mask, keep_user=True)` applies the same rule to any string; `keep_user=False` masks the whole `user:password`. `scalo.logger.filters.url_passwords(text)` returns every non-empty password that call masks, in order, read by the same scanner, so code that checks or refuses a URL password needs no pattern of its own. The scan holds no memory per character of a password.
 
 | Shape | Input | Output |
 |-------|-------|--------|

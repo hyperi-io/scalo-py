@@ -27,11 +27,11 @@ from loguru import logger
 from scalo.kafka.config import mask_credentials
 from scalo.logger.filters import (
     _MAX_WRAPPER_LEN,
-    _URL_USERINFO_RE,
     MASK_VALUE,
     SensitiveDataFilter,
     _Wrappers,
     mask_url_userinfo,
+    url_passwords,
 )
 from scalo.logger.logger import setup
 from scalo.logger.scrub import FieldNameScrubber, build_scrubber
@@ -725,7 +725,7 @@ def test_a_long_line_is_read_in_linear_time(text):
     assert elapsed < 2.0
 
 
-# Reads the password one character at a time: the same matches, at a stack frame per character.
+# The per-character pattern that defines which URL passwords are masked, at a stack frame per character.
 _PER_CHARACTER_URL_USERINFO_RE = re.compile(
     r"(?P<head>://[^\s:/@]*:)(?P<password>(?:(?!://)\S)*)(?=@[^\s@/?#]*(?:[/?#\s]|\Z))"
 )
@@ -733,11 +733,16 @@ _PER_CHARACTER_URL_USERINFO_RE = re.compile(
 _CORPUS_PATH = Path(__file__).resolve().parents[1] / "fixtures" / "patterns" / "credential_masking_parity.json"
 
 
-def _url_matches(pattern: re.Pattern[str], text: str) -> list[tuple]:
-    return [(found.span(), found.span("head"), found.span("password")) for found in pattern.finditer(text)]
+def _per_character_mask(text: str, mask: str, *, keep_user: bool) -> str:
+    """Mask URL passwords with the per-character pattern."""
+    if keep_user:
+        return _PER_CHARACTER_URL_USERINFO_RE.sub(
+            lambda found: found["head"] + mask if found["password"] else found[0], text
+        )
+    return _PER_CHARACTER_URL_USERINFO_RE.sub(lambda _found: "://" + mask, text)
 
 
-def test_the_password_pattern_matches_what_a_per_character_read_matches():
+def test_the_url_scanner_masks_and_lists_what_the_per_character_pattern_matches():
     corpus = json.loads(_CORPUS_PATH.read_text(encoding="utf-8"))
     texts = [
         case["input"].replace("{pw}", "p" + "@" + SECRET).replace("{secret}", SECRET)
@@ -746,21 +751,32 @@ def test_the_password_pattern_matches_what_a_per_character_read_matches():
     ]
     rng = random.Random(31)
     alphabet = [":", ":", ":", "/", "/", "/", "@", "@", "@", " ", "\t", "\n", "?", "#", "a", "B", "1", ".", "\\", "://"]
-    texts += ["".join(rng.choices(alphabet, k=rng.randint(0, 30))) for _ in range(20_000)]
+    texts += ["".join(rng.choices(alphabet, k=rng.randint(0, 30))) for _ in range(100_000)]
 
     for text in texts:
-        assert _url_matches(_URL_USERINFO_RE, text) == _url_matches(_PER_CHARACTER_URL_USERINFO_RE, text), repr(text)
+        passwords = [found["password"] for found in _PER_CHARACTER_URL_USERINFO_RE.finditer(text) if found["password"]]
+        assert url_passwords(text) == passwords, repr(text)
+        assert mask_url_userinfo(text, "***") == _per_character_mask(text, "***", keep_user=True), repr(text)
+        assert mask_url_userinfo(text, "***", keep_user=False) == _per_character_mask(text, "***", keep_user=False)
 
 
-@pytest.mark.parametrize("filler", ["@", "x"])
+def test_url_passwords_lists_each_password_in_order():
+    line = f"a://u:{SECRET}@h1 b://v:@h2 c://w:p@ss/x@h3/path d://git@h4"
+
+    assert url_passwords(line) == [SECRET, "p@ss/x"]
+
+
+@pytest.mark.parametrize("filler", ["@", "x", ":"])
 def test_a_10m_character_password_holds_no_memory_per_character(filler):
     pytest.importorskip("resource")
     script = (
         "import resource\n"
-        "from scalo.logger.filters import mask_url_userinfo\n"
+        "from scalo.logger.filters import mask_url_userinfo, url_passwords\n"
         f"text = '://a:' + {filler!r} * 10_240_000\n"
         "before = resource.getrusage(resource.RUSAGE_SELF).ru_maxrss\n"
         "mask_url_userinfo(text)\n"
+        "mask_url_userinfo(text, keep_user=False)\n"
+        "url_passwords(text)\n"
         "print(resource.getrusage(resource.RUSAGE_SELF).ru_maxrss - before)\n"
     )
 

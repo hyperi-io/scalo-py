@@ -15,6 +15,7 @@ deterministic field-name regex filter.
   hold a credential", used by every masking path in scalo.
 - :func:`mask_url_userinfo`: masks the password of every
   ``scheme://user:password@host`` in a string.
+- :func:`url_passwords`: lists the URL passwords that masker would mask.
 - :class:`SensitiveDataFilter`: masks by field name in text and dicts
   (``password=...``, ``"token":"..."``, bearer tokens, URL userinfo).
 - :class:`RateLimitFilter`: suppress repeated log messages from
@@ -33,7 +34,7 @@ import re
 import time
 import warnings
 from collections import defaultdict
-from collections.abc import Iterable
+from collections.abc import Iterable, Iterator
 from typing import Any
 
 from .secrets_leak import SecretsLeakFilter
@@ -137,11 +138,10 @@ _BARE_NAMES = frozenset({"key", "keys", "value", "values"})
 # Matches nothing, for a term set with no spelling in it.
 _NEVER = re.compile(r"(?!)")
 
-# The password runs to the last `@` a host follows, and stops at whitespace or `://` so a long line scans in linear time.
-# Its runs between colons are single-class repeats, which hold no stack frame, so memory grows with a password's colons, not its length.
-_URL_USERINFO_RE = re.compile(
-    r"(?P<head>://[^\s:/@]*:)(?P<password>[^\s:]*(?::(?!//)[^\s:]*)*)(?=@[^\s@/?#]*(?:[/?#\s]|\Z))"
-)
+# Where a URL's user ends, since it holds no whitespace, `:`, `/` or `@`.
+_URL_USER_END_RE = re.compile(r"[\s:/@]")
+# Where a URL's password run ends: whitespace, or the next `://`.
+_URL_RUN_END_RE = re.compile(r"\s|://")
 _BEARER_RE = re.compile(r"\bbearer\s+([^\s]+)", re.IGNORECASE)
 
 # A key in text: a run of name characters no other name character precedes, then an optional closing quote.
@@ -255,9 +255,55 @@ def mask_url_userinfo(text: str, mask: str = MASK_VALUE, *, keep_user: bool = Tr
     Returns:
         ``text`` with every URL password masked.
     """
-    if keep_user:
-        return _URL_USERINFO_RE.sub(lambda found: found["head"] + mask if found["password"] else found[0], text)
-    return _URL_USERINFO_RE.sub(lambda _found: "://" + mask, text)
+    out: list[str] = []
+    copied = 0
+    for head, colon, at in _url_userinfo(text):
+        if not keep_user:
+            out.append(text[copied:head] + "://" + mask)
+            copied = at
+        elif at > colon + 1:
+            out.append(text[copied : colon + 1] + mask)
+            copied = at
+    out.append(text[copied:])
+    return "".join(out)
+
+
+def url_passwords(text: str) -> list[str]:
+    """Return every non-empty URL password in ``text``, in order, as :func:`mask_url_userinfo` masks them.
+
+    Both read the text with one scanner, so a password listed here is exactly
+    one the masker replaces.
+
+    Args:
+        text: Any text: a log line, an error message, a config value.
+
+    Returns:
+        The password of each ``scheme://user:password@host``, left to right.
+    """
+    return [text[colon + 1 : at] for _head, colon, at in _url_userinfo(text) if at > colon + 1]
+
+
+def _url_userinfo(text: str) -> Iterator[tuple[int, int, int]]:
+    """Yield where the ``://``, the ``:`` ending the user, and the ``@`` ending the password sit, for each URL.
+
+    The password runs from the user's ``:`` to the last ``@`` before
+    whitespace or the next ``://``; a host always follows that ``@``. The next
+    URL is looked for from that ``@``. Each part is found with a string search
+    or a single-class pattern, so the scan holds no memory per character and
+    costs linear time.
+    """
+    head = text.find("://")
+    while head != -1:
+        user_end = _URL_USER_END_RE.search(text, head + 3)
+        colon = user_end.start() if user_end else len(text)
+        if text.startswith(":", colon):
+            run_end = _URL_RUN_END_RE.search(text, colon + 1)
+            at = text.rfind("@", colon + 1, run_end.start() if run_end else len(text))
+            if at != -1:
+                yield head, colon, at
+                head = text.find("://", at)
+                continue
+        head = text.find("://", head + 1)
 
 
 class _Wrappers:
