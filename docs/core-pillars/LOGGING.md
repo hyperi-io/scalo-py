@@ -257,7 +257,7 @@ A key is masked when a field in `SENSITIVE_FIELDS` sits anywhere in it, case-ins
 
 One matcher decides every case, `scalo.logger.filters.is_credential_name`. Record fields, dicts, message text and Kafka config reprs all call it. A bare `key` or `value` is judged with the name of the mapping or list holding it, so `tls={"key": ...}` and `accepted_headers=[{"values": [...]}]` mask while `partitioner={"key": ...}` does not.
 
-The password in `scheme://user:password@host` is masked up to the last `@` a host follows, so one holding `@`, `/`, `?` or `#` is masked whole. Nothing tells such a password from an `@` later in the path or query, so `https://u:p@host/x?to=ops@example.com` is masked through to `example.com`. `scalo.logger.filters.mask_url_userinfo(text, mask, keep_user=True)` applies the same rule to any string; `keep_user=False` masks the whole `user:password`.
+The password in `scheme://user:password@host` is masked up to the last `@` a host follows, so one holding `@`, `/`, `?` or `#` is masked whole. Nothing tells such a password from an `@` later in the path or query, so `https://u:p@host/x?to=ops@example.com` is masked through to `example.com`. `scalo.logger.filters.mask_url_userinfo(text, mask, keep_user=True)` applies the same rule to any string; `keep_user=False` masks the whole `user:password`. `scalo.logger.filters.url_passwords(text)` returns every non-empty password that call masks, in order, read by the same scanner, so code that checks or refuses a URL password needs no pattern of its own. The scan holds no memory per character of a password.
 
 | Shape | Input | Output |
 |-------|-------|--------|
@@ -268,6 +268,10 @@ The password in `scheme://user:password@host` is masked up to the last `@` a hos
 | YAML, HTTP header | `x-auth-token: abc` | `x-auth-token: ***REDACTED***` |
 
 A quoted value after `=`, or a single-quoted one after `:`, is masked whole with its quotes. A double-quoted JSON value keeps its quotes so the line stays valid JSON. A quoted value runs to the first quote no backslash escapes, so `password="a\"b"` and `{"password": "a\"b"}` are masked whole; one with no such quote is masked to its next quote. Whitespace around `=` never crosses a line, and `==` and `=>` are not read as assignments.
+
+A `Name(...)` value, as a Rust `Debug` dump or a Python repr writes one, is masked whole up to its closing parenthesis, so `db_password: Some("a b")` and `token=Token(value='a b')` leave nothing of the value behind. Parentheses nest, and a quoted string inside may hold `)` and span lines. A value longer than 4096 UTF-8 bytes, or one that never closes, is read as unquoted text.
+
+These rules are checked against scalo-rs's credential-masking corpus, vendored as `tests/fixtures/patterns/credential_masking_parity.json`, so scalo-py and scalo-rs mask the same text the same way.
 
 The legacy `SensitiveDataFilter` in `logger.filters` ships the L2
 field set as a backwards-compatible shim. Add custom fields with

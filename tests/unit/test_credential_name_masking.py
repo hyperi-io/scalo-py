@@ -13,8 +13,11 @@ Every value is built at runtime, so no secret-shaped literal sits in source.
 
 import json
 import random
+import re
+import subprocess
 import sys
 import time
+from pathlib import Path
 
 import pytest
 from common.fake_secrets import opaque_secret
@@ -22,7 +25,14 @@ from common.log_capture import LOGGER_ENV_VARS, StreamDouble, preserved_stdlib_l
 from loguru import logger
 
 from scalo.kafka.config import mask_credentials
-from scalo.logger.filters import MASK_VALUE, SensitiveDataFilter, mask_url_userinfo
+from scalo.logger.filters import (
+    _MAX_WRAPPER_LEN,
+    MASK_VALUE,
+    SensitiveDataFilter,
+    _Wrappers,
+    mask_url_userinfo,
+    url_passwords,
+)
 from scalo.logger.logger import setup
 from scalo.logger.scrub import FieldNameScrubber, build_scrubber
 
@@ -456,6 +466,99 @@ def test_a_long_line_of_backslashes_and_quotes_is_masked_in_linear_time(text):
     assert elapsed < 2.0
 
 
+# ---------------------------------------------------------------------------
+# Name(...) values through L2
+# ---------------------------------------------------------------------------
+
+
+def _reference_wrapper_end(text: str, start: int) -> int | None:
+    """Find the end of the ``Name(...)`` value at ``start`` one character at a time, as a check on the masker.
+
+    The name is an ASCII letter or ``_`` then letters, digits or ``_``. The
+    scan counts parentheses, skips a quoted string past its backslash escapes
+    across lines, and gives up at an unclosed string or 4096 UTF-8 bytes on.
+    """
+    if start >= len(text) or not (text[start].isascii() and (text[start].isalpha() or text[start] == "_")):
+        return None
+    at = start
+    while at < len(text) and text[at].isascii() and (text[at].isalnum() or text[at] == "_"):
+        at += 1
+    if at == len(text) or text[at] != "(":
+        return None
+    limit = start
+    used = 0
+    while limit < len(text) and used + len(text[limit].encode("utf-8", "surrogatepass")) <= _MAX_WRAPPER_LEN:
+        used += len(text[limit].encode("utf-8", "surrogatepass"))
+        limit += 1
+    depth = 0
+    while at < limit:
+        char = text[at]
+        if char == "(":
+            depth += 1
+        elif char == ")":
+            depth -= 1
+            if depth == 0:
+                return at + 1
+        elif char in "\"'":
+            at += 1
+            while at < limit and text[at] != char:
+                at += 2 if text[at] == "\\" else 1
+            if at >= limit:
+                return None
+        at += 1
+    return None
+
+
+def test_a_wrapped_value_ends_where_a_character_scan_ends_it():
+    rng = random.Random(23)
+    alphabet = ["a", "_", "(", "(", ")", ")", '"', '"', "'", "'", "\\", "\\", " ", "\n", "x(", "é"]
+    for _ in range(5_000):
+        text = "".join(rng.choices(alphabet, k=rng.randint(0, 40)))
+        wrappers = _Wrappers(text)
+        for start in range(len(text)):
+            assert wrappers.end(start) == _reference_wrapper_end(text, start), (text, start)
+
+
+@pytest.mark.parametrize(
+    ("value", "whole"),
+    [
+        pytest.param("f(" + "a " * 2046 + "b)", True, id="4096-bytes"),
+        pytest.param("f(" + "a " * 2046 + "bc)", False, id="4097-bytes"),
+        pytest.param("f(" + "é " * 1364 + "a)", True, id="4096-bytes-two-byte-characters"),
+        pytest.param("f(" + "é " * 1364 + "ab)", False, id="4097-bytes-two-byte-characters"),
+    ],
+)
+def test_a_wrapped_value_is_read_whole_up_to_4096_bytes(value, whole):
+    # Past the window the value is read as unquoted text, which stops at the first space.
+    unquoted = value[: value.index(" ")]
+    expected = f"token={MASK_VALUE} next" if whole else f"token={MASK_VALUE}{value[len(unquoted) :]} next"
+
+    assert FieldNameScrubber().scrub(f"token={value} next") == expected
+    assert _Wrappers(value).end(0) == (len(value) if whole else None)
+
+
+@pytest.mark.parametrize(
+    "text",
+    [
+        pytest.param("password: f(" * 20_000, id="unclosed-heads"),
+        pytest.param("pin: f((x) " * 18_000, id="unbalanced-heads"),
+        pytest.param("pin: f(\\' " * 20_000, id="escaped-quote-heads"),
+        pytest.param('pin: f("\\"' * 20_000, id="string-chain-heads"),
+        pytest.param("token=Some(" + "(" * 200_000, id="deep-nesting"),
+        pytest.param("token=f(" + '"a" ' * 50_000 + ")", id="many-strings"),
+        pytest.param("token=" + "a(" * 100_000, id="nested-names"),
+        pytest.param("token=Some(a) " * 14_000, id="closing-wrappers"),
+    ],
+)
+def test_a_long_line_of_wrapped_values_is_masked_in_linear_time(text):
+    started = time.perf_counter()
+    FieldNameScrubber().scrub(text)
+    elapsed = time.perf_counter() - started
+
+    # A quadratic scan of 200,000 characters takes minutes, so the bound sits far above a linear one.
+    assert elapsed < 2.0
+
+
 @pytest.mark.parametrize(
     ("line", "expected"),
     [
@@ -620,6 +723,77 @@ def test_a_long_line_is_read_in_linear_time(text):
 
     # A quadratic scan of 200,000 characters takes minutes, so the bound sits far above a linear one.
     assert elapsed < 2.0
+
+
+# The per-character pattern that defines which URL passwords are masked, at a stack frame per character.
+_PER_CHARACTER_URL_USERINFO_RE = re.compile(
+    r"(?P<head>://[^\s:/@]*:)(?P<password>(?:(?!://)\S)*)(?=@[^\s@/?#]*(?:[/?#\s]|\Z))"
+)
+
+_CORPUS_PATH = Path(__file__).resolve().parents[1] / "fixtures" / "patterns" / "credential_masking_parity.json"
+
+
+def _per_character_mask(text: str, mask: str, *, keep_user: bool) -> str:
+    """Mask URL passwords with the per-character pattern."""
+    if keep_user:
+        return _PER_CHARACTER_URL_USERINFO_RE.sub(
+            lambda found: found["head"] + mask if found["password"] else found[0], text
+        )
+    return _PER_CHARACTER_URL_USERINFO_RE.sub(lambda _found: "://" + mask, text)
+
+
+def test_the_url_scanner_masks_and_lists_what_the_per_character_pattern_matches():
+    corpus = json.loads(_CORPUS_PATH.read_text(encoding="utf-8"))
+    texts = [
+        case["input"].replace("{pw}", "p" + "@" + SECRET).replace("{secret}", SECRET)
+        for section in ("text_cases", "url_cases")
+        for case in corpus[section]
+    ]
+    rng = random.Random(31)
+    alphabet = [":", ":", ":", "/", "/", "/", "@", "@", "@", " ", "\t", "\n", "?", "#", "a", "B", "1", ".", "\\", "://"]
+    texts += ["".join(rng.choices(alphabet, k=rng.randint(0, 30))) for _ in range(100_000)]
+
+    for text in texts:
+        passwords = [found["password"] for found in _PER_CHARACTER_URL_USERINFO_RE.finditer(text) if found["password"]]
+        assert url_passwords(text) == passwords, repr(text)
+        assert mask_url_userinfo(text, "***") == _per_character_mask(text, "***", keep_user=True), repr(text)
+        assert mask_url_userinfo(text, "***", keep_user=False) == _per_character_mask(text, "***", keep_user=False)
+
+
+def test_url_passwords_lists_each_password_in_order():
+    line = f"a://u:{SECRET}@h1 b://v:@h2 c://w:p@ss/x@h3/path d://git@h4"
+
+    assert url_passwords(line) == [SECRET, "p@ss/x"]
+
+
+@pytest.mark.parametrize("filler", ["@", "x", ":"])
+def test_a_10m_character_password_holds_no_memory_per_character(filler):
+    pytest.importorskip("resource")
+    script = (
+        "import resource\n"
+        "from scalo.logger.filters import mask_url_userinfo, url_passwords\n"
+        f"text = '://a:' + {filler!r} * 10_240_000\n"
+        "before = resource.getrusage(resource.RUSAGE_SELF).ru_maxrss\n"
+        "mask_url_userinfo(text)\n"
+        "mask_url_userinfo(text, keep_user=False)\n"
+        "url_passwords(text)\n"
+        "print(resource.getrusage(resource.RUSAGE_SELF).ru_maxrss - before)\n"
+    )
+
+    result = subprocess.run(
+        [sys.executable, "-c", script],
+        capture_output=True,
+        text=True,
+        encoding="utf-8",
+        errors="replace",
+        check=True,
+        timeout=120,
+    )
+
+    # ru_maxrss counts kilobytes on Linux and bytes on macOS.
+    growth_mb = int(result.stdout) / (1024 * 1024 if sys.platform == "darwin" else 1024)
+    # A stack frame per character costs about 85 bytes each, over 800 MB at this length.
+    assert growth_mb < 100, result.stdout
 
 
 # ---------------------------------------------------------------------------
