@@ -35,8 +35,9 @@ SECTIONS = ("parent_cases", "text_cases", "url_cases", "structured_cases", "coar
 
 
 def _fill(text: str, mask: str = MASK_VALUE) -> str:
-    """Replace the corpus placeholders with the runtime secret and ``mask``."""
-    return text.replace("{pw}", "p" + "@" + SECRET).replace("{secret}", SECRET).replace("{mask}", mask)
+    """Replace the corpus placeholders with the runtime secret, the window filler and ``mask``."""
+    text = text.replace("{pw}", "p" + "@" + SECRET).replace("{secret}", SECRET).replace("{window}", "x" * 4096)
+    return text.replace("{mask}", mask)
 
 
 def _fill_value(value):

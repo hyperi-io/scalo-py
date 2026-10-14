@@ -399,12 +399,20 @@ def _plain_quoted_end(text: str, start: int, *, multiline: bool) -> int | None:
     return close + 1
 
 
+def _line_end(text: str, start: int) -> int:
+    """Return where the line holding ``start`` ends: its line break, or the end of the text."""
+    end = text.find("\n", start)
+    return len(text) if end == -1 else end
+
+
 def _reference_equals(value: str) -> str:
     """Mask ``password=<value>`` by reading the value one character at a time, as a check on the regex."""
     start = len(value) - len(value.lstrip(" \t"))
     end = None
     if value[start : start + 1] in ('"', "'"):
         end = _quoted_end(value, start, multiline=False) or _plain_quoted_end(value, start, multiline=False)
+        if end is None:
+            end = _line_end(value, start)
     if end is None:
         end = start
         while end < len(value) and not value[end].isspace() and value[end] != "&":
@@ -420,11 +428,14 @@ def _reference_colon(value: str) -> str:
     if first == '"':
         end = _quoted_end(value, start, multiline=True) or _plain_quoted_end(value, start, multiline=True)
         if end is None:
-            return head + value
+            # A value that may cross lines and never closes runs to the end of the text, short of a final line break.
+            end = len(value) - 1 if value.endswith("\n") else len(value)
         return head + value[:start] + f'"{MASK_VALUE}"' + value[end:]
     end = None
     if first == "'":
         end = _quoted_end(value, start, multiline=False) or _plain_quoted_end(value, start, multiline=False)
+        if end is None:
+            end = _line_end(value, start)
     if end is None:
         end = start
         while end < len(value) and not value[end].isspace() and value[end] not in ',"}':
@@ -455,6 +466,9 @@ def test_a_quoted_value_is_read_as_a_scanner_reads_it():
         pytest.param('password: "' + 'password: \\"' * 16_000, id="escaped-quote-heads"),
         pytest.param('password="\\" ' * 15_000, id="repeated-equals-heads"),
         pytest.param('"\\' * 100_000, id="no-key"),
+        pytest.param("password: 'a " * 20_000, id="unclosed-single-quote-heads"),
+        pytest.param("password='a\n" * 20_000, id="unclosed-quote-lines"),
+        pytest.param('password: "a \n' * 20_000, id="unclosed-double-quote-lines"),
     ],
 )
 def test_a_long_line_of_backslashes_and_quotes_is_masked_in_linear_time(text):
@@ -471,8 +485,18 @@ def test_a_long_line_of_backslashes_and_quotes_is_masked_in_linear_time(text):
 # ---------------------------------------------------------------------------
 
 
+def _window_limit(text: str, start: int) -> int:
+    """Return the end of the longest run from ``start`` that fits in 4096 UTF-8 bytes."""
+    limit = start
+    used = 0
+    while limit < len(text) and used + len(text[limit].encode("utf-8", "surrogatepass")) <= _MAX_WRAPPER_LEN:
+        used += len(text[limit].encode("utf-8", "surrogatepass"))
+        limit += 1
+    return limit
+
+
 def _reference_wrapper_end(text: str, start: int) -> int | None:
-    """Find the end of the ``Name(...)`` value at ``start`` one character at a time, as a check on the masker.
+    """Find where a pass ends the ``Name(...)`` value at ``start``, one character at a time, as a check on the masker.
 
     The name is an ASCII letter or ``_`` then letters, digits or ``_``. The
     scan counts parentheses, skips a quoted string past its backslash escapes
@@ -485,11 +509,7 @@ def _reference_wrapper_end(text: str, start: int) -> int | None:
         at += 1
     if at == len(text) or text[at] != "(":
         return None
-    limit = start
-    used = 0
-    while limit < len(text) and used + len(text[limit].encode("utf-8", "surrogatepass")) <= _MAX_WRAPPER_LEN:
-        used += len(text[limit].encode("utf-8", "surrogatepass"))
-        limit += 1
+    limit = _window_limit(text, start)
     depth = 0
     while at < limit:
         char = text[at]
@@ -509,14 +529,62 @@ def _reference_wrapper_end(text: str, start: int) -> int | None:
     return None
 
 
+def _escaped_close(text: str, start: int) -> int | None:
+    """Return the first quote matching the one at ``start`` that no backslash escapes, anywhere after it."""
+    at = start + 1
+    while at < len(text):
+        if text[at] == "\\":
+            at += 2
+            continue
+        if text[at] == text[start]:
+            return at
+        at += 1
+    return None
+
+
+def _reference_wrapper_reach(text: str, start: int, never: int) -> int | None:
+    """Find how far the ``Name(...)`` value at ``start`` runs, one character at a time, as a check on the masker.
+
+    The name is ASCII letters, digits or ``_``. A string closes at its first
+    quote no backslash escapes or, with none in the rest of the text, at its
+    next quote. The value runs to its close, or to ``never`` when that close,
+    or a string's, lies past 4096 UTF-8 bytes on or nowhere.
+    """
+    at = start
+    while at < len(text) and text[at].isascii() and (text[at].isalnum() or text[at] == "_"):
+        at += 1
+    if at == start or at == len(text) or text[at] != "(":
+        return None
+    limit = _window_limit(text, start)
+    depth = 0
+    while at < limit:
+        char = text[at]
+        if char == "(":
+            depth += 1
+        elif char == ")":
+            depth -= 1
+            if depth == 0:
+                return at + 1
+        elif char in "\"'":
+            close = _escaped_close(text, at)
+            if close is None:
+                close = text.find(char, at + 1)
+            if close == -1 or close >= limit:
+                return never
+            at = close
+        at += 1
+    return never
+
+
 def test_a_wrapped_value_ends_where_a_character_scan_ends_it():
     rng = random.Random(23)
-    alphabet = ["a", "_", "(", "(", ")", ")", '"', '"', "'", "'", "\\", "\\", " ", "\n", "x(", "é"]
+    alphabet = ["a", "_", "1", "(", "(", ")", ")", '"', '"', "'", "'", "\\", "\\", " ", "\n", "x(", "é"]
     for _ in range(5_000):
         text = "".join(rng.choices(alphabet, k=rng.randint(0, 40)))
         wrappers = _Wrappers(text)
         for start in range(len(text)):
-            assert wrappers.end(start) == _reference_wrapper_end(text, start), (text, start)
+            expected = (_reference_wrapper_end(text, start), _reference_wrapper_reach(text, start, -1))
+            assert wrappers.read(start, -1) == expected, (text, start)
 
 
 @pytest.mark.parametrize(
@@ -529,12 +597,11 @@ def test_a_wrapped_value_ends_where_a_character_scan_ends_it():
     ],
 )
 def test_a_wrapped_value_is_read_whole_up_to_4096_bytes(value, whole):
-    # Past the window the value is read as unquoted text, which stops at the first space.
-    unquoted = value[: value.index(" ")]
-    expected = f"token={MASK_VALUE} next" if whole else f"token={MASK_VALUE}{value[len(unquoted) :]} next"
+    # Past the window the value never closes, so it is masked to the end of the text.
+    expected = f"token={MASK_VALUE} next" if whole else f"token={MASK_VALUE}"
 
     assert FieldNameScrubber().scrub(f"token={value} next") == expected
-    assert _Wrappers(value).end(0) == (len(value) if whole else None)
+    assert _Wrappers(value).read(0, -1) == ((len(value), len(value)) if whole else (None, -1))
 
 
 @pytest.mark.parametrize(
@@ -548,6 +615,9 @@ def test_a_wrapped_value_is_read_whole_up_to_4096_bytes(value, whole):
         pytest.param("token=f(" + '"a" ' * 50_000 + ")", id="many-strings"),
         pytest.param("token=" + "a(" * 100_000, id="nested-names"),
         pytest.param("token=Some(a) " * 14_000, id="closing-wrappers"),
+        pytest.param('token=Some("\\" ' * 15_000, id="escaped-quote-wrappers"),
+        pytest.param("token=1(\n" * 25_000, id="unclosed-wrapper-lines"),
+        pytest.param("pin: f(\\' x) " * 16_000, id="escaped-quote-closing-wrappers"),
     ],
 )
 def test_a_long_line_of_wrapped_values_is_masked_in_linear_time(text):
