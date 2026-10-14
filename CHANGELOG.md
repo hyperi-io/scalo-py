@@ -3,6 +3,12 @@
 Rendered by CI and committed back at the end of a release -- do not edit by
 hand. Release notes also appear on the GitHub Releases page, one per tag.
 
+## [2.31.12](https://github.com/hyperi-io/scalo-py/compare/v2.31.11...v2.31.12) (2026-10-14)
+
+### Bug Fixes
+
+* mask whole URL passwords, narrow pair rule ([#125](https://github.com/hyperi-io/scalo-py/issues/125)) ([6c87c43](https://github.com/hyperi-io/scalo-py/commit/6c87c432f1e9dd0a31fd0a5651e684a6a8813f42)), closes [#124](https://github.com/hyperi-io/scalo-py/issues/124)
+
 ## [2.31.11](https://github.com/hyperi-io/scalo-py/compare/v2.31.10...v2.31.11) (2026-10-14)
 
 ### Bug Fixes
