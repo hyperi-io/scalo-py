@@ -4,6 +4,14 @@ Behaviour and API changes that need a consumer adjustment, indexed by the scalo 
 
 ---
 
+## 2.31.11
+
+### Credential names match by substring, in any spelling (BEHAVIOUR CHANGE)
+
+Log fields, dict keys, `key=value` and `key: value` text, and Kafka config reprs now mask a value whose name holds a sensitive field anywhere in it, the rule scalo-rs uses. Separators and camelCase do not hide one, so `sasl_password`, `x-api-key`, `secretAccessKey` and `PGPASSWORD`, which went out in clear, are masked. `SENSITIVE_FIELDS` is now the union of the scalo-py and scalo-rs lists and the standard's sensitive-field floor, adding `pass`, `pin`, `session`, `private`, `email`, `phone` and qualified keys such as `signing_key`. A URL password holding `@` is masked whole. All of it goes through one matcher, `scalo.logger.filters.is_credential_name`. See [core-pillars/LOGGING.md](core-pillars/LOGGING.md#layer-2-field-name-regex).
+
+**Consumer adjustment** -- expect more masking. A name that only contains a field is masked too: `token_count`, `tokenizer`, `mapping` (`pin`), `author` (`auth`), `session_timeout_ms` (`session`) and `email_count` (`email`). Log a value an operator must read under a name that holds no field. Code that matches a name against `SENSITIVE_FIELDS` itself calls `is_credential_name` instead.
+
 ## 2.31.6
 
 ### scalo writes no Helm chart or ArgoCD Application (API CHANGE)

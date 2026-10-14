@@ -48,7 +48,7 @@ Keyword arguments and `logger.bind()` context are the record's fields, and every
 2026-10-01T20:47:42.256+1000 | WARNING  | app.tls:load:7 - key rejected stderr="openssl: bad key" sigma_id=abc123
 ```
 
-The scrub filter runs on the fields before either format sees them. A sensitive key masks its value at any depth, and so does a sensitive name heading a two-item pair such as `("authorization", "Basic ...")`. Keys and strings are scrubbed at any depth, any other object is rendered with `str()` and then scrubbed, and NaN and the infinities become the strings `"NaN"`, `"Infinity"` and `"-Infinity"`.
+The scrub filter runs on the fields before either format sees them. A key naming a credential masks its value at any depth, and so does such a name heading a two-item pair such as `("authorization", "Basic ...")`. A name is a credential by the rule in [Layer 2](#layer-2-field-name-regex). Keys and strings are scrubbed at any depth, any other object is rendered with `str()` and then scrubbed, and NaN and the infinities become the strings `"NaN"`, `"Infinity"` and `"-Infinity"`.
 
 The filter never fails the record. A value whose `str()` raises renders as `<unprintable TypeName>`, a reference cycle as `<cycle>`, and nesting past 32 levels as `<depth limit>`. Scrubbing costs about 0.15 ms a string on the caller's thread, so a record scrubs at most 64 keys and strings inside its fields' containers. Past that, the rest of each list becomes `"<elided: N more items>"` and the rest of each dict an `"<elided>"` entry. Top-level fields are never elided.
 
@@ -251,7 +251,11 @@ An id the rule set does not carry raises a `RuntimeWarning` at startup and exclu
 
 ### Layer 2 field-name regex
 
-A listed field masks the value when it ENDS the key and no letter or digit comes before it. So `CARGO_REGISTRY_TOKEN=...` and `JFROG_TOKEN=...` mask on `token`, and `R2_SECRET_ACCESS_KEY=...` on `secret_access_key`. A key that runs on past the field does not match: `token_count=5`, `max_tokens=4096` and `tokenizer` pass through, while `max_token=5` is masked. Matching is case-insensitive.
+A key is masked when a field in `SENSITIVE_FIELDS` sits anywhere in it, case-insensitively, the substring rule scalo-rs applies. The key is also read word by word, so separators and camelCase do not hide a field: `CARGO_REGISTRY_TOKEN=...`, `x-api-key: ...`, `secretAccessKey=...` and `PGPASSWORD=...` all mask. The rule over-masks, and that is accepted: `token_count=5`, `max_tokens=4096`, `tokenizer`, `mapping` (on `pin`) and `author` (on `auth`) are masked too.
+
+One matcher decides every case, `scalo.logger.filters.is_credential_name`. Record fields, dicts, message text and Kafka config reprs all call it. A bare `key` or `value` is judged with the name of the mapping or list holding it, so `tls={"key": ...}` and `accepted_headers=[{"values": [...]}]` mask while `partitioner={"key": ...}` does not.
+
+The password in `scheme://user:password@host` is masked up to the `@` the host follows, so a password holding `@` is masked whole.
 
 | Shape | Input | Output |
 |-------|-------|--------|

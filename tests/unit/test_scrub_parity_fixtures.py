@@ -27,6 +27,7 @@ from pathlib import Path
 import pytest
 
 from scalo.logger.scrub import (
+    FieldsConfig,
     NationalIdsConfig,
     PiiConfig,
     PiiValidatorsConfig,
@@ -59,6 +60,7 @@ def _scrubber_only(*, credit_card=False, iban=False, email=False, phone=False, n
     return build_scrubber(
         ScrubConfig(
             secrets=SecretsConfig(enabled=False),
+            fields=FieldsConfig(enabled=False),
             metrics_enabled=False,  # avoid noise in tests
             pii=PiiConfig(
                 validators=PiiValidatorsConfig(

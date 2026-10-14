@@ -6,7 +6,7 @@
 #  License:   Apache-2.0
 #  Copyright: (c) 2026 HYPERI PTY LIMITED
 
-"""L2 masks a sensitive field wherever it ends a key.
+"""L2 masks a value whose key holds a sensitive field anywhere in it.
 
 Every value is built at runtime, so no secret-shaped literal sits in source.
 """
@@ -46,15 +46,25 @@ SIX_LINES = [
 ]
 
 UNTOUCHED = [
-    pytest.param("token_count=5", id="token-count"),
-    pytest.param("max_tokens=4096", id="max-tokens"),
-    pytest.param("mapping=raw_events->events_load", id="mapping"),
     pytest.param(DEPRECATION_LINE, id="hyperi-ci-deprecation"),
-    pytest.param('{"tokenizer":"whitespace"}', id="tokenizer-json"),
-    pytest.param('{"token_type":"Bearer","expires_in":3600}', id="token-type-json"),
-    pytest.param("oauth=enabled", id="oauth"),
     pytest.param("if token == expected_token:", id="comparison"),
     pytest.param("the password policy requires 12 characters", id="prose"),
+    pytest.param("partition_key=order_id&retries=3", id="unqualified-key"),
+]
+
+# A key that only contains a sensitive field is masked too: the over-masking substring matching costs.
+OVER_MASKED = [
+    pytest.param("token_count=5", f"token_count={MASK_VALUE}", id="token-count"),
+    pytest.param("max_tokens=4096", f"max_tokens={MASK_VALUE}", id="max-tokens"),
+    pytest.param("mapping=raw_events->events_load", f"mapping={MASK_VALUE}", id="mapping"),
+    pytest.param('{"tokenizer":"whitespace"}', f'{{"tokenizer":"{MASK_VALUE}"}}', id="tokenizer-json"),
+    pytest.param(
+        '{"token_type":"Bearer","expires_in":3600}',
+        f'{{"token_type":"{MASK_VALUE}","expires_in":3600}}',
+        id="token-type-json",
+    ),
+    pytest.param("oauth=enabled", f"oauth={MASK_VALUE}", id="oauth"),
+    pytest.param("author: alice", f"author: {MASK_VALUE}", id="author"),
 ]
 
 
@@ -115,8 +125,8 @@ class TestKeyShapes:
     def test_colon_forms(self, line, expected):
         assert FieldNameScrubber().scrub(line) == expected
 
-    def test_field_ending_the_key_masks_whatever_the_value(self):
-        # The rule is the key's last segments, not the value's shape: a count under max_token still goes.
+    def test_field_in_the_key_masks_whatever_the_value(self):
+        # The rule is the key's name, not the value's shape: a count under max_token still goes.
         assert FieldNameScrubber().scrub("max_token=5") == f"max_token={MASK_VALUE}"
 
 
@@ -128,3 +138,9 @@ class TestOrdinaryTextUntouched:
     @pytest.mark.parametrize("line", UNTOUCHED)
     def test_chain_without_generic_api_key_leaves_it(self, line):
         assert build_scrubber(ScrubConfig(secrets=_EXCLUDE_GENERIC)).scrub(line) == line
+
+
+class TestSubstringOverMasking:
+    @pytest.mark.parametrize(("line", "expected"), OVER_MASKED)
+    def test_a_key_containing_a_field_is_masked(self, line, expected):
+        assert FieldNameScrubber().scrub(line) == expected

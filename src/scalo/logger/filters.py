@@ -11,8 +11,10 @@ deterministic field-name regex filter.
 
 **Components:**
 
-- :class:`SensitiveDataFilter`: regex-on-field-names masker
-  (``password=...``, ``"token":"..."``, bearer tokens, DB URLs).
+- :func:`is_credential_name`: the one answer to "does this field name
+  hold a credential", used by every masking path in scalo.
+- :class:`SensitiveDataFilter`: masks by field name in text and dicts
+  (``password=...``, ``"token":"..."``, bearer tokens, URL userinfo).
 - :class:`RateLimitFilter`: suppress repeated log messages from
   tight loops; reports the suppressed-count on the next message.
 
@@ -21,21 +23,25 @@ Use :func:`get_sensitive_filter` for the legacy three-tier selector --
 return the field-name filter.
 """
 
+import functools
 import logging
 import re
 import time
 import warnings
 from collections import defaultdict
+from collections.abc import Iterable
 from typing import Any
 
 from .secrets_leak import SecretsLeakFilter
 
-# Sensitive fields that should be masked in logs
+# A name holding any of these anywhere in it is a credential; scalo-rs masks by the same substring rule.
 SENSITIVE_FIELDS: set[str] = {
     # Passwords
     "password",
     "passwd",
     "pwd",
+    "pass",
+    "passphrase",
     # Tokens
     "token",
     "access_token",
@@ -47,43 +53,190 @@ SENSITIVE_FIELDS: set[str] = {
     # API Keys
     "api_key",
     "apikey",
+    "api-key",
     "api_secret",
     # Secrets
     "secret",
     "client_secret",
     "secret_key",
     "private_key",
+    "privatekey",
     "secret_access_key",
     "aws_secret_access_key",
+    "aws_secret",
+    "access_key",
     "access_key_id",
+    # Keys a qualifying word makes a credential, where `routing_key` is not one
+    "account_key",
+    "azure_key",
+    "client_key",
+    "encryption_key",
+    "gcp_key",
+    "hmac_key",
+    "integration_key",
+    "jwt_key",
+    "licence_key",
+    "license_key",
+    "master_key",
+    "sasl_key",
+    "shared_key",
+    "signing_key",
+    "ssh_key",
+    "ssl_key",
+    "tls_key",
     # Auth
     "authorization",
     "auth",
+    "jaas_config",
+    "header_value",
+    "headers_value",
     # Session
+    "session",
     "session_id",
     "sessionid",
+    "cookie",
+    "csrf",
     # Certificates
     "certificate",
     "cert",
     "ssl_cert",
+    "private",
     # Credentials
+    "credential",
     "credentials",
     "creds",
     # Database
     "db_password",
     "database_password",
     "connection_string",
+    # Personal data
+    "ssn",
+    "tfn",
+    "medicare",
+    "credit_card",
+    "creditcard",
+    "card_number",
+    "cvv",
+    "pin",
+    "email",
+    "phone",
 }
 
 MASK_VALUE = "***REDACTED***"
 
-# Static patterns shared across all SensitiveDataFilter instances.
-# Compiled once at module load instead of per-call to _mask_sensitive_string.
-_DB_URL_RE = re.compile(r"(://[^:/@]*:)([^@]+)(@)")
+# One word of a name: an acronym, a capitalised or lower-case run, or a run of digits.
+_NAME_WORD = re.compile(r"[A-Z]+(?![a-z])|[A-Z]?[a-z]+|[0-9]+")
+
+# A name that says nothing until its parent qualifies it, as `tls` does `key`.
+_BARE_NAMES = frozenset({"key", "keys", "value", "values"})
+
+# Matches nothing, for a term set with no spelling in it.
+_NEVER = re.compile(r"(?!)")
+
+# The password in `scheme://user:password@host`: it runs to the `@` the host follows, so one holding `@` goes whole.
+# It stops at the next `://`, so each scan ends where the next starts and a long line costs linear time.
+_URL_USERINFO_RE = re.compile(r"(://[^\s:/@]*:)(?:(?!://)\S)+?(?=@[^\s@/?#]*(?:[/?#\s]|$))")
 _BEARER_RE = re.compile(r"\bbearer\s+([^\s]+)", re.IGNORECASE)
 
-# A sensitive name may follow `_`, `-`, `.`, a quote or whitespace, never a letter or digit.
-_NAME_START = r"(?<![A-Za-z0-9])"
+# A key in text: a run of name characters no other name character precedes, then an optional closing quote.
+_TEXT_KEY = r"(?<![A-Za-z0-9_.\-])(?P<key>[A-Za-z0-9_.\-]+)[\"']?"
+_COLON_HEAD_RE = re.compile(rf"{_TEXT_KEY}\s*:\s*")
+_EQUALS_HEAD_RE = re.compile(rf"{_TEXT_KEY}[ \t]*=(?![=>])[ \t]*")
+# An unquoted value runs on across a space into a group that starts with a digit, so `TFN: 123 456 782` goes whole.
+_DIGIT_GROUPS = r"(?:[ ][(+]?[0-9]{chars}*)*"
+# `key: "value"` (JSON): the quotes stay so the line is still valid JSON
+_JSON_VALUE_RE = re.compile(r'"[^"]*"')
+# `key: 'value'` (Python repr) or `key: value` (YAML, headers)
+_COLON_VALUE_RE = re.compile(r"""'[^'\n]*'|[^\s,"}]+""" + _DIGIT_GROUPS.format(chars=r"""[^\s,"}]""") + r"(?=[\s,}]|$)")
+# `key=value` (env, form data, TOML, INI): a quoted value goes whole, quotes included
+_EQUALS_VALUE_RE = re.compile(r""""[^"\n]*"|'[^'\n]*'|[^\s&]*""" + _DIGIT_GROUPS.format(chars=r"[^\s&]"))
+
+
+def _spellings(name: str) -> tuple[str, str]:
+    """Return ``name`` lower-cased as written, and as its words joined by ``_``.
+
+    The second form reads ``secretAccessKey``, ``x-api-key`` and ``ssl.key.pem``
+    as ``secret_access_key``, ``x_api_key`` and ``ssl_key_pem``.
+    """
+    return name.lower(), "_".join(_NAME_WORD.findall(name)).lower()
+
+
+@functools.lru_cache(maxsize=64)
+def _term_pattern(terms: frozenset[str]) -> re.Pattern[str]:
+    """Compile one alternation over both spellings of every term."""
+    spellings = {spelling for term in terms for spelling in _spellings(term) if spelling}
+    if not spellings:
+        return _NEVER
+    return re.compile("|".join(re.escape(spelling) for spelling in sorted(spellings)))
+
+
+def _names_credential(name: str, parent: str, pattern: re.Pattern[str]) -> bool:
+    """Return whether ``name``, held under ``parent``, carries a term ``pattern`` matches."""
+    lower, joined = _spellings(name)
+    if parent and joined in _BARE_NAMES:
+        lower, joined = _spellings(f"{parent}_{name}")
+    return bool(pattern.search(lower) or pattern.search(joined))
+
+
+def is_credential_name(name: str, parent: str = "", *, extra: Iterable[str] = ()) -> bool:
+    """Return whether a field called ``name`` holds a credential.
+
+    A name is a credential when one of :data:`SENSITIVE_FIELDS`, or a field added
+    with :meth:`SensitiveDataFilter.add_sensitive_fields`, sits anywhere in it,
+    case-insensitively. Separators and case changes do not hide a term, so
+    ``db_password``, ``PGPASSWORD``, ``x-api-key`` and ``secretAccessKey`` all
+    match. A name that merely contains a term matches too: ``tokenizer`` and
+    ``mapping`` are masked, the same over-masking scalo-rs accepts.
+
+    Args:
+        name: The field name as the record, dict or config spells it.
+        parent: The name of the mapping or list holding the field. It counts
+            only for a bare ``key`` or ``value``, so a ``key`` under ``tls``
+            is a credential and one under ``kafka`` is not.
+        extra: Further terms for this call only.
+
+    Returns:
+        True when the value under ``name`` must be masked.
+    """
+    return _names_credential(name, parent, _credential_pattern(extra))
+
+
+def _credential_pattern(extra: Iterable[str] = ()) -> re.Pattern[str]:
+    """Return the matcher for the default terms, every globally added field and ``extra``."""
+    terms = SensitiveDataFilter._custom_fields | {term.lower() for term in extra}
+    return _term_pattern(frozenset(SENSITIVE_FIELDS | terms))
+
+
+def _mask_pairs(
+    text: str,
+    head_re: re.Pattern[str],
+    values: tuple[tuple[re.Pattern[str], str], ...],
+    pattern: re.Pattern[str],
+) -> str:
+    """Mask the value after every ``head_re`` key that names a credential.
+
+    Only a credential key's value is consumed, so a key inside another pair's
+    value, as in ``config:password:x``, is still judged. ``values`` pairs a
+    value shape with what replaces it, tried in order.
+    """
+    out: list[str] = []
+    pos = 0
+    for head in head_re.finditer(text):
+        if head.start() < pos or not _names_credential(head["key"], "", pattern):
+            continue
+        for value_re, replacement in values:
+            value = value_re.match(text, head.end())
+            if value is not None:
+                out.append(text[pos : head.end()])
+                out.append(replacement)
+                pos = value.end()
+                break
+    out.append(text[pos:])
+    return "".join(out)
+
+
+_COLON_VALUES = ((_JSON_VALUE_RE, f'"{MASK_VALUE}"'), (_COLON_VALUE_RE, MASK_VALUE))
+_EQUALS_VALUES = ((_EQUALS_VALUE_RE, MASK_VALUE),)
 
 
 class SensitiveDataFilter(logging.Filter):
@@ -100,7 +253,8 @@ class SensitiveDataFilter(logging.Filter):
        On by default at ``level="full"``; opt-down via config to
        ``"lite"`` or ``"off"``.
     2. **Field-name regex** (this class) -- ``password=...``,
-       ``"token":"..."``, bearer tokens, DB URLs.
+       ``"token":"..."``, bearer tokens, URL passwords. A field name
+       is judged by :func:`is_credential_name`.
 
     For PII-value detection (emails, phones, credit cards, national
     IDs, etc.) use the newer ``scalo.logger.scrub`` pipeline,
@@ -134,44 +288,10 @@ class SensitiveDataFilter(logging.Filter):
         super().__init__()
         self._instance_fields = extra_fields or set()
         self._secrets_leak = secrets_leak
-        # Pre-compile per-field patterns once. Cache invalidates when
-        # the global SENSITIVE_FIELDS or _custom_fields set changes,
-        # since _build_field_patterns reads them at call time.
-        self._field_patterns_cache: tuple[set[str], list[tuple[re.Pattern, str]]] | None = None
 
-    def _build_field_patterns(self) -> list[tuple[re.Pattern, str]]:
-        """Return cached (pattern, replacement) pairs for all sensitive fields.
-
-        Rebuilds if the underlying field set changed (e.g. caller invoked
-        ``add_sensitive_fields`` between log lines).
-        """
-        fields = self._get_all_sensitive_fields()
-        if self._field_patterns_cache is not None and self._field_patterns_cache[0] == fields:
-            return self._field_patterns_cache[1]
-
-        pairs: list[tuple[re.Pattern, str]] = []
-        for field in fields:
-            # The field must END the key: CARGO_REGISTRY_TOKEN matches `token`, token_count does not.
-            key = rf"{_NAME_START}{field}[\"']?"
-            # `key: "value"` (JSON): the quotes stay so the line is still valid JSON
-            pairs.append((re.compile(rf'({key}\s*:\s*)"[^"]*"', re.IGNORECASE), rf'\1"{MASK_VALUE}"'))
-            # `key: 'value'` (Python repr) or `key: value` (YAML, headers)
-            pairs.append(
-                (
-                    re.compile(rf"""({key}\s*:\s*)(?:'[^'\n]*'|[^\s,"}}]+(?=[\s,}}]|$))""", re.IGNORECASE),
-                    rf"\1{MASK_VALUE}",
-                )
-            )
-            # `key=value` (env, form data, TOML, INI): a quoted value goes whole, quotes included
-            pairs.append(
-                (
-                    re.compile(rf"""({key}[ \t]*=(?![=>])[ \t]*)(?:"[^"\n]*"|'[^'\n]*'|[^\s&]*)""", re.IGNORECASE),
-                    rf"\1{MASK_VALUE}",
-                )
-            )
-
-        self._field_patterns_cache = (fields, pairs)
-        return pairs
+    def _credential_pattern(self) -> re.Pattern[str]:
+        """Return the credential-name matcher for this filter's fields, global and per-instance."""
+        return _term_pattern(frozenset(self._get_all_sensitive_fields()))
 
     @classmethod
     def add_sensitive_fields(cls, fields: set[str]) -> None:
@@ -212,14 +332,14 @@ class SensitiveDataFilter(logging.Filter):
 
         return True
 
-    def _mask_value(self, value: Any) -> Any:
-        """Mask a single value based on its type."""
+    def _mask_value(self, value: Any, parent: str = "") -> Any:
+        """Mask a single value based on its type; ``parent`` names the mapping or list holding it."""
         if isinstance(value, str):
             return self._mask_sensitive_string(value)
         elif isinstance(value, dict):
-            return self._mask_sensitive_dict(value)
+            return self._mask_sensitive_dict(value, parent)
         elif isinstance(value, (list, tuple)):
-            return type(value)(self._mask_value(item) for item in value)
+            return type(value)(self._mask_value(item, parent) for item in value)
         return value
 
     def _mask_sensitive_string(self, text: str) -> str:
@@ -232,11 +352,11 @@ class SensitiveDataFilter(logging.Filter):
         - Python repr: `'field': 'value'`
         - Key-value pairs: `field: value` or `field=value`
         - Env, TOML and INI: `PREFIX_FIELD=value`, `field = "value"`
-        - Database URLs: `://user:password@host`
+        - URL userinfo: `://user:password@host`
 
-        A field matches when it ends the key and is not preceded by a
-        letter or digit, so `CARGO_REGISTRY_TOKEN` and `x-auth-token`
-        match `token` while `token_count` and `tokenizer` do not.
+        A key is masked when :func:`is_credential_name` says so, so
+        `CARGO_REGISTRY_TOKEN`, `x-api-key` and `secretAccessKey` are masked,
+        and so are `token_count` and `tokenizer`.
 
         Runs the secrets-leak scrubber first (if configured), then
         applies the field-name regex pass.
@@ -254,22 +374,21 @@ class SensitiveDataFilter(logging.Filter):
         if self._secrets_leak is not None:
             text = self._secrets_leak.scrub(text)
 
-        # DB URLs: postgres://user:secret@host -> postgres://user:***@host
-        masked = _DB_URL_RE.sub(rf"\1{MASK_VALUE}\3", text)
-        # Bearer tokens
+        masked = _URL_USERINFO_RE.sub(rf"\1{MASK_VALUE}", text)
         masked = _BEARER_RE.sub(f"bearer {MASK_VALUE}", masked)
-        # Per-field patterns (pre-compiled, cached on instance)
-        for pattern, repl in self._build_field_patterns():
-            masked = pattern.sub(repl, masked)
+        pattern = self._credential_pattern()
+        masked = _mask_pairs(masked, _COLON_HEAD_RE, _COLON_VALUES, pattern)
+        return _mask_pairs(masked, _EQUALS_HEAD_RE, _EQUALS_VALUES, pattern)
 
-        return masked
-
-    def _mask_sensitive_dict(self, data: dict[str, Any]) -> dict[str, Any]:
+    def _mask_sensitive_dict(self, data: dict[Any, Any], parent: str = "") -> dict[Any, Any]:
         """
         Recursively mask sensitive fields in a dictionary.
 
         Args:
-            data: Dictionary potentially containing sensitive fields
+            data: Dictionary potentially containing sensitive fields; a
+                key that is not a string is judged by its ``str()``
+            parent: Name of the mapping or list holding ``data``, which
+                qualifies a bare ``key`` or ``value`` in it
 
         Returns:
             New dictionary with sensitive fields masked
@@ -277,19 +396,19 @@ class SensitiveDataFilter(logging.Filter):
         if not isinstance(data, dict):
             return data
 
-        masked_data = {}
-        fields = self._get_all_sensitive_fields()
+        masked_data: dict[Any, Any] = {}
+        pattern = self._credential_pattern()
 
         for key, value in data.items():
-            if key.lower() in fields:
+            name = str(key)
+            if _names_credential(name, parent, pattern):
                 # Mask this field entirely
                 masked_data[key] = MASK_VALUE
             elif isinstance(value, dict):
-                # Recursively mask nested dictionaries
-                masked_data[key] = self._mask_sensitive_dict(value)
+                masked_data[key] = self._mask_sensitive_dict(value, name)
             elif isinstance(value, (list, tuple)):
-                # Handle lists/tuples
-                masked_data[key] = type(value)(self._mask_value(item) for item in value)
+                # An entry is judged under the list's own name
+                masked_data[key] = type(value)(self._mask_value(item, name) for item in value)
             elif isinstance(value, str):
                 # Mask sensitive patterns in strings
                 masked_data[key] = self._mask_sensitive_string(value)

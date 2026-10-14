@@ -19,39 +19,31 @@ Supports loading configuration from common file formats:
 - .ini - INI format with [kafka] section
 """
 
-from __future__ import annotations
-
 import configparser
 import json
 import os
 from pathlib import Path
 from typing import Any, Literal
 
-# librdkafka config keys whose VALUES are credentials. Any repr/dump of
-# a config dict must replace these with a sentinel before emission.
-_CREDENTIAL_KEYS: frozenset[str] = frozenset(
-    {
-        "sasl.password",
-        "sasl.username",
-        "ssl.key.password",
-        "ssl.keystore.password",
-        "ssl.truststore.password",
-        "schema.registry.basic.auth.user.info",
-        "schema.registry.ssl.key.password",
-    }
-)
+from scalo.logger.filters import is_credential_name
+
+# Masked on top of the shared credential names: the SASL username names the account a leaked password opens.
+_ALSO_MASKED: tuple[str, ...] = ("sasl.username",)
 
 
 def mask_credentials(config: dict[str, Any]) -> dict[str, Any]:
     """Return a copy of ``config`` with credential values masked.
 
     Use when emitting a Kafka client config to logs, repr, or any
-    other surface a human or aggregator might read. The original dict
-    is not mutated.
+    other surface a human or aggregator might read. A key is a
+    credential when :func:`~scalo.logger.filters.is_credential_name`
+    says so: ``sasl.password``, ``ssl.key.pem`` and
+    ``sasl.oauthbearer.client.secret`` all are. The original dict is not
+    mutated.
     """
     out: dict[str, Any] = {}
     for k, v in config.items():
-        if k in _CREDENTIAL_KEYS and v not in (None, ""):
+        if v not in (None, "") and is_credential_name(str(k), extra=_ALSO_MASKED):
             out[k] = "***"
         else:
             out[k] = v
