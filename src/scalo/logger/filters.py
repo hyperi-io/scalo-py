@@ -145,12 +145,29 @@ _COLON_HEAD_RE = re.compile(rf"{_TEXT_KEY}\s*:\s*")
 _EQUALS_HEAD_RE = re.compile(rf"{_TEXT_KEY}[ \t]*=(?![=>])[ \t]*")
 # An unquoted value runs on across a space into a group that starts with a digit, so `TFN: 123 456 782` goes whole.
 _DIGIT_GROUPS = r"(?:[ ][(+]?[0-9]{chars}*)*"
+# A quoted value closes at the first quote no backslash escapes; a plain run and an escape never start on the same character, so the scan is linear.
+_DOUBLE_QUOTED = r'"[^"\\]*(?:\\[\s\S][^"\\]*)*"'
+_DOUBLE_QUOTED_LINE = r'"[^"\\\n]*(?:\\.[^"\\\n]*)*"'
+_SINGLE_QUOTED_LINE = r"'[^'\\\n]*(?:\\.[^'\\\n]*)*'"
+# A quoted value with no unescaped closing quote closes at its next quote instead, so honouring escapes never masks less than ignoring them.
+_PLAIN_DOUBLE_QUOTED = r'"[^"]*"'
+_PLAIN_DOUBLE_QUOTED_LINE = r'"[^"\n]*"'
+_PLAIN_SINGLE_QUOTED_LINE = r"'[^'\n]*'"
 # `key: "value"` (JSON): the quotes stay so the line is still valid JSON
-_JSON_VALUE_RE = re.compile(r'"[^"]*"')
+_JSON_VALUE_RE = re.compile(f"{_DOUBLE_QUOTED}|{_PLAIN_DOUBLE_QUOTED}")
 # `key: 'value'` (Python repr) or `key: value` (YAML, headers)
-_COLON_VALUE_RE = re.compile(r"""'[^'\n]*'|[^\s,"}]+""" + _DIGIT_GROUPS.format(chars=r"""[^\s,"}]""") + r"(?=[\s,}]|$)")
+_COLON_VALUE_RE = re.compile(
+    f"{_SINGLE_QUOTED_LINE}|{_PLAIN_SINGLE_QUOTED_LINE}|"
+    + r"""[^\s,"}]+"""
+    + _DIGIT_GROUPS.format(chars=r"""[^\s,"}]""")
+    + r"(?=[\s,}]|$)"
+)
 # `key=value` (env, form data, TOML, INI): a quoted value goes whole, quotes included
-_EQUALS_VALUE_RE = re.compile(r""""[^"\n]*"|'[^'\n]*'|[^\s&]*""" + _DIGIT_GROUPS.format(chars=r"[^\s&]"))
+_EQUALS_VALUE_RE = re.compile(
+    f"{_DOUBLE_QUOTED_LINE}|{_SINGLE_QUOTED_LINE}|{_PLAIN_DOUBLE_QUOTED_LINE}|{_PLAIN_SINGLE_QUOTED_LINE}|"
+    + r"[^\s&]*"
+    + _DIGIT_GROUPS.format(chars=r"[^\s&]")
+)
 
 
 def _spellings(name: str) -> tuple[str, str]:
