@@ -13,6 +13,8 @@ deterministic field-name regex filter.
 
 - :func:`is_credential_name`: the one answer to "does this field name
   hold a credential", used by every masking path in scalo.
+- :func:`mask_url_userinfo`: masks the password of every
+  ``scheme://user:password@host`` in a string.
 - :class:`SensitiveDataFilter`: masks by field name in text and dicts
   (``password=...``, ``"token":"..."``, bearer tokens, URL userinfo).
 - :class:`RateLimitFilter`: suppress repeated log messages from
@@ -133,9 +135,8 @@ _BARE_NAMES = frozenset({"key", "keys", "value", "values"})
 # Matches nothing, for a term set with no spelling in it.
 _NEVER = re.compile(r"(?!)")
 
-# The password in `scheme://user:password@host`: it runs to the `@` the host follows, so one holding `@` goes whole.
-# It stops at the next `://`, so each scan ends where the next starts and a long line costs linear time.
-_URL_USERINFO_RE = re.compile(r"(://[^\s:/@]*:)(?:(?!://)\S)+?(?=@[^\s@/?#]*(?:[/?#\s]|$))")
+# The password runs to the last `@` a host follows, and stops at whitespace or `://` so a long line scans in linear time.
+_URL_USERINFO_RE = re.compile(r"(?P<head>://[^\s:/@]*:)(?P<password>(?:(?!://)\S)*)(?=@[^\s@/?#]*(?:[/?#\s]|\Z))")
 _BEARER_RE = re.compile(r"\bbearer\s+([^\s]+)", re.IGNORECASE)
 
 # A key in text: a run of name characters no other name character precedes, then an optional closing quote.
@@ -205,6 +206,31 @@ def _credential_pattern(extra: Iterable[str] = ()) -> re.Pattern[str]:
     """Return the matcher for the default terms, every globally added field and ``extra``."""
     terms = SensitiveDataFilter._custom_fields | {term.lower() for term in extra}
     return _term_pattern(frozenset(SENSITIVE_FIELDS | terms))
+
+
+def mask_url_userinfo(text: str, mask: str = MASK_VALUE, *, keep_user: bool = True) -> str:
+    """Return ``text`` with the password of every ``scheme://user:password@host`` in it masked.
+
+    The password runs to the last ``@`` a host follows, so one holding ``@``,
+    ``/``, ``?`` or ``#`` is masked whole. Nothing tells such a password from
+    an ``@`` later in the path or query, so ``https://u:p@host/x?to=ops@example.com``
+    is masked through to ``example.com``, and ``https://host:8443/@scope/pkg``
+    loses its port. A URL with no ``:`` in its userinfo, such as
+    ``ssh://git@host``, is left alone. The scan stops at whitespace and at the
+    next ``://``, so a long line costs linear time.
+
+    Args:
+        text: Any text: a log line, an error message, a config value.
+        mask: What replaces the password, inserted as written.
+        keep_user: Keep the user, so the text still says whose credential it
+            was. False replaces the whole ``user:password``.
+
+    Returns:
+        ``text`` with every URL password masked.
+    """
+    if keep_user:
+        return _URL_USERINFO_RE.sub(lambda found: found["head"] + mask if found["password"] else found[0], text)
+    return _URL_USERINFO_RE.sub(lambda _found: "://" + mask, text)
 
 
 def _mask_pairs(
@@ -374,7 +400,7 @@ class SensitiveDataFilter(logging.Filter):
         if self._secrets_leak is not None:
             text = self._secrets_leak.scrub(text)
 
-        masked = _URL_USERINFO_RE.sub(rf"\1{MASK_VALUE}", text)
+        masked = mask_url_userinfo(text)
         masked = _BEARER_RE.sub(f"bearer {MASK_VALUE}", masked)
         pattern = self._credential_pattern()
         masked = _mask_pairs(masked, _COLON_HEAD_RE, _COLON_VALUES, pattern)
