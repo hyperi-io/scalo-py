@@ -14,6 +14,7 @@ from .._env_compat import control_var
 from .cache import DiskCache
 from .exceptions import (
     ProviderError,
+    ProviderNotAvailableError,
     ProviderNotConfiguredError,
     SecretNotFoundError,
     SecretsError,
@@ -123,6 +124,10 @@ class SecretsManager:
 
         Config structure matches docs/SECRETS.md.
 
+        A provider named in ``config`` whose SDK is not installed is logged at WARNING and left
+        out. Using it then raises ``ProviderNotConfiguredError``, or falls back to ENV for a named
+        source.
+
         Args:
             config: Configuration dictionary with optional keys:
                 - openbao: OpenBao/Vault provider config
@@ -146,8 +151,8 @@ class SecretsManager:
                 ob_provider = OpenBaoProvider(ob_config)
                 providers["openbao"] = ob_provider
                 providers["vault"] = ob_provider  # Same provider under both keys
-            except ImportError:
-                logger.warning("OpenBao provider not available. Install with: pip install scalo[secrets-vault]")
+            except ProviderNotAvailableError as exc:
+                logger.warning("Provider left out, SDK not installed: %s", exc)
 
         # AWS provider
         if "aws" in config:
@@ -156,8 +161,8 @@ class SecretsManager:
 
                 aws_config = cls._parse_aws_config(config["aws"])
                 providers["aws"] = AWSProvider(aws_config)
-            except ImportError:
-                logger.warning("AWS provider not available. Install with: pip install scalo[secrets-aws]")
+            except ProviderNotAvailableError as exc:
+                logger.warning("Provider left out, SDK not installed: %s", exc)
 
         # GCP provider
         if "gcp" in config:
@@ -166,8 +171,8 @@ class SecretsManager:
 
                 gcp_config = cls._parse_gcp_config(config["gcp"])
                 providers["gcp"] = GCPProvider(gcp_config)
-            except ImportError:
-                logger.warning("GCP provider not available. Install with: pip install scalo[secrets-gcp]")
+            except ProviderNotAvailableError as exc:
+                logger.warning("Provider left out, SDK not installed: %s", exc)
 
         # Azure provider
         if "azure" in config:
@@ -176,8 +181,8 @@ class SecretsManager:
 
                 azure_config = cls._parse_azure_config(config["azure"])
                 providers["azure"] = AzureProvider(azure_config)
-            except ImportError:
-                logger.warning("Azure provider not available. Install with: pip install scalo[secrets-azure]")
+            except ProviderNotAvailableError as exc:
+                logger.warning("Provider left out, SDK not installed: %s", exc)
 
         # Ansible Vault provider
         if "ansible_vault" in config:
@@ -186,10 +191,8 @@ class SecretsManager:
 
                 av_config = cls._parse_ansible_vault_config(config["ansible_vault"])
                 providers["ansible_vault"] = AnsibleVaultProvider(av_config)
-            except ImportError:
-                logger.warning(
-                    "Ansible Vault provider not available. Install with: pip install scalo[secrets-ansible-vault]"
-                )
+            except ProviderNotAvailableError as exc:
+                logger.warning("Provider left out, SDK not installed: %s", exc)
 
         # Parse sources
         sources: dict[str, SourceConfig] = {}

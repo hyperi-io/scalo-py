@@ -4,6 +4,14 @@ Behaviour and API changes that need a consumer adjustment, indexed by the scalo 
 
 ---
 
+## 2.31.15
+
+### A configured secrets provider with no SDK is left out, not fatal (BEHAVIOUR CHANGE)
+
+`SecretsManager.from_config` caught `ImportError` for a provider whose extra is not installed, but the providers raise `ProviderNotAvailableError`. The warning never fired and `from_config` raised at startup. It now logs the warning and returns without that provider. Using the provider raises `ProviderNotConfiguredError`, and a named source falls back to ENV. See [api/SECRETS.md](api/SECRETS.md#a-provider-whose-sdk-is-not-installed).
+
+**Consumer adjustment** -- code that relied on the startup exception to catch a missing extra checks that the provider is in `health_check()`, or builds it directly (`AWSProvider(...)`), which still raises `ProviderNotAvailableError`.
+
 ## 2.31.14
 
 ### The AWS secrets provider has no default region (BEHAVIOUR CHANGE)
