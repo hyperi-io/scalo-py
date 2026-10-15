@@ -77,10 +77,28 @@ sm = SecretsManager.from_config({
 ```
 
 Env-var overrides for every provider — `VAULT_ADDR`, `VAULT_TOKEN`,
-`AWS_REGION`, `GOOGLE_APPLICATION_CREDENTIALS`, `AZURE_VAULT_URL`,
+`AWS_REGION`, `AWS_DEFAULT_REGION`, `GOOGLE_APPLICATION_CREDENTIALS`, `AZURE_VAULT_URL`,
 `ANSIBLE_VAULT_PASSWORD`, etc. Cache settings respect
 `SECRETS_CACHE_DIR`, `SECRETS_CACHE_TTL`,
 `SECRETS_CACHE_KEY`.
+
+### AWS region, KMS key and deletion window
+
+The region comes from `aws.region`, then `AWS_REGION`, then `AWS_DEFAULT_REGION`. With none set the SDK reads the active profile's region. With no profile region every call fails, because botocore cannot build a client without one (`NoRegionError`). There is no default region.
+
+```python
+sm = SecretsManager.from_config({
+    "aws": {
+        "region": "ap-southeast-2",
+        "kms_key_id": "alias/my-service",  # unset = the AWS managed key
+        "recovery_window_days": 0,         # unset = AWS default (30), 0 = no recovery, or 7-30
+    },
+})
+```
+
+`kms_key_id` takes a key ID, ARN or alias and encrypts each secret the provider creates. A secret that already exists keeps its key.
+
+`recovery_window_days` applies to `delete()`. Unset, AWS keeps a deleted secret recoverable for 30 days. `0` deletes it with no recovery, and 7-30 sets the window. Any other value is refused when the config is built. Inside the window a read, update or create of the name raises `SecretPendingDeletionError`.
 
 ---
 
@@ -189,6 +207,10 @@ Tags are server-side on cloud providers, ignored by file-based ones.
 Writes raise `SecretAlreadyExistsError`, `SecretPermissionError`, or
 `ProviderError` — never silently fail.
 
+The file provider writes each secret file as `0600` and makes any missing directory `0700`, whatever the umask. An update sets an existing file to `0600` before it writes, so updating a file the process does not own raises `SecretPermissionError` and leaves the file as it was.
+
+On AWS, `delete()` follows `recovery_window_days` (see [AWS region, KMS key and deletion window](#aws-region-kms-key-and-deletion-window)).
+
 ---
 
 ## Listing and filtering
@@ -250,6 +272,7 @@ outages in `/readyz`.
 | `ProviderNotAvailableError` | provider extra not installed |
 | `AuthenticationError` | the provider refused the credentials, for OpenBao a 400-499 login answer other than 429 (a `ProviderError` subclass, so catch it first) |
 | `SecretPermissionError` | read-only token tried a write |
+| `SecretPendingDeletionError` | AWS: the secret is inside its deletion recovery window, so its name can be neither read nor reused (a `ProviderError` subclass) |
 | `SecretAlreadyExistsError` | `create()` on existing path |
 | `SecretVersionNotFoundError` | `get_version()` for unknown version |
 | `VersioningNotSupportedError` | versioned op on file/ansible-vault |

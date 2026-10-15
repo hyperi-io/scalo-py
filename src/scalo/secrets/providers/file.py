@@ -3,6 +3,7 @@
 import fnmatch
 import json
 import logging
+import os
 from datetime import UTC, datetime
 from pathlib import Path
 
@@ -11,6 +12,42 @@ from ..types import SecretFilter, SecretMetadata, SecretValue
 from .base import SecretProvider
 
 logger = logging.getLogger(__name__)
+
+_FILE_MODE = 0o600
+_DIR_MODE = 0o700
+
+
+def _make_private_dirs(directory: Path) -> None:
+    """Create ``directory`` and any missing parents as owner-only (0o700), leaving existing ones alone."""
+    missing: list[Path] = []
+    current = directory
+    while not current.exists():
+        missing.append(current)
+        current = current.parent
+    for path in reversed(missing):
+        try:
+            path.mkdir(mode=_DIR_MODE)
+        except FileExistsError:
+            continue
+        # The umask can strip owner bits from the mkdir mode.
+        path.chmod(_DIR_MODE)
+
+
+def _write_private(path: Path, value: bytes, flags: int) -> None:
+    """Replace the contents of ``path`` with ``value`` as owner-only (0o600), whatever the umask.
+
+    The mode is set on the open descriptor before the file is truncated or written, so the new value is never
+    readable by another user, and a file whose mode cannot be set keeps its old contents.
+
+    Raises:
+        PermissionError: The file cannot be opened for writing, or the process cannot set its mode.
+    """
+    # O_BINARY exists only on Windows, where its absence would translate newlines.
+    fd = os.open(path, flags | os.O_WRONLY | getattr(os, "O_BINARY", 0), _FILE_MODE)
+    with open(fd, "wb") as handle:
+        os.fchmod(handle.fileno(), _FILE_MODE)
+        handle.truncate(0)
+        handle.write(value)
 
 
 class FileProvider(SecretProvider):
@@ -162,15 +199,17 @@ class FileProvider(SecretProvider):
         return self.create_sync(path, value, tags)
 
     def create_sync(self, path: str, value: bytes, tags: dict[str, str] | None = None) -> SecretMetadata:
-        """Create a new secret file. Fails if file already exists."""
+        """Create a new secret file, mode 0o600, in directories it creates as 0o700. Fails if file already exists."""
         file_path = Path(path)
 
         if file_path.exists():
             raise SecretAlreadyExistsError(path, self.name)
 
         try:
-            file_path.parent.mkdir(parents=True, exist_ok=True)
-            file_path.write_bytes(value)
+            _make_private_dirs(file_path.parent)
+            _write_private(file_path, value, os.O_CREAT | os.O_EXCL)
+        except FileExistsError:
+            raise SecretAlreadyExistsError(path, self.name)
         except PermissionError:
             raise SecretPermissionError(self.name, "create", path, f"check filesystem permissions on '{path}'")
         except OSError as e:
@@ -185,14 +224,16 @@ class FileProvider(SecretProvider):
         return self.update_sync(path, value)
 
     def update_sync(self, path: str, value: bytes) -> SecretMetadata:
-        """Update an existing secret file. Fails if file doesn't exist."""
+        """Update an existing secret file, setting its mode to 0o600. Fails if file doesn't exist."""
         file_path = Path(path)
 
         if not file_path.exists():
             raise SecretNotFoundError(path, self.name)
 
         try:
-            file_path.write_bytes(value)
+            _write_private(file_path, value, 0)
+        except FileNotFoundError:
+            raise SecretNotFoundError(path, self.name)
         except PermissionError:
             raise SecretPermissionError(self.name, "update", path, f"check filesystem permissions on '{path}'")
         except OSError as e:

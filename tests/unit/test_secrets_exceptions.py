@@ -10,6 +10,7 @@ from scalo.secrets.exceptions import (
     ProviderNotConfiguredError,
     SecretAlreadyExistsError,
     SecretNotFoundError,
+    SecretPendingDeletionError,
     SecretPermissionError,
     SecretsError,
     SecretVersionNotFoundError,
@@ -162,6 +163,7 @@ class TestExceptionCatching:
             SecretPermissionError("vault", "create", "secret/foo"),
             SecretVersionNotFoundError("test", "v2", "vault"),
             VersioningNotSupportedError("file"),
+            SecretPendingDeletionError("aws", "CreateSecret", "x"),
         ]
 
         for error in errors:
@@ -220,6 +222,26 @@ class TestSecretPermissionError:
         # Inherits from ProviderError (has provider attribute, not a 'not found')
         assert isinstance(err, ProviderError)
         assert isinstance(err, SecretsError)
+
+
+class TestSecretPendingDeletionError:
+    """Tests for SecretPendingDeletionError."""
+
+    def test_create_error(self):
+        err = SecretPendingDeletionError("aws", "CreateSecret", "prod/api_key")
+        assert err.provider == "aws"
+        assert err.operation == "CreateSecret"
+        assert err.path == "prod/api_key"
+        assert "scheduled for deletion" in str(err)
+        assert "recovery window" in str(err)
+        assert "prod/api_key" in str(err)
+
+    def test_inheritance(self):
+        """A ProviderError subclass, so handlers that catch ProviderError still see it."""
+        err = SecretPendingDeletionError("aws", "GetSecretValue", "x")
+        assert isinstance(err, ProviderError)
+        assert isinstance(err, SecretsError)
+        assert not isinstance(err, SecretNotFoundError)
 
 
 class TestSecretVersionNotFoundError:

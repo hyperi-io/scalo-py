@@ -166,8 +166,8 @@ class OpenBaoConfig:
 class AWSConfig:
     """AWS Secrets Manager configuration."""
 
-    region: str = "us-east-1"
-    """AWS region."""
+    region: str | None = None
+    """AWS region. None leaves the region to the SDK chain, and there is no default region."""
 
     access_key_id: str | None = field(default=None, repr=False)
     """AWS access key ID. repr=False to prevent repr leak.
@@ -181,6 +181,25 @@ class AWSConfig:
 
     timeout_secs: int = 30
     """Request timeout in seconds."""
+
+    kms_key_id: str | None = None
+    """KMS key ID, ARN or alias that encrypts secrets this provider creates. None = the AWS managed key."""
+
+    recovery_window_days: int | None = None
+    """Days a deleted secret stays recoverable: None = the AWS default (30), 0 = delete at once, or 7-30."""
+
+    def __post_init__(self) -> None:
+        """Refuse a recovery window AWS would reject.
+
+        Raises:
+            ValueError: ``recovery_window_days`` is not None, 0 or 7-30.
+        """
+        window = self.recovery_window_days
+        if window is None:
+            return
+        # bool is an int subclass, and False would otherwise read as a forced delete.
+        if isinstance(window, bool) or not isinstance(window, int) or not (window == 0 or 7 <= window <= 30):
+            raise ValueError(f"recovery_window_days must be 0 (delete without recovery) or 7-30, got {window!r}")
 
 
 @dataclass

@@ -82,6 +82,22 @@ class SecretPermissionError(ProviderError):
         super().__init__(provider, message)
 
 
+class SecretPendingDeletionError(ProviderError):
+    """Secret is scheduled for deletion, so its name can be neither read nor reused.
+
+    The name stays taken until the recovery window ends or the secret is restored.
+    """
+
+    def __init__(self, provider: str, operation: str, path: str) -> None:
+        self.operation = operation
+        self.path = path
+        super().__init__(
+            provider,
+            f"cannot {operation} '{path}': the secret is scheduled for deletion and its name stays "
+            "taken until the recovery window ends or the secret is restored",
+        )
+
+
 class SecretVersionNotFoundError(SecretNotFoundError):
     """Requested version does not exist."""
 
@@ -105,6 +121,7 @@ __all__ = [
     "ProviderNotConfiguredError",
     "SecretAlreadyExistsError",
     "SecretNotFoundError",
+    "SecretPendingDeletionError",
     "SecretPermissionError",
     "SecretVersionNotFoundError",
     "SecretsError",

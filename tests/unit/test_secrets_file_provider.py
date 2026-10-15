@@ -2,6 +2,8 @@
 
 import json
 import os
+import stat
+import sys
 from pathlib import Path
 
 import pytest
@@ -379,6 +381,47 @@ class TestFileProviderUpdate:
         provider = FileProvider()
         md = await provider.update_async(str(path), b"new")
         assert md.name == str(path)
+
+
+def _mode(path: Path) -> int:
+    return stat.S_IMODE(path.stat().st_mode)
+
+
+@pytest.fixture(params=[0o000, 0o022, 0o277], ids=["umask-000", "umask-022", "umask-277"])
+def process_umask(request, tmp_path):
+    """Run the test under a given umask, after tmp_path is made so it stays writable."""
+    previous = os.umask(request.param)
+    yield request.param
+    os.umask(previous)
+
+
+@pytest.mark.skipif(sys.platform == "win32", reason="POSIX permission bits")
+class TestFileProviderModes:
+    """Secret files are 0o600 and the directories the provider makes are 0o700, whatever the umask."""
+
+    def test_create_writes_owner_only(self, tmp_path, process_umask):
+        path = tmp_path / "secret"
+        FileProvider().create_sync(str(path), b"value")
+        assert _mode(path) == 0o600
+        assert path.read_bytes() == b"value"
+
+    def test_create_makes_missing_directories_owner_only(self, tmp_path, process_umask):
+        before = _mode(tmp_path)
+        path = tmp_path / "a" / "b" / "secret"
+        FileProvider().create_sync(str(path), b"value")
+        assert _mode(tmp_path / "a") == 0o700
+        assert _mode(tmp_path / "a" / "b") == 0o700
+        assert _mode(path) == 0o600
+        # A directory the provider did not make keeps its mode.
+        assert _mode(tmp_path) == before
+
+    def test_update_tightens_a_readable_file(self, tmp_path, process_umask):
+        path = tmp_path / "secret"
+        path.write_bytes(b"old-value-that-is-longer")
+        path.chmod(0o644)
+        FileProvider().update_sync(str(path), b"new")
+        assert _mode(path) == 0o600
+        assert path.read_bytes() == b"new"
 
 
 class TestFileProviderDelete:

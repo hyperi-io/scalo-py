@@ -249,13 +249,19 @@ class SecretsManager:
 
     @staticmethod
     def _parse_aws_config(cfg: dict) -> AWSConfig:
-        """Parse AWS config with env var fallbacks."""
+        """Parse AWS config with env var fallbacks.
+
+        The region comes from config, then ``AWS_REGION``, then ``AWS_DEFAULT_REGION``. With none set it stays
+        None and the SDK takes it from the active profile, or cannot build a client.
+        """
         return AWSConfig(
-            region=cfg.get("region") or os.environ.get("AWS_REGION", "us-east-1"),
+            region=cfg.get("region") or os.environ.get("AWS_REGION") or os.environ.get("AWS_DEFAULT_REGION") or None,
             access_key_id=cfg.get("access_key_id"),
             secret_access_key=cfg.get("secret_access_key"),
             endpoint_url=cfg.get("endpoint_url"),
             timeout_secs=cfg.get("timeout_secs", 30),
+            kms_key_id=cfg.get("kms_key_id"),
+            recovery_window_days=cfg.get("recovery_window_days"),
         )
 
     @staticmethod
