@@ -238,11 +238,23 @@ class TestAWSConfig:
         """Test AWSConfig default values."""
         config = AWSConfig()
 
-        assert config.region == "us-east-1"
+        # No default region: an unset region is the SDK chain's to resolve.
+        assert config.region is None
         assert config.access_key_id is None
         assert config.secret_access_key is None
         assert config.endpoint_url is None
         assert config.timeout_secs == 30
+        assert config.kms_key_id is None
+        assert config.recovery_window_days is None
+
+    @pytest.mark.parametrize("window", [None, 0, 7, 15, 30])
+    def test_recovery_window_accepts_what_aws_accepts(self, window):
+        assert AWSConfig(recovery_window_days=window).recovery_window_days == window
+
+    @pytest.mark.parametrize("window", [1, 6, 31, 365, -1, True, False, "7", 7.0])
+    def test_recovery_window_refuses_what_aws_refuses(self, window):
+        with pytest.raises(ValueError, match="recovery_window_days"):
+            AWSConfig(recovery_window_days=window)
 
     def test_custom_config(self):
         """Test custom AWS configuration."""

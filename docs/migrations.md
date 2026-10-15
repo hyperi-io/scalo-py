@@ -4,6 +4,26 @@ Behaviour and API changes that need a consumer adjustment, indexed by the scalo 
 
 ---
 
+## 2.31.14
+
+### The AWS secrets provider has no default region (BEHAVIOUR CHANGE)
+
+`AWSConfig.region` defaults to `None`, and the client sets a region only when one is configured. `SecretsManager.from_config` takes it from `aws.region`, then `AWS_REGION`, then `AWS_DEFAULT_REGION`. An unset region was forced to `us-east-1`, so a deployment with no region configured read and wrote secrets in the wrong region. It now goes to the SDK, which reads the active profile's region. With none, every call fails because botocore cannot build a client (`NoRegionError`). scalo-rs dropped the same default in 2.12.3. See [api/SECRETS.md](api/SECRETS.md#aws-region-kms-key-and-deletion-window).
+
+**Consumer adjustment** -- anything that relied on the `us-east-1` default names the region it means, in `aws.region`, `AWSConfig(region=...)`, `AWS_REGION` or `AWS_DEFAULT_REGION`.
+
+### A secret pending deletion raises `SecretPendingDeletionError` (BEHAVIOUR CHANGE)
+
+AWS refuses to read, update or re-create a secret inside its deletion recovery window. That answer was a bare `ProviderError` reading `InvalidRequestException`. It is now `SecretPendingDeletionError`, a `ProviderError` subclass naming the operation and the path. New `AWSConfig` fields set the window and the encryption key: `recovery_window_days` (`None` keeps the AWS default of 30 days, `0` deletes at once, 7-30 sets the window, anything else is refused when the config is built) and `kms_key_id`, which encrypts the secrets the provider creates.
+
+**Consumer adjustment** -- none. A handler for `ProviderError` still catches it.
+
+### File provider secrets are owner-only (BEHAVIOUR CHANGE)
+
+`FileProvider` wrote each secret file with the process umask, which is `0644` under the usual `022`. `create` now writes `0600` and makes each missing directory `0700`, whatever the umask. `update` sets an existing file to `0600` before it writes.
+
+**Consumer adjustment** -- a reader running as another user gets `PermissionError` on a file scalo writes. Run it as the same user, or read the secret through scalo. An `update` of a file the process does not own fails with `SecretPermissionError` and leaves the file as it was.
+
 ## 2.31.12
 
 ### URL passwords mask to the last `@`, and a list of two names is not a pair (BEHAVIOUR CHANGE)

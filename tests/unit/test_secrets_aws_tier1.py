@@ -14,14 +14,18 @@ A ``mocked_aws`` fixture wraps each test so both sync (boto3) and async
 """
 
 import os
+from datetime import UTC, datetime, timedelta
 
 import pytest
 
 from scalo.secrets.exceptions import (
+    ProviderError,
     SecretAlreadyExistsError,
     SecretNotFoundError,
+    SecretPendingDeletionError,
     SecretVersionNotFoundError,
 )
+from scalo.secrets.manager import SecretsManager
 from scalo.secrets.providers.aws import AIOBOTOCORE_AVAILABLE, BOTO3_AVAILABLE, AWSProvider
 from scalo.secrets.types import AWSConfig, SecretFilter
 
@@ -54,8 +58,7 @@ def mocked_aws(monkeypatch):
         yield
 
 
-@pytest.fixture
-def provider(mocked_aws, monkeypatch) -> AWSProvider:
+def _sync_only_provider(monkeypatch, config: AWSConfig) -> AWSProvider:
     """AWSProvider with aiobotocore disabled so async paths use the run_in_executor fallback.
 
     moto + aiobotocore 3.x have a long-standing incompat where moto returns the
@@ -68,7 +71,23 @@ def provider(mocked_aws, monkeypatch) -> AWSProvider:
     import scalo.secrets.providers.aws as aws_mod
 
     monkeypatch.setattr(aws_mod, "AIOBOTOCORE_AVAILABLE", False)
-    return AWSProvider(AWSConfig(region=REGION))
+    return AWSProvider(config)
+
+
+@pytest.fixture
+def provider(mocked_aws, monkeypatch) -> AWSProvider:
+    """AWSProvider on the default config, sync fallback only."""
+    return _sync_only_provider(monkeypatch, AWSConfig(region=REGION))
+
+
+def _record_params(provider: AWSProvider, operation: str) -> list[dict]:
+    """Collect the parameters of every ``operation`` call the provider's sync client sends."""
+    sent: list[dict] = []
+    provider._get_sync_client().meta.events.register(
+        f"provide-client-params.secretsmanager.{operation}",
+        lambda params, **_: sent.append(dict(params)),
+    )
+    return sent
 
 
 # -------------------------------------------------------------------------
@@ -224,9 +243,10 @@ class TestAWSDeleteSync:
     def test_happy_path_soft_delete(self, provider):
         provider.create_sync("hyperi-del", b"x")
         provider.delete_sync("hyperi-del")
-        # Soft-deleted: get_secret_value should fail with InvalidRequestException → ProviderError
-        # (the secret is still describe-able for the recovery window).
-        # Explicitly verifying delete completed without raising is sufficient here.
+        # Still describe-able for the recovery window, but no longer readable.
+        assert provider.get_metadata_sync("hyperi-del").name == "hyperi-del"
+        with pytest.raises(SecretPendingDeletionError):
+            provider.get_sync("hyperi-del")
 
     def test_not_found(self, provider):
         with pytest.raises(SecretNotFoundError):
@@ -378,3 +398,189 @@ class TestBuildListFilters:
         result = AWSProvider._build_list_filters(SecretFilter(tags={"env": "prod"}))
         assert {"Key": "tag-key", "Values": ["env"]} in (result or [])
         assert {"Key": "tag-value", "Values": ["prod"]} in (result or [])
+
+
+# -------------------------------------------------------------------------
+# Customer KMS key
+# -------------------------------------------------------------------------
+
+
+class TestAWSKmsKey:
+    def test_create_encrypts_with_the_configured_key(self, mocked_aws, monkeypatch):
+        provider = _sync_only_provider(monkeypatch, AWSConfig(region=REGION, kms_key_id="alias/scalo-test"))
+        provider.create_sync("hyperi-kms", b"x")
+        described = provider._get_sync_client().describe_secret(SecretId="hyperi-kms")
+        assert described["KmsKeyId"] == "alias/scalo-test"
+
+    async def test_create_async_encrypts_with_the_configured_key(self, mocked_aws, monkeypatch):
+        provider = _sync_only_provider(monkeypatch, AWSConfig(region=REGION, kms_key_id="alias/scalo-test"))
+        await provider.create_async("hyperi-kms-a", b"x")
+        described = provider._get_sync_client().describe_secret(SecretId="hyperi-kms-a")
+        assert described["KmsKeyId"] == "alias/scalo-test"
+
+    def test_no_key_leaves_the_aws_managed_key(self, provider):
+        sent = _record_params(provider, "CreateSecret")
+        provider.create_sync("hyperi-no-kms", b"x")
+        described = provider._get_sync_client().describe_secret(SecretId="hyperi-no-kms")
+        assert "KmsKeyId" not in described
+        assert "KmsKeyId" not in sent[0]
+
+
+# -------------------------------------------------------------------------
+# Deletion recovery window
+# -------------------------------------------------------------------------
+
+
+class TestAWSRecoveryWindow:
+    def test_unset_window_sends_neither_parameter(self, provider):
+        sent = _record_params(provider, "DeleteSecret")
+        provider.create_sync("hyperi-default-window", b"x")
+        provider.delete_sync("hyperi-default-window")
+        assert sent == [{"SecretId": "hyperi-default-window"}]
+
+    def test_zero_forces_the_delete_and_frees_the_name(self, mocked_aws, monkeypatch):
+        provider = _sync_only_provider(monkeypatch, AWSConfig(region=REGION, recovery_window_days=0))
+        sent = _record_params(provider, "DeleteSecret")
+        provider.create_sync("hyperi-force", b"v1")
+        provider.delete_sync("hyperi-force")
+        assert sent == [{"SecretId": "hyperi-force", "ForceDeleteWithoutRecovery": True}]
+        provider.create_sync("hyperi-force", b"v2")
+        assert provider.get_sync("hyperi-force").data == b"v2"
+
+    async def test_zero_forces_the_delete_async(self, mocked_aws, monkeypatch):
+        provider = _sync_only_provider(monkeypatch, AWSConfig(region=REGION, recovery_window_days=0))
+        await provider.create_async("hyperi-force-a", b"v1")
+        await provider.delete_async("hyperi-force-a")
+        await provider.create_async("hyperi-force-a", b"v2")
+        assert (await provider.get_async("hyperi-force-a")).data == b"v2"
+
+    def test_seven_days_schedules_the_deletion(self, mocked_aws, monkeypatch):
+        provider = _sync_only_provider(monkeypatch, AWSConfig(region=REGION, recovery_window_days=7))
+        sent = _record_params(provider, "DeleteSecret")
+        provider.create_sync("hyperi-window", b"x")
+        requested_at = datetime.now(UTC)
+        provider.delete_sync("hyperi-window")
+        assert sent == [{"SecretId": "hyperi-window", "RecoveryWindowInDays": 7}]
+        described = provider._get_sync_client().describe_secret(SecretId="hyperi-window")
+        assert described["DeletedDate"] is not None
+        # moto records the end of the window as DeletedDate.
+        assert timedelta(days=6) < described["DeletedDate"] - requested_at < timedelta(days=8)
+
+
+# -------------------------------------------------------------------------
+# A name pending deletion
+# -------------------------------------------------------------------------
+
+
+def _stub_client_error(provider: AWSProvider, operation: str, message: str):
+    """Make the provider's sync client answer ``operation`` with an InvalidRequestException."""
+    from botocore.stub import Stubber
+
+    stubber = Stubber(provider._get_sync_client())
+    stubber.add_client_error(
+        operation,
+        service_error_code="InvalidRequestException",
+        service_message=message,
+        http_status_code=400,
+    )
+    return stubber
+
+
+class TestAWSPendingDeletion:
+    def test_read_inside_the_window_is_named(self, provider):
+        provider.create_sync("hyperi-pending-read", b"x")
+        provider.delete_sync("hyperi-pending-read")
+        with pytest.raises(SecretPendingDeletionError) as exc:
+            provider.get_sync("hyperi-pending-read")
+        assert isinstance(exc.value, ProviderError)
+        assert exc.value.operation == "GetSecretValue"
+        assert exc.value.path == "hyperi-pending-read"
+        assert "scheduled for deletion" in str(exc.value)
+
+    async def test_read_async_inside_the_window_is_named(self, provider):
+        await provider.create_async("hyperi-pending-read-a", b"x")
+        await provider.delete_async("hyperi-pending-read-a")
+        with pytest.raises(SecretPendingDeletionError):
+            await provider.get_async("hyperi-pending-read-a")
+
+    def test_versioned_read_inside_the_window_is_named(self, provider):
+        meta = provider.create_sync("hyperi-pending-version", b"x")
+        provider.delete_sync("hyperi-pending-version")
+        with pytest.raises(SecretPendingDeletionError):
+            provider.get_version_sync("hyperi-pending-version", meta.version)
+
+    def test_update_inside_the_window_is_named(self, provider):
+        provider.create_sync("hyperi-pending-update", b"x")
+        provider.delete_sync("hyperi-pending-update")
+        with pytest.raises(SecretPendingDeletionError) as exc:
+            provider.update_sync("hyperi-pending-update", b"y")
+        assert exc.value.operation == "UpdateSecret"
+
+    def test_create_on_a_name_inside_the_window_is_named(self, provider):
+        # moto answers this CreateSecret with ResourceExistsException, so AWS's own answer is stubbed.
+        message = "You can't create this secret because a secret with this name is already scheduled for deletion."
+        with _stub_client_error(provider, "create_secret", message), pytest.raises(SecretPendingDeletionError) as exc:
+            provider.create_sync("hyperi-pending-create", b"x")
+        assert exc.value.operation == "CreateSecret"
+        assert exc.value.path == "hyperi-pending-create"
+
+    def test_other_invalid_requests_stay_provider_errors(self, provider):
+        message = "You can't perform this operation on the secret because it is managed by another service."
+        with _stub_client_error(provider, "create_secret", message), pytest.raises(ProviderError) as exc:
+            provider.create_sync("hyperi-managed", b"x")
+        assert not isinstance(exc.value, SecretPendingDeletionError)
+
+
+# -------------------------------------------------------------------------
+# Region resolution
+# -------------------------------------------------------------------------
+
+
+@pytest.fixture
+def no_region(mocked_aws, monkeypatch, tmp_path):
+    """No region from config, environment or a profile, with moto active so nothing reaches AWS."""
+    for name in ("AWS_REGION", "AWS_DEFAULT_REGION", "AWS_PROFILE", "AWS_DEFAULT_PROFILE"):
+        monkeypatch.delenv(name, raising=False)
+    monkeypatch.setenv("AWS_CONFIG_FILE", str(tmp_path / "absent-config"))
+
+
+class TestAWSRegion:
+    def test_config_region_wins(self, no_region, monkeypatch):
+        monkeypatch.setenv("AWS_REGION", "eu-west-1")
+        assert SecretsManager._parse_aws_config({"region": REGION}).region == REGION
+
+    def test_aws_region_wins_over_default_region(self, no_region, monkeypatch):
+        monkeypatch.setenv("AWS_REGION", "eu-west-1")
+        monkeypatch.setenv("AWS_DEFAULT_REGION", "eu-west-2")
+        assert SecretsManager._parse_aws_config({}).region == "eu-west-1"
+
+    def test_default_region_alone_selects_the_region(self, no_region, monkeypatch):
+        monkeypatch.setenv("AWS_DEFAULT_REGION", "eu-west-2")
+        config = SecretsManager._parse_aws_config({})
+        assert config.region == "eu-west-2"
+        provider = _sync_only_provider(monkeypatch, config)
+        assert provider._get_sync_client().meta.region_name == "eu-west-2"
+
+    def test_no_region_anywhere_is_never_us_east_1(self, no_region, monkeypatch):
+        from botocore.exceptions import NoRegionError
+
+        config = SecretsManager._parse_aws_config({})
+        assert config.region is None
+        provider = _sync_only_provider(monkeypatch, config)
+        assert "region_name" not in provider._get_client_kwargs()
+        # The SDK chain finds nothing and refuses, rather than reaching a default region.
+        with pytest.raises(NoRegionError):
+            provider._get_sync_client()
+
+    def test_from_config_passes_the_new_keys(self, no_region):
+        manager = SecretsManager.from_config(
+            {"aws": {"region": REGION, "kms_key_id": "alias/scalo-test", "recovery_window_days": 0}}
+        )
+        provider = manager._providers["aws"]
+        assert isinstance(provider, AWSProvider)
+        assert provider._config.kms_key_id == "alias/scalo-test"
+        assert provider._config.recovery_window_days == 0
+
+    def test_from_config_refuses_an_out_of_range_window(self, no_region):
+        with pytest.raises(ValueError, match="recovery_window_days"):
+            SecretsManager.from_config({"aws": {"region": REGION, "recovery_window_days": 3}})

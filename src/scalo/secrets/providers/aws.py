@@ -2,6 +2,7 @@
 
 import json
 import logging
+import re
 from datetime import UTC, datetime
 
 from ...concurrency import run_blocking
@@ -9,6 +10,7 @@ from ..exceptions import (
     ProviderError,
     SecretAlreadyExistsError,
     SecretNotFoundError,
+    SecretPendingDeletionError,
     SecretPermissionError,
     SecretVersionNotFoundError,
 )
@@ -35,6 +37,9 @@ try:
 except ImportError:
     AIOBOTOCORE_AVAILABLE = False
     get_aiobotocore_session = None  # type: ignore[assignment]
+
+# AWS reports a name inside its recovery window only as InvalidRequestException, so the message decides.
+_PENDING_DELETION = re.compile(r"(?:marked|scheduled) for deletion|marked deleted", re.IGNORECASE)
 
 
 class AWSProvider(VersionedProvider):
@@ -74,10 +79,11 @@ class AWSProvider(VersionedProvider):
 
     def _get_client_kwargs(self) -> dict:
         """Get kwargs for boto3/aiobotocore client creation."""
-        kwargs: dict = {
-            "service_name": "secretsmanager",
-            "region_name": self._config.region,
-        }
+        kwargs: dict = {"service_name": "secretsmanager"}
+
+        # An unset region is left to the SDK chain, never pinned to a default.
+        if self._config.region:
+            kwargs["region_name"] = self._config.region
 
         if self._config.endpoint_url:
             kwargs["endpoint_url"] = self._config.endpoint_url
@@ -137,6 +143,8 @@ class AWSProvider(VersionedProvider):
                 raise SecretPermissionError(self.name, "GetSecretValue", path, self._aws_hint("GetSecretValue"))
             elif error_code == "DecryptionFailure":
                 raise ProviderError(self.name, f"decryption failed for {path}")
+            elif self._is_pending_deletion(e):
+                raise SecretPendingDeletionError(self.name, "GetSecretValue", path)
             else:
                 raise ProviderError(self.name, f"AWS error: {error_code}")
         except Exception as e:
@@ -172,6 +180,8 @@ class AWSProvider(VersionedProvider):
                 raise SecretPermissionError(self.name, "GetSecretValue", path, self._aws_hint("GetSecretValue"))
             elif error_code == "DecryptionFailure":
                 raise ProviderError(self.name, f"decryption failed for {path}")
+            elif self._is_pending_deletion(e):
+                raise SecretPendingDeletionError(self.name, "GetSecretValue", path)
             else:
                 raise ProviderError(self.name, f"AWS error: {error_code}")
         except Exception as e:
@@ -257,6 +267,14 @@ class AWSProvider(VersionedProvider):
         """IAM permission hint for this operation."""
         return f"check IAM policy for secretsmanager:{operation} permission"
 
+    @staticmethod
+    def _is_pending_deletion(error: ClientError) -> bool:
+        """Whether AWS refused the call because the secret is inside its recovery window."""
+        detail = error.response.get("Error", {})
+        return detail.get("Code") == "InvalidRequestException" and bool(
+            _PENDING_DELETION.search(detail.get("Message") or "")
+        )
+
     def _map_client_error(self, error: ClientError, operation: str, path: str) -> Exception:
         """Map a botocore ClientError to the appropriate domain exception."""
         code = error.response.get("Error", {}).get("Code", "")
@@ -266,6 +284,8 @@ class AWSProvider(VersionedProvider):
             return SecretAlreadyExistsError(path, self.name)
         if code == "AccessDeniedException":
             return SecretPermissionError(self.name, operation, path, self._aws_hint(operation))
+        if self._is_pending_deletion(error):
+            return SecretPendingDeletionError(self.name, operation, path)
         return ProviderError(self.name, f"{operation} {path} failed: {code or 'unknown'}")
 
     def _to_metadata(self, response: dict, fallback_name: str | None = None) -> SecretMetadata:
@@ -402,16 +422,23 @@ class AWSProvider(VersionedProvider):
 
     # --- Create ---
 
+    def _create_kwargs(self, path: str, value: bytes, tags: dict[str, str] | None) -> dict:
+        """CreateSecret arguments, carrying the configured KMS key when one is set."""
+        api_kwargs: dict = {"Name": path, **self._encode_value(value)}
+        aws_tags = self._tags_for_aws(tags)
+        if aws_tags:
+            api_kwargs["Tags"] = aws_tags
+        if self._config.kms_key_id:
+            api_kwargs["KmsKeyId"] = self._config.kms_key_id
+        return api_kwargs
+
     async def create_async(self, path: str, value: bytes, tags: dict[str, str] | None = None) -> SecretMetadata:
         if not AIOBOTOCORE_AVAILABLE:
             return await run_blocking(self.create_sync, path, value, tags)
 
         session = get_aiobotocore_session()
         kwargs = self._get_client_kwargs()
-        api_kwargs: dict = {"Name": path, **self._encode_value(value)}
-        aws_tags = self._tags_for_aws(tags)
-        if aws_tags:
-            api_kwargs["Tags"] = aws_tags
+        api_kwargs = self._create_kwargs(path, value, tags)
 
         try:
             async with session.create_client(**kwargs) as client:
@@ -425,10 +452,7 @@ class AWSProvider(VersionedProvider):
 
     def create_sync(self, path: str, value: bytes, tags: dict[str, str] | None = None) -> SecretMetadata:
         client = self._get_sync_client()
-        api_kwargs: dict = {"Name": path, **self._encode_value(value)}
-        aws_tags = self._tags_for_aws(tags)
-        if aws_tags:
-            api_kwargs["Tags"] = aws_tags
+        api_kwargs = self._create_kwargs(path, value, tags)
 
         try:
             response = client.create_secret(**api_kwargs)
@@ -466,12 +490,22 @@ class AWSProvider(VersionedProvider):
 
     # --- Delete ---
 
-    async def delete_async(self, path: str) -> None:
-        """Delete a secret (soft-delete; AWS keeps it recoverable for 7-30 days by default).
+    def _delete_kwargs(self, path: str) -> dict:
+        """DeleteSecret arguments for the configured ``recovery_window_days``."""
+        api_kwargs: dict = {"SecretId": path}
+        window = self._config.recovery_window_days
+        if window == 0:
+            api_kwargs["ForceDeleteWithoutRecovery"] = True
+        elif window is not None:
+            api_kwargs["RecoveryWindowInDays"] = window
+        return api_kwargs
 
-        AWS' default 30-day recovery window applies. Callers that need an immediate
-        purge should use ``delete_secret(ForceDeleteWithoutRecovery=True)`` directly
-        on the underlying client.
+    async def delete_async(self, path: str) -> None:
+        """Delete a secret, applying ``AWSConfig.recovery_window_days``.
+
+        Unset, AWS keeps the secret recoverable for its default 30 days. ``0`` deletes it at once, with no
+        recovery, and 7-30 sets the window. Until the window ends a read, update or create of the name raises
+        ``SecretPendingDeletionError``.
         """
         if not AIOBOTOCORE_AVAILABLE:
             return await run_blocking(self.delete_sync, path)
@@ -481,14 +515,15 @@ class AWSProvider(VersionedProvider):
 
         try:
             async with session.create_client(**kwargs) as client:
-                await client.delete_secret(SecretId=path)
+                await client.delete_secret(**self._delete_kwargs(path))
         except ClientError as e:
             raise self._map_client_error(e, "DeleteSecret", path)
 
     def delete_sync(self, path: str) -> None:
+        """Delete a secret, applying ``AWSConfig.recovery_window_days`` (see ``delete_async``)."""
         client = self._get_sync_client()
         try:
-            client.delete_secret(SecretId=path)
+            client.delete_secret(**self._delete_kwargs(path))
         except ClientError as e:
             raise self._map_client_error(e, "DeleteSecret", path)
 

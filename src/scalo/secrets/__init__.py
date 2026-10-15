@@ -59,6 +59,7 @@ from .exceptions import (
     ProviderNotConfiguredError,
     SecretAlreadyExistsError,
     SecretNotFoundError,
+    SecretPendingDeletionError,
     SecretPermissionError,
     SecretsError,
     SecretVersionNotFoundError,
@@ -132,6 +133,7 @@ __all__ = [
     "SecretFilter",
     "SecretMetadata",
     "SecretNotFoundError",
+    "SecretPendingDeletionError",
     "SecretPermissionError",
     # Providers
     "SecretProvider",
