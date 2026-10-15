@@ -3,6 +3,12 @@
 Rendered by CI and committed back at the end of a release -- do not edit by
 hand. Release notes also appear on the GitHub Releases page, one per tag.
 
+## [2.31.14](https://github.com/hyperi-io/scalo-py/compare/v2.31.13...v2.31.14) (2026-10-15)
+
+### Bug Fixes
+
+* **secrets:** customer KMS key, delete window, no default region, 0600 files ([#130](https://github.com/hyperi-io/scalo-py/issues/130)) ([de3d41e](https://github.com/hyperi-io/scalo-py/commit/de3d41ec8ea2c58d67d55a3b2396719cdb2f0fb3))
+
 ## [2.31.13](https://github.com/hyperi-io/scalo-py/compare/v2.31.12...v2.31.13) (2026-10-14)
 
 ### Bug Fixes
