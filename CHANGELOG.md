@@ -3,6 +3,12 @@
 Rendered by CI and committed back at the end of a release -- do not edit by
 hand. Release notes also appear on the GitHub Releases page, one per tag.
 
+## [2.31.15](https://github.com/hyperi-io/scalo-py/compare/v2.31.14...v2.31.15) (2026-10-15)
+
+### Bug Fixes
+
+* **secrets:** skip a provider whose SDK is missing ([#131](https://github.com/hyperi-io/scalo-py/issues/131)) ([94c16ce](https://github.com/hyperi-io/scalo-py/commit/94c16ce50ac950b679ad51d2e0c123991027cb04))
+
 ## [2.31.14](https://github.com/hyperi-io/scalo-py/compare/v2.31.13...v2.31.14) (2026-10-15)
 
 ### Bug Fixes
