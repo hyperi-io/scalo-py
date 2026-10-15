@@ -82,6 +82,10 @@ Env-var overrides for every provider — `VAULT_ADDR`, `VAULT_TOKEN`,
 `SECRETS_CACHE_DIR`, `SECRETS_CACHE_TTL`,
 `SECRETS_CACHE_KEY`.
 
+### A provider whose SDK is not installed
+
+A provider named in the config whose extra is not installed is logged at WARN and left out, and `from_config` still returns. Using it then raises `ProviderNotConfiguredError`, and a named source falls back to ENV (see [ENV fallback](#env-fallback)). Building the provider directly raises `ProviderNotAvailableError`. A provider whose SDK is present but whose config is bad, such as Ansible Vault with no password, still raises from `from_config`.
+
 ### AWS region, KMS key and deletion window
 
 The region comes from `aws.region`, then `AWS_REGION`, then `AWS_DEFAULT_REGION`. With none set the SDK reads the active profile's region. With no profile region every call fails, because botocore cannot build a client without one (`NoRegionError`). There is no default region.
@@ -99,6 +103,8 @@ sm = SecretsManager.from_config({
 `kms_key_id` takes a key ID, ARN or alias and encrypts each secret the provider creates. A secret that already exists keeps its key.
 
 `recovery_window_days` applies to `delete()`. Unset, AWS keeps a deleted secret recoverable for 30 days. `0` deletes it with no recovery, and 7-30 sets the window. Any other value is refused when the config is built. Inside the window a read, update or create of the name raises `SecretPendingDeletionError`.
+
+A forced delete (`0`) also completes asynchronously on AWS. The DeleteSecret reference says Secrets Manager performs it "with an asynchronous background process", so a `create()` of the same name straight after can be refused for a short while, and AWS says to back off and retry. scalo does not retry. A caller that deletes and re-creates a name retries on `SecretPendingDeletionError`. Reference: <https://docs.aws.amazon.com/secretsmanager/latest/apireference/API_DeleteSecret.html>
 
 ---
 
@@ -268,8 +274,8 @@ outages in `/readyz`.
 | `SecretsError` | base class |
 | `SecretNotFoundError` | path doesn't exist |
 | `ProviderError` | transport / API call failed, including an OpenBao login that could not reach the server or got a 429, 3xx or 5xx |
-| `ProviderNotConfiguredError` | requested provider not in `from_config` |
-| `ProviderNotAvailableError` | provider extra not installed |
+| `ProviderNotConfiguredError` | requested provider not in `from_config`, including one left out for a missing SDK |
+| `ProviderNotAvailableError` | provider extra not installed, raised by the provider's constructor and caught by `from_config`, which logs a warning and leaves the provider out |
 | `AuthenticationError` | the provider refused the credentials, for OpenBao a 400-499 login answer other than 429 (a `ProviderError` subclass, so catch it first) |
 | `SecretPermissionError` | read-only token tried a write |
 | `SecretPendingDeletionError` | AWS: the secret is inside its deletion recovery window, so its name can be neither read nor reused (a `ProviderError` subclass) |
