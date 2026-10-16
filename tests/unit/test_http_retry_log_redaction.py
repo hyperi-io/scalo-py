@@ -26,8 +26,11 @@ import stamina
 from stamina.instrumentation import LoggingOnRetryHook, set_on_retry_hooks
 
 from scalo.http import AsyncHttpClient, HttpClient
+from scalo.logger import logger
 
 USER_ID = "sentinel-user-7f3a9c"
+TOKEN = "sentinel-token-2b8e41"
+REFUSED_HEADERS = {"Authorization": f"SSWS {TOKEN}\nX-Injected: 1"}
 
 both_paths = pytest.mark.parametrize("use_async", [False, True], ids=["sync", "async"])
 
@@ -67,12 +70,12 @@ def _closed_port() -> int:
         return sock.getsockname()[1]
 
 
-async def _get(base_url: str, path: str, *, use_async: bool) -> httpx.Response:
+async def _get(base_url: str, path: str, *, use_async: bool, **kwargs: object) -> httpx.Response:
     if use_async:
         async with AsyncHttpClient(base_url=base_url, retries=2, crypto_profile=None) as client:
-            return await client.get(path)
+            return await client.get(path, **kwargs)
     with HttpClient(base_url=base_url, retries=2, crypto_profile=None) as client:
-        return client.get(path)
+        return client.get(path, **kwargs)
 
 
 def _retry_records(caplog: pytest.LogCaptureFixture) -> list[logging.LogRecord]:
@@ -131,3 +134,32 @@ async def test_a_4xx_is_raised_at_once_without_a_retry(server, caplog, use_async
 
     assert caught.value.response.status_code == 404
     assert _retry_records(caplog) == []
+
+
+@both_paths
+async def test_a_request_the_client_refuses_to_send_is_raised_at_once(server, caplog, use_async):
+    """A header value with a line break is refused the same way on every attempt."""
+    caplog.set_level(logging.WARNING, logger="stamina")
+
+    with pytest.raises(httpx.LocalProtocolError):
+        await _get(server, "/health", use_async=use_async, headers=REFUSED_HEADERS)
+
+    assert _retry_records(caplog) == []
+
+
+@both_paths
+async def test_a_refused_authorization_value_reaches_no_log_record(server, caplog, use_async):
+    """Stdlib records are read at WARNING, the floor scalo's logger setup puts httpx and httpcore at."""
+    caplog.set_level(logging.WARNING)
+    scalo_lines: list[str] = []
+    sink_id = logger.add(lambda message: scalo_lines.append(f"{message} {message.record['extra']}"), level="DEBUG")
+    try:
+        with pytest.raises(httpx.LocalProtocolError) as caught:
+            await _get(server, "/health", use_async=use_async, headers=REFUSED_HEADERS)
+    finally:
+        logger.remove(sink_id)
+
+    assert TOKEN in str(caught.value)
+    assert scalo_lines
+    assert all(TOKEN not in " ".join(str(v) for v in vars(record).values()) for record in caplog.records)
+    assert all(TOKEN not in line for line in scalo_lines)

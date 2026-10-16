@@ -64,6 +64,8 @@ Both expose the same surface: `get`, `post`, `put`, `patch`, `delete`,
 
 ```python
 def _is_retryable(exc):
+    if isinstance(exc, httpx.LocalProtocolError):
+        return False
     if isinstance(exc, httpx.TransportError):
         return True
     if isinstance(exc, httpx.HTTPStatusError):
@@ -77,8 +79,10 @@ def _is_retryable(exc):
 | `wait_initial` | 0.5 s |
 | `wait_max` | 10 s |
 | `wait_jitter` | 1.0 s |
-| Retry on | `httpx.TransportError`, 5xx |
-| Never retry on | 4xx |
+| Retry on | `httpx.TransportError` other than `httpx.LocalProtocolError`, 5xx |
+| Never retry on | 4xx, `httpx.LocalProtocolError` |
+
+`httpx.LocalProtocolError` means httpx refused to send the request, for example because a header value holds a line break, so it is raised at once. Its message quotes the refused header value, which can be a credential, so log its class rather than its text.
 
 Override via constructor:
 
@@ -203,6 +207,7 @@ Errors that escape after retries are exhausted:
 - `httpx.HTTPStatusError` — 5xx after `attempts` retries, or any 4xx
   immediately
 - `httpx.TimeoutException` — exceeded `timeout` per attempt
+- `httpx.LocalProtocolError` -- a request httpx refused to send, immediately
 
 Wrap with `try/except` at the call site; the clients never swallow
 exceptions.
