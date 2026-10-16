@@ -105,8 +105,8 @@ def _is_retryable(exc: BaseException) -> bool:
     """Retry on transport errors and 5xx server errors, never on 4xx or a request httpx refused to send."""
     if isinstance(exc, _RetriedHTTPError):
         exc = exc.error
-    # httpx refused to send the request, such as a header value holding a line break, so every attempt fails the same way.
-    if isinstance(exc, httpx.LocalProtocolError):
+    # httpx refused to send the request, for a header value holding a line break or a URL with no http scheme, so every attempt fails the same way.
+    if isinstance(exc, (httpx.LocalProtocolError, httpx.UnsupportedProtocol)):
         return False
     if isinstance(exc, httpx.TransportError):
         return True

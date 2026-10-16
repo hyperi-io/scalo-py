@@ -27,6 +27,8 @@ from stamina.instrumentation import LoggingOnRetryHook, set_on_retry_hooks
 
 from scalo.http import AsyncHttpClient, HttpClient
 from scalo.logger import logger
+from scalo.logger.logger import _add_emoji_to_record
+from scalo.logger.scrub import build_scrubber
 
 USER_ID = "sentinel-user-7f3a9c"
 TOKEN = "sentinel-token-2b8e41"
@@ -163,3 +165,46 @@ async def test_a_refused_authorization_value_reaches_no_log_record(server, caplo
     assert scalo_lines
     assert all(TOKEN not in " ".join(str(v) for v in vars(record).values()) for record in caplog.records)
     assert all(TOKEN not in line for line in scalo_lines)
+
+
+@both_paths
+@pytest.mark.parametrize("scheme", ["SSWS", "Bearer", "Basic"])
+@pytest.mark.parametrize("backend", ["field-name filter", "layered scrubber"])
+async def test_a_caller_logging_the_refused_error_writes_no_credential(server, use_async, scheme, backend):
+    """The raised error quotes the header value, and scalo's own sinks mask it in the message, a field and the traceback."""
+    secret = f"sentinel-{scheme.lower()}-d41f07"
+    scrubber = build_scrubber() if backend == "layered scrubber" else None
+    scrub = _add_emoji_to_record(use_emojis=False, convert_to_text=True, mask_sensitive=True, scrubber=scrubber)
+    written: list[str] = []
+    sink_id = logger.add(
+        written.append,
+        format=lambda _record: "{message} | {extra:fields}{extra:exception}\n",
+        filter=scrub,
+        level="ERROR",
+        diagnose=False,
+    )
+    try:
+        with pytest.raises(httpx.LocalProtocolError) as caught:
+            await _get(server, "/health", use_async=use_async, headers={"Authorization": f"{scheme} {secret}\nX: 1"})
+        assert secret in str(caught.value)
+        try:
+            raise caught.value
+        except httpx.LocalProtocolError as error:
+            logger.bind(error=str(error)).exception(f"call failed: {error}")
+    finally:
+        logger.remove(sink_id)
+
+    [line] = written
+    assert "LocalProtocolError" in line
+    assert secret not in line
+
+
+@both_paths
+async def test_a_url_with_no_http_scheme_is_raised_at_once(caplog, use_async):
+    """httpx has no transport for the scheme, so every attempt fails the same way."""
+    caplog.set_level(logging.WARNING, logger="stamina")
+
+    with pytest.raises(httpx.UnsupportedProtocol):
+        await _get("ftp://127.0.0.1", "/health", use_async=use_async)
+
+    assert _retry_records(caplog) == []

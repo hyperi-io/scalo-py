@@ -143,6 +143,17 @@ _URL_USER_END_RE = re.compile(r"[\s:/@]")
 # Where a URL's password run ends: whitespace, or the next `://`.
 _URL_RUN_END_RE = re.compile(r"\s|://")
 _BEARER_RE = re.compile(r"\bbearer\s+([^\s]+)", re.IGNORECASE)
+# httpx's error quotes a refused header value whole, auth scheme and all, so the quoted value goes whole, and an unclosed one to the end of its line.
+_REFUSED_HEADER_VALUE_RE = re.compile(
+    r"(?P<head>\billegal header value b?)(?P<quote>['\"])(?:(?!(?P=quote))[^\\\n]|\\.)*(?P=quote)?",
+    re.IGNORECASE,
+)
+
+
+def _mask_refused_header_value(match: re.Match[str]) -> str:
+    """Keep the message and the quotes, and replace the refused header value."""
+    return f"{match['head']}{match['quote']}{MASK_VALUE}{match['quote']}"
+
 
 # A key in text: a run of name characters no other name character precedes, then an optional closing quote.
 _TEXT_KEY = r"(?<![A-Za-z0-9_.\-])(?P<key>[A-Za-z0-9_.\-]+)[\"']?"
@@ -681,6 +692,7 @@ class SensitiveDataFilter(logging.Filter):
         - Env, TOML and INI: `PREFIX_FIELD=value`, `field = "value"`
         - Rust `Debug` and Python repr wrappers: `field: Some("value")`
         - URL userinfo: `://user:password@host`
+        - A header value httpx refused to send: `Illegal header value b'...'`
 
         A key is masked when :func:`is_credential_name` says so, so
         `CARGO_REGISTRY_TOKEN`, `x-api-key` and `secretAccessKey` are masked,
@@ -705,6 +717,7 @@ class SensitiveDataFilter(logging.Filter):
             text = self._secrets_leak.scrub(text)
 
         masked = mask_url_userinfo(text)
+        masked = _REFUSED_HEADER_VALUE_RE.sub(_mask_refused_header_value, masked)
         masked = _BEARER_RE.sub(f"bearer {MASK_VALUE}", masked)
         return _mask_pairs(masked, self._credential_pattern())
 
