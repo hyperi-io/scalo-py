@@ -64,6 +64,8 @@ Both expose the same surface: `get`, `post`, `put`, `patch`, `delete`,
 
 ```python
 def _is_retryable(exc):
+    if isinstance(exc, (httpx.LocalProtocolError, httpx.UnsupportedProtocol)):
+        return False
     if isinstance(exc, httpx.TransportError):
         return True
     if isinstance(exc, httpx.HTTPStatusError):
@@ -77,8 +79,10 @@ def _is_retryable(exc):
 | `wait_initial` | 0.5 s |
 | `wait_max` | 10 s |
 | `wait_jitter` | 1.0 s |
-| Retry on | `httpx.TransportError`, 5xx |
-| Never retry on | 4xx |
+| Retry on | `httpx.TransportError` other than `httpx.LocalProtocolError` and `httpx.UnsupportedProtocol`, 5xx |
+| Never retry on | 4xx, `httpx.LocalProtocolError`, `httpx.UnsupportedProtocol` |
+
+Both mean httpx refused to send the request, so they are raised at once. `httpx.LocalProtocolError` comes from a header value holding a line break, and `httpx.UnsupportedProtocol` from a URL with no `http://` or `https://` scheme. The `LocalProtocolError` message quotes the refused header value, which can be a credential. scalo's logger masks that value whatever its auth scheme (see [Layer 2](../core-pillars/LOGGING.md#layer-2-field-name-regex)), and any other log path needs to log the class rather than the text.
 
 Override via constructor:
 
@@ -203,6 +207,7 @@ Errors that escape after retries are exhausted:
 - `httpx.HTTPStatusError` — 5xx after `attempts` retries, or any 4xx
   immediately
 - `httpx.TimeoutException` — exceeded `timeout` per attempt
+- `httpx.LocalProtocolError`, `httpx.UnsupportedProtocol` -- a request httpx refused to send, immediately
 
 Wrap with `try/except` at the call site; the clients never swallow
 exceptions.

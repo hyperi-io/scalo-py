@@ -31,7 +31,7 @@ globally via httpx event hooks at construction time (see
 
 **Idempotent retries** -- POST/PATCH retries are unsafe by default
 because a retried request may have already landed. To opt in, pass
-``idempotency_key="<uuid>"`` per request; the value is sent as the
+``idempotency_key="<uuid>"`` per request. The value is sent as the
 ``Idempotency-Key`` header and downstream services that support the
 pattern (Stripe, AWS, etc.) deduplicate on it.
 """
@@ -73,7 +73,7 @@ def _apply_crypto_posture(
 
 
 def _describe(error: httpx.HTTPError) -> str:
-    """Name an HTTP error by class, and status where there is one; its own repr carries the request URL."""
+    """Name an HTTP error by class, and status where there is one, because its own repr carries the request URL."""
     name = type(error).__name__
     if isinstance(error, httpx.HTTPStatusError):
         return f"{name}(status={error.response.status_code})"
@@ -92,7 +92,7 @@ class _RetriedHTTPError(Exception):
     """
 
     def __init__(self, error: httpx.HTTPError) -> None:
-        """Wrap ``error``; the message is the class-and-status description."""
+        """Wrap ``error``, with the class-and-status description as the message."""
         super().__init__(_describe(error))
         self.error = error
 
@@ -102,9 +102,12 @@ class _RetriedHTTPError(Exception):
 
 
 def _is_retryable(exc: BaseException) -> bool:
-    """Retry on transport errors and 5xx server errors. Never retry on 4xx client errors."""
+    """Retry on transport errors and 5xx server errors, never on 4xx or a request httpx refused to send."""
     if isinstance(exc, _RetriedHTTPError):
         exc = exc.error
+    # httpx refused to send the request, for a header value holding a line break or a URL with no http scheme, so every attempt fails the same way.
+    if isinstance(exc, (httpx.LocalProtocolError, httpx.UnsupportedProtocol)):
+        return False
     if isinstance(exc, httpx.TransportError):
         return True
     if isinstance(exc, httpx.HTTPStatusError):

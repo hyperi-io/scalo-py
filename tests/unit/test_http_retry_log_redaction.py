@@ -26,8 +26,13 @@ import stamina
 from stamina.instrumentation import LoggingOnRetryHook, set_on_retry_hooks
 
 from scalo.http import AsyncHttpClient, HttpClient
+from scalo.logger import logger
+from scalo.logger.logger import _add_emoji_to_record
+from scalo.logger.scrub import build_scrubber
 
 USER_ID = "sentinel-user-7f3a9c"
+TOKEN = "sentinel-token-2b8e41"
+REFUSED_HEADERS = {"Authorization": f"SSWS {TOKEN}\nX-Injected: 1"}
 
 both_paths = pytest.mark.parametrize("use_async", [False, True], ids=["sync", "async"])
 
@@ -67,12 +72,12 @@ def _closed_port() -> int:
         return sock.getsockname()[1]
 
 
-async def _get(base_url: str, path: str, *, use_async: bool) -> httpx.Response:
+async def _get(base_url: str, path: str, *, use_async: bool, **kwargs: object) -> httpx.Response:
     if use_async:
         async with AsyncHttpClient(base_url=base_url, retries=2, crypto_profile=None) as client:
-            return await client.get(path)
+            return await client.get(path, **kwargs)
     with HttpClient(base_url=base_url, retries=2, crypto_profile=None) as client:
-        return client.get(path)
+        return client.get(path, **kwargs)
 
 
 def _retry_records(caplog: pytest.LogCaptureFixture) -> list[logging.LogRecord]:
@@ -130,4 +135,76 @@ async def test_a_4xx_is_raised_at_once_without_a_retry(server, caplog, use_async
         await _get(server, "/missing", use_async=use_async)
 
     assert caught.value.response.status_code == 404
+    assert _retry_records(caplog) == []
+
+
+@both_paths
+async def test_a_request_the_client_refuses_to_send_is_raised_at_once(server, caplog, use_async):
+    """A header value with a line break is refused the same way on every attempt."""
+    caplog.set_level(logging.WARNING, logger="stamina")
+
+    with pytest.raises(httpx.LocalProtocolError):
+        await _get(server, "/health", use_async=use_async, headers=REFUSED_HEADERS)
+
+    assert _retry_records(caplog) == []
+
+
+@both_paths
+async def test_a_refused_authorization_value_reaches_no_log_record(server, caplog, use_async):
+    """Stdlib records are read at WARNING, the floor scalo's logger setup puts httpx and httpcore at."""
+    caplog.set_level(logging.WARNING)
+    scalo_lines: list[str] = []
+    sink_id = logger.add(lambda message: scalo_lines.append(f"{message} {message.record['extra']}"), level="DEBUG")
+    try:
+        with pytest.raises(httpx.LocalProtocolError) as caught:
+            await _get(server, "/health", use_async=use_async, headers=REFUSED_HEADERS)
+    finally:
+        logger.remove(sink_id)
+
+    assert TOKEN in str(caught.value)
+    assert scalo_lines
+    assert all(TOKEN not in " ".join(str(v) for v in vars(record).values()) for record in caplog.records)
+    assert all(TOKEN not in line for line in scalo_lines)
+
+
+@both_paths
+@pytest.mark.parametrize("scheme", ["SSWS", "Bearer", "Basic"])
+@pytest.mark.parametrize("backend", ["field-name filter", "layered scrubber"])
+async def test_a_caller_logging_the_refused_error_writes_no_credential(server, use_async, scheme, backend):
+    """The raised error quotes the header value, and scalo's own sinks mask it in the message, a field and the traceback."""
+    secret = f"sentinel-{scheme.lower()}-d41f07"
+    scrubber = build_scrubber() if backend == "layered scrubber" else None
+    scrub = _add_emoji_to_record(use_emojis=False, convert_to_text=True, mask_sensitive=True, scrubber=scrubber)
+    written: list[str] = []
+    sink_id = logger.add(
+        written.append,
+        format=lambda _record: "{message} | {extra:fields}{extra:exception}\n",
+        filter=scrub,
+        level="ERROR",
+        diagnose=False,
+    )
+    try:
+        with pytest.raises(httpx.LocalProtocolError) as caught:
+            await _get(server, "/health", use_async=use_async, headers={"Authorization": f"{scheme} {secret}\nX: 1"})
+        assert secret in str(caught.value)
+        try:
+            raise caught.value
+        except httpx.LocalProtocolError as error:
+            logger.bind(error=str(error)).exception(f"call failed: {error}")
+    finally:
+        logger.remove(sink_id)
+
+    [line] = written
+    assert "LocalProtocolError" in line
+    assert secret not in line
+
+
+@both_paths
+async def test_a_url_with_no_http_scheme_is_raised_at_once(caplog, use_async):
+    """httpx has no transport for the scheme, so every attempt fails the same way."""
+    caplog.set_level(logging.WARNING, logger="stamina")
+
+    with pytest.raises(httpx.UnsupportedProtocol):
+        await _get("ftp://127.0.0.1", "/health", use_async=use_async)
+
     assert _retry_records(caplog) == []

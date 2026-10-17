@@ -71,6 +71,38 @@ class TestSensitiveDataFilter:
             result = filter_inst._mask_sensitive_string(input_text)
             assert result == expected, f"Failed for: {input_text}"
 
+    @pytest.mark.parametrize(
+        "credential",
+        ["SSWS sentinel-ssws-4c1d", "Bearer sentinel-bearer-9e2a", "Basic c2VudGluZWwtYmFzaWMtN2Iz"],
+        ids=["ssws", "bearer", "basic"],
+    )
+    @pytest.mark.parametrize(
+        ("shape", "expected"),
+        [
+            ("Illegal header value b'{v}\\nX-Injected: 1'", f"Illegal header value b'{MASK_VALUE}'"),
+            ("Illegal header value '{v}\\nX-Injected: 1'", f"Illegal header value '{MASK_VALUE}'"),
+            ('Illegal header value b"{v}\\nX-Injected: it\'s"', f'Illegal header value b"{MASK_VALUE}"'),
+            (
+                "LocalProtocolError(\"Illegal header value b'{v}\\\\nX-Injected: 1'\")",
+                f"LocalProtocolError(\"Illegal header value b'{MASK_VALUE}'\")",
+            ),
+            ("Illegal header value b'{v}", f"Illegal header value b'{MASK_VALUE}'"),
+        ],
+        ids=["bytes-repr", "str-repr", "double-quoted", "inside-exception-repr", "unclosed"],
+    )
+    def test_mask_refused_header_value(self, credential, shape, expected):
+        """httpx quotes a header value it refused whole, so the value goes whatever its auth scheme."""
+        result = SensitiveDataFilter()._mask_sensitive_string(shape.format(v=credential))
+
+        assert result == expected
+        assert credential.split()[1] not in result
+
+    def test_refused_header_rule_leaves_other_text_alone(self):
+        """Text that is not a refused header value is untouched by the rule."""
+        text = "Illegal header name b'X Bad' and illegal header value without a quote"
+
+        assert SensitiveDataFilter()._mask_sensitive_string(text) == text
+
     def test_mask_database_url(self):
         """Test masking passwords in database URLs."""
         filter_inst = SensitiveDataFilter()

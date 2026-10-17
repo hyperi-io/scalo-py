@@ -202,7 +202,7 @@ Three layers fire in order on every log message. Built from
 | Layer | Source | Detects |
 |-------|--------|---------|
 | L1 secrets | `scrub/secrets.py` + `gitleaks.toml` rules | AWS keys, GitHub tokens, JWTs, private keys, third-party API keys |
-| L2 fields | `scrub/field_names.py` (regex on key names) | `password=...`, `"token":"..."`, `CARGO_REGISTRY_TOKEN=...`, `token = "..."`, bearer tokens, DB URLs |
+| L2 fields | `scrub/field_names.py` (regex on key names) | `password=...`, `"token":"..."`, `CARGO_REGISTRY_TOKEN=...`, `token = "..."`, bearer tokens, DB URLs, refused header values |
 | L3 PII | `scrub/pii/` validators (Luhn, mod-97, libphonenumber, structural regex) | Credit cards, IBANs, emails (literal and percent-encoded), phones, AU ABN, ACN, TFN and Medicare |
 
 There is no L4 -- NLP/NER scrubbing was dropped from scope (the
@@ -266,6 +266,7 @@ The password in `scheme://user:password@host` is masked up to the last `@` a hos
 | JSON | `{"CARGO_REGISTRY_TOKEN": "abc"}` | `{"CARGO_REGISTRY_TOKEN": "***REDACTED***"}` |
 | Python repr | `{'password': 'abc'}` | `{'password': ***REDACTED***}` |
 | YAML, HTTP header | `x-auth-token: abc` | `x-auth-token: ***REDACTED***` |
+| header value httpx refused, any auth scheme, bytes or str form | `Illegal header value b'SSWS abc\nX: 1'` | `Illegal header value b'***REDACTED***'` |
 
 A quoted value after `=`, or a single-quoted one after `:`, is masked whole with its quotes. A double-quoted JSON value keeps its quotes so the line stays valid JSON. A quoted value runs to the first quote no backslash escapes, so `password="a\"b"` and `{"password": "a\"b"}` are masked whole; one with no such quote is masked to its next quote. One with no closing quote at all is masked to the end of its line, or, for a double-quoted value after `:`, which may cross lines, to the end of the text short of a line break that ends it. Whitespace around `=` never crosses a line, and `==` and `=>` are not read as assignments.
 
