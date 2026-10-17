@@ -3,6 +3,12 @@
 Rendered by CI and committed back at the end of a release -- do not edit by
 hand. Release notes also appear on the GitHub Releases page, one per tag.
 
+## [2.31.17](https://github.com/hyperi-io/scalo-py/compare/v2.31.16...v2.31.17) (2026-10-17)
+
+### Bug Fixes
+
+* **security:** mask scheme values and key:: ([#134](https://github.com/hyperi-io/scalo-py/issues/134)) ([5e33eb6](https://github.com/hyperi-io/scalo-py/commit/5e33eb6ebd36e6b46a37f4382810490d85d9a572))
+
 ## [2.31.16](https://github.com/hyperi-io/scalo-py/compare/v2.31.15...v2.31.16) (2026-10-17)
 
 ### Bug Fixes
