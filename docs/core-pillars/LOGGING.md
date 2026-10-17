@@ -313,6 +313,12 @@ scalo-rs leaves a Hiera-style key such as `profile::db::password: x` in clear, a
 
 ---
 
+## Signed URL parameters
+
+L2 masks the value of `sig`, `X-Amz-Signature`, `X-Amz-Security-Token` and `X-Goog-Signature`, named in any case right after `?` or `&` and followed by `=`, up to the next `&`, white space, quote or the end of the text. So an Azure SAS URL keeps everything but its `sig=`, and S3 and GCS presigned URLs lose their signatures. A name that only holds `sig`, such as `signal=`, `design=` or `?signature_type=`, is left alone.
+
+---
+
 ## Rate limiting
 
 `RateLimitFilter` suppresses identical messages from tight loops and

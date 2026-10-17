@@ -143,6 +143,11 @@ _URL_USER_END_RE = re.compile(r"[\s:/@]")
 # Where a URL's password run ends: whitespace, or the next `://`.
 _URL_RUN_END_RE = re.compile(r"\s|://")
 _BEARER_RE = re.compile(r"\bbearer\s+([^\s]+)", re.IGNORECASE)
+# A query parameter right after `?` or `&` whose value is a signature or a session token, the names scalo-rs reads too.
+_QUERY_SIGNATURE_RE = re.compile(
+    r"(?<=[?&])(?P<name>sig|x-amz-signature|x-amz-security-token|x-goog-signature)=[^&\s\"']*",
+    re.IGNORECASE,
+)
 # httpx's error quotes a refused header value whole, auth scheme and all, so the quoted value goes whole, and an unclosed one to the end of its line.
 _REFUSED_HEADER_VALUE_RE = re.compile(
     r"(?P<head>\billegal header value b?)(?P<quote>['\"])(?:(?!(?P=quote))[^\\\n]|\\.)*(?P=quote)?",
@@ -790,6 +795,8 @@ class SensitiveDataFilter(logging.Filter):
         - An authentication scheme after any credential key: `x-api-key: Token value`
         - A key and value joined by `::`: `password::value`
         - URL userinfo: `://user:password@host`
+        - Signed URL query parameters: `?sig=`, `&X-Amz-Signature=`,
+          `&X-Amz-Security-Token=`, `&X-Goog-Signature=`
         - A header value httpx refused to send: `Illegal header value b'...'`
 
         A key is masked when :func:`is_credential_name` says so, so
@@ -815,6 +822,7 @@ class SensitiveDataFilter(logging.Filter):
             text = self._secrets_leak.scrub(text)
 
         masked = mask_url_userinfo(text)
+        masked = _QUERY_SIGNATURE_RE.sub(lambda match: f"{match['name']}={MASK_VALUE}", masked)
         masked = _REFUSED_HEADER_VALUE_RE.sub(_mask_refused_header_value, masked)
         masked = _BEARER_RE.sub(f"bearer {MASK_VALUE}", masked)
         return _mask_pairs(masked, self._credential_pattern())
