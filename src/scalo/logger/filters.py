@@ -187,6 +187,13 @@ _MAX_WRAPPER_LEN = 4096
 _WRAPPER_OPEN_RE = re.compile(r"[A-Za-z0-9_]+\(")
 # A parenthesis, or a quote with the backslashes before it; an even run escapes nothing, so the quote can close a string.
 _WRAPPER_TOKEN_RE = re.compile(r"""[()]|(?<!\\)(\\*+)["']""")
+# A key holding this names an authorization header, whose value is a scheme followed by its credentials.
+_AUTHORIZATION = "authorization"
+_BLANKS_RE = re.compile(r"[ \t]++")
+# A credential item: runs up to white space, `,`, `&`, `}` or `"`, joined by a quoted string opened at its start or after `=`.
+_CREDENTIAL_RUN_RE = re.compile(r'[^\s,&}"]++')
+_CREDENTIAL_QUOTED_RE = re.compile(f"{_DOUBLE_QUOTED_LINE}|{_PLAIN_DOUBLE_QUOTED_LINE}")
+_CREDENTIAL_COMMA_RE = re.compile(r"[ \t]*+,[ \t]*+")
 
 
 def _spellings(name: str) -> tuple[str, str]:
@@ -428,7 +435,9 @@ class _Values:
     may cross lines, as a double-quoted value after ``:`` and a ``Name(...)``
     value may, to the end of the text short of a line break that ends it. A
     ``Name(...)`` value runs to its close, or to the end of the text when it
-    does not close within the window.
+    does not close within the window. An unquoted value read as an
+    authorization header's runs on past its scheme through the credentials
+    after it.
     """
 
     __slots__ = ("_line_end", "_text", "_text_end", "_wrappers")
@@ -439,8 +448,8 @@ class _Values:
         self._line_end = -1
         self._text_end = len(text) - 1 if text.endswith("\n") else len(text)
 
-    def colon(self, start: int) -> tuple[int | None, str, int]:
-        """Read the value after a colon at ``start``."""
+    def colon(self, start: int, header: bool) -> tuple[int | None, str, int]:
+        """Read the value after a colon at ``start``, as an authorization header's when ``header`` is set."""
         text = self._text
         if text.startswith('"', start):
             found = _JSON_VALUE_RE.match(text, start)
@@ -454,10 +463,10 @@ class _Values:
         end = None if unquoted is None else unquoted.end()
         if text.startswith("'", start):
             return end, MASK_VALUE, self._line(start)
-        return self._unquoted(start, end)
+        return self._unquoted(start, end, header)
 
-    def equals(self, start: int) -> tuple[int | None, str, int]:
-        """Read the value after an equals sign at ``start``."""
+    def equals(self, start: int, header: bool) -> tuple[int | None, str, int]:
+        """Read the value after an equals sign at ``start``, as an authorization header's when ``header`` is set."""
         text = self._text
         found = _EQUALS_QUOTED_RE.match(text, start)
         if found is not None:
@@ -466,15 +475,62 @@ class _Values:
         end = start if unquoted is None else unquoted.end()
         if text.startswith(('"', "'"), start):
             return end, MASK_VALUE, self._line(start)
-        return self._unquoted(start, end)
+        return self._unquoted(start, end, header)
 
-    def _unquoted(self, start: int, end: int | None) -> tuple[int | None, str, int]:
-        """Read an unquoted value ending at ``end``, or further when a ``Name(...)`` value starts at ``start``."""
+    def _unquoted(self, start: int, end: int | None, header: bool) -> tuple[int | None, str, int]:
+        """Read an unquoted value ending at ``end``, or further when a ``Name(...)`` value starts at ``start``.
+
+        With ``header`` set and no ``Name(...)`` value there, the value ending
+        at ``end`` is the scheme and the credentials after it are read too.
+        """
         wrapped, reach = self._wrappers.read(start, self._text_end)
         if wrapped is not None and (end is None or wrapped > end):
             end = wrapped
+        elif header and reach is None and end is not None and end > start:
+            end = self._credentials(end)
         low = start if end is None else end
         return end, MASK_VALUE, low if reach is None else max(low, reach)
+
+    def _credentials(self, scheme_end: int) -> int:
+        """Return where the credentials after a scheme ending at ``scheme_end`` end, or ``scheme_end`` when none follow.
+
+        Spaces or tabs separate the scheme from its credentials, which are
+        items separated by commas, as in ``Digest username="u", response="r"``.
+        They never cross a line.
+        """
+        text = self._text
+        gap = _BLANKS_RE.match(text, scheme_end)
+        if gap is None:
+            return scheme_end
+        end = scheme_end
+        at = gap.end()
+        while (item_end := self._credential_item(at)) > at:
+            end = item_end
+            comma = _CREDENTIAL_COMMA_RE.match(text, end)
+            if comma is None:
+                break
+            at = comma.end()
+        return end
+
+    def _credential_item(self, start: int) -> int:
+        """Return where the credential item at ``start`` ends, or ``start`` when none starts there.
+
+        A quoted string opens at the item's start or after ``=``, and one that
+        does not close on its line takes the item to the end of the line.
+        """
+        text = self._text
+        end = start
+        while True:
+            if text.startswith('"', end) and (end == start or text[end - 1] == "="):
+                quoted = _CREDENTIAL_QUOTED_RE.match(text, end)
+                if quoted is None:
+                    return self._line(end)
+                end = quoted.end()
+                continue
+            run = _CREDENTIAL_RUN_RE.match(text, end)
+            if run is None:
+                return end
+            end = run.end()
 
     def _line(self, start: int) -> int:
         """Return where the line holding ``start`` ends: its line break, or the end of the text."""
@@ -498,10 +554,11 @@ def _pair_spans(
     runs: list[_Span] = []
     copied = 0
     for head in head_re.finditer(text):
-        if head.start() < copied or not _names_credential(head["key"], "", pattern):
+        key = head["key"]
+        if head.start() < copied or not _names_credential(key, "", pattern):
             continue
         start = head.end()
-        end, mask, reach = read(start)
+        end, mask, reach = read(start, _AUTHORIZATION in key.lower())
         if end is not None:
             spans.append((start, end, mask))
             copied = end
@@ -691,6 +748,8 @@ class SensitiveDataFilter(logging.Filter):
         - Key-value pairs: `field: value` or `field=value`
         - Env, TOML and INI: `PREFIX_FIELD=value`, `field = "value"`
         - Rust `Debug` and Python repr wrappers: `field: Some("value")`
+        - Authorization headers, any scheme: `Authorization: Basic value`,
+          `authorization=Digest username="u", response="r"`
         - URL userinfo: `://user:password@host`
         - A header value httpx refused to send: `Illegal header value b'...'`
 
