@@ -106,8 +106,9 @@ Three points:
 - `set_ready()` is explicit, not inferred. Until you call it, `/readyz`
   returns 503 — which is the desired K8s rolling-update behaviour.
 - SIGTERM handling is the app's job. We expose `concurrency` primitives
-  (cancellation tokens, bulkheads) but don't install signal handlers
-  on import.
+  (`Bulkhead`, `gather_with_timeouts`, `run_blocking`) but don't install
+  signal handlers on import. [SHUTDOWN.md](core-pillars/SHUTDOWN.md) shows
+  the wiring.
 
 ---
 
