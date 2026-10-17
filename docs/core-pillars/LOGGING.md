@@ -297,6 +297,12 @@ L3 cannot detect an opaque provider user id such as Okta's `00u1sentinel2abc3`. 
 
 ---
 
+## Authorization headers
+
+L2 masks the scheme and credentials after a key holding `authorization`, such as `Proxy-Authorization` or `HTTP_AUTHORIZATION`, so `Authorization: SSWS abc` becomes `Authorization: ***REDACTED***`. The credentials are comma-separated items, so a `Digest username="u", response="r"` list goes whole. An item runs to white space, `,`, `&`, `}` or `"`, takes a quoted string after `=` whole, and never crosses a line, so `Authorization: Basic abc status=401` keeps `status=401`. Prose with no `:` or `=` after the word is left alone, while `authorization_url=https://idp/authorize next=1` also loses `next=1`.
+
+---
+
 ## Rate limiting
 
 `RateLimitFilter` suppresses identical messages from tight loops and
