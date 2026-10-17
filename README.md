@@ -129,10 +129,10 @@ secrets, Kafka and the deployment-contract generators -- published as `scalo` on
 PyPI under Apache-2.0.
 
 It is scalo-rs's SISTER, not its twin: same conventions, DIFFERENT API, separate
-repo. Never assume parity. The divergence is recorded rather than theoretical --
-`src/scalo/data/masking-patterns.yaml` names the sensitive fields each side knows
-and the other does not, and the two match differently, so the corpus holds only
-cases inside the overlap.
+repo. Never assume parity. Where the two must agree, a shared corpus says so:
+credential masking is checked against scalo-rs's
+`tests/fixtures/credential_masking_parity.json`, vendored to
+`tests/fixtures/patterns/`.
 
 ### Where things live
 

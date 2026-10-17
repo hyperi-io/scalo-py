@@ -3,7 +3,7 @@
 # Canonical input -> expected-outcome data for the log field masker.
 # scalo (Python) loads this via tests/unit/test_masking_parity.py.
 #
-# scalo-rs does not read this file: it runs the same 18 cases as `coarse_cases` in its own tests/fixtures/credential_masking_parity.json.
+# scalo-rs does not read this file: it runs the same cases as `coarse_cases` in its own tests/fixtures/credential_masking_parity.json.
 # A case added here reaches scalo-rs only once it is copied there too.
 #
 # `sensitive_field_names` lists ONLY fields both implementations recognise
@@ -108,6 +108,17 @@ test_cases:
   - name: kafka_sasl_url_password
     description: Same shape, different scheme.
     input: "kafka://svc:s3cr3t@broker.internal:9092"
+    should_mask: true
+
+  # -- Unclosed values ----------------------------------------------------
+  - name: json_unclosed_quote_masked
+    description: No closing quote anywhere after the value, so it masks to the end of the text.
+    input: '{"password": "abc'
+    should_mask: true
+
+  - name: unclosed_wrapper_masked
+    description: A value opened by a wrapper that never closes masks whole.
+    input: "token=Some(abc def"
     should_mask: true
 
   # -- Must NOT mask ------------------------------------------------------

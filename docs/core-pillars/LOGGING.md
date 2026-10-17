@@ -299,7 +299,23 @@ L3 cannot detect an opaque provider user id such as Okta's `00u1sentinel2abc3`. 
 
 ## Authorization headers
 
-L2 masks the scheme and credentials after a key holding `authorization`, such as `Proxy-Authorization` or `HTTP_AUTHORIZATION`, so `Authorization: SSWS abc` becomes `Authorization: ***REDACTED***`. The credentials are comma-separated items, so a `Digest username="u", response="r"` list goes whole. An item runs to white space, `,`, `&`, `}` or `"`, takes a quoted string after `=` whole, and never crosses a line, so `Authorization: Basic abc status=401` keeps `status=401`. Prose with no `:` or `=` after the word is left alone, while `authorization_url=https://idp/authorize next=1` also loses `next=1`.
+L2 masks the scheme and credentials after a key holding `authorization`, such as `Proxy-Authorization` or `HTTP_AUTHORIZATION`, so `Authorization: SSWS abc` becomes `Authorization: ***REDACTED***`. The credentials are comma-separated items, so a `Digest username="u", response="r"` list goes whole. An item runs to white space, `,`, `}` or `"`, takes a quoted string after `=` whole, and never crosses a line, so `Authorization: Basic abc status=401` keeps `status=401`. After `=` an item also ends at `&`, which separates form fields there, so `Authorization: SharedAccessSignature sr=x&sig=y` masks whole while `authorization=Basic abc&page=2` keeps `&page=2`. Prose with no `:` or `=` after the word is left alone, while `authorization_url=https://idp/authorize next=1` also loses `next=1`.
+
+After any other credential key, an unquoted value whose first word is an authentication scheme is read the same way, so `x-api-key: Token abc` and `header_value=Basic abc` mask whole. The schemes are the IANA registry's (`Basic`, `Bearer`, `Concealed`, `Digest`, `DPoP`, `GNAP`, `HOBA`, `Mutual`, `Negotiate`, `OAuth`, `PrivateToken`, `SCRAM-SHA-1`, `SCRAM-SHA-256`, `vapid`) and `ApiKey`, `AWS4-HMAC-SHA256`, `NTLM`, `SharedAccessSignature`, `SharedKey`, `SharedKeyLite`, `Splunk`, `SSWS` and `Token`, in any case. A value starting with any other word keeps the word after it, so `password: abc later` keeps `later`, while `auth=basic user=bob` loses `user=bob`.
+
+---
+
+## Double-colon keys
+
+A key and its value may be joined by `::`, and L2 reads the value after both colons, so `password::abc` becomes `password::***REDACTED***`. A path whose first segment names a credential loses the rest: `aws_sdk_secretsmanager::client` becomes `aws_sdk_secretsmanager::***REDACTED***`.
+
+scalo-rs leaves a Hiera-style key such as `profile::db::password: x` in clear, an accepted divergence, because in its text logs that shape reads exactly like a log target and it cannot tell the two apart.
+
+---
+
+## Signed URL parameters
+
+L2 masks the value of `sig`, `X-Amz-Signature`, `X-Amz-Security-Token` and `X-Goog-Signature`, named in any case right after `?` or `&` and followed by `=`, up to the next `&`, white space, quote or the end of the text. So an Azure SAS URL keeps everything but its `sig=`, and S3 and GCS presigned URLs lose their signatures. A name that only holds `sig`, such as `signal=`, `design=` or `?signature_type=`, is left alone.
 
 ---
 

@@ -10,7 +10,8 @@
 on exit even when the body raises -- prevents probe-slot leaks on
 caller crash."""
 
-from __future__ import annotations
+import asyncio
+import time
 
 import pytest
 
@@ -86,6 +87,47 @@ def test_probe_slot_released_on_exception_no_leak():
     # state transition itself is the canonical signal: HALF_OPEN +
     # failure -> OPEN with clean state.
     assert cb._half_open_calls == 0
+
+
+async def test_a_cancelled_probe_reopens_the_circuit_and_probes_again():
+    cb = _half_open()
+    entered = asyncio.Event()
+
+    async def probe_until_cancelled():
+        with cb.probe() as acquired:
+            assert acquired is True
+            entered.set()
+            await asyncio.Event().wait()
+
+    task = asyncio.create_task(probe_until_cancelled())
+    await entered.wait()
+    task.cancel()
+    with pytest.raises(asyncio.CancelledError):
+        await task
+
+    assert cb.state == CircuitState.OPEN
+    await asyncio.sleep(0.06)
+    assert cb.try_acquire_probe() is True
+
+
+def test_a_probe_interrupted_by_a_base_exception_reopens_the_circuit():
+    cb = _half_open()
+    with pytest.raises(KeyboardInterrupt), cb.probe() as acquired:
+        assert acquired is True
+        raise KeyboardInterrupt
+    assert cb.state == CircuitState.OPEN
+    assert cb._half_open_calls == 0
+
+
+def test_a_probe_never_reported_is_readmitted_after_the_reset_timeout():
+    cb = _half_open()
+    assert cb.try_acquire_probe() is True, "the caller is the probe"
+    assert cb.try_acquire_probe() is False, "the probe is still out"
+
+    time.sleep(0.06)
+
+    assert cb.try_acquire_probe() is True, "a lost probe is readmitted"
+    assert cb.try_acquire_probe() is False, "one probe at a time"
 
 
 def test_probe_closed_circuit_just_records_success():

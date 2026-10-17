@@ -474,6 +474,12 @@ def test_a_quoted_value_is_read_as_a_scanner_reads_it():
         pytest.param('authorization: a b="' + "x" * 200_000, id="authorization-unclosed-quote"),
         pytest.param('authorization=a b="\n' * 25_000, id="authorization-unclosed-quote-lines"),
         pytest.param('authorization: a b="\\" ' * 15_000, id="authorization-escaped-quote-items"),
+        pytest.param("token: basic " * 30_000, id="scheme-heads"),
+        pytest.param("x-api-key: Token " + "b, " * 70_000, id="scheme-comma-chain"),
+        pytest.param("password::" * 40_000, id="double-colon-heads"),
+        pytest.param("authorization: a " + "b&" * 100_000, id="authorization-ampersand-chain"),
+        pytest.param("?sig=a" * 40_000, id="query-signature-heads"),
+        pytest.param("&si" * 70_000, id="query-near-signature-names"),
     ],
 )
 def test_a_long_line_of_backslashes_and_quotes_is_masked_in_linear_time(text):

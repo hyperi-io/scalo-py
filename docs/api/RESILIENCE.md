@@ -3,11 +3,11 @@
 Two complementary primitives, both in the base package (no extras to
 install):
 
-- `CircuitBreaker` — trip-and-reject a one-shot outbound call. Matches
-  `scalo-rs`'s `src/resilience/circuit_breaker.rs` byte for byte: same
-  three-state machine (CLOSED / OPEN / HALF_OPEN), same thresholds,
-  same semantics — a service rewritten from Python to Rust trips and
-  recovers identically.
+- `CircuitBreaker` -- trip-and-reject a one-shot outbound call. It runs
+  the three-state machine (CLOSED / OPEN / HALF_OPEN) and the defaults
+  of the breaker in `scalo-rs`'s tiered sink, `src/tiered_sink/circuit.rs`.
+  The API differs, and so do the behaviours listed under
+  "Cross-language parity" below.
 - `ReconnectingResilience` — reconnect and retry a pooled connection
   through a transient outage, until it recovers or a budget runs out.
   The sibling shape for a dependency you hold a pool against (a
@@ -50,7 +50,7 @@ stateDiagram-v2
 |-------|-----------|
 | `CLOSED` | All calls permitted. Successes reset the failure counter, failures increment it. Hitting `failure_threshold` consecutive failures opens the circuit. |
 | `OPEN` | All calls rejected with `CircuitBreakerError`. After `reset_timeout` seconds elapses, the breaker auto-transitions to `HALF_OPEN` on the next state check. |
-| `HALF_OPEN` | A small number of probe calls (`half_open_max_calls`, default 1) are permitted. A success closes the breaker; a failure reopens it. Subsequent calls during the probe window are rejected. |
+| `HALF_OPEN` | A small number of probe calls (`half_open_max_calls`, default 1) are permitted. A success closes the breaker and a failure reopens it. Subsequent calls during the probe window are rejected. A probe slot with no outcome once `reset_timeout` has passed since the newest probe was admitted is lost, and the next caller probes again. |
 
 The OPEN → HALF_OPEN transition is **lazy** — it happens the next time
 the state is read, not at the `reset_timeout` instant. Reading
@@ -143,12 +143,18 @@ with cb.probe() as acquired:
 
 `cb.probe()` wraps `cb.try_acquire_probe()` and always records
 success/failure on exit, even if the body raises before the caller
-could record manually. CLOSED always returns `True` (no slot
-accounting); in HALF_OPEN it reserves one of `half_open_max_calls`
-slots and returns `False` once they are all taken; OPEN always returns
+could record manually. Any exception is a failure, `asyncio.CancelledError`
+included, so a cancelled probe reopens the circuit, which probes again
+after `reset_timeout`, and the cancel is re-raised. CLOSED always returns `True`,
+with no slot accounting. In HALF_OPEN it reserves one of `half_open_max_calls`
+slots and returns `False` once they are all taken, and OPEN always returns
 `False`. Call `try_acquire_probe()` directly only when you need the
-True/False result without the context-manager cleanup — on `True` you
-must then call `record_success()` or `record_failure()` yourself.
+True/False result without the context-manager cleanup. On `True` you
+must then call `record_success()` or `record_failure()` yourself. A slot
+never recorded is lost once `reset_timeout` has passed since the newest
+probe was admitted, so a caller cancelled before it records cannot hold
+the breaker HALF_OPEN for good. A call guarded by `with cb:` that runs
+longer than `reset_timeout` loses its slot the same way.
 
 ---
 
@@ -210,20 +216,18 @@ label for any future observability hooks.
 
 ## Cross-language parity (CircuitBreaker)
 
-The Python breaker mirrors `scalo-rs`'s implementation exactly:
+The Rust breaker is `scalo::tiered_sink::CircuitBreaker`, in `src/tiered_sink/circuit.rs`.
 
-| Behaviour | Both |
-|-----------|------|
-| State enum values | `closed`, `open`, `half_open` (lowercase string) |
-| Default threshold | 5 consecutive failures |
-| Default reset timeout | 30.0 seconds |
-| HALF_OPEN entry trigger | Lazy on state read |
-| HALF_OPEN max probe calls | 1 |
-| `reset()` semantics | Force CLOSED, clear all counters |
-| Thread safety | Lock-guarded mutations |
-
-A breaker tripped in a Python service and one tripped in a Rust service
-look identical in metrics and behave identically on recovery.
+| Behaviour | scalo-py | scalo-rs |
+|-----------|----------|----------|
+| States | `closed`, `open`, `half_open` strings | `Closed`, `Open`, `HalfOpen` enum |
+| Default threshold | 5 consecutive failures | 5, the tiered sink's `circuit_failure_threshold` |
+| Default reset timeout | 30.0 seconds | 30 seconds, the tiered sink's `circuit_reset_timeout_ms` |
+| OPEN -> HALF_OPEN | On any state read | Only on `allow_request()`, while `state()` reports `HalfOpen` without moving |
+| Probes in HALF_OPEN | `half_open_max_calls`, default 1 | 1 |
+| A probe that never reports | Lost once `reset_timeout` has passed since the newest probe was admitted, and the next caller probes. `probe()` and `with cb:` also count any exception as a failure, a cancel included | Lost once `reset_timeout` has passed since it went out, and the next caller probes |
+| `reset()` | Force CLOSED, clear all counters | The same |
+| Thread safety | `threading.Lock` | `std::sync::Mutex` |
 
 ---
 

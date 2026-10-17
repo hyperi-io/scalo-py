@@ -143,6 +143,11 @@ _URL_USER_END_RE = re.compile(r"[\s:/@]")
 # Where a URL's password run ends: whitespace, or the next `://`.
 _URL_RUN_END_RE = re.compile(r"\s|://")
 _BEARER_RE = re.compile(r"\bbearer\s+([^\s]+)", re.IGNORECASE)
+# A query parameter right after `?` or `&` whose value is a signature or a session token, the names scalo-rs reads too.
+_QUERY_SIGNATURE_RE = re.compile(
+    r"(?<=[?&])(?P<name>sig|x-amz-signature|x-amz-security-token|x-goog-signature)=[^&\s\"']*",
+    re.IGNORECASE,
+)
 # httpx's error quotes a refused header value whole, auth scheme and all, so the quoted value goes whole, and an unclosed one to the end of its line.
 _REFUSED_HEADER_VALUE_RE = re.compile(
     r"(?P<head>\billegal header value b?)(?P<quote>['\"])(?:(?!(?P=quote))[^\\\n]|\\.)*(?P=quote)?",
@@ -157,7 +162,8 @@ def _mask_refused_header_value(match: re.Match[str]) -> str:
 
 # A key in text: a run of name characters no other name character precedes, then an optional closing quote.
 _TEXT_KEY = r"(?<![A-Za-z0-9_.\-])(?P<key>[A-Za-z0-9_.\-]+)[\"']?"
-_COLON_HEAD_RE = re.compile(rf"{_TEXT_KEY}\s*:\s*")
+# `key::value` separates with both colons, so the value starts after the second.
+_COLON_HEAD_RE = re.compile(rf"{_TEXT_KEY}\s*::?\s*")
 _EQUALS_HEAD_RE = re.compile(rf"{_TEXT_KEY}[ \t]*=(?![=>])[ \t]*")
 # An unquoted value runs on across a space into a group that starts with a digit, so `TFN: 123 456 782` goes whole.
 _DIGIT_GROUPS = r"(?:[ ][(+]?[0-9]{chars}*)*"
@@ -189,9 +195,39 @@ _WRAPPER_OPEN_RE = re.compile(r"[A-Za-z0-9_]+\(")
 _WRAPPER_TOKEN_RE = re.compile(r"""[()]|(?<!\\)(\\*+)["']""")
 # A key holding this names an authorization header, whose value is a scheme followed by its credentials.
 _AUTHORIZATION = "authorization"
+# HTTP authentication schemes, the IANA registry then vendor ones, the list scalo-rs carries too.
+_AUTH_SCHEMES = frozenset(
+    {
+        "basic",
+        "bearer",
+        "concealed",
+        "digest",
+        "dpop",
+        "gnap",
+        "hoba",
+        "mutual",
+        "negotiate",
+        "oauth",
+        "privatetoken",
+        "scram-sha-1",
+        "scram-sha-256",
+        "vapid",
+        "apikey",
+        "aws4-hmac-sha256",
+        "ntlm",
+        "sharedaccesssignature",
+        "sharedkey",
+        "sharedkeylite",
+        "splunk",
+        "ssws",
+        "token",
+    }
+)
 _BLANKS_RE = re.compile(r"[ \t]++")
-# A credential item: runs up to white space, `,`, `&`, `}` or `"`, joined by a quoted string opened at its start or after `=`.
-_CREDENTIAL_RUN_RE = re.compile(r'[^\s,&}"]++')
+# A credential item: runs up to white space, `,`, `}` or `"`, joined by a quoted string opened at its start or after `=`.
+_CREDENTIAL_RUN_RE = re.compile(r'[^\s,}"]++')
+# After `=` an item also ends at `&`, which separates form fields there.
+_FORM_CREDENTIAL_RUN_RE = re.compile(r'[^\s,&}"]++')
 _CREDENTIAL_QUOTED_RE = re.compile(f"{_DOUBLE_QUOTED_LINE}|{_PLAIN_DOUBLE_QUOTED_LINE}")
 _CREDENTIAL_COMMA_RE = re.compile(r"[ \t]*+,[ \t]*+")
 
@@ -437,7 +473,7 @@ class _Values:
     ``Name(...)`` value runs to its close, or to the end of the text when it
     does not close within the window. An unquoted value read as an
     authorization header's runs on past its scheme through the credentials
-    after it.
+    after it, and so does one whose first word is an authentication scheme.
     """
 
     __slots__ = ("_line_end", "_text", "_text_end", "_wrappers")
@@ -463,7 +499,7 @@ class _Values:
         end = None if unquoted is None else unquoted.end()
         if text.startswith("'", start):
             return end, MASK_VALUE, self._line(start)
-        return self._unquoted(start, end, header)
+        return self._unquoted(start, end, header, _CREDENTIAL_RUN_RE)
 
     def equals(self, start: int, header: bool) -> tuple[int | None, str, int]:
         """Read the value after an equals sign at ``start``, as an authorization header's when ``header`` is set."""
@@ -475,23 +511,28 @@ class _Values:
         end = start if unquoted is None else unquoted.end()
         if text.startswith(('"', "'"), start):
             return end, MASK_VALUE, self._line(start)
-        return self._unquoted(start, end, header)
+        return self._unquoted(start, end, header, _FORM_CREDENTIAL_RUN_RE)
 
-    def _unquoted(self, start: int, end: int | None, header: bool) -> tuple[int | None, str, int]:
+    def _unquoted(
+        self, start: int, end: int | None, header: bool, run_re: re.Pattern[str]
+    ) -> tuple[int | None, str, int]:
         """Read an unquoted value ending at ``end``, or further when a ``Name(...)`` value starts at ``start``.
 
-        With ``header`` set and no ``Name(...)`` value there, the value ending
-        at ``end`` is the scheme and the credentials after it are read too.
+        With no ``Name(...)`` value there, the value ending at ``end`` is a
+        scheme when ``header`` is set or it is one of the authentication
+        schemes, and then the credentials after it are read too, each item a
+        ``run_re`` run.
         """
         wrapped, reach = self._wrappers.read(start, self._text_end)
         if wrapped is not None and (end is None or wrapped > end):
             end = wrapped
-        elif header and reach is None and end is not None and end > start:
-            end = self._credentials(end)
+        elif reach is None and end is not None and end > start:
+            if header or self._text[start:end].lower() in _AUTH_SCHEMES:
+                end = self._credentials(end, run_re)
         low = start if end is None else end
         return end, MASK_VALUE, low if reach is None else max(low, reach)
 
-    def _credentials(self, scheme_end: int) -> int:
+    def _credentials(self, scheme_end: int, run_re: re.Pattern[str]) -> int:
         """Return where the credentials after a scheme ending at ``scheme_end`` end, or ``scheme_end`` when none follow.
 
         Spaces or tabs separate the scheme from its credentials, which are
@@ -504,7 +545,7 @@ class _Values:
             return scheme_end
         end = scheme_end
         at = gap.end()
-        while (item_end := self._credential_item(at)) > at:
+        while (item_end := self._credential_item(at, run_re)) > at:
             end = item_end
             comma = _CREDENTIAL_COMMA_RE.match(text, end)
             if comma is None:
@@ -512,11 +553,12 @@ class _Values:
             at = comma.end()
         return end
 
-    def _credential_item(self, start: int) -> int:
+    def _credential_item(self, start: int, run_re: re.Pattern[str]) -> int:
         """Return where the credential item at ``start`` ends, or ``start`` when none starts there.
 
-        A quoted string opens at the item's start or after ``=``, and one that
-        does not close on its line takes the item to the end of the line.
+        The item is ``run_re`` runs joined by quoted strings. A quoted string
+        opens at the item's start or after ``=``, and one that does not close
+        on its line takes the item to the end of the line.
         """
         text = self._text
         end = start
@@ -527,7 +569,7 @@ class _Values:
                     return self._line(end)
                 end = quoted.end()
                 continue
-            run = _CREDENTIAL_RUN_RE.match(text, end)
+            run = run_re.match(text, end)
             if run is None:
                 return end
             end = run.end()
@@ -750,7 +792,11 @@ class SensitiveDataFilter(logging.Filter):
         - Rust `Debug` and Python repr wrappers: `field: Some("value")`
         - Authorization headers, any scheme: `Authorization: Basic value`,
           `authorization=Digest username="u", response="r"`
+        - An authentication scheme after any credential key: `x-api-key: Token value`
+        - A key and value joined by `::`: `password::value`
         - URL userinfo: `://user:password@host`
+        - Signed URL query parameters: `?sig=`, `&X-Amz-Signature=`,
+          `&X-Amz-Security-Token=`, `&X-Goog-Signature=`
         - A header value httpx refused to send: `Illegal header value b'...'`
 
         A key is masked when :func:`is_credential_name` says so, so
@@ -776,6 +822,7 @@ class SensitiveDataFilter(logging.Filter):
             text = self._secrets_leak.scrub(text)
 
         masked = mask_url_userinfo(text)
+        masked = _QUERY_SIGNATURE_RE.sub(lambda match: f"{match['name']}={MASK_VALUE}", masked)
         masked = _REFUSED_HEADER_VALUE_RE.sub(_mask_refused_header_value, masked)
         masked = _BEARER_RE.sub(f"bearer {MASK_VALUE}", masked)
         return _mask_pairs(masked, self._credential_pattern())
