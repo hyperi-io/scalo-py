@@ -198,19 +198,23 @@ class TestSensitiveDataFilter:
         assert "token=" + MASK_VALUE in result
         assert "username=admin" in result  # username is NOT sensitive
 
-    def test_mask_authorization_header(self):
-        """Test masking authorization headers."""
-        filter_inst = SensitiveDataFilter()
+    @pytest.mark.parametrize(
+        ("text", "credential", "expected"),
+        [
+            ("authorization: Bearer {c}", "sentinel-bearer-3f1a", f"authorization: {MASK_VALUE}"),
+            ("Authorization=Bearer {c}", "sentinel-bearer-8b2c", f"Authorization={MASK_VALUE}"),
+            ('"authorization":"Bearer {c}"', "sentinel-bearer-5d7e", f'"authorization":"{MASK_VALUE}"'),
+            ("Authorization: Basic {c}", "c2VudGluZWwtYmFzaWMtMWE", f"Authorization: {MASK_VALUE}"),
+            ("authorization=Token {c} user=bob", "sentinel-token-6c4f", f"authorization={MASK_VALUE} user=bob"),
+        ],
+        ids=["colon-bearer", "equals-bearer", "json-bearer", "colon-basic", "equals-token-keeps-next"],
+    )
+    def test_mask_authorization_header(self, text, credential, expected):
+        """The scheme and the credential after an authorization key go together, whatever the scheme."""
+        result = SensitiveDataFilter()._mask_sensitive_string(text.format(c=credential))
 
-        cases = [
-            ("authorization: Bearer token123", f"authorization: {MASK_VALUE}"),
-            ("Authorization=Bearer xyz", f"Authorization={MASK_VALUE}"),
-            ('"authorization":"Bearer abc"', f'"authorization":"{MASK_VALUE}"'),
-        ]
-
-        for input_text, _expected in cases:
-            result = filter_inst._mask_sensitive_string(input_text)
-            assert "Bearer" not in result or MASK_VALUE in result, f"Failed for: {input_text}"
+        assert credential not in result
+        assert result == expected
 
     def test_mask_aws_secrets(self):
         """Test masking AWS secret access keys."""

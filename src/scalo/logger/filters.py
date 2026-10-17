@@ -157,7 +157,8 @@ def _mask_refused_header_value(match: re.Match[str]) -> str:
 
 # A key in text: a run of name characters no other name character precedes, then an optional closing quote.
 _TEXT_KEY = r"(?<![A-Za-z0-9_.\-])(?P<key>[A-Za-z0-9_.\-]+)[\"']?"
-_COLON_HEAD_RE = re.compile(rf"{_TEXT_KEY}\s*:\s*")
+# `key::value` separates with both colons, so the value starts after the second.
+_COLON_HEAD_RE = re.compile(rf"{_TEXT_KEY}\s*::?\s*")
 _EQUALS_HEAD_RE = re.compile(rf"{_TEXT_KEY}[ \t]*=(?![=>])[ \t]*")
 # An unquoted value runs on across a space into a group that starts with a digit, so `TFN: 123 456 782` goes whole.
 _DIGIT_GROUPS = r"(?:[ ][(+]?[0-9]{chars}*)*"
@@ -189,6 +190,34 @@ _WRAPPER_OPEN_RE = re.compile(r"[A-Za-z0-9_]+\(")
 _WRAPPER_TOKEN_RE = re.compile(r"""[()]|(?<!\\)(\\*+)["']""")
 # A key holding this names an authorization header, whose value is a scheme followed by its credentials.
 _AUTHORIZATION = "authorization"
+# HTTP authentication schemes, the IANA registry then vendor ones, the list scalo-rs carries too.
+_AUTH_SCHEMES = frozenset(
+    {
+        "basic",
+        "bearer",
+        "concealed",
+        "digest",
+        "dpop",
+        "gnap",
+        "hoba",
+        "mutual",
+        "negotiate",
+        "oauth",
+        "privatetoken",
+        "scram-sha-1",
+        "scram-sha-256",
+        "vapid",
+        "apikey",
+        "aws4-hmac-sha256",
+        "ntlm",
+        "sharedaccesssignature",
+        "sharedkey",
+        "sharedkeylite",
+        "splunk",
+        "ssws",
+        "token",
+    }
+)
 _BLANKS_RE = re.compile(r"[ \t]++")
 # A credential item: runs up to white space, `,`, `&`, `}` or `"`, joined by a quoted string opened at its start or after `=`.
 _CREDENTIAL_RUN_RE = re.compile(r'[^\s,&}"]++')
@@ -437,7 +466,7 @@ class _Values:
     ``Name(...)`` value runs to its close, or to the end of the text when it
     does not close within the window. An unquoted value read as an
     authorization header's runs on past its scheme through the credentials
-    after it.
+    after it, and so does one whose first word is an authentication scheme.
     """
 
     __slots__ = ("_line_end", "_text", "_text_end", "_wrappers")
@@ -480,14 +509,16 @@ class _Values:
     def _unquoted(self, start: int, end: int | None, header: bool) -> tuple[int | None, str, int]:
         """Read an unquoted value ending at ``end``, or further when a ``Name(...)`` value starts at ``start``.
 
-        With ``header`` set and no ``Name(...)`` value there, the value ending
-        at ``end`` is the scheme and the credentials after it are read too.
+        With no ``Name(...)`` value there, the value ending at ``end`` is a
+        scheme when ``header`` is set or it is one of the authentication
+        schemes, and then the credentials after it are read too.
         """
         wrapped, reach = self._wrappers.read(start, self._text_end)
         if wrapped is not None and (end is None or wrapped > end):
             end = wrapped
-        elif header and reach is None and end is not None and end > start:
-            end = self._credentials(end)
+        elif reach is None and end is not None and end > start:
+            if header or self._text[start:end].lower() in _AUTH_SCHEMES:
+                end = self._credentials(end)
         low = start if end is None else end
         return end, MASK_VALUE, low if reach is None else max(low, reach)
 
@@ -750,6 +781,8 @@ class SensitiveDataFilter(logging.Filter):
         - Rust `Debug` and Python repr wrappers: `field: Some("value")`
         - Authorization headers, any scheme: `Authorization: Basic value`,
           `authorization=Digest username="u", response="r"`
+        - An authentication scheme after any credential key: `x-api-key: Token value`
+        - A key and value joined by `::`: `password::value`
         - URL userinfo: `://user:password@host`
         - A header value httpx refused to send: `Illegal header value b'...'`
 

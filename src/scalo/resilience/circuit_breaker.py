@@ -7,7 +7,7 @@
 #  Copyright:    (c) 2026 HYPERI PTY LIMITED
 
 """
-Circuit breaker matching scalo-rs ``src/resilience/circuit_breaker.rs``.
+Circuit breaker on the state machine of scalo-rs ``src/tiered_sink/circuit.rs``.
 
 State machine:
     CLOSED -> OPEN:      consecutive_failures >= failure_threshold
@@ -18,8 +18,6 @@ State machine:
 Thread-safe via ``threading.Lock`` -- safe for concurrent access from
 multiple threads or async tasks.
 """
-
-from __future__ import annotations
 
 import threading
 import time
@@ -136,8 +134,11 @@ class CircuitBreaker:
         """Context manager wrapping :meth:`try_acquire_probe`.
 
         Always records success/failure on exit, even if the body raises
-        before the caller could record manually. Yields the acquired
-        flag so the caller can branch::
+        before the caller could record manually. Any exception counts as a
+        failure, ``asyncio.CancelledError`` and other ``BaseException``
+        subclasses included, so a cancelled probe reopens the circuit and it
+        probes again after ``reset_timeout``. The exception is re-raised.
+        Yields the acquired flag so the caller can branch::
 
             with breaker.probe() as acquired:
                 if not acquired:
@@ -150,7 +151,7 @@ class CircuitBreaker:
             return
         try:
             yield True
-        except Exception:
+        except BaseException:
             self.record_failure()
             raise
         else:
