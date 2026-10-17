@@ -219,8 +219,10 @@ _AUTH_SCHEMES = frozenset(
     }
 )
 _BLANKS_RE = re.compile(r"[ \t]++")
-# A credential item: runs up to white space, `,`, `&`, `}` or `"`, joined by a quoted string opened at its start or after `=`.
-_CREDENTIAL_RUN_RE = re.compile(r'[^\s,&}"]++')
+# A credential item: runs up to white space, `,`, `}` or `"`, joined by a quoted string opened at its start or after `=`.
+_CREDENTIAL_RUN_RE = re.compile(r'[^\s,}"]++')
+# After `=` an item also ends at `&`, which separates form fields there.
+_FORM_CREDENTIAL_RUN_RE = re.compile(r'[^\s,&}"]++')
 _CREDENTIAL_QUOTED_RE = re.compile(f"{_DOUBLE_QUOTED_LINE}|{_PLAIN_DOUBLE_QUOTED_LINE}")
 _CREDENTIAL_COMMA_RE = re.compile(r"[ \t]*+,[ \t]*+")
 
@@ -492,7 +494,7 @@ class _Values:
         end = None if unquoted is None else unquoted.end()
         if text.startswith("'", start):
             return end, MASK_VALUE, self._line(start)
-        return self._unquoted(start, end, header)
+        return self._unquoted(start, end, header, _CREDENTIAL_RUN_RE)
 
     def equals(self, start: int, header: bool) -> tuple[int | None, str, int]:
         """Read the value after an equals sign at ``start``, as an authorization header's when ``header`` is set."""
@@ -504,25 +506,28 @@ class _Values:
         end = start if unquoted is None else unquoted.end()
         if text.startswith(('"', "'"), start):
             return end, MASK_VALUE, self._line(start)
-        return self._unquoted(start, end, header)
+        return self._unquoted(start, end, header, _FORM_CREDENTIAL_RUN_RE)
 
-    def _unquoted(self, start: int, end: int | None, header: bool) -> tuple[int | None, str, int]:
+    def _unquoted(
+        self, start: int, end: int | None, header: bool, run_re: re.Pattern[str]
+    ) -> tuple[int | None, str, int]:
         """Read an unquoted value ending at ``end``, or further when a ``Name(...)`` value starts at ``start``.
 
         With no ``Name(...)`` value there, the value ending at ``end`` is a
         scheme when ``header`` is set or it is one of the authentication
-        schemes, and then the credentials after it are read too.
+        schemes, and then the credentials after it are read too, each item a
+        ``run_re`` run.
         """
         wrapped, reach = self._wrappers.read(start, self._text_end)
         if wrapped is not None and (end is None or wrapped > end):
             end = wrapped
         elif reach is None and end is not None and end > start:
             if header or self._text[start:end].lower() in _AUTH_SCHEMES:
-                end = self._credentials(end)
+                end = self._credentials(end, run_re)
         low = start if end is None else end
         return end, MASK_VALUE, low if reach is None else max(low, reach)
 
-    def _credentials(self, scheme_end: int) -> int:
+    def _credentials(self, scheme_end: int, run_re: re.Pattern[str]) -> int:
         """Return where the credentials after a scheme ending at ``scheme_end`` end, or ``scheme_end`` when none follow.
 
         Spaces or tabs separate the scheme from its credentials, which are
@@ -535,7 +540,7 @@ class _Values:
             return scheme_end
         end = scheme_end
         at = gap.end()
-        while (item_end := self._credential_item(at)) > at:
+        while (item_end := self._credential_item(at, run_re)) > at:
             end = item_end
             comma = _CREDENTIAL_COMMA_RE.match(text, end)
             if comma is None:
@@ -543,11 +548,12 @@ class _Values:
             at = comma.end()
         return end
 
-    def _credential_item(self, start: int) -> int:
+    def _credential_item(self, start: int, run_re: re.Pattern[str]) -> int:
         """Return where the credential item at ``start`` ends, or ``start`` when none starts there.
 
-        A quoted string opens at the item's start or after ``=``, and one that
-        does not close on its line takes the item to the end of the line.
+        The item is ``run_re`` runs joined by quoted strings. A quoted string
+        opens at the item's start or after ``=``, and one that does not close
+        on its line takes the item to the end of the line.
         """
         text = self._text
         end = start
@@ -558,7 +564,7 @@ class _Values:
                     return self._line(end)
                 end = quoted.end()
                 continue
-            run = _CREDENTIAL_RUN_RE.match(text, end)
+            run = run_re.match(text, end)
             if run is None:
                 return end
             end = run.end()

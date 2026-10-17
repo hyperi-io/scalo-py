@@ -77,6 +77,8 @@ class CircuitBreaker:
         self._consecutive_failures = 0
         self._last_failure_time: float = 0.0
         self._half_open_calls = 0
+        # When the newest HALF_OPEN probe was admitted.
+        self._probe_admitted_at: float = 0.0
 
     @property
     def name(self) -> str:
@@ -111,8 +113,10 @@ class CircuitBreaker:
         """Atomically reserve a HALF_OPEN probe slot.
 
         On True the caller MUST eventually call :meth:`record_success` or
-        :meth:`record_failure`. CLOSED returns True (no slot accounting);
-        OPEN returns False.
+        :meth:`record_failure`. A slot never reported is lost once
+        ``reset_timeout`` has passed since the newest probe was admitted,
+        and the next caller probes again. CLOSED returns True, with no slot
+        accounting, and OPEN returns False.
 
         Prefer :meth:`probe` (context manager) which releases the slot
         on exit regardless of whether the body raised.
@@ -126,7 +130,7 @@ class CircuitBreaker:
             # HALF_OPEN
             if self._half_open_calls >= self._config.half_open_max_calls:
                 return False
-            self._half_open_calls += 1
+            self._admit_probe()
             return True
 
     @contextmanager
@@ -209,7 +213,7 @@ class CircuitBreaker:
             if current == CircuitState.HALF_OPEN:
                 if self._half_open_calls >= self._config.half_open_max_calls:
                     raise CircuitBreakerError(f"Circuit breaker '{self._name}' is HALF_OPEN -- max probe calls reached")
-                self._half_open_calls += 1
+                self._admit_probe()
         return self
 
     def __exit__(self, exc_type: type | None, exc_val: BaseException | None, exc_tb: object) -> bool:
@@ -237,9 +241,18 @@ class CircuitBreaker:
 
         Must be called with ``self._lock`` held.
         """
+        now = time.monotonic()
         if self._state == CircuitState.OPEN:
-            elapsed = time.monotonic() - self._last_failure_time
-            if elapsed >= self._config.reset_timeout:
+            if now - self._last_failure_time >= self._config.reset_timeout:
                 self._state = CircuitState.HALF_OPEN
                 self._half_open_calls = 0
+        elif self._state == CircuitState.HALF_OPEN and self._half_open_calls:
+            # Any outcome ends HALF_OPEN, so none has come for any probe once the newest is overdue.
+            if now - self._probe_admitted_at >= self._config.reset_timeout:
+                self._half_open_calls = 0
         return self._state
+
+    def _admit_probe(self) -> None:
+        """Take a HALF_OPEN probe slot. Must be called with ``self._lock`` held."""
+        self._half_open_calls += 1
+        self._probe_admitted_at = time.monotonic()

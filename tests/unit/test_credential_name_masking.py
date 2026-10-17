@@ -477,6 +477,7 @@ def test_a_quoted_value_is_read_as_a_scanner_reads_it():
         pytest.param("token: basic " * 30_000, id="scheme-heads"),
         pytest.param("x-api-key: Token " + "b, " * 70_000, id="scheme-comma-chain"),
         pytest.param("password::" * 40_000, id="double-colon-heads"),
+        pytest.param("authorization: a " + "b&" * 100_000, id="authorization-ampersand-chain"),
     ],
 )
 def test_a_long_line_of_backslashes_and_quotes_is_masked_in_linear_time(text):
