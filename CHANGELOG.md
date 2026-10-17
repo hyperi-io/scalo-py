@@ -3,6 +3,13 @@
 Rendered by CI and committed back at the end of a release -- do not edit by
 hand. Release notes also appear on the GitHub Releases page, one per tag.
 
+## [2.31.16](https://github.com/hyperi-io/scalo-py/compare/v2.31.15...v2.31.16) (2026-10-17)
+
+### Bug Fixes
+
+* **security:** mask whole Authorization values ([#133](https://github.com/hyperi-io/scalo-py/issues/133)) ([959f288](https://github.com/hyperi-io/scalo-py/commit/959f288095f1368a634afc6198f26f7f23c64780))
+* **security:** never retry LocalProtocolError ([#132](https://github.com/hyperi-io/scalo-py/issues/132)) ([dd0afe9](https://github.com/hyperi-io/scalo-py/commit/dd0afe92b0d77540121b7a68a1a55985490bdd97))
+
 ## [2.31.15](https://github.com/hyperi-io/scalo-py/compare/v2.31.14...v2.31.15) (2026-10-15)
 
 ### Bug Fixes
