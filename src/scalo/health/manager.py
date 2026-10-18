@@ -6,8 +6,7 @@
 #  License:   Apache-2.0
 #  Copyright: (c) 2026 HYPERI PTY LIMITED
 
-"""
-Health state manager for Kubernetes-style probes.
+"""Health state manager for Kubernetes-style probes.
 
 Pure Python, no external dependencies. Tracks liveness, readiness, and
 startup state with optional registered checks. Response format matches
@@ -30,8 +29,6 @@ Usage::
     await mgr.liveness_response_async()
     await mgr.readiness_response_async()
 """
-
-from __future__ import annotations
 
 import asyncio
 import inspect
@@ -106,14 +103,17 @@ class HealthManager:
             self._ready_checks.append((name, check, per_check_timeout or self._default_timeout))
 
     def set_ready(self, ready: bool = True) -> None:
+        """Set the readiness flag, which readiness also gates on its checks."""
         with self._lock:
             self._ready = ready
 
     def set_started(self, started: bool = True) -> None:
+        """Set the startup flag."""
         with self._lock:
             self._started = started
 
     def is_started(self) -> bool:
+        """Return the startup flag."""
         with self._lock:
             return self._started
 
@@ -156,6 +156,7 @@ class HealthManager:
         return self._build_response("ready" if ready else "not_ready", results)
 
     def startup_response(self) -> dict:
+        """Return the startup probe response, ``started`` once :meth:`set_started` has run."""
         with self._lock:
             started = self._started
         return self._build_response("started" if started else "starting", {})
@@ -180,12 +181,14 @@ class HealthManager:
         return self._build_response("ready" if ready else "not_ready", results)
 
     async def is_live_async(self) -> bool:
+        """Return True if every liveness check passes, running them concurrently."""
         with self._lock:
             checks = list(self._live_checks)
         results = await self._run_checks_async(checks)
         return all(results.values()) if results else True
 
     async def is_ready_async(self) -> bool:
+        """Return True if the ready flag is set and every readiness check passes."""
         with self._lock:
             ready_flag = self._ready
             checks = list(self._ready_checks)

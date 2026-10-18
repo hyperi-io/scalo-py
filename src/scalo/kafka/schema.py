@@ -6,14 +6,11 @@
 # License:   Apache-2.0
 # Copyright: (c) 2026 HYPERI PTY LIMITED
 
-"""
-JSON schema inference for Kafka messages.
+"""JSON schema inference for Kafka messages.
 
 Uses GenSON to infer JSON schemas from message samples,
 with additional field statistics tracking.
 """
-
-from __future__ import annotations
 
 import json
 from collections import defaultdict
@@ -46,8 +43,7 @@ class AnalysisResult:
 
 
 class SchemaAnalyser:
-    """
-    JSON schema inference for Kafka messages.
+    """JSON schema inference for Kafka messages.
 
     Uses GenSON to build a merged JSON schema from message samples,
     and tracks additional field statistics.
@@ -80,8 +76,7 @@ class SchemaAnalyser:
         return self._skipped_count
 
     def add_message(self, msg: Message) -> bool:
-        """
-        Add a message to the analysis.
+        """Add a message to the analysis.
 
         Args:
             msg: Kafka message with JSON value
@@ -140,8 +135,7 @@ class SchemaAnalyser:
                 stats.sample_values.append(value)
 
     def get_schema(self) -> dict[str, Any]:
-        """
-        Get the merged JSON schema.
+        """Get the merged JSON schema.
 
         Returns:
             JSON Schema dict
@@ -149,8 +143,7 @@ class SchemaAnalyser:
         return self._builder.to_schema()
 
     def get_field_stats(self) -> dict[str, dict[str, Any]]:
-        """
-        Get field statistics.
+        """Get field statistics.
 
         Returns:
             Dict of field_name -> stats dict
@@ -166,8 +159,7 @@ class SchemaAnalyser:
         }
 
     def analyse(self) -> AnalysisResult:
-        """
-        Get complete analysis result.
+        """Get complete analysis result.
 
         Returns:
             AnalysisResult with schema and stats

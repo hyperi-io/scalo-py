@@ -29,7 +29,7 @@ or in ``pyproject.toml``::
     dev = ["scalo[deployment]>=2.28.0"]
 """
 
-from typing import NoReturn
+from typing import TYPE_CHECKING, NoReturn
 
 # Contract Identity v1 has no pydantic dependency -- always available
 # whenever the deployment package can be imported. Keep this import
@@ -51,7 +51,8 @@ except ImportError:
     DEPLOYMENT_AVAILABLE = False
 
 
-if not DEPLOYMENT_AVAILABLE:
+# Type checkers (here and in consumers) see only the real exports, because the placeholders are runtime-only.
+if not DEPLOYMENT_AVAILABLE and not TYPE_CHECKING:
     # Defer the error until something is actually used so a bare
     # `from scalo import deployment` doesn't break import graphs.
     def _missing(*_args: object, **_kwargs: object) -> NoReturn:

@@ -6,8 +6,7 @@
 #  License:   Apache-2.0
 #  Copyright: (c) 2026 HYPERI PTY LIMITED
 
-"""
-FastAPI router factory for Kubernetes health probes.
+"""FastAPI router factory for Kubernetes health probes.
 
 Creates a router with ``/livez`` and ``/readyz`` endpoints. FastAPI is
 imported lazily so this module can be installed without requiring FastAPI
@@ -28,10 +27,13 @@ Usage::
     manager.set_ready()
 """
 
-from __future__ import annotations
+from typing import TYPE_CHECKING
 
 from .manager import HealthManager
 from .observability import LIVENESS_PATH, READINESS_PATH
+
+if TYPE_CHECKING:
+    from fastapi import APIRouter
 
 
 def create_health_router(manager: HealthManager | None = None) -> APIRouter:

@@ -6,8 +6,10 @@
 # License:   Apache-2.0
 # Copyright: (c) 2026 HYPERI PTY LIMITED
 
-"""Deployment validation and generation error types -- mirrors scalo-rs's
-``scalo::deployment::error``."""
+"""Deployment validation and generation error types.
+
+Mirrors scalo-rs's ``scalo::deployment::error``.
+"""
 
 from dataclasses import dataclass
 

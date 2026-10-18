@@ -214,3 +214,8 @@ class TestParseValue:
     def test_invalid_json_raises(self, provider):
         with pytest.raises(ProviderError):
             provider._parse_value("not json", "foo", "key")
+
+    def test_absent_value_raises_provider_error(self, provider):
+        # The SDK types KeyVaultSecret.value as optional, and a missing value is a provider fault.
+        with pytest.raises(ProviderError, match="no secret value in response for foo"):
+            provider._parse_value(None, "foo", None)

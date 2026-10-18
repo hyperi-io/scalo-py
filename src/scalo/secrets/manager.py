@@ -1,8 +1,7 @@
 """SecretsManager - main orchestrator for secrets management."""
 
-from __future__ import annotations
-
 import asyncio
+import builtins
 import logging
 import os
 import random
@@ -389,11 +388,12 @@ class SecretsManager:
     # List
     # -------------------------------------------------------------------------
 
+    # Annotations in this class name `builtins.list`, because the `list` method shadows the builtin here.
     async def list(
         self,
         filter: SecretFilter | None = None,
         provider: str | None = None,
-    ) -> list[str]:
+    ) -> builtins.list[str]:
         """List secret names/paths matching filter.
 
         Args:
@@ -415,7 +415,7 @@ class SecretsManager:
         self,
         filter: SecretFilter | None = None,
         provider: str | None = None,
-    ) -> list[str]:
+    ) -> builtins.list[str]:
         """List secret names/paths matching filter (sync)."""
         provider_name = provider or "file"
         p = self._get_provider(provider_name)
@@ -576,7 +576,7 @@ class SecretsManager:
 
     async def batch_get(
         self,
-        paths: list[str],
+        paths: builtins.list[str],
         provider: str | None = None,
     ) -> dict[str, SecretValue]:
         """Fetch multiple secrets concurrently.
@@ -600,7 +600,8 @@ class SecretsManager:
 
         # AWS has a native batch API -- delegate to provider if available.
         if provider_name == "aws" and hasattr(p, "batch_get_async"):
-            return await p.batch_get_async(paths)  # type: ignore[attr-defined]
+            # hasattr narrows the attribute to `object`, but the AWS provider defines it as an async method.
+            return await p.batch_get_async(paths)  # ty: ignore[call-non-callable]
 
         # Generic: concurrent gather with per-item error isolation.
         async def _fetch(path: str) -> tuple[str, SecretValue | None]:
@@ -615,7 +616,7 @@ class SecretsManager:
 
     def batch_get_sync(
         self,
-        paths: list[str],
+        paths: builtins.list[str],
         provider: str | None = None,
     ) -> dict[str, SecretValue]:
         """Fetch multiple secrets (sync). Errors are logged and omitted.
@@ -696,7 +697,7 @@ class SecretsManager:
         self,
         path: str,
         provider: str | None = None,
-    ) -> list[SecretMetadata]:
+    ) -> builtins.list[SecretMetadata]:
         """List all versions of a secret, newest first.
 
         Only available on versioned providers (OpenBao, AWS, GCP, Azure).
@@ -724,7 +725,7 @@ class SecretsManager:
         self,
         path: str,
         provider: str | None = None,
-    ) -> list[SecretMetadata]:
+    ) -> builtins.list[SecretMetadata]:
         """List all versions of a secret, newest first (sync)."""
         provider_name = provider or "file"
         p = self._get_provider(provider_name)
@@ -933,7 +934,7 @@ class SecretsManager:
     def on_rotation(
         self,
         callback: RotationCallback,
-        names: list[str] | None = None,
+        names: builtins.list[str] | None = None,
     ) -> None:
         """Register rotation callback.
 
@@ -964,13 +965,15 @@ class SecretsManager:
         if self._refresh_task is not None:
             return
 
-        self._refresh_stop_event = asyncio.Event()
-        self._refresh_task = asyncio.create_task(self._refresh_loop())
+        stop_event = asyncio.Event()
+        self._refresh_stop_event = stop_event
+        self._refresh_task = asyncio.create_task(self._refresh_loop(stop_event))
         logger.info("Background refresh started")
 
     async def stop_refresh(self) -> None:
         """Stop background refresh task."""
-        if self._refresh_task is None:
+        # start_refresh sets the event and the task together.
+        if self._refresh_task is None or self._refresh_stop_event is None:
             return
 
         self._refresh_stop_event.set()
@@ -978,18 +981,18 @@ class SecretsManager:
         self._refresh_task = None
         logger.info("Background refresh stopped")
 
-    async def _refresh_loop(self) -> None:
-        """Background refresh loop."""
+    async def _refresh_loop(self, stop_event: asyncio.Event) -> None:
+        """Refresh every cached secret on a jittered interval until ``stop_event`` is set."""
         cfg = self._cache.config
 
-        while not self._refresh_stop_event.is_set():
+        while not stop_event.is_set():
             # Add jitter
             jitter = random.uniform(0, cfg.refresh_jitter_secs)
             interval = cfg.refresh_interval_secs + jitter
 
             try:
                 await asyncio.wait_for(
-                    self._refresh_stop_event.wait(),
+                    stop_event.wait(),
                     timeout=interval,
                 )
                 break  # Stop event was set

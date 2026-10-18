@@ -64,5 +64,6 @@ class TestDockerKafkaFallback:
 
             assert msg is not None, "Failed to consume message"
             consumed = msg.value_as_json()
+            assert isinstance(consumed, dict), f"message is not a JSON object: {consumed!r}"
             assert consumed["id"] == test_message["id"]
             print("  Consumed message successfully")

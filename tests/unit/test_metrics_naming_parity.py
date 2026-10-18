@@ -120,6 +120,7 @@ def test_fixture_file_exists() -> None:
 @pytest.mark.skipif(_fixtures is None, reason=_skip_reason)
 def test_fixture_has_valid_and_invalid_sections() -> None:
     """Verify the fixture YAML has both valid and invalid sections with entries."""
+    assert _fixtures is not None
     assert "valid" in _fixtures
     assert "invalid" in _fixtures
     assert len(_fixtures["valid"]) > 0

@@ -6,8 +6,7 @@
 #  License:      Apache-2.0
 #  Copyright:    (c) 2026 HYPERI PTY LIMITED
 
-"""
-Scaling pressure calculator matching scalo-rs ``src/scaling/pressure.rs``.
+"""Scaling pressure calculator matching scalo-rs ``src/scaling/pressure.rs``.
 
 Produces a 0-100 composite score from weighted component saturations.
 Gate logic (evaluated in order):
@@ -20,8 +19,6 @@ Thread-safe via ``threading.Lock`` -- multiple async tasks may update
 components concurrently.
 """
 
-from __future__ import annotations
-
 import threading
 from dataclasses import dataclass
 from typing import Any
@@ -29,7 +26,7 @@ from typing import Any
 
 @dataclass(slots=True)
 class ScalingPressureConfig:
-    """Scaling pressure weights + thresholds. Validates at construction:
+    """Scaling pressure weights and thresholds, validated at construction.
 
     - each weight in ``[0.0, 1.0]``
     - weights sum to ``1.0`` (tolerance 0.001)
@@ -96,8 +93,7 @@ def _clamp(value: float, low: float = 0.0, high: float = 1.0) -> float:
 
 
 class ScalingPressure:
-    """
-    Weighted composite scaling pressure calculator for KEDA autoscaling.
+    """Weighted composite scaling pressure calculator for KEDA autoscaling.
 
     Matches scalo-rs's gate logic: circuit open -> 0, memory gate -> 100,
     otherwise weighted sum of components * 100.
@@ -120,8 +116,7 @@ class ScalingPressure:
         self._gauge: Any = None
 
     def set_component(self, name: str, saturation: float) -> None:
-        """
-        Set a component's saturation value (0.0-1.0).
+        """Set a component's saturation value (0.0-1.0).
 
         Component mapping:
         - "memory" -> memory_weight
@@ -151,8 +146,7 @@ class ScalingPressure:
                 self._custom = clamped
 
     def set_memory(self, used_bytes: int, limit_bytes: int) -> None:
-        """
-        Convenience method: calculate memory saturation from used/limit bytes.
+        """Convenience method: calculate memory saturation from used/limit bytes.
 
         Args:
             used_bytes: Current memory usage in bytes
@@ -165,8 +159,7 @@ class ScalingPressure:
         self.set_component("memory", saturation)
 
     def set_circuit_open(self, is_open: bool) -> None:
-        """
-        Set circuit breaker state.
+        """Set circuit breaker state.
 
         When circuit is open, calculate() always returns 0.0 because
         scaling won't help a tripped circuit.
@@ -178,8 +171,7 @@ class ScalingPressure:
             self._circuit_open = is_open
 
     def calculate(self) -> float:
-        """
-        Calculate composite scaling pressure (0-100).
+        """Calculate composite scaling pressure (0-100).
 
         Gate logic (evaluated in order):
         1. Circuit open -> 0.0
@@ -216,8 +208,7 @@ class ScalingPressure:
             return result
 
     def snapshot(self) -> PressureSnapshot:
-        """
-        Take a frozen point-in-time snapshot of pressure state.
+        """Take a frozen point-in-time snapshot of pressure state.
 
         Returns:
             Immutable PressureSnapshot dataclass
@@ -249,8 +240,7 @@ class ScalingPressure:
             )
 
     def register_gauge(self, metrics_manager: Any) -> None:
-        """
-        Register a scaling_pressure gauge on a MetricsManager.
+        """Register a scaling_pressure gauge on a MetricsManager.
 
         The gauge is updated automatically on each calculate() call.
 

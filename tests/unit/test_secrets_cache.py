@@ -214,7 +214,7 @@ class TestDiskCache:
         config = CacheConfig(
             enabled=True,
             directory=str(tmp_path),
-            encryption_key="my-string-key",  # type: ignore[arg-type]
+            encryption_key="my-string-key",
         )
         cache = DiskCache(config)
 

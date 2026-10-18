@@ -31,7 +31,7 @@ import os
 import re
 import sys
 import traceback
-from collections.abc import Callable
+from collections.abc import Callable, Mapping
 from datetime import UTC
 
 from loguru import logger as _logger
@@ -462,7 +462,7 @@ def _json_line(record) -> str:
     return json.dumps(entry, default=str, ensure_ascii=False).translate(_LINE_BREAK_ESCAPES) + "\n"
 
 
-def _fixed_format(template: str) -> Callable[[dict], str]:
+def _fixed_format(template: str) -> Callable[[Mapping[str, object]], str]:
     """Return a loguru format callable for ``template``.
 
     loguru appends its own ``{exception}``, rendered from the live exception and
@@ -470,7 +470,7 @@ def _fixed_format(template: str) -> Callable[[dict], str]:
     callable, so every scalo sink formats through one.
     """
 
-    def format_record(_record: dict) -> str:
+    def format_record(_record: Mapping[str, object]) -> str:
         return template
 
     return format_record
@@ -694,7 +694,9 @@ def _github_actions_sink(message):
         print(text, file=sys.stderr)
 
 
-def _get_log_format(is_file: bool, color_scheme: str = "solarized", ci_mode: bool = False) -> Callable[[dict], str]:
+def _get_log_format(
+    is_file: bool, color_scheme: str = "solarized", ci_mode: bool = False
+) -> Callable[[Mapping[str, object]], str]:
     """Get the loguru format for a text sink.
 
     Every format ends with the record's keyword fields as `` key=value`` pairs,
@@ -1262,26 +1264,32 @@ if control_flag("AUTO_LOGGER_CONFIG") and not control_flag("NO_LOGGER_CONFIG"):
 
 # Standard logging functions for convenience
 def info(msg, **kwargs):
+    """Log ``msg`` at INFO, with ``kwargs`` as structured fields."""
     logger.info(msg, **kwargs)
 
 
 def warning(msg, **kwargs):
+    """Log ``msg`` at WARNING, with ``kwargs`` as structured fields."""
     logger.warning(msg, **kwargs)
 
 
 def error(msg, **kwargs):
+    """Log ``msg`` at ERROR, with ``kwargs`` as structured fields."""
     logger.error(msg, **kwargs)
 
 
 def success(msg, **kwargs):
+    """Log ``msg`` at SUCCESS, with ``kwargs`` as structured fields."""
     logger.success(msg, **kwargs)
 
 
 def debug(msg, **kwargs):
+    """Log ``msg`` at DEBUG, with ``kwargs`` as structured fields."""
     logger.debug(msg, **kwargs)
 
 
 def log(msg: str, color: str | None = None, level: str = "INFO"):
+    """Log ``msg`` at ``level``, coloured by a SOLARIZED name or a hex value when ``color`` is set."""
     level = level.upper()
     if color:
         hex_color = SOLARIZED.get(color, color)

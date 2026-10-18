@@ -32,8 +32,6 @@ exceptions silently. The scrubber's own logging suppression already
 prevents storms from a misbehaving backend.
 """
 
-from __future__ import annotations
-
 from typing import Any, Protocol
 
 
@@ -130,33 +128,36 @@ class ScrubMetrics:
 
     def _build(self) -> None:
         """Register all six handles. Swallow any backend error silently."""
+        backend = self._backend
+        if backend is None:
+            return
         try:
-            self._matches = self._backend.counter(
+            self._matches = backend.counter(
                 "log_scrub_matches_total",
                 "Scrub matches found (whether redacted or observe-mode)",
                 labels=["layer", "type"],
             )
-            self._redactions = self._backend.counter(
+            self._redactions = backend.counter(
                 "log_scrub_redactions_total",
                 "Scrub redactions actually applied to log text",
                 labels=["layer", "type"],
             )
-            self._errors = self._backend.counter(
+            self._errors = backend.counter(
                 "log_scrub_errors_total",
                 "Scrub layer failures (fail-safe trigger)",
                 labels=["layer", "error_type"],
             )
-            self._skipped = self._backend.gauge(
+            self._skipped = backend.gauge(
                 "log_scrub_skipped_rules_total",
                 "Scrub rules that couldn't compile in this implementation",
                 labels=["layer", "rule_id"],
             )
-            self._duration = self._backend.histogram(
+            self._duration = backend.histogram(
                 "log_scrub_duration_seconds",
                 "Per-layer scrub time",
                 labels=["layer"],
             )
-            self._pattern_version = self._backend.gauge(
+            self._pattern_version = backend.gauge(
                 "log_scrub_pattern_version",
                 "Pattern-set version installed in this scrubber",
                 labels=["source", "version"],

@@ -6,14 +6,11 @@
 #  License:      Apache-2.0
 #  Copyright:    (c) 2026 HYPERI PTY LIMITED
 
-"""
-CircuitBreakerMetrics -- composable metric group for circuit breaker state.
+"""CircuitBreakerMetrics -- composable metric group for circuit breaker state.
 
 Mirrors scalo-rs's groups::CircuitBreakerMetrics. Tracks circuit breaker
 state (closed/open/half_open) and state transitions per target.
 """
-
-from __future__ import annotations
 
 from typing import TYPE_CHECKING, Any
 
@@ -29,8 +26,7 @@ _STATE_VALUES: dict[str, int] = {
 
 
 class CircuitBreakerMetrics:
-    """
-    Circuit breaker metrics for any service.
+    """Circuit breaker metrics for any service.
 
     Registers (``{p}`` = optional metric prefix, bare by default):
         {p}_circuit_breaker_state gauge (labels: target) -- 0=closed, 1=open, 2=half_open
@@ -38,8 +34,7 @@ class CircuitBreakerMetrics:
     """
 
     def __init__(self, mgr: MetricsManager) -> None:
-        """
-        Register circuit breaker metrics.
+        """Register circuit breaker metrics.
 
         Args:
             mgr: MetricsManager instance
@@ -56,8 +51,7 @@ class CircuitBreakerMetrics:
         )
 
     def set_state(self, target: str, state: str) -> None:
-        """
-        Set circuit breaker state for a target.
+        """Set circuit breaker state for a target.
 
         Args:
             target: Downstream identifier (e.g. "db.events")
@@ -67,8 +61,7 @@ class CircuitBreakerMetrics:
         self._state.labels(target=target).set(numeric_value)
 
     def record_transition(self, target: str, to_state: str) -> None:
-        """
-        Record a circuit breaker state transition.
+        """Record a circuit breaker state transition.
 
         Args:
             target: Downstream identifier

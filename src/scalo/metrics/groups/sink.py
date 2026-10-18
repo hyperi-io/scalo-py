@@ -6,14 +6,11 @@
 #  License:      Apache-2.0
 #  Copyright:    (c) 2026 HYPERI PTY LIMITED
 
-"""
-SinkMetrics -- composable metric group for services with downstream sinks.
+"""SinkMetrics -- composable metric group for services with downstream sinks.
 
 Mirrors scalo-rs's groups::SinkMetrics. Tracks sink write latency,
 errors, bytes sent, and in-flight insert count.
 """
-
-from __future__ import annotations
 
 from typing import TYPE_CHECKING, Any
 
@@ -25,8 +22,7 @@ DEFAULT_SINK_DURATION_BUCKETS = (0.001, 0.005, 0.01, 0.025, 0.05, 0.1, 0.25, 0.5
 
 
 class SinkMetrics:
-    """
-    Sink metrics for services writing to downstream systems.
+    """Sink metrics for services writing to downstream systems.
 
     Registers (``{p}`` = optional metric prefix, bare by default):
         {p}_sink_duration_seconds histogram (labels: backend)
@@ -40,8 +36,7 @@ class SinkMetrics:
         mgr: MetricsManager,
         sink_duration_buckets: tuple[float, ...] | None = None,
     ) -> None:
-        """
-        Register all sink metrics.
+        """Register all sink metrics.
 
         Args:
             mgr: MetricsManager instance

@@ -13,8 +13,6 @@ the next attempt, a success reopens the gate, the wait doubles and stops at the
 ceiling, and a long outage never overflows it.
 """
 
-from __future__ import annotations
-
 import pytest
 
 from scalo.otel_backoff import (
@@ -141,6 +139,13 @@ class _FlakyExporter:
         return None
 
 
+def _empty_batch():
+    """Return a real, empty metrics batch for the exporter under test."""
+    from opentelemetry.sdk.metrics.export import MetricsData
+
+    return MetricsData(resource_metrics=[])
+
+
 class TestGatedMetricExporter:
     def test_temporality_and_aggregation_come_from_the_inner_exporter(self):
         """PeriodicExportingMetricReader reads these off whatever it is handed."""
@@ -155,10 +160,10 @@ class TestGatedMetricExporter:
         inner = _FlakyExporter([MetricExportResult.FAILURE])
         gated = GatedMetricExporter(inner, 60)
 
-        assert gated.export(None) == MetricExportResult.SUCCESS, "a handled failure must not be re-reported"
+        assert gated.export(_empty_batch()) == MetricExportResult.SUCCESS, "a handled failure must not be re-reported"
         assert inner.calls == 1
 
-        gated.export(None)
+        gated.export(_empty_batch())
         assert inner.calls == 1, "the collector must not be dialled again while backing off"
 
     def test_an_exception_is_treated_as_a_failure_not_a_crash(self):
@@ -167,7 +172,7 @@ class TestGatedMetricExporter:
         inner = _FlakyExporter([ConnectionRefusedError("nothing listening")])
         gated = GatedMetricExporter(inner, 60)
 
-        assert gated.export(None) == MetricExportResult.SUCCESS
+        assert gated.export(_empty_batch()) == MetricExportResult.SUCCESS
         assert gated.gate.consecutive_failures == 1
 
     def test_success_keeps_the_gate_open(self):
@@ -176,8 +181,8 @@ class TestGatedMetricExporter:
         inner = _FlakyExporter([MetricExportResult.SUCCESS, MetricExportResult.SUCCESS])
         gated = GatedMetricExporter(inner, 60)
 
-        gated.export(None)
-        gated.export(None)
+        gated.export(_empty_batch())
+        gated.export(_empty_batch())
         assert inner.calls == 2
 
     def test_the_readers_shutdown_budget_reaches_the_exporter(self):

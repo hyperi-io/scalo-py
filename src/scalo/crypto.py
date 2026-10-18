@@ -49,8 +49,6 @@ layer is the feasible step toward full CNSA 2.0. We do not label a P-384
 baseline "CNSA 2.0".
 """
 
-from __future__ import annotations
-
 import enum
 import logging
 import os
@@ -164,10 +162,12 @@ class CryptoProfile(enum.Enum):
 
 @dataclass(frozen=True)
 class TlsParts:
-    """Primitive TLS-posture values for consumers that take paths/strings
-    rather than an ``ssl.SSLContext`` - libpq (``sslmode``/``sslrootcert``),
-    librdkafka (``ssl.ca.location``/``ssl.cipher.suites``/``ssl.curves.list``),
-    ``requests``. Same posture as :func:`ssl_context`, as those fields."""
+    """Primitive TLS-posture values for consumers that take paths/strings rather than an ``ssl.SSLContext``.
+
+    Those consumers are libpq (``sslmode``/``sslrootcert``), librdkafka
+    (``ssl.ca.location``/``ssl.cipher.suites``/``ssl.curves.list``) and
+    ``requests``. Same posture as :func:`ssl_context`, as those fields.
+    """
 
     min_version: str  # "1.0" (allow_weak) | "1.2" | "1.3"
     curves: list[str]  # preference order
@@ -361,9 +361,11 @@ def emit_terraform_tfvars(profile: CryptoProfile = CryptoProfile.PROD) -> str:
 
 
 def emit_aws_lb_ssl_policy(profile: CryptoProfile = CryptoProfile.PROD) -> tuple[str, list[str]]:
-    """Pick the closest AWS ALB/NLB named ``ssl_policy`` + the deltas it cannot
-    express. Named bundles are not a-la-carte, so the deltas are RECORDED, not
-    hidden (the managed-service caveat, machine-readable)."""
+    """Pick the closest AWS ALB/NLB named ``ssl_policy`` and the deltas it cannot express.
+
+    Named bundles are not a-la-carte, so the deltas are RECORDED, not hidden
+    (the managed-service caveat, machine-readable).
+    """
     p = tls_parts(profile)
     name = "ELBSecurityPolicy-TLS13-1-3-2021-06" if p.min_version == "1.3" else "ELBSecurityPolicy-TLS13-1-2-2021-06"
     deltas = [

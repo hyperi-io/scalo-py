@@ -206,8 +206,7 @@ class ReconnectingResilience:
         ) from last_exc
 
     def _begin_outage(self, is_conn: bool) -> bool:
-        """Enter an outage: fire the warm-up hook (connection outage only) and pick
-        the state.
+        """Enter an outage: fire the warm-up hook (connection outage only) and pick the state.
 
         Returns True when a wake was initiated (state WAKING, extended budget);
         False for a plain TRANSIENT outage (incl. every rate-limit back-off).

@@ -479,7 +479,7 @@ class TestKafkaProducerConsumerIntegration:
 
         # 2. Consume and verify messages
         print(f"\n=== Consuming messages from {test_topic} ===")
-        consumed_messages = []
+        consumed_messages: list[dict] = []
 
         with KafkaConsumer(kafka_config, f"test-group-{uuid.uuid4().hex[:8]}", verify_ssl=False) as consumer:
             consumer.subscribe([test_topic])
@@ -492,6 +492,7 @@ class TestKafkaProducerConsumerIntegration:
                 msg = consumer.poll(timeout=1.0)
                 if msg:
                     event = msg.value_as_json()
+                    assert isinstance(event, dict), f"message is not a JSON object: {event!r}"
                     consumed_messages.append(event)
                     print(f"  Consumed: {event['event_type']} for {event['user']['name']}")
                     consumer.commit()

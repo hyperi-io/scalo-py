@@ -9,8 +9,6 @@
 """Tests for the scrubber resolver -- priority order, legacy mapping,
 new schema parsing."""
 
-from __future__ import annotations
-
 import pytest
 
 from scalo.logger.scrub import (
@@ -75,6 +73,7 @@ class TestResolverPriority:
                 }
             )
         assert not any(issubclass(w.category, DeprecationWarning) for w in captured)
+        assert isinstance(result, LayeredScrubber)
         assert result.config.enabled is True
 
     def test_legacy_config_emits_deprecation(self):

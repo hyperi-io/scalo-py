@@ -6,8 +6,7 @@
 # License:   Apache-2.0
 # Copyright: (c) 2026 HYPERI PTY LIMITED
 
-"""
-scalo Version Check - Non-blocking, OPT-IN startup version check.
+"""scalo Version Check - Non-blocking, OPT-IN startup version check.
 
 When enabled, calls a configured version API on startup to check whether a
 newer version is available. The check runs in a self-terminating daemon

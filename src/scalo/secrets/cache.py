@@ -23,7 +23,7 @@ try:
     CRYPTO_AVAILABLE = True
 except ImportError:
     CRYPTO_AVAILABLE = False
-    crypto = None  # ty: ignore[invalid-assignment]
+    crypto = None
 
 # File mode for cache files: owner-read/write only (0o600).
 _CACHE_FILE_MODE = 0o600
@@ -107,9 +107,10 @@ class DiskCache:
         return self._config
 
     def _resolve_directory(self, directory: str | None) -> Path:
-        """Cache dir priority (never /tmp): explicit arg, SECRETS_CACHE_DIR,
-        $XDG_CACHE_HOME/hs-secrets, %LOCALAPPDATA%/scalo/secrets-cache (Win),
-        ~/.cache/scalo/secrets-cache.
+        """Resolve the cache directory, which is never /tmp.
+
+        Priority: explicit arg, SECRETS_CACHE_DIR, $XDG_CACHE_HOME/hs-secrets,
+        %LOCALAPPDATA%/scalo/secrets-cache (Windows), ~/.cache/scalo/secrets-cache.
         """
         if directory:
             return Path(directory)

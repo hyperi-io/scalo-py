@@ -1,6 +1,4 @@
-"""
-scalo Config - Enterprise Configuration with Automatic Cascade
-===================================================================
+"""scalo Config: enterprise configuration with an automatic cascade.
 
 Provides zero-configuration, automatic cascade for Python applications.
 Just import and use - no cascade implementation needed!
@@ -224,8 +222,7 @@ def _is_container(root: Path = Path("/")) -> tuple[bool, str]:
 
 
 def detect_environment() -> Literal["kubernetes", "docker", "container", "bare_metal"]:
-    """
-    Detect the current runtime environment.
+    """Detect the current runtime environment.
 
     Returns:
         Environment type: "kubernetes", "docker", "container", or "bare_metal"
@@ -248,8 +245,7 @@ def detect_environment() -> Literal["kubernetes", "docker", "container", "bare_m
 
 @dataclass
 class MountConfig:
-    """
-    Container mount configuration for standard disk locations.
+    """Container mount configuration for standard disk locations.
 
     Follows K8s/HELM/Docker/DevOps patterns:
 
@@ -287,8 +283,7 @@ class MountConfig:
 
 
 def detect_helm_deployment() -> bool:
-    """
-    Detect if running in a HELM-deployed pod.
+    """Detect if running in a HELM-deployed pod.
 
     HELM deployments typically have:
     - Specific labels (app.kubernetes.io/managed-by=Helm)
@@ -318,8 +313,7 @@ def detect_helm_deployment() -> bool:
 
 
 def detect_standard_mounts() -> dict[str, Path]:
-    """
-    Auto-detect standard mount points based on what exists.
+    """Auto-detect standard mount points based on what exists.
 
     Returns dict of detected mount points.
     """
@@ -391,8 +385,7 @@ def detect_standard_mounts() -> dict[str, Path]:
 
 
 def get_default_mounts(environment: str, app_name: str, auto_detect: bool = True) -> MountConfig:
-    """
-    Return sensible mount defaults based on detected environment.
+    """Return sensible mount defaults based on detected environment.
 
     Priority:
     1. Auto-detected existing mounts
@@ -750,8 +743,7 @@ def _load_dotenv_layer(cascade: bool = False, dotenv_files: list[str] | None = N
 
 
 def get_settings():
-    """
-    Get standard dynaconf settings object with automatic cascade.
+    """Get standard dynaconf settings object with automatic cascade.
 
     The cascade is AUTOMATIC - just access values:
         settings.database.host    # ENV > .env > yaml > defaults
@@ -774,8 +766,7 @@ def get_config(
     dotenv_cascade: bool = False,
     dotenv_files: list[str] | None = None,
 ):
-    """
-    Get configuration with optional additional file sources.
+    """Get configuration with optional additional file sources.
 
     Creates a NEW Dynaconf instance with custom file sources while
     preserving the automatic 7-layer cascade behavior.
@@ -811,7 +802,7 @@ def get_config(
         1. ~/.env          - Home directory (global defaults, API keys)
         2. ./.env          - Project directory (project-specific overrides)
 
-        Example:
+    Example:
             # ~/.env
             API_KEY=global-key
             DEBUG=false
@@ -908,13 +899,12 @@ def get_config(
 
 
 def setup():
-    """Setup configuration (for compatibility)"""
+    """Return the shared settings object, kept for compatibility."""
     return settings
 
 
 def get_mount_config() -> MountConfig:
-    """
-    Get the detected or configured mount configuration.
+    """Get the detected or configured mount configuration.
 
     Returns:
         MountConfig with paths for config, data, and temp directories
@@ -923,8 +913,7 @@ def get_mount_config() -> MountConfig:
 
 
 def get_environment() -> str:
-    """
-    Get the detected runtime environment.
+    """Get the detected runtime environment.
 
     Returns:
         Environment string: "kubernetes", "docker", "container", or "bare_metal"
@@ -933,8 +922,7 @@ def get_environment() -> str:
 
 
 def get_standard_env_vars() -> dict:
-    """
-    Get standard container environment variables.
+    """Get standard container environment variables.
 
     Detects and returns common environment variables used in
     HELM and Docker deployments.
@@ -994,8 +982,7 @@ def get_standard_env_vars() -> dict:
 
 
 def get_container_config() -> dict:
-    """
-    Get container-aware configuration including mounts and environment.
+    """Get container-aware configuration including mounts and environment.
 
     Returns:
         Dictionary with container configuration:
@@ -1025,7 +1012,7 @@ def get_container_config() -> dict:
 
 # Standard configuration access functions
 def get_api_config():
-    """Get API configuration"""
+    """Return the API retry and timeout settings, with defaults."""
     api_config = settings.get("api", {})
     return {
         "max_retries": api_config.get("max_retries", 3),
@@ -1151,8 +1138,7 @@ def get_logging_config():
 
 
 def get_target_config(target: str | None = None, targets_file: str | None = None) -> dict:
-    """
-    Get target-specific configuration for multi-environment setups.
+    """Get target-specific configuration for multi-environment setups.
 
     Loads configuration from a targets file (YAML) with environment-specific
     settings. Supports environment variable overrides.
@@ -1195,10 +1181,10 @@ def get_target_config(target: str | None = None, targets_file: str | None = None
 
     if targets_file is None:
         # Default to ~/.{APP_NAME}/targets.yaml
-        home = Path.home()
-        targets_file = home / f".{APP_NAME}" / "targets.yaml"
-
-    targets_path = Path(targets_file).expanduser()
+        targets_path = Path.home() / f".{APP_NAME}" / "targets.yaml"
+    else:
+        targets_path = Path(targets_file)
+    targets_path = targets_path.expanduser()
 
     if not targets_path.exists():
         raise FileNotFoundError(
@@ -1239,8 +1225,7 @@ def init_config_directory(
     create_targets: bool = True,
     create_env: bool = True,
 ) -> Path:
-    """
-    Initialize configuration directory for CLI/daemon applications.
+    """Initialize configuration directory for CLI/daemon applications.
 
     Creates config directory structure and optional template files:
     - ~/.{app_name}/
@@ -1278,18 +1263,18 @@ def init_config_directory(
         app_name = APP_NAME
 
     # Determine config directory
-    config_dir = Path.home() / f".{app_name}" if config_dir is None else Path(config_dir)
+    config_path = Path.home() / f".{app_name}" if config_dir is None else Path(config_dir)
 
     # Create directory structure
-    config_dir.mkdir(parents=True, exist_ok=True)
+    config_path.mkdir(parents=True, exist_ok=True)
 
     # Create subdirectory if set
     if create_subdir:
-        (config_dir / config_subdir_name).mkdir(exist_ok=True)
+        (config_path / config_subdir_name).mkdir(exist_ok=True)
 
     # Create targets.yaml template
     if create_targets:
-        targets_file = config_dir / "targets.yaml"
+        targets_file = config_path / "targets.yaml"
         if not targets_file.exists():
             targets_template = f"""# Multi-environment configuration for {app_name}
 # Reference: https://docs.scalo.io/config/targets
@@ -1315,7 +1300,7 @@ targets:
 
     # Create .env template
     if create_env:
-        env_file = config_dir / ".env"
+        env_file = config_path / ".env"
         if not env_file.exists():
             env_template = f"""# Environment variables for {app_name}
 # These override settings in targets.yaml
@@ -1329,8 +1314,8 @@ targets:
             env_file.write_text(env_template, encoding="utf-8")
             _debug_log(f"Created .env template: {env_file}")
 
-    _debug_log(f"Config directory '{config_dir}' initialized.")
-    return config_dir
+    _debug_log(f"Config directory '{config_path}' initialized.")
+    return config_path
 
 
 # Export for direct access

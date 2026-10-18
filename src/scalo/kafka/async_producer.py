@@ -19,8 +19,6 @@ Delivery semantics:
   retries once before raising.
 """
 
-from __future__ import annotations
-
 import asyncio
 import json
 from dataclasses import dataclass
@@ -43,8 +41,7 @@ class DeliveryReport:
 
 
 class AsyncKafkaProducer:
-    """
-    Async Kafka producer.
+    """Async Kafka producer.
 
     Wraps confluent-kafka Producer with async methods via
     :func:`scalo.concurrency.run_blocking` so producer calls
@@ -120,10 +117,14 @@ class AsyncKafkaProducer:
             # Runs on librdkafka's poll() thread. Hop to the event loop.
             if future.done():
                 return
+            # librdkafka leaves partition and offset unset on a failed delivery, and the report uses -1 for both.
+            msg_topic = msg.topic() if msg else None
+            msg_partition = msg.partition() if msg else None
+            msg_offset = msg.offset() if msg else None
             report = DeliveryReport(
-                topic=msg.topic() if msg else topic,
-                partition=msg.partition() if msg else -1,
-                offset=msg.offset() if msg else -1,
+                topic=msg_topic if msg_topic is not None else topic,
+                partition=msg_partition if msg_partition is not None else -1,
+                offset=msg_offset if msg_offset is not None else -1,
                 error=str(err) if err else None,
             )
             loop.call_soon_threadsafe(future.set_result, report)

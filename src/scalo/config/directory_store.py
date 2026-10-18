@@ -1,5 +1,4 @@
-"""
-Directory-based Configuration Store for scalo.
+"""Directory-based Configuration Store for scalo.
 
 Provides a YAML directory-backed configuration store where each YAML file
 represents a config "table" (analogous to a database table). Supports
@@ -51,14 +50,14 @@ from typing import Any, Callable
 import yaml
 from dulwich import porcelain as git
 from dulwich.errors import NotGitRepository
+from dulwich.refs import HEADREF, Ref
 from dulwich.repo import Repo as DulwichRepo
 
 from ..logger import logger
 
 
 class DirectoryConfigStore:
-    """
-    YAML directory-based configuration store with optional git awareness.
+    """YAML directory-based configuration store with optional git awareness.
 
     Each YAML file in the directory (and subdirectories) is a "table".
     Table names use forward-slash paths: root files are just the stem
@@ -164,8 +163,7 @@ class DirectoryConfigStore:
     # -- Read -----------------------------------------------------------
 
     def get(self, table: str, key: str | None = None, default: Any = None) -> Any:
-        """
-        Get config value from a table.
+        """Get config value from a table.
 
         Args:
             table: Table name -- bare name for root files (e.g. "globals"),
@@ -188,8 +186,7 @@ class DirectoryConfigStore:
             return self._get_nested(data, key, default)
 
     def list_tables(self) -> list[str]:
-        """
-        List available config tables (including subdirectories).
+        """List available config tables (including subdirectories).
 
         Returns:
             Sorted list of table names. Root files return bare names
@@ -214,8 +211,7 @@ class DirectoryConfigStore:
         message: str | None = None,
         author: str | None = None,
     ) -> None:
-        """
-        Set a config value in a table.
+        """Set a config value in a table.
 
         Writes to the YAML file, updates cache, and optionally commits to git.
 
@@ -261,8 +257,7 @@ class DirectoryConfigStore:
         message: str | None = None,
         author: str | None = None,
     ) -> None:
-        """
-        Delete a config key from a table.
+        """Delete a config key from a table.
 
         Args:
             table: Table name.
@@ -323,8 +318,7 @@ class DirectoryConfigStore:
             return None
 
     def list_branches(self) -> list[str]:
-        """
-        List all local git branches.
+        """List all local git branches.
 
         Returns:
             Sorted list of branch names.
@@ -344,8 +338,7 @@ class DirectoryConfigStore:
         return sorted(branches)
 
     def switch_branch(self, branch: str, create: bool = False) -> None:
-        """
-        Switch to a git branch.
+        """Switch to a git branch.
 
         Args:
             branch: Branch name.
@@ -359,19 +352,19 @@ class DirectoryConfigStore:
         if not self._is_git or self._repo is None:
             raise RuntimeError("Directory is not a git repository")
 
-        ref_name = f"refs/heads/{branch}".encode()
+        ref_name = Ref(f"refs/heads/{branch}".encode())
         existing = self.list_branches()
 
         if branch in existing:
             # Switch HEAD to point at existing branch
-            self._repo.refs.set_symbolic_ref(b"HEAD", ref_name)
+            self._repo.refs.set_symbolic_ref(HEADREF, ref_name)
             # Update working tree
             self._checkout_head()
         elif create:
             # Create branch from current HEAD, then switch
             head_sha = self._repo.head()
             self._repo.refs[ref_name] = head_sha
-            self._repo.refs.set_symbolic_ref(b"HEAD", ref_name)
+            self._repo.refs.set_symbolic_ref(HEADREF, ref_name)
             # Working tree already matches HEAD, no checkout needed
         else:
             raise ValueError(f"Branch '{branch}' does not exist. Use create=True to create it.")
@@ -384,8 +377,7 @@ class DirectoryConfigStore:
     # -- Watch ----------------------------------------------------------
 
     def on_change(self, table: str, callback: Callable[[str, dict], None]) -> None:
-        """
-        Register a callback for when a table's config changes.
+        """Register a callback for when a table's config changes.
 
         The callback receives (table_name, new_data_dict) and is invoked
         from the background refresh thread.
@@ -458,8 +450,7 @@ class DirectoryConfigStore:
 
     @staticmethod
     def _validate_table_name(table: str) -> str:
-        """
-        Validate and normalise a table name.
+        """Validate and normalise a table name.
 
         Normalises backslashes to forward slashes, strips leading/trailing
         slashes, and rejects path traversal attempts.
@@ -487,8 +478,7 @@ class DirectoryConfigStore:
 
     @staticmethod
     def _path_to_table(base_dir: Path, file_path: Path) -> str:
-        """
-        Convert a YAML file path to a table name.
+        """Convert a YAML file path to a table name.
 
         Args:
             base_dir: The config root directory.
@@ -513,8 +503,7 @@ class DirectoryConfigStore:
         return path
 
     def _load_yaml(self, path: Path) -> dict | None:
-        """
-        Safely load a YAML file.
+        """Safely load a YAML file.
 
         Returns:
             Parsed dict, or None on error.
@@ -571,8 +560,7 @@ class DirectoryConfigStore:
 
     @staticmethod
     def _get_nested(d: dict, key: str, default: Any = None) -> Any:
-        """
-        Get nested dict value from dot-notation key.
+        """Get nested dict value from dot-notation key.
 
         Example: _get_nested({"database": {"host": "localhost"}}, "database.host")
                  -> "localhost"
@@ -589,8 +577,7 @@ class DirectoryConfigStore:
 
     @staticmethod
     def _set_nested(d: dict, key: str, value: Any) -> None:
-        """
-        Set nested dict value from dot-notation key.
+        """Set nested dict value from dot-notation key.
 
         Example: _set_nested({}, "database.host", "localhost")
                  -> {"database": {"host": "localhost"}}
@@ -602,8 +589,7 @@ class DirectoryConfigStore:
 
     @staticmethod
     def _delete_nested(d: dict, key: str) -> None:
-        """
-        Delete nested dict value from dot-notation key.
+        """Delete nested dict value from dot-notation key.
 
         Raises KeyError if key doesn't exist.
         """
@@ -638,8 +624,11 @@ class DirectoryConfigStore:
             return
         try:
             from dulwich.index import build_index_from_tree
+            from dulwich.objects import Commit
 
             head_commit = self._repo[self._repo.head()]
+            if not isinstance(head_commit, Commit):
+                raise TypeError(f"HEAD names a {type(head_commit).__name__}, not a commit")
             index_path = os.path.join(self._repo.controldir(), "index")
             build_index_from_tree(
                 self._repo.path,

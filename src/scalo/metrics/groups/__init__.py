@@ -6,8 +6,7 @@
 #  License:      Apache-2.0
 #  Copyright:    (c) 2026 HYPERI PTY LIMITED
 
-"""
-Metric groups -- composable metric structs for pipeline applications.
+"""Metric groups -- composable metric structs for pipeline applications.
 
 Each group is a class that takes a MetricsManager in its constructor,
 registers its standard metrics (under the manager's optional ``metric_prefix``,

@@ -1,5 +1,4 @@
-"""
-Example CLI applications using Typer with scalo.
+"""Example CLI applications using Typer with scalo.
 
 These examples demonstrate best practices for CLI development.
 """

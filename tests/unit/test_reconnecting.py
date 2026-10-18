@@ -4,6 +4,9 @@ Uses an injectable fake clock so back-off never really sleeps and never races a
 wall clock.
 """
 
+from collections.abc import Mapping
+from typing import Any
+
 import pytest
 
 from scalo.logger import logger
@@ -44,13 +47,13 @@ def _build(clock, *, config=None, reconnect=None, on_connect_failure=None):
 @pytest.fixture
 def records():
     """Every record logged while the test runs."""
-    seen: list[dict] = []
+    seen: list[Mapping[str, Any]] = []
     sink_id = logger.add(lambda message: seen.append(message.record), level="DEBUG")
     yield seen
     logger.remove(sink_id)
 
 
-def _logged(records: list[dict], message: str) -> dict:
+def _logged(records: list[Mapping[str, Any]], message: str) -> Mapping[str, Any]:
     return next(record for record in records if record["message"] == message)
 
 

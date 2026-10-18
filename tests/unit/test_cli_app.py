@@ -12,8 +12,6 @@ Tests CommonArgs, VersionInfo, error types, and ServiceApp lifecycle
 using Typer's CliRunner for CLI integration testing.
 """
 
-from __future__ import annotations
-
 from typing import Any
 
 import pytest
@@ -465,7 +463,7 @@ class TestServiceApp:
         def broken_create_metrics(*args, **kwargs):
             raise RuntimeError("simulated metrics failure")
 
-        fake_metrics.create_metrics = broken_create_metrics
+        fake_metrics.create_metrics = broken_create_metrics  # ty: ignore[unresolved-attribute]  # a bare ModuleType takes any attribute
         monkeypatch.setitem(sys.modules, "scalo.metrics", fake_metrics)
 
         # Also ensure AppMetrics import succeeds from groups
@@ -475,7 +473,7 @@ class TestServiceApp:
             def __init__(self, *args, **kwargs):
                 pass
 
-        fake_groups.AppMetrics = _FakeAppMetrics
+        fake_groups.AppMetrics = _FakeAppMetrics  # ty: ignore[unresolved-attribute]  # a bare ModuleType takes any attribute
         monkeypatch.setitem(sys.modules, "scalo.metrics.groups", fake_groups)
 
         app = _SyncApp()

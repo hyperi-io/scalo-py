@@ -18,8 +18,6 @@ This module is the only place that reads the TOML; the rest of the
 scrub code consumes the resulting validator instances.
 """
 
-from __future__ import annotations
-
 import tomllib
 import warnings
 from importlib import resources
@@ -70,6 +68,10 @@ def build_national_id_validators(
             lowercase) whose entries are eligible. Entries within
             those countries are still gated on ``enabled = true`` in
             the TOML. If ``None``, all countries are considered.
+        labeler: redaction-label producer passed to every validator.
+            ``None`` keeps the validators' static default.
+        metrics: :class:`ScrubMetrics` passed to every validator.
+            ``None`` means a no-op.
 
     Returns:
         List of :class:`_DynamicValidator` instances, ready to feed

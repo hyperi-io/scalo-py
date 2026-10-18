@@ -1,6 +1,4 @@
-"""
-scalo Prometheus Metrics - Production-Ready Observability
-==============================================================
+"""scalo Prometheus Metrics: process, container and application metrics.
 
 Zero-configuration Prometheus metrics for Python applications.
 Auto-collects process, container, and application metrics!
@@ -137,7 +135,6 @@ try:
 
     PSUTIL_AVAILABLE = True
 except ImportError:  # pragma: no cover - exercised by the no-extra import test
-    psutil = None  # type: ignore[assignment]
     PSUTIL_AVAILABLE = False
 
 # Check if prometheus_client is available
@@ -158,8 +155,7 @@ except ImportError:
 
 
 class ProcessMetrics:
-    """
-    Standard process metrics for containerized applications.
+    """Standard process metrics for containerized applications.
 
     Provides:
     - CPU usage (percent, seconds)
@@ -170,8 +166,7 @@ class ProcessMetrics:
     """
 
     def __init__(self, registry: Any | None = None, app_name: str = "app"):
-        """
-        Initialize process metrics.
+        """Initialize process metrics.
 
         Args:
             registry: Prometheus registry (creates new if None)
@@ -318,8 +313,7 @@ class ProcessMetrics:
 
 
 class ContainerMetrics:
-    """
-    Container-specific metrics (cgroups v2).
+    """Container-specific metrics (cgroups v2).
 
     Provides:
     - Memory limit and usage
@@ -329,8 +323,7 @@ class ContainerMetrics:
     """
 
     def __init__(self, registry: Any | None = None, app_name: str = "app"):
-        """
-        Initialize container metrics.
+        """Initialize container metrics.
 
         Args:
             registry: Prometheus registry
@@ -550,8 +543,7 @@ class ContainerMetrics:
 
 
 class HTTPMetrics:
-    """
-    HTTP request metrics for API applications.
+    """HTTP request metrics for API applications.
 
     Provides:
     - Request count (by method, endpoint, status)
@@ -562,8 +554,7 @@ class HTTPMetrics:
     """
 
     def __init__(self, registry: Any | None = None, app_name: str = "app"):
-        """
-        Initialize HTTP metrics.
+        """Initialize HTTP metrics.
 
         Args:
             registry: Prometheus registry
@@ -614,8 +605,7 @@ class HTTPMetrics:
         logger.info("HTTP metrics initialized")
 
     def track_request(self, method: str, endpoint: str, status: int, duration: float):
-        """
-        Track completed HTTP request.
+        """Track completed HTTP request.
 
         Args:
             method: HTTP method (GET, POST, etc.)
@@ -641,8 +631,7 @@ class HTTPMetrics:
 
 
 class PrometheusMetrics:
-    """
-    Unified metrics manager for containerized applications.
+    """Unified metrics manager for containerized applications.
 
     Combines:
     - Process metrics (CPU, memory, threads)
@@ -679,9 +668,8 @@ class PrometheusMetrics:
         processing_time.observe(1.23)
     """
 
-    def __init__(self, app_name: str = "app", enable_auto_update: bool = True, update_interval: int = 5):
-        """
-        Initialize metrics manager.
+    def __init__(self, app_name: str = "app", enable_auto_update: bool = True, update_interval: float = 5):
+        """Initialize metrics manager.
 
         Args:
             app_name: Application name
@@ -770,8 +758,7 @@ class PrometheusMetrics:
         self.container.update()
 
     def get_metrics(self) -> bytes:
-        """
-        Get metrics in Prometheus text format.
+        """Get metrics in Prometheus text format.
 
         Returns:
             Metrics as bytes (ready for HTTP response)
@@ -786,8 +773,7 @@ class PrometheusMetrics:
             return f"# Error generating metrics: {e}\n".encode()
 
     def get_metrics_text(self) -> str:
-        """
-        Get metrics as text string.
+        """Get metrics as text string.
 
         Returns:
             Metrics as string
@@ -801,8 +787,7 @@ class PrometheusMetrics:
     # Custom metrics API
 
     def counter(self, name: str, description: str, labels: list[str] | None = None) -> Any:
-        """
-        Create or get a Counter metric.
+        """Create or get a Counter metric.
 
         Counter is for values that only increase (requests, errors, etc.).
 
@@ -840,8 +825,7 @@ class PrometheusMetrics:
         return metric
 
     def gauge(self, name: str, description: str, labels: list[str] | None = None) -> Any:
-        """
-        Create or get a Gauge metric.
+        """Create or get a Gauge metric.
 
         Gauge is for values that can go up and down (queue size, temperature, etc.).
 
@@ -882,8 +866,7 @@ class PrometheusMetrics:
         labels: list[str] | None = None,
         buckets: tuple[float, ...] | None = None,
     ) -> Any:
-        """
-        Create or get a Histogram metric.
+        """Create or get a Histogram metric.
 
         Histogram tracks distribution of values (request duration, response size, etc.).
 
@@ -917,24 +900,16 @@ class PrometheusMetrics:
         if name in self._custom_metrics:
             return self._custom_metrics[name]
 
-        kwargs = {
-            "name": name,
-            "documentation": description,
-            "labelnames": labels or [],
-            "registry": self.registry,
-        }
-
-        if buckets is not None:
-            kwargs["buckets"] = buckets
-
-        metric = Histogram(**kwargs)
+        if buckets is None:
+            metric = Histogram(name, description, labelnames=labels or [], registry=self.registry)
+        else:
+            metric = Histogram(name, description, labelnames=labels or [], registry=self.registry, buckets=buckets)
         self._custom_metrics[name] = metric
         logger.debug(f"Created histogram metric: {name}")
         return metric
 
     def summary(self, name: str, description: str, labels: list[str] | None = None) -> Any:
-        """
-        Create or get a Summary metric.
+        """Create or get a Summary metric.
 
         Summary tracks percentiles over a sliding time window.
 
@@ -972,8 +947,7 @@ class PrometheusMetrics:
         return metric
 
     def info(self, name: str, description: str) -> Any:
-        """
-        Create or get an Info metric.
+        """Create or get an Info metric.
 
         Info provides static information about the application.
 
@@ -1008,8 +982,7 @@ class PrometheusMetrics:
         return metric
 
     def get_custom_metric(self, name: str) -> Any | None:
-        """
-        Get a previously created custom metric by name.
+        """Get a previously created custom metric by name.
 
         Args:
             name: Metric name
@@ -1024,10 +997,9 @@ class PrometheusMetrics:
 def create_metrics(
     app_name: str = "app",
     enable_auto_update: bool = True,
-    update_interval: int = 5,
+    update_interval: float = 5,
 ) -> PrometheusMetrics:
-    """
-    Create metrics manager with sensible defaults.
+    """Create metrics manager with sensible defaults.
 
     Args:
         app_name: Application name

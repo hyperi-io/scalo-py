@@ -1,39 +1,47 @@
 """Secret providers for scalo secrets module."""
 
+from typing import TYPE_CHECKING
+
 from .base import SecretProvider, VersionedProvider
 from .file import FileProvider
 
-# Optional providers with graceful import fallbacks
+# Optional providers with graceful import fallbacks. Each module guards its own
+# SDK import, so type checkers (here and in consumers) see only the real class.
 try:
     from .openbao import HTTPX_AVAILABLE, OpenBaoProvider
 except ImportError, AttributeError:
-    OpenBaoProvider = None  # type: ignore[assignment,misc]
+    if not TYPE_CHECKING:
+        OpenBaoProvider = None
     HTTPX_AVAILABLE = False
 
 try:
     from .aws import AIOBOTOCORE_AVAILABLE, BOTO3_AVAILABLE, AWSProvider
 except ImportError:
-    AWSProvider = None  # type: ignore[assignment,misc]
+    if not TYPE_CHECKING:
+        AWSProvider = None
     BOTO3_AVAILABLE = False
     AIOBOTOCORE_AVAILABLE = False
 
 try:
     from .gcp import GCP_AVAILABLE, GCPProvider
 except ImportError:
-    GCPProvider = None  # type: ignore[assignment,misc]
+    if not TYPE_CHECKING:
+        GCPProvider = None
     GCP_AVAILABLE = False
 
 try:
     from .azure import AZURE_ASYNC_AVAILABLE, AZURE_AVAILABLE, AzureProvider
 except ImportError:
-    AzureProvider = None  # type: ignore[assignment,misc]
+    if not TYPE_CHECKING:
+        AzureProvider = None
     AZURE_AVAILABLE = False
     AZURE_ASYNC_AVAILABLE = False
 
 try:
     from .ansible_vault import ANSIBLE_VAULT_AVAILABLE, AnsibleVaultProvider
 except ImportError:
-    AnsibleVaultProvider = None  # type: ignore[assignment,misc]
+    if not TYPE_CHECKING:
+        AnsibleVaultProvider = None
     ANSIBLE_VAULT_AVAILABLE = False
 
 __all__ = [

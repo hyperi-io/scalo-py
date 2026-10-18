@@ -20,8 +20,6 @@ SSoT is ``docs/reflectable-config-shape.md`` in scalo-rs. Tracks scalo-py#3 /
 scalo-rs#6.
 """
 
-from __future__ import annotations
-
 from enum import StrEnum
 from typing import Any
 
@@ -84,22 +82,27 @@ class FieldSpec(BaseModel):
 
     @classmethod
     def string(cls, name: str, **kw: Any) -> FieldSpec:
+        """Build a ``string`` field."""
         return cls(name=name, type=FieldType.STRING, **kw)
 
     @classmethod
     def integer(cls, name: str, **kw: Any) -> FieldSpec:
+        """Build an ``int`` field."""
         return cls(name=name, type=FieldType.INT, **kw)
 
     @classmethod
     def boolean(cls, name: str, **kw: Any) -> FieldSpec:
+        """Build a ``bool`` field."""
         return cls(name=name, type=FieldType.BOOL, **kw)
 
     @classmethod
     def secret_field(cls, name: str, **kw: Any) -> FieldSpec:
+        """Build a ``secret`` field, marked ``secret=True``."""
         return cls(name=name, type=FieldType.SECRET, secret=True, **kw)
 
     @classmethod
     def enumeration(cls, name: str, values: list[str], **kw: Any) -> FieldSpec:
+        """Build an ``enum`` field that accepts only ``values``."""
         return cls(name=name, type=FieldType.ENUM, enum_values=list(values), **kw)
 
 
@@ -139,14 +142,17 @@ class Capability(BaseModel):
 
     @classmethod
     def source(cls, name: str, **kw: Any) -> Capability:
+        """Build a ``source`` capability."""
         return cls(kind="source", name=name, **kw)
 
     @classmethod
     def service(cls, name: str, **kw: Any) -> Capability:
+        """Build a ``service`` capability."""
         return cls(kind="service", name=name, **kw)
 
     @classmethod
     def transport(cls, name: str, **kw: Any) -> Capability:
+        """Build a ``transport`` capability."""
         return cls(kind="transport", name=name, **kw)
 
 

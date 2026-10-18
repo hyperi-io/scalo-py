@@ -6,8 +6,7 @@
 # License:   Apache-2.0
 # Copyright: (c) 2026 HYPERI PTY LIMITED
 
-"""
-Kafka metrics collection from librdkafka statistics.
+"""Kafka metrics collection from librdkafka statistics.
 
 Provides a collector for librdkafka statistics JSON and functions
 to expose metrics to Prometheus/OTEL.
@@ -29,8 +28,6 @@ Usage:
     metrics = collector.get_metrics()
 """
 
-from __future__ import annotations
-
 import json
 import threading
 from dataclasses import dataclass, field
@@ -39,8 +36,7 @@ from typing import Any, Callable
 
 @dataclass
 class KafkaMetricsCollector:
-    """
-    Collector for librdkafka statistics.
+    """Collector for librdkafka statistics.
 
     Parses librdkafka stats JSON and provides metrics in a format
     suitable for Prometheus/OTEL export.
@@ -69,8 +65,7 @@ class KafkaMetricsCollector:
     _consumer_lag: dict[str, dict[int, int]] = field(default_factory=dict, init=False)
 
     def update_from_stats(self, stats_json: str) -> None:
-        """
-        Update metrics from librdkafka stats JSON.
+        """Update metrics from librdkafka stats JSON.
 
         Captures ALL available metrics from librdkafka statistics callback.
         See: https://github.com/confluentinc/librdkafka/blob/master/STATISTICS.md
@@ -327,8 +322,7 @@ class KafkaMetricsCollector:
                 }
 
     def get_metrics(self) -> dict[str, Any]:
-        """
-        Get current metrics in Prometheus-friendly format.
+        """Get current metrics in Prometheus-friendly format.
 
         Returns:
             Dict of metric_name -> value
@@ -355,8 +349,7 @@ class KafkaMetricsCollector:
             }
 
     def get_broker_metrics(self) -> dict[str, dict[str, Any]]:
-        """
-        Get per-broker metrics.
+        """Get per-broker metrics.
 
         Returns:
             Dict of broker_name -> metrics dict
@@ -365,8 +358,7 @@ class KafkaMetricsCollector:
             return dict(self._broker_stats)
 
     def get_topic_metrics(self) -> dict[str, dict[str, Any]]:
-        """
-        Get per-topic metrics.
+        """Get per-topic metrics.
 
         Returns:
             Dict of topic_name -> metrics dict
@@ -375,8 +367,7 @@ class KafkaMetricsCollector:
             return dict(self._topic_stats)
 
     def get_consumer_lag(self) -> dict[str, dict[int, int]]:
-        """
-        Get consumer lag per topic/partition.
+        """Get consumer lag per topic/partition.
 
         Returns:
             Dict of topic_name -> {partition: lag}
@@ -385,8 +376,7 @@ class KafkaMetricsCollector:
             return {topic: dict(partitions) for topic, partitions in self._consumer_lag.items()}
 
     def get_cgrp_metrics(self) -> dict[str, Any]:
-        """
-        Get consumer group metrics.
+        """Get consumer group metrics.
 
         Returns:
             Dict of cgrp metric name -> value
@@ -395,8 +385,7 @@ class KafkaMetricsCollector:
             return dict(self._cgrp_stats)
 
     def get_partition_metrics(self) -> dict[str, dict[int, dict[str, Any]]]:
-        """
-        Get per-partition metrics for all topics.
+        """Get per-partition metrics for all topics.
 
         Returns:
             Dict of topic_name -> {partition_id: metrics dict}
@@ -415,8 +404,7 @@ class KafkaMetricsCollector:
             }
 
     def get_eos_metrics(self) -> dict[str, Any]:
-        """
-        Get EOS (Exactly-Once Semantics) / Idempotent producer metrics.
+        """Get EOS (Exactly-Once Semantics) / Idempotent producer metrics.
 
         Returns:
             Dict of EOS metric name -> value
@@ -430,8 +418,7 @@ class KafkaMetricsCollector:
             return dict(self._eos_stats)
 
     def get_all_metrics(self) -> dict[str, Any]:
-        """
-        Get all metrics in a single dict.
+        """Get all metrics in a single dict.
 
         Returns:
             Complete metrics dict with ALL available data:
@@ -457,8 +444,7 @@ class KafkaMetricsCollector:
 def create_stats_callback(
     collector: KafkaMetricsCollector,
 ) -> Callable[[str], None]:
-    """
-    Create a stats callback function for librdkafka.
+    """Create a stats callback function for librdkafka.
 
     Args:
         collector: KafkaMetricsCollector to receive stats

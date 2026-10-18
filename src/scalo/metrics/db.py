@@ -6,8 +6,7 @@
 # License:   Apache-2.0
 # Copyright: (c) 2026 HYPERI PTY LIMITED
 
-"""
-Database query metrics helpers for explicit instrumentation.
+"""Database query metrics helpers for explicit instrumentation.
 
 Provides context manager and decorator for tracking DB query metrics
 with any database client (ClickHouse, Postgres, MySQL, etc.).
@@ -31,8 +30,6 @@ Metrics Exposed:
     - db_query_duration_seconds: Histogram with labels [db_type, operation, status]
     - db_query_total: Counter with labels [db_type, operation, status]
 """
-
-from __future__ import annotations
 
 import time
 from contextlib import contextmanager
@@ -71,6 +68,11 @@ def _get_db_metrics(metrics: MetricsManager) -> tuple[Any, Any]:
         )
         _metrics_cache[cache_key] = (duration, counter)
     return _metrics_cache[cache_key]
+
+
+def _operation_name(func: Callable[..., object]) -> str:
+    """Return ``func.__name__``, or its type's name for a callable without one such as a ``functools.partial``."""
+    return getattr(func, "__name__", None) or type(func).__name__
 
 
 @contextmanager
@@ -128,7 +130,8 @@ def track_db_query(
     Args:
         metrics: MetricsManager instance
         db_type: Database type (e.g., "postgres", "clickhouse", "mysql")
-        operation: Operation type (defaults to function name)
+        operation: Operation type (defaults to the function's name, or its
+            type's name for a callable without one)
 
     Returns:
         Decorated function
@@ -148,7 +151,7 @@ def track_db_query(
     """
 
     def decorator(func: Callable[..., T]) -> Callable[..., T]:
-        op = operation or func.__name__
+        op = operation or _operation_name(func)
 
         @wraps(func)
         def wrapper(*args: Any, **kwargs: Any) -> T:
@@ -170,7 +173,8 @@ def track_db_query_async(
     Args:
         metrics: MetricsManager instance
         db_type: Database type (e.g., "postgres", "clickhouse", "mysql")
-        operation: Operation type (defaults to function name)
+        operation: Operation type (defaults to the function's name, or its
+            type's name for a callable without one)
 
     Returns:
         Decorated async function
@@ -186,7 +190,7 @@ def track_db_query_async(
     """
 
     def decorator(func: Callable[..., Any]) -> Callable[..., Any]:
-        op = operation or func.__name__
+        op = operation or _operation_name(func)
 
         @wraps(func)
         async def wrapper(*args: Any, **kwargs: Any) -> Any:

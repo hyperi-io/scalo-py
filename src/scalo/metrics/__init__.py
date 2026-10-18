@@ -1,5 +1,4 @@
-"""
-scalo Metrics Module - Backend-Agnostic Metrics Instrumentation.
+"""scalo Metrics Module - Backend-Agnostic Metrics Instrumentation.
 
 Provides unified API for metrics collection with pluggable backends:
 - OpenTelemetry (default) - dual export: OTLP push + Prometheus scrape

@@ -26,8 +26,6 @@ Usage::
     # => "severity = 'critical' AND amount > 10000"
 """
 
-from __future__ import annotations
-
 import re
 from dataclasses import dataclass, field
 from enum import Enum, auto
@@ -457,7 +455,6 @@ def _escape_string(s: str) -> str:
 
 def _emit(node: Expr, parent_prec: int = 0) -> str:
     """Emit a ClickHouse SQL string from an AST node."""
-
     if isinstance(node, Literal):
         if node.value is None:
             return "NULL"

@@ -7,11 +7,11 @@
 # License:   Apache-2.0
 # Copyright: (c) 2026 HYPERI PTY LIMITED
 
-"""Kafka provider abstraction: one open ``KafkaProvider`` behind which every
-provider-specific quirk is normalised. Each managed/self-hosted Kafka has its
-own weirdness across MANY axes - auth, capabilities, metadata plane, schema
-registry, transport tuning - and this module is the single seam that combines
-them.
+"""Kafka provider abstraction: one open ``KafkaProvider`` that normalises every provider quirk.
+
+Each managed/self-hosted Kafka has its own weirdness across MANY axes - auth,
+capabilities, metadata plane, schema registry, transport tuning - and this
+module is the one place that combines them.
 
 Two layers live here:
 
@@ -56,8 +56,6 @@ weakened; only this blessed set is allowed") layers that ON TOP, opt-in, via
 ``scalo.kafka.contract``. The vanilla core here works irrespective of any such
 opinion.
 """
-
-from __future__ import annotations
 
 from dataclasses import dataclass, replace
 from enum import Enum
@@ -178,9 +176,10 @@ class AuthKind(Enum):
 
 
 class MetadataMode(Enum):
-    """The cluster metadata plane - a version-implication FACT that shapes
-    deployment and admin tooling (which admin features light up, how the
-    cluster is stood up).
+    """The cluster metadata plane, a version-implication FACT.
+
+    It shapes deployment and admin tooling (which admin features light up, how
+    the cluster is stood up).
     """
 
     KRAFT = "kraft"  # KRaft (KIP-500) - no ZooKeeper. The modern default.
@@ -189,9 +188,10 @@ class MetadataMode(Enum):
 
 
 class SchemaRegistry(Enum):
-    """A schema registry bundled with the provider, if any. The endpoint is a
-    runtime connection detail; this is just which KIND, so a config emitter
-    knows to wire it.
+    """A schema registry bundled with the provider, if any.
+
+    The endpoint is a runtime connection detail. This is only which KIND, so a
+    config emitter knows to wire it.
     """
 
     NONE = "none"  # No bundled registry - bring your own
@@ -201,10 +201,10 @@ class SchemaRegistry(Enum):
 
 @dataclass(frozen=True)
 class ProviderCapabilities:
-    """Provider-specific behaviour flags - the "weirdness" of each Kafka
-    provider, combined behind one type. Static data (no I/O); the
-    cluster-control lifecycle that ACTS on these reads them from the opt-in
-    lifecycle layer.
+    """Provider-specific behaviour flags, the "weirdness" of each Kafka provider behind one type.
+
+    Static data (no I/O). The cluster-control lifecycle that ACTS on these
+    reads them from the opt-in lifecycle layer.
     """
 
     managed: bool  # Managed SaaS/cloud (vs a self-hosted broker you run in-cluster)
@@ -261,8 +261,9 @@ class KafkaProvider(Protocol):
 
 
 class KnownProvider(Enum):
-    """The built-in, generic providers. Implements ``KafkaProvider`` - the
-    canonical facts, mirrored from scalo-rs's ``KnownProvider`` enum.
+    """The built-in, generic providers, implementing ``KafkaProvider``.
+
+    The canonical facts, mirrored from scalo-rs's ``KnownProvider`` enum.
     """
 
     STRIMZI = "strimzi"  # Self-hosted Apache Kafka / Strimzi - SCRAM-SHA-512
@@ -300,6 +301,7 @@ class KnownProvider(Enum):
         return derive(self.value)
 
     def capabilities(self) -> ProviderCapabilities:
+        """Return this provider's behaviour flags."""
         # Self-hosted: you run the broker - no managed billing, TLS is the
         # operator's choice (in-cluster mesh often terminates it).
         self_hosted = ProviderCapabilities(
@@ -336,6 +338,7 @@ class KnownProvider(Enum):
         return replace(managed, auth_kind=AuthKind.IAM)
 
     def metadata_mode(self) -> MetadataMode:
+        """Return this provider's metadata plane."""
         # Redpanda is KRaft-native (no ZooKeeper); Strimzi + local dev default
         # to KRaft on modern Kafka; provisioned MSK is KRaft-forward.
         if self in (KnownProvider.REDPANDA, KnownProvider.STRIMZI, KnownProvider.PLAINTEXT, KnownProvider.MSK):
@@ -344,6 +347,7 @@ class KnownProvider(Enum):
         return MetadataMode.MANAGED
 
     def schema_registry(self) -> SchemaRegistry:
+        """Return the schema registry this provider bundles, if any."""
         if self is KnownProvider.CONFLUENT_CLOUD:
             return SchemaRegistry.CONFLUENT
         if self in (KnownProvider.REDPANDA, KnownProvider.REDPANDA_CLOUD):
@@ -351,4 +355,5 @@ class KnownProvider(Enum):
         return SchemaRegistry.NONE
 
     def transport_overrides(self) -> dict[str, str]:
+        """Return no overrides, because no built-in provider needs transport tuning."""
         return {}

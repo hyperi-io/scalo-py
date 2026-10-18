@@ -6,8 +6,7 @@
 # License:   Apache-2.0
 # Copyright: (c) 2026 HYPERI PTY LIMITED
 
-"""
-scalo HTTP Client Module - Production HTTP with Retries and Observability.
+"""scalo HTTP Client Module - Production HTTP with Retries and Observability.
 
 Provides HTTP clients with automatic retries (via Stamina), default timeouts,
 structured logging, and Prometheus metrics integration.

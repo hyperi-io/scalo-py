@@ -29,8 +29,6 @@ Pattern for capability authors: add an entry to
 calls into a blocking SDK.
 """
 
-from __future__ import annotations
-
 import ast
 import asyncio
 import time
@@ -314,7 +312,8 @@ class TestEventLoopLiveness:
         s = _Sleeper()
         probe = EventLoopLivenessProbe(tick_interval=0.01)
         probe.start()
-        result = await s.slow_async(0.1)
+        # ty types a Callable class attribute as unbound, but the async def wrapper binds `self` at runtime.
+        result = await s.slow_async(0.1)  # ty: ignore[missing-argument, invalid-argument-type]
         await probe.stop()
 
         assert result == "done"

@@ -8,8 +8,6 @@
 
 """Tests for the four async primitives."""
 
-from __future__ import annotations
-
 import asyncio
 import threading
 import time
@@ -145,7 +143,8 @@ class TestMakeAsync:
             get_async = make_async(get_sync)
 
         p = MyProvider()
-        result = await p.get_async("x")
+        # ty types a Callable class attribute as unbound, but the async def wrapper binds `self` at runtime.
+        result = await p.get_async("x")  # ty: ignore[missing-argument, invalid-argument-type]
         assert result == "got x"
 
 

@@ -102,6 +102,7 @@ def test_corpus_has_positive_and_negative_cases() -> None:
 @pytest.mark.skipif(_fixtures is None, reason=_skip_reason)
 def test_fixture_has_required_keys() -> None:
     """Verify the fixture YAML has the expected top-level keys."""
+    assert _fixtures is not None
     assert "sensitive_field_names" in _fixtures
     assert "test_cases" in _fixtures
     assert len(_fixtures["test_cases"]) > 0
@@ -112,6 +113,7 @@ def test_fixture_sensitive_fields_present() -> None:
     """Verify that the fixture's sensitive_field_names are a subset of the filter's SENSITIVE_FIELDS."""
     from scalo.logger.filters import SENSITIVE_FIELDS
 
+    assert _fixtures is not None
     fixture_fields = set(_fixtures["sensitive_field_names"])
     # Fields that the fixture defines but the filter also knows about
     # (the filter may know more fields than the fixture lists -- that is fine)

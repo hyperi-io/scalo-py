@@ -161,6 +161,27 @@ class TestTrackDbQueryDecorator:
         mock_duration.labels.assert_called_with(db_type="clickhouse", operation="analytics", status="success")
 
 
+class TestOperationNameFallback:
+    """A callable with no ``__name__`` is labelled by its type instead of failing to decorate."""
+
+    def test_partial_records_under_its_type_name(self):
+        import functools
+
+        from scalo.metrics import MetricsManager
+        from scalo.metrics.db import _metrics_cache, track_db_query
+
+        _metrics_cache.clear()
+        manager = MetricsManager("db_partial_test", backend="prometheus", enable_auto_update=False)
+
+        def lookup(table: str, key: int) -> str:
+            return f"{table}:{key}"
+
+        tracked = track_db_query(manager, db_type="postgres")(functools.partial(lookup, "users"))
+
+        assert tracked(7) == "users:7"
+        assert 'operation="partial"' in manager.get_metrics_text()
+
+
 class TestTrackDbQueryAsyncDecorator:
     """Tests for track_db_query_async decorator."""
 

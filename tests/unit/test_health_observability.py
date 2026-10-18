@@ -13,8 +13,6 @@ and logged the address, but nothing ever bound it, so Prometheus scrapes and
 kubelet probes aimed at that port got connection-refused.
 """
 
-from __future__ import annotations
-
 import http.client
 import json
 import time
@@ -53,12 +51,26 @@ def _get(port: int, path: str) -> tuple[int, dict | bytes, str]:
     return status, raw, ctype
 
 
+def _get_json(port: int, path: str) -> tuple[int, dict, str]:
+    """GET a path that must answer JSON, returning (status, parsed body, content type)."""
+    status, body, ctype = _get(port, path)
+    assert isinstance(body, dict), f"{path} answered {ctype!r}, not JSON"
+    return status, body, ctype
+
+
+def _port(srv: ObservabilityServer) -> int:
+    """Return the port a started server is bound to."""
+    addr = srv.bound_address
+    assert addr is not None, "server is not running"
+    return addr[1]
+
+
 @pytest.fixture
 def server():
     """A started observability server on an ephemeral port."""
     health = HealthManager()
     srv = serve_observability(health, None, LOCAL)
-    yield srv, health, srv.bound_address[1]
+    yield srv, health, _port(srv)
     srv.stop()
 
 
@@ -91,7 +103,7 @@ class TestParseAddr:
 class TestProbeSemantics:
     def test_liveness_alive_before_ready(self, server):
         _, _, port = server
-        status, body, ctype = _get(port, "/livez")
+        status, body, ctype = _get_json(port, "/livez")
         assert status == 200
         assert body["status"] == "alive"
         assert ctype.startswith("application/json")
@@ -100,7 +112,7 @@ class TestProbeSemantics:
         _, health, port = server
         assert _get(port, "/readyz")[0] == 503
         health.set_ready()
-        status, body, _ = _get(port, "/readyz")
+        status, body, _ = _get_json(port, "/readyz")
         assert status == 200
         assert body["status"] == "ready"
 
@@ -118,7 +130,7 @@ class TestProbeSemantics:
         _, health, port = server
         health.set_ready()
         health.register_ready_check("db", lambda: False)
-        status, body, _ = _get(port, "/readyz")
+        status, body, _ = _get_json(port, "/readyz")
         assert status == 503
         assert body["checks"]["db"] is False
 
@@ -142,7 +154,7 @@ class TestProbeSemantics:
         health.register_ready_check("hung", lambda: time.sleep(30) or True, per_check_timeout=0.5)
 
         started = time.monotonic()
-        status, body, _ = _get(port, "/readyz")
+        status, body, _ = _get_json(port, "/readyz")
         elapsed = time.monotonic() - started
 
         assert status == 503
@@ -212,7 +224,7 @@ class TestMetricsEndpoint:
 
         srv = serve_observability(HealthManager(), _Manager(), LOCAL)
         try:
-            status, raw, ctype = _get(srv.bound_address[1], "/metrics")
+            status, raw, ctype = _get(_port(srv), "/metrics")
             assert status == 200
             assert "text/plain" in ctype
             assert b"obs_widgets_total 1.0" in raw
@@ -230,7 +242,7 @@ class TestMetricsEndpoint:
 
         srv = serve_observability(HealthManager(), _StrManager(), LOCAL)
         try:
-            status, raw, _ = _get(srv.bound_address[1], "/metrics")
+            status, raw, _ = _get(_port(srv), "/metrics")
             assert status == 200
             assert b"obs_str_total 2.0" in raw
         finally:
@@ -252,7 +264,7 @@ class TestDoesNotLeakInternals:
 
         srv = serve_observability(HealthManager(), _Exploding(), LOCAL)
         try:
-            status, body, _ = _get(srv.bound_address[1], "/metrics")
+            status, body, _ = _get(_port(srv), "/metrics")
             assert status == 500
             assert secret not in json.dumps(body)
             assert "hunter2" not in json.dumps(body)
@@ -269,7 +281,7 @@ class TestDoesNotLeakInternals:
 
         srv = serve_observability(HealthManager(), _Injecting(), LOCAL)
         try:
-            conn = http.client.HTTPConnection("127.0.0.1", srv.bound_address[1], timeout=5)
+            conn = http.client.HTTPConnection("127.0.0.1", _port(srv), timeout=5)
             try:
                 conn.request("GET", "/metrics")
                 resp = conn.getresponse()
@@ -309,7 +321,7 @@ class TestLifecycle:
 
     def test_context_manager_releases_port(self):
         with ObservabilityServer(HealthManager(), None, LOCAL) as srv:
-            port = srv.bound_address[1]
+            port = _port(srv)
             assert _get(port, "/livez")[0] == 200
         assert not srv.is_running
         # Port is free again -- rebinding it explicitly must succeed.
@@ -321,7 +333,7 @@ class TestLifecycle:
         # A service that cannot open its observability port must say so.
         # Swallowing this is precisely the defect scalo-py#5 is about.
         first = serve_observability(HealthManager(), None, LOCAL)
-        port = first.bound_address[1]
+        port = _port(first)
         try:
             with pytest.raises(OSError):
                 serve_observability(HealthManager(), None, f"127.0.0.1:{port}")

@@ -1,5 +1,4 @@
-"""
-OpenTelemetry metrics backend with dual export.
+"""OpenTelemetry metrics backend with dual export.
 
 Provides OpenTelemetry implementation of MetricsBackend interface with
 simultaneous OTLP push and Prometheus scrape support.
@@ -32,8 +31,6 @@ Configuration (settings.yaml):
         auto_convert_names: true                 # Prometheus->OTEL name conversion
         service_version: "1.0.0"
 """
-
-from __future__ import annotations
 
 import os
 import threading
@@ -122,9 +119,11 @@ class OtelCounterAdapter:
         self._label_converter = label_converter
 
     def labels(self, **kwargs: Any) -> _BoundCounter:
+        """Return the counter bound to the attributes ``kwargs`` convert to."""
         return _BoundCounter(self._counter, self._label_converter(kwargs))
 
     def inc(self, amount: float = 1) -> None:
+        """Add ``amount`` with no attributes."""
         self._counter.add(amount)
 
     def add(self, amount: float, attributes: dict[str, Any] | None = None) -> None:
@@ -165,15 +164,19 @@ class OtelGaugeAdapter:
         return [Observation(attributes=dict(key) or None, value=value) for key, value in readings]
 
     def labels(self, **kwargs: Any) -> _BoundGauge:
+        """Return the gauge bound to the attributes ``kwargs`` convert to."""
         return _BoundGauge(self, self._label_converter(kwargs))
 
     def set(self, value: float) -> None:
+        """Set the unlabelled value to ``value``."""
         self._set(value, {})
 
     def inc(self, amount: float = 1) -> None:
+        """Raise the unlabelled value by ``amount``."""
         self._add(amount, {})
 
     def dec(self, amount: float = 1) -> None:
+        """Lower the unlabelled value by ``amount``."""
         self._add(-amount, {})
 
 
@@ -192,9 +195,11 @@ class OtelHistogramAdapter:
         self._label_converter = label_converter
 
     def labels(self, **kwargs: Any) -> _BoundHistogram:
+        """Return the histogram bound to the attributes ``kwargs`` convert to."""
         return _BoundHistogram(self._histogram, self._label_converter(kwargs))
 
     def observe(self, value: float) -> None:
+        """Record ``value`` with no attributes."""
         self._histogram.record(value)
 
     def record(self, value: float, attributes: dict[str, Any] | None = None) -> None:
@@ -331,8 +336,7 @@ def _create_otlp_exporter(protocol: str, endpoint: str, timeout_millis: int, hea
 
 
 class OpenTelemetryBackend(MetricsBackend):
-    """
-    OpenTelemetry implementation of MetricsBackend with dual export.
+    r"""OpenTelemetry implementation of MetricsBackend with dual export.
 
     By default, attaches BOTH an OTLP push exporter AND a Prometheus scrape
     reader to a single MeterProvider. Every counter.add(1) is observed by
@@ -345,7 +349,7 @@ class OpenTelemetryBackend(MetricsBackend):
         Application -> MetricsManager -> OpenTelemetryBackend
                                              |
                                          MeterProvider
-                                           /        \\
+                                           /        \
               PeriodicExportingMetricReader    PrometheusMetricReader
                         |                            |
                   OTLP Collector              /metrics endpoint
@@ -423,8 +427,7 @@ class OpenTelemetryBackend(MetricsBackend):
     }
 
     def __init__(self, app_name: str, config: dict[str, Any] | None = None):
-        """
-        Initialise OpenTelemetry backend with dual export support.
+        """Initialise OpenTelemetry backend with dual export support.
 
         Reads configuration from the provided dict and falls back to standard
         OTel environment variables (OTEL_EXPORTER_OTLP_ENDPOINT, etc.).
@@ -593,8 +596,7 @@ class OpenTelemetryBackend(MetricsBackend):
             self.enabled = False
 
     def _convert_metric_name(self, prometheus_name: str) -> str:
-        """
-        Convert Prometheus metric name to OTEL semantic convention.
+        """Convert Prometheus metric name to OTEL semantic convention.
 
         Args:
             prometheus_name: Prometheus-style metric name (e.g., "http_requests_total")
@@ -616,8 +618,7 @@ class OpenTelemetryBackend(MetricsBackend):
         return prometheus_name
 
     def _convert_labels(self, labels: dict[str, Any]) -> dict[str, Any]:
-        """
-        Convert Prometheus label names to OTEL attribute names.
+        """Convert Prometheus label names to OTEL attribute names.
 
         Args:
             labels: Prometheus-style labels (e.g., {{"method": "GET", "status": "200"}})
@@ -636,8 +637,7 @@ class OpenTelemetryBackend(MetricsBackend):
         return converted
 
     def counter(self, name: str, description: str, labels: list[str] | None = None) -> Any:
-        """
-        Create or get an OpenTelemetry Counter.
+        """Create or get an OpenTelemetry Counter.
 
         Automatically converts Prometheus metric names to OTEL semantic conventions.
 
@@ -669,8 +669,7 @@ class OpenTelemetryBackend(MetricsBackend):
         return adapter
 
     def gauge(self, name: str, description: str, labels: list[str] | None = None) -> Any:
-        """
-        Create or get an OpenTelemetry Gauge.
+        """Create or get an OpenTelemetry Gauge.
 
         Exported as an OTLP Gauge, the same data type scalo-rs emits, so a
         collector files it with every other service's gauges.
@@ -705,8 +704,7 @@ class OpenTelemetryBackend(MetricsBackend):
         return adapter
 
     def observable_gauge(self, name: str, description: str, callback: Callable[[], float | None]) -> bool:
-        """
-        Register an OpenTelemetry observable gauge read through *callback* at every collection.
+        """Register an OpenTelemetry observable gauge read through *callback* at every collection.
 
         Args:
             name: Metric name, reported as given (resource names match scalo-rs's bare names)
@@ -743,8 +741,7 @@ class OpenTelemetryBackend(MetricsBackend):
         labels: list[str] | None = None,
         buckets: tuple[float, ...] | None = None,
     ) -> Any:
-        """
-        Create or get an OpenTelemetry Histogram.
+        """Create or get an OpenTelemetry Histogram.
 
         Automatically converts Prometheus metric names to OTEL semantic conventions.
 
@@ -780,8 +777,7 @@ class OpenTelemetryBackend(MetricsBackend):
         return adapter
 
     def get_metrics(self) -> bytes:
-        """
-        Get metrics in Prometheus exposition format.
+        """Get metrics in Prometheus exposition format.
 
         When a PrometheusMetricReader is attached (prometheus_scrape: true),
         this returns actual Prometheus-format metrics via generate_latest().
@@ -824,15 +820,13 @@ class OpenTelemetryBackend(MetricsBackend):
         return "text/plain; version=0.0.4"
 
     def start_auto_update(self) -> None:
-        """
-        Start automatic metric collection.
+        """Start automatic metric collection.
 
         OTel uses periodic exporting, so this is a no-op.
         """
 
     def stop_auto_update(self) -> None:
-        """
-        Stop automatic metric collection.
+        """Stop automatic metric collection.
 
         Shuts down the MeterProvider which flushes and stops all readers.
         """
@@ -845,8 +839,7 @@ class OpenTelemetryBackend(MetricsBackend):
                 logger.error(f"Error shutting down OpenTelemetry: {e}")
 
     def update(self) -> None:
-        """
-        Update metrics immediately.
+        """Update metrics immediately.
 
         Forces a flush of all metric readers.
         """

@@ -6,8 +6,7 @@
 #  License:   Apache-2.0
 #  Copyright: (c) 2026 HYPERI PTY LIMITED
 
-"""Build a :class:`Scrubber` from logger setup arguments + the
-``logging.*`` config dict.
+"""Build a :class:`Scrubber` from logger setup arguments and the ``logging.*`` config dict.
 
 Resolution priority (highest wins):
 

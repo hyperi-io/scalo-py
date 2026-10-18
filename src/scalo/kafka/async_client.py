@@ -13,8 +13,6 @@ Calls go via :func:`scalo.concurrency.run_blocking`. Wrap in
 bounding beyond confluent-kafka's internal throttling.
 """
 
-from __future__ import annotations
-
 from typing import Any
 
 from confluent_kafka import TopicPartition
@@ -26,8 +24,7 @@ from .types import PartitionInfo, TopicInfo, TopicMetadata
 
 
 class AsyncKafkaClient:
-    """
-    Async Kafka admin client.
+    """Async Kafka admin client.
 
     Wraps KafkaClient with async methods via ``run_blocking``.
 
@@ -69,8 +66,10 @@ class AsyncKafkaClient:
         await self.close()
 
     async def close(self) -> None:
-        """Close the client. No-op for the AdminClient -- confluent-kafka
-        manages its own connection pool that's torn down on GC."""
+        """Close the client, a no-op for the AdminClient.
+
+        confluent-kafka manages its own connection pool, torn down on GC.
+        """
 
     async def list_topics(self, include_internal: bool = False) -> list[TopicInfo]:
         """List all topics in the cluster."""

@@ -19,8 +19,6 @@ Subclasses provide:
   valid X (typically delegates to ``python-stdnum``)
 """
 
-from __future__ import annotations
-
 import re
 from typing import ClassVar
 
@@ -97,8 +95,10 @@ class _Validator:
         return self.PATTERN.sub(_repl, text)
 
     def _has_keyword_context(self, text: str, candidate_start: int) -> bool:
-        """Return True if any keyword appears within ``PROXIMITY`` chars
-        preceding the candidate's start position. Case-insensitive."""
+        """Return True if any keyword appears within ``PROXIMITY`` chars before the candidate.
+
+        The match is case-insensitive.
+        """
         start = max(0, candidate_start - self.PROXIMITY)
         preceding = text[start:candidate_start].lower()
         return any(kw in preceding for kw in self.KEYWORDS)

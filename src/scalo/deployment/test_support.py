@@ -19,8 +19,6 @@ prefix so the hyperi-ci runner can aggregate skip counts uniformly.
 Std-library only -- no new runtime dependencies.
 """
 
-from __future__ import annotations
-
 import hashlib
 import json
 import os
@@ -123,13 +121,13 @@ def helm_available() -> bool:
 
 @cache
 def kubeconform_available() -> bool:
-    """kubeconform CLI present (lint-only, no health probe)."""
+    """Kubeconform CLI present (lint-only, no health probe)."""
     return shutil.which("kubeconform") is not None
 
 
 @cache
 def kind_available() -> bool:
-    """kind CLI installed and responsive."""
+    """Kind CLI installed and responsive."""
     if shutil.which("kind") is None:
         return False
     return _shell_ok(["kind", "version"])
@@ -137,7 +135,7 @@ def kind_available() -> bool:
 
 @cache
 def kubectl_available() -> bool:
-    """kubectl client installed and responsive (no server required)."""
+    """Kubectl client installed and responsive (no server required)."""
     if shutil.which("kubectl") is None:
         return False
     return _shell_ok(["kubectl", "version", "--client"])
@@ -160,10 +158,10 @@ def tier_b_enabled() -> bool:
 
 
 def _skip_log_path() -> Path:
-    """Resolve the side-channel skip log path.
+    r"""Resolve the side-channel skip log path.
 
     Linux/macOS/WSL/Git Bash: ``~/.cache/scalo/contract-e2e-skips.log``.
-    Native Windows: ``%LOCALAPPDATA%\\scalo\\Cache\\contract-e2e-skips.log``.
+    Native Windows: ``%LOCALAPPDATA%\scalo\Cache\contract-e2e-skips.log``.
 
     Never ``/tmp`` (AGENT-RULES Rule 4).
     """
@@ -304,8 +302,7 @@ def _cli_plugin_dirs() -> list[str]:
     # Empty strings are dropped explicitly: Path("").is_dir() is True (it
     # resolves to the cwd), so a malformed cliPluginsExtraDirs entry would
     # otherwise be copied through as a bogus plugin directory.
-    seen: set[str] = set()
-    unique = [d for d in candidates if d and not (d in seen or seen.add(d))]
+    unique = list(dict.fromkeys(d for d in candidates if d))
     return [d for d in unique if Path(d).is_dir()]
 
 

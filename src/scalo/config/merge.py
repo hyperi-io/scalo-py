@@ -1,6 +1,4 @@
-"""
-scalo Config Merge - Intelligent Multi-Format File Merging
-===============================================================
+"""scalo Config Merge: multi-format configuration file merging.
 
 Auto-detect and merge configuration files across multiple formats.
 Supports JSON, YAML, TOML, INI, ENV, gitignore, and more!
@@ -96,8 +94,7 @@ MergeStrategy = Literal["deep", "append", "overwrite", "auto"]
 
 
 def detect_file_type(file_path: Path) -> str:
-    """
-    Detect file type by extension and content.
+    """Detect file type by extension and content.
 
     Args:
         file_path: Path to file
@@ -169,8 +166,7 @@ def detect_file_type(file_path: Path) -> str:
 
 
 def merge_json(source: Path, target: Path) -> dict:
-    """
-    Deep merge JSON files with list concatenation.
+    """Deep merge JSON files with list concatenation.
 
     Raises:
         PermissionError: Cannot read source or target file
@@ -191,14 +187,14 @@ def merge_json(source: Path, target: Path) -> dict:
     except UnicodeDecodeError as e:
         raise UnicodeDecodeError(e.encoding, e.object, e.start, e.end, f"Encoding error in {target}") from e
 
-    # Deep merge with additive strategy (concatenates lists)
-    merged = deep_merge({}, target_data, source_data, strategy=Strategy.ADDITIVE)
+    # Deep merge with additive strategy (concatenates lists) into a dict the merge fills in place
+    merged: dict = {}
+    deep_merge(merged, target_data, source_data, strategy=Strategy.ADDITIVE)
     return merged
 
 
 def merge_yaml(source: Path, target: Path) -> dict:
-    """
-    Deep merge YAML files with list concatenation.
+    """Deep merge YAML files with list concatenation.
 
     Raises:
         PermissionError: Cannot read source or target file
@@ -219,14 +215,14 @@ def merge_yaml(source: Path, target: Path) -> dict:
     except UnicodeDecodeError as e:
         raise UnicodeDecodeError(e.encoding, e.object, e.start, e.end, f"Encoding error in {target}") from e
 
-    # Deep merge with additive strategy (concatenates lists)
-    merged = deep_merge({}, target_data, source_data, strategy=Strategy.ADDITIVE)
+    # Deep merge with additive strategy (concatenates lists) into a dict the merge fills in place
+    merged: dict = {}
+    deep_merge(merged, target_data, source_data, strategy=Strategy.ADDITIVE)
     return merged
 
 
 def merge_toml(source: Path, target: Path) -> dict:
-    """
-    Deep merge TOML files with array concatenation.
+    """Deep merge TOML files with array concatenation.
 
     Raises:
         PermissionError: Cannot read source or target file
@@ -252,14 +248,14 @@ def merge_toml(source: Path, target: Path) -> dict:
     else:
         target_data = {}
 
-    # Deep merge with additive strategy (concatenates arrays)
-    merged = deep_merge({}, target_data, source_data, strategy=Strategy.ADDITIVE)
+    # Deep merge with additive strategy (concatenates arrays) into a dict the merge fills in place
+    merged: dict = {}
+    deep_merge(merged, target_data, source_data, strategy=Strategy.ADDITIVE)
     return merged
 
 
 def merge_gitignore(source: Path, target: Path) -> list[str]:
-    """
-    Merge gitignore-style files (append unique lines).
+    """Merge gitignore-style files (append unique lines).
 
     Works for: .gitignore, .dockerignore, requirements.txt
     """
@@ -287,8 +283,7 @@ def merge_files(
     strategy: MergeStrategy = "auto",
     dry_run: bool = False,
 ) -> Any:
-    """
-    Intelligently merge configuration files.
+    """Intelligently merge configuration files.
 
     Auto-detects file type and applies appropriate merge strategy.
 
@@ -403,8 +398,8 @@ def merge_files(
         raise OSError(f"Cannot create target directory {target.parent}: {e}") from e
 
     try:
-        if source_type == "toml" and strategy == "deep":
-            # TOML requires binary write
+        if content is None:
+            # A deep TOML merge leaves no text content, because TOML requires a binary write
             with open(target, "wb") as f:
                 tomli_w.dump(merged, f)
         else:

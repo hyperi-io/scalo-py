@@ -6,16 +6,13 @@
 # License:   Apache-2.0
 # Copyright: (c) 2026 HYPERI PTY LIMITED
 
-"""
-Kafka message sampling utilities.
+"""Kafka message sampling utilities.
 
 Provides functions for sampling messages from Kafka topics:
 - Reservoir sampling for uniform random samples
 - Time-bounded consumption for specific time ranges
 - Per-partition sampling for representative samples
 """
-
-from __future__ import annotations
 
 import random
 from collections import defaultdict
@@ -31,8 +28,7 @@ def reservoir_sample(
     k: int,
     seed: int | None = None,
 ) -> list[Message]:
-    """
-    Reservoir sampling for uniform random sample from stream.
+    """Reservoir sampling for uniform random sample from stream.
 
     Uses Algorithm R (Vitter, 1985) to select k items uniformly
     at random from a stream of unknown length.
@@ -72,8 +68,7 @@ def time_bounded_consume(
     limit: int | None = None,
     timeout: float = 1.0,
 ) -> list[Message]:
-    """
-    Consume messages within a time range.
+    """Consume messages within a time range.
 
     Polls the consumer and collects messages with timestamps
     between start_time and end_time (inclusive).
@@ -126,8 +121,7 @@ def partition_sample(
     n_per_partition: int,
     seed: int | None = None,
 ) -> dict[int, list[Message]]:
-    """
-    Sample n messages per partition using reservoir sampling.
+    """Sample n messages per partition using reservoir sampling.
 
     Collects messages and applies reservoir sampling independently
     to each partition for representative samples.

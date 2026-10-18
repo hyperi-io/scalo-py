@@ -6,14 +6,11 @@
 #  License:      Apache-2.0
 #  Copyright:    (c) 2026 HYPERI PTY LIMITED
 
-"""
-AppMetrics -- mandatory metric group for all pipeline applications.
+"""AppMetrics -- mandatory metric group for all pipeline applications.
 
 Mirrors scalo-rs's groups::AppMetrics. Registers standard application
 identity, throughput, memory, and config reload metrics.
 """
-
-from __future__ import annotations
 
 import time
 from typing import TYPE_CHECKING, Any
@@ -23,8 +20,7 @@ if TYPE_CHECKING:
 
 
 class AppMetrics:
-    """
-    Mandatory application metrics for any service.
+    """Mandatory application metrics for any service.
 
     Registers (shown with the optional platform prefix ``{p}_``):
         {p}_info gauge (labels: version, commit, app)
@@ -44,8 +40,7 @@ class AppMetrics:
     """
 
     def __init__(self, mgr: MetricsManager, version: str, commit: str) -> None:
-        """
-        Register all mandatory app metrics.
+        """Register all mandatory app metrics.
 
         Args:
             mgr: MetricsManager instance providing the namespace prefix
@@ -103,8 +98,7 @@ class AppMetrics:
         self._memory_limit.set(limit)
 
     def record_config_reload(self, result: str) -> None:
-        """
-        Increment config reload counter with result label.
+        """Increment config reload counter with result label.
 
         Args:
             result: "success" or "error"

@@ -8,8 +8,6 @@
 
 """Async wrapper around confluent-kafka Consumer via run_blocking."""
 
-from __future__ import annotations
-
 from typing import Any, AsyncIterator
 
 from confluent_kafka import Consumer, KafkaError, TopicPartition
@@ -21,8 +19,7 @@ from .types import Message
 
 
 class AsyncKafkaConsumer:
-    """
-    Async Kafka consumer.
+    """Async Kafka consumer.
 
     Wraps confluent-kafka Consumer with async methods via ``run_blocking``.
 

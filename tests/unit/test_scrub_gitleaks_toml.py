@@ -169,6 +169,13 @@ def _real_shaped_github_pat() -> str:
     return "gh" + "p_" + body
 
 
+def _toml_inner(scrubber: SecretsScrubber) -> GitleaksTomlScrubber:
+    """Return the TOML scrubber a ``gitleaks`` or ``minimal`` SecretsScrubber delegates to."""
+    inner = scrubber._inner
+    assert isinstance(inner, GitleaksTomlScrubber)
+    return inner
+
+
 # hyperi-ci's deprecation warning, verbatim from a dfe-ui CI job log.
 _DEPRECATION_LINE = (
     "Renamed config keys in .hyperi-ci.yaml: publish.container -> release.container, "
@@ -200,7 +207,7 @@ class TestExcludeRules:
         assert out == "pushing with token [GITHUB_PAT_REDACTED] to origin"
 
     def test_no_exclusion_keeps_every_rule(self):
-        assert SecretsScrubber()._inner.rule_count == GitleaksTomlScrubber().rule_count
+        assert _toml_inner(SecretsScrubber()).rule_count == GitleaksTomlScrubber().rule_count
         assert SecretsConfig().exclude_rules == frozenset()
 
     def test_exclusion_drops_exactly_the_named_rule(self):
@@ -212,7 +219,7 @@ class TestExcludeRules:
     def test_exclusion_composes_with_minimal(self):
         minimal = SecretsScrubber(patterns="minimal")
         narrowed = SecretsScrubber(patterns="minimal", exclude_rules=frozenset({"github-pat"}))
-        assert narrowed._inner.rule_count == minimal._inner.rule_count - 1
+        assert _toml_inner(narrowed).rule_count == _toml_inner(minimal).rule_count - 1
 
     def test_unknown_rule_id_warns_and_excludes_nothing(self):
         with pytest.warns(RuntimeWarning, match="generic-api-kee"):

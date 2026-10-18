@@ -6,13 +6,10 @@
 # License:   Apache-2.0
 # Copyright: (c) 2026 HYPERI PTY LIMITED
 
-"""
-Kafka type definitions.
+"""Kafka type definitions.
 
 Provides dataclasses for Kafka messages, topic metadata, and consumer groups.
 """
-
-from __future__ import annotations
 
 import json
 from dataclasses import dataclass, field
@@ -21,8 +18,7 @@ from typing import Any
 
 @dataclass
 class Message:
-    """
-    Kafka message.
+    """Kafka message.
 
     Wraps a Kafka message with convenient accessor methods.
     """
@@ -36,8 +32,7 @@ class Message:
     headers: list[tuple[str, bytes]] | None
 
     def value_as_json(self) -> dict[str, Any] | list | None:
-        """
-        Parse message value as JSON.
+        """Parse message value as JSON.
 
         Returns:
             Parsed JSON data, or None if parsing fails or value is None.
@@ -50,8 +45,7 @@ class Message:
             return None
 
     def value_as_str(self, encoding: str = "utf-8") -> str | None:
-        """
-        Decode message value as string.
+        """Decode message value as string.
 
         Args:
             encoding: Character encoding to use (default: utf-8)
@@ -64,8 +58,7 @@ class Message:
         return self.value.decode(encoding)
 
     def key_as_str(self, encoding: str = "utf-8") -> str | None:
-        """
-        Decode message key as string.
+        """Decode message key as string.
 
         Args:
             encoding: Character encoding to use (default: utf-8)
@@ -80,8 +73,7 @@ class Message:
 
 @dataclass
 class TopicInfo:
-    """
-    Basic topic information.
+    """Basic topic information.
 
     Lightweight info from list_topics().
     """
@@ -93,8 +85,7 @@ class TopicInfo:
 
 @dataclass
 class PartitionInfo:
-    """
-    Partition information with watermarks.
+    """Partition information with watermarks.
 
     Includes replica info and offset watermarks.
     """
@@ -109,8 +100,7 @@ class PartitionInfo:
 
 @dataclass
 class TopicMetadata:
-    """
-    Topic metadata: name and partition details.
+    """Topic metadata: name and partition details.
 
     ``config`` is NOT populated by the ``get_topic_metadata`` methods on the
     clients -- they read the cluster metadata response, which does not carry
@@ -143,8 +133,7 @@ class TopicMetadata:
 
 @dataclass
 class ConsumerGroupInfo:
-    """
-    Consumer group information.
+    """Consumer group information.
 
     Basic info from list_consumer_groups().
     """
@@ -157,9 +146,7 @@ class ConsumerGroupInfo:
 
 @dataclass
 class ConsumerGroupMember:
-    """
-    Consumer group member information.
-    """
+    """Consumer group member information."""
 
     member_id: str
     client_id: str
@@ -169,8 +156,7 @@ class ConsumerGroupMember:
 
 @dataclass
 class ConsumerGroupMetadata:
-    """
-    Full consumer group metadata.
+    """Full consumer group metadata.
 
     Includes member details and assignments.
     """
@@ -185,9 +171,7 @@ class ConsumerGroupMetadata:
 
 @dataclass
 class PartitionLag:
-    """
-    Consumer group lag for a single partition.
-    """
+    """Consumer group lag for a single partition."""
 
     topic: str
     partition: int

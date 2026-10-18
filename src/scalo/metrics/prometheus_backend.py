@@ -1,5 +1,4 @@
-"""
-Prometheus metrics backend.
+"""Prometheus metrics backend.
 
 Wraps existing PrometheusMetrics implementation to conform to
 MetricsBackend interface.
@@ -12,8 +11,7 @@ from .prometheus import PrometheusMetrics
 
 
 class PrometheusBackend(MetricsBackend):
-    """
-    Prometheus implementation of MetricsBackend.
+    """Prometheus implementation of MetricsBackend.
 
     Wraps the existing PrometheusMetrics class to provide
     backend-agnostic interface.
@@ -23,11 +21,10 @@ class PrometheusBackend(MetricsBackend):
         self,
         app_name: str,
         enable_auto_update: bool = True,
-        update_interval: int = 5,
+        update_interval: float = 5,
         config: dict[str, Any] | None = None,
     ):
-        """
-        Initialize Prometheus backend.
+        """Initialize Prometheus backend.
 
         Args:
             app_name: Application name

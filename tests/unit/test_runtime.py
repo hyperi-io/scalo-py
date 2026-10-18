@@ -347,6 +347,7 @@ class TestRuntimeEnvironment:
         assert paths.config_dir.exists()
         assert paths.data_dir.exists()
         assert paths.temp_dir.exists()
+        assert paths.log_dir is not None
         assert paths.log_dir.exists()
 
     def test_ensure_directories_container(self, tmp_path):

@@ -677,8 +677,7 @@ def _mask_pairs(text: str, pattern: re.Pattern[str]) -> str:
 
 
 class SensitiveDataFilter(logging.Filter):
-    """
-    Masks sensitive data in log records (passwords, tokens, API keys, etc.).
+    """Masks sensitive data in log records (passwords, tokens, API keys, etc.).
 
     Applied automatically by default logger. Supports JSON, form data,
     key-value pairs, and database URLs.
@@ -713,8 +712,7 @@ class SensitiveDataFilter(logging.Filter):
         extra_fields: set[str] | None = None,
         secrets_leak: SecretsLeakFilter | None = None,
     ):
-        """
-        Initialize the sensitive data filter.
+        """Initialize the sensitive data filter.
 
         Args:
             extra_fields: Additional fields to mask (optional)
@@ -732,8 +730,7 @@ class SensitiveDataFilter(logging.Filter):
 
     @classmethod
     def add_sensitive_fields(cls, fields: set[str]) -> None:
-        """
-        Add custom sensitive fields to mask globally.
+        """Add custom sensitive fields to mask globally.
 
         Args:
             fields: Set of field names to mask (case-insensitive)
@@ -745,8 +742,7 @@ class SensitiveDataFilter(logging.Filter):
         return SENSITIVE_FIELDS | self._custom_fields | self._instance_fields
 
     def filter(self, record: logging.LogRecord) -> bool:
-        """
-        Filter log record to mask sensitive data.
+        """Filter log record to mask sensitive data.
 
         Args:
             record: The log record to filter
@@ -780,8 +776,7 @@ class SensitiveDataFilter(logging.Filter):
         return value
 
     def _mask_sensitive_string(self, text: str) -> str:
-        """
-        Mask sensitive fields in a string using regex patterns.
+        """Mask sensitive fields in a string using regex patterns.
 
         Handles multiple formats:
         - URL parameters: `field=value&`
@@ -828,8 +823,7 @@ class SensitiveDataFilter(logging.Filter):
         return _mask_pairs(masked, self._credential_pattern())
 
     def _mask_sensitive_dict(self, data: dict[Any, Any], parent: str = "") -> dict[Any, Any]:
-        """
-        Recursively mask sensitive fields in a dictionary.
+        """Recursively mask sensitive fields in a dictionary.
 
         Args:
             data: Dictionary potentially containing sensitive fields; a
@@ -900,8 +894,7 @@ def get_sensitive_filter(
 
 
 class RateLimitFilter:
-    """
-    Rate-limit repeated log messages to prevent log spam from tight loops.
+    """Rate-limit repeated log messages to prevent log spam from tight loops.
 
     This filter suppresses identical (or similar) log messages that occur more
     frequently than the configured period. When messages resume after suppression,
@@ -957,9 +950,8 @@ class RateLimitFilter:
         (re.compile(r"(?<=[=#])\d+\b"), "<ID>"),
     ]
 
-    def __init__(self, period_sec: int = 30, summary_enabled: bool = True, normalise_numbers: bool = False):
-        """
-        Initialise the rate limit filter.
+    def __init__(self, period_sec: float = 30, summary_enabled: bool = True, normalise_numbers: bool = False):
+        """Initialise the rate limit filter.
 
         Args:
             period_sec: Minimum seconds between identical messages
@@ -973,8 +965,7 @@ class RateLimitFilter:
         self._skip_counts: dict[tuple, int] = defaultdict(int)
 
     def _normalise_message(self, message: str) -> str:
-        """
-        Normalise variable parts of a message for similar matching.
+        """Normalise variable parts of a message for similar matching.
 
         Replaces numbers, UUIDs, timestamps, IPs, and hex strings with placeholders
         so that messages differing only in these values are treated as identical.
@@ -994,8 +985,7 @@ class RateLimitFilter:
         return result
 
     def __call__(self, record: dict) -> bool:
-        """
-        Filter function for Loguru.
+        """Filter function for Loguru.
 
         Args:
             record: Loguru log record dict
@@ -1036,8 +1026,7 @@ class RateLimitFilter:
         self._skip_counts.clear()
 
     def get_suppressed_count(self, name: str = "", level: int = 0, message: str = "") -> int:
-        """
-        Get current suppressed count for a specific message.
+        """Get current suppressed count for a specific message.
 
         Args:
             name: Logger name

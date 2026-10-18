@@ -6,8 +6,7 @@
 #  License:      Apache-2.0
 #  Copyright:    (c) 2026 HYPERI PTY LIMITED
 
-"""
-Label cardinality tracking for Prometheus metrics.
+"""Label cardinality tracking for Prometheus metrics.
 
 High-cardinality labels -- user IDs, request paths, IP addresses -- cause Prometheus
 scrape explosion: each unique combination becomes a separate time series. This module

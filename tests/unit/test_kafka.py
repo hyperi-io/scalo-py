@@ -3262,14 +3262,16 @@ class TestHealthIssueEnum:
         """HealthIssue should have expected values."""
         from scalo.kafka.health import HealthIssue
 
-        assert HealthIssue.NO_PARTITIONS
-        assert HealthIssue.INSUFFICIENT_PARTITIONS
-        assert HealthIssue.FREQUENT_REBALANCES
-        assert HealthIssue.LAG_GROWING
-        assert HealthIssue.PARTITION_IMBALANCE
-        assert HealthIssue.FETCH_ERRORS
-        assert HealthIssue.BROKER_DISCONNECTED
-        assert HealthIssue.HIGH_LAG
+        assert {issue.name for issue in HealthIssue} >= {
+            "NO_PARTITIONS",
+            "INSUFFICIENT_PARTITIONS",
+            "FREQUENT_REBALANCES",
+            "LAG_GROWING",
+            "PARTITION_IMBALANCE",
+            "FETCH_ERRORS",
+            "BROKER_DISCONNECTED",
+            "HIGH_LAG",
+        }
 
 
 class TestHealthCheckResult:

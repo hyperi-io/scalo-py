@@ -317,7 +317,7 @@ class TestSnapshot:
         sp = ScalingPressure()
         snap = sp.snapshot()
         with pytest.raises(AttributeError):
-            snap.overall = 50.0  # type: ignore[misc]
+            snap.overall = 50.0  # ty: ignore[invalid-assignment]  # the refused write is the point of the test
 
     def test_snapshot_with_circuit_open(self):
         """Snapshot reflects circuit open state."""

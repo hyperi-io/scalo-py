@@ -6,8 +6,7 @@
 #  License:      Apache-2.0
 #  Copyright:    (c) 2026 HYPERI PTY LIMITED
 
-"""
-Scaling pressure calculator for KEDA autoscaling.
+"""Scaling pressure calculator for KEDA autoscaling.
 
 Calculates a composite 0-100 pressure score from weighted component
 saturations, matching scalo-rs's ``src/scaling/pressure.rs`` gate logic.

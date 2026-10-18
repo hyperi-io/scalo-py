@@ -1,7 +1,5 @@
 """OpenBao/Vault secret provider with httpx async support."""
 
-from __future__ import annotations
-
 import base64
 import fnmatch
 import json
@@ -29,8 +27,8 @@ try:
 
     HTTPX_AVAILABLE = True
 except ImportError:
+    # The constructor raises before any use of httpx.
     HTTPX_AVAILABLE = False
-    httpx = None  # type: ignore[assignment]
 
 
 def _parse_iso_datetime(value: str | None) -> datetime | None:

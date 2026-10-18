@@ -1,5 +1,4 @@
-"""
-Unified metrics manager with backend abstraction.
+"""Unified metrics manager with backend abstraction.
 
 Provides backend-agnostic API for application metrics.
 Default backend is OpenTelemetry with dual export (OTLP push + Prometheus scrape).
@@ -17,8 +16,7 @@ from .base import MetricsBackend
 
 
 class MetricsManager:
-    """
-    Unified metrics manager that wraps backend implementations.
+    """Unified metrics manager that wraps backend implementations.
 
     Provides consistent API regardless of backend (Prometheus, OpenTelemetry, etc.).
 
@@ -50,12 +48,11 @@ class MetricsManager:
         app_name: str,
         backend: str | None = None,
         enable_auto_update: bool = True,
-        update_interval: int = 5,
+        update_interval: float = 5,
         backend_config: dict[str, Any] | None = None,
         metric_prefix: str | None = None,
     ):
-        """
-        Initialize metrics manager.
+        """Initialize metrics manager.
 
         Args:
             app_name: Application name
@@ -126,10 +123,9 @@ class MetricsManager:
         backend: str,
         app_name: str,
         enable_auto_update: bool,
-        update_interval: int,
+        update_interval: float,
     ) -> MetricsBackend:
-        """
-        Create backend instance.
+        """Create backend instance.
 
         Args:
             backend: Backend type
@@ -212,8 +208,7 @@ class MetricsManager:
         return f"{self.metric_prefix}_{name}" if self.metric_prefix else name
 
     def counter(self, name: str, description: str, labels: list[str] | None = None) -> Any:
-        """
-        Create or get a Counter metric.
+        """Create or get a Counter metric.
 
         Counter is for values that only increase (requests, errors, etc.).
 
@@ -232,8 +227,7 @@ class MetricsManager:
         return self._backend.counter(self._ns(name), description, labels)
 
     def gauge(self, name: str, description: str, labels: list[str] | None = None) -> Any:
-        """
-        Create or get a Gauge metric.
+        """Create or get a Gauge metric.
 
         Gauge is for values that can go up and down (queue size, etc.).
 
@@ -254,8 +248,7 @@ class MetricsManager:
         return self._backend.gauge(self._ns(name), description, labels)
 
     def observable_gauge(self, name: str, description: str, callback: Callable[[], float | None]) -> bool:
-        """
-        Register a gauge whose value *callback* reads at every collection.
+        """Register a gauge whose value *callback* reads at every collection.
 
         Args:
             name: Metric name (prefixed like every other metric)
@@ -274,8 +267,7 @@ class MetricsManager:
         labels: list[str] | None = None,
         buckets: tuple[float, ...] | None = None,
     ) -> Any:
-        """
-        Create or get a Histogram metric.
+        """Create or get a Histogram metric.
 
         Histogram tracks distribution of values (latency, size, etc.).
 
@@ -296,8 +288,7 @@ class MetricsManager:
 
     @property
     def metrics(self) -> bytes:
-        """
-        Get metrics in backend's native format (bytes for HTTP response).
+        """Get metrics in backend's native format (bytes for HTTP response).
 
         Example:
             >>> from fastapi import Response
@@ -357,12 +348,11 @@ def create_metrics(
     app_name: str = "app",
     backend: str | None = None,
     enable_auto_update: bool = True,
-    update_interval: int = 5,
+    update_interval: float = 5,
     backend_config: dict[str, Any] | None = None,
     metric_prefix: str | None = None,
 ) -> MetricsManager:
-    """
-    Create metrics manager with sensible defaults.
+    """Create metrics manager with sensible defaults.
 
     Args:
         app_name: Application name
@@ -370,6 +360,8 @@ def create_metrics(
         enable_auto_update: Start background updates (Prometheus only)
         update_interval: Seconds between updates (Prometheus only)
         backend_config: Backend-specific configuration
+        metric_prefix: Platform prefix for scalo's built-in metric groups, as
+            for :class:`MetricsManager`
 
     Returns:
         MetricsManager instance

@@ -6,14 +6,11 @@
 #  License:      Apache-2.0
 #  Copyright:    (c) 2026 HYPERI PTY LIMITED
 
-"""
-ConsumerMetrics -- composable metric group for Kafka consumer services.
+"""ConsumerMetrics -- composable metric group for Kafka consumer services.
 
 Mirrors scalo-rs's groups::ConsumerMetrics. Tracks consumer lag,
 partition assignment, rebalances, poll timing, and offset commits.
 """
-
-from __future__ import annotations
 
 from typing import TYPE_CHECKING, Any
 
@@ -25,8 +22,7 @@ DEFAULT_POLL_DURATION_BUCKETS = (0.001, 0.005, 0.01, 0.025, 0.05, 0.1, 0.25, 0.5
 
 
 class ConsumerMetrics:
-    """
-    Kafka consumer metrics for any service.
+    """Kafka consumer metrics for any service.
 
     Registers (``{p}`` = optional metric prefix, bare by default):
         {p}_consumer_lag gauge (labels: topic, partition)
@@ -41,8 +37,7 @@ class ConsumerMetrics:
         mgr: MetricsManager,
         poll_duration_buckets: tuple[float, ...] | None = None,
     ) -> None:
-        """
-        Register all consumer metrics.
+        """Register all consumer metrics.
 
         Args:
             mgr: MetricsManager instance

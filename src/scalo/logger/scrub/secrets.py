@@ -140,6 +140,7 @@ class SecretsScrubber:
             )
 
     def scrub(self, text: str) -> str:
+        """Return ``text`` with secret artefacts redacted by the selected implementation."""
         return self._inner.scrub(text)
 
     def __repr__(self) -> str:

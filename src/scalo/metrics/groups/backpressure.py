@@ -6,14 +6,11 @@
 #  License:      Apache-2.0
 #  Copyright:    (c) 2026 HYPERI PTY LIMITED
 
-"""
-BackpressureMetrics -- composable metric group for backpressure tracking.
+"""BackpressureMetrics -- composable metric group for backpressure tracking.
 
 Mirrors scalo-rs's groups::BackpressureMetrics. Tracks backpressure
 activation events and cumulative pause duration.
 """
-
-from __future__ import annotations
 
 from typing import TYPE_CHECKING, Any
 
@@ -22,8 +19,7 @@ if TYPE_CHECKING:
 
 
 class BackpressureMetrics:
-    """
-    Backpressure metrics for any service.
+    """Backpressure metrics for any service.
 
     Registers (``{p}`` = optional metric prefix, bare by default):
         {p}_backpressure_events_total counter
@@ -31,8 +27,7 @@ class BackpressureMetrics:
     """
 
     def __init__(self, mgr: MetricsManager) -> None:
-        """
-        Register backpressure metrics.
+        """Register backpressure metrics.
 
         Args:
             mgr: MetricsManager instance
