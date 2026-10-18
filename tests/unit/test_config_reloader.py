@@ -9,6 +9,7 @@
 """Tests for ConfigReloader."""
 
 import asyncio
+import logging
 import signal
 import sys
 
@@ -125,10 +126,12 @@ class TestReloadNowExceptions:
         assert result is False
         assert reloader.reload_count_error == 1
 
-    def test_validate_exception_returns_false(self) -> None:
+    def test_validate_exception_returns_false(self, monkeypatch: pytest.MonkeyPatch) -> None:
         def bad_validate(_s: object) -> bool:
             raise ValueError("validation exploded")
 
+        # The failure is the point, so its ERROR line stays out of the CI log, where it would be an annotation.
+        monkeypatch.setattr(logging.getLogger("scalo.config.reloader"), "disabled", True)
         reloader = ConfigReloader(validate_fn=bad_validate)
         result = reloader.reload_now()
 
