@@ -9,7 +9,7 @@
 """
 Server-side HTTP request metrics for ASGI apps.
 
-One histogram, ``http_server_request_duration_seconds``, labelled by method, route
+One histogram, ``http_server_request_duration_seconds``, labelled by method, full route
 template and status code. Its count gives the request and error rates and its
 buckets the latency percentiles. Over OTLP it exports as
 ``http.server.request.duration``.
@@ -36,6 +36,9 @@ DEFAULT_SKIP_PATHS = frozenset({"/healthz", "/livez", "/metrics", "/readyz"})
 # A request that matched no route, so a scan of random paths cannot mint one series per path.
 UNMATCHED_ROUTE = "__unmatched__"
 
+# A matched route whose full template would hold a request value, from a parameter in a prefix or mount above it.
+UNRESOLVED_ROUTE = "__unresolved__"
+
 _KNOWN_METHODS = frozenset({"CONNECT", "DELETE", "GET", "HEAD", "OPTIONS", "PATCH", "POST", "PUT", "TRACE"})
 
 Scope = MutableMapping[str, Any]
@@ -44,10 +47,51 @@ Receive = Callable[[], Awaitable[Message]]
 Send = Callable[[Message], Awaitable[None]]
 
 
+def _app_path(scope: Scope) -> str:
+    """The request path below the server's root path, where the app's own templates start."""
+    path = str(scope.get("path", ""))
+    # A mount extends root_path, so the server's own root is the copy Starlette keeps in app_root_path.
+    root = str(scope.get("app_root_path", scope.get("root_path", "")) or "")
+    if root and path.startswith(root + "/"):
+        return path[len(root) :]
+    return path
+
+
+def _prefix(scope: Scope, route: Any, template: str) -> str | None:
+    """The path above the route's own template, or None where that path holds a request value."""
+    params = dict(scope.get("path_params") or {})
+    convertors = getattr(route, "param_convertors", None) or {}
+    path_format = getattr(route, "path_format", None)
+    rendered = path_format if isinstance(path_format, str) and path_format else template
+    for name in [key for key in params if "{" + key + "}" in rendered]:
+        try:
+            text = convertors[name].to_string(params.pop(name))
+        except KeyError, AttributeError, TypeError, ValueError, AssertionError:
+            return None
+        rendered = rendered.replace("{" + name + "}", text)
+    # A matched value the route's own template does not use came from a prefix or mount above it.
+    # A mount parameter named like one of the route's own is overwritten on the scope, so it is not seen here.
+    if params:
+        return None
+    path = _app_path(scope=scope)
+    if not path.endswith(rendered):
+        return None
+    return path[: len(path) - len(rendered)]
+
+
 def _route_template(scope: Scope) -> str:
-    """The matched route's template (``/items/{item_id}``), never the raw path."""
-    path = getattr(scope.get("route"), "path", None)
-    return path if isinstance(path, str) else UNMATCHED_ROUTE
+    """The matched route's full template (``/api/items/{item_id}``), never the raw path.
+
+    FastAPI matches an included router lazily, so the route on the scope carries only its
+    own router's prefix. The prefixes and mount paths above it are read off the request
+    path, as the part before the route rendered with its matched values.
+    """
+    route = scope.get("route")
+    template = getattr(route, "path", None)
+    if not isinstance(template, str):
+        return UNMATCHED_ROUTE
+    prefix = _prefix(scope=scope, route=route, template=template)
+    return UNRESOLVED_ROUTE if prefix is None else prefix + template
 
 
 def _method(scope: Scope) -> str:
@@ -61,9 +105,11 @@ class HttpServerMetricsMiddleware:
     Pure ASGI middleware recording one duration per HTTP request.
 
     Register it last so it is outermost and times the whole stack. The route
-    template is the one FastAPI leaves on the scope once it has routed the
-    request; under a framework that leaves none, every request records
-    ``UNMATCHED_ROUTE``.
+    template runs from the app root: the route FastAPI leaves on the scope, with
+    the router prefixes and mount paths above it. A request no route matched
+    records ``UNMATCHED_ROUTE``, and so does every request under a framework that
+    leaves no route. One whose full template would hold a request value, because
+    a prefix or mount above the route has a parameter, records ``UNRESOLVED_ROUTE``.
 
     Args:
         app: The ASGI app to wrap.
