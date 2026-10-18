@@ -64,7 +64,7 @@ async def run_blocking[T](
     fn: Callable[..., T],
     *args: object,
     abandon_on_cancel: bool = False,
-    limiter: anyio.CapacityLimiter,
+    limiter: anyio.CapacityLimiter | None,
     **kwargs: object,
 ) -> T: ...
 async def run_blocking[T](

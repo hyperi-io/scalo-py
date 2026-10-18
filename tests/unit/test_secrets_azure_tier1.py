@@ -19,8 +19,6 @@ HTTP layer are deferred to the integration suite. Coverage strategy:
   will need a refresh once the new vault URL is available.
 """
 
-from __future__ import annotations
-
 from datetime import UTC, datetime
 from types import SimpleNamespace
 
