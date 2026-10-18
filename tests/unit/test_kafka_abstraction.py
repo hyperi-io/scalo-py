@@ -13,8 +13,6 @@ CANONICAL_TABLE is the cross-language contract (dfe-engine#98), mirrored in
 scalo-rs (Rust) and dfe-engine (Python). No broker is touched.
 """
 
-from __future__ import annotations
-
 import pytest
 
 from scalo.kafka.providers import (
@@ -46,7 +44,8 @@ class TestCanonicalTable:
     def test_auth_matches_canonical_table(self, key, proto, mech):
         provider = KnownProvider.parse(key)
         assert provider.auth() == (proto, mech)
-        assert provider.name() == key
+        # ty types an Enum's `name` as the member name, but KnownProvider shadows it with a method.
+        assert provider.name() == key  # ty: ignore[call-non-callable]
 
     def test_confluent_is_the_only_plain(self):
         plain = [key for key, _, mech in CANONICAL_TABLE if mech == "PLAIN"]
@@ -93,7 +92,7 @@ class TestCapabilities:
     def test_capabilities_is_frozen(self):
         caps = KnownProvider.STRIMZI.capabilities()
         with pytest.raises(AttributeError):
-            caps.managed = True  # type: ignore[misc]
+            caps.managed = True  # ty: ignore[invalid-assignment]  # the refused write is the point of the test
 
 
 class TestMetadataMode:

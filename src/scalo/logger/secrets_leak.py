@@ -45,8 +45,6 @@ present; a per-type regex performs the *replacement* (because some
 detect-secrets plugins return only a prefix, not the full token).
 """
 
-from __future__ import annotations
-
 import re
 import warnings
 from typing import TYPE_CHECKING, Any
@@ -224,13 +222,16 @@ class SecretsLeakFilter:
 
     def scrub(self, text: str) -> str:
         """Return text with detected secret artefacts redacted."""
-        if not self._enabled or not self._detect_secrets_available or not text:
+        # Both are None exactly when detect-secrets failed to import.
+        scan_line = self._scan_line
+        transient_settings = self._transient_settings
+        if not self._enabled or scan_line is None or transient_settings is None or not text:
             return text
 
         # First: detect-secrets detection pass.
         try:
-            with self._transient_settings({"plugins_used": self._plugins}):  # type: ignore[misc]
-                findings = list(self._scan_line(text))  # type: ignore[misc]
+            with transient_settings({"plugins_used": self._plugins}):
+                findings = list(scan_line(text))
         except Exception as e:  # pragma: no cover -- never let logging break
             warnings.warn(
                 f"detect-secrets error: {e}. Skipping secret-leak masking.",

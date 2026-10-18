@@ -6,8 +6,7 @@
 #  License:   Apache-2.0
 #  Copyright: (c) 2026 HYPERI PTY LIMITED
 
-"""
-Health probe module for Kubernetes-style liveness and readiness checks.
+"""Health probe module for Kubernetes-style liveness and readiness checks.
 
 Provides a pure-Python ``HealthManager`` for tracking probe state, and a
 FastAPI router factory for exposing ``/livez`` and ``/readyz`` with one line.

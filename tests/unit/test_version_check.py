@@ -136,7 +136,7 @@ class TestPayloadShape:
                 self.end_headers()
                 self.wfile.write(resp)
 
-            def log_message(self, *args):
+            def log_message(self, format: str, *args: object) -> None:
                 pass
 
         srv = http.server.HTTPServer(("127.0.0.1", 0), Handler)
@@ -188,6 +188,12 @@ class TestPayloadShape:
 
 class TestCheckOnStartup:
     """Test the fire-and-forget check_on_startup function."""
+
+    def test_http_check_without_an_endpoint_sends_nothing(self):
+        from scalo.version_check.checker import VersionCheckConfig, VersionCheckResponse, _do_http_check
+
+        cfg = VersionCheckConfig(product="test", current_version="1.0.0", api_url=None, enabled=True)
+        assert _do_http_check(cfg) == VersionCheckResponse()
 
     def test_no_endpoint_returns_none(self):
         from scalo.version_check import check_on_startup

@@ -9,8 +9,6 @@
 """B7 regression tests: send_and_wait surfaces delivery acks/failures,
 and produce() retries once on librdkafka BufferError before raising."""
 
-from __future__ import annotations
-
 import asyncio
 from unittest.mock import MagicMock, patch
 
@@ -69,7 +67,7 @@ async def test_send_and_wait_raises_on_broker_error(mock_producer):
         msg.partition.return_value = 0
         msg.offset.return_value = -1
         err = MagicMock()
-        err.__str__ = lambda _: "TopicAuthorizationFailed"
+        err.__str__.return_value = "TopicAuthorizationFailed"
         import threading
 
         threading.Thread(target=lambda: cb(err, msg)).start()

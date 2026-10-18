@@ -6,16 +6,13 @@
 # License:   Apache-2.0
 # Copyright: (c) 2026 HYPERI PTY LIMITED
 
-"""
-Kafka admin client for topic and consumer group operations.
+"""Kafka admin client for topic and consumer group operations.
 
 Provides admin operations without requiring JMX:
 - List and describe topics
 - Get watermark offsets and message counts
 - Monitor consumer group lag
 """
-
-from __future__ import annotations
 
 from typing import Any
 
@@ -47,8 +44,7 @@ class ConsumerGroupNotFoundError(Exception):
 
 
 class KafkaClient:
-    """
-    Kafka admin client with corporate defaults.
+    """Kafka admin client with corporate defaults.
 
     Provides admin operations for topics and consumer groups.
     Uses librdkafka AdminClient internally.
@@ -102,8 +98,7 @@ class KafkaClient:
     # =========================================================================
 
     def list_topics(self, include_internal: bool = False) -> list[TopicInfo]:
-        """
-        List all topics in the cluster.
+        """List all topics in the cluster.
 
         Args:
             include_internal: Include internal topics (e.g., __consumer_offsets)
@@ -131,8 +126,7 @@ class KafkaClient:
         return topics
 
     def describe_topic(self, topic: str) -> TopicMetadata:
-        """
-        Get detailed metadata for a topic.
+        """Get detailed metadata for a topic.
 
         Args:
             topic: Topic name
@@ -181,8 +175,7 @@ class KafkaClient:
     # =========================================================================
 
     def get_watermark_offsets(self, topic: str) -> dict[int, tuple[int, int]]:
-        """
-        Get low and high watermarks for all partitions.
+        """Get low and high watermarks for all partitions.
 
         Args:
             topic: Topic name
@@ -199,8 +192,7 @@ class KafkaClient:
         return self._get_watermarks_internal(topic, partition_ids)
 
     def get_topic_message_count(self, topic: str) -> int:
-        """
-        Get estimated total message count for a topic.
+        """Get estimated total message count for a topic.
 
         This is the sum of (high_watermark - low_watermark) for all partitions.
         Note: This may include messages that have been compacted/deleted.
@@ -219,8 +211,7 @@ class KafkaClient:
         topic: str,
         timestamps: dict[int, int],
     ) -> dict[int, int]:
-        """
-        Get offsets for given timestamps per partition.
+        """Get offsets for given timestamps per partition.
 
         Args:
             topic: Topic name
@@ -250,8 +241,7 @@ class KafkaClient:
         group_id: str,
         topic: str,
     ) -> dict[int, int]:
-        """
-        Get consumer group lag per partition.
+        """Get consumer group lag per partition.
 
         Lag = high_watermark - committed_offset
 

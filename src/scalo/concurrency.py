@@ -29,11 +29,9 @@ Discipline
   Use one :class:`Bulkhead` per dep -- that's what bulkhead means.
 """
 
-from __future__ import annotations
-
 import asyncio
-from collections.abc import Awaitable, Callable, Coroutine
-from typing import Any, ParamSpec, TypeVar
+from collections.abc import Awaitable, Callable, Coroutine, Mapping
+from typing import Any, ParamSpec, TypeVar, overload
 
 import anyio
 
@@ -49,12 +47,32 @@ T = TypeVar("T")
 P = ParamSpec("P")
 
 
-async def run_blocking[**P, T](
-    fn: Callable[P, T],
-    *args: P.args,
+# PEP 612 allows nothing between `*args: P.args` and `**kwargs: P.kwargs`, so
+# the call is checked against `fn` only when neither run option is passed.
+@overload
+async def run_blocking[**P, T](fn: Callable[P, T], *args: P.args, **kwargs: P.kwargs) -> T: ...
+@overload
+async def run_blocking[T](
+    fn: Callable[..., T],
+    *args: object,
+    abandon_on_cancel: bool,
+    limiter: anyio.CapacityLimiter | None = None,
+    **kwargs: object,
+) -> T: ...
+@overload
+async def run_blocking[T](
+    fn: Callable[..., T],
+    *args: object,
+    abandon_on_cancel: bool = False,
+    limiter: anyio.CapacityLimiter | None,
+    **kwargs: object,
+) -> T: ...
+async def run_blocking[T](
+    fn: Callable[..., T],
+    *args: object,
     abandon_on_cancel: bool = False,
     limiter: anyio.CapacityLimiter | None = None,
-    **kwargs: P.kwargs,
+    **kwargs: object,
 ) -> T:
     """Run a sync function on a worker thread; never block the event loop.
 
@@ -135,7 +153,8 @@ def make_async[**P, T](
     """
     from asyncer import asyncify
 
-    return asyncify(sync_fn, abandon_on_cancel=abandon_on_cancel, limiter=limiter)
+    # asyncer types the wrapper as Awaitable, but it is an `async def`, so each call returns a coroutine.
+    return asyncify(sync_fn, abandon_on_cancel=abandon_on_cancel, limiter=limiter)  # ty: ignore[invalid-return-type]
 
 
 class Bulkhead:
@@ -177,7 +196,7 @@ class Bulkhead:
 
 
 async def gather_with_timeouts[T](
-    tasks: dict[str, Callable[[], Awaitable[T]]],
+    tasks: Mapping[str, Callable[[], Awaitable[T]]],
     *,
     per_task_timeout: float,
 ) -> dict[str, T | Exception]:

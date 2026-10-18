@@ -10,8 +10,6 @@
 self-signed HTTPS server, and httpx consuming both the scalo-minted
 ssl.SSLContext (object form) and the CA-path primitive - same posture."""
 
-from __future__ import annotations
-
 import datetime
 import http.server
 import ssl
@@ -69,7 +67,7 @@ def https_server(tmp_path_factory):
             self.end_headers()
             self.wfile.write(b"ok")
 
-        def log_message(self, *a):
+        def log_message(self, format: str, *args: object) -> None:
             pass
 
     srv = http.server.HTTPServer(("127.0.0.1", 0), H)
@@ -128,7 +126,9 @@ def test_real_handshake_is_tls13_aes256(https_server):
     # PROD floors at TLS 1.2; only the off-by-default SCALO_TLS_ALLOW_WEAK valve admits TLS 1.0.
     with socket.create_connection(("localhost", port)) as s, ctx.wrap_socket(s, server_hostname="localhost") as ss:
         assert ss.version() == "TLSv1.3"
-        assert ss.cipher()[0] == "TLS_AES_256_GCM_SHA384"
+        cipher = ss.cipher()
+        assert cipher is not None
+        assert cipher[0] == "TLS_AES_256_GCM_SHA384"
 
 
 def test_tls_parts_reflect_profile():

@@ -11,6 +11,7 @@
 import json
 import logging
 from datetime import UTC, datetime
+from typing import override
 
 from ...concurrency import run_blocking
 from ..exceptions import (
@@ -36,13 +37,8 @@ try:
 
     AZURE_AVAILABLE = True
 except ImportError:
+    # The constructor raises before any use of the Azure SDK names.
     AZURE_AVAILABLE = False
-    ResourceNotFoundError = Exception  # type: ignore[assignment,misc]
-    HttpResponseError = Exception  # type: ignore[assignment,misc]
-    ClientAuthenticationError = Exception  # type: ignore[assignment,misc]
-    DefaultAzureCredential = None  # type: ignore[assignment]
-    ClientSecretCredential = None  # type: ignore[assignment]
-    SecretClient = None  # type: ignore[assignment]
 
 try:
     from azure.identity.aio import ClientSecretCredential as AsyncClientSecretCredential
@@ -51,10 +47,8 @@ try:
 
     AZURE_ASYNC_AVAILABLE = True
 except ImportError:
+    # Every use of the async SDK names is guarded by AZURE_ASYNC_AVAILABLE.
     AZURE_ASYNC_AVAILABLE = False
-    AsyncDefaultAzureCredential = None  # type: ignore[assignment]
-    AsyncClientSecretCredential = None  # type: ignore[assignment]
-    AsyncSecretClient = None  # type: ignore[assignment]
 
 
 class AzureProvider(VersionedProvider):
@@ -124,8 +118,10 @@ class AzureProvider(VersionedProvider):
             )
         return AsyncDefaultAzureCredential()
 
-    def _parse_value(self, secret_value: str, path: str, key: str | None) -> bytes:
+    def _parse_value(self, secret_value: str | None, path: str, key: str | None) -> bytes:
         """Extract key from JSON secret value, or return full value as bytes."""
+        if secret_value is None:
+            raise ProviderError(self.name, f"no secret value in response for {path}")
         if key is None:
             return secret_value.encode("utf-8")
         try:
@@ -295,8 +291,9 @@ class AzureProvider(VersionedProvider):
     # --- List ---
 
     async def list_async(self, filter: SecretFilter | None = None) -> list[str]:
-        """List secret names. Azure has no server-side prefix or tag filter for list_properties_of_secrets;
-        all filtering is client-side.
+        """List secret names, filtering client-side.
+
+        Azure has no server-side prefix or tag filter for list_properties_of_secrets.
         """
         if not AZURE_ASYNC_AVAILABLE:
             return await run_blocking(self.list_sync, filter)
@@ -323,6 +320,7 @@ class AzureProvider(VersionedProvider):
         except Exception as e:
             raise ProviderError(self.name, f"list failed: {e}")
 
+    @override
     def list_sync(self, filter: SecretFilter | None = None) -> list[str]:
         try:
             client = self._get_sync_client()
@@ -352,6 +350,7 @@ class AzureProvider(VersionedProvider):
 
     # --- Metadata ---
 
+    @override
     async def get_metadata_async(self, path: str) -> SecretMetadata:
         if not AZURE_ASYNC_AVAILABLE:
             return await run_blocking(self.get_metadata_sync, path)
@@ -374,6 +373,7 @@ class AzureProvider(VersionedProvider):
         except Exception as e:
             raise ProviderError(self.name, f"get_metadata {path} failed: {e}")
 
+    @override
     def get_metadata_sync(self, path: str) -> SecretMetadata:
         try:
             client = self._get_sync_client()
@@ -395,9 +395,10 @@ class AzureProvider(VersionedProvider):
     # --- Create ---
 
     async def create_async(self, path: str, value: bytes, tags: dict[str, str] | None = None) -> SecretMetadata:
-        """Create a new secret. Azure has no native "create-only" semantic; we pre-check via
-        ``get_secret`` and raise ``SecretAlreadyExistsError`` if found. Read-then-write is
-        race-tolerant, not race-safe.
+        """Create a new secret, raising ``SecretAlreadyExistsError`` if it already exists.
+
+        Azure has no create-only call, so this pre-checks with ``get_secret``.
+        Read-then-write is race-tolerant, not race-safe.
         """
         if not AZURE_ASYNC_AVAILABLE:
             return await run_blocking(self.create_sync, path, value, tags)
@@ -412,6 +413,7 @@ class AzureProvider(VersionedProvider):
 
         return await self._set_secret_async(path, value, tags)
 
+    @override
     def create_sync(self, path: str, value: bytes, tags: dict[str, str] | None = None) -> SecretMetadata:
         try:
             self.get_metadata_sync(path)
@@ -470,6 +472,7 @@ class AzureProvider(VersionedProvider):
         await self.get_metadata_async(path)  # raises SecretNotFoundError if absent
         return await self._set_secret_async(path, value, tags=None)
 
+    @override
     def update_sync(self, path: str, value: bytes) -> SecretMetadata:
         self.get_metadata_sync(path)
         return self._set_secret_sync(path, value, tags=None)
@@ -484,8 +487,8 @@ class AzureProvider(VersionedProvider):
         try:
             credential = self._async_credential()
             async with credential, AsyncSecretClient(vault_url=self._config.vault_url, credential=credential) as client:
-                poller = await client.begin_delete_secret(path)
-                await poller.wait()
+                # The aio client has no begin_delete_secret, and its delete_secret polls until the delete completes.
+                await client.delete_secret(path)
         except ResourceNotFoundError:
             raise SecretNotFoundError(path, self.name)
         except ClientAuthenticationError as e:
@@ -499,6 +502,7 @@ class AzureProvider(VersionedProvider):
         except Exception as e:
             raise ProviderError(self.name, f"delete {path} failed: {e}")
 
+    @override
     def delete_sync(self, path: str) -> None:
         try:
             client = self._get_sync_client()
@@ -519,6 +523,7 @@ class AzureProvider(VersionedProvider):
 
     # --- Versioning ---
 
+    @override
     async def get_version_async(self, path: str, version: str, key: str | None = None) -> SecretValue:
         if not AZURE_ASYNC_AVAILABLE:
             return await run_blocking(self.get_version_sync, path, version, key)
@@ -547,6 +552,7 @@ class AzureProvider(VersionedProvider):
         except Exception as e:
             raise ProviderError(self.name, f"get_version {path}@{version} failed: {e}")
 
+    @override
     def get_version_sync(self, path: str, version: str, key: str | None = None) -> SecretValue:
         try:
             client = self._get_sync_client()
@@ -570,6 +576,7 @@ class AzureProvider(VersionedProvider):
         except Exception as e:
             raise ProviderError(self.name, f"get_version {path}@{version} failed: {e}")
 
+    @override
     async def list_versions_async(self, path: str) -> list[SecretMetadata]:
         if not AZURE_ASYNC_AVAILABLE:
             return await run_blocking(self.list_versions_sync, path)
@@ -597,6 +604,7 @@ class AzureProvider(VersionedProvider):
         except Exception as e:
             raise ProviderError(self.name, f"list_versions {path} failed: {e}")
 
+    @override
     def list_versions_sync(self, path: str) -> list[SecretMetadata]:
         try:
             client = self._get_sync_client()

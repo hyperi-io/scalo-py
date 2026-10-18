@@ -13,9 +13,8 @@ Luhn (ISO/IEC 7812-1 Annex B). Strong-structural per spec Section 9.1 --
 fires from any context.
 """
 
-from __future__ import annotations
-
 import re
+from typing import override
 
 from stdnum import luhn
 
@@ -32,6 +31,7 @@ class CreditCardValidator(_Validator):
         r"\b(?:\d[ -]?){12,18}\d\b",
     )
 
+    @override
     def validate(self, candidate: str) -> bool:
         digits = re.sub(r"[ -]", "", candidate)
         if not 13 <= len(digits) <= 19 or not digits.isdigit():

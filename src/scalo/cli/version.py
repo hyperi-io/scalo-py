@@ -1,5 +1,4 @@
-"""
-Version handling utilities for CLI applications.
+"""Version handling utilities for CLI applications.
 
 Provides automatic version detection and display for Typer CLI apps.
 Reads version from package metadata, avoiding hardcoded version strings.
@@ -36,9 +35,8 @@ try:
 
     HAS_TYPER = True
 except ImportError:
+    # Every use of Exit and Option below is guarded by HAS_TYPER.
     HAS_TYPER = False
-    Option = None
-    Exit = None
 
 __all__ = [
     "get_version",
@@ -48,8 +46,7 @@ __all__ = [
 
 
 def get_version(package_name: str, fallback: str = "unknown") -> str:
-    """
-    Get package version from metadata.
+    """Get package version from metadata.
 
     Args:
         package_name: Name of the package (e.g., "scalo", "myapp")
@@ -69,8 +66,7 @@ def get_version(package_name: str, fallback: str = "unknown") -> str:
 
 
 def print_version(package_name: str, app_name: str | None = None, python_version: bool = False):
-    """
-    Print version information and exit.
+    """Print version information and exit.
 
     Args:
         package_name: Name of the package
@@ -103,8 +99,7 @@ def version_option(
     python_version: bool = False,
     param_decls: tuple[str, ...] = ("--version", "-V"),
 ):
-    """
-    Create a --version option for Typer CLI.
+    """Create a --version option for Typer CLI.
 
     This creates a Typer Option that displays version and exits.
     Use in the main app callback function.

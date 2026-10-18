@@ -8,8 +8,6 @@
 
 """Tests for the ScrubMetrics class and end-to-end metric emission."""
 
-from __future__ import annotations
-
 import warnings
 from collections import defaultdict
 
@@ -42,7 +40,7 @@ class _FakeMetric:
         self.name = name
         self._recorder = recorder
 
-    def labels(self, **kwargs: object) -> _FakeMetric:
+    def labels(self, **kwargs: object) -> _FakeLabelled:
         # Return a labelled child; record the label set lazily on call.
         return _FakeLabelled(self.name, dict(kwargs), self._recorder)
 
@@ -79,7 +77,7 @@ class _FakeBackend:
         return _FakeMetric(name, self)
 
     def histogram(
-        self, name: str, description: str, labels: list[str] | None = None, buckets: tuple = None
+        self, name: str, description: str, labels: list[str] | None = None, buckets: tuple | None = None
     ) -> _FakeMetric:
         self.built[name] = "histogram"
         return _FakeMetric(name, self)

@@ -6,8 +6,7 @@
 # License:   Apache-2.0
 # Copyright: (c) 2026 HYPERI PTY LIMITED
 
-"""
-Read-only Kafka client.
+"""Read-only Kafka client.
 
 Provides a restricted Kafka client that can only perform read operations
 (list topics, get offsets, check lag) but cannot produce messages.
@@ -17,8 +16,6 @@ This is useful for:
 - Discovery/monitoring without risk of data modification
 - Enforcing read-only access even with admin credentials
 """
-
-from __future__ import annotations
 
 from typing import Any
 
@@ -38,8 +35,7 @@ class TopicNotFoundError(Exception):
 
 
 class ReadOnlyKafkaClient:
-    """
-    Read-only Kafka client.
+    """Read-only Kafka client.
 
     Provides only read operations - no ability to produce messages.
     Use this when you need to monitor/discover Kafka topics without
@@ -87,8 +83,7 @@ class ReadOnlyKafkaClient:
     # =========================================================================
 
     def list_topics(self, include_internal: bool = False) -> list[TopicInfo]:
-        """
-        List all topics in the cluster.
+        """List all topics in the cluster.
 
         Args:
             include_internal: Include internal topics (e.g., __consumer_offsets)
@@ -116,8 +111,7 @@ class ReadOnlyKafkaClient:
         return topics
 
     def describe_topic(self, topic: str) -> TopicMetadata:
-        """
-        Get detailed metadata for a topic.
+        """Get detailed metadata for a topic.
 
         Args:
             topic: Topic name
@@ -163,8 +157,7 @@ class ReadOnlyKafkaClient:
     # =========================================================================
 
     def get_watermark_offsets(self, topic: str) -> dict[int, tuple[int, int]]:
-        """
-        Get low and high watermarks for all partitions.
+        """Get low and high watermarks for all partitions.
 
         Args:
             topic: Topic name
@@ -180,8 +173,7 @@ class ReadOnlyKafkaClient:
         return self._get_watermarks_internal(topic, partition_ids)
 
     def get_topic_message_count(self, topic: str) -> int:
-        """
-        Get estimated total message count for a topic.
+        """Get estimated total message count for a topic.
 
         Args:
             topic: Topic name
@@ -197,8 +189,7 @@ class ReadOnlyKafkaClient:
         group_id: str,
         topic: str,
     ) -> dict[int, int]:
-        """
-        Get consumer group lag per partition.
+        """Get consumer group lag per partition.
 
         Args:
             group_id: Consumer group ID

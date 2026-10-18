@@ -1,5 +1,4 @@
-"""
-CLI output formatting utilities using Rich.
+"""CLI output formatting utilities using Rich.
 
 Provides common output patterns for CLI applications with beautiful formatting,
 colors, and tables. All functions gracefully degrade if Rich is not available.
@@ -58,8 +57,7 @@ except ImportError:
 
 # Output helpers with Rich fallback
 def print_success(message: str, **kwargs):
-    """
-    Print success message with green checkmark.
+    """Print success message with green checkmark.
 
     Args:
         message: Success message to display
@@ -76,8 +74,7 @@ def print_success(message: str, **kwargs):
 
 
 def print_error(message: str, **kwargs):
-    """
-    Print error message with red X to stderr.
+    """Print error message with red X to stderr.
 
     Args:
         message: Error message to display
@@ -94,8 +91,7 @@ def print_error(message: str, **kwargs):
 
 
 def print_warning(message: str, **kwargs):
-    """
-    Print warning message with yellow warning symbol.
+    """Print warning message with yellow warning symbol.
 
     Args:
         message: Warning message to display
@@ -112,8 +108,7 @@ def print_warning(message: str, **kwargs):
 
 
 def print_info(message: str, **kwargs):
-    """
-    Print info message with blue info symbol.
+    """Print info message with blue info symbol.
 
     Args:
         message: Info message to display
@@ -135,8 +130,7 @@ def print_table(
     headers: list[str] | None = None,
     **kwargs,
 ):
-    """
-    Print formatted table with auto-detection of columns.
+    """Print formatted table with auto-detection of columns.
 
     Args:
         data: List of dicts (keys become headers) or list of lists
@@ -171,7 +165,8 @@ def print_table(
                 table.add_column(header.replace("_", " ").title(), style="cyan")
 
             for row in data:
-                table.add_row(*[str(row.get(h, "")) for h in headers])
+                # The first row's type sets the layout, so every row here is a dict.
+                table.add_row(*[str(row.get(h, "")) for h in headers])  # ty: ignore[unresolved-attribute]
         else:
             # List of lists - use provided headers or generic
             if not headers:
@@ -195,7 +190,8 @@ def print_table(
             print(" | ".join(headers))
             print("-" * (sum(len(h) for h in headers) + len(headers) * 3))
             for row in data:
-                print(" | ".join(str(row.get(h, "")) for h in headers))
+                # The first row's type sets the layout, so every row here is a dict.
+                print(" | ".join(str(row.get(h, "")) for h in headers))  # ty: ignore[unresolved-attribute]
         else:
             if headers:
                 print(" | ".join(headers))
@@ -205,8 +201,7 @@ def print_table(
 
 
 def print_json(data: Any, pretty: bool = True, **kwargs):
-    """
-    Print JSON with syntax highlighting (if Rich available).
+    """Print JSON with syntax highlighting (if Rich available).
 
     Args:
         data: Data to print as JSON (dict, list, etc.)
@@ -234,8 +229,7 @@ def print_json(data: Any, pretty: bool = True, **kwargs):
 
 
 def print_dict(data: dict, title: str | None = None, **kwargs):
-    """
-    Print dictionary as formatted key-value pairs.
+    """Print dictionary as formatted key-value pairs.
 
     Args:
         data: Dictionary to display

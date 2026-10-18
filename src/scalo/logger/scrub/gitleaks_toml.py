@@ -6,7 +6,7 @@
 #  License:   Apache-2.0
 #  Copyright: (c) 2026 HYPERI PTY LIMITED
 
-"""TOML-driven Layer 1 secret-artefact scrubber.
+r"""TOML-driven Layer 1 secret-artefact scrubber.
 
 Loads gitleaks-format rules from the bundled
 ``scalo/data/gitleaks.toml`` (vendored byte-identical from
@@ -17,7 +17,7 @@ them as a Scrubber Protocol implementation.
 **Regex engine**: this module uses the PyPI ``regex`` package, not
 stdlib ``re``. Upstream gitleaks uses Go's RE2 syntax which permits
 constructs Python's stdlib ``re`` rejects (mid-expression ``(?i)``
-flags, ``\\z`` end-anchor). The ``regex`` package accepts both
+flags, ``\z`` end-anchor). The ``regex`` package accepts both
 syntaxes plus a superset. Pylib is not on the hot path
 (per ``standards/languages/PYTHON.md``) so the modest ``regex`` vs
 ``re`` overhead is fine. Rustlib will compile the same rules through
@@ -47,8 +47,7 @@ from .metrics import ScrubMetrics
 
 
 def _derive_label(rule_id: str) -> str:
-    """Convert a gitleaks rule id (``"aws-access-key"``) to a redaction label
-    slug (``"AWS_ACCESS_KEY"``)."""
+    """Convert a gitleaks rule id (``"aws-access-key"``) to a redaction label slug (``"AWS_ACCESS_KEY"``)."""
     return regex.sub(r"[^A-Za-z0-9]+", "_", rule_id).strip("_").upper()
 
 
@@ -131,7 +130,8 @@ class _CompiledRule:
 
     __slots__ = ("id", "keywords", "label", "pattern")
 
-    def __init__(self, id_: str, label: str, pattern: regex.Pattern[str], keywords: tuple[str, ...]) -> None:
+    # regex ships no type stubs, so ty cannot see that its Pattern is generic.
+    def __init__(self, id_: str, label: str, pattern: regex.Pattern[str], keywords: tuple[str, ...]) -> None:  # ty: ignore[invalid-type-form]
         self.id = id_
         self.label = label
         self.pattern = pattern
@@ -152,7 +152,7 @@ class GitleaksTomlScrubber:
         labeler: redaction-label producer. Defaults to static
             ``[LABEL_REDACTED]``.
         metrics: :class:`ScrubMetrics` instance. Defaults to no-op.
-        rule_ids: optional ``set[str]`` of rule IDs to enable. ``None``
+        rule_ids: optional collection of rule IDs to enable. ``None``
             (default) enables every rule with a compilable regex.
         exclude_rule_ids: optional rule IDs to leave out of whatever
             ``rule_ids`` selects. An ID the rule set does not carry is
@@ -171,7 +171,7 @@ class GitleaksTomlScrubber:
         path: Path | None = None,
         labeler: LabelFn | None = None,
         metrics: ScrubMetrics | None = None,
-        rule_ids: set[str] | None = None,
+        rule_ids: Collection[str] | None = None,
         exclude_rule_ids: Collection[str] | None = None,
     ) -> None:
         excluded = frozenset(exclude_rule_ids or ())
@@ -238,6 +238,7 @@ class GitleaksTomlScrubber:
         return len(self._compiled)
 
     def scrub(self, text: str) -> str:
+        """Return ``text`` with each gitleaks rule match replaced by the labeler's output for it."""
         if not text or not self._compiled:
             return text
 

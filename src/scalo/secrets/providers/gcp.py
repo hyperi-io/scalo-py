@@ -11,6 +11,7 @@
 import json
 import logging
 from datetime import UTC, datetime
+from typing import override
 
 from ..exceptions import (
     ProviderError,
@@ -30,12 +31,8 @@ try:
 
     GCP_AVAILABLE = True
 except ImportError:
+    # The constructor raises before any use of the GCP SDK names.
     GCP_AVAILABLE = False
-    secretmanager = None  # type: ignore[assignment]
-    AlreadyExists = Exception  # type: ignore[assignment,misc]
-    NotFound = Exception  # type: ignore[assignment,misc]
-    PermissionDenied = Exception  # type: ignore[assignment,misc]
-    Unauthenticated = Exception  # type: ignore[assignment,misc]
 
 
 class GCPProvider(VersionedProvider):
@@ -322,6 +319,7 @@ class GCPProvider(VersionedProvider):
 
     # --- List ---
 
+    @override
     async def list_async(self, filter: SecretFilter | None = None) -> list[str]:
         try:
             async_client = self._get_async_client()
@@ -341,6 +339,7 @@ class GCPProvider(VersionedProvider):
         except Exception as e:
             raise ProviderError(self.name, f"list failed: {e}")
 
+    @override
     def list_sync(self, filter: SecretFilter | None = None) -> list[str]:
         try:
             client = self._get_sync_client()
@@ -361,6 +360,7 @@ class GCPProvider(VersionedProvider):
 
     # --- Metadata ---
 
+    @override
     async def get_metadata_async(self, path: str) -> SecretMetadata:
         try:
             async_client = self._get_async_client()
@@ -387,6 +387,7 @@ class GCPProvider(VersionedProvider):
         except Exception as e:
             raise ProviderError(self.name, f"get_metadata {path} failed: {e}")
 
+    @override
     def get_metadata_sync(self, path: str) -> SecretMetadata:
         try:
             client = self._get_sync_client()
@@ -413,6 +414,7 @@ class GCPProvider(VersionedProvider):
 
     # --- Create ---
 
+    @override
     async def create_async(self, path: str, value: bytes, tags: dict[str, str] | None = None) -> SecretMetadata:
         try:
             async_client = self._get_async_client()
@@ -436,6 +438,7 @@ class GCPProvider(VersionedProvider):
         except Exception as e:
             raise ProviderError(self.name, f"create {path} failed: {e}")
 
+    @override
     def create_sync(self, path: str, value: bytes, tags: dict[str, str] | None = None) -> SecretMetadata:
         try:
             client = self._get_sync_client()
@@ -459,8 +462,10 @@ class GCPProvider(VersionedProvider):
     # --- Update ---
 
     async def update_async(self, path: str, value: bytes) -> SecretMetadata:
-        """Update by adding a new SecretVersion. GCP secrets are immutable per version;
-        ``update`` semantics map to ``add_secret_version`` on the existing Secret resource.
+        """Update by adding a new SecretVersion.
+
+        GCP secrets are immutable per version, so ``update`` maps to
+        ``add_secret_version`` on the existing Secret resource.
         """
         try:
             async_client = self._get_async_client()
@@ -480,6 +485,7 @@ class GCPProvider(VersionedProvider):
         except Exception as e:
             raise ProviderError(self.name, f"update {path} failed: {e}")
 
+    @override
     def update_sync(self, path: str, value: bytes) -> SecretMetadata:
         try:
             client = self._get_sync_client()
@@ -513,6 +519,7 @@ class GCPProvider(VersionedProvider):
         except Exception as e:
             raise ProviderError(self.name, f"delete {path} failed: {e}")
 
+    @override
     def delete_sync(self, path: str) -> None:
         try:
             client = self._get_sync_client()
@@ -528,6 +535,7 @@ class GCPProvider(VersionedProvider):
 
     # --- Versioning ---
 
+    @override
     async def get_version_async(self, path: str, version: str, key: str | None = None) -> SecretValue:
         try:
             async_client = self._get_async_client()
@@ -550,6 +558,7 @@ class GCPProvider(VersionedProvider):
         except Exception as e:
             raise ProviderError(self.name, f"get_version {path}@{version} failed: {e}")
 
+    @override
     def get_version_sync(self, path: str, version: str, key: str | None = None) -> SecretValue:
         try:
             client = self._get_sync_client()
@@ -569,6 +578,7 @@ class GCPProvider(VersionedProvider):
         except Exception as e:
             raise ProviderError(self.name, f"get_version {path}@{version} failed: {e}")
 
+    @override
     async def list_versions_async(self, path: str) -> list[SecretMetadata]:
         try:
             async_client = self._get_async_client()
@@ -588,6 +598,7 @@ class GCPProvider(VersionedProvider):
         except Exception as e:
             raise ProviderError(self.name, f"list_versions {path} failed: {e}")
 
+    @override
     def list_versions_sync(self, path: str) -> list[SecretMetadata]:
         try:
             client = self._get_sync_client()

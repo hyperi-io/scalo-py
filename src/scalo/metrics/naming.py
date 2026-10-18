@@ -6,8 +6,7 @@
 #  License:      Apache-2.0
 #  Copyright:    (c) 2026 HYPERI PTY LIMITED
 
-"""
-Metric naming validation.
+"""Metric naming validation.
 
 Enforces the naming convention: ``{prefix}_{app}_{metric_name}[_{unit}]``,
 where ``{prefix}`` is the configurable platform prefix (bare "" by default;
@@ -24,8 +23,7 @@ from ..logger import logger
 
 
 def validate_metric_name(name: str, metric_type: str) -> list[str]:
-    """
-    Validate metric name follows Prometheus naming conventions.
+    """Validate metric name follows Prometheus naming conventions.
 
     Args:
         name: Full metric name
@@ -55,8 +53,7 @@ def validate_metric_name(name: str, metric_type: str) -> list[str]:
 
 
 def validate_metric_prefix(name: str, app: str = "", prefix: str | None = None) -> list[str]:
-    """
-    Validate metric name carries the expected ``{prefix}_{app}_`` prefix.
+    """Validate metric name carries the expected ``{prefix}_{app}_`` prefix.
 
     Args:
         name: Full metric name

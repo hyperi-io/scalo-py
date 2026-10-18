@@ -148,7 +148,8 @@ class EngineResolver:
         override: str | None = None,
         topology_setting: str | None = None,
     ) -> None:
-        """
+        """Store the cascade inputs without querying the server.
+
         Args:
             client: a live clickhouse-connect client exposing ``query``, or None.
                 Supplying one enables the sensing layer.
@@ -248,10 +249,14 @@ class EngineResolver:
         return topology
 
     def _rows(self, sql: str, parameters: dict[str, str] | None = None) -> list:
+        client = self._client
+        if client is None:
+            # _cascade senses only when a client was supplied, so this means a caller skipped it.
+            raise RuntimeError("engine sensing needs a ClickHouse client")
         # A caller's value travels as a server-side bound parameter, never inside the SQL text.
         if parameters is None:
-            return self._client.query(sql).result_rows
-        return self._client.query(sql, parameters=parameters).result_rows
+            return client.query(sql).result_rows
+        return client.query(sql, parameters=parameters).result_rows
 
     def _scalar(self, sql: str, parameters: dict[str, str] | None = None) -> str | None:
         rows = self._rows(sql, parameters)

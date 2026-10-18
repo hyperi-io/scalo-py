@@ -6,8 +6,7 @@
 # License:   Apache-2.0
 # Copyright: (c) 2026 HYPERI PTY LIMITED
 
-"""
-scalo Expression Module -- CEL-based expression evaluation.
+"""scalo Expression Module -- CEL-based expression evaluation.
 
 Provides compile, evaluate, and validate functions for CEL expressions,
 restricted to the expression profile (high-performance subset only).

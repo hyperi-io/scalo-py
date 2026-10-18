@@ -8,8 +8,6 @@
 
 """Version check implementation -- daemon thread, fire-and-forget."""
 
-from __future__ import annotations
-
 import hashlib
 import logging
 import platform
@@ -168,6 +166,11 @@ def _do_http_check(config: VersionCheckConfig) -> VersionCheckResponse:
         logger.debug("httpx not installed, version check skipped")
         return VersionCheckResponse()
 
+    api_url = config.api_url
+    if not api_url:
+        logger.debug("version check skipped: no version_check.api_url configured")
+        return VersionCheckResponse()
+
     # deployment is never sent: operators embed sensitive names in free-form
     # deployment strings. The instance id is platform-derived and one-way
     # (see resolve_instance_id), and version_check.send_instance_id: false
@@ -182,7 +185,7 @@ def _do_http_check(config: VersionCheckConfig) -> VersionCheckResponse:
         payload["instance_id"] = resolve_instance_id(config)
 
     resp = httpx.post(
-        config.api_url,
+        api_url,
         json=payload,
         timeout=config.timeout,
     )
@@ -305,8 +308,10 @@ def _k8s_instance_id() -> str | None:
 
 
 def _uuid5_bytes(material: bytes) -> uuid.UUID:
-    """``uuid.uuid5`` over raw bytes -- byte-identical to scalo-rs, which
-    hashes the material without a text round-trip."""
+    """Return ``uuid.uuid5`` over raw bytes, byte-identical to scalo-rs.
+
+    scalo-rs hashes the material without a text round-trip, so this does too.
+    """
     # UUIDv5 is SHA-1 by definition (RFC 9562) -- an id derivation, not a signature, and it must match scalo-rs.
     # nosemgrep: python.lang.security.insecure-hash-algorithms.insecure-hash-algorithm-sha1
     digest = hashlib.sha1(INSTANCE_ID_NS.bytes + material).digest()  # noqa: S324

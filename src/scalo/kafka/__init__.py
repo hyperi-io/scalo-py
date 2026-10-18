@@ -6,8 +6,7 @@
 # License:   Apache-2.0
 # Copyright: (c) 2026 HYPERI PTY LIMITED
 
-"""
-scalo.kafka - Kafka client library with corporate defaults.
+"""scalo.kafka - Kafka client library with corporate defaults.
 
 This module provides Kafka clients (producer, consumer, admin) with:
 - Corporate defaults for reliability and performance

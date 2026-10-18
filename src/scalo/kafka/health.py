@@ -6,8 +6,7 @@
 # License:   Apache-2.0
 # Copyright: (c) 2026 HYPERI PTY LIMITED
 
-"""
-Kafka consumer health monitoring.
+"""Kafka consumer health monitoring.
 
 Detects common Kafka consumer issues and logs rate-limited warnings.
 Also exposes health metrics for Prometheus/OTEL.
@@ -62,8 +61,6 @@ Sources:
 - https://risingwave.com/blog/fixing-kafka-rebalancing-a-step-by-step-guide/
 """
 
-from __future__ import annotations
-
 import os
 import time
 from collections import deque
@@ -78,8 +75,7 @@ if TYPE_CHECKING:
 
 
 def _get_health_config() -> dict:
-    """
-    Get Kafka health configuration from config cascade.
+    """Get Kafka health configuration from config cascade.
 
     Priority: ENV > .env > settings.yaml > defaults
 
@@ -148,8 +144,7 @@ class HealthCheckResult:
 
 @dataclass
 class KafkaConsumerHealth:
-    """
-    Monitors Kafka consumer health and logs rate-limited warnings.
+    """Monitors Kafka consumer health and logs rate-limited warnings.
 
     Detects common issues by analysing librdkafka statistics and
     consumer group state. Warnings are rate-limited to prevent
@@ -225,8 +220,7 @@ class KafkaConsumerHealth:
         collector: KafkaMetricsCollector,
         consumer_count: int = 1,
     ) -> KafkaConsumerHealth:
-        """
-        Create a KafkaConsumerHealth using config cascade defaults.
+        """Create a KafkaConsumerHealth using config cascade defaults.
 
         All thresholds are read from the config cascade:
         - settings.yaml: kafka.health.*
@@ -242,8 +236,7 @@ class KafkaConsumerHealth:
         return cls(collector=collector, consumer_count=consumer_count)
 
     def check_health(self) -> list[HealthCheckResult]:
-        """
-        Check consumer health and log rate-limited warnings.
+        """Check consumer health and log rate-limited warnings.
 
         Returns:
             List of detected health issues
@@ -333,11 +326,11 @@ class KafkaConsumerHealth:
             self._rebalance_times.append(now)
             self._last_rebalance_cnt = rebalance_cnt
 
-        # Count rebalances in window
-        window_start = now - self.rebalance_window_sec
+        # Count rebalances in window. __post_init__ replaces every threshold left as None.
+        window_start = now - self.rebalance_window_sec  # ty: ignore[unsupported-operator]
         recent_rebalances = sum(1 for t in self._rebalance_times if t >= window_start)
 
-        if recent_rebalances >= self.rebalance_threshold:
+        if recent_rebalances >= self.rebalance_threshold:  # ty: ignore[unsupported-operator]
             issues.append(
                 HealthCheckResult(
                     issue=HealthIssue.FREQUENT_REBALANCES,
@@ -445,7 +438,8 @@ class KafkaConsumerHealth:
             return issues  # Trivially zero; not a meaningful imbalance signal
 
         ratio = max_topic_count / min_topic_count
-        if ratio >= self.imbalance_ratio:
+        # __post_init__ replaces every threshold left as None.
+        if ratio >= self.imbalance_ratio:  # ty: ignore[unsupported-operator]
             heaviest = max(per_topic, key=per_topic.__getitem__)
             lightest = min(per_topic, key=per_topic.__getitem__)
             issues.append(
@@ -523,8 +517,8 @@ class KafkaConsumerHealth:
         """Log an issue with rate limiting."""
         last_warn = self._last_warnings.get(issue.issue, 0)
 
-        # Check rate limit
-        if now - last_warn < self.warning_rate_limit_sec:
+        # Check rate limit. __post_init__ replaces every threshold left as None.
+        if now - last_warn < self.warning_rate_limit_sec:  # ty: ignore[unsupported-operator]
             return
 
         # Update metrics counter
@@ -538,8 +532,7 @@ class KafkaConsumerHealth:
         self._last_warnings[issue.issue] = now
 
     def get_health_metrics(self) -> dict:
-        """
-        Get health metrics for Prometheus/OTEL.
+        """Get health metrics for Prometheus/OTEL.
 
         Returns:
             Dict of metric name -> value

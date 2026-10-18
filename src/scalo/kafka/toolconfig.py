@@ -7,8 +7,7 @@
 # License:   Apache-2.0
 # Copyright: (c) 2026 HYPERI PTY LIMITED
 
-"""Tool config emission: "you are running provider X in way Y, here is the
-config for tool Z".
+"""Tool config emission: "you are running provider X in way Y, here is the config for tool Z".
 
 A control-plane feature (not on the hot data path) - given a provider key and
 a live ``Connection``, emit ready-to-use config for whichever Kafka tool is
@@ -20,8 +19,6 @@ Every emitter runs ``validate()`` on the derived auth first and refuses a
 broken combination rather than emit it.
 """
 
-from __future__ import annotations
-
 from dataclasses import dataclass
 from typing import Any
 
@@ -30,9 +27,10 @@ from .providers import KnownProvider, SchemaRegistry, derive, validate
 
 @dataclass
 class Connection:
-    """A live Kafka connection's runtime details - what an emitter needs to
-    wire up a tool config. Provider identity is a separate argument
-    (``provider_key``), not part of this dataclass.
+    """A live Kafka connection's runtime details, which an emitter needs to wire up a tool config.
+
+    Provider identity is a separate argument (``provider_key``), not part of
+    this dataclass.
     """
 
     bootstrap_servers: str

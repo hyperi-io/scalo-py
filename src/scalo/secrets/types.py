@@ -88,9 +88,11 @@ class CacheConfig:
     refresh_jitter_secs: int = 300
     """Randomize refresh timing (default: 5 min)."""
 
-    encryption_key: bytes | None = None
-    """Key that seals disk-cache entries with AES-256-GCM. Without one the disk tier is off (memory-only)
-    unless ``allow_plaintext_disk_cache`` is set."""
+    encryption_key: bytes | str | None = None
+    """Key that seals disk-cache entries with AES-256-GCM, UTF-8 encoded when a str.
+
+    Without one the disk tier is off (memory-only) unless ``allow_plaintext_disk_cache`` is set.
+    """
 
     allow_plaintext_disk_cache: bool = False
     """Permit UNENCRYPTED disk-cache entries when no ``encryption_key`` is set: written, and read back.

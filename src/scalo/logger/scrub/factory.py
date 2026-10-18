@@ -67,6 +67,8 @@ def build_scrubber(
     Args:
         config: scrubber configuration. ``None`` means use the canonical
             defaults from :class:`ScrubConfig`.
+        metrics: where the layers record matches and redactions. ``None``, or
+            ``config.metrics_enabled`` false, records nothing.
 
     Returns:
         A :class:`LayeredScrubber` ready to call. Always returns an

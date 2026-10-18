@@ -27,8 +27,6 @@ Or programmatically::
     m = build_manifest()
 """
 
-from __future__ import annotations
-
 import json
 import sys
 from typing import Any
@@ -75,8 +73,9 @@ def build_manifest() -> dict[str, Any]:
     scrubber = build_scrubber(cfg)
     l3_labels: list[str] = []
     for layer in scrubber.layers:
-        if hasattr(layer, "LABEL") and layer.LABEL:
-            l3_labels.append(layer.LABEL)
+        label = getattr(layer, "LABEL", None)
+        if isinstance(label, str) and label:
+            l3_labels.append(label)
     l3_labels.sort()
 
     # Gitleaks rules -- the IDs we successfully compiled + the IDs we

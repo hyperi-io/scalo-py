@@ -6,8 +6,7 @@
 # License:   Apache-2.0
 # Copyright: (c) 2026 HYPERI PTY LIMITED
 
-"""
-Kafka admin operations for topic configuration changes.
+"""Kafka admin operations for topic configuration changes.
 
 Provides high-level methods for common admin operations:
 - Increase partition count
@@ -22,8 +21,6 @@ to avoid resetting unspecified configs to defaults.
 Reference:
 https://docs.confluent.io/platform/current/clients/confluent-kafka-python/html/index.html
 """
-
-from __future__ import annotations
 
 from datetime import datetime
 from typing import Any, Literal
@@ -47,8 +44,7 @@ CleanupPolicy = Literal["delete", "compact", "compact,delete"]
 
 
 class KafkaAdmin:
-    """
-    Kafka admin client for topic configuration changes.
+    """Kafka admin client for topic configuration changes.
 
     Provides high-level methods for common admin operations.
 
@@ -109,8 +105,7 @@ class KafkaAdmin:
         new_total_count: int,
         timeout: float = 30.0,
     ) -> None:
-        """
-        Increase the number of partitions for a topic.
+        """Increase the number of partitions for a topic.
 
         Note: Partitions can only be increased, not decreased.
         Note: This may cause message reordering for keyed messages.
@@ -147,8 +142,7 @@ class KafkaAdmin:
         days: int | None = None,
         timeout: float = 30.0,
     ) -> None:
-        """
-        Set retention.ms for a topic.
+        """Set retention.ms for a topic.
 
         Only one time unit should be specified.
 
@@ -203,8 +197,7 @@ class KafkaAdmin:
         policy: CleanupPolicy,
         timeout: float = 30.0,
     ) -> None:
-        """
-        Set cleanup.policy for a topic.
+        """Set cleanup.policy for a topic.
 
         Args:
             topic: Topic name
@@ -235,8 +228,7 @@ class KafkaAdmin:
         topic: str,
         timeout: float = 30.0,
     ) -> dict[str, str]:
-        """
-        Get current configuration for a topic.
+        """Get current configuration for a topic.
 
         Args:
             topic: Topic name
@@ -267,8 +259,7 @@ class KafkaAdmin:
         config: dict[str, str],
         timeout: float = 30.0,
     ) -> None:
-        """
-        Alter topic configuration.
+        """Alter topic configuration.
 
         Note: Uses incremental alter to avoid resetting unspecified
         configs to their defaults.
@@ -318,8 +309,7 @@ class KafkaAdmin:
         timestamp_ms: int,
         timeout: float = 30.0,
     ) -> dict[int, int]:
-        """
-        Reset consumer group offsets to a specific timestamp.
+        """Reset consumer group offsets to a specific timestamp.
 
         Finds the offset of the first message with timestamp >= timestamp_ms
         for each partition and commits those offsets.
@@ -392,8 +382,7 @@ class KafkaAdmin:
         time: datetime,
         timeout: float = 30.0,
     ) -> dict[int, int]:
-        """
-        Reset consumer group offsets to a specific datetime.
+        """Reset consumer group offsets to a specific datetime.
 
         Convenience wrapper around reset_offsets_to_timestamp.
 
@@ -424,8 +413,7 @@ class KafkaAdmin:
         topic: str,
         timeout: float = 30.0,
     ) -> dict[int, int]:
-        """
-        Reset consumer group offsets to earliest (beginning).
+        """Reset consumer group offsets to earliest (beginning).
 
         Args:
             group_id: Consumer group ID
@@ -480,8 +468,7 @@ class KafkaAdmin:
         topic: str,
         timeout: float = 30.0,
     ) -> dict[int, int]:
-        """
-        Reset consumer group offsets to latest (end).
+        """Reset consumer group offsets to latest (end).
 
         Args:
             group_id: Consumer group ID

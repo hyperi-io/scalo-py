@@ -6,8 +6,7 @@
 #  License:      Apache-2.0
 #  Copyright:    (c) 2026 HYPERI PTY LIMITED
 
-"""
-Config Reloader -- wraps Dynaconf reload with polling and callbacks.
+"""Config Reloader -- wraps Dynaconf reload with polling and callbacks.
 
 Mirrors scalo-rs's SharedConfig/ConfigReloader pattern. Provides:
 - Periodic polling (configurable interval, 0 = disabled)
@@ -16,8 +15,6 @@ Mirrors scalo-rs's SharedConfig/ConfigReloader pattern. Provides:
 - SIGHUP handler for immediate reload trigger (Unix only)
 - Reload counters (success/error) for metrics integration
 """
-
-from __future__ import annotations
 
 import asyncio
 import logging

@@ -47,3 +47,11 @@ quality:
     - tool: ruff
       ids: [S603, S607]
       reason: "Fixed argv to git, docker and kind from PATH; no caller input reaches a subprocess."
+    # The docstring pass runs `ruff check --select D`, which drops pyproject's
+    # ruff ignore list, so the two D relaxations the library keeps live here.
+    - tool: ruff
+      id: D105
+      reason: "Magic methods implement the data-model contract the language already documents."
+    - tool: ruff
+      id: D107
+      reason: "Google style documents constructor arguments in the class docstring, never twice."

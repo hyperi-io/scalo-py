@@ -627,7 +627,7 @@ class TestContractValidation:
                 metric_prefix="x",
                 config_mount_path="/etc/x.yaml",
                 image_registry="registry.example.com",
-                wrong_field_name="boom",
+                wrong_field_name="boom",  # ty: ignore[unknown-argument]  # the unknown field is the point of the test
             )
 
     def test_registry_is_required(self):
@@ -635,7 +635,7 @@ class TestContractValidation:
         from pydantic import ValidationError
 
         with pytest.raises(ValidationError, match="image_registry"):
-            DeploymentContract(
+            DeploymentContract(  # ty: ignore[missing-argument]  # the missing registry is the point of the test
                 app_name="x",
                 metrics_port=9090,
                 env_prefix="X",
@@ -669,13 +669,13 @@ class TestContractValidation:
         from pydantic import ValidationError
 
         with pytest.raises(ValidationError):
-            KedaContract(unknown=1)
+            KedaContract(unknown=1)  # ty: ignore[unknown-argument]  # the unknown field is the point of the test
 
     def test_extra_fields_rejected_on_health_contract(self):
         from pydantic import ValidationError
 
         with pytest.raises(ValidationError):
-            HealthContract(unknown="path")
+            HealthContract(unknown="path")  # ty: ignore[unknown-argument]  # the unknown field is the point of the test
 
     def test_minimal_required_fields_only(self):
         """Construction with only required fields must succeed and use defaults everywhere else."""

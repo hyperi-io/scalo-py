@@ -31,8 +31,6 @@ endpoints, protocol normalisation, and signal-path handling -- so metrics and
 tracing share one answer rather than each carrying a copy.
 """
 
-from __future__ import annotations
-
 import random
 import sys
 import threading
@@ -245,6 +243,7 @@ class GatedMetricExporter:
         return self._gate
 
     def export(self, metrics_data: MetricsData, timeout_millis: float = 10_000, **kwargs: Any) -> MetricExportResult:
+        """Export through the inner exporter unless the gate is backing off, and report success either way."""
         from opentelemetry.sdk.metrics.export import MetricExportResult
 
         if self._gate.should_skip():
@@ -265,9 +264,11 @@ class GatedMetricExporter:
         return MetricExportResult.SUCCESS
 
     def force_flush(self, timeout_millis: float = 10_000) -> bool:
+        """Flush the inner exporter."""
         return self._inner.force_flush(timeout_millis=timeout_millis)
 
     def shutdown(self, timeout_millis: float = 30_000, **kwargs: Any) -> None:
+        """Shut the inner exporter down within the caller's remaining budget."""
         # PeriodicExportingMetricReader spends its shutdown budget joining the
         # export thread and then passes what is left as `timeout`, not
         # `timeout_millis`, so the deadline lands in **kwargs and the exporter
@@ -292,6 +293,7 @@ class GatedSpanExporter:
         return self._gate
 
     def export(self, spans: Sequence[ReadableSpan]) -> SpanExportResult:
+        """Export through the inner exporter unless the gate is backing off, and report success either way."""
         from opentelemetry.sdk.trace.export import SpanExportResult
 
         if self._gate.should_skip():
@@ -309,9 +311,11 @@ class GatedSpanExporter:
         return SpanExportResult.SUCCESS
 
     def force_flush(self, timeout_millis: int = 30_000) -> bool:
+        """Flush the inner exporter."""
         return self._inner.force_flush(timeout_millis=timeout_millis)
 
     def shutdown(self, timeout_millis: float = 30_000) -> None:
+        """Shut the inner exporter down, passing the budget when it accepts one."""
         # `timeout_millis` is declared because BatchSpanProcessor inspects the
         # argspec and only forwards its remaining budget to an exporter that
         # names it. The base SpanExporter.shutdown() takes none, so a signature

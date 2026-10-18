@@ -1,5 +1,4 @@
-"""
-Reusable CLI options and arguments for Typer applications.
+"""Reusable CLI options and arguments for Typer applications.
 
 Provides pre-configured, commonly used options to ensure consistency
 across CLI applications and reduce boilerplate code.
@@ -32,9 +31,8 @@ try:
 
     HAS_TYPER = True
 except ImportError:
+    # Every use of Option below is guarded by HAS_TYPER.
     HAS_TYPER = False
-    # Fallback - will error if used without Typer installed
-    Option = None
 
 __all__ = [
     "CONFIG_OPTION",
@@ -169,8 +167,7 @@ def path_option(
     dir_okay: bool = True,
     **kwargs,
 ) -> Path | None:
-    """
-    Create a Path-typed option with validation.
+    """Create a Path-typed option with validation.
 
     Args:
         default: Default path value
@@ -215,8 +212,7 @@ def enum_option(
     case_sensitive: bool = False,
     **kwargs,
 ):
-    """
-    Create an Enum-typed option with validation.
+    """Create an Enum-typed option with validation.
 
     Args:
         enum_class: Enum class to use

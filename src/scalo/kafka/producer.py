@@ -6,14 +6,11 @@
 # License:   Apache-2.0
 # Copyright: (c) 2026 HYPERI PTY LIMITED
 
-"""
-Kafka producer with corporate defaults.
+"""Kafka producer with corporate defaults.
 
 Provides a high-level producer that wraps confluent-kafka
 with sensible defaults for enterprise use.
 """
-
-from __future__ import annotations
 
 import json
 from typing import Any
@@ -24,8 +21,7 @@ from .config import PRODUCER_DEFAULTS, merge_config
 
 
 class KafkaProducer:
-    """
-    Kafka producer with corporate defaults.
+    """Kafka producer with corporate defaults.
 
     Wraps confluent-kafka Producer with sensible defaults
     and a simplified API.
@@ -79,8 +75,7 @@ class KafkaProducer:
         headers: dict[str, str] | None = None,
         on_delivery: Any = None,
     ) -> None:
-        """
-        Send a message to Kafka.
+        """Send a message to Kafka.
 
         Args:
             topic: Target topic name
@@ -136,8 +131,7 @@ class KafkaProducer:
     # =========================================================================
 
     def flush(self, timeout: float | None = None) -> int:
-        """
-        Wait for all messages to be delivered.
+        """Wait for all messages to be delivered.
 
         Args:
             timeout: Maximum wait time in seconds (None = infinite)
@@ -150,8 +144,7 @@ class KafkaProducer:
         return self._producer.flush()
 
     def poll(self, timeout: float = 0) -> int:
-        """
-        Poll for delivery callbacks.
+        """Poll for delivery callbacks.
 
         Args:
             timeout: Maximum wait time in seconds

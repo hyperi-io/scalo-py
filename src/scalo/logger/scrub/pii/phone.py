@@ -14,9 +14,8 @@ candidate. python-stdnum has no phone module; libphonenumber (via
 ``phonenumbers``) is the canonical answer for global phone parsing.
 """
 
-from __future__ import annotations
-
 import re
+from typing import override
 
 import phonenumbers
 
@@ -34,6 +33,7 @@ class PhoneValidator(_Validator):
         r"\+?\d[\d \-.()]{6,20}\d",
     )
 
+    @override
     def validate(self, candidate: str) -> bool:
         # Try to parse as international first (region=None). If that
         # fails, the candidate isn't a valid number we can confirm.

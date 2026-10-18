@@ -58,8 +58,6 @@ Usage::
     server.stop()
 """
 
-from __future__ import annotations
-
 import asyncio
 import json
 import threading
@@ -212,6 +210,7 @@ class ObservabilityServer:
 
     @property
     def is_running(self) -> bool:
+        """True between :meth:`start` and :meth:`stop`."""
         return self._httpd is not None
 
     def __enter__(self) -> ObservabilityServer:

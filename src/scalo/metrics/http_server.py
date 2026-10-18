@@ -6,8 +6,7 @@
 #  License:      Apache-2.0
 #  Copyright:    (c) 2026 HYPERI PTY LIMITED
 
-"""
-Server-side HTTP request metrics for ASGI apps.
+"""Server-side HTTP request metrics for ASGI apps.
 
 One histogram, ``http_server_request_duration_seconds``, labelled by method, full route
 template and status code. Its count gives the request and error rates and its
@@ -183,8 +182,7 @@ def _method(scope: Scope) -> str:
 
 
 class HttpServerMetricsMiddleware:
-    """
-    Pure ASGI middleware recording one duration per HTTP request.
+    """Pure ASGI middleware recording one duration per HTTP request.
 
     Register it last so it is outermost and times the whole stack. The route
     template runs from the app root: the route the router leaves on the scope, with
@@ -216,6 +214,7 @@ class HttpServerMetricsMiddleware:
         )
 
     async def __call__(self, scope: Scope, receive: Receive, send: Send) -> None:
+        """Run the wrapped app, recording the request's duration unless its path is skipped."""
         if (scope["type"] != "http") or (scope["path"] in self._skip_paths):
             await self._app(scope, receive, send)
             return

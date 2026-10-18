@@ -6,14 +6,11 @@
 # License:   Apache-2.0
 # Copyright: (c) 2026 HYPERI PTY LIMITED
 
-"""
-Kafka consumer with corporate defaults.
+"""Kafka consumer with corporate defaults.
 
 Provides a high-level consumer that wraps confluent-kafka
 with sensible defaults for enterprise use.
 """
-
-from __future__ import annotations
 
 from typing import Any, Iterator
 
@@ -32,8 +29,7 @@ class KafkaConsumerError(Exception):
 
 
 class KafkaConsumer:
-    """
-    Kafka consumer with corporate defaults.
+    """Kafka consumer with corporate defaults.
 
     Wraps confluent-kafka Consumer with sensible defaults
     and a simplified API.
@@ -94,8 +90,7 @@ class KafkaConsumer:
     # =========================================================================
 
     def subscribe(self, topics: str | list[str]) -> None:
-        """
-        Subscribe to topics.
+        """Subscribe to topics.
 
         Args:
             topics: Single topic name or list of topic names
@@ -113,8 +108,7 @@ class KafkaConsumer:
     # =========================================================================
 
     def assign(self, topic: str, partitions: list[int]) -> None:
-        """
-        Manually assign partitions.
+        """Manually assign partitions.
 
         Args:
             topic: Topic name
@@ -124,8 +118,7 @@ class KafkaConsumer:
         self._consumer.assign(tps)
 
     def assignment(self) -> list[tuple[str, int]]:
-        """
-        Get current partition assignment.
+        """Get current partition assignment.
 
         Returns:
             List of (topic, partition) tuples
@@ -138,8 +131,7 @@ class KafkaConsumer:
     # =========================================================================
 
     def poll(self, timeout: float = 1.0) -> Message | None:
-        """
-        Poll for a single message.
+        """Poll for a single message.
 
         Args:
             timeout: Maximum time to wait in seconds
@@ -171,8 +163,7 @@ class KafkaConsumer:
         num_messages: int = 1,
         timeout: float = 1.0,
     ) -> list[Message]:
-        """
-        Consume a batch of messages.
+        """Consume a batch of messages.
 
         Args:
             num_messages: Maximum number of messages to return
@@ -205,8 +196,7 @@ class KafkaConsumer:
     # =========================================================================
 
     def seek(self, topic: str, partition: int, offset: int) -> None:
-        """
-        Seek to specific offset.
+        """Seek to specific offset.
 
         Args:
             topic: Topic name
@@ -217,8 +207,7 @@ class KafkaConsumer:
         self._consumer.seek(tp)
 
     def seek_to_beginning(self, topic: str, partition: int) -> None:
-        """
-        Seek to beginning of partition.
+        """Seek to beginning of partition.
 
         Args:
             topic: Topic name
@@ -229,8 +218,7 @@ class KafkaConsumer:
         self.seek(topic, partition, low)
 
     def seek_to_end(self, topic: str, partition: int) -> None:
-        """
-        Seek to end of partition.
+        """Seek to end of partition.
 
         Args:
             topic: Topic name
@@ -241,8 +229,7 @@ class KafkaConsumer:
         self.seek(topic, partition, high)
 
     def position(self, topic: str, partition: int) -> int:
-        """
-        Get current position (next offset to read).
+        """Get current position (next offset to read).
 
         Args:
             topic: Topic name
@@ -260,8 +247,7 @@ class KafkaConsumer:
     # =========================================================================
 
     def commit(self, asynchronous: bool = False) -> None:
-        """
-        Commit current offsets.
+        """Commit current offsets.
 
         Args:
             asynchronous: If True, commit asynchronously
@@ -269,8 +255,7 @@ class KafkaConsumer:
         self._consumer.commit(asynchronous=asynchronous)
 
     def committed(self, topic: str, partitions: list[int]) -> dict[int, int]:
-        """
-        Get committed offsets.
+        """Get committed offsets.
 
         Args:
             topic: Topic name

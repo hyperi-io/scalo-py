@@ -17,8 +17,6 @@ Spec Section 3.4 and Section 9.2 describe the entry shape. See
 registry shipped with scalo-py.
 """
 
-from __future__ import annotations
-
 import importlib
 import re
 from collections.abc import Callable
@@ -34,7 +32,7 @@ _LOCAL_VALIDATOR_PACKAGE = "scalo.logger.scrub.pii."
 
 
 class _DynamicValidator(_Validator):
-    """Validator whose label/regex/keywords/validator come from a TOML entry.
+    r"""Validator whose label/regex/keywords/validator come from a TOML entry.
 
     Construction takes a single dict in the registry-entry shape:
 
@@ -48,7 +46,7 @@ class _DynamicValidator(_Validator):
         enabled = true
         context_required = true
         keywords = ["abn", "australian business number"]
-        detection_regex = '\\b\\d{2}[ ]?\\d{3}[ ]?\\d{3}[ ]?\\d{3}\\b'
+        detection_regex = '\b\d{2}[ ]?\d{3}[ ]?\d{3}[ ]?\d{3}\b'
 
     Either ``stdnum_module`` (e.g. ``"stdnum.au.abn"``) or
     ``local_validator`` (e.g. ``"scalo.logger.scrub.pii.au_medicare:_is_valid_medicare"``)

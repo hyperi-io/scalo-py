@@ -19,8 +19,6 @@ this class reads from there. For now it delegates to the existing
 behaviour and avoid a forced restructure mid-flight.
 """
 
-from __future__ import annotations
-
 from ..filters import SensitiveDataFilter
 
 
@@ -31,6 +29,7 @@ class FieldNameScrubber:
         self._inner = SensitiveDataFilter(extra_fields=extra_fields)
 
     def scrub(self, text: str) -> str:
+        """Return ``text`` with the values of sensitive field names masked."""
         if not isinstance(text, str):
             return text
         return self._inner._mask_sensitive_string(text)

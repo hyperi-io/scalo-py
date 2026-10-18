@@ -14,8 +14,6 @@ byte-equivalent output that the cross-language parity test will verify
 against the shared golden fixture once scalo-rs lands its implementation.
 """
 
-from __future__ import annotations
-
 import os
 import subprocess
 from pathlib import Path
@@ -150,7 +148,7 @@ def test_identity_error_subclasses_value_error() -> None:
 def test_identity_is_immutable() -> None:
     ident = ContractIdentity(source_commit=VALID_SHA, image_ref=VALID_REF)
     with pytest.raises((AttributeError, Exception)):
-        ident.source_commit = "x" * 40  # type: ignore[misc]
+        ident.source_commit = "x" * 40  # ty: ignore[invalid-assignment]  # the refused write is the point of the test
 
 
 # ---- as_dockerfile_labels -------------------------------------------------

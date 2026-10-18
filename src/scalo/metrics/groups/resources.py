@@ -6,8 +6,7 @@
 #  License:      Apache-2.0
 #  Copyright:    (c) 2026 HYPERI PTY LIMITED
 
-"""
-ResourceMetrics -- process and container resource gauges.
+"""ResourceMetrics -- process and container resource gauges.
 
 Mirrors scalo-rs's process and container collectors: the same bare names, each
 read fresh at every collection. Container gauges come from the cgroup (v2, else
@@ -68,8 +67,7 @@ def _drop_prometheus_process_collector() -> None:
 
 
 class ResourceMetrics:
-    """
-    Process and container resource gauges, read at every collection.
+    """Process and container resource gauges, read at every collection.
 
     Registers (under the manager's optional ``metric_prefix``):
         process_cpu_seconds_total gauge -- user plus system CPU time this process has

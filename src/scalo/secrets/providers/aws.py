@@ -4,6 +4,7 @@ import json
 import logging
 import re
 from datetime import UTC, datetime
+from typing import override
 
 from ...concurrency import run_blocking
 from ..exceptions import (
@@ -26,17 +27,16 @@ try:
 
     BOTO3_AVAILABLE = True
 except ImportError:
+    # The constructor raises before any use of boto3 or ClientError.
     BOTO3_AVAILABLE = False
-    boto3 = None  # type: ignore[assignment]
-    ClientError = Exception  # type: ignore[assignment,misc]
 
 try:
     from aiobotocore.session import get_session as get_aiobotocore_session
 
     AIOBOTOCORE_AVAILABLE = True
 except ImportError:
+    # Every use of get_aiobotocore_session is guarded by AIOBOTOCORE_AVAILABLE.
     AIOBOTOCORE_AVAILABLE = False
-    get_aiobotocore_session = None  # type: ignore[assignment]
 
 # AWS reports a name inside its recovery window only as InvalidRequestException, so the message decides.
 _PENDING_DELETION = re.compile(r"(?:marked|scheduled) for deletion|marked deleted", re.IGNORECASE)
@@ -325,8 +325,10 @@ class AWSProvider(VersionedProvider):
     # --- List ---
 
     async def list_async(self, filter: SecretFilter | None = None) -> list[str]:
-        """List secret names. ``filter.prefix`` filters server-side; ``filter.tags`` use AWS
-        tag-key/tag-value filters; ``filter.pattern`` is a client-side fnmatch.
+        """List secret names matching ``filter``.
+
+        ``filter.prefix`` filters server-side, ``filter.tags`` use AWS
+        tag-key/tag-value filters, and ``filter.pattern`` is a client-side fnmatch.
         """
         if not AIOBOTOCORE_AVAILABLE:
             return await run_blocking(self.list_sync, filter)
@@ -398,6 +400,7 @@ class AWSProvider(VersionedProvider):
 
     # --- Metadata ---
 
+    @override
     async def get_metadata_async(self, path: str) -> SecretMetadata:
         if not AIOBOTOCORE_AVAILABLE:
             return await run_blocking(self.get_metadata_sync, path)
@@ -412,6 +415,7 @@ class AWSProvider(VersionedProvider):
         except ClientError as e:
             raise self._map_client_error(e, "describe", path)
 
+    @override
     def get_metadata_sync(self, path: str) -> SecretMetadata:
         client = self._get_sync_client()
         try:
@@ -432,6 +436,7 @@ class AWSProvider(VersionedProvider):
             api_kwargs["KmsKeyId"] = self._config.kms_key_id
         return api_kwargs
 
+    @override
     async def create_async(self, path: str, value: bytes, tags: dict[str, str] | None = None) -> SecretMetadata:
         if not AIOBOTOCORE_AVAILABLE:
             return await run_blocking(self.create_sync, path, value, tags)
@@ -450,6 +455,7 @@ class AWSProvider(VersionedProvider):
         except ClientError as e:
             raise self._map_client_error(e, "CreateSecret", path)
 
+    @override
     def create_sync(self, path: str, value: bytes, tags: dict[str, str] | None = None) -> SecretMetadata:
         client = self._get_sync_client()
         api_kwargs = self._create_kwargs(path, value, tags)
@@ -480,6 +486,7 @@ class AWSProvider(VersionedProvider):
         except ClientError as e:
             raise self._map_client_error(e, "UpdateSecret", path)
 
+    @override
     def update_sync(self, path: str, value: bytes) -> SecretMetadata:
         client = self._get_sync_client()
         try:
@@ -529,6 +536,7 @@ class AWSProvider(VersionedProvider):
 
     # --- Versioning ---
 
+    @override
     async def get_version_async(self, path: str, version: str, key: str | None = None) -> SecretValue:
         if not AIOBOTOCORE_AVAILABLE:
             return await run_blocking(self.get_version_sync, path, version, key)
@@ -552,6 +560,7 @@ class AWSProvider(VersionedProvider):
                 raise SecretVersionNotFoundError(path, version, self.name)
             raise self._map_client_error(e, "GetSecretValue", path)
 
+    @override
     def get_version_sync(self, path: str, version: str, key: str | None = None) -> SecretValue:
         client = self._get_sync_client()
         try:
@@ -567,6 +576,7 @@ class AWSProvider(VersionedProvider):
                 raise SecretVersionNotFoundError(path, version, self.name)
             raise self._map_client_error(e, "GetSecretValue", path)
 
+    @override
     async def list_versions_async(self, path: str) -> list[SecretMetadata]:
         if not AIOBOTOCORE_AVAILABLE:
             return await run_blocking(self.list_versions_sync, path)
@@ -592,6 +602,7 @@ class AWSProvider(VersionedProvider):
 
         return self._build_version_list(items, path)
 
+    @override
     def list_versions_sync(self, path: str) -> list[SecretMetadata]:
         client = self._get_sync_client()
         items: list[dict] = []

@@ -6,8 +6,7 @@
 #  License:      Apache-2.0
 #  Copyright:    (c) 2026 HYPERI PTY LIMITED
 
-"""
-Circuit breaker on the state machine of scalo-rs ``src/tiered_sink/circuit.rs``.
+"""Circuit breaker on the state machine of scalo-rs ``src/tiered_sink/circuit.rs``.
 
 State machine:
     CLOSED -> OPEN:      consecutive_failures >= failure_threshold
@@ -54,8 +53,7 @@ class CircuitBreakerError(Exception):
 
 
 class CircuitBreaker:
-    """
-    Circuit breaker with Closed/Open/HalfOpen state machine.
+    """Circuit breaker with Closed/Open/HalfOpen state machine.
 
     Usage as context manager::
 
@@ -87,8 +85,7 @@ class CircuitBreaker:
 
     @property
     def state(self) -> CircuitState:
-        """
-        Current circuit state.
+        """Current circuit state.
 
         Auto-transitions OPEN -> HALF_OPEN when reset_timeout has elapsed.
         """
@@ -162,8 +159,7 @@ class CircuitBreaker:
             self.record_success()
 
     def record_success(self) -> None:
-        """
-        Record a successful call.
+        """Record a successful call.
 
         CLOSED: resets consecutive failure count.
         HALF_OPEN: transitions to CLOSED, resets failure count.
@@ -178,8 +174,7 @@ class CircuitBreaker:
                 self._half_open_calls = 0
 
     def record_failure(self) -> None:
-        """
-        Record a failed call.
+        """Record a failed call.
 
         CLOSED: increments failure count; opens circuit at threshold.
         HALF_OPEN: transitions to OPEN immediately.
@@ -236,8 +231,7 @@ class CircuitBreaker:
     # -- Internal --
 
     def _evaluate_state(self) -> CircuitState:
-        """
-        Evaluate and potentially transition state.
+        """Evaluate and potentially transition state.
 
         Must be called with ``self._lock`` held.
         """

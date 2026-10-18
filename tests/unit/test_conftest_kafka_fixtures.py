@@ -25,6 +25,7 @@ import pytest
 # Import conftest.py directly (it's not a normal module)
 conftest_path = Path(__file__).parent.parent / "conftest.py"
 spec = importlib.util.spec_from_file_location("conftest", conftest_path)
+assert spec is not None and spec.loader is not None, f"cannot load {conftest_path}"
 conftest = importlib.util.module_from_spec(spec)
 sys.modules["conftest"] = conftest
 spec.loader.exec_module(conftest)

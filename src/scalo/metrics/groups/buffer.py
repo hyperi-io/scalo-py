@@ -6,14 +6,11 @@
 #  License:      Apache-2.0
 #  Copyright:    (c) 2026 HYPERI PTY LIMITED
 
-"""
-BufferMetrics -- composable metric group for buffered services.
+"""BufferMetrics -- composable metric group for buffered services.
 
 Mirrors scalo-rs's groups::BufferMetrics. Tracks buffer occupancy,
 flush operations, and flush triggers.
 """
-
-from __future__ import annotations
 
 from typing import TYPE_CHECKING, Any
 
@@ -25,8 +22,7 @@ DEFAULT_FLUSH_DURATION_BUCKETS = (0.001, 0.005, 0.01, 0.025, 0.05, 0.1, 0.25, 0.
 
 
 class BufferMetrics:
-    """
-    Buffer metrics for services with internal buffering.
+    """Buffer metrics for services with internal buffering.
 
     Registers (``{p}`` = optional metric prefix, bare by default):
         {p}_buffer_bytes gauge
@@ -41,8 +37,7 @@ class BufferMetrics:
         mgr: MetricsManager,
         flush_duration_buckets: tuple[float, ...] | None = None,
     ) -> None:
-        """
-        Register all buffer metrics.
+        """Register all buffer metrics.
 
         Args:
             mgr: MetricsManager instance
@@ -70,8 +65,7 @@ class BufferMetrics:
         self._buffer_records.set(records)
 
     def record_flush(self, duration_seconds: float, trigger: str) -> None:
-        """
-        Record a buffer flush event.
+        """Record a buffer flush event.
 
         Args:
             duration_seconds: Time taken to flush

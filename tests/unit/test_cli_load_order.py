@@ -16,8 +16,6 @@ cascade had no effect.
 Mirrors scalo-rs ``tests/logger_cascade_level.rs``.
 """
 
-from __future__ import annotations
-
 import pytest
 import yaml
 
@@ -43,7 +41,8 @@ def _console_sink_levels() -> list[int]:
     """The minimum level of every sink loguru currently has installed."""
     from scalo.logger import logger
 
-    return [handler.levelno for handler in logger._core.handlers.values()]
+    # loguru's stubs leave out the private core that holds the installed handlers.
+    return [handler.levelno for handler in logger._core.handlers.values()]  # ty: ignore[unresolved-attribute]
 
 
 def _run(app: ServiceApp, argv: list[str]) -> None:

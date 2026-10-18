@@ -6,8 +6,7 @@
 # License:   Apache-2.0
 # Copyright: (c) 2026 HYPERI PTY LIMITED
 
-"""
-Kafka configuration defaults and utilities.
+"""Kafka configuration defaults and utilities.
 
 Uses librdkafka configuration names directly:
 https://github.com/confluentinc/librdkafka/blob/master/CONFIGURATION.md
@@ -112,8 +111,7 @@ def merge_config(
     defaults: dict[str, Any],
     verify_ssl: bool = True,
 ) -> dict[str, Any]:
-    """
-    Merge user configuration with defaults.
+    """Merge user configuration with defaults.
 
     User configuration takes precedence over defaults. If verify_ssl is False,
     sets the librdkafka config to disable SSL certificate verification.
@@ -199,8 +197,7 @@ def _offset_query_consumer_config(user_config: dict[str, Any], verify_ssl: bool)
 
 
 def config_from_env(prefix: str = "KAFKA_") -> dict[str, Any]:
-    """
-    Build Kafka configuration from environment variables.
+    """Build Kafka configuration from environment variables.
 
     Reads environment variables and converts them to librdkafka config names.
 
@@ -242,8 +239,7 @@ def config_from_env(prefix: str = "KAFKA_") -> dict[str, Any]:
 
 
 def get_default_config(verify_ssl: bool = True) -> dict[str, Any]:
-    """
-    Get default Kafka configuration from environment.
+    """Get default Kafka configuration from environment.
 
     Combines environment variables with admin defaults.
 
@@ -288,8 +284,7 @@ def external_sasl_scram(
     mechanism: str = "SCRAM-SHA-512",
     verify_ssl: bool = True,
 ) -> dict[str, Any]:
-    """
-    Build a Kafka client config for an external broker using SASL_SSL + SCRAM.
+    """Build a Kafka client config for an external broker using SASL_SSL + SCRAM.
 
     The common shape for internet-facing brokers that speak SCRAM: self-hosted
     Apache Kafka, Redpanda, AWS MSK provisioned. NOT Confluent Cloud (API-key
@@ -329,8 +324,7 @@ def internal_sasl_scram(
     *,
     mechanism: str = "SCRAM-SHA-512",
 ) -> dict[str, Any]:
-    """
-    Build a Kafka client config for an internal broker using SASL_PLAINTEXT + SCRAM.
+    """Build a Kafka client config for an internal broker using SASL_PLAINTEXT + SCRAM.
 
     Used when TLS is terminated upstream (mTLS service mesh, in-cluster Kafka)
     so wire encryption is already provided by the network layer.
@@ -367,8 +361,7 @@ def config_from_file(
     format: ConfigFormat | None = None,
     section: str = "kafka",
 ) -> dict[str, Any]:
-    """
-    Load Kafka configuration from a file.
+    """Load Kafka configuration from a file.
 
     Supports common configuration file formats used with Kafka:
     - .properties - Java-style properties (key=value, # comments)
@@ -406,7 +399,7 @@ def config_from_file(
     # Determine format from extension if not specified
     if format is None:
         ext = file_path.suffix.lower()
-        format_map = {
+        format_map: dict[str, ConfigFormat] = {
             ".properties": "properties",
             ".json": "json",
             ".yaml": "yaml",
@@ -434,8 +427,7 @@ def config_from_file(
 
 
 def _parse_properties(content: str) -> dict[str, Any]:
-    """
-    Parse Java-style properties format.
+    """Parse Java-style properties format.
 
     Handles:
     - key=value pairs

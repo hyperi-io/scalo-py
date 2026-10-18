@@ -1,5 +1,4 @@
-"""
-scalo CLI framework -- Typer-based command-line interface for services.
+"""scalo CLI framework -- Typer-based command-line interface for services.
 
 Two levels of usage:
 
@@ -60,6 +59,8 @@ __all__ = [
     "version",
 ]
 
+from typing import TYPE_CHECKING
+
 # Attempt to import Typer
 try:
     from typer import Argument, Context, Exit, Option, Typer
@@ -87,13 +88,14 @@ except ImportError:
                 "Documentation: https://typer.tiangolo.com/"
             )
 
-    # Replace all exports with error placeholder
-    Typer = _TyperNotInstalled
-    Option = _TyperNotInstalled
-    Argument = _TyperNotInstalled
-    Context = _TyperNotInstalled
-    Exit = _TyperNotInstalled
-    CliRunner = _TyperNotInstalled
+    # typer is a core dependency, so type checkers (here and in consumers) see only its real exports.
+    if not TYPE_CHECKING:
+        Typer = _TyperNotInstalled
+        Option = _TyperNotInstalled
+        Argument = _TyperNotInstalled
+        Context = _TyperNotInstalled
+        Exit = _TyperNotInstalled
+        CliRunner = _TyperNotInstalled
 
 # Import submodules (always available, gracefully handle missing Typer)
 from . import options, output, version

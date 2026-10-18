@@ -13,9 +13,8 @@ structural per spec Section 9.1 -- the country-code prefix + check digits
 make the candidate shape distinctive.
 """
 
-from __future__ import annotations
-
 import re
+from typing import override
 
 from stdnum import iban
 
@@ -32,6 +31,7 @@ class IbanValidator(_Validator):
         r"\b[A-Z]{2}\d{2}(?:[ ]?[A-Z0-9]){11,30}\b",
     )
 
+    @override
     def validate(self, candidate: str) -> bool:
         try:
             return iban.is_valid(candidate.replace(" ", ""))

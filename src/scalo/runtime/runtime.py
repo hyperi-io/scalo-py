@@ -1,6 +1,4 @@
-"""
-scalo Runtime - Container-Aware Path Management
-===================================================
+"""scalo Runtime: container-aware path management.
 
 Automatic path detection for containers and local development.
 Works identically in K8s, Docker, and bare metal - zero configuration!
@@ -100,8 +98,7 @@ from ..logger import logger
 
 @dataclass
 class RuntimePaths:
-    """
-    Unified path configuration for application resources.
+    """Unified path configuration for application resources.
 
     Supports both containerized and local deployment with same semantics:
     - config_dir: Read-only configuration (ConfigMap in K8s, ~/.config locally)
@@ -130,8 +127,7 @@ class RuntimePaths:
 
 
 class RuntimeEnvironment:
-    """
-    Detect and configure runtime environment (container vs local).
+    """Detect and configure runtime environment (container vs local).
 
     Provides unified path resolution for:
     - Configuration files (read-only)
@@ -143,8 +139,7 @@ class RuntimeEnvironment:
     """
 
     def __init__(self, app_name: str, force_mode: str | None = None):
-        """
-        Initialize runtime environment.
+        """Initialize runtime environment.
 
         Args:
             app_name: Application name (used for local paths)
@@ -154,15 +149,13 @@ class RuntimeEnvironment:
         self.force_mode = force_mode
 
     def detect_runtime(self) -> RuntimePaths:
-        """
-        Detect runtime environment and return appropriate paths.
+        """Detect runtime environment and return appropriate paths.
 
         Detection order:
         1. force_mode override (if set)
         2. Container detection (see _is_container)
         3. Fallback to local mode
         """
-
         # Override detection if requested
         if self.force_mode == "container":
             return self._get_container_paths()
@@ -180,8 +173,7 @@ class RuntimeEnvironment:
             return self._get_local_paths()
 
     def _is_container(self) -> tuple[bool, str]:
-        """
-        Detect if running inside a container.
+        """Detect if running inside a container.
 
         Runs the container-evidence checks ``get_mount_config()`` uses (see
         ``scalo.config.config._is_container``), then one low-confidence
@@ -207,8 +199,7 @@ class RuntimeEnvironment:
         return False, "none"
 
     def _get_container_paths(self, detection_method: str = "forced") -> RuntimePaths:
-        """
-        Get container-standard paths.
+        """Get container-standard paths.
 
         Base path can be overridden with CONTAINER_BASE_PATH environment variable.
         Default: /app
@@ -253,8 +244,7 @@ class RuntimeEnvironment:
         )
 
     def _get_local_paths(self) -> RuntimePaths:
-        """
-        Get local paths for CLI tools and daemons.
+        """Get local paths for CLI tools and daemons.
 
         Follows Unix daemon/CLI conventions:
         - /etc/appname or ~/.appname/config       - Configuration
@@ -267,7 +257,6 @@ class RuntimeEnvironment:
         For non-root users: Everything under ~/.appname/
         For root/system: Standard Unix paths (/etc, /var/lib, /var/log, /var/cache, /run)
         """
-
         home = Path.home()
 
         # Check if running as root/system user
@@ -312,14 +301,12 @@ class RuntimeEnvironment:
         )
 
     def ensure_directories(self, paths: RuntimePaths, create_config: bool = False):
-        """
-        Ensure required directories exist.
+        """Ensure required directories exist.
 
         Args:
             paths: RuntimePaths to create
             create_config: Create config_dir (normally read-only in containers)
         """
-
         # Create critical directories - fail fast if cannot create
         for dir_type, path in [("data", paths.data_dir), ("temp", paths.temp_dir)]:
             try:
@@ -352,8 +339,7 @@ class RuntimeEnvironment:
 
 # Convenience function
 def get_runtime_paths(app_name: str, ensure_dirs: bool = True) -> RuntimePaths:
-    """
-    Get runtime paths for application (auto-detect environment).
+    """Get runtime paths for application (auto-detect environment).
 
     Args:
         app_name: Application name

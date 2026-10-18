@@ -14,11 +14,10 @@ line -- while nothing listened. So each test drives ``run`` and makes a real
 HTTP request to the advertised address from inside the service.
 """
 
-from __future__ import annotations
-
 import http.client
 import json
 import socket
+from typing import Any
 
 import pytest
 
@@ -50,7 +49,8 @@ class _ProbeApp(ServiceApp):
         return VersionInfo(self.name, "0.1.0")
 
     def run_service(self, config) -> None:
-        self.observed = {}
+        # Mixed values: ports, (status, body) pairs and a startup response.
+        self.observed: dict[str, Any] = {}
         port = self._observability.bound_address[1]
         self.observed["port"] = port
         self.observed["livez"] = _get(port, "/livez")

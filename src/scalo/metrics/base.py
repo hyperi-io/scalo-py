@@ -1,5 +1,4 @@
-"""
-Base abstractions for metrics backends.
+"""Base abstractions for metrics backends.
 
 This module provides abstract base classes for metrics backends,
 enabling backend-agnostic instrumentation.
@@ -11,16 +10,14 @@ from typing import Any
 
 
 class MetricsBackend(ABC):
-    """
-    Abstract base for metrics backends (Prometheus, OpenTelemetry, etc.).
+    """Abstract base for metrics backends (Prometheus, OpenTelemetry, etc.).
 
     Provides unified API for creating and managing metrics regardless
     of underlying implementation.
     """
 
     def __init__(self, app_name: str, config: dict[str, Any] | None = None):
-        """
-        Initialize metrics backend.
+        """Initialize metrics backend.
 
         Args:
             app_name: Application name for metric labels
@@ -32,8 +29,7 @@ class MetricsBackend(ABC):
 
     @abstractmethod
     def counter(self, name: str, description: str, labels: list[str] | None = None) -> Any:
-        """
-        Create or get a Counter metric.
+        """Create or get a Counter metric.
 
         Counter is for values that only increase (requests, errors, etc.).
 
@@ -48,8 +44,7 @@ class MetricsBackend(ABC):
 
     @abstractmethod
     def gauge(self, name: str, description: str, labels: list[str] | None = None) -> Any:
-        """
-        Create or get a Gauge metric.
+        """Create or get a Gauge metric.
 
         Gauge is for values that can go up and down (queue size, etc.).
 
@@ -63,8 +58,7 @@ class MetricsBackend(ABC):
         """
 
     def observable_gauge(self, name: str, description: str, callback: Callable[[], float | None]) -> bool:
-        """
-        Register a gauge whose value *callback* reads at every collection.
+        """Register a gauge whose value *callback* reads at every collection.
 
         The callback returns None to report nothing for that collection.
 
@@ -87,8 +81,7 @@ class MetricsBackend(ABC):
         labels: list[str] | None = None,
         buckets: tuple[float, ...] | None = None,
     ) -> Any:
-        """
-        Create or get a Histogram metric.
+        """Create or get a Histogram metric.
 
         Histogram tracks distribution of values (latency, size, etc.).
 
@@ -104,8 +97,7 @@ class MetricsBackend(ABC):
 
     @abstractmethod
     def get_metrics(self) -> bytes:
-        """
-        Get metrics in backend's native format.
+        """Get metrics in backend's native format.
 
         Returns:
             Metrics as bytes (ready for HTTP response)
@@ -113,8 +105,7 @@ class MetricsBackend(ABC):
 
     @abstractmethod
     def get_content_type(self) -> str:
-        """
-        Get HTTP content type for metrics endpoint.
+        """Get HTTP content type for metrics endpoint.
 
         Returns:
             Content-Type string

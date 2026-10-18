@@ -34,8 +34,8 @@ try:
 
     MOTO_AVAILABLE = True
 except ImportError:
+    # pytestmark skips every test, so the fixture never reaches mock_aws.
     MOTO_AVAILABLE = False
-    mock_aws = None  # type: ignore[assignment]
 
 
 pytestmark = [
