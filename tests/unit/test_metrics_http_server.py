@@ -405,3 +405,68 @@ async def test_a_router_prefix_parameter_named_like_a_mount_parameter_is_unresol
     assert _count(metrics=metrics, endpoint=UNRESOLVED_ROUTE, method="GET", status_code="200") == 1.0
     assert "acme" not in exposition
     assert "beta" not in exposition
+
+
+@pytest.mark.parametrize(
+    ("convertor", "values"),
+    [
+        ("float", ["1", "2", "3", "4", "5"]),
+        ("int", ["1", "2", "3", "4", "5"]),
+        ("float", ["1.5", "2.5", "3.5", "4.5", "5.5"]),
+    ],
+)
+async def test_typed_router_prefix_values_under_a_typed_mount_share_one_series(convertor: str, values: list[str]):
+    """A value's text never round-trips reliably, so prefix text beside a mount value is never labelled."""
+    router = APIRouter()
+
+    @router.get("/r")
+    def leaf() -> dict:
+        return {}
+
+    sub_app = FastAPI()
+    sub_app.include_router(router, prefix=f"/i/{{x:{convertor}}}")
+    app = FastAPI()
+    app.mount(f"/m/{{x:{convertor}}}", sub_app)
+    client, metrics = _instrumented(app=app, app_name=f"http-server-typed-shadow-{convertor}-{len(values[0])}")
+
+    async with client:
+        for value in values:
+            await client.get(f"/m/{value}/i/{value}/r")
+
+    series = [line for line in metrics.get_metrics().decode().splitlines() if line.startswith(SERIES)]
+    assert series == [
+        'http_server_request_duration_seconds_count{endpoint="__unresolved__",method="GET",status_code="200"} 5.0'
+    ]
+
+
+class _BrokenMount:
+    """Looks like a Starlette mount, but its pattern is a plain string."""
+
+    path = "/m"
+    path_format = "/m/{path}"
+    path_regex = "^/m/(?P<path>.*)$"
+    param_convertors: dict = {}
+    routes: list = []
+
+
+class _BrokenRouter:
+    routes = (_BrokenMount(),)
+
+
+async def test_a_route_tree_the_label_cannot_read_is_still_recorded():
+    """Deriving the label must never cost the sample, or raise out of the middleware."""
+
+    async def app(scope, receive, send) -> None:
+        scope.update(route=_BrokenMount(), router=_BrokenRouter(), app_root_path="", root_path="/m")
+        await send({"type": "http.response.start", "status": 200, "headers": []})
+        await send({"type": "http.response.body", "body": b"ok"})
+
+    metrics = create_metrics("http-server-broken-tree", backend="prometheus")
+    instrumented = HttpServerMetricsMiddleware(app, metrics=metrics)
+    transport = httpx.ASGITransport(app=instrumented)
+
+    async with httpx.AsyncClient(base_url="http://test", transport=transport) as client:
+        response = await client.get("/m/anything")
+
+    assert response.status_code == 200
+    assert _count(metrics=metrics, endpoint=UNRESOLVED_ROUTE, method="GET", status_code="200") == 1.0

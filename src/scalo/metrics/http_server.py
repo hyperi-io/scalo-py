@@ -33,7 +33,8 @@ DURATION_BUCKETS = (0.005, 0.01, 0.025, 0.05, 0.075, 0.1, 0.25, 0.5, 0.75, 1.0, 
 # Probe and scrape traffic would otherwise dominate the request rate.
 DEFAULT_SKIP_PATHS = frozenset({"/healthz", "/livez", "/metrics", "/readyz"})
 
-# A request that matched no route, so a scan of random paths cannot mint one series per path.
+# A request that left no route on the scope, so a scan of random paths cannot mint one series per path.
+# That is no match at all, and also anything FastAPI's router serves from a Mount or a plain Starlette route.
 UNMATCHED_ROUTE = "__unmatched__"
 
 # A matched route whose full template cannot be named without a request value, so it never mints a series per value.
@@ -81,8 +82,8 @@ def _is_mount(route: Any) -> bool:
     return has_tree and isinstance(path_format, str) and path_format.endswith("/{path}")
 
 
-def _mount_chain(scope: Scope, app_path: str, mounted: str) -> tuple[list[Any], dict[str, Any]] | None:
-    """The mounts that consumed ``mounted``, walked from the router, with the values they matched.
+def _mount_chain(scope: Scope, app_path: str, mounted: str) -> tuple[list[Any], set[str]] | None:
+    """The mounts that consumed ``mounted``, walked from the router, with their parameter names.
 
     Each level takes the first mount whose pattern matches, as Starlette's router does. A
     mount it cannot see, such as one inside FastAPI's included-router wrapper, leaves the
@@ -91,7 +92,7 @@ def _mount_chain(scope: Scope, app_path: str, mounted: str) -> tuple[list[Any], 
     routes = getattr(scope.get("router"), "routes", None)
     remaining, consumed = app_path, 0
     chain: list[Any] = []
-    values: dict[str, Any] = {}
+    names: set[str] = set()
     while consumed < len(mounted):
         if routes is None or len(chain) >= _MAX_MOUNT_DEPTH:
             return None
@@ -103,13 +104,10 @@ def _mount_chain(scope: Scope, app_path: str, mounted: str) -> tuple[list[Any], 
         text = remaining[: len(remaining) - len(rest)]
         if not mounted.startswith(text, consumed):
             return None
-        try:
-            values.update({name: mount.param_convertors[name].convert(raw) for name, raw in matched.items()})
-        except KeyError, AttributeError, TypeError, ValueError, AssertionError:
-            return None
+        names.update(matched)
         chain.append(mount)
         routes, remaining, consumed = getattr(mount, "routes", None), rest, consumed + len(text)
-    return chain, values
+    return chain, names
 
 
 def _render(route: Any, template: str, params: dict[str, Any]) -> str | None:
@@ -134,18 +132,18 @@ def _full_template(scope: Scope, route: Any, template: str) -> str | None:
     walked = _mount_chain(scope=scope, app_path=app_path, mounted=mounted) if mounted else ([], {})
     if walked is None:
         return None
-    chain, mount_values = walked
+    chain, mount_names = walked
     mount_template = "".join(str(mount.path) for mount in chain)
     params = dict(scope.get("path_params") or {})
-    # A request with no route below its last mount is labelled by the mounts alone.
+    # A Starlette router leaves a mount as the route when nothing below it matched, and FastAPI's leaves none.
     ends_at_mount = _is_mount(route)
     if ends_at_mount and (not chain or chain[-1] is not route):
         return None
     rendered = "" if ends_at_mount else _render(route=route, template=template, params=params)
     if rendered is None:
         return None
-    # Any other matched value must be a mount's: a router prefix parameter is a request value.
-    if any(key not in mount_values or mount_values[key] != value for key, value in params.items()):
+    # A matched value that is neither the route's nor a mount's came from a router prefix or a Host.
+    if any(key not in mount_names for key in params):
         return None
     if ends_at_mount:
         return mount_template
@@ -153,8 +151,8 @@ def _full_template(scope: Scope, route: Any, template: str) -> str | None:
     if not route_path.endswith(rendered):
         return None
     between = route_path[: len(route_path) - len(rendered)]
-    # A router prefix parameter named like a mount's can overwrite it with the same value.
-    if between and any(str(value) in between for value in params.values()):
+    # Request text is labelled only when every matched value is the route's own, which proves it holds none.
+    if between and params:
         return None
     return mount_template + between + template
 
@@ -166,7 +164,9 @@ def _route_template(scope: Scope) -> str:
     own router's prefix. Mount paths come from the mounts' own templates, walked from the
     router, because a route parameter of the same name overwrites a mount's value on the
     scope. Router prefixes between the last mount and the route are read off the request
-    path, as the part before the route rendered with its matched values.
+    path, as the part before the route rendered with its matched values, and only when
+    every matched value is the route's own. The label is built from templates and that
+    static text, so the route table bounds its values.
     """
     route = scope.get("route")
     template = getattr(route, "path", None)
@@ -187,12 +187,15 @@ class HttpServerMetricsMiddleware:
     Pure ASGI middleware recording one duration per HTTP request.
 
     Register it last so it is outermost and times the whole stack. The route
-    template runs from the app root: the route FastAPI leaves on the scope, with
-    the router prefixes and mount paths above it. A request no route matched
-    records ``UNMATCHED_ROUTE``, and so does every request under a framework that
-    leaves no route. One whose full template cannot be named without a request
-    value records ``UNRESOLVED_ROUTE``: a parameter in an included router's prefix,
-    a mount inside an included router, or a value its convertor rewrites.
+    template runs from the app root: the route the router leaves on the scope, with
+    the router prefixes and mount paths above it. A request that leaves no route
+    records ``UNMATCHED_ROUTE``. Under a FastAPI app that includes a 404 or 307
+    inside a mount, ``/docs``, ``/openapi.json`` and ``add_route`` routes, whatever
+    status they return, because FastAPI's router records only its own API routes.
+    One whose full template cannot be named without a request value records
+    ``UNRESOLVED_ROUTE``: a parameter in an included router's prefix, a mount
+    inside an included router, a router prefix below a parameterised mount, or a
+    value its convertor rewrites.
 
     Args:
         app: The ASGI app to wrap.
@@ -229,8 +232,13 @@ class HttpServerMetricsMiddleware:
         try:
             await self._app(scope, receive, recording_send)
         finally:
+            try:
+                endpoint = _route_template(scope=scope)
+            except Exception:
+                # A route tree the label cannot be read from still records the sample.
+                endpoint = UNRESOLVED_ROUTE
             labelled = self._duration.labels(
-                endpoint=_route_template(scope=scope),
+                endpoint=endpoint,
                 method=_method(scope=scope),
                 status_code=str(status["code"]),
             )
