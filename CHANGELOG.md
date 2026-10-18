@@ -3,6 +3,14 @@
 Rendered by CI and committed back at the end of a release -- do not edit by
 hand. Release notes also appear on the GitHub Releases page, one per tag.
 
+## [2.31.18](https://github.com/hyperi-io/scalo-py/compare/v2.31.17...v2.31.18) (2026-10-18)
+
+### Bug Fixes
+
+* clear the ty and docstring warn tiers ([#138](https://github.com/hyperi-io/scalo-py/issues/138)) ([9981876](https://github.com/hyperi-io/scalo-py/commit/9981876da91795b38ef53276e5ec91d844005863))
+* label HTTP metrics by full route template, count each replica once ([#137](https://github.com/hyperi-io/scalo-py/issues/137)) ([982e348](https://github.com/hyperi-io/scalo-py/commit/982e34896b5f90e279f5e437cf01ab527a5eb9b5))
+* **tests:** keep the deliberate reload failure out of the CI annotations ([#139](https://github.com/hyperi-io/scalo-py/issues/139)) ([9803479](https://github.com/hyperi-io/scalo-py/commit/980347989e2d1500ac987048824319310ba789c8))
+
 ## [2.31.17](https://github.com/hyperi-io/scalo-py/compare/v2.31.16...v2.31.17) (2026-10-17)
 
 ### Bug Fixes
