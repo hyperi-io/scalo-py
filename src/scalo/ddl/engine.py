@@ -38,8 +38,6 @@ The variant and its parameters always survive:
 ``ReplacingMergeTree(ver)`` becomes ``ReplicatedReplacingMergeTree(ver)``.
 """
 
-from __future__ import annotations
-
 from dataclasses import dataclass
 from enum import StrEnum
 
@@ -230,14 +228,15 @@ class EngineResolver:
             return None
 
     def _cluster_name(self, database: str) -> str | None:
-        """The cluster to fan DDL over: the macro-declared one, else the first
-        multi-host cluster the server reports."""
+        """The cluster to fan DDL over: the macro-declared one, else the first multi-host cluster the server reports."""
         try:
             macro_cluster = self._scalar("SELECT substitution FROM system.macros WHERE macro = 'cluster'")
             if macro_cluster:
                 return macro_cluster
+            # A Replicated database named like a cluster lists each replica again, so count replicas, not rows.
             rows = self._rows(
-                "SELECT cluster FROM system.clusters GROUP BY cluster HAVING count() > 1 ORDER BY cluster LIMIT 1"
+                "SELECT cluster FROM system.clusters GROUP BY cluster "
+                "HAVING uniqExact((shard_num, replica_num)) > 1 ORDER BY cluster LIMIT 1"
             )
             return rows[0][0] if rows else None
         except Exception as exc:

@@ -14,8 +14,6 @@ is accepted and then splits data across replicas, so these tests pin which
 inputs may produce a replicated form and which may fan DDL out with ON CLUSTER.
 """
 
-from __future__ import annotations
-
 import pytest
 
 from scalo.ddl import EngineResolver, EngineSpec, Topology, parse_engine
@@ -26,14 +24,23 @@ class _Result:
         self.result_rows = rows
 
 
+def _replicas(cluster: str, count: int) -> list[tuple[str, int, int]]:
+    """``system.clusters`` rows for one shard of ``count`` replicas."""
+    return [(cluster, 1, number) for number in range(1, count + 1)]
+
+
 class _FakeClient:
-    """Answers the three questions sensing asks, and records what it was asked."""
+    """Answers the three questions sensing asks, and records what it was asked.
+
+    ``clusters`` holds ``system.clusters`` rows as ``(cluster, shard_num, replica_num)``.
+    A Replicated database named like a cluster lists every replica a second time.
+    """
 
     def __init__(self, *, cloud=None, db_engine=None, macros=(), clusters=()):
         self._cloud = cloud
         self._db_engine = db_engine
         self._macros = macros
-        self._clusters = clusters
+        self._clusters = list(clusters)
         self.queries: list[str] = []
         self.parameters: list[dict | None] = []
 
@@ -50,8 +57,22 @@ class _FakeClient:
         if "system.macros" in sql:
             return _Result([[m] for m in self._macros])
         if "system.clusters" in sql:
-            return _Result([[c] for c in self._clusters])
+            return _Result(self._multi_host_clusters(sql))
         raise AssertionError(f"unexpected query: {sql}")
+
+    def _multi_host_clusters(self, sql: str) -> list[list[str]]:
+        """The first cluster, by name, whose HAVING aggregate is above 1."""
+        by_cluster: dict[str, list[tuple[int, int]]] = {}
+        for cluster, shard_num, replica_num in self._clusters:
+            by_cluster.setdefault(cluster, []).append((shard_num, replica_num))
+        if "uniqExact((shard_num, replica_num)) > 1" in sql:
+            hosts = {cluster: len(set(replicas)) for cluster, replicas in by_cluster.items()}
+        elif "count() > 1" in sql:
+            hosts = {cluster: len(replicas) for cluster, replicas in by_cluster.items()}
+        else:
+            raise AssertionError(f"unexpected system.clusters aggregate: {sql}")
+        multi_host = sorted(cluster for cluster, count in hosts.items() if count > 1)
+        return [[multi_host[0]]] if multi_host else []
 
 
 class _ExplodingClient:
@@ -110,10 +131,36 @@ def test_an_atomic_database_with_cluster_macros_fans_out():
 
 
 def test_it_falls_back_to_a_multi_host_cluster_when_no_macro_names_one():
-    resolver = EngineResolver(client=_FakeClient(db_engine="Atomic", macros=("shard", "replica"), clusters=("found",)))
-    resolved = resolver.resolve(EngineSpec("MergeTree"), "db")
+    client = _FakeClient(db_engine="Atomic", macros=("shard", "replica"), clusters=_replicas("found", 2))
+    resolved = EngineResolver(client=client).resolve(EngineSpec("MergeTree"), "db")
 
     assert resolved.on_cluster == " ON CLUSTER found"
+
+
+def test_a_single_node_listed_twice_by_its_replicated_database_is_not_a_cluster():
+    """One server, two system.clusters rows: the remote_servers entry and the database's own."""
+    client = _FakeClient(db_engine="Atomic", macros=("shard", "replica"), clusters=_replicas("dfe", 1) * 2)
+    resolved = EngineResolver(client=client).resolve(EngineSpec("MergeTree"), "db")
+
+    assert resolved.clause == "ReplicatedMergeTree"
+    assert resolved.on_cluster == ""
+
+
+def test_a_doubled_single_node_does_not_shadow_a_real_cluster():
+    """The doubled entry sorts first, so counting rows picks it over the cluster with two hosts."""
+    rows = _replicas("analytics", 1) * 2 + _replicas("main", 2)
+    client = _FakeClient(db_engine="Atomic", macros=("shard", "replica"), clusters=rows)
+    resolved = EngineResolver(client=client).resolve(EngineSpec("MergeTree"), "db")
+
+    assert resolved.on_cluster == " ON CLUSTER main"
+
+
+def test_replicas_listed_twice_still_count_as_a_cluster():
+    """Two replicas show up as four rows and are still two hosts."""
+    client = _FakeClient(db_engine="Atomic", macros=("shard", "replica"), clusters=_replicas("dfe", 2) * 2)
+    resolved = EngineResolver(client=client).resolve(EngineSpec("MergeTree"), "db")
+
+    assert resolved.on_cluster == " ON CLUSTER dfe"
 
 
 def test_variant_params_survive_replication():
