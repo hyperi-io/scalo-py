@@ -254,7 +254,9 @@ unnecessary because metrics push to the collector.
 `http_server_request_duration_seconds` (`http.server.request.duration`
 over OTLP), labelled by method, route template and status code.
 
-The route label is the full template from the app root, with every router prefix and mount path above the route: `/api/v1/accounts/{username}`, never `/api/v1/accounts/alice`. A request no route matched is labelled `__unmatched__`. When the part above the route cannot be named without a request value, as with a parameter in an included router's prefix or a mount path, the request is labelled `__unresolved__`.
+The route label is the full template from the app root, with every router prefix and mount path above the route: `/api/v1/accounts/{username}`, never `/api/v1/accounts/alice`. A mount keeps its own template, so `/orgs/{org}` is one label for every org. A request no route matched is labelled `__unmatched__`.
+
+A request whose template cannot be named without a request value is labelled `__unresolved__`, so a scan of values never mints a series per value. That covers a parameter in an included router's prefix, a mount inside an included router, a Host route with a parameter, and a typed value written in a non-canonical form (`/items/007` on `{x:int}`, `1.50` on a float, an uppercase UUID).
 
 fastapi 0.142+ records the same instrument itself, so turn its copy off
 or every request is counted twice:

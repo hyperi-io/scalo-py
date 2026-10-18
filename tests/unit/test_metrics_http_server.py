@@ -1,14 +1,24 @@
-"""HttpServerMetricsMiddleware against a real FastAPI app and the Prometheus backend."""
+"""HttpServerMetricsMiddleware against real FastAPI and Starlette apps and the Prometheus backend."""
 
 import httpx
 import pytest
 from fastapi import APIRouter, FastAPI
+from starlette.applications import Starlette
+from starlette.requests import Request
+from starlette.responses import PlainTextResponse
+from starlette.routing import Mount, Route
 
 from scalo.metrics import MetricsManager, create_metrics
 from scalo.metrics.http_server import UNMATCHED_ROUTE, UNRESOLVED_ROUTE, HttpServerMetricsMiddleware
 
+SERIES = "http_server_request_duration_seconds_count{"
 
-def _instrumented(app: FastAPI, app_name: str, root_path: str = "") -> tuple[httpx.AsyncClient, MetricsManager]:
+
+async def _ok(request: Request) -> PlainTextResponse:
+    return PlainTextResponse("ok")
+
+
+def _instrumented(app: Starlette, app_name: str, root_path: str = "") -> tuple[httpx.AsyncClient, MetricsManager]:
     metrics = create_metrics(app_name, backend="prometheus")
     app.add_middleware(HttpServerMetricsMiddleware, metrics=metrics)
     transport = httpx.ASGITransport(app=app, raise_app_exceptions=False, root_path=root_path)
@@ -96,7 +106,7 @@ async def test_probe_paths_are_not_recorded():
     async with client:
         await client.get("/livez")
 
-    assert "http_server_request_duration_seconds_count{" not in metrics.get_metrics().decode()
+    assert SERIES not in metrics.get_metrics().decode()
 
 
 @pytest.mark.parametrize(("sent", "recorded", "status_code"), [("get", "GET", "200"), ("PURGE", "_OTHER", "405")])
@@ -259,7 +269,7 @@ async def test_a_parameterised_router_prefix_never_puts_its_value_in_the_label()
     assert "alice" not in exposition
 
 
-async def test_a_parameterised_mount_never_puts_its_value_in_the_label():
+async def test_a_parameterised_mount_is_labelled_with_its_template():
     sub_app = FastAPI()
     sub_app.include_router(_accounts_router())
     app = FastAPI()
@@ -270,6 +280,128 @@ async def test_a_parameterised_mount_never_puts_its_value_in_the_label():
         await client.get("/orgs/acme/accounts/alice")
 
     exposition = metrics.get_metrics().decode()
-    assert _count(metrics=metrics, endpoint=UNRESOLVED_ROUTE, method="GET", status_code="200") == 1.0
+    assert _count(metrics=metrics, endpoint="/orgs/{org}/accounts/{username}", method="GET", status_code="200") == 1.0
     assert "acme" not in exposition
     assert "alice" not in exposition
+
+
+def _shadowed_mount_app() -> FastAPI:
+    """A mount parameter the route's own parameter of the same name overwrites on the scope."""
+    sub_app = FastAPI()
+
+    @sub_app.get("/accounts/{org}")
+    def account(org: str) -> dict:
+        return {"org": org}
+
+    app = FastAPI()
+    app.mount("/orgs/{org}", sub_app)
+    return app
+
+
+async def test_a_mount_parameter_shadowed_by_the_route_keeps_the_mount_template():
+    client, metrics = _instrumented(app=_shadowed_mount_app(), app_name="http-server-shadowed-mount")
+
+    async with client:
+        await client.get("/orgs/acme/accounts/alice")
+
+    exposition = metrics.get_metrics().decode()
+    assert _count(metrics=metrics, endpoint="/orgs/{org}/accounts/{org}", method="GET", status_code="200") == 1.0
+    assert "acme" not in exposition
+
+
+async def test_distinct_mount_values_share_one_series():
+    """A scan of mount values must not mint a series per value."""
+    client, metrics = _instrumented(app=_shadowed_mount_app(), app_name="http-server-mount-cardinality")
+
+    async with client:
+        for number in range(50):
+            await client.get(f"/orgs/org{number}/accounts/alice")
+
+    series = [line for line in metrics.get_metrics().decode().splitlines() if line.startswith(SERIES)]
+    assert series == [
+        'http_server_request_duration_seconds_count{endpoint="/orgs/{org}/accounts/{org}",method="GET",status_code="200"} 50.0'
+    ]
+
+
+async def test_nested_parameterised_mounts_keep_every_template():
+    app = Starlette(routes=[Mount("/a/{x}", routes=[Mount("/b/{x}", routes=[Route("/c/{x}", _ok)])])])
+    client, metrics = _instrumented(app=app, app_name="http-server-nested-mounts")
+
+    async with client:
+        response = await client.get("/a/alpha/b/bravo/c/charlie")
+
+    exposition = metrics.get_metrics().decode()
+    assert response.status_code == 200
+    assert _count(metrics=metrics, endpoint="/a/{x}/b/{x}/c/{x}", method="GET", status_code="200") == 1.0
+    assert "alpha" not in exposition
+    assert "bravo" not in exposition
+
+
+async def test_a_starlette_mount_shadowed_by_its_route_keeps_the_mount_template():
+    app = Starlette(routes=[Mount("/m/{org}", routes=[Route("/t/{org}", _ok)])])
+    client, metrics = _instrumented(app=app, app_name="http-server-starlette-mount")
+
+    async with client:
+        await client.get("/m/acme/t/alice")
+
+    exposition = metrics.get_metrics().decode()
+    assert _count(metrics=metrics, endpoint="/m/{org}/t/{org}", method="GET", status_code="200") == 1.0
+    assert "acme" not in exposition
+
+
+async def test_a_request_that_ends_at_a_mount_is_labelled_with_the_mount_template():
+    app = Starlette(routes=[Mount("/m/{org}", routes=[Route("/t", _ok)])])
+    client, metrics = _instrumented(app=app, app_name="http-server-ends-at-mount")
+
+    async with client:
+        await client.get("/m/acme/missing")
+
+    exposition = metrics.get_metrics().decode()
+    assert _count(metrics=metrics, endpoint="/m/{org}", method="GET", status_code="404") == 1.0
+    assert "acme" not in exposition
+
+
+async def test_a_mount_inside_an_included_router_is_unresolved():
+    """The mount sits inside FastAPI's included-router wrapper, where its template cannot be read."""
+    sub_app = FastAPI()
+
+    @sub_app.get("/items/{org}")
+    def item(org: str) -> dict:
+        return {"org": org}
+
+    router = APIRouter()
+    router.mount("/orgs/{org}", sub_app)
+    app = FastAPI()
+    app.include_router(router, prefix="/api")
+    client, metrics = _instrumented(app=app, app_name="http-server-included-mount")
+
+    async with client:
+        await client.get("/api/orgs/acme/items/alice")
+
+    exposition = metrics.get_metrics().decode()
+    assert _count(metrics=metrics, endpoint=UNRESOLVED_ROUTE, method="GET", status_code="200") == 1.0
+    assert "acme" not in exposition
+
+
+@pytest.mark.parametrize(("case", "path"), [("same", "/m/acme/i/acme/r"), ("different", "/m/acme/i/beta/r")])
+async def test_a_router_prefix_parameter_named_like_a_mount_parameter_is_unresolved(case: str, path: str):
+    """The prefix value overwrites the mount's on the scope, so neither may reach the label."""
+    router = APIRouter()
+
+    @router.get("/r")
+    def leaf() -> dict:
+        return {}
+
+    sub_app = FastAPI()
+    sub_app.include_router(router, prefix="/i/{x}")
+    app = FastAPI()
+    app.mount("/m/{x}", sub_app)
+    client, metrics = _instrumented(app=app, app_name=f"http-server-prefix-shadow-{case}")
+
+    async with client:
+        await client.get(path)
+
+    exposition = metrics.get_metrics().decode()
+    assert _count(metrics=metrics, endpoint=UNRESOLVED_ROUTE, method="GET", status_code="200") == 1.0
+    assert "acme" not in exposition
+    assert "beta" not in exposition
