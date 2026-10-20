@@ -182,6 +182,7 @@ def test_the_scalo_rs_contract_parses_every_v4_field() -> None:
     )
     assert contract.singleton is False
     assert contract.service_account is ServiceAccount.NONE
+    assert contract.hot_paths == ["rules", "routing.source_rules"]
     assert contract.config_schema is not None
     assert contract.config_schema["$defs"]["SourceSection"]["properties"]["batch_size"]["x-scalo-dial"] == "big"
 
@@ -269,6 +270,8 @@ def test_an_unknown_key_is_refused(parent: str) -> None:
         ("service_account", "external", "enum"),
         ("service_account", "None", "enum"),
         ("service_account", True, "enum"),
+        ("hot_paths", "rules", "list_type"),
+        ("hot_paths.0", 1, "string_type"),
     ],
 )
 def test_a_wrong_type_is_refused(path: str, value: Any, kind: str) -> None:
@@ -330,6 +333,11 @@ def test_a_dial_marker_is_checked_at_any_depth() -> None:
         ("security.capabilities_add.0", "net_bind_service"),
         ("security.capabilities_add.0", "CAP NET"),
         ("security.capabilities_add.0", ""),
+        ("hot_paths.0", ""),
+        ("hot_paths.0", "rules."),
+        ("hot_paths.0", "routing..rules"),
+        ("hot_paths.0", "a b"),
+        ("hot_paths.0", "rules\n"),
     ],
 )
 def test_a_name_outside_its_pattern_is_refused(path: str, value: str) -> None:
@@ -348,6 +356,8 @@ def test_a_fifty_character_writable_name_is_taken() -> None:
         ("writable_paths.1.name", "spool", "writable_paths[spool].name is declared twice"),
         ("writable_paths.1.path", "/var/lib/parity-app/spool/", "is mounted by another path"),
         ("singleton", True, "KEDA must be off"),
+        ("hot_paths.1", "rules", 'hot_paths[1]: "rules" is listed twice'),
+        ("config_mount_path", "", "hot_paths: names config paths, but the contract mounts no config file"),
     ],
 )
 def test_a_contract_breaking_a_cross_field_rule_is_refused(path: str, value: Any, message: str) -> None:
@@ -421,6 +431,15 @@ def test_a_contract_without_the_v4_fields_emits_their_defaults_as_scalo_rs_does(
     assert "optional" not in emitted["secrets"][0]
 
 
+def test_a_contract_without_hot_paths_omits_the_key() -> None:
+    bare = _bare()
+    assert bare.hot_paths == []
+    assert "hot_paths" not in json.loads(bare.to_json())
+    named = bare.model_copy(update={"hot_paths": ["rules"]})
+    assert json.loads(named.to_json())["hot_paths"] == ["rules"]
+    assert DeploymentContract.from_json(named.to_json()).hot_paths == ["rules"]
+
+
 def test_service_account_none_is_emitted_and_own_is_left_out() -> None:
     none = _bare().model_copy(update={"service_account": ServiceAccount.NONE})
     assert json.loads(none.to_json())["service_account"] == "none"
@@ -452,6 +471,7 @@ def test_a_v3_contract_loads_with_the_v4_defaults() -> None:
         "security",
         "singleton",
         "service_account",
+        "hot_paths",
         "config_mount_path",
         "health.startup_budget_seconds",
         "extra_ports.0.public",
@@ -467,6 +487,7 @@ def test_a_v3_contract_loads_with_the_v4_defaults() -> None:
     assert contract.security == SecurityContract()
     assert contract.singleton is False
     assert contract.service_account is ServiceAccount.OWN
+    assert contract.hot_paths == []
     assert contract.config_mount_path == ""
     assert contract.health.startup_budget_seconds == 150
     assert contract.extra_ports[0].public is False

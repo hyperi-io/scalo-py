@@ -89,6 +89,9 @@ _WRITABLE_NAME_PATTERN = r"^[a-z0-9]([-a-z0-9]{0,48}[a-z0-9])?$"
 _CAPABILITY_PATTERN = r"^[A-Z0-9_]+$"
 """An upper-case Linux capability name without the ``CAP_`` prefix, e.g. ``NET_ADMIN``."""
 
+_HOT_PATH_PATTERN = r"^[A-Za-z0-9_-]+(\.[A-Za-z0-9_-]+)*$"
+"""A dotted config path of letters, digits, ``_`` and ``-`` segments, e.g. ``routing.source_rules``."""
+
 _KUBERNETES_PROTOCOLS = ("TCP", "UDP", "SCTP")
 """The protocols Kubernetes takes on a container or Service port."""
 
@@ -748,6 +751,16 @@ class DeploymentContract(BaseModel):
     Left out of the emitted contract while it is ``own``, as scalo-rs does.
     """
 
+    hot_paths: list[Annotated[str, Field(pattern=_HOT_PATH_PATTERN)]] = Field(
+        default_factory=list, exclude_if=lambda value: not value
+    )
+    """Dotted config paths the app reloads while it runs, e.g. ``rules``.
+
+    The scalo-service chart leaves them out of the pod's config checksum, so an edit there reaches the mounted file
+    without rolling the pods. Each path is unique and needs ``config_mount_path``. Left out of the emitted contract
+    when empty.
+    """
+
     @field_validator("app_name")
     @classmethod
     def _app_name_is_a_service_name(cls, value: str) -> str:
@@ -797,6 +810,21 @@ class DeploymentContract(BaseModel):
                 raise ValueError(f"writable_paths[{writable.name}].path {writable.path!r} is mounted by another path")
             names.add(writable.name)
             paths.add(mount)
+        return self
+
+    @model_validator(mode="after")
+    def _hot_paths_are_unique_and_need_a_config_file(self) -> Self:
+        """Refuse a hot path listed twice, or any hot path with no config file to reload it from, as scalo-rs does."""
+        seen: set[str] = set()
+        for index, path in enumerate(self.hot_paths):
+            if path in seen:
+                raise ValueError(f"hot_paths[{index}]: {_quoted(path)} is listed twice")
+            seen.add(path)
+        if self.hot_paths and not self.config_mount_path:
+            raise ValueError(
+                "hot_paths: names config paths, but the contract mounts no config file to reload them from. "
+                "Set config_mount_path"
+            )
         return self
 
     @model_validator(mode="after")

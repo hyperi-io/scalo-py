@@ -1,7 +1,7 @@
-# Where each copied file comes from. hyperi-ci vendor sync rewrites this file.
+# Written by hyperi-ci vendor sync. Change the vendor: block, not this.
 files:
   src/scalo/deployment/data/contract.schema.json:
     path: charts/scalo-service/schema/deployment-contract.v4.schema.json
-    ref: 239e68a97125a6a7aaaaf0f68d802615f6c5b7a8
-    sha256: 4de62578583c78af5e94cd9e8ec11321b3ccce7c0fd85c686ae66b5ab205a7e2
+    ref: e11f3ce696ce2cfca25e2510a2c2793863fdfc97
+    sha256: 24313b5f57eb6dfb3ae922946851b20ebcd6595cc324a39a4215350bce4c358f
     source: hyperi-io/scalo-rs

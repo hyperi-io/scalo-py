@@ -234,6 +234,35 @@ def test_a_writable_name_or_path_outside_its_pattern_is_refused(name: str, path:
     assert [(error["type"], error["loc"]) for error in caught.value.errors()] == [("string_pattern_mismatch", loc)]
 
 
+# ---- Hot paths --------------------------------------------------------------------
+
+CONFIG_FILE = "/etc/app/config.yaml"
+
+
+def test_hot_paths_that_are_dotted_and_unique_pass_with_a_config_file() -> None:
+    contract = _contract(config_mount_path=CONFIG_FILE, hot_paths=["rules", "routing.source-rules", "a_b.c9"])
+    assert contract.hot_paths == ["rules", "routing.source-rules", "a_b.c9"]
+
+
+@pytest.mark.parametrize("path", ["", "rules.", ".rules", "routing..rules", "a b", "rules\n", "röles", "a/b"])
+def test_a_hot_path_that_is_not_a_dotted_config_path_is_refused(path: str) -> None:
+    with pytest.raises(ValidationError) as caught:
+        _contract(config_mount_path=CONFIG_FILE, hot_paths=["rules", path])
+    assert [(error["type"], error["loc"]) for error in caught.value.errors()] == [
+        ("string_pattern_mismatch", ("hot_paths", 1))
+    ]
+
+
+def test_a_hot_path_listed_twice_is_refused() -> None:
+    message = _refusal(lambda: _contract(config_mount_path=CONFIG_FILE, hot_paths=["rules", "rules"]))
+    assert message == 'hot_paths[1]: "rules" is listed twice'
+
+
+def test_hot_paths_need_a_config_file_to_reload_from() -> None:
+    assert _refused_field(lambda: _contract(hot_paths=["rules"])) == "hot_paths"
+    assert _contract(hot_paths=[]).hot_paths == []
+
+
 # ---- Security ---------------------------------------------------------------------
 
 
@@ -394,6 +423,8 @@ def test_a_contract_setting_every_field_the_checks_read_passes() -> None:
             WritablePath(name="state", path="/var/lib/app/state", persistent=True, size="5Gi"),
         ],
         security=SecurityContract(capabilities_add=["NET_BIND_SERVICE"]),
+        config_mount_path=CONFIG_FILE,
+        hot_paths=["rules"],
         keda=KedaContract(kafka_trigger=KafkaLagTrigger.disabled(), min_replicas=1),
         config_schema={"properties": {"rows": {"type": "integer", "x-scalo-dial": "big"}}},
     )

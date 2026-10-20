@@ -4,7 +4,7 @@ The Pydantic model an app builds once from its `Config.default()`. `validate_doc
 
 `tests/fixtures/contract-parity/deployment-contract.json` is a contract scalo-rs emitted with every optional field set, copied from scalo-rs's own `tests/fixtures/contract-parity/`. `tests/unit/deployment/test_contract_parity.py` parses it, re-emits it and checks nothing changed, so a field scalo-rs adds fails here until scalo-py carries it.
 
-`src/scalo/deployment/data/contract.schema.json` ships in the wheel. It is scalo-rs's `charts/scalo-service/schema/deployment-contract.v4.schema.json`, the JSON Schema a chart assembler validates every contract against, copied byte for byte. `.hyperi-ci-vendor.lock` records the source repo, path, ref and sha256 of the copy. `tests/unit/deployment/test_contract_schema.py` checks the copy against the lock and validates what scalo-py emits against it. Update the copy from scalo-rs, never by hand.
+`src/scalo/deployment/data/contract.schema.json` ships in the wheel. It is scalo-rs's `charts/scalo-service/schema/deployment-contract.v4.schema.json`, the JSON Schema a chart assembler validates every contract against, copied byte for byte. `.hyperi-ci-vendor.lock` records the source repo, path, ref and sha256 of the copy. `tests/unit/deployment/test_contract_schema.py` checks the copy against the lock and validates what scalo-py emits against it. Update the copy from scalo-rs, never by hand: move `ref` in the `vendor:` block of `.hyperi-ci.yaml` and run `hyperi-ci vendor sync`.
 
 Import surface (gated on the `[deployment]` extra; importing without
 `pydantic>=2.13` defers and raises `ProviderNotAvailableError`):
@@ -56,6 +56,7 @@ from scalo.deployment import (
 | `security` | `SecurityContract` | uid/gid/fsGroup 1000, read-only root | Identity and capabilities the image runs with (v4) |
 | `singleton` | `bool` | `False` | Exactly one pod: nothing autoscales it, and a new pod starts only after the old one stops (v4) |
 | `service_account` | `ServiceAccount` | `OWN`, left out while `own` | `NONE` for an app that calls no Kubernetes API: the scalo-service chart creates no ServiceAccount and the pod names none (v4) |
+| `hot_paths` | `list[str]` | `[]`, left out when empty | Dotted paths in the app config that reload without a pod restart, so the chart leaves them out of the config checksum. Needs `config_mount_path` |
 
 `image_registry` has no default, and scalo-py refuses a missing or blank one when the contract is built. scalo-rs refuses it later, in `validate()`. Read an organisation-wide value from the cascade:
 
@@ -256,7 +257,7 @@ A chart always adds a scratch `/tmp` beside the declared paths.
 
 `service_account=ServiceAccount.NONE` (`"none"` in the JSON) is for an app with no Kubernetes client and no use for a token. The scalo-service chart then creates no ServiceAccount and leaves `serviceAccountName` off the pod, so it runs as the namespace's `default` account with the token still unmounted. Construction refuses any value other than `own` or `none`.
 
-Construction refuses what scalo-rs's `validate()` refuses here: a writable path name or path outside the rules above, a control character in a writable path's `path`, `size`, `size_limit` or `when`, two writable paths with one name or one mount path (a trailing `/` ignored), a persistent path with a blank `size`, a capability that is not an upper-case name, a `singleton` with KEDA on, and KEDA on with nothing to scale on (see [KEDA.md](KEDA.md)).
+Construction refuses what scalo-rs's `validate()` refuses here: a writable path name or path outside the rules above, a control character in a writable path's `path`, `size`, `size_limit` or `when`, two writable paths with one name or one mount path (a trailing `/` ignored), a persistent path with a blank `size`, a capability that is not an upper-case name, a `singleton` with KEDA on, a `hot_paths` entry that is not a dotted path of letters, digits, `_` and `-` segments or is listed twice, `hot_paths` with no `config_mount_path`, and KEDA on with nothing to scale on (see [KEDA.md](KEDA.md)).
 
 ---
 
