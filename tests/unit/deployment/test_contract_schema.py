@@ -83,7 +83,7 @@ def _full_contract() -> DeploymentContract:
         health=HealthContract(startup_budget_seconds=90),
         env_prefix="SCHEMA_APP",
         metric_prefix="schema",
-        config_mount_path="",
+        config_mount_path="/etc/schema-app/config.yaml",
         image_registry="registry.example.com/team",
         extra_ports=[
             PortContract(name="http", port=8080, public=True),
@@ -110,6 +110,7 @@ def _full_contract() -> DeploymentContract:
         resources=ResourcesContract(requests=ResourceList(cpu="250m"), limits=ResourceList(memory="1Gi")),
         security=SecurityContract(run_as_user=0, read_only_root_filesystem=False, capabilities_add=["NET_ADMIN"]),
         service_account=ServiceAccount.NONE,
+        hot_paths=["rules", "routing.source_rules"],
     )
 
 
@@ -153,6 +154,7 @@ def test_a_contract_setting_every_v4_field_passes() -> None:
     emitted = _emitted(_full_contract())
     assert _errors(emitted) == []
     assert emitted["service_account"] == "none"
+    assert emitted["hot_paths"] == ["rules", "routing.source_rules"]
     properties = emitted["config_schema"]["properties"]
     assert properties["batch_size"][DIAL_KEYWORD] == "big"
     assert properties["batch_size"]["minimum"] == 1
@@ -205,6 +207,8 @@ DIAL = "config_schema.$defs.SourceSection.properties.batch_size.x-scalo-dial"
         pytest.param(_with(_fixture(), "termination_grace_seconds", -1), id="grace negative"),
         pytest.param(_with(_fixture(), "security.run_as_user", "root"), id="uid not an integer"),
         pytest.param(_with(_fixture(), "service_account", "external"), id="service account unknown"),
+        pytest.param(_with(_fixture(), "hot_paths.0", "routing..rules"), id="hot path with an empty segment"),
+        pytest.param(_with(_fixture(), "hot_paths", "rules"), id="hot paths not a list"),
     ],
 )
 def test_the_schema_refuses_a_contract_breaking_one_rule(broken: dict[str, Any]) -> None:
