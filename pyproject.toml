@@ -73,6 +73,11 @@ license = "Apache-2.0"
 license-files = ["LICENSE", "NOTICE"]
 
 [project.optional-dependencies]
+# scalo.api reads routes through fastapi.routing.iter_route_contexts, tested from fastapi 0.142.2.
+api = [
+    "fastapi>=0.142.2",
+    "pydantic>=2.13.0",
+]
 cli = []
 # stamina is the retry engine behind scalo.http; [http] carries it too.
 resilience = [

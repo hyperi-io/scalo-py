@@ -18,7 +18,7 @@ Three layers, top to bottom:
   metric defaults, probe wiring, and config file locations.
 - **API surface** -- composable modules apps wire as needed: HTTP,
   secrets, expression, resilience, concurrency,
-  version-check, scaling, CLI. Each is independent of the
+  version-check, scaling, CLI, API conventions. Each is independent of the
   others; pick what you need.
 
 Sibling concerns:
@@ -55,6 +55,7 @@ flowchart TB
         VC["version_check"]
         Scal["scaling"]
         CLI["cli"]
+        APIConv["api"]
     end
 
     subgraph Transport["Transport"]
@@ -83,6 +84,7 @@ flowchart TB
 
     Health --> HTTP
     Scal --> Health
+    Logger --> APIConv
 ```
 
 Solid arrows: hard dependency (module on left used by module on right).
@@ -107,6 +109,7 @@ Each module under `src/scalo/` and what you import from it:
 
 | Module | Public API entry |
 |---|---|
+| `api` | `Hierarchy`, `install`, `scalo_extra`, `permission`, `PreconditionHeaders`, `ListParams`, `Page`, `ProblemError`, `assert_conformant` (the `api` extra) |
 | `cli` | `ServiceApp`, standard options, common patterns |
 | `concurrency` | `run_blocking`, `Bulkhead`, `gather_with_timeouts` |
 | `config` | `settings`, `get_environment`, `get_app_name`, `init_config_directory` |

@@ -64,7 +64,8 @@ Core, always installed:
 | `cli` | `ServiceApp` -- subclass for `run` / `version` / `config-check` | typer |
 | `version-check` | Optional startup check for a newer release | httpx (lazy) |
 
-By extra: `http` (retry with jitter), `metrics` (Prometheus + process and container
+By extra: `api` (FastAPI conventions: operation ids, ETag/If-Match, problem+json,
+pagination, a conformance check), `http` (retry with jitter), `metrics` (Prometheus + process and container
 gauges), `expression` (CEL), `kafka` (produce, consume, schema inference),
 `opentelemetry` (OTLP traces and metrics), `secrets` (OpenBao/Vault, AWS, GCP,
 Azure), `deployment` (Dockerfile, container manifest, compose generators).
