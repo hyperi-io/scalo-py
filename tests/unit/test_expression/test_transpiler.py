@@ -12,9 +12,12 @@ import pytest
 
 from scalo.expression import (
     ExpressionError,
+    ProfileConfig,
     TranspileError,
     transpile_to_clickhouse,
 )
+
+REGEX = ProfileConfig(allow_regex=True)
 
 # ── Mapping table (EXPRESSIONS-CEL.md) ────────────────────────
 
@@ -38,7 +41,12 @@ class TestMappingTable:
         assert transpile_to_clickhouse('path.startsWith("/api/")') == "startsWith(path, '/api/')"
 
     def test_matches(self):
-        assert transpile_to_clickhouse('hostname.matches("^web-[0-9]+$")') == "match(hostname, '^web-[0-9]+$')"
+        sql = transpile_to_clickhouse('hostname.matches("^web-[0-9]+$")', profile=REGEX)
+        assert sql == "match(hostname, '^web-[0-9]+$')"
+
+    def test_matches_needs_allow_regex(self):
+        with pytest.raises(ExpressionError, match="allow_regex"):
+            transpile_to_clickhouse('hostname.matches("^web-[0-9]+$")')
 
     def test_has(self):
         # CEL has() macro requires member access syntax: has(obj.field)
@@ -134,7 +142,7 @@ class TestStringMethods:
         assert transpile_to_clickhouse('file.endsWith(".log")') == "endsWith(file, '.log')"
 
     def test_matches(self):
-        assert transpile_to_clickhouse('name.matches("^[a-z]+$")') == "match(name, '^[a-z]+$')"
+        assert transpile_to_clickhouse('name.matches("^[a-z]+$")', profile=REGEX) == "match(name, '^[a-z]+$')"
 
 
 # ── Functions ─────────────────────────────────────────────────

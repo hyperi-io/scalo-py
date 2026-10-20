@@ -14,6 +14,7 @@ from scalo.expression import (
     ALLOWED_FUNCTIONS,
     DISALLOWED_FUNCTIONS,
     ExpressionError,
+    ProfileConfig,
     compile_expression,
     evaluate,
     evaluate_condition,
@@ -50,8 +51,9 @@ class TestValidate:
     def test_valid_ends_with(self):
         assert validate('file.endsWith(".log")') == []
 
-    def test_valid_matches(self):
-        assert validate('name.matches("^web-[0-9]+$")') == []
+    def test_matches_needs_allow_regex(self):
+        assert validate('name.matches("^web-[0-9]+$")') != []
+        assert validate('name.matches("^web-[0-9]+$")', profile=ProfileConfig(allow_regex=True)) == []
 
     def test_valid_has(self):
         assert validate("has(user.name)") == []
@@ -153,7 +155,6 @@ class TestValidate:
             'has(user.id) && host.startsWith("web-")',
             "size(tags) > 3",
             'int(count) > 100 && message.contains("error")',
-            'host.matches("^web-[0-9]+$")',
             'double(score) >= 0.5 && string(id).endsWith("-x")',
             "bytes(payload).size() > 0",
             "type(value) == string",
@@ -239,10 +240,16 @@ class TestEvaluate:
         assert evaluate('file.endsWith(".log")', {"file": "app.log"}) is True
 
     def test_string_matches_regex(self):
-        assert evaluate('name.matches("^web-[0-9]+$")', {"name": "web-42"}) is True
+        program = compile_expression('name.matches("^web-[0-9]+$")', profile=ProfileConfig(allow_regex=True))
+        assert program.execute({"name": "web-42"}) is True
 
     def test_string_matches_regex_false(self):
-        assert evaluate('name.matches("^web-[0-9]+$")', {"name": "db-01"}) is False
+        program = compile_expression('name.matches("^web-[0-9]+$")', profile=ProfileConfig(allow_regex=True))
+        assert program.execute({"name": "db-01"}) is False
+
+    def test_regex_is_refused_without_allow_regex(self):
+        with pytest.raises(ExpressionError, match="allow_regex"):
+            evaluate('name.matches("^web-[0-9]+$")', {"name": "web-42"})
 
     def test_has_present(self):
         assert evaluate("has(user.name)", {"user": {"name": "derek"}}) is True
@@ -433,7 +440,7 @@ class TestProfile:
     """DFE expression profile constants."""
 
     def test_allowed_functions_contains_core(self):
-        for fn in ("contains", "startsWith", "endsWith", "matches", "size", "has"):
+        for fn in ("contains", "startsWith", "endsWith", "size", "has"):
             assert fn in ALLOWED_FUNCTIONS
 
     def test_allowed_functions_contains_casts(self):
@@ -441,7 +448,7 @@ class TestProfile:
             assert fn in ALLOWED_FUNCTIONS
 
     def test_disallowed_functions(self):
-        for fn in ("map", "filter", "exists", "all", "exists_one", "timestamp", "duration"):
+        for fn in ("matches", "map", "filter", "exists", "all", "exists_one", "timestamp", "duration"):
             assert fn in DISALLOWED_FUNCTIONS
 
     def test_no_overlap(self):

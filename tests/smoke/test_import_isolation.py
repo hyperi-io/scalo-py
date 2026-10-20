@@ -50,6 +50,7 @@ ENTRY_MODULES = [
     "scalo.otel_backoff",
     "scalo.otel_tracing",
     "scalo.resilience",
+    "scalo.rules",
     "scalo.runtime",
     "scalo.scaling",
     "scalo.secrets",

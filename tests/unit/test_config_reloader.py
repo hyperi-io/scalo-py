@@ -12,6 +12,7 @@ import asyncio
 import logging
 import signal
 import sys
+from typing import Any
 
 import pytest
 
@@ -168,6 +169,65 @@ class TestReloadCounters:
 
         assert reloader.reload_count_error == 2
         assert reloader.reload_count_success == 0
+
+
+# ---------------------------------------------------------------------------
+# reload_now() -- a failed validation keeps the last good config
+# ---------------------------------------------------------------------------
+
+
+@pytest.fixture
+def probe_setting(monkeypatch: pytest.MonkeyPatch):
+    """A bare env var the cascade reads, reset in the live settings afterwards."""
+    from scalo.config import settings
+
+    monkeypatch.setenv("RELOAD_PROBE", "good")
+    settings.reload()
+    yield monkeypatch
+    monkeypatch.delenv("RELOAD_PROBE", raising=False)
+    settings.reload()
+
+
+class TestFailedValidationKeepsLastGood:
+    """A reload that fails validation never reaches the live settings."""
+
+    def test_rejected_values_are_not_applied(self, probe_setting: pytest.MonkeyPatch) -> None:
+        from scalo.config import settings
+
+        assert settings.get("RELOAD_PROBE") == "good"
+        reloader = ConfigReloader(validate_fn=lambda s: s.get("RELOAD_PROBE") != "bad")
+
+        probe_setting.setenv("RELOAD_PROBE", "bad")
+        assert reloader.reload_now() is False
+        assert settings.get("RELOAD_PROBE") == "good"
+
+        probe_setting.setenv("RELOAD_PROBE", "better")
+        assert reloader.reload_now() is True
+        assert settings.get("RELOAD_PROBE") == "better"
+
+    def test_validation_sees_the_new_values(self, probe_setting: pytest.MonkeyPatch) -> None:
+        seen: list[object] = []
+
+        def record(candidate: Any) -> bool:
+            seen.append(candidate.get("RELOAD_PROBE"))
+            return True
+
+        probe_setting.setenv("RELOAD_PROBE", "next")
+        assert ConfigReloader(validate_fn=record).reload_now() is True
+        assert seen == ["next"]
+
+    def test_a_raising_validator_keeps_the_last_good(
+        self, probe_setting: pytest.MonkeyPatch, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        from scalo.config import settings
+
+        def explode(_s: object) -> bool:
+            raise ValueError("validation exploded")
+
+        monkeypatch.setattr(logging.getLogger("scalo.config.reloader"), "disabled", True)
+        probe_setting.setenv("RELOAD_PROBE", "bad")
+        assert ConfigReloader(validate_fn=explode).reload_now() is False
+        assert settings.get("RELOAD_PROBE") == "good"
 
     def test_mixed_success_and_error(self) -> None:
         call_count = 0

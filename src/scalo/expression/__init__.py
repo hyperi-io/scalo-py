@@ -8,11 +8,14 @@
 
 """scalo Expression Module -- CEL-based expression evaluation.
 
-Provides compile, evaluate, and validate functions for CEL expressions,
-restricted to the expression profile (high-performance subset only).
+Provides compile, evaluate, validate and diagnose functions for CEL expressions,
+restricted to the expression profile (bounded cost per record). Regex, iteration and
+time functions are unlocked per category by :class:`ProfileConfig`, which apps set
+under the ``expression`` key of the config cascade.
 
-Both Python and Rust services use the same underlying ``cel-interpreter``
-Rust crate, ensuring identical parsing and evaluation semantics.
+Both Python and Rust services use the same underlying ``cel`` Rust crate, ensuring
+identical parsing and evaluation semantics. :mod:`scalo.rules` builds ordered
+first-match rule sets on top.
 
 Install::
 
@@ -36,27 +39,49 @@ Usage::
     program = compile_expression("score > threshold")
     program.execute({"score": 85, "threshold": 80})  # True
 
-See: docs/EXPRESSIONS-CEL.md for the full profile specification.
+See: docs/api/EXPRESSION.md for the full profile specification.
 """
 
 from .cel import (
     ExpressionError,
     compile_expression,
+    diagnose,
     evaluate,
     evaluate_condition,
     validate,
 )
-from .profile import ALLOWED_FUNCTIONS, DISALLOWED_FUNCTIONS
+from .diagnostic import Diagnostic, Span
+from .profile import (
+    ALLOWED_FUNCTIONS,
+    DISALLOWED_FUNCTIONS,
+    RESTRICTED_ITERATION,
+    RESTRICTED_REGEX,
+    RESTRICTED_TIME,
+    ProfileConfig,
+    cascade_profile,
+    check_profile,
+    scan_profile,
+)
 from .transpiler import TranspileError, transpile_to_clickhouse
 
 __all__ = [
     "ALLOWED_FUNCTIONS",
     "DISALLOWED_FUNCTIONS",
+    "RESTRICTED_ITERATION",
+    "RESTRICTED_REGEX",
+    "RESTRICTED_TIME",
+    "Diagnostic",
     "ExpressionError",
+    "ProfileConfig",
+    "Span",
     "TranspileError",
+    "cascade_profile",
+    "check_profile",
     "compile_expression",
+    "diagnose",
     "evaluate",
     "evaluate_condition",
+    "scan_profile",
     "transpile_to_clickhouse",
     "validate",
 ]

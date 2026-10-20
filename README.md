@@ -129,11 +129,7 @@ HyperI's shared Python library -- config cascade, logging, metrics, health,
 secrets, Kafka and the deployment-contract generators -- published as `scalo` on
 PyPI under Apache-2.0.
 
-It is scalo-rs's SISTER, not its twin: same conventions, DIFFERENT API, separate
-repo. Never assume parity. Where the two must agree, a shared corpus says so:
-credential masking is checked against scalo-rs's
-`tests/fixtures/credential_masking_parity.json`, vendored to
-`tests/fixtures/patterns/`.
+It is scalo-rs's SISTER, not its twin: same conventions, DIFFERENT API, separate repo. Never assume parity. Where the two must agree, a shared corpus vendored from scalo-rs says so: credential masking is checked against `tests/fixtures/patterns/credential_masking_parity.json`, and the rules engine against `tests/fixtures/rules_corpus.json`.
 
 ### Where things live
 

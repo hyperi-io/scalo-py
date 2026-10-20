@@ -6,11 +6,14 @@
 # License:   Apache-2.0
 # Copyright: (c) 2026 HYPERI PTY LIMITED
 
-"""CEL expression evaluation -- compile, evaluate, validate.
+"""CEL expression evaluation -- compile, evaluate, validate, diagnose.
 
 Wraps the ``common-expression-language`` package (which itself wraps the
-Rust ``cel-interpreter`` crate via PyO3). The same Rust implementation
-powers both Python and Rust services -- zero behavioural drift.
+Rust ``cel`` crate via PyO3). The same Rust implementation powers both
+Python and Rust services -- zero behavioural drift.
+
+Every entry point enforces the expression profile. ``profile=None`` means the
+profile the config cascade sets under ``expression``.
 
 Install::
 
@@ -18,11 +21,15 @@ Install::
 
 Usage::
 
-    from scalo.expression import compile_expression, evaluate, validate
+    from scalo.expression import compile_expression, diagnose, evaluate, validate
 
     # Validate before storing (UI pre-submit)
     errors = validate('severity == "critical" && amount > 10000')
     assert errors == []
+
+    # The same check, each finding with the byte span it covers
+    found = diagnose('name.matches("^x")')
+    assert found[0].span.start == 5
 
     # One-shot evaluation
     result = evaluate('severity == "critical"', {"severity": "critical"})
@@ -38,8 +45,7 @@ Usage::
     assert result is False
 """
 
-from __future__ import annotations
-
+import functools
 import re
 from typing import Any
 
@@ -50,15 +56,27 @@ except ImportError as e:
         "CEL expression support requires the 'expression' extra. Install with: pip install scalo[expression]"
     ) from e
 
-from .profile import ALLOWED_FUNCTIONS, DISALLOWED_FUNCTIONS
+from .diagnostic import Diagnostic, span_at
+from .profile import ProfileConfig, cascade_profile, check_profile, scan_profile
 
 __all__ = [
+    "EVALUATION_ERRORS",
     "ExpressionError",
     "compile_expression",
+    "diagnose",
     "evaluate",
     "evaluate_condition",
     "validate",
 ]
+
+# What the cel package raises from Program.execute, by the CEL error it maps.
+EVALUATION_ERRORS: tuple[type[Exception], ...] = (RuntimeError, ValueError, TypeError, ArithmeticError, LookupError)
+
+# Distinct conditions evaluate_condition keeps compiled, least recently used dropped first.
+_CONDITION_CACHE_SIZE = 1024
+
+# One parser error in the cel package's report: line and column from 1, then the message.
+_PARSE_ERROR = re.compile(r"^ERROR: <input>:(\d+):(\d+): (.*)$", re.MULTILINE)
 
 
 class ExpressionError(Exception):
@@ -69,44 +87,60 @@ class ExpressionError(Exception):
         super().__init__("; ".join(errors))
 
 
-# Match function calls in CEL expressions: name(
-_FUNCTION_CALL_RE = re.compile(r"\b([a-zA-Z_]\w*)\s*\(")
+def _resolve(profile: ProfileConfig | None) -> ProfileConfig:
+    return profile if profile is not None else cascade_profile()
 
 
-# CEL keywords and literals that the function-call regex also matches.
-_NOT_FUNCTIONS = frozenset({"true", "false", "null", "in"})
+def _validated(expr: str, profile: ProfileConfig) -> tuple[_cel.Program | None, list[str]]:
+    """Compile ``expr`` under ``profile``, or return every error that stops it."""
+    if not expr or not expr.strip():
+        return None, ["Expression is empty"]
+    profile_errors = check_profile(expr, profile)
+    if profile_errors:
+        return None, profile_errors
+    try:
+        return _cel.compile(expr), []
+    except (ValueError, TypeError) as e:
+        message = str(e)
+        if "Failed to parse expression" in message:
+            return None, [message]
+        return None, [f"Invalid expression: {message}"]
 
 
-def _check_profile(expr: str) -> list[str]:
-    """Check an expression against the expression profile. Returns errors.
+def _parse_diagnostics(expr: str, message: str) -> list[Diagnostic]:
+    """Split the cel package's parse report into one located diagnostic per parser error."""
+    # The report opens with the expression itself, which may hold anything, so it is cut first.
+    prefix = f"Failed to parse expression '{expr}': "
+    report = message.removeprefix(prefix)
+    found = [
+        Diagnostic(match.group(3), span_at(expr, int(match.group(1)), int(match.group(2))))
+        for match in _PARSE_ERROR.finditer(report)
+    ]
+    return found or [Diagnostic(message)]
 
-    Enforced as an ALLOWLIST. An unknown function used to reach `pass` here on the
-    grounds that "CEL will reject it at compile time anyway" -- it does not. The
-    cel package defers function resolution to evaluation, so `cel.compile
-    ("nosuchfunc(x)")` succeeds and :func:`validate` returned no errors at all. A
-    typo'd expression was reported valid by the UI and then failed in the data
-    pipeline.
+
+def compile_diagnosed(expr: str, profile: ProfileConfig | None = None) -> tuple[_cel.Program | None, list[Diagnostic]]:
+    """Compile ``expr``, or return every located problem that stops it.
+
+    Args:
+        expr: CEL expression string.
+        profile: The profile to enforce. ``None`` means the cascade's.
+
+    Returns:
+        ``(program, [])`` when it compiles, else ``(None, diagnostics)``.
     """
-    errors: list[str] = []
-    for match in _FUNCTION_CALL_RE.finditer(expr):
-        name = match.group(1)
-        if name in _NOT_FUNCTIONS:
-            continue
-        if name in DISALLOWED_FUNCTIONS:
-            errors.append(
-                f"Function '{name}()' is not allowed in the expression profile. "
-                f"Excluded for performance: per-element iteration or time functions."
-            )
-        elif name not in ALLOWED_FUNCTIONS:
-            errors.append(
-                f"Function '{name}()' is not in the expression profile. "
-                f"Check the spelling, or add it to ALLOWED_FUNCTIONS if it "
-                f"belongs in the profile."
-            )
-    return errors
+    if not expr.strip():
+        return None, [Diagnostic("Expression is empty")]
+    found = scan_profile(expr, _resolve(profile))
+    if found:
+        return None, found
+    try:
+        return _cel.compile(expr), []
+    except (ValueError, TypeError) as e:
+        return None, _parse_diagnostics(expr, str(e))
 
 
-def validate(expr: str) -> list[str]:
+def validate(expr: str, profile: ProfileConfig | None = None) -> list[str]:
     """Validate an expression for syntax and expression profile compliance.
 
     Returns a list of error strings (empty if valid).
@@ -114,36 +148,31 @@ def validate(expr: str) -> list[str]:
 
     Args:
         expr: CEL expression string.
+        profile: The profile to enforce. ``None`` means the cascade's.
 
     Returns:
         Empty list if valid, list of error messages otherwise.
     """
-    errors: list[str] = []
-
-    if not expr or not expr.strip():
-        return ["Expression is empty"]
-
-    # Check expression profile (disallowed functions)
-    profile_errors = _check_profile(expr)
-    if profile_errors:
-        return profile_errors
-
-    # Check syntax via CEL compiler
-    try:
-        _cel.compile(expr)
-    except (ValueError, TypeError) as e:
-        msg = str(e)
-        # Extract the readable part of the error
-        if "Failed to parse expression" in msg:
-            # Strip the wrapper, keep the ANTLR error
-            errors.append(msg)
-        else:
-            errors.append(f"Invalid expression: {msg}")
-
-    return errors
+    return _validated(expr, _resolve(profile))[1]
 
 
-def compile_expression(expr: str) -> _cel.Program:
+def diagnose(expr: str, profile: ProfileConfig | None = None) -> list[Diagnostic]:
+    """Return :func:`validate`'s findings, each with the byte span it covers.
+
+    A profile finding spans the function name. A syntax error spans the character the
+    parser stopped at.
+
+    Args:
+        expr: CEL expression string.
+        profile: The profile to enforce. ``None`` means the cascade's.
+
+    Returns:
+        Empty list if valid, one :class:`~scalo.expression.Diagnostic` per problem otherwise.
+    """
+    return compile_diagnosed(expr, profile)[1]
+
+
+def compile_expression(expr: str, profile: ProfileConfig | None = None) -> _cel.Program:
     """Compile a CEL expression, enforcing the expression profile.
 
     Use this for hot paths where the same expression is evaluated
@@ -152,6 +181,7 @@ def compile_expression(expr: str) -> _cel.Program:
 
     Args:
         expr: CEL expression string.
+        profile: The profile to enforce. ``None`` means the cascade's.
 
     Returns:
         Compiled CEL program.
@@ -159,10 +189,10 @@ def compile_expression(expr: str) -> _cel.Program:
     Raises:
         ExpressionError: If expression is invalid or violates expression profile.
     """
-    errors = validate(expr)
-    if errors:
+    program, errors = _validated(expr, _resolve(profile))
+    if program is None:
         raise ExpressionError(errors)
-    return _cel.compile(expr)
+    return program
 
 
 def evaluate(expr: str, data: dict[str, Any] | None = None) -> Any:
@@ -186,13 +216,18 @@ def evaluate(expr: str, data: dict[str, Any] | None = None) -> Any:
     return program.execute(data or {})
 
 
+@functools.lru_cache(maxsize=_CONDITION_CACHE_SIZE)
+def _condition_program(expr: str, profile: ProfileConfig) -> _cel.Program | None:
+    return _validated(expr, profile)[0]
+
+
 def evaluate_condition(expr: str, data: dict[str, Any]) -> bool:
     """Evaluate a boolean condition, returning False on missing fields.
 
     This is the safe evaluation mode for scoring ``when`` conditions,
     alert triggers, and routing rules. If a field referenced in the
     expression is missing from ``data``, returns ``False`` instead of
-    raising an error.
+    raising an error. Each distinct expression is compiled once and kept.
 
     Args:
         expr: CEL expression that should evaluate to a boolean.
@@ -200,11 +235,12 @@ def evaluate_condition(expr: str, data: dict[str, Any]) -> bool:
 
     Returns:
         True if the condition matches, False otherwise (including on
-        errors like missing fields or type mismatches).
+        an invalid expression and on every evaluation error).
     """
+    program = _condition_program(expr, cascade_profile())
+    if program is None:
+        return False
     try:
-        program = compile_expression(expr)
-        result = program.execute(data)
-        return bool(result)
-    except RuntimeError, ValueError, TypeError, ExpressionError:
+        return bool(program.execute(data))
+    except EVALUATION_ERRORS:
         return False

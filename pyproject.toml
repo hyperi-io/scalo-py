@@ -105,8 +105,9 @@ opentelemetry = [
     "opentelemetry-exporter-otlp>=1.41.0",
     "opentelemetry-exporter-prometheus>=0.62b0",
 ]
+# 0.10.0 imports in a clean install and is built on cel-rust 0.14.5, the crate scalo-rs compiles against.
 expression = [
-    "common-expression-language>=0.5.6",
+    "common-expression-language>=0.10.0",
 ]
 deployment = [
     "pydantic>=2.13.0",
