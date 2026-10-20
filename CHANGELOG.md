@@ -3,6 +3,14 @@
 Rendered by CI and committed back at the end of a release -- do not edit by
 hand. Release notes also appear on the GitHub Releases page, one per tag.
 
+## [2.31.19](https://github.com/hyperi-io/scalo-py/compare/v2.31.18...v2.31.19) (2026-10-20)
+
+### Bug Fixes
+
+* **api:** add scalo.api FastAPI conventions ([#140](https://github.com/hyperi-io/scalo-py/issues/140)) ([e57d633](https://github.com/hyperi-io/scalo-py/commit/e57d6334fa02ff59bfb0a825091fa3c1c00e0194))
+* **deployment:** accept the contract hot_paths field ([#141](https://github.com/hyperi-io/scalo-py/issues/141)) ([3a511c8](https://github.com/hyperi-io/scalo-py/commit/3a511c87670e91c3ac34e219b9a4c6cb8411c45f))
+* **security:** update certifi to 2026.10.19 for GHSA-6q48-6c7w-9gw2 ([#142](https://github.com/hyperi-io/scalo-py/issues/142)) ([471bea8](https://github.com/hyperi-io/scalo-py/commit/471bea8374448afae8799bad2a263c8fb3cf2932))
+
 ## [2.31.18](https://github.com/hyperi-io/scalo-py/compare/v2.31.17...v2.31.18) (2026-10-18)
 
 ### Bug Fixes
