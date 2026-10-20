@@ -21,7 +21,7 @@ from typing import Any
 import pytest
 
 from scalo.expression import ProfileConfig
-from scalo.rules import Clamp, CompileOptions, Outcome, RuleSet
+from scalo.rules import Clamp, CompileOptions, Outcome, RulesError, RuleSet
 
 CORPUS = json.loads((Path(__file__).resolve().parents[2] / "fixtures" / "rules_corpus.json").read_text("utf-8"))
 
@@ -47,8 +47,9 @@ def test_every_compile_case_finds_exactly_its_findings(case: dict[str, Any]) -> 
 
     has_error = any(f["severity"] == "error" for f in case["findings"])
     if has_error:
-        with pytest.raises(Exception, match="the rule set is invalid"):
+        with pytest.raises(RulesError, match="the rule set is invalid") as raised:
             RuleSet.compile(case["config"], options)
+        assert [d.location for d in raised.value.diagnostics] == [d.location for d in found]
     else:
         compiled = RuleSet.compile(case["config"], options)
         assert [str(d) for d in compiled.warnings] == [str(d) for d in found]

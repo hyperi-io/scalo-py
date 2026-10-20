@@ -2,7 +2,10 @@
 
 `scalo.rules` (needs the `expression` extra) sets target fields on a record from an ordered rule set. For each target in the order the set lists them, the first row in declared order that matches the record and resolves a value sets it. A row tests the record with a native test or a CEL Fast condition, and takes its value as a literal, a copy of a field, or a field mapped through a bounded lookup table.
 
-The format, the findings and the outcomes are scalo-rs's `scalo::rules`, checked against the same corpus (`tests/fixtures/rules_corpus.json`, vendored from scalo-rs). A set one implementation accepts, the other accepts, and a record routes the same way in both.
+The format, the findings and the outcomes are scalo-rs's `scalo::rules`, checked against the same corpus (`tests/fixtures/rules_corpus.json`, vendored from scalo-rs). Every corpus case gives the same findings and outcomes in both, with two known differences:
+
+- **Number text.** A native test or lookup reads a number's text, and Python writes a float as `repr` gives it. So `1e16` reads `1e+16` here and `1e16` in scalo-rs, `0.00001` reads `1e-05`, and `1e400` reads `inf` where scalo-rs refuses to parse the record. An integer past 2^64 stays exact here and becomes a float in scalo-rs. Rows that test integers, plain decimals, strings and booleans route the same way in both.
+- **Profile scanning.** A `when` condition that hides a restricted call inside a raw or triple-quoted literal, after a `//` comment, or behind non-space whitespace before its `(` is refused here. scalo-rs accepts it until its scanner reads CEL literals and comments the same way.
 
 ```mermaid
 flowchart LR
@@ -68,7 +71,7 @@ Every test but `exists` reads the field's text: a string as written, an integer 
 
 `negate: true` inverts any test. `all: [...]` holds when every part does, and takes `negate` too. A test given an operand it does not take is refused.
 
-A `regex` pattern compiles and matches on the Rust regex engine inside the CEL package, the engine scalo-rs uses. So lookaround and backreferences are refused, an empty pattern is refused, and `$` matches only at the end of the text.
+A `regex` pattern compiles and matches on the Rust `regex` crate inside the CEL package. scalo-rs runs its own strmatch matcher, which parses patterns with the same regex-syntax crate, so both accept and refuse the same patterns, with different error text. Lookaround and backreferences are refused, an empty pattern is refused, and `$` matches only at the end of the text.
 
 ### CEL Fast conditions
 

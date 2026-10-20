@@ -44,6 +44,9 @@ location, the rule id, and for a CEL condition the byte span the scanner or pars
 found. See docs/api/RULES.md.
 """
 
+# Loaded before any submodule imports cel, so a missing extra raises the ImportError that names it.
+import scalo.expression.cel
+
 from ._compiler import DEFAULT_MAX_LOOKUP_ENTRIES, MAX_TARGETS, CompileOptions
 from ._errors import RuleDiagnostic, RulesError, RulesLoadError, Severity
 from ._ruleset import (

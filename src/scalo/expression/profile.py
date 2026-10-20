@@ -16,7 +16,6 @@ category is unlocked by a :class:`ProfileConfig` flag, which apps set under the
 See: docs/api/EXPRESSION.md
 """
 
-import functools
 from collections.abc import Mapping
 from dataclasses import dataclass, fields
 from typing import Any
@@ -112,6 +111,16 @@ _REASONS: dict[str, str] = {
 # CEL allows whitespace between a function name and its `(`, so a call written `map\n(` is still a call.
 _CALL_GAP: frozenset[int] = frozenset(b" \t\r\n\f\v")
 
+_QUOTES: frozenset[int] = frozenset(b"\"'")
+_BACKSLASH = 0x5C
+_BACKTICK = 0x60
+
+# A name of exactly these letters directly before a quote opens a string or bytes literal, raw with r or R.
+_LITERAL_PREFIXES: frozenset[bytes] = frozenset({b"r", b"R", b"b", b"B", b"br", b"bR", b"Br", b"BR"})
+
+# The bytes CEL's lexer allows inside a backtick-quoted identifier.
+_ESCAPED_IDENT_BYTES: frozenset[int] = frozenset(b"ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789_.-/ ")
+
 # Keywords and built-ins that read like a call but are never refused.
 _SKIP_NAMES: frozenset[str] = frozenset(
     {"true", "false", "null", "in", "has", "int", "uint", "double", "string", "bool"}
@@ -171,41 +180,91 @@ class ProfileConfig:
         return cls(**flags)
 
 
-@functools.cache
-def _read_cascade_profile() -> ProfileConfig:
-    from scalo.config import settings
+@dataclass(slots=True)
+class _Latch:
+    """The profile the cascade supplied, once it has supplied one."""
 
-    return ProfileConfig.from_mapping(settings.get("expression", None))
+    profile: ProfileConfig | None = None
+
+
+_LATCH = _Latch()
 
 
 def cascade_profile() -> ProfileConfig:
     """Return the profile the config cascade sets under ``expression``.
 
-    The first clean read is kept for the life of the process. A cascade that cannot be
-    read gives the default profile and is tried again next call.
+    Once the cascade has an ``expression`` section that reads cleanly, that profile is
+    kept for the life of the process. Until then the default profile is returned and not
+    kept, so a read before config loads never pins the defaults.
 
     Returns:
         The cascade's profile, or :class:`ProfileConfig` with every restriction on.
     """
+    if _LATCH.profile is not None:
+        return _LATCH.profile
     try:
-        return _read_cascade_profile()
+        from scalo.config import settings
+
+        raw = settings.get("expression", None)
+        if raw is None:
+            return ProfileConfig()
+        profile = ProfileConfig.from_mapping(raw)
     except Exception:
         # An unreadable cascade keeps every restriction on rather than failing the caller.
         return ProfileConfig()
+    _LATCH.profile = profile
+    return profile
 
 
-def _skip_string_literal(data: bytes, start: int) -> int:
-    """Return the index after the literal that opens at ``start``, or the end of input."""
-    quote = data[start]
-    i = start + 1
+def _string_end(data: bytes, quote_at: int, raw: bool) -> int:
+    """Return the index after the string literal whose opening quote is at ``quote_at``.
+
+    The literal is read as CEL's lexer reads it: three quotes open a triple-quoted
+    literal that runs to the next three, a raw literal has no escapes, and a one-line
+    literal ends at a newline, which CEL refuses.
+    """
+    quote = data[quote_at]
+    triple = bytes((quote, quote, quote))
+    if data.startswith(triple, quote_at):
+        i = quote_at + 3
+        while i < len(data):
+            if data.startswith(triple, i):
+                return i + 3
+            i += 2 if not raw and data[i] == _BACKSLASH else 1
+        # With no closing triple, CEL reads an empty literal, then a new one at the third quote.
+        return quote_at + 2
+    i = quote_at + 1
     while i < len(data):
-        if data[i] == 0x5C:  # backslash escapes the next byte
-            i += 2
-            continue
-        if data[i] == quote:
+        byte = data[i]
+        if byte == quote:
             return i + 1
-        i += 1
+        if byte in (0x0A, 0x0D):
+            return i
+        i += 2 if not raw and byte == _BACKSLASH else 1
     return len(data)
+
+
+def _gap_end(data: bytes, i: int) -> int:
+    """Return the index after the whitespace and ``//`` comments starting at ``i``."""
+    while i < len(data):
+        if data[i] in _CALL_GAP:
+            i += 1
+        elif data.startswith(b"//", i):
+            newline = data.find(b"\n", i)
+            i = len(data) if newline == -1 else newline
+        else:
+            break
+    return i
+
+
+def _escaped_ident_end(data: bytes, start: int) -> int:
+    """Return the index after a backtick-quoted identifier at ``start``, or after the lone backtick."""
+    i = start + 1
+    while i < len(data) and data[i] in _ESCAPED_IDENT_BYTES:
+        i += 1
+    if i > start + 1 and i < len(data) and data[i] == _BACKTICK:
+        return i + 1
+    return start + 1
 
 
 def _is_ident_start(byte: int) -> bool:
@@ -219,8 +278,10 @@ def _is_ident_char(byte: int) -> bool:
 def scan_profile(expr: str, profile: ProfileConfig | None = None) -> list[Diagnostic]:
     """Find each call the profile refuses, with the byte span of its function name.
 
-    The scan skips single- and double-quoted string literals, so a name inside a quoted
-    value is never reported.
+    The scan reads string and bytes literals (quoted, triple-quoted and raw), ``//``
+    comments and backtick-quoted identifiers the way CEL's lexer does, so a name inside
+    one is never reported, and whitespace or a comment between a name and its ``(``
+    does not hide a call.
 
     Args:
         expr: CEL expression text.
@@ -236,8 +297,14 @@ def scan_profile(expr: str, profile: ProfileConfig | None = None) -> list[Diagno
     i = 0
     while i < len(data):
         byte = data[i]
-        if byte in (0x22, 0x27):
-            i = _skip_string_literal(data, i)
+        if byte in _QUOTES:
+            i = _string_end(data, i, raw=False)
+            continue
+        if data.startswith(b"//", i):
+            i = _gap_end(data, i)
+            continue
+        if byte == _BACKTICK:
+            i = _escaped_ident_end(data, i)
             continue
         if not _is_ident_start(byte):
             i += 1
@@ -245,10 +312,12 @@ def scan_profile(expr: str, profile: ProfileConfig | None = None) -> list[Diagno
         start = i
         while i < len(data) and _is_ident_char(data[i]):
             i += 1
-        name = data[start:i].decode("ascii")
-        peek = i
-        while peek < len(data) and data[peek] in _CALL_GAP:
-            peek += 1
+        word = data[start:i]
+        if i < len(data) and data[i] in _QUOTES and word in _LITERAL_PREFIXES:
+            i = _string_end(data, i, raw=b"r" in word.lower())
+            continue
+        name = word.decode("ascii")
+        peek = _gap_end(data, i)
         if peek >= len(data) or data[peek] != 0x28 or name in _SKIP_NAMES:
             continue
         span = Span(start, i)

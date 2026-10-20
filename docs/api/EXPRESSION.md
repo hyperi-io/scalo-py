@@ -63,7 +63,7 @@ errors = validate('items.map(x, x.size)')
 #   allow_iteration: true in expression config to permit."]
 ```
 
-Returns a list rather than raising, so a UI renders every error at once. A function name inside a quoted string is data, so `msg.contains("map(x)")` validates clean. Whitespace between a name and its `(`, a tab or a newline included, does not hide a call.
+Returns a list rather than raising, so a UI renders every error at once. The profile check reads the expression the way CEL's lexer does. A function name inside a string or bytes literal (quoted, triple-quoted or raw) or a `//` comment is data, so `msg.contains("map(x)")` validates clean. Whitespace or a comment between a name and its `(` does not hide a call, so `x.matches//\n("a")` is refused like `x.matches("a")`.
 
 ---
 
@@ -179,7 +179,7 @@ expression:
   allow_regex: true
 ```
 
-`ProfileConfig(allow_regex=True)` passed as `profile=` overrides the cascade for one call. The first clean read of the cascade is kept for the life of the process, and a flag that is not `true` or `false` leaves every restriction on.
+`ProfileConfig(allow_regex=True)` passed as `profile=` overrides the cascade for one call. Once the cascade has an `expression` section that reads cleanly, that profile is kept for the life of the process. Until then each call reads the cascade again and keeps every restriction on, so a read before config loads never pins the defaults. A flag that is not `true` or `false` leaves every restriction on.
 
 ---
 

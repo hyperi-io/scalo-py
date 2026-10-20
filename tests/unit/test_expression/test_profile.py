@@ -8,6 +8,10 @@
 
 """Tests for the expression profile: what it refuses, where, and what unlocks it."""
 
+import os
+import subprocess
+import sys
+
 import pytest
 
 from scalo.expression import validate
@@ -77,6 +81,107 @@ class TestWhitespaceBeforeTheParen:
         assert len(found) == 1
         assert found[0].span is not None
         assert _covered(expr, found[0].span) == "map"
+
+
+RESTRICTED_CALLS = {
+    "matches": ("x.", '"a"'),
+    "map": ("[1].", "v, v"),
+    "filter": ("[1].", "v, v > 0"),
+    "exists_one": ("[1].", "v, v > 0"),
+    "timestamp": ("", '"2024-01-01T00:00:00Z"'),
+    "duration": ("", '"1h"'),
+}
+
+# Each hides the restricted call from a scanner that reads literals or comments differently from CEL.
+LEXER_FORMS = {
+    "raw r double": 'r"\\" == "x" || {call}',
+    "raw R double": 'R"\\" == "x" || {call}',
+    "raw r single": "r'\\' == 'x' || {call}",
+    "raw R single": "R'\\' == 'x' || {call}",
+    "raw triple double": 'r"""\\""" == "x" || {call}',
+    "raw triple single": "r'''\\''' == 'x' || {call}",
+    "triple double": '"""a"b""" == "x" || {call}',
+    "triple single": "'''a'b''' == 'x' || {call}",
+    "raw bytes br": 'br"\\" == b"x" || {call}',
+    "raw bytes bR": 'bR"\\" == b"x" || {call}',
+    "raw bytes Br": 'Br"\\" == b"x" || {call}',
+    "raw bytes BR single": "BR'\\' == b'x' || {call}",
+    "bytes triple": 'b"""a"b""" == b"x" || {call}',
+    "comment holding a quote": '1 == 1 // "\n || {call}',
+    "comment before the paren": "{gap://\n}",
+    "spaced comment before the paren": "{gap: // note\n}",
+    "comment line before the paren": "{gap:\n// note\n }",
+}
+
+
+def _lexer_case(form: str, name: str) -> str:
+    receiver, args = RESTRICTED_CALLS[name]
+    template = LEXER_FORMS[form]
+    if template.startswith("{gap:"):
+        return f"{receiver}{name}{template[5:-1]}({args})"
+    return template.replace("{call}", f"{receiver}{name}({args})")
+
+
+class TestLexerForms:
+    """String literals and comments are read the way cel-rust's lexer reads them."""
+
+    @pytest.mark.parametrize("name", list(RESTRICTED_CALLS))
+    @pytest.mark.parametrize("form", list(LEXER_FORMS))
+    def test_no_literal_or_comment_form_hides_a_restricted_call(self, form, name):
+        import cel
+
+        expr = _lexer_case(form, name)
+        cel.compile(expr)  # the form is valid CEL, so the call runs unless the profile refuses it
+        errors = validate(expr)
+        assert any(f"'{name}()'" in error for error in errors), (expr, errors)
+
+    @pytest.mark.parametrize(
+        "expr",
+        [
+            'r"map(" == "x"',
+            '"""a"b map( c""" == "x"',
+            "'''x.matches('a')''' == 'x'",
+            'br"duration(" == b"x"',
+            "x == 1 // map(v, v)",
+            'x == 1 // "\n',
+        ],
+        ids=repr,
+    )
+    def test_a_call_inside_a_literal_or_comment_is_not_scanned(self, expr):
+        assert validate(expr) == [], expr
+
+    def test_the_scan_finds_every_restricted_function_cel_parses(self):
+        import random
+
+        import cel
+
+        from scalo.expression import ProfileConfig, scan_profile
+
+        # cel's own parser reports the functions it read, so it is the reference for the lexer.
+        pieces = ['"', "'", '"""', "'''", "r", "R", "b", "B", "br", "\\", "//", "\n", " ", "a", "==", "||", "(", ")"]
+        calls = ['x.matches("a")', 'timestamp("2024-01-01T00:00:00Z")', 'duration("1h")', 'x.matches//\n("a")']
+        shapes = ['{h} == "x" || {c}', "{h} || {c}", "{c} || {h}", "[{h}] == [] || {c}"]
+        rng = random.Random(20261021)
+        checked = 0
+        for _ in range(30000):
+            head = "".join(rng.choice(pieces) for _ in range(rng.randint(1, 10)))
+            expr = rng.choice(shapes).format(h=head, c=rng.choice(calls))
+            try:
+                used = {"matches", "timestamp", "duration"} & set(cel.compile(expr).functions())
+            except ValueError:
+                continue
+            checked += 1
+            flagged = {d.message.split("'")[1].removesuffix("()") for d in scan_profile(expr, ProfileConfig())}
+            assert used <= flagged, expr
+        assert checked > 1000, checked
+
+    def test_rb_is_a_name_then_a_plain_string_which_cel_refuses(self):
+        from scalo.expression import scan_profile
+
+        # CEL reads `rb` as a name, so the backslash escapes the quote and the string runs on.
+        expr = 'rb"\\" == "x" || x.matches("a")'
+        assert scan_profile(expr) == []
+        assert validate(expr) != [], "a name followed by a string does not parse"
 
 
 def _covered(expr: str, span) -> str:
@@ -256,12 +361,43 @@ class TestProfileConfig:
 
         monkeypatch.setenv("EXPRESSION__ALLOW_REGEX", "true")
         settings.reload()
-        profile._read_cascade_profile.cache_clear()
+        profile._LATCH.profile = None
         try:
             assert profile.cascade_profile().allow_regex is True
             assert validate('name.matches("^w")') == []
         finally:
             monkeypatch.delenv("EXPRESSION__ALLOW_REGEX")
             settings.reload()
-            profile._read_cascade_profile.cache_clear()
+            profile._LATCH.profile = None
         assert profile.cascade_profile().allow_regex is False
+
+    def test_the_default_is_not_latched_before_the_cascade_supplies_a_profile(self, tmp_path):
+        # A fresh interpreter, so no earlier test has read the profile.
+        program = (
+            "import os\n"
+            "from scalo.config import settings\n"
+            "from scalo.expression.profile import cascade_profile\n"
+            "early = cascade_profile().allow_regex\n"
+            "os.environ['EXPRESSION__ALLOW_REGEX'] = 'true'\n"
+            "settings.reload()\n"
+            "supplied = cascade_profile().allow_regex\n"
+            "del os.environ['EXPRESSION__ALLOW_REGEX']\n"
+            "settings.reload()\n"
+            "kept = cascade_profile().allow_regex\n"
+            "print(early, supplied, kept)\n"
+        )
+        env = {key: value for key, value in os.environ.items() if not key.startswith("EXPRESSION")}
+        result = subprocess.run(
+            [sys.executable, "-c", program],
+            cwd=tmp_path,
+            env=env,
+            capture_output=True,
+            text=True,
+            encoding="utf-8",
+            errors="replace",
+            timeout=120,
+            check=False,
+        )
+        assert result.returncode == 0, result.stderr
+        # The early default is not kept, and once the cascade supplied a profile it is.
+        assert result.stdout.split() == ["False", "True", "True"], result.stdout
