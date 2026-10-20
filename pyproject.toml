@@ -396,10 +396,9 @@ index-strategy = "unsafe-best-match"
 # version published in the last 7 days. CVE fixes bypass via a temporary
 # per-package exclude-newer-package entry, not by lowering this.
 exclude-newer = "7 days"
-# GA release pass: the cooldown is waived and each package below takes its newest
-# release. Every entry is a no-op once the 7-day span passes the cutoff on
-# 2026-10-13; remove the table then.
-exclude-newer-package = { aiobotocore = "2026-10-06T00:40:00Z", aiohttp = "2026-10-06T00:40:00Z", ansible-core = "2026-10-06T00:40:00Z", ast-serialize = "2026-10-06T00:40:00Z", azure-identity = "2026-10-06T00:40:00Z", azure-keyvault-secrets = "2026-10-06T00:40:00Z", boto3 = "2026-10-06T00:40:00Z", botocore = "2026-10-06T00:40:00Z", charset-normalizer = "2026-10-06T00:40:00Z", cryptography = "2026-10-06T00:40:00Z", dulwich = "2026-10-06T00:40:00Z", faker = "2026-10-06T00:40:00Z", fastapi = "2026-10-06T00:40:00Z", filelock = "2026-10-06T00:40:00Z", google-api-core = "2026-10-06T00:40:00Z", google-auth = "2026-10-06T00:40:00Z", google-cloud-secret-manager = "2026-10-06T00:40:00Z", googleapis-common-protos = "2026-10-06T00:40:00Z", librt = "2026-10-06T00:40:00Z", markupsafe = "2026-10-06T00:40:00Z", msgpack = "2026-10-06T00:40:00Z", mypy = "2026-10-06T00:40:00Z", platformdirs = "2026-10-06T00:40:00Z", proto-plus = "2026-10-06T00:40:00Z", python-dotenv = "2026-10-06T00:40:00Z", regex = "2026-10-06T00:40:00Z", ruff = "2026-10-06T00:40:00Z", tzdata = "2026-10-06T00:40:00Z", uv-build = "2026-10-06T00:40:00Z", virtualenv = "2026-10-06T00:40:00Z", wcwidth = "2026-10-06T00:40:00Z", websockets = "2026-10-06T00:40:00Z" }
+# certifi GHSA-6q48-6c7w-9gw2 is fixed in 2026.10.19. A per-package entry replaces the
+# global span rather than widening it, so remove this one on 2026-10-28.
+exclude-newer-package = { certifi = "2026-10-21T00:00:00Z" }
 # Security floors on transitive packages, applied over whatever their dependents
 # declare. Re-evaluate at each /deps pass; drop one once the tree requires the
 # fixed version itself.
