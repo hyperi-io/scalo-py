@@ -11,7 +11,7 @@
 Mirrors scalo-rs's SharedConfig/ConfigReloader pattern. Provides:
 - Periodic polling (configurable interval, 0 = disabled)
 - on_reload callback after successful reload
-- Optional validation before applying reload
+- Optional validation of the reloaded config before it replaces the live one
 - SIGHUP handler for immediate reload trigger (Unix only)
 - Reload counters (success/error) for metrics integration
 """
@@ -89,16 +89,25 @@ class ConfigReloader:
             self._task = None
 
     def reload_now(self) -> bool:
-        """Trigger an immediate reload. Returns True on success."""
+        """Trigger an immediate reload. Returns True on success.
+
+        The cascade is reloaded into a copy, and ``validate_fn`` judges the copy. Only a
+        copy that loads and validates replaces the live settings, so a failed reload
+        leaves the last good config in place.
+        """
         from scalo.config import settings
 
         try:
-            settings.reload()
+            candidate = settings.dynaconf_clone()
+            candidate.reload()
 
-            if self._validate_fn is not None and not self._validate_fn(settings):
+            if self._validate_fn is not None and not self._validate_fn(candidate):
                 self._reload_count_error += 1
                 logger.warning("Config reload validation failed")
                 return False
+
+            # Swap the wrapped object so every holder of the shared settings sees the new config at once.
+            settings._wrapped = candidate
 
             if self._on_reload is not None:
                 self._on_reload(settings)

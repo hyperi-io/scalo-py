@@ -12,12 +12,14 @@ classification: oss
 release:
   enabled: true
 
-# The contract schema scalo-rs owns, copied byte for byte so scalo-py validates offline.
+# Files scalo-rs owns, copied byte for byte: the contract schema scalo-py validates
+# against offline, and the rules corpus both implementations are tested on.
 vendor:
   - source: hyperi-io/scalo-rs
     ref: e11f3ce696ce2cfca25e2510a2c2793863fdfc97  # v2.14.18
     files:
       charts/scalo-service/schema/deployment-contract.v4.schema.json: src/scalo/deployment/data/contract.schema.json
+      tests/fixtures/rules_corpus.json: tests/fixtures/rules_corpus.json
 
 test:
   min_coverage: 70  # Current: 73%. Target: 80%. Ratchet up as coverage improves.

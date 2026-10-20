@@ -1,10 +1,7 @@
 # Expression
 
 CEL (Common Expression Language) evaluation backed by the
-`common-expression-language` package, which wraps the Rust
-`cel-interpreter` crate via PyO3. The Rust crate is the same one used
-by the `scalo` crate — Python and Rust services parse and evaluate
-expressions identically. Zero behavioural drift.
+`common-expression-language` package, which wraps the Rust `cel` crate (formerly `cel-interpreter`) via PyO3. The Rust crate is the same one used by the `scalo` crate, so Python and Rust services parse and evaluate expressions identically. The extra needs 0.10.0 or later, the first release built on cel-rust 0.14.5 that also imports in a clean install.
 
 ```bash
 pip install scalo[expression]
@@ -33,10 +30,7 @@ assert result is True
 - One Rust implementation means a rule that scores `true` in Python
   scores `true` in Rust. No "the Python and Rust scorers disagree"
   outages.
-- This wrapper adds the **expression profile** — a hard-coded
-  subset of CEL that excludes per-element iteration (`map`, `filter`,
-  `exists`, `all`) and time functions (`timestamp`, `duration`) because
-  they have unpredictable performance on large data-pipeline records.
+- This wrapper adds the **expression profile**, the subset of CEL with a bounded cost per record. Regex, per-element iteration and time functions are refused until the app unlocks them, see [The expression profile](#the-expression-profile).
 
 ---
 
@@ -44,14 +38,14 @@ assert result is True
 
 | Function | Returns | Use for |
 |----------|---------|---------|
-| `validate(expr)` | `list[str]` (empty if valid) | UI pre-submit, config validation |
+| `validate(expr, profile=None)` | `list[str]` (empty if valid) | UI pre-submit, config validation |
+| `diagnose(expr, profile=None)` | `list[Diagnostic]` (empty if valid) | an editor that underlines the call or token at fault |
 | `evaluate(expr, ctx)` | the typed result | one-shot evaluation |
-| `evaluate_condition(expr, ctx)` | `bool` | scoring conditions, alert triggers (missing fields → `False`) |
-| `compile_expression(expr)` | `cel.Program` | hot-path reuse — compile once, execute many |
-| `transpile_to_clickhouse(expr)` | `str` (SQL) | push CEL filters down into ClickHouse queries |
+| `evaluate_condition(expr, ctx)` | `bool` | scoring conditions, alert triggers (missing fields -> `False`) |
+| `compile_expression(expr, profile=None)` | `cel.Program` | hot-path reuse: compile once, execute many |
+| `transpile_to_clickhouse(expr, profile=None)` | `str` (SQL) | push CEL filters down into ClickHouse queries |
 
-All raise `ExpressionError` on profile violations or syntax errors,
-with an `errors: list[str]` attribute carrying every diagnostic.
+`profile=None` enforces the profile the config cascade sets, and `evaluate` and `evaluate_condition` always do. `compile_expression`, `evaluate` and `transpile_to_clickhouse` raise `ExpressionError` on profile violations or syntax errors, with an `errors: list[str]` attribute carrying every diagnostic. [RULES.md](RULES.md) builds ordered first-match rule sets on top.
 
 ---
 
@@ -64,12 +58,31 @@ errors = validate('amount > 10000 && severity == "critical"')
 assert errors == []
 
 errors = validate('items.map(x, x.size)')
-# ["Function 'map()' is not allowed in the expression profile.
-#   Excluded for performance: per-element iteration or time functions."]
+# ["Function 'map()' is not allowed in the expression profile. Per-element
+#   iteration has O(n) cost proportional to collection size. Set
+#   allow_iteration: true in expression config to permit."]
 ```
 
-Returns a list rather than raising — UIs can render every error at once
-without playing exception ping-pong.
+Returns a list rather than raising, so a UI renders every error at once. A function name inside a quoted string is data, so `msg.contains("map(x)")` validates clean.
+
+---
+
+## Locating a problem
+
+`diagnose` finds what `validate` finds, each as a `Diagnostic` with a `message` and a `span`. The span is a byte range into the UTF-8 text, `end` exclusive, so `expr.encode()[span.start:span.end]` is the text at fault:
+
+```python
+from scalo.expression import diagnose
+
+found = diagnose('severity == "high" && host.matches("^w")')
+found[0].span    # Span(start=27, end=34), the name "matches"
+
+found = diagnose("severity == && x")
+found[0].message  # "Syntax error: extraneous input '&&' expecting ..."
+found[0].span     # Span(start=12, end=13), where the parser stopped
+```
+
+A profile finding spans the function name, and the profile is checked before the expression is parsed. A syntax error spans the character the parser stopped at, one diagnostic per parser error. An empty expression has no span. `scan_profile(expr, profile=None)` runs only the profile check, and `check_profile` is the same without spans.
 
 ---
 
@@ -121,10 +134,10 @@ from scalo.expression import evaluate_condition
 evaluate_condition('severity == "critical"', {})        # False
 evaluate_condition('severity == "critical"', {"severity": "info"})  # False
 evaluate_condition('severity == "critical"', {"severity": "critical"})  # True
+evaluate_condition('user.role == "admin"', {"user": {}})  # False
 ```
 
-Catches `RuntimeError`, `ValueError`, `TypeError`, and
-`ExpressionError` — anything else propagates.
+An invalid expression returns `False`, and so does every error the cel package raises while evaluating: a missing variable or map key, a type mismatch, division by zero, an index out of range, an overflow. Each distinct expression is compiled once and kept, up to 1,024 of them with the least recently used dropped first, so calling it per record with the same few conditions compiles nothing after the first call.
 
 ---
 
@@ -132,18 +145,30 @@ Catches `RuntimeError`, `ValueError`, `TypeError`, and
 
 Allowed functions (frozenset, exposed as `ALLOWED_FUNCTIONS`):
 
-- String methods: `contains`, `startsWith`, `endsWith`, `matches`
+- String methods: `contains`, `startsWith`, `endsWith`
 - Size / existence: `size`, `has`
-- Type casts: `int`, `uint`, `double`, `string`, `bool`
+- Type casts: `int`, `uint`, `double`, `string`, `bool`, `bytes`
+- Type introspection: `type`, `dyn`
+- Timestamp accessors: `getFullYear`, `getHours` and the rest of the `get*` family
 
-Disallowed (frozenset, exposed as `DISALLOWED_FUNCTIONS`):
+A function in neither list is refused, so a misspelt name fails validation rather than evaluation.
 
-- Per-element iteration: `map`, `filter`, `exists`, `exists_one`, `all`
-- Time: `timestamp`, `duration`
+Restricted categories, each refused until its flag is set (`DISALLOWED_FUNCTIONS` is all three):
 
-The "no time functions" rule keeps expressions deterministic — the same
-expression against the same record produces the same answer regardless
-of when the pipeline ran it.
+| Category | Functions | Flag | Why |
+|---|---|---|---|
+| `RESTRICTED_REGEX` | `matches` | `allow_regex` | regex cost per record is unbounded |
+| `RESTRICTED_ITERATION` | `map`, `filter`, `exists`, `exists_one`, `all` | `allow_iteration` | cost grows with the collection |
+| `RESTRICTED_TIME` | `timestamp`, `duration` | `allow_time` | keeps a result independent of when the pipeline ran it |
+
+An app sets the flags under `expression` in its config, and every call with `profile=None` reads them from there:
+
+```yaml
+expression:
+  allow_regex: true
+```
+
+`ProfileConfig(allow_regex=True)` passed as `profile=` overrides the cascade for one call. The first clean read of the cascade is kept for the life of the process, and a flag that is not `true` or `false` leaves every restriction on.
 
 ---
 
@@ -159,7 +184,7 @@ sql_where = transpile_to_clickhouse('severity == "critical" && amount > 10000')
 Use this when you have a CEL rule the operator defined, and you want
 to push the filter down into a ClickHouse `WHERE` clause instead of
 fetching every row and filtering in Python. Raises `TranspileError` for
-constructs that don't map to SQL.
+constructs that don't map to SQL. `matches()` transpiles to `match()` only under a profile that allows regex.
 
 ---
 
@@ -202,6 +227,7 @@ on one passes on the other.
 
 ## Related
 
+- [RULES.md](RULES.md) -- ordered first-match rules with native tests and CEL conditions
 - [../core-pillars/CONFIG.md](../core-pillars/CONFIG.md)
 - [DIRECTORY-CONFIG.md](DIRECTORY-CONFIG.md)
 - [../EXTRAS-FLAGS.md](../EXTRAS-FLAGS.md)

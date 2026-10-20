@@ -4,6 +4,38 @@ Behaviour and API changes that need a consumer adjustment, indexed by the scalo 
 
 ---
 
+## 2.31.20
+
+### `matches()` needs `allow_regex` (BEHAVIOUR CHANGE)
+
+The expression profile refuses `matches()` unless it allows regex, as scalo-rs's does, because regex cost per record is unbounded. `validate`, `diagnose`, `compile_expression`, `evaluate`, `evaluate_condition` and `transpile_to_clickhouse` all enforce it. The profile is now `ProfileConfig` (`allow_regex`, `allow_iteration`, `allow_time`), read from the cascade's `expression` key, and `validate`, `diagnose`, `compile_expression` and `transpile_to_clickhouse` take `profile=` to override it per call. `matches` moved from `ALLOWED_FUNCTIONS` to `DISALLOWED_FUNCTIONS` and `RESTRICTED_REGEX`. A function name inside a quoted string is no longer reported as a call, so `msg.contains("map(x)")` validates clean. See [api/EXPRESSION.md](api/EXPRESSION.md#the-expression-profile).
+
+**Consumer adjustment** -- an app that validates, evaluates or transpiles regex conditions sets `expression.allow_regex: true` in its config, or passes `profile=ProfileConfig(allow_regex=True)`. A test that expects `matches` in `ALLOWED_FUNCTIONS` looks in `RESTRICTED_REGEX`.
+
+### `evaluate_condition` returns `False` on every evaluation error (BEHAVIOUR CHANGE)
+
+A missing map key, division by zero, an index out of range or an overflow raised `KeyError`, `ZeroDivisionError`, `IndexError` or `OverflowError` out of `evaluate_condition`. Each now returns `False`, like a missing variable. Each distinct expression is also compiled once and kept, where it was compiled on every call.
+
+**Consumer adjustment** -- none, unless a caller caught one of those errors around `evaluate_condition`.
+
+### A reload that fails validation keeps the last good config (BEHAVIOUR CHANGE)
+
+`ConfigReloader.reload_now` reloaded the live settings and then validated them, so a config `validate_fn` rejected stayed live. It now reloads a copy, validates the copy and swaps it in only when it passes. `validate_fn` receives the copy, and `on_reload` still receives `scalo.config.settings`. See [core-pillars/CONFIG.md](core-pillars/CONFIG.md#hot-reload).
+
+**Consumer adjustment** -- a `validate_fn` that read `scalo.config.settings` instead of its argument reads its argument.
+
+### The `expression` extra needs common-expression-language 0.10.0
+
+The floor rose from 0.5.6 to 0.10.0. It is the first release that imports in a clean install and is built on cel-rust 0.14.5, the crate floor scalo-rs compiles against.
+
+**Consumer adjustment** -- a lock holding an older release moves to 0.10.0 or later.
+
+### `scalo.expression.rules` and `diagnose` (additive)
+
+New `scalo.expression.rules`: ordered first-match rule sets, with native tests and CEL Fast conditions, literal, copy and lookup actions, a per-call clamp and per-row hit counters, checked against scalo-rs's rules corpus. `diagnose` returns `validate`'s findings with the byte span each covers. See [api/RULES.md](api/RULES.md).
+
+**Consumer adjustment** -- none.
+
 ## 2.31.15
 
 ### A configured secrets provider with no SDK is left out, not fatal (BEHAVIOUR CHANGE)

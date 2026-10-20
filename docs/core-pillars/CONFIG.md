@@ -114,6 +114,8 @@ await reloader.start()
 await reloader.stop()
 ```
 
+Each reload loads the cascade into a copy of the settings, and `validate_fn` judges the copy. Only a copy that loads and validates replaces the live `settings`, so a reload that fails to load, fails validation or raises in `validate_fn` leaves the last good config in place. `on_reload` then receives the live `settings`.
+
 `reload_count_success` and `reload_count_error` are counters you can
 feed into [AppMetrics.record_config_reload](METRICS.md#built-in-metric-groups).
 The reloader does not do it for you -- it imports nothing from

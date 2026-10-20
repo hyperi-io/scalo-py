@@ -31,6 +31,7 @@ from dataclasses import dataclass, field
 from enum import Enum, auto
 
 from .cel import ExpressionError, validate
+from .profile import ProfileConfig
 
 __all__ = ["TranspileError", "transpile_to_clickhouse"]
 
@@ -578,7 +579,7 @@ def _emit(node: Expr, parent_prec: int = 0) -> str:
 # -- Public API ----------------------------------------------------
 
 
-def transpile_to_clickhouse(expr: str) -> str:
+def transpile_to_clickhouse(expr: str, profile: ProfileConfig | None = None) -> str:
     """Transpile a CEL expression to a ClickHouse SQL WHERE clause.
 
     The expression is first validated against the expression profile (syntax +
@@ -586,6 +587,8 @@ def transpile_to_clickhouse(expr: str) -> str:
 
     Args:
         expr: CEL expression string.
+        profile: The profile to enforce. ``None`` means the cascade's, which refuses
+            ``matches()`` unless ``expression.allow_regex`` is set.
 
     Returns:
         ClickHouse SQL WHERE clause fragment.
@@ -604,7 +607,7 @@ def transpile_to_clickhouse(expr: str) -> str:
         "status IN ('active', 'pending')"
     """
     # Gate: validate CEL syntax + expression profile.
-    errors = validate(expr)
+    errors = validate(expr, profile)
     if errors:
         raise ExpressionError(errors)
 

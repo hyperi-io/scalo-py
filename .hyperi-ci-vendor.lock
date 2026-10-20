@@ -5,3 +5,8 @@ files:
     ref: e11f3ce696ce2cfca25e2510a2c2793863fdfc97
     sha256: 24313b5f57eb6dfb3ae922946851b20ebcd6595cc324a39a4215350bce4c358f
     source: hyperi-io/scalo-rs
+  tests/fixtures/rules_corpus.json:
+    path: tests/fixtures/rules_corpus.json
+    ref: e11f3ce696ce2cfca25e2510a2c2793863fdfc97
+    sha256: 57abd78a7573b45e4c9112b174d8b5a19f78725cc540649194de86782d5a173d
+    source: hyperi-io/scalo-rs

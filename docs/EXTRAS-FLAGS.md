@@ -140,11 +140,13 @@ is part of the test suite, not a runtime artefact.
 
 | Extra | Adds | Native deps | Doc |
 |---|---|---|---|
-| `expression` | `common-expression-language` (PyO3 wrapper around `cel-interpreter` Rust crate) | none (precompiled wheels) | [api/EXPRESSION.md](api/EXPRESSION.md) |
+| `expression` | `common-expression-language>=0.10.0` (PyO3 wrapper around the `cel` Rust crate) | none (precompiled wheels) | [api/EXPRESSION.md](api/EXPRESSION.md), [api/RULES.md](api/RULES.md) |
 
 Provides byte-identical CEL evaluation with scalo-rs's `expression`
 crate. Same expression, same result, regardless of which language the
 service is in.
+
+The same extra carries `scalo.expression.rules`, the ordered rule sets scalo-rs builds behind its `rules` feature.
 
 ### Secrets
 
