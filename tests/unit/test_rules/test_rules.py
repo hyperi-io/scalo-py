@@ -1,12 +1,12 @@
 # Project:   scalo
-# File:      tests/unit/test_expression/test_rules.py
+# File:      tests/unit/test_rules/test_rules.py
 # Purpose:   Compile, evaluate, clamp and count tests for the rules module
 # Language:  Python
 #
 # License:   Apache-2.0
 # Copyright: (c) 2026 HYPERI PTY LIMITED
 
-"""Tests for scalo.expression.rules beyond the shared corpus."""
+"""Tests for scalo.rules beyond the shared corpus."""
 
 import dataclasses
 import json
@@ -17,7 +17,7 @@ from typing import Any
 import pytest
 
 from scalo.expression import ProfileConfig
-from scalo.expression.rules import (
+from scalo.rules import (
     RECORD_LABEL,
     Clamp,
     ClampOutcome,

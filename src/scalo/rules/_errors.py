@@ -1,5 +1,5 @@
 # Project:   scalo
-# File:      expression/rules/_errors.py
+# File:      rules/_errors.py
 # Purpose:   What a rule set check finds, and the errors rules raise
 # Language:  Python
 #
@@ -16,7 +16,7 @@ import json
 from dataclasses import dataclass
 from enum import StrEnum
 
-from ..diagnostic import Span
+from scalo.expression.diagnostic import Span
 
 __all__ = ["RuleDiagnostic", "RulesError", "RulesLoadError", "Severity"]
 

@@ -146,7 +146,7 @@ Provides byte-identical CEL evaluation with scalo-rs's `expression`
 crate. Same expression, same result, regardless of which language the
 service is in.
 
-The same extra carries `scalo.expression.rules`, the ordered rule sets scalo-rs builds behind its `rules` feature.
+The same extra carries `scalo.rules`, the ordered rule sets scalo-rs builds behind its `rules` feature. Importing `scalo.rules` without it raises `ImportError` naming the extra.
 
 ### Secrets
 

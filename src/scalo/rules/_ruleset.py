@@ -1,5 +1,5 @@
 # Project:   scalo
-# File:      expression/rules/_ruleset.py
+# File:      rules/_ruleset.py
 # Purpose:   A compiled rule set: evaluate records, clamp a target, count hits
 # Language:  Python
 #
@@ -23,7 +23,8 @@ from typing import Any, Self
 
 import yaml
 
-from ..cel import EVALUATION_ERRORS
+from scalo.expression.cel import EVALUATION_ERRORS
+
 from ._compiler import (
     AllOf,
     CelCondition,

@@ -1,6 +1,6 @@
 # Rules
 
-`scalo.expression.rules` (the `expression` extra) sets target fields on a record from an ordered rule set. For each target in the order the set lists them, the first row in declared order that matches the record and resolves a value sets it. A row tests the record with a native test or a CEL Fast condition, and takes its value as a literal, a copy of a field, or a field mapped through a bounded lookup table.
+`scalo.rules` (needs the `expression` extra) sets target fields on a record from an ordered rule set. For each target in the order the set lists them, the first row in declared order that matches the record and resolves a value sets it. A row tests the record with a native test or a CEL Fast condition, and takes its value as a literal, a copy of a field, or a field mapped through a bounded lookup table.
 
 The format, the findings and the outcomes are scalo-rs's `scalo::rules`, checked against the same corpus (`tests/fixtures/rules_corpus.json`, vendored from scalo-rs). A set one implementation accepts, the other accepts, and a record routes the same way in both.
 
@@ -94,7 +94,7 @@ A row for a later target that reads an earlier target's field reads the value th
 
 ```python
 from scalo.expression import ProfileConfig
-from scalo.expression.rules import CompileOptions, RuleSet, RulesError
+from scalo.rules import CompileOptions, RuleSet, RulesError
 
 rules = RuleSet.compile(config)                     # cascade profile
 rules = RuleSet.compile(config, CompileOptions(profile=ProfileConfig(allow_regex=True)))
@@ -111,14 +111,14 @@ One pass reports every finding, so an editor shows them all at once. `compile` r
 | `message` | What is wrong |
 | `span` | For `when`, the byte range in the condition: the function name the profile refused, or the character the parser stopped at |
 
-`dataclasses.asdict(finding)` gives a JSON-ready dict. Warnings are reported once the set has no errors: a row an earlier row of the same target always fires before, because the earlier row sets a literal and is unconditional, has the same test, or is a plain `exists` on the field the later row needs. `rules.warnings` keeps the warnings of a compiled set.
+`dataclasses.asdict(finding)` gives a JSON-ready dict. The span is UTF-8 bytes, and `finding.span.utf16_offsets(condition)` gives the offsets a JavaScript editor indexes by ([EXPRESSION.md](EXPRESSION.md#locating-a-problem)). Warnings are reported once the set has no errors: a row an earlier row of the same target always fires before, because the earlier row sets a literal and is unconditional, has the same test, or is a plain `exists` on the field the later row needs. `rules.warnings` keeps the warnings of a compiled set.
 
 ---
 
 ## Evaluate
 
 ```python
-from scalo.expression.rules import Clamp
+from scalo.rules import Clamp
 
 outcome = rules.evaluate(record)
 outcome = rules.evaluate(record, Clamp("_org_id", allowed_orgs, "default"))

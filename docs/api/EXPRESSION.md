@@ -63,7 +63,7 @@ errors = validate('items.map(x, x.size)')
 #   allow_iteration: true in expression config to permit."]
 ```
 
-Returns a list rather than raising, so a UI renders every error at once. A function name inside a quoted string is data, so `msg.contains("map(x)")` validates clean.
+Returns a list rather than raising, so a UI renders every error at once. A function name inside a quoted string is data, so `msg.contains("map(x)")` validates clean. Whitespace between a name and its `(`, a tab or a newline included, does not hide a call.
 
 ---
 
@@ -81,6 +81,17 @@ found = diagnose("severity == && x")
 found[0].message  # "Syntax error: extraneous input '&&' expecting ..."
 found[0].span     # Span(start=12, end=13), where the parser stopped
 ```
+
+An editor that indexes strings by character or by UTF-16 code unit, as JavaScript does, converts the span against the same text:
+
+```python
+expr = 'label == "été 😀" && x.map(a, a)'
+span = diagnose(expr)[0].span   # Span(start=27, end=30), bytes
+span.char_offsets(expr)         # (22, 25), so expr[22:25] == "map"
+span.utf16_offsets(expr)        # (23, 26), the emoji counts as two units
+```
+
+Both raise `ValueError` for a span outside the text or one that ends inside a character.
 
 A profile finding spans the function name, and the profile is checked before the expression is parsed. A syntax error spans the character the parser stopped at, one diagnostic per parser error. An empty expression has no span. `scan_profile(expr, profile=None)` runs only the profile check, and `check_profile` is the same without spans.
 

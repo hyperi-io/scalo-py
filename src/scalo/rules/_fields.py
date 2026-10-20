@@ -1,5 +1,5 @@
 # Project:   scalo
-# File:      expression/rules/_fields.py
+# File:      rules/_fields.py
 # Purpose:   How a rule set reads the fields of a record
 # Language:  Python
 #

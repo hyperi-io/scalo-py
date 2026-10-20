@@ -57,6 +57,28 @@ class TestStringLiteralsAreNotScanned:
         assert "map()" in errors[0]
 
 
+class TestWhitespaceBeforeTheParen:
+    """CEL allows whitespace between a function name and its call, so the scan must too."""
+
+    @pytest.mark.parametrize("gap", [" ", "\t", "\r", "\n", "\f", "\v", " \t\n "], ids=repr)
+    def test_any_ascii_whitespace_before_the_paren_is_still_a_call(self, gap):
+        regex = validate(f'name.matches{gap}("^w")')
+        iteration = validate(f"[1, 2].map{gap}(x, x)")
+        assert len(regex) == 1, regex
+        assert "matches()" in regex[0]
+        assert len(iteration) == 1, iteration
+        assert "map()" in iteration[0]
+
+    def test_the_span_still_covers_only_the_name(self):
+        from scalo.expression import scan_profile
+
+        expr = "x.map\n\t (a, a)"
+        found = scan_profile(expr)
+        assert len(found) == 1
+        assert found[0].span is not None
+        assert _covered(expr, found[0].span) == "map"
+
+
 def _covered(expr: str, span) -> str:
     return expr.encode()[span.start : span.end].decode()
 
@@ -172,6 +194,46 @@ class TestSpanAt:
 
         assert span_at("ab", 0, 0) is None
         assert span_at("ab", 3, 1) is None
+
+
+class TestSpanOffsets:
+    """A byte span converts to the character and UTF-16 offsets a UI indexes by."""
+
+    EXPR = 'label == "été 😀" && x.map(a, a)'
+
+    def test_a_span_after_non_ascii_text_converts_to_each_unit(self):
+        from scalo.expression import Span, diagnose
+
+        found = diagnose(self.EXPR)
+        assert len(found) == 1
+        span = found[0].span
+        # Two 2-byte characters and one 4-byte, 2-unit character precede the call.
+        assert span == Span(27, 30)
+        assert span.char_offsets(self.EXPR) == (22, 25)
+        assert span.utf16_offsets(self.EXPR) == (23, 26)
+
+        start, end = span.char_offsets(self.EXPR)
+        assert self.EXPR[start:end] == "map"
+        units = self.EXPR.encode("utf-16-le")
+        start, end = span.utf16_offsets(self.EXPR)
+        assert units[2 * start : 2 * end].decode("utf-16-le") == "map"
+
+    def test_an_ascii_span_is_the_same_in_every_unit(self):
+        from scalo.expression import diagnose
+
+        expr = "severity == && x"
+        span = diagnose(expr)[0].span
+        assert span is not None
+        assert span.char_offsets(expr) == span.utf16_offsets(expr) == (span.start, span.end) == (12, 13)
+
+    @pytest.mark.parametrize(("start", "end"), [(11, 12), (0, 999), (5, 3)])
+    def test_a_span_inside_a_character_or_outside_the_text_is_refused(self, start, end):
+        from scalo.expression import Span
+
+        with pytest.raises(ValueError):
+            Span(start, end).utf16_offsets(self.EXPR)
+        with pytest.raises(ValueError):
+            Span(start, end).char_offsets(self.EXPR)
 
 
 class TestProfileConfig:

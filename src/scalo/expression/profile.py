@@ -109,6 +109,9 @@ _REASONS: dict[str, str] = {
     ),
 }
 
+# CEL allows whitespace between a function name and its `(`, so a call written `map\n(` is still a call.
+_CALL_GAP: frozenset[int] = frozenset(b" \t\r\n\f\v")
+
 # Keywords and built-ins that read like a call but are never refused.
 _SKIP_NAMES: frozenset[str] = frozenset(
     {"true", "false", "null", "in", "has", "int", "uint", "double", "string", "bool"}
@@ -244,7 +247,7 @@ def scan_profile(expr: str, profile: ProfileConfig | None = None) -> list[Diagno
             i += 1
         name = data[start:i].decode("ascii")
         peek = i
-        while peek < len(data) and data[peek] == 0x20:
+        while peek < len(data) and data[peek] in _CALL_GAP:
             peek += 1
         if peek >= len(data) or data[peek] != 0x28 or name in _SKIP_NAMES:
             continue

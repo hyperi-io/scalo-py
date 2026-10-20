@@ -1,5 +1,5 @@
 # Project:   scalo
-# File:      expression/rules/_shape.py
+# File:      rules/_shape.py
 # Purpose:   Read a rule set mapping into typed specs, refusing a malformed one
 # Language:  Python
 #

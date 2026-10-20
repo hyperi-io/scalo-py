@@ -1,5 +1,5 @@
 # Project:   scalo
-# File:      expression/rules/__init__.py
+# File:      rules/__init__.py
 # Purpose:   Ordered first-match rules that set target fields on a record
 # Language:  Python
 #
@@ -18,9 +18,13 @@ Targets are evaluated in the order the set lists them, so a row for a later targ
 test an earlier target's new value. A :class:`Clamp` then holds one target to a per-call
 allowed set, replacing anything outside it with a default and counting the replacement.
 
+Install::
+
+    pip install scalo[expression]
+
 Usage::
 
-    from scalo.expression.rules import Clamp, RuleSet
+    from scalo.rules import Clamp, RuleSet
 
     rules = RuleSet.compile({
         "name": "ingest",

@@ -1,5 +1,5 @@
 # Project:   scalo
-# File:      tests/unit/test_expression/test_rules_corpus.py
+# File:      tests/unit/test_rules/test_rules_corpus.py
 # Purpose:   The shared rules corpus, run against scalo-py's validator and evaluator
 # Language:  Python
 #
@@ -21,7 +21,7 @@ from typing import Any
 import pytest
 
 from scalo.expression import ProfileConfig
-from scalo.expression.rules import Clamp, CompileOptions, Outcome, RuleSet
+from scalo.rules import Clamp, CompileOptions, Outcome, RuleSet
 
 CORPUS = json.loads((Path(__file__).resolve().parents[2] / "fixtures" / "rules_corpus.json").read_text("utf-8"))
 

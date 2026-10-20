@@ -21,7 +21,8 @@ __all__ = ["Diagnostic", "Span", "span_at"]
 class Span:
     """A byte range in an expression's UTF-8 text, ``end`` exclusive.
 
-    ``expr.encode()[span.start:span.end]`` is the text it covers.
+    ``expr.encode()[span.start:span.end]`` is the text it covers. A UI that indexes
+    strings in UTF-16 code units, as JavaScript does, takes :meth:`utf16_offsets`.
 
     Attributes:
         start: First byte of the range.
@@ -33,6 +34,46 @@ class Span:
 
     def __str__(self) -> str:
         return f"{self.start}..{self.end}"
+
+    def _split(self, text: str) -> tuple[str, str]:
+        """The text before the span and the text it covers."""
+        data = text.encode("utf-8")
+        if not 0 <= self.start <= self.end <= len(data):
+            raise ValueError(f"span {self} lies outside a text of {len(data)} bytes")
+        return data[: self.start].decode("utf-8"), data[self.start : self.end].decode("utf-8")
+
+    def char_offsets(self, text: str) -> tuple[int, int]:
+        """Return the span as character offsets into ``text``, so ``text[start:end]`` is what it covers.
+
+        Args:
+            text: The expression the span was found in.
+
+        Returns:
+            ``(start, end)`` in characters, ``end`` exclusive.
+
+        Raises:
+            ValueError: The span lies outside ``text`` or an end falls inside a character.
+        """
+        head, covered = self._split(text)
+        return len(head), len(head) + len(covered)
+
+    def utf16_offsets(self, text: str) -> tuple[int, int]:
+        """Return the span as UTF-16 code-unit offsets into ``text``, the units JavaScript indexes.
+
+        A character outside the Basic Multilingual Plane, such as an emoji, counts as two.
+
+        Args:
+            text: The expression the span was found in.
+
+        Returns:
+            ``(start, end)`` in UTF-16 code units, ``end`` exclusive.
+
+        Raises:
+            ValueError: The span lies outside ``text`` or an end falls inside a character.
+        """
+        head, covered = self._split(text)
+        start = len(head.encode("utf-16-le")) // 2
+        return start, start + len(covered.encode("utf-16-le")) // 2
 
 
 @dataclass(frozen=True, slots=True)

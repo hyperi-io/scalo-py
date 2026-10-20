@@ -14,8 +14,8 @@ time functions are unlocked per category by :class:`ProfileConfig`, which apps s
 under the ``expression`` key of the config cascade.
 
 Both Python and Rust services use the same underlying ``cel`` Rust crate, ensuring
-identical parsing and evaluation semantics. :mod:`scalo.expression.rules` builds
-ordered first-match rule sets on top.
+identical parsing and evaluation semantics. :mod:`scalo.rules` builds ordered
+first-match rule sets on top.
 
 Install::
 

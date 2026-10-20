@@ -1,5 +1,5 @@
 # Project:   scalo
-# File:      expression/rules/_compiler.py
+# File:      rules/_compiler.py
 # Purpose:   Check a rule set spec and build the evaluator from it
 # Language:  Python
 #
@@ -18,8 +18,9 @@ from typing import Any
 
 import cel as _cel
 
-from ..cel import EVALUATION_ERRORS, compile_diagnosed
-from ..profile import ProfileConfig, cascade_profile
+from scalo.expression.cel import EVALUATION_ERRORS, compile_diagnosed
+from scalo.expression.profile import ProfileConfig, cascade_profile
+
 from ._errors import RuleDiagnostic, error, quoted, warning
 from ._fields import COMPOSITE, Found, parse_path
 from ._shape import ActionSpec, MatchSpec, RuleSetSpec, RuleSpec

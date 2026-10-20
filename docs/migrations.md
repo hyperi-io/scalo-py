@@ -8,7 +8,7 @@ Behaviour and API changes that need a consumer adjustment, indexed by the scalo 
 
 ### `matches()` needs `allow_regex` (BEHAVIOUR CHANGE)
 
-The expression profile refuses `matches()` unless it allows regex, as scalo-rs's does, because regex cost per record is unbounded. `validate`, `diagnose`, `compile_expression`, `evaluate`, `evaluate_condition` and `transpile_to_clickhouse` all enforce it. The profile is now `ProfileConfig` (`allow_regex`, `allow_iteration`, `allow_time`), read from the cascade's `expression` key, and `validate`, `diagnose`, `compile_expression` and `transpile_to_clickhouse` take `profile=` to override it per call. `matches` moved from `ALLOWED_FUNCTIONS` to `DISALLOWED_FUNCTIONS` and `RESTRICTED_REGEX`. A function name inside a quoted string is no longer reported as a call, so `msg.contains("map(x)")` validates clean. See [api/EXPRESSION.md](api/EXPRESSION.md#the-expression-profile).
+The expression profile refuses `matches()` unless it allows regex, as scalo-rs's does, because regex cost per record is unbounded. `validate`, `diagnose`, `compile_expression`, `evaluate`, `evaluate_condition` and `transpile_to_clickhouse` all enforce it. The profile is now `ProfileConfig` (`allow_regex`, `allow_iteration`, `allow_time`), read from the cascade's `expression` key, and `validate`, `diagnose`, `compile_expression` and `transpile_to_clickhouse` take `profile=` to override it per call. `matches` moved from `ALLOWED_FUNCTIONS` to `DISALLOWED_FUNCTIONS` and `RESTRICTED_REGEX`. A function name inside a quoted string is no longer reported as a call, so `msg.contains("map(x)")` validates clean, and whitespace other than a space between a name and its `(` no longer hides one, so `name.matches\t("x")` and `items.map\n(x, x)` are refused like their spaced forms. See [api/EXPRESSION.md](api/EXPRESSION.md#the-expression-profile).
 
 **Consumer adjustment** -- an app that validates, evaluates or transpiles regex conditions sets `expression.allow_regex: true` in its config, or passes `profile=ProfileConfig(allow_regex=True)`. A test that expects `matches` in `ALLOWED_FUNCTIONS` looks in `RESTRICTED_REGEX`.
 
@@ -30,9 +30,9 @@ The floor rose from 0.5.6 to 0.10.0. It is the first release that imports in a c
 
 **Consumer adjustment** -- a lock holding an older release moves to 0.10.0 or later.
 
-### `scalo.expression.rules` and `diagnose` (additive)
+### `scalo.rules` and `diagnose` (additive)
 
-New `scalo.expression.rules`: ordered first-match rule sets, with native tests and CEL Fast conditions, literal, copy and lookup actions, a per-call clamp and per-row hit counters, checked against scalo-rs's rules corpus. `diagnose` returns `validate`'s findings with the byte span each covers. See [api/RULES.md](api/RULES.md).
+New `scalo.rules`, needing the `expression` extra: ordered first-match rule sets, with native tests and CEL Fast conditions, literal, copy and lookup actions, a per-call clamp and per-row hit counters, checked against scalo-rs's rules corpus. `diagnose` returns `validate`'s findings with the UTF-8 byte span each covers, and `Span.char_offsets` and `Span.utf16_offsets` convert a span for an editor that indexes by character or by UTF-16 code unit. See [api/RULES.md](api/RULES.md) and [api/EXPRESSION.md](api/EXPRESSION.md#locating-a-problem).
 
 **Consumer adjustment** -- none.
 
