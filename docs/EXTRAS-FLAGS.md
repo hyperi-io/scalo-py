@@ -47,6 +47,7 @@ That's it for the no-extras path. If you only need those, stop here.
 ```mermaid
 flowchart TB
     Base["base install"]
+    API["api"]
     Resil["resilience"]
     HTTP["http"]
     Metrics["metrics"]
@@ -63,6 +64,7 @@ flowchart TB
     Dev["dev (tests + lint + audit)"]
     Docs["docs (sphinx)"]
 
+    Base --> API
     Base --> Resil
     Base --> HTTP
     Base --> Metrics
@@ -109,6 +111,14 @@ alone. `opentelemetry` is a subset of it, kept so existing
 | `http` | `httpx`, `stamina` | none | [api/HTTP-CLIENT.md](api/HTTP-CLIENT.md) |
 
 `http` carries its retry dependency itself; the `secrets-*` extras do NOT pull `resilience` in. `scalo.resilience` (circuit breaker, reconnecting client) is stdlib-only and works on the base install.
+
+### API server
+
+| Extra | Adds | Native deps | Doc |
+|---|---|---|---|
+| `api` | `fastapi`, `pydantic` | none | [api/API-CONVENTIONS.md](api/API-CONVENTIONS.md) |
+
+`scalo.api` holds a FastAPI service to the API conventions: operation ids from one resource hierarchy, the `x-scalo` OpenAPI extension, ETag and If-Match, `dry_run`, problem+json, pagination and the conformance check. Base `import scalo` never imports it or FastAPI, and `import scalo.api` without the extra raises an `ImportError` naming `scalo[api]`. `scalo.health.create_health_router` also uses FastAPI, imported only when called.
 
 ### Transport + data
 
@@ -187,10 +197,10 @@ dependencies = ["scalo>=2.28.3"]
 
 Base install only. Config + logger + runtime + CLI framework.
 
-### FastAPI service (config + logs + metrics)
+### FastAPI service (config + logs + metrics + API conventions)
 
 ```toml
-dependencies = ["scalo[metrics]>=2.28.3"]
+dependencies = ["scalo[api,metrics]"]
 ```
 
 ### Kafka consumer (data-pipeline shape)

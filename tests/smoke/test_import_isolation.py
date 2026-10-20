@@ -35,6 +35,7 @@ SRC = Path(__file__).resolve().parents[2] / "src" / PKG
 # Every subpackage plus the standalone modules a consumer can import directly.
 ENTRY_MODULES = [
     "scalo",
+    "scalo.api",
     "scalo.cli",
     "scalo.concurrency",
     "scalo.config",

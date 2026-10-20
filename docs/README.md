@@ -25,6 +25,7 @@ Python extras pull in which deps.
 | `from scalo import runtime` | K8s / Docker / bare-metal autodetect, container-aware paths (config_dir, data_dir, cache_dir, run_dir), `CONTAINER_BASE_PATH` override | Read `/.dockerenv`, parse cgroups, pick path defaults |
 | `from scalo import secrets` | OpenBao / Vault / AWS / GCP / Azure / ansible-vault / file providers behind one interface | Pick a provider SDK, wrap each behind a uniform API |
 | `from scalo.deployment import DeploymentContract` | Pydantic contract -> Dockerfile + container manifest + Compose fragment carrying [Contract Identity v1](deployment/IDENTITY.md) labels, and the `deployment-contract.json` the scalo-service chart renders the Kubernetes objects from | Write the generators and the chart yourself, keep them in sync, stamp identity by hand |
+| `from scalo.api import Hierarchy, install` | Operation ids from one resource hierarchy, the `x-scalo` spec extension, ETag/If-Match, `dry_run`, problem+json, pagination, a conformance check | Name operations by hand, hand-roll error envelopes and list paging per router |
 | `from scalo.kafka import KafkaProducer, KafkaConsumer` | confluent-kafka clients with at-least-once producer defaults, schema sampling, consumer lag health, async wrappers | Configure librdkafka, hand-roll a retry wrapper, write a lag probe |
 
 That's the value proposition. Everything else is "and here's how the
@@ -134,6 +135,7 @@ flowchart TB
 - [api/VERSION-CHECK.md](api/VERSION-CHECK.md) — Non-blocking startup version probe
 - [api/SCALING.md](api/SCALING.md) — `ScalingPressure` composite score for KEDA
 - [api/CLI.md](api/CLI.md) — Typer-based CLI framework, `ServiceApp`, standard options
+- [api/API-CONVENTIONS.md](api/API-CONVENTIONS.md) -- `scalo.api` (the `api` extra): resource hierarchy and operation ids, `x-scalo`, preconditions, problem+json, pagination, conformance check
 
 ---
 

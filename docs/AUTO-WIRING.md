@@ -54,6 +54,7 @@ Read top-to-bottom: install the extra in the first column, get every
 | `scalo[secrets-{vault,aws,gcp,azure,ansible-vault}]` | `secrets` provider | Above + uniform interface, lazy-loaded provider |
 | `scalo[deployment]` | `deployment` + `pydantic` | Above + `DeploymentContract` + generators + `ContractIdentity` + `test_support` |
 | `scalo[expression]` | `expression` + `common-expression-language` | Above + CEL evaluation (Python/Rust parity via PyO3) |
+| `scalo[api]` | `api` + `fastapi` + `pydantic` | Above + `install(app, hierarchy)`: problem+json handlers and a spec whose operation ids and `x-scalo` come from the resource hierarchy. The app still passes `generate_unique_id_function=hierarchy.unique_id` itself |
 | `scalo[resilience]` | `stamina` | Above + the stamina retry engine without the HTTP client; `scalo.resilience` itself is stdlib-only and needs no extra |
 
 ---
