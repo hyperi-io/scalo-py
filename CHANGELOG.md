@@ -3,6 +3,13 @@
 Rendered by CI and committed back at the end of a release -- do not edit by
 hand. Release notes also appear on the GitHub Releases page, one per tag.
 
+## [2.31.20](https://github.com/hyperi-io/scalo-py/compare/v2.31.19...v2.31.20) (2026-10-20)
+
+### Bug Fixes
+
+* **expression:** add the rule set engine ([#143](https://github.com/hyperi-io/scalo-py/issues/143)) ([3dfc85d](https://github.com/hyperi-io/scalo-py/commit/3dfc85da4e0923c52f11b6218600e16618f3f6ba))
+* **tests:** assert gather_with_timeouts runs its tasks together, not how fast ([#144](https://github.com/hyperi-io/scalo-py/issues/144)) ([096fb09](https://github.com/hyperi-io/scalo-py/commit/096fb0947e1581093ee9d703b31f74ad1a0558f9))
+
 ## [2.31.19](https://github.com/hyperi-io/scalo-py/compare/v2.31.18...v2.31.19) (2026-10-20)
 
 ### Bug Fixes
