@@ -153,6 +153,8 @@ One `apply` (PUT) creates and updates, after AIP-133, AIP-134 and AIP-154. The c
 
 `DryRun` is the `dry_run` query parameter, default false, after AIP-163. A handler given `dry_run=true` validates, reports the change and the ETag it would write, and commits nothing. A client can then commit with that ETag as `If-Match`, binding the commit to exactly what it previewed.
 
+`dry_run` is a parameter the handler must honour. scalo does not turn the request into a no-op, and the `dry-run` conformance rule checks only that the parameter is declared.
+
 ---
 
 ## Lists and views
@@ -191,7 +193,11 @@ One `apply` (PUT) creates and updates, after AIP-133, AIP-134 and AIP-154. The c
 | Request validation | 422 `validation_error`, one `FieldError` per field (AIP-193): `field`, `location`, `detail`, `code`, and `pointer` for a body field |
 | Anything else | 500, logged with the route template, never echoing the exception's message. `catch_unhandled=False` leaves it to the server |
 
+`install` registers handlers for `StarletteHTTPException`, `RequestValidationError` and, unless `catch_unhandled=False`, `Exception`. FastAPI keeps the last handler registered per exception, so these replace any the app registered earlier. Pass `problem_handlers=False` to keep the app's own.
+
 `declare_problem_responses(spec)` makes the spec say the same: it adds the `Problem` schema, points FastAPI's default 422 at it, adds a `default` problem response where an operation has none, and drops FastAPI's validation-error schemas once nothing references them. `install` does both.
+
+The schemas dropped are `HTTPValidationError` and `ValidationError`. A client generated from the spec that names them must move to the `Problem` schema.
 
 ---
 
