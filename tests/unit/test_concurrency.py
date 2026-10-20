@@ -232,21 +232,25 @@ class TestGatherWithTimeouts:
         assert results == {"a": 1, "b": 2, "c": 3}
 
     async def test_runs_in_parallel(self):
-        """Three 50ms tasks complete in ~50ms, not 150ms."""
+        """All three tasks are in flight at once, whatever the runner's speed."""
+        in_flight = 0
+        peak = 0
 
         async def sleeper():
+            nonlocal in_flight, peak
+            in_flight += 1
+            peak = max(peak, in_flight)
             await asyncio.sleep(0.05)
+            in_flight -= 1
             return "done"
 
-        start = time.monotonic()
         results = await gather_with_timeouts(
             {"a": sleeper, "b": sleeper, "c": sleeper},
             per_task_timeout=1.0,
         )
-        elapsed = time.monotonic() - start
 
         assert all(v == "done" for v in results.values())
-        assert elapsed < 0.15  # Would be ~0.15s if sequential
+        assert peak == 3
 
     async def test_per_task_timeout(self):
         async def quick():
