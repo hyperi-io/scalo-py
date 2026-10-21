@@ -55,6 +55,7 @@ Read top-to-bottom: install the extra in the first column, get every
 | `scalo[deployment]` | `deployment` + `pydantic` | Above + `DeploymentContract` + generators + `ContractIdentity` + `test_support` |
 | `scalo[expression]` | `expression` + `common-expression-language` | Above + CEL evaluation (Python/Rust parity via PyO3) |
 | `scalo[api]` | `api` + `fastapi` + `pydantic` | Above + `install(app, hierarchy)`: problem+json handlers and a spec whose operation ids and `x-scalo` come from the resource hierarchy. The app still passes `generate_unique_id_function=hierarchy.unique_id` itself |
+| `scalo[mcp]` | `mcp` + the MCP SDK + `httpx2` + `jsonschema`, and `[api]` | Above + `mount(app)`: MCP tools generated from the spec at startup, each call run in-process with the caller's token, writes that preview first and commit only the previewed request, an `Origin` allow-list, RFC 9728 metadata and an optional token verifier when an issuer is named |
 | `scalo[resilience]` | `stamina` | Above + the stamina retry engine without the HTTP client; `scalo.resilience` itself is stdlib-only and needs no extra |
 | `scalo[cli]` | `cli.openapi` + `typer` + `jmespath` | Above + a whole CLI from an OpenAPI spec alone: the resource hierarchy as the command tree, `--output`, `--query`, pagination, input documents, problem+json exit codes |
 

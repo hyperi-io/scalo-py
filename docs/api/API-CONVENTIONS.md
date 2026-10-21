@@ -151,7 +151,7 @@ One `apply` (PUT) creates and updates, after AIP-133, AIP-134 and AIP-154. The c
 
 `check(current, require=False)` lets a write with neither header through. `check_preconditions` is the same check as a function. `etag_of(value)` is the SHA-256 of bytes or text as given, and of anything else as canonical JSON, so key order does not change it. `format_etag(value)` quotes an opaque value such as a git blob sha. `parse_etags(header)` returns `"*"` or a tuple of `EntityTag`.
 
-`DryRun` is the `dry_run` query parameter, default false, after AIP-163. A handler given `dry_run=true` validates, reports the change and the ETag it would write, and commits nothing. A client can then commit with that ETag as `If-Match`, binding the commit to exactly what it previewed.
+`DryRun` is the `dry_run` query parameter, default false, after AIP-163. A handler given `dry_run=true` validates, reports the change and the ETag it would write, and commits nothing. To bind a commit to the state its preview saw, a client sends the resource's current ETag, the one the preview was computed against, as `If-Match` on both the preview and the commit: the commit then answers 412 if anyone wrote in between. The ETag it would write cannot serve, because `If-Match` is compared with the current one. `If-Match` binds the state, not the change, so a commit that should be exactly the previewed request needs the client to bind that too. `scalo.mcp` does both, with a preview token over the ETag and the request ([MCP.md](MCP.md)).
 
 `dry_run` is a parameter the handler must honour. scalo does not turn the request into a no-op, and the `dry-run` conformance rule checks only that the parameter is declared.
 
@@ -251,6 +251,7 @@ scalo-rs has no counterpart: this is a control-plane concern, and scalo-rs serve
 ## Related
 
 - [../EXTRAS-FLAGS.md](../EXTRAS-FLAGS.md)
+- [MCP.md](MCP.md)
 - [CLI.md](CLI.md)
 - [../core-pillars/HEALTH.md](../core-pillars/HEALTH.md)
 - Google AIPs 122, 132 to 136, 154, 157, 158, 163 and 193: <https://google.aip.dev>

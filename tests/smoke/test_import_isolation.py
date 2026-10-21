@@ -47,6 +47,7 @@ ENTRY_MODULES = [
     "scalo.http",
     "scalo.kafka",
     "scalo.logger",
+    "scalo.mcp",
     "scalo.metrics",
     "scalo.otel_backoff",
     "scalo.otel_tracing",
