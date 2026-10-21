@@ -448,7 +448,7 @@ class TestProfile:
             assert fn in ALLOWED_FUNCTIONS
 
     def test_disallowed_functions(self):
-        for fn in ("matches", "map", "filter", "exists", "all", "exists_one", "timestamp", "duration"):
+        for fn in ("matches", "map", "filter", "exists", "all", "exists_one", "existsOne", "timestamp", "duration"):
             assert fn in DISALLOWED_FUNCTIONS
 
     def test_no_overlap(self):
