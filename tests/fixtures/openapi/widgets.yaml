@@ -1,0 +1,130 @@
+openapi: 3.1.0
+info:
+  title: Widgets
+  version: "1"
+tags:
+  - name: widgets
+    description: Widgets and their parts.
+paths:
+  /api/v1/widgets:
+    get:
+      tags: [widgets]
+      summary: List widgets
+      parameters:
+        - $ref: "#/components/parameters/Colour"
+        - name: tag
+          in: query
+          schema: {type: array, items: {type: string}}
+        - name: limit
+          in: query
+          schema: {anyOf: [{type: integer}, {type: "null"}], default: 10}
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema: {type: array, items: {$ref: "#/components/schemas/Widget"}}
+    post:
+      tags: [widgets]
+      summary: Create a widget
+      requestBody:
+        content:
+          application/json:
+            schema: {$ref: "#/components/schemas/WidgetWithParts"}
+      responses:
+        "201":
+          description: Created
+  /api/v1/widgets/{widget}:
+    parameters:
+      - name: widget
+        in: path
+        required: true
+        schema: {type: string}
+    get:
+      summary: Get a widget
+      parameters:
+        - name: X-Trace
+          in: header
+          schema: {type: string}
+        - name: Authorization
+          in: header
+          schema: {type: string}
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema: {$ref: "#/components/schemas/Widget"}
+    put:
+      summary: Replace a widget
+      requestBody:
+        content:
+          application/merge-patch+json:
+            schema: {type: object}
+      responses:
+        "200": {description: OK}
+    delete:
+      summary: Delete a widget
+      responses:
+        "204": {description: Gone}
+  /api/v1/widgets/{widget}/rotate:
+    post:
+      summary: Rotate a widget
+      responses:
+        "200": {description: OK}
+  /api/v1/widgets/{widget}/parts:
+    get:
+      summary: List a widget's parts
+      responses:
+        "200": {description: OK}
+  /api/v1/reports/run:
+    post:
+      operationId: reports.daily.run
+      summary: Run the daily report
+      responses:
+        "202": {description: Accepted}
+  /api/v1/internal/flush:
+    post:
+      summary: Flush caches
+      x-scalo:
+        hierarchy: [maintenance]
+        verb: flush
+        cli: {hidden: false, aliases: [purge], positional: []}
+      responses:
+        "200": {description: OK}
+  /api/v1/internal/debug:
+    get:
+      summary: Debug dump
+      x-scalo:
+        hierarchy: [maintenance]
+        verb: debug
+        cli: {hidden: true}
+      responses:
+        "200": {description: OK}
+components:
+  parameters:
+    Colour:
+      name: colour
+      in: query
+      description: Only widgets of this colour
+      schema: {type: string, enum: [red, green]}
+  schemas:
+    Widget:
+      type: object
+      required: [name]
+      properties:
+        name: {type: string, description: The widget's name}
+        size: {type: number}
+        enabled: {type: boolean}
+        parent: {$ref: "#/components/schemas/Widget"}
+    WidgetWithParts:
+      allOf:
+        - $ref: "#/components/schemas/Widget"
+        - type: object
+          required: [parts]
+          properties:
+            parts: {type: array, items: {$ref: "#/components/schemas/Part"}}
+    Part:
+      type: object
+      properties:
+        id: {type: integer}

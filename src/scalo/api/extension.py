@@ -29,7 +29,7 @@ from collections.abc import Callable
 from dataclasses import dataclass
 from typing import Any
 
-EXTENSION = "x-scalo"
+from scalo._openapi import EXTENSION
 
 # Attribute a dependency carries to name the RBAC action it checks.
 ACTION_ATTRIBUTE = "__scalo_action__"

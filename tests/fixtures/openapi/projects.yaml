@@ -1,0 +1,409 @@
+openapi: 3.1.0
+info:
+  title: Projects
+  description: A project tracker, shaped the way scalo.api writes a spec.
+  version: "1"
+tags:
+  - name: projects
+    description: Projects and their tasks.
+paths:
+  /api/v1/projects:
+    get:
+      tags: [projects]
+      summary: List projects
+      operationId: projects.list
+      parameters:
+        - $ref: "#/components/parameters/PageSize"
+        - $ref: "#/components/parameters/PageToken"
+        - name: owner
+          in: query
+          schema: {anyOf: [{type: string}, {type: "null"}]}
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema: {$ref: "#/components/schemas/ProjectPage"}
+      x-scalo: {hierarchy: [projects], verb: list, read_only: true}
+    post:
+      tags: [projects]
+      summary: Create a project
+      operationId: projects.create
+      parameters:
+        - $ref: "#/components/parameters/DryRun"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: {$ref: "#/components/schemas/Project"}
+      responses:
+        "201":
+          description: Created
+          content:
+            application/json:
+              schema: {$ref: "#/components/schemas/Project"}
+      x-scalo: {hierarchy: [projects], verb: create, read_only: false}
+  /api/v1/projects/{project}:
+    parameters:
+      - $ref: "#/components/parameters/ProjectName"
+    get:
+      tags: [projects]
+      summary: Get a project
+      operationId: projects.get
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema: {$ref: "#/components/schemas/Project"}
+      x-scalo: {hierarchy: [projects], verb: get, read_only: true}
+    put:
+      tags: [projects]
+      summary: Create or replace a project
+      operationId: projects.apply
+      parameters:
+        - $ref: "#/components/parameters/DryRun"
+        - $ref: "#/components/parameters/IfMatch"
+        - $ref: "#/components/parameters/IfNoneMatch"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: {$ref: "#/components/schemas/Project"}
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema: {$ref: "#/components/schemas/Project"}
+      x-scalo: {hierarchy: [projects], verb: apply, read_only: false}
+    patch:
+      tags: [projects]
+      summary: Change some of a project's fields
+      operationId: projects.update
+      parameters:
+        - $ref: "#/components/parameters/DryRun"
+        - $ref: "#/components/parameters/IfMatch"
+      requestBody:
+        required: true
+        content:
+          application/merge-patch+json:
+            schema: {$ref: "#/components/schemas/ProjectPatch"}
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema: {$ref: "#/components/schemas/Project"}
+      x-scalo: {hierarchy: [projects], verb: update, read_only: false}
+    delete:
+      tags: [projects]
+      summary: Delete a project
+      operationId: projects.delete
+      parameters:
+        - $ref: "#/components/parameters/DryRun"
+        - $ref: "#/components/parameters/IfMatch"
+      responses:
+        "204": {description: Deleted}
+      x-scalo: {hierarchy: [projects], verb: delete, read_only: false}
+  /api/v1/projects/{project}/archive:
+    parameters:
+      - $ref: "#/components/parameters/ProjectName"
+    post:
+      tags: [projects]
+      summary: Archive a project
+      operationId: projects.archive
+      parameters:
+        - $ref: "#/components/parameters/DryRun"
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema: {$ref: "#/components/schemas/Project"}
+      x-scalo:
+        hierarchy: [projects]
+        verb: archive
+        read_only: false
+        cli: {hidden: false, aliases: [shelve], positional: [project]}
+  /api/v1/projects/{project}/task-count:
+    parameters:
+      - $ref: "#/components/parameters/ProjectName"
+    get:
+      tags: [projects]
+      summary: Count a project's tasks
+      operationId: projects.tasks
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  open: {type: integer}
+                  done: {type: integer}
+      x-scalo: {hierarchy: [projects], verb: tasks, read_only: true}
+  /api/v1/projects/{project}/tasks:
+    parameters:
+      - $ref: "#/components/parameters/ProjectName"
+    get:
+      tags: [projects]
+      summary: List a project's tasks
+      operationId: projects.tasks.list
+      parameters:
+        - $ref: "#/components/parameters/PageSize"
+        - $ref: "#/components/parameters/PageToken"
+        - name: status
+          in: query
+          schema: {$ref: "#/components/schemas/Status"}
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema: {$ref: "#/components/schemas/TaskPage"}
+      x-scalo: {hierarchy: [projects, tasks], verb: list, read_only: true}
+    post:
+      tags: [projects]
+      summary: Add a task
+      operationId: projects.tasks.create
+      parameters:
+        - $ref: "#/components/parameters/DryRun"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: {$ref: "#/components/schemas/Task"}
+      responses:
+        "201":
+          description: Created
+          content:
+            application/json:
+              schema: {$ref: "#/components/schemas/Task"}
+      x-scalo: {hierarchy: [projects, tasks], verb: create, read_only: false}
+  /api/v1/projects/{project}/tasks/order:
+    parameters:
+      - $ref: "#/components/parameters/ProjectName"
+    post:
+      tags: [projects]
+      summary: Put a project's tasks in order
+      operationId: projects.tasks.order
+      parameters:
+        - $ref: "#/components/parameters/DryRun"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: {$ref: "#/components/schemas/TaskOrder"}
+      responses:
+        "200": {description: OK}
+      x-scalo: {hierarchy: [projects, tasks], verb: order, read_only: false}
+  /api/v1/projects/{project}/tasks/{task}:
+    parameters:
+      - $ref: "#/components/parameters/ProjectName"
+      - $ref: "#/components/parameters/TaskId"
+    get:
+      tags: [projects]
+      summary: Get a task
+      operationId: projects.tasks.get
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema: {$ref: "#/components/schemas/Task"}
+      x-scalo: {hierarchy: [projects, tasks], verb: get, read_only: true}
+    put:
+      tags: [projects]
+      summary: Create or replace a task
+      operationId: projects.tasks.apply
+      parameters:
+        - $ref: "#/components/parameters/DryRun"
+        - $ref: "#/components/parameters/IfMatch"
+        - $ref: "#/components/parameters/IfNoneMatch"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: {$ref: "#/components/schemas/Task"}
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema: {$ref: "#/components/schemas/Task"}
+      x-scalo: {hierarchy: [projects, tasks], verb: apply, read_only: false}
+    delete:
+      tags: [projects]
+      summary: Delete a task
+      operationId: projects.tasks.delete
+      parameters:
+        - $ref: "#/components/parameters/DryRun"
+        - $ref: "#/components/parameters/IfMatch"
+      responses:
+        "204": {description: Deleted}
+      x-scalo: {hierarchy: [projects, tasks], verb: delete, read_only: false}
+  /api/v1/projects/{project}/tasks/{task}/comments:
+    parameters:
+      - $ref: "#/components/parameters/ProjectName"
+      - $ref: "#/components/parameters/TaskId"
+    get:
+      tags: [projects]
+      summary: List a task's comments
+      operationId: projects.tasks.comments.list
+      parameters:
+        - $ref: "#/components/parameters/PageSize"
+        - $ref: "#/components/parameters/PageToken"
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema: {$ref: "#/components/schemas/CommentPage"}
+      x-scalo: {hierarchy: [projects, tasks, comments], verb: list, read_only: true}
+    post:
+      tags: [projects]
+      summary: Comment on a task
+      operationId: projects.tasks.comments.create
+      parameters:
+        - $ref: "#/components/parameters/DryRun"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: {$ref: "#/components/schemas/Comment"}
+      responses:
+        "201":
+          description: Created
+          content:
+            application/json:
+              schema: {$ref: "#/components/schemas/Comment"}
+      x-scalo: {hierarchy: [projects, tasks, comments], verb: create, read_only: false}
+  /api/v1/users/me:
+    get:
+      summary: Who the caller is
+      operationId: users.whoami
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema: {$ref: "#/components/schemas/User"}
+      x-scalo: {hierarchy: [users], verb: whoami, read_only: true}
+  /api/v1/internal/debug:
+    get:
+      summary: Debug dump
+      operationId: maintenance.debug
+      responses:
+        "200": {description: OK}
+      x-scalo:
+        hierarchy: [maintenance]
+        verb: debug
+        read_only: true
+        cli: {hidden: true, aliases: [], positional: []}
+components:
+  parameters:
+    ProjectName:
+      name: project
+      in: path
+      required: true
+      schema: {type: string}
+    TaskId:
+      name: task
+      in: path
+      required: true
+      schema: {type: string}
+    PageSize:
+      name: page_size
+      in: query
+      description: Items per page
+      schema: {type: integer, minimum: 0, default: 0}
+    PageToken:
+      name: page_token
+      in: query
+      description: The next_page_token of the previous page
+      schema: {anyOf: [{type: string}, {type: "null"}]}
+    DryRun:
+      name: dry_run
+      in: query
+      description: Validate and report the change without committing it
+      schema: {type: boolean, default: false}
+    IfMatch:
+      name: If-Match
+      in: header
+      description: The current ETag
+      schema: {anyOf: [{type: string}, {type: "null"}]}
+    IfNoneMatch:
+      name: If-None-Match
+      in: header
+      description: "* to create"
+      schema: {anyOf: [{type: string}, {type: "null"}]}
+  schemas:
+    Status:
+      type: string
+      enum: [open, done]
+    Project:
+      type: object
+      required: [name]
+      properties:
+        name: {type: string}
+        description: {anyOf: [{type: string}, {type: "null"}]}
+        owner: {type: string}
+        labels:
+          type: object
+          additionalProperties: {type: string}
+        created: {type: string, format: date-time, readOnly: true}
+    ProjectPatch:
+      type: object
+      properties:
+        description: {anyOf: [{type: string}, {type: "null"}]}
+        owner: {anyOf: [{type: string}, {type: "null"}]}
+        labels:
+          anyOf:
+            - {type: object, additionalProperties: {type: string}}
+            - {type: "null"}
+    Task:
+      type: object
+      required: [title]
+      properties:
+        id: {type: string, readOnly: true}
+        title: {type: string}
+        status: {$ref: "#/components/schemas/Status"}
+        assignee: {anyOf: [{type: string}, {type: "null"}]}
+        tags: {type: array, items: {type: string}}
+    TaskOrder:
+      type: object
+      required: [tasks]
+      properties:
+        tasks: {type: array, items: {type: string}}
+    Comment:
+      type: object
+      required: [body]
+      properties:
+        body: {type: string}
+        author: {type: string, readOnly: true}
+    User:
+      type: object
+      properties:
+        name: {type: string}
+        email: {type: string}
+    ProjectPage:
+      type: object
+      required: [items]
+      properties:
+        items: {type: array, items: {$ref: "#/components/schemas/Project"}}
+        next_page_token: {anyOf: [{type: string}, {type: "null"}]}
+        total_size: {anyOf: [{type: integer}, {type: "null"}]}
+    TaskPage:
+      type: object
+      required: [items]
+      properties:
+        items: {type: array, items: {$ref: "#/components/schemas/Task"}}
+        next_page_token: {anyOf: [{type: string}, {type: "null"}]}
+    CommentPage:
+      type: object
+      required: [items]
+      properties:
+        items: {type: array, items: {$ref: "#/components/schemas/Comment"}}
+        next_page_token: {anyOf: [{type: string}, {type: "null"}]}

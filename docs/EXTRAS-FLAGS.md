@@ -48,6 +48,7 @@ That's it for the no-extras path. If you only need those, stop here.
 flowchart TB
     Base["base install"]
     API["api"]
+    CLI["cli"]
     Resil["resilience"]
     HTTP["http"]
     Metrics["metrics"]
@@ -65,6 +66,7 @@ flowchart TB
     Docs["docs (sphinx)"]
 
     Base --> API
+    Base --> CLI
     Base --> Resil
     Base --> HTTP
     Base --> Metrics
@@ -119,6 +121,14 @@ alone. `opentelemetry` is a subset of it, kept so existing
 | `api` | `fastapi`, `pydantic` | none | [api/API-CONVENTIONS.md](api/API-CONVENTIONS.md) |
 
 `scalo.api` holds a FastAPI service to the API conventions: operation ids from one resource hierarchy, the `x-scalo` OpenAPI extension, ETag and If-Match, `dry_run`, problem+json, pagination and the conformance check. Base `import scalo` never imports it or FastAPI, and `import scalo.api` without the extra raises an `ImportError` naming `scalo[api]`. `scalo.health.create_health_router` also uses FastAPI, imported only when called.
+
+### CLI from a spec
+
+| Extra | Adds | Native deps | Doc |
+|---|---|---|---|
+| `cli` | `typer`, `jmespath` | none | [api/CLI.md](api/CLI.md#generated-from-an-openapi-spec) |
+
+`scalo.cli.openapi` builds a whole CLI from an OpenAPI spec: a file or a server's `/openapi.json`, never the app. It imports no FastAPI, uvicorn or mcp. `import scalo.cli.openapi` without the extra raises an `ImportError` naming `scalo[cli]`. `ServiceApp` and the rest of `scalo.cli` stay in the base install, which already carries `typer`.
 
 ### Transport + data
 
@@ -177,7 +187,6 @@ without committing to a transitive deps tree that may change.
 
 | Extra | Notes | Doc |
 |---|---|---|
-| `cli` | Base install already ships `typer` + `ServiceApp`. Listing `scalo[cli]` declares CLI dependence without adding deps. | [api/CLI.md](api/CLI.md) |
 | `enhanced` | Reserved. Will bundle a curated feature set for data-pipeline services once the shape is locked. Currently a no-op marker. | (no doc yet) |
 
 ### Development

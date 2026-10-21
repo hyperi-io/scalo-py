@@ -78,7 +78,11 @@ api = [
     "fastapi>=0.142.2",
     "pydantic>=2.13.0",
 ]
-cli = []
+# scalo.cli.openapi: Typer builds the commands, jmespath answers --query. typer is in the base too, for ServiceApp.
+cli = [
+    "typer>=0.25.0",
+    "jmespath>=1.1.0",
+]
 # stamina is the retry engine behind scalo.http; [http] carries it too.
 resilience = [
     "stamina>=26.1.0",
@@ -255,6 +259,8 @@ target-version = "py314"
 line-length = 120
 indent-width = 4
 src = ["src"]
+# Vendored from aws-cli and botocore and kept byte for byte, so neither lint nor format rewrites them.
+extend-exclude = ["src/scalo/cli/openapi/vendor"]
 
 [tool.ruff.lint]
 select = [
@@ -357,7 +363,7 @@ line-ending = "auto"
 exclude = ["*.md"]
 
 [tool.ty.src]
-exclude = ["examples/", "docs/"]
+exclude = ["examples/", "docs/", "src/scalo/cli/openapi/vendor/"]
 
 [tool.ty.environment]
 python-version = "3.14"
