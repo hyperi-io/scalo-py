@@ -88,6 +88,7 @@ RESTRICTED_CALLS = {
     "map": ("[1].", "v, v"),
     "filter": ("[1].", "v, v > 0"),
     "exists_one": ("[1].", "v, v > 0"),
+    "existsOne": ("[1].", "v, v > 0"),
     "timestamp": ("", '"2024-01-01T00:00:00Z"'),
     "duration": ("", '"1h"'),
 }
@@ -219,6 +220,18 @@ class TestScanSpans:
         assert everything.blocked_functions() == frozenset()
         assert scan_profile('name.matches("x") && [1].map(x, x)', everything) == []
         assert len(scan_profile("nosuchfunc(x)", everything)) == 1
+
+    @pytest.mark.parametrize("name", ["exists", "exists_one", "existsOne"])
+    def test_every_spelling_of_exists_one_is_iteration(self, name):
+        from scalo.expression import ProfileConfig, compile_expression, scan_profile
+
+        expr = f"[1, 2].{name}(v, v > 1)"
+        refused = scan_profile(expr, ProfileConfig())
+        assert len(refused) == 1, refused
+        assert "allow_iteration" in refused[0].message
+        allowed = ProfileConfig(allow_iteration=True)
+        assert scan_profile(expr, allowed) == []
+        assert compile_expression(expr, allowed).execute({}) is True
 
 
 class TestDiagnose:

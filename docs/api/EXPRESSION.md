@@ -169,7 +169,7 @@ Restricted categories, each refused until its flag is set (`DISALLOWED_FUNCTIONS
 | Category | Functions | Flag | Why |
 |---|---|---|---|
 | `RESTRICTED_REGEX` | `matches` | `allow_regex` | regex cost per record is unbounded |
-| `RESTRICTED_ITERATION` | `map`, `filter`, `exists`, `exists_one`, `all` | `allow_iteration` | cost grows with the collection |
+| `RESTRICTED_ITERATION` | `map`, `filter`, `exists`, `exists_one`, `existsOne`, `all` | `allow_iteration` | cost grows with the collection |
 | `RESTRICTED_TIME` | `timestamp`, `duration` | `allow_time` | keeps a result independent of when the pipeline ran it |
 
 An app sets the flags under `expression` in its config, and every call with `profile=None` reads them from there:

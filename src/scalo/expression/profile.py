@@ -81,7 +81,8 @@ ALLOWED_FUNCTIONS: frozenset[str] = frozenset(
 
 # Restricted categories, each blocked until its ProfileConfig flag is set.
 RESTRICTED_REGEX: frozenset[str] = frozenset({"matches"})
-RESTRICTED_ITERATION: frozenset[str] = frozenset({"map", "filter", "exists", "all", "exists_one"})
+# cel expands existsOne as the exists_one macro, so both spellings are listed.
+RESTRICTED_ITERATION: frozenset[str] = frozenset({"map", "filter", "exists", "all", "exists_one", "existsOne"})
 RESTRICTED_TIME: frozenset[str] = frozenset({"timestamp", "duration"})
 
 # Every restricted function, whatever unlocks it.
@@ -133,8 +134,8 @@ class ProfileConfig:
 
     Attributes:
         allow_regex: Permit ``matches()``, whose cost per record is unbounded.
-        allow_iteration: Permit ``map()``, ``filter()``, ``exists()``, ``all()`` and
-            ``exists_one()``, whose cost grows with the collection.
+        allow_iteration: Permit ``map()``, ``filter()``, ``exists()``, ``all()``,
+            ``exists_one()`` and ``existsOne()``, whose cost grows with the collection.
         allow_time: Permit ``timestamp()`` and ``duration()``.
     """
 
