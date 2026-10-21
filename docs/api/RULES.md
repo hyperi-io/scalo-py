@@ -2,10 +2,9 @@
 
 `scalo.rules` (needs the `expression` extra) sets target fields on a record from an ordered rule set. For each target in the order the set lists them, the first row in declared order that matches the record and resolves a value sets it. A row tests the record with a native test or a CEL Fast condition, and takes its value as a literal, a copy of a field, or a field mapped through a bounded lookup table.
 
-The format, the findings and the outcomes are scalo-rs's `scalo::rules`, checked against the same corpus (`tests/fixtures/rules_corpus.json`, vendored from scalo-rs). Every corpus case gives the same findings and outcomes in both, with two known differences:
+The format, the findings and the outcomes are scalo-rs's `scalo::rules`, checked against the same corpus (`tests/fixtures/rules_corpus.json`, vendored from scalo-rs). Every corpus case gives the same findings and outcomes in both, and both read CEL literals and comments the same way when they scan a `when` condition for restricted calls (scalo-rs 2.14.19 and later). One difference is known:
 
 - **Number text.** A native test or lookup reads a number's text, and Python writes a float as `repr` gives it. So `1e16` reads `1e+16` here and `1e16` in scalo-rs, `0.00001` reads `1e-05`, and `1e400` reads `inf` where scalo-rs refuses to parse the record. An integer past 2^64 stays exact here and becomes a float in scalo-rs. Rows that test integers, plain decimals, strings and booleans route the same way in both.
-- **Profile scanning.** A `when` condition that hides a restricted call inside a raw or triple-quoted literal, after a `//` comment, or behind non-space whitespace before its `(` is refused here. scalo-rs accepts it until its scanner reads CEL literals and comments the same way.
 
 ```mermaid
 flowchart LR
