@@ -3,6 +3,12 @@
 Rendered by CI and committed back at the end of a release -- do not edit by
 hand. Release notes also appear on the GitHub Releases page, one per tag.
 
+## [2.31.21](https://github.com/hyperi-io/scalo-py/compare/v2.31.20...v2.31.21) (2026-10-21)
+
+### Bug Fixes
+
+* **expression:** treat existsOne as the iteration macro it is ([#145](https://github.com/hyperi-io/scalo-py/issues/145)) ([4691dd0](https://github.com/hyperi-io/scalo-py/commit/4691dd07b8a431b97ad622a8e3eae1ba91ca76ec))
+
 ## [2.31.20](https://github.com/hyperi-io/scalo-py/compare/v2.31.19...v2.31.20) (2026-10-20)
 
 ### Bug Fixes
