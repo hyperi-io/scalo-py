@@ -2,7 +2,7 @@
 
 Unified async/sync secrets API across the supported providers — file, OpenBao,
 HashiCorp Vault (same protocol as OpenBao), AWS Secrets Manager, GCP
-Secret Manager, Azure Key Vault, and Ansible Vault. One `SecretsManager`
+Secret Manager, Azure Key Vault, Ansible Vault, and the keys of a Kubernetes Secret. One `SecretsManager`
 object, one configuration shape, two-tier caching, stale-grace fallback,
 background refresh, and rotation callbacks.
 
@@ -12,6 +12,7 @@ pip install scalo[secrets-aws]          # AWS Secrets Manager
 pip install scalo[secrets-gcp]          # GCP Secret Manager
 pip install scalo[secrets-azure]        # Azure Key Vault
 pip install scalo[secrets-ansible-vault]  # Ansible Vault
+pip install scalo[secrets-kubernetes]   # Kubernetes Secret keys
 ```
 
 File provider is always available — no extra install needed.
@@ -42,6 +43,7 @@ password = await sm.get_string("db_password")
 | `gcp` | `secrets-gcp` | yes | yes (async client) | prefix + labels | ADC |
 | `azure` | `secrets-azure` | yes | yes (`azure.identity.aio`) | prefix + tags | `DefaultAzureCredential` or service principal |
 | `ansible_vault` | `secrets-ansible-vault` | no | thread-pool | prefix + tags | password / password file |
+| `kubernetes` | `secrets-kubernetes` | no | yes (httpx) | none (prefix and pattern client-side) | pod service account token |
 
 OpenBao and HashiCorp Vault share the KV v2 protocol — the same provider
 talks to both. Use the `openbao` provider for Vault too.
@@ -105,6 +107,35 @@ sm = SecretsManager.from_config({
 `recovery_window_days` applies to `delete()`. Unset, AWS keeps a deleted secret recoverable for 30 days. `0` deletes it with no recovery, and 7-30 sets the window. Any other value is refused when the config is built. Inside the window a read, update or create of the name raises `SecretPendingDeletionError`.
 
 A forced delete (`0`) also completes asynchronously on AWS. The DeleteSecret reference says Secrets Manager performs it "with an asynchronous background process", so a `create()` of the same name straight after can be refused for a short while, and AWS says to back off and retry. scalo does not retry. A caller that deletes and re-creates a name retries on `SecretPendingDeletionError`. Reference: <https://docs.aws.amazon.com/secretsmanager/latest/apireference/API_DeleteSecret.html>
+
+---
+
+## Kubernetes Secret
+
+The `kubernetes` provider reads and writes the data keys of one named Secret from inside a pod. A path is a data key, so `get("http", provider="kubernetes")` reads `data.http`. It uses the pod's service account, re-reading the token on every request because the kubelet rotates it, and checks the API server against the service account CA.
+
+```python
+sm = SecretsManager.from_config({"kubernetes": {"secret_name": "my-app-tokens"}})  # namespace unset = the pod's own
+await sm.update("api-key", b"rotated", provider="kubernetes")
+```
+
+It never creates, deletes or lists Secrets. So the chart creates the Secret empty, and a Role grants `get` and `update` on that one `resourceName`:
+
+```yaml
+rules:
+  - apiGroups: [""]
+    resources: ["secrets"]
+    resourceNames: ["my-app-tokens"]
+    verbs: ["get", "update"]
+```
+
+A write reads the Secret, changes one key and replaces the object with the `resourceVersion` it read. On a 409 it starts again from a fresh read, up to `conflict_retries` (5) times, then raises `ProviderError`, as a write to a missing Secret does. A key outside the Secret key rule (letters, digits, `-`, `_` and `.`, at most 253 characters, not `.` or starting `..`) raises `ValueError` before any request. `tags` are ignored, and a value's version is the Secret's `resourceVersion`.
+
+A read answered 429 or 5xx, or not answered, is tried 3 times in all, honouring `Retry-After` up to 2 s. A replace is never repeated, because one whose answer was lost may have landed. The health check logs a warning with the reason when the Secret stops being readable, and once more when it recovers.
+
+The other settings are `namespace`, `api_server`, `token_path`, `ca_cert` (`None` = the system trust store), `namespace_path` and `timeout_secs`. An `http://` `api_server` is refused, because it would send the token in cleartext, unless `allow_insecure_http` is set. A token file holding anything but an RFC 6750 bearer token is an `AuthenticationError` that names the file and never its content.
+
+A pod mounting the Secret sees a write after the kubelet's next sync of the mount. A `subPath` mount never does.
 
 ---
 
@@ -197,7 +228,7 @@ old = await sm.get_version("secret/data/api-key", version="3", provider="openbao
 history = await sm.list_versions("secret/data/api-key", provider="openbao")
 ```
 
-File and Ansible Vault providers raise `VersioningNotSupportedError`.
+File, Ansible Vault and Kubernetes providers raise `VersioningNotSupportedError`.
 
 ---
 

@@ -169,7 +169,7 @@ api_key = await sm.get_string("third-party/api-key")
 
 One uniform interface; backends pick themselves up from
 `settings.secrets.provider`. OpenBao, Vault, AWS Secrets Manager, GCP
-Secret Manager, Azure Key Vault, ansible-vault, and file backends are
+Secret Manager, Azure Key Vault, ansible-vault, Kubernetes Secret, and file backends are
 all supported via their respective extras (`secrets-vault`,
 `secrets-aws`, etc.).
 

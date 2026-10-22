@@ -2,6 +2,7 @@
 
 import os
 import platform
+import re
 from pathlib import Path
 from unittest import mock
 
@@ -557,3 +558,14 @@ class TestIntegration:
         assert ".my-special-app" in str(paths.config_dir)
         assert ".my-special-app" in str(paths.data_dir)
         assert "my-special-app" in str(paths.temp_dir)
+
+
+class TestModuleDocs:
+    def test_the_secrets_note_names_every_provider(self):
+        import scalo.runtime.runtime as runtime_module
+        from scalo.secrets import ProviderType
+
+        listed = re.search(r"SecretsManager\s*\(([^)]*)\)", runtime_module.__doc__ or "")
+        assert listed is not None
+        named = {name.strip().replace("-", "_") for name in listed.group(1).split("/")}
+        assert {provider.value for provider in ProviderType} <= named

@@ -47,7 +47,7 @@ Quick Start
     run_dir        PID files, sockets       /run/{app}              None (non-root)
 
     Secrets are NOT a dedicated path -- they flow through SecretsManager
-    (file/openbao/vault/aws/gcp/azure/ansible-vault) or via env vars when
+    (file/openbao/vault/aws/gcp/azure/ansible-vault/kubernetes) or via env vars when
     K8s mounts a Secret as envFrom/env. There is no `secrets_dir` field.
 
 **Container Base Path Customization:**

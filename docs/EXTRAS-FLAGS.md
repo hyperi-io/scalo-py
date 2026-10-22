@@ -60,6 +60,7 @@ flowchart TB
     SA["secrets-aws"]
     SG["secrets-gcp"]
     SAz["secrets-azure"]
+    SK["secrets-kubernetes"]
     SAll["secrets (all backends)"]
     Dev["dev (tests + lint + audit)"]
     Docs["docs (sphinx)"]
@@ -81,6 +82,7 @@ flowchart TB
     SA --> SAll
     SG --> SAll
     SAz --> SAll
+    SK --> SAll
 ```
 
 Solid arrows: independent extra. Dotted arrows: extra automatically
@@ -157,6 +159,7 @@ The same extra carries `scalo.rules`, the ordered rule sets scalo-rs builds behi
 | `secrets-gcp` | `google-cloud-secret-manager` | none | [api/SECRETS.md](api/SECRETS.md) |
 | `secrets-azure` | `azure-keyvault-secrets`, `azure-identity` | none | [api/SECRETS.md](api/SECRETS.md) |
 | `secrets-ansible-vault` | `ansible-vault` | none | [api/SECRETS.md](api/SECRETS.md) |
+| `secrets-kubernetes` | `httpx`, `stamina` | none | [api/SECRETS.md](api/SECRETS.md#kubernetes-secret) |
 | `secrets` | all of the above | none | [api/SECRETS.md](api/SECRETS.md) |
 
 Pick the backend(s) you actually use. The meta-extra `secrets` is
