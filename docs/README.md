@@ -23,7 +23,7 @@ Python extras pull in which deps.
 | `from scalo import metrics` | Prometheus + OpenTelemetry dual backend, `MetricsManager` content + content-type for an app-served `/metrics` route, process collector, cardinality cap, metric groups (consumer/sink/buffer/circuit-breaker) | Stand up an exporter, wire a process collector, hand-roll a cardinality limiter |
 | `from scalo import health` | `/livez` and `/readyz` router, downstream-dep registry, K8s-shaped responses | Write probe handlers, manage dependency state |
 | `from scalo import runtime` | K8s / Docker / bare-metal autodetect, container-aware paths (config_dir, data_dir, cache_dir, run_dir), `CONTAINER_BASE_PATH` override | Read `/.dockerenv`, parse cgroups, pick path defaults |
-| `from scalo import secrets` | OpenBao / Vault / AWS / GCP / Azure / ansible-vault / file providers behind one interface | Pick a provider SDK, wrap each behind a uniform API |
+| `from scalo import secrets` | OpenBao / Vault / AWS / GCP / Azure / ansible-vault / Kubernetes Secret / file providers behind one interface | Pick a provider SDK, wrap each behind a uniform API |
 | `from scalo.deployment import DeploymentContract` | Pydantic contract -> Dockerfile + container manifest + Compose fragment carrying [Contract Identity v1](deployment/IDENTITY.md) labels, and the `deployment-contract.json` the scalo-service chart renders the Kubernetes objects from | Write the generators and the chart yourself, keep them in sync, stamp identity by hand |
 | `from scalo.api import Hierarchy, install` | Operation ids from one resource hierarchy, the `x-scalo` spec extension, ETag/If-Match, `dry_run`, problem+json, pagination, a conformance check | Name operations by hand, hand-roll error envelopes and list paging per router |
 | `from scalo.kafka import KafkaProducer, KafkaConsumer` | confluent-kafka clients with at-least-once producer defaults, schema sampling, consumer lag health, async wrappers | Configure librdkafka, hand-roll a retry wrapper, write a lag probe |
@@ -126,7 +126,7 @@ flowchart TB
 
 ### API modules
 
-- [api/SECRETS.md](api/SECRETS.md) — OpenBao / Vault / AWS / GCP / Azure / ansible-vault / file
+- [api/SECRETS.md](api/SECRETS.md) -- OpenBao / Vault / AWS / GCP / Azure / ansible-vault / Kubernetes Secret / file
 - [api/HTTP-CLIENT.md](api/HTTP-CLIENT.md) — `HttpClient` + `AsyncHttpClient` with retries + circuit breaker
 - [api/CONCURRENCY.md](api/CONCURRENCY.md) — `run_blocking`, `Bulkhead`, `gather_with_timeouts`
 - [api/DIRECTORY-CONFIG.md](api/DIRECTORY-CONFIG.md) — YAML directory store with optional git tracking

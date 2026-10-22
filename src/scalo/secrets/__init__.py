@@ -33,6 +33,10 @@ Basic usage:
     secrets = SecretsManager.from_config({"azure": {"vault_url": "https://my-vault.vault.azure.net/"}})
     value = await secrets.get("my-secret", provider="azure")
 
+    # With the keys of one Kubernetes Secret, from inside a pod (requires: pip install scalo[secrets-kubernetes])
+    secrets = SecretsManager.from_config({"kubernetes": {"secret_name": "my-app-tokens"}})
+    value = await secrets.get("api-key", provider="kubernetes")
+
     # ENV fallback -- if provider is unavailable, fall back to environment variable
     secrets = SecretsManager.from_config({
         "sources": {"api_key": {"provider": "openbao", "path": "secret/data/myapp", "key": "api_key", "env_fallback": "MY_API_KEY"}},
@@ -44,6 +48,7 @@ Providers:
     - aws: AWS Secrets Manager (optional: scalo[secrets-aws])
     - gcp: GCP Secret Manager (optional: scalo[secrets-gcp])
     - azure: Azure Key Vault (optional: scalo[secrets-azure])
+    - kubernetes: the keys of one Kubernetes Secret (optional: scalo[secrets-kubernetes])
 """
 
 # Core types (always available)
@@ -81,6 +86,7 @@ from .providers import (
     AzureProvider,
     FileProvider,
     GCPProvider,
+    KubernetesProvider,
     OpenBaoProvider,
     SecretProvider,
     VersionedProvider,
@@ -90,6 +96,7 @@ from .types import (
     AzureConfig,
     CacheConfig,
     GCPConfig,
+    KubernetesConfig,
     OpenBaoConfig,
     ProviderType,
     RotationCallback,
@@ -120,6 +127,8 @@ __all__ = [
     "FileProvider",
     "GCPConfig",
     "GCPProvider",
+    "KubernetesConfig",
+    "KubernetesProvider",
     "OpenBaoConfig",
     "OpenBaoProvider",
     "ProviderError",

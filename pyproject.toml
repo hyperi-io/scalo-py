@@ -141,7 +141,13 @@ secrets-azure = [
     "azure-keyvault-secrets>=4.11.0",
     "azure-identity>=1.25.1",
 ]
+secrets-kubernetes = [
+    "httpx>=0.28.0",
+    "stamina>=26.1.0",
+]
 secrets = [
+    "httpx>=0.28.0",
+    "stamina>=26.1.0",
     "ansible-vault>=4.0.0",
     "ansible-core>=2.21.1",
     "boto3>=1.43.0",

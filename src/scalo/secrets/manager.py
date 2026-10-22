@@ -27,6 +27,7 @@ from .types import (
     AzureConfig,
     CacheConfig,
     GCPConfig,
+    KubernetesConfig,
     OpenBaoConfig,
     ProviderType,
     RotationCallback,
@@ -183,6 +184,16 @@ class SecretsManager:
             except ProviderNotAvailableError as exc:
                 logger.warning("Provider left out, SDK not installed: %s", exc)
 
+        # Kubernetes provider: the keys of one named Secret
+        if "kubernetes" in config:
+            try:
+                from .providers.kubernetes import KubernetesProvider
+
+                k8s_config = cls._parse_kubernetes_config(config["kubernetes"])
+                providers["kubernetes"] = KubernetesProvider(k8s_config)
+            except ProviderNotAvailableError as exc:
+                logger.warning("Provider left out, SDK not installed: %s", exc)
+
         # Ansible Vault provider
         if "ansible_vault" in config:
             try:
@@ -285,6 +296,27 @@ class SecretsManager:
             client_secret=cfg.get("client_secret") or os.environ.get("AZURE_CLIENT_SECRET"),
             timeout_secs=cfg.get("timeout_secs", 30),
         )
+
+    @staticmethod
+    def _parse_kubernetes_config(cfg: dict) -> KubernetesConfig:
+        """Parse Kubernetes config. Every path defaults to where the kubelet mounts the pod's service account.
+
+        Raises:
+            ValueError: No ``secret_name``, or a malformed Secret name or namespace.
+        """
+        if not cfg.get("secret_name"):
+            raise ValueError("kubernetes secrets config needs secret_name, the Secret whose keys it reads and writes")
+        optional = (
+            "namespace",
+            "api_server",
+            "allow_insecure_http",
+            "token_path",
+            "ca_cert",
+            "namespace_path",
+            "timeout_secs",
+            "conflict_retries",
+        )
+        return KubernetesConfig(secret_name=cfg["secret_name"], **{name: cfg[name] for name in optional if name in cfg})
 
     @staticmethod
     def _parse_ansible_vault_config(cfg: dict) -> AnsibleVaultConfig:

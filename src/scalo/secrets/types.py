@@ -1,9 +1,11 @@
 """Type definitions for scalo secrets module."""
 
+import re
 from dataclasses import dataclass, field
 from datetime import UTC, datetime
 from enum import Enum
 from typing import Callable
+from urllib.parse import urlsplit
 
 
 class ProviderType(Enum):
@@ -16,6 +18,7 @@ class ProviderType(Enum):
     GCP = "gcp"
     AZURE = "azure"
     ANSIBLE_VAULT = "ansible_vault"
+    KUBERNETES = "kubernetes"
 
 
 @dataclass
@@ -239,6 +242,98 @@ class AzureConfig:
     """Request timeout in seconds."""
 
 
+_SERVICE_ACCOUNT_DIR = "/var/run/secrets/kubernetes.io/serviceaccount"
+# A Secret name is a DNS-1123 subdomain and a namespace a DNS-1123 label, so neither can reshape the API path.
+_DNS1123_SUBDOMAIN = re.compile(r"[a-z0-9]([-a-z0-9]*[a-z0-9])?(\.[a-z0-9]([-a-z0-9]*[a-z0-9])?)*")
+_DNS1123_SUBDOMAIN_MAX = 253
+_DNS1123_LABEL = re.compile(r"[a-z0-9]([-a-z0-9]*[a-z0-9])?")
+_DNS1123_LABEL_MAX = 63
+
+
+def _check_secret_name(name: str) -> None:
+    """Refuse a Kubernetes Secret name the API server would reject.
+
+    Raises:
+        ValueError: ``name`` is not a DNS-1123 subdomain of at most 253 characters.
+    """
+    if len(name) > _DNS1123_SUBDOMAIN_MAX or not _DNS1123_SUBDOMAIN.fullmatch(name):
+        raise ValueError(
+            f"Kubernetes Secret name {name!r} must be a DNS-1123 subdomain: lowercase letters, digits, "
+            f"'-' and '.', starting and ending alphanumeric, at most {_DNS1123_SUBDOMAIN_MAX} characters"
+        )
+
+
+def _check_namespace(namespace: str) -> None:
+    """Refuse a Kubernetes namespace the API server would reject.
+
+    Raises:
+        ValueError: ``namespace`` is not a DNS-1123 label of at most 63 characters.
+    """
+    if len(namespace) > _DNS1123_LABEL_MAX or not _DNS1123_LABEL.fullmatch(namespace):
+        raise ValueError(
+            f"Kubernetes namespace {namespace!r} must be a DNS-1123 label: lowercase letters, digits "
+            f"and '-', starting and ending alphanumeric, at most {_DNS1123_LABEL_MAX} characters"
+        )
+
+
+@dataclass
+class KubernetesConfig:
+    """Kubernetes Secret provider configuration: the data keys of one named Secret are the secrets.
+
+    The provider authenticates with the pod's service account, so the defaults are the paths the
+    kubelet mounts the account's token, CA and namespace at.
+    """
+
+    secret_name: str
+    """The Secret whose keys the provider reads and writes. It must exist: the provider never creates or deletes it."""
+
+    namespace: str | None = None
+    """The Secret's namespace. None = the pod's own, read from ``namespace_path``."""
+
+    api_server: str | None = None
+    """API server URL. None = ``https://$KUBERNETES_SERVICE_HOST:$KUBERNETES_SERVICE_PORT``, as every pod is given."""
+
+    allow_insecure_http: bool = False
+    """Accept an ``http://`` ``api_server``, which sends the service account token in cleartext."""
+
+    token_path: str = f"{_SERVICE_ACCOUNT_DIR}/token"
+    """Service account token, read on every request because the kubelet rotates a projected token."""
+
+    ca_cert: str | None = f"{_SERVICE_ACCOUNT_DIR}/ca.crt"
+    """CA bundle the API server's certificate is checked against. None = the system trust store."""
+
+    namespace_path: str = f"{_SERVICE_ACCOUNT_DIR}/namespace"
+    """File holding the pod's namespace, read when ``namespace`` is None."""
+
+    timeout_secs: int = 30
+    """Request timeout in seconds."""
+
+    conflict_retries: int = 5
+    """Writes retried after a 409, when another writer changed the Secret between the read and the replace."""
+
+    def __post_init__(self) -> None:
+        """Refuse a Secret name, namespace, API server or retry count the provider cannot use.
+
+        Raises:
+            ValueError: The Secret name or namespace is malformed, ``api_server`` is not an ``https://`` URL
+                (or ``http://`` with ``allow_insecure_http``), or ``conflict_retries`` is negative.
+        """
+        _check_secret_name(self.secret_name)
+        if self.namespace is not None:
+            _check_namespace(self.namespace)
+        if self.api_server is not None:
+            scheme = urlsplit(self.api_server).scheme.lower()
+            if scheme == "http" and not self.allow_insecure_http:
+                raise ValueError(
+                    f"api_server {self.api_server!r} would send the service account token in cleartext: use "
+                    "https://, or set allow_insecure_http for a local test API server"
+                )
+            if scheme not in ("https", "http"):
+                raise ValueError(f"api_server must be an https:// URL, got {self.api_server!r}")
+        if self.conflict_retries < 0:
+            raise ValueError(f"conflict_retries must be 0 or more, got {self.conflict_retries}")
+
+
 @dataclass
 class AnsibleVaultConfig:
     """Ansible Vault provider configuration.
@@ -319,6 +414,7 @@ __all__ = [
     "AzureConfig",
     "CacheConfig",
     "GCPConfig",
+    "KubernetesConfig",
     "OpenBaoConfig",
     "ProviderType",
     "RotationCallback",

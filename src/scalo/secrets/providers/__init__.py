@@ -44,6 +44,13 @@ except ImportError:
         AnsibleVaultProvider = None
     ANSIBLE_VAULT_AVAILABLE = False
 
+# Needs httpx and stamina, and its constructor raises ProviderNotAvailableError without them.
+try:
+    from .kubernetes import KubernetesProvider
+except ImportError:
+    if not TYPE_CHECKING:
+        KubernetesProvider = None
+
 __all__ = [
     "AIOBOTOCORE_AVAILABLE",
     "ANSIBLE_VAULT_AVAILABLE",
@@ -57,6 +64,7 @@ __all__ = [
     "AzureProvider",
     "FileProvider",
     "GCPProvider",
+    "KubernetesProvider",
     "OpenBaoProvider",
     "SecretProvider",
     "VersionedProvider",

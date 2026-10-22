@@ -124,7 +124,7 @@ Each module under `src/scalo/` and what you import from it:
 | `resilience` | `CircuitBreaker`, `CircuitBreakerConfig` |
 | `runtime` | `get_runtime_paths`, `RuntimePaths`, `RuntimeEnvironment` |
 | `scaling` | `ScalingPressure`, `ScalingPressureConfig`, `PressureSnapshot` |
-| `secrets` | `SecretsManager`, providers (file/openbao/aws/gcp/azure/ansible-vault) |
+| `secrets` | `SecretsManager`, providers (file/openbao/aws/gcp/azure/ansible-vault/kubernetes) |
 | `version_check` | `check_on_startup`, `VersionCheckConfig` |
 
 The `Application` framework was removed to backlog (see the note in

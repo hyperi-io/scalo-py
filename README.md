@@ -68,7 +68,7 @@ By extra: `api` (FastAPI conventions: operation ids, ETag/If-Match, problem+json
 pagination, a conformance check), `http` (retry with jitter), `metrics` (Prometheus + process and container
 gauges), `expression` (CEL), `kafka` (produce, consume, schema inference),
 `opentelemetry` (OTLP traces and metrics), `secrets` (OpenBao/Vault, AWS, GCP,
-Azure), `deployment` (Dockerfile, container manifest, compose generators).
+Azure, Kubernetes Secret), `deployment` (Dockerfile, container manifest, compose generators).
 
 Wired together already, which is the part you would otherwise build: config,
 logging and metrics are global singletons with no init dance; the cascade feeds the
