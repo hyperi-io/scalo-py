@@ -296,6 +296,8 @@ status = await sm.health_check()
 Wire this into `health.register_ready_check(...)` to surface secrets-backend
 outages in `/readyz`.
 
+A provider whose check raises is reported `False` and logged once as a warning with its name, the error type and the message. The message is scrubbed first ([LOGGING.md](../core-pillars/LOGGING.md#scrub-architecture)), and one the scrubbers cannot process is withheld. A repeat of the same error from the same provider is not logged until its check stops raising, so a failing probe writes one line and recovery one INFO line. A provider that catches its own errors and returns `False` gives the manager nothing to log.
+
 ---
 
 ## Exceptions

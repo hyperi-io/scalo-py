@@ -2,12 +2,13 @@
 
 import asyncio
 import builtins
+import functools
 import logging
 import os
 import random
 import threading
 from datetime import UTC, datetime
-from typing import Any, NamedTuple
+from typing import TYPE_CHECKING, Any, NamedTuple
 
 from .._env_compat import control_var
 from .cache import DiskCache
@@ -38,7 +39,27 @@ from .types import (
     SourceConfig,
 )
 
+if TYPE_CHECKING:
+    from ..logger.scrub import Scrubber
+
 logger = logging.getLogger(__name__)
+
+
+@functools.cache
+def _fault_scrubber() -> Scrubber:
+    """Return the scrubber that masks provider error text, built on the first fault (a cold build takes ~0.9 s)."""
+    from ..logger.scrub import build_scrubber
+
+    return build_scrubber()
+
+
+def _masked(text: str) -> str:
+    """Mask credentials in a provider's error text, or withhold the text when it cannot be masked."""
+    try:
+        return _fault_scrubber().scrub(text)
+    except Exception:
+        # Failing closed: a scrubber fault must neither leak the text nor break the health check.
+        return "<message withheld, it could not be masked>"
 
 
 class _CacheKey(NamedTuple):
@@ -112,6 +133,8 @@ class SecretsManager:
         # managers configured against different tenants/namespaces.
         self._memory_cache: dict[_CacheKey, SecretValue] = {}
         self._memory_cache_lock = threading.Lock()
+        # Provider name -> error type its health check last raised, so a probe loop logs one outage once.
+        self._health_faults: dict[str, str] = {}
 
     @property
     def _file_provider(self) -> SecretProvider:
@@ -1048,8 +1071,24 @@ class SecretsManager:
                     extra={"key": cache_key.to_disk_str(), "error": str(e)},
                 )
 
+    def _record_health(self, name: str, healthy: bool) -> None:
+        """Forget a provider's earlier fault now its health check returns, and say so when it is healthy again."""
+        if self._health_faults.pop(name, None) is not None and healthy:
+            logger.info("Health check of provider %s passes again", name)
+
+    def _record_health_fault(self, name: str, fault: Exception) -> None:
+        """Log why a provider's health check raised, masked, once per error type until it stops raising."""
+        error_type = type(fault).__name__
+        if self._health_faults.get(name) == error_type:
+            return
+        self._health_faults[name] = error_type
+        logger.warning("Health check of provider %s raised %s: %s", name, error_type, _masked(str(fault)))
+
     async def health_check(self) -> dict[str, bool]:
         """Check health of all configured providers.
+
+        A provider whose check raises is reported ``False``, and the reason is logged as a warning once per
+        error type, with credentials masked. A provider that returns ``False`` itself is reported as it says.
 
         Returns:
             Map of provider name to health status.
@@ -1058,12 +1097,17 @@ class SecretsManager:
         for name, provider in self._providers.items():
             try:
                 results[name] = await provider.health_check_async()
-            except Exception:
+            except Exception as fault:
+                self._record_health_fault(name, fault)
                 results[name] = False
+            else:
+                self._record_health(name, results[name])
         return results
 
     def health_check_sync(self) -> dict[str, bool]:
         """Check health of all configured providers (sync).
+
+        Logs a raised check the way ``health_check`` does.
 
         Returns:
             Map of provider name to health status.
@@ -1072,8 +1116,11 @@ class SecretsManager:
         for name, provider in self._providers.items():
             try:
                 results[name] = provider.health_check_sync()
-            except Exception:
+            except Exception as fault:
+                self._record_health_fault(name, fault)
                 results[name] = False
+            else:
+                self._record_health(name, results[name])
         return results
 
     def clear_cache(self) -> None:
