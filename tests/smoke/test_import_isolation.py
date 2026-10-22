@@ -37,6 +37,7 @@ ENTRY_MODULES = [
     "scalo",
     "scalo.api",
     "scalo.cli",
+    "scalo.cli.openapi",
     "scalo.concurrency",
     "scalo.config",
     "scalo.crypto",

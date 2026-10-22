@@ -283,12 +283,87 @@ PATH.
 
 ---
 
+## Generated from an OpenAPI spec
+
+`scalo.cli.openapi` turns an OpenAPI spec into a whole CLI, after the AWS CLI's model-driven commands. The spec is the only input, a file or a server's `/openapi.json`, so the CLI installs without FastAPI, uvicorn or mcp. It needs the `cli` extra (`typer`, `jmespath`).
+
+```python
+from scalo.cli.openapi import SpecCli, invocation, load_spec
+
+cli = SpecCli(load_spec("openapi.json"), name="svc", version="1.2.3")
+
+@cli.command("auth", "whoami")                  # hand-written, beside the generated commands
+def whoami(ctx: typer.Context) -> None:
+    run = invocation(ctx)
+    run.emit(run.client().send("GET", "/api/v1/auth/me").json())
+
+def main() -> None:
+    cli.main()
+```
+
+The tree is the spec's resource hierarchy, read from the `x-scalo` extension `scalo.api` writes: a group per resource, a command per verb.
+
+```bash
+svc sources rules list --source syslog -o table
+svc sources apply --source syslog --body file://source.yaml --if-none-match '*' --dry-run
+svc sources apply --generate-cli-skeleton -o yaml > input.yaml
+svc sources apply --cli-input-yaml file://input.yaml
+```
+
+Without `x-scalo` a dotted `operationId` (`sources.rules.list`) places the command, else its path (`GET /sources/{source}/rules`). Names are lower kebab-case. `x-scalo.cli` hides an operation, adds hidden aliases, and makes parameters positional. Only the branch of the tree an invocation names is built: for a 307-operation spec that took 4 ms, against about 400 ms for the whole tree.
+
+| Option | What it does |
+|---|---|
+| `--<parameter>` | One per path, query and header parameter, and per top-level writable body field, kebab-case. A name taken twice goes to the later one as `--<location>-<name>`. `readOnly` properties and the headers a client or proxy sets (`Authorization`, `Host`, `X-Forwarded-*`, `X-Oidc-*` and the like) get none |
+| `--body` | The whole JSON body as JSON, YAML or `file://<path>`, sent as written. Field options override its fields |
+| `--cli-input-json`, `--cli-input-yaml` | Every input as one document with `path`, `query`, `header` and `body` sections. Flags win over it |
+| `--generate-cli-skeleton` | Print that document with `null` for every value, JSON or with `-o yaml` YAML, and send nothing |
+| `--dry-run`, `-n` | On every operation that declares `dry_run` |
+| `--max-items`, `--starting-token`, `--page-size`, `--no-paginate` | On a list that answers `scalo.api`'s page: follow `next_page_token` to the end, cut at `--max-items` and resume mid-page |
+| `-o`, `--output` | `json`, `yaml`, `table` or `text`. Default: JSON off a terminal, else YAML for `get`, a table for `list` |
+| `--query` | JMESPath, applied before formatting |
+| `--endpoint-url`, `--profile` | Where to call and with which stored credential |
+| `-y`, `--yes` | Skip the confirmation a delete asks for. Off a terminal a delete without it is refused |
+| `--no-input` | Never prompt: a delete without `--yes` is refused even at a terminal |
+| `-v`, `--verbose` | Each request and its answer's status on stderr. Credentials are never printed |
+| `-q`, `--quiet` | No warnings, and a value or list of values printed bare, one per line, for piping |
+| `-d`, `--debug` | Tracebacks instead of one-line errors |
+
+The global options go before any command, or after a generated one. In an input document a `null` counts as not given at any depth, and so does an empty parameter, so a filled-in skeleton sends only what was filled in. An object or list emptied that way is dropped, while one written as `{}` or `[]` is sent. To send an explicit `null`, as a merge patch does to remove a field, use `--body`. A YAML date or timestamp in a body is sent as its ISO 8601 text, and a value JSON has no form for, such as `!!binary`, is refused as bad input.
+
+A list stops following pages at an empty page that still names a next one, and after `max_pages` pages (`SpecCli(max_pages=...)`, 10,000 by default). Either way it warns and prints the `next_page_token` to resume from. A table prints that token on a last line, `next_page_token: <token>`.
+
+The endpoint comes from `--endpoint-url`, then `<PREFIX>_API_URL`, then the profile. The credential comes from `<PREFIX>_API_KEY` (sent as `X-API-Key`), then `<PREFIX>_API_TOKEN` (a bearer token), then the profile's stored credential. Profiles live under `~/.config/<name>`, moved by `<PREFIX>_CONFIG_HOME`. `Store` reads and writes them, and `Credential` is what it stores, for a login command. The credential file is replaced whole on every save, and one that does not parse is a configuration error rather than an empty store, so a save never drops accounts it could not read. A save or delete holds an advisory lock on `.credentials.lock` beside it, `fcntl` on POSIX and `msvcrt` on Windows, so two CLI processes saving at once keep both accounts.
+
+Exit codes come from the problem+json status. A failed command prints its report on stderr: a JSON object when the output format is JSON, otherwise lines for a person. Both name the input that failed and, where the CLI can tell, a suggestion:
+
+```json
+{"error_type": "source_not_found", "message": "no source 'nope'", "input": {"source": "nope"},
+ "suggestion": "run 'svc sources list' to see what exists", "retryable": false, "status": 404}
+```
+
+| Code | When |
+|---|---|
+| 0 | Success |
+| 1 | 5xx, 429, an unreachable API |
+| 2 | Bad flags or input, or a 400, 422 or 428 |
+| 3 | 404 or 410 |
+| 4 | 401 or 403 |
+| 5 | 409 or 412 |
+
+`UrllibTransport` sends requests by default, stdlib only and with scalo's TLS posture, never carrying credentials to a redirect target. `ScaloHttpTransport` sends through `scalo.http`, retrying GET and HEAD, for a consumer with the `http` extra. Any object with the `Transport` method serves, such as one over an in-process ASGI app in tests: it returns a `Response`, and raises `TransportError` when no answer arrived.
+
+`SpecCli.command(*path)` registers a Typer function at a path and `SpecCli.add_typer(app, *path)` mounts a Typer app. Both refuse a taken path unless `replace=True`. `invocation(ctx)` hands a hand-written command the run's `Invocation`: the same endpoint, credential, output and error handling the generated ones use. `load_spec` raises `SpecError` for a document it cannot read. Those twelve names are the package's exports.
+
+---
+
 ## When to reach for which
 
 | Building | Use |
 |----------|-----|
 | Long-running service (Kafka consumer, FastAPI, scheduled worker) | `ServiceApp` |
 | Operator tool / data-pipeline runner / one-off CLI | Raw Typer + standard options |
+| CLI for a service that publishes an OpenAPI spec | `scalo.cli.openapi.SpecCli` |
 | Quick script bound to one function | Raw `app.command()` |
 | Custom subcommands on top of `ServiceApp` defaults | `register_commands` |
 

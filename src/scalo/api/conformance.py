@@ -49,6 +49,8 @@ from typing import Any
 from fastapi import FastAPI
 from fastapi.routing import RouteContext
 
+from scalo._openapi import RefResolver, json_media, merge_all_of, merged_parameters
+
 from .extension import EXTENSION, declared_extension
 from .hierarchy import Hierarchy, OperationName
 from .openapi import api_routes, operation_extension, route_actions
@@ -57,7 +59,6 @@ _OPERATION_ID = re.compile(r"^[a-z][a-z0-9]*(-[a-z0-9]+)*(\.[a-z][a-z0-9]*(-[a-z
 _SPEC_METHODS = frozenset({"get", "put", "post", "delete", "options", "head", "patch", "trace"})
 _NO_BODY_STATUS = frozenset({204, 205, 304})
 _PRECONDITION_METHODS = frozenset({"PUT", "PATCH", "DELETE"})
-_MAX_REF_HOPS = 16
 
 
 @dataclass(frozen=True, slots=True)
@@ -125,41 +126,19 @@ class ConformanceReport:
         return "\n".join(lines)
 
 
-def _resolve(schema: Any, schemas: dict[str, Any]) -> dict[str, Any]:
-    """``schema`` with its ``$ref`` chain followed into the components."""
-    for _ in range(_MAX_REF_HOPS):
-        if not isinstance(schema, dict) or "$ref" not in schema:
-            break
-        schema = schemas.get(str(schema["$ref"]).rsplit("/", 1)[-1])
-    return schema if isinstance(schema, dict) else {}
-
-
-def _properties(schema: Any, schemas: dict[str, Any], hops: int = 0) -> set[str]:
-    """Property names of an object schema, through ``$ref`` and ``allOf``."""
-    resolved = _resolve(schema, schemas)
-    names = set(resolved.get("properties") or {})
-    if hops < _MAX_REF_HOPS:
-        for member in resolved.get("allOf") or ():
-            names |= _properties(member, schemas, hops + 1)
-    return names
-
-
-def _success_properties(operation: dict[str, Any], schemas: dict[str, Any]) -> set[str]:
-    """Property names of the first 2xx JSON response."""
-    for status, response in sorted((operation.get("responses") or {}).items()):
+def _success_properties(operation: dict[str, Any], resolver: RefResolver) -> set[str]:
+    """Property names of the first 2xx response's JSON body, through a referenced response."""
+    # A YAML spec reads unquoted status codes as integers, beside string keys such as "default".
+    for status, response in sorted((operation.get("responses") or {}).items(), key=lambda pair: str(pair[0])):
         if str(status).startswith("2") and isinstance(response, dict):
-            content = (response.get("content") or {}).get("application/json") or {}
-            return _properties(content.get("schema"), schemas)
+            media = json_media(resolver.resolve(response).get("content")) or {}
+            return set(merge_all_of(media.get("schema"), resolver)[0])
     return set()
 
 
-def _parameters(operation: dict[str, Any]) -> set[tuple[str, str]]:
-    """``(location, lower-case name)`` for every parameter."""
-    found: set[tuple[str, str]] = set()
-    for parameter in operation.get("parameters") or ():
-        if isinstance(parameter, dict):
-            found.add((str(parameter.get("in", "")), str(parameter.get("name", "")).lower()))
-    return found
+def _parameters(item: dict[str, Any], operation: dict[str, Any], resolver: RefResolver) -> set[tuple[str, str]]:
+    """``(location, lower-case name)`` for every parameter, path-item and referenced ones included."""
+    return {(parameter["in"], parameter["name"].lower()) for parameter in merged_parameters(item, operation, resolver)}
 
 
 def _extension_drift(actual: Any, expected: dict[str, Any]) -> str | None:
@@ -182,18 +161,19 @@ class _Expected:
 
 
 def _operation_problems(
+    item: dict[str, Any],
     operation: dict[str, Any],
     expected: _Expected,
     context: RouteContext,
     hierarchy: Hierarchy,
     id_counts: Counter[Any],
-    schemas: dict[str, Any],
+    resolver: RefResolver,
 ) -> list[tuple[str, str]]:
     """``(rule, message)`` for every rule one operation breaks."""
     problems: list[tuple[str, str]] = []
     name, extension = expected.name, expected.extension
     operation_id = operation.get("operationId")
-    params = _parameters(operation)
+    params = _parameters(item, operation, resolver)
 
     if not isinstance(operation_id, str) or not operation_id:
         problems.append(("operation-id", f"no operationId: the hierarchy derives {expected.operation_id!r}"))
@@ -234,7 +214,7 @@ def _operation_problems(
             problems.append(
                 ("pagination", f"a list without the {' and '.join(missing)} query parameter: use ListParams")
             )
-        if "next_page_token" not in _success_properties(operation, schemas):
+        if "next_page_token" not in _success_properties(operation, resolver):
             problems.append(("pagination", "a list whose response carries no next_page_token: answer a Page"))
     if not extension["read_only"]:
         if ("query", "dry_run") not in params:
@@ -267,7 +247,7 @@ def check_conformance(
     """
     spec = app.openapi() if spec is None else spec
     paths: dict[str, Any] = spec.get("paths") or {}
-    schemas: dict[str, Any] = (spec.get("components") or {}).get("schemas") or {}
+    resolver = RefResolver(spec)
     allow_patterns = tuple(dict.fromkeys(allow))
     exempt_patterns = tuple(exempt)
     id_counts = Counter(
@@ -291,14 +271,16 @@ def check_conformance(
         expected_id = hierarchy.unique_id(context)
         for method in methods:
             checked += 1
-            operation = paths.get(path, {}).get(method.lower())
+            item = paths.get(path, {})
+            operation = item.get(method.lower())
             if not isinstance(operation, dict):
                 found.append(Violation("operation-id", method, path, None, "the spec carries no operation for it"))
                 continue
             name = hierarchy.parse(path, method, verb=verb if isinstance(verb, str) else None)
             expected = _Expected(expected_id, name, operation_extension(name, declared, actions, hierarchy))
             operation_id = operation.get("operationId")
-            for rule, message in _operation_problems(operation, expected, context, hierarchy, id_counts, schemas):
+            problems = _operation_problems(item, operation, expected, context, hierarchy, id_counts, resolver)
+            for rule, message in problems:
                 found.append(
                     Violation(rule, method, path, operation_id if isinstance(operation_id, str) else None, message)
                 )
