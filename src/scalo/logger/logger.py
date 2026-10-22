@@ -65,6 +65,25 @@ def _get_logging_config():
 # Standard logger instance
 logger = _logger
 
+
+def _drop_default_diagnose() -> None:
+    """Rebuild loguru's import-time stderr sink with ``diagnose=False``, unless ``LOGURU_DIAGNOSE`` chose otherwise.
+
+    That sink prints whatever is logged before :func:`setup` runs, and loguru's
+    default renders every local variable of a logged traceback, secrets included.
+    An app that already removed it gets nothing back.
+    """
+    if "LOGURU_DIAGNOSE" in os.environ:
+        return
+    try:
+        logger.remove(0)
+    except ValueError:
+        return
+    logger.add(sys.stderr, diagnose=False)
+
+
+_drop_default_diagnose()
+
 # Solarized color palette (https://ethanschoonover.com/solarized/)
 SOLARIZED = {
     "base03": "#002b36",

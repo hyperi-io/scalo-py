@@ -35,6 +35,8 @@ So a service in a container logs JSON with no configuration, and the same code i
 
 Set `NO_LOGGER_CONFIG=1` to disable auto-configuration if you need to wire Loguru yourself.
 
+Until `setup()` runs, records go to loguru's own stderr sink. Importing scalo rebuilds that sink with `diagnose=False`, because loguru's default prints every local variable of a logged traceback, secrets included. A `LOGURU_DIAGNOSE` you set is left to decide, and an app that removed the sink before importing scalo gets none back. The rebuilt sink has a new id, so remove it with `logger.remove()`, not `logger.remove(0)`.
+
 ---
 
 ## Fields
