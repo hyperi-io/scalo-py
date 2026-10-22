@@ -459,12 +459,9 @@ def _parse_json(content: str) -> dict[str, Any]:
 
 def _parse_yaml(content: str) -> dict[str, Any]:
     """Parse YAML configuration."""
-    try:
-        import yaml
-    except ImportError:
-        raise ImportError("PyYAML is required for YAML configuration files. Install with: pip install pyyaml")
+    from scalo._yaml import safe_load
 
-    return yaml.safe_load(content) or {}
+    return safe_load(content) or {}
 
 
 def _parse_ini(content: str, section: str) -> dict[str, Any]:

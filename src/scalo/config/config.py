@@ -1173,7 +1173,7 @@ def get_target_config(target: str | None = None, targets_file: str | None = None
     """
     from pathlib import Path
 
-    import yaml
+    from scalo._yaml import safe_load
 
     # Determine targets file path
     if targets_file is None:
@@ -1193,7 +1193,7 @@ def get_target_config(target: str | None = None, targets_file: str | None = None
 
     # Load targets file
     with open(targets_path, encoding="utf-8") as f:
-        targets_data = yaml.safe_load(f) or {}
+        targets_data = safe_load(f) or {}
 
     # Determine target name
     if target is None:

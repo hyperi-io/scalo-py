@@ -17,6 +17,8 @@ from typing import Any
 
 import yaml
 
+from scalo._yaml import safe_load
+
 
 class DocumentError(ValueError):
     """The text is not a document of a kind the caller accepts."""
@@ -34,6 +36,6 @@ def read_document(text: str, *, yaml_allowed: bool = True) -> Any:
         if not yaml_allowed:
             raise DocumentError(f"not valid JSON: {exc}") from exc
     try:
-        return yaml.safe_load(text)
+        return safe_load(text)
     except yaml.YAMLError as exc:
         raise DocumentError(f"neither JSON nor YAML: {exc}") from exc

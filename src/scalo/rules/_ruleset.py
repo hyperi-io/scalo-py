@@ -23,6 +23,7 @@ from typing import Any, Self
 
 import yaml
 
+from scalo._yaml import safe_load
 from scalo.expression.cel import EVALUATION_ERRORS
 
 from ._compiler import (
@@ -362,7 +363,7 @@ class RuleSet:
         """
         origin = f"{path} at {key}"
         try:
-            document = yaml.safe_load(Path(path).read_text(encoding="utf-8"))
+            document = safe_load(Path(path).read_text(encoding="utf-8"))
         except (OSError, UnicodeDecodeError, yaml.YAMLError) as e:
             raise RulesLoadError(origin, str(e)) from e
         section: Any = document

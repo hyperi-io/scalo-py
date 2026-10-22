@@ -89,6 +89,8 @@ import yaml
 from mergedeep import Strategy
 from mergedeep import merge as deep_merge
 
+from scalo._yaml import safe_load
+
 # Strategy types
 MergeStrategy = Literal["deep", "append", "overwrite", "auto"]
 
@@ -202,14 +204,14 @@ def merge_yaml(source: Path, target: Path) -> dict:
         UnicodeDecodeError: File encoding issues
     """
     try:
-        source_data = yaml.safe_load(source.read_text(encoding="utf-8")) or {}
+        source_data = safe_load(source.read_text(encoding="utf-8")) or {}
     except PermissionError as e:
         raise PermissionError(f"Cannot read source file {source}: {e}") from e
     except UnicodeDecodeError as e:
         raise UnicodeDecodeError(e.encoding, e.object, e.start, e.end, f"Encoding error in {source}") from e
 
     try:
-        target_data = yaml.safe_load(target.read_text(encoding="utf-8")) if target.exists() else {}
+        target_data = safe_load(target.read_text(encoding="utf-8")) if target.exists() else {}
     except PermissionError as e:
         raise PermissionError(f"Cannot read target file {target}: {e}") from e
     except UnicodeDecodeError as e:
