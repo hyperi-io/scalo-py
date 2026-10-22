@@ -1,6 +1,8 @@
-"""Structured logging with auto-configuration on import.
+"""Structured logging: scalo's sinks, installed by :func:`setup`.
 
-Auto-configured with production defaults:
+Importing this module installs nothing, so importing scalo never replaces a host
+application's logging. ``ServiceApp`` calls :func:`setup`, which installs:
+
 - RFC 3339 timestamps
 - JSON lines when stderr is not a TTY, human-readable text when it is
 - Keyword fields rendered in every format (``key=value`` in text)
@@ -10,14 +12,16 @@ Auto-configured with production defaults:
 
 Usage:
     from scalo import logger
+    logger.setup()
     logger.info("started")
     logger.error("failed", database="prod", retry=3)
 
 ENV overrides:
     LOG_LEVEL=DEBUG
-    LOG_FORMAT=json     # json, text, auto
-    LOG_COLOR=false     # also NO_COLOR=1
-    NO_LOGGER_CONFIG=1  # Disable auto-config
+    LOG_FORMAT=json       # json, text, auto
+    LOG_COLOR=false       # also NO_COLOR=1
+    AUTO_LOGGER_CONFIG=1  # Run setup() on import, without span export
+    NO_LOGGER_CONFIG=1    # Veto AUTO_LOGGER_CONFIG
 
 See docs/core-pillars/LOGGING.md for examples and configuration details.
 """

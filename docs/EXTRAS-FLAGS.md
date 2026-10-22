@@ -27,7 +27,7 @@ dependencies = ["scalo>=2.28.3"]
 That gives you:
 
 - 7-layer config cascade (`from scalo import config`)
-- Structured logger with autodetect format + secret scrubbing (`from scalo import logger`)
+- Structured logger with autodetect format + secret scrubbing (`from scalo import logger`, then `logger.setup()`)
 - Container-aware runtime paths (`from scalo import runtime`)
 - Health probe router primitives (`from scalo import health`)
 - CLI framework (`from scalo.cli import ServiceApp`)

@@ -21,6 +21,7 @@ Quick Start
     from scalo import logger, get_runtime_paths, create_metrics
     from scalo.config import settings
 
+    logger.setup()                                  # ServiceApp does this for you
     logger.info("Service starting")
     runtime = get_runtime_paths()                   # Auto-detects K8s/Docker/local
     metrics = create_metrics(namespace="myapp")     # Auto-collects process metrics
@@ -40,7 +41,8 @@ Core Features
 **2. Structured Logging (RFC 3339)**
 
     # Recommended: Import from submodule (gets logger object)
-    from scalo.logger import logger
+    from scalo.logger import logger, setup
+    setup()  # Importing installs nothing: this installs scalo's sinks
     logger.info("User login", user_id=123, ip="192.168.1.1")
     logger.error("DB connection failed", database="prod", retry=3)
 

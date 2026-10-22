@@ -17,7 +17,7 @@ Opinionated-for-scale integrated runtime of config, logging, secrets, cli and mo
 ## Key features
 
 - configuration cascade for local test through at scale k8s deployments (env, config, cli)
-- automatically configured and integrated logger (line and json) for enterprise deployments
+- integrated logger (line and json) for enterprise deployments, configured by `ServiceApp` or one `setup()` call
 - auto enabled Otel and Prometheus metrics in expected forms and buckets for cloud and k8s deployments
 - secrets management integration
 - authentication and secrets integration for most common deployments and services
@@ -72,7 +72,8 @@ gauges), `expression` (CEL), `kafka` (produce, consume, schema inference),
 Azure, Kubernetes Secret), `deployment` (Dockerfile, container manifest, compose generators).
 
 Wired together already, which is the part you would otherwise build: config,
-logging and metrics are global singletons with no init dance; the cascade feeds the
+logging and metrics are global singletons with no init dance beyond the logger's one
+`setup()`, which `ServiceApp` runs for you. The cascade feeds the
 CLI so `run`, `version` and `config-check` work without you parsing an argument;
 the metrics and health wiring feeds the Kubernetes probes; the deployment contract,
 built from the config the app already declares, writes your Dockerfile and drives

@@ -67,8 +67,9 @@ cascade and sensitive masking.
 ## 3. Logger
 
 ```python
-from scalo.logger import logger, info, error
+from scalo.logger import error, info, logger, setup
 
+setup()  # ServiceApp calls this for you; importing scalo.logger installs nothing
 info("Service starting", version="2.28.3")
 logger.bind(component="kafka_consumer").info("subscribed", topic="events")
 
@@ -78,7 +79,7 @@ except Exception as e:
     error("processing failed", exc_info=True, retries=3)
 ```
 
-Format autodetects: JSON when stdout is not a TTY (containers, CI),
+`setup()` autodetects the format: JSON when stderr is not a TTY (containers, CI),
 human-readable on a TTY. Secrets get scrubbed automatically via
 gitleaks rules + the national-ID validators in `data/`. RFC 3339
 timestamps everywhere.
