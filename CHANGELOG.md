@@ -3,6 +3,20 @@
 Rendered by CI and committed back at the end of a release -- do not edit by
 hand. Release notes also appear on the GitHub Releases page, one per tag.
 
+## [2.32.0](https://github.com/hyperi-io/scalo-py/compare/v2.31.21...v2.32.0) (2026-10-22)
+
+### Features
+
+* **mcp:** serve CLI and MCP tools from one OpenAPI spec ([#148](https://github.com/hyperi-io/scalo-py/issues/148)) ([db05ad8](https://github.com/hyperi-io/scalo-py/commit/db05ad82022a422602ee9a8ffbf7462a7e75dd4b))
+
+### Bug Fixes
+
+* **cli:** build a CLI from an OpenAPI spec alone ([#147](https://github.com/hyperi-io/scalo-py/issues/147)) ([02f1690](https://github.com/hyperi-io/scalo-py/commit/02f1690e74a030d226574f0fc68db3a6756f011e))
+* **config:** parse YAML with libyaml when available ([54b37b5](https://github.com/hyperi-io/scalo-py/commit/54b37b54d54c6f0dcd90dff3ec06645845b478dc))
+* **secrets:** add a kubernetes secrets provider ([#150](https://github.com/hyperi-io/scalo-py/issues/150)) ([9144bad](https://github.com/hyperi-io/scalo-py/commit/9144bad74bc5154e20a913c62e04e96a44b26ea7))
+* **security:** update opentelemetry to 1.45.1 for CVE-2026-114603 ([#154](https://github.com/hyperi-io/scalo-py/issues/154)) ([1a47cc2](https://github.com/hyperi-io/scalo-py/commit/1a47cc297ea50b4c57bc80137e0e74bc2f5acbfb))
+* **security:** update virtualenv to 21.14.10 for three advisories ([#149](https://github.com/hyperi-io/scalo-py/issues/149)) ([d9b5a6f](https://github.com/hyperi-io/scalo-py/commit/d9b5a6fd8a687ac9ce42a968fa94010df45e42fb))
+
 ## [2.31.21](https://github.com/hyperi-io/scalo-py/compare/v2.31.20...v2.31.21) (2026-10-21)
 
 ### Bug Fixes
