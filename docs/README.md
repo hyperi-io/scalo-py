@@ -19,13 +19,14 @@ Python extras pull in which deps.
 | Import this | And these come along | No need to |
 |-------------|----------------------|------------|
 | `from scalo import config` | 7-layer cascade, env-var nesting, `.env`, sensitive masking | Wire dynaconf, write a settings loader |
-| `from scalo import logger` | Loguru-backed structured logs, JSON unless stderr is a TTY, keyword fields in every format, RFC 3339 timestamps, gitleaks-based secret scrubbing, rate-limit filter, emoji-to-text for CI | Install loguru, format JSON, hand-roll a scrubber |
+| `from scalo import logger` | After `logger.setup()`, which `ServiceApp` runs and the import alone does not: Loguru-backed structured logs, JSON unless stderr is a TTY, keyword fields in every format, RFC 3339 timestamps, gitleaks-based secret scrubbing, rate-limit filter, emoji-to-text for CI | Install loguru, format JSON, hand-roll a scrubber |
 | `from scalo import metrics` | Prometheus + OpenTelemetry dual backend, `MetricsManager` content + content-type for an app-served `/metrics` route, process collector, cardinality cap, metric groups (consumer/sink/buffer/circuit-breaker) | Stand up an exporter, wire a process collector, hand-roll a cardinality limiter |
 | `from scalo import health` | `/livez` and `/readyz` router, downstream-dep registry, K8s-shaped responses | Write probe handlers, manage dependency state |
 | `from scalo import runtime` | K8s / Docker / bare-metal autodetect, container-aware paths (config_dir, data_dir, cache_dir, run_dir), `CONTAINER_BASE_PATH` override | Read `/.dockerenv`, parse cgroups, pick path defaults |
 | `from scalo import secrets` | OpenBao / Vault / AWS / GCP / Azure / ansible-vault / Kubernetes Secret / file providers behind one interface | Pick a provider SDK, wrap each behind a uniform API |
 | `from scalo.deployment import DeploymentContract` | Pydantic contract -> Dockerfile + container manifest + Compose fragment carrying [Contract Identity v1](deployment/IDENTITY.md) labels, and the `deployment-contract.json` the scalo-service chart renders the Kubernetes objects from | Write the generators and the chart yourself, keep them in sync, stamp identity by hand |
 | `from scalo.api import Hierarchy, install` | Operation ids from one resource hierarchy, the `x-scalo` spec extension, ETag/If-Match, `dry_run`, problem+json, pagination, a conformance check | Name operations by hand, hand-roll error envelopes and list paging per router |
+| `from scalo.mcp import mount` | MCP tools generated from the spec, called in-process with the caller's token, writes that preview before they commit, stateless 2026-07-28 transport, RFC 9728 metadata | Hand-write a tool per route, re-implement RBAC in a second server, pin MCP clients to one replica |
 | `from scalo.kafka import KafkaProducer, KafkaConsumer` | confluent-kafka clients with at-least-once producer defaults, schema sampling, consumer lag health, async wrappers | Configure librdkafka, hand-roll a retry wrapper, write a lag probe |
 
 That's the value proposition. Everything else is "and here's how the
@@ -137,6 +138,7 @@ flowchart TB
 - [api/SCALING.md](api/SCALING.md) — `ScalingPressure` composite score for KEDA
 - [api/CLI.md](api/CLI.md) — Typer-based CLI framework, `ServiceApp`, standard options
 - [api/API-CONVENTIONS.md](api/API-CONVENTIONS.md) -- `scalo.api` (the `api` extra): resource hierarchy and operation ids, `x-scalo`, preconditions, problem+json, pagination, conformance check
+- [api/MCP.md](api/MCP.md) -- `scalo.mcp` (the `mcp` extra): MCP tools from the spec, in-process calls, preview and commit, stateless transport, RFC 9728
 
 ---
 

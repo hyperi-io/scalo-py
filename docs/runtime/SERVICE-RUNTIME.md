@@ -25,13 +25,13 @@ framework.
 | Old | New |
 |-----|-----|
 | `Application.api(name=..., port=...)` | `FastAPI(telemetry={"auto_configure": False})` + `create_health_router(...)` + `create_metrics(...)` |
-| `Application.daemon(name=...)` | `from scalo import logger, config, runtime` + your loop |
+| `Application.daemon(name=...)` | `from scalo import logger, config, runtime` + `logger.setup()` + your loop |
 | `Application.cli(name=...)` | `from scalo.cli import ServiceApp` (Typer-based) |
 | `app.profile_overrides({...})` | `scalo.config` 7-layer cascade -- env / `settings.<env>.yaml` |
 | `app.runtime.paths` | `from scalo.runtime import get_runtime_paths` |
 | `app.metrics` | `from scalo.metrics import create_metrics` |
 | `app.health` | `from scalo.health import HealthManager` |
-| `app.logger` | `from scalo.logger import logger` |
+| `app.logger` | `from scalo.logger import logger`, after one `setup()` call |
 
 The composed pieces are the same ones the framework was wrapping. You
 lose the single-import constructor; you gain explicit wiring with no
@@ -47,7 +47,7 @@ The full recipe lives in [INTEGRATION.md](../INTEGRATION.md) steps
 ```python
 from fastapi import FastAPI
 from scalo.config import settings
-from scalo.logger import logger, info
+from scalo.logger import info, setup
 from scalo.metrics import create_metrics
 from scalo.health import HealthManager, create_health_router
 from scalo.runtime import get_runtime_paths
@@ -58,7 +58,8 @@ paths = get_runtime_paths("my-service")
 # 2. Config -- 7-layer cascade, already loaded at import
 brokers = settings.get("kafka.brokers", "localhost:9092")
 
-# 3. Logger -- structured, autodetects JSON / TTY
+# 3. Logger -- structured, autodetects JSON / TTY. Importing it installs nothing until setup().
+setup()
 info("Service starting", version="2.28.3", config_dir=str(paths.config_dir))
 
 # 4. Metrics -- Prometheus + OTel, /metrics endpoint

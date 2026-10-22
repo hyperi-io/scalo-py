@@ -83,6 +83,13 @@ cli = [
     "typer>=0.25.0",
     "jmespath>=1.1.0",
 ]
+# scalo.mcp is tested on mcp 2.3.0, and imports httpx2 and jsonschema itself, so it declares them.
+mcp = [
+    "scalo[api]",
+    "mcp>=2.3.0",
+    "httpx2>=2.13.1",
+    "jsonschema>=4.26.0",
+]
 # stamina is the retry engine behind scalo.http; [http] carries it too.
 resilience = [
     "stamina>=26.1.0",
@@ -439,6 +446,7 @@ dev = [
     "azure-keyvault-secrets>=4.9.0",
     "fastapi>=0.142.2",
     "google-cloud-secret-manager>=2.26.0",
+    "mcp>=2.3.0",
     # starlette's TestClient uses httpx2 and warns when it has to fall back to httpx.
     "httpx2>=2.13.1",
 ]

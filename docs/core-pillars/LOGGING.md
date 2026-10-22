@@ -2,14 +2,15 @@
 
 Loguru-backed structured logging with RFC 3339 timestamps, layered
 secret scrubbing, rate-limiting, and CI-aware output formatting.
-Import the logger, log, and the message goes through the scrub
-pipeline, the rate-limit filter, and finally a sink chosen by the
-detected runtime (TTY, container, or CI). No `logging.basicConfig`,
-no `dictConfig`, no per-service boilerplate.
+Call `setup()` once, or let `ServiceApp` call it, and every message
+goes through the scrub pipeline, the rate-limit filter, and finally a
+sink chosen by the detected runtime (TTY, container, or CI). No
+`logging.basicConfig`, no `dictConfig`, no per-service boilerplate.
 
 ```python
-from scalo.logger import logger, info, error
+from scalo.logger import error, info, logger, setup
 
+setup()
 info("service started", version="2.28.3")
 logger.bind(component="kafka_consumer").info("subscribed", topic="events")
 
@@ -33,7 +34,9 @@ The console sink writes JSON or text. The first concrete selector wins: the `log
 
 So a service in a container logs JSON with no configuration, and the same code in a terminal logs text. An unrecognised value is treated as `auto` and reported with a warning once the sinks are up. `json`, `text`, `pretty`, `human` and `auto` are also the values scalo-rs accepts; `console` is scalo-py only.
 
-Set `NO_LOGGER_CONFIG=1` to disable auto-configuration if you need to wire Loguru yourself.
+Importing `scalo.logger` installs nothing, so a library that imports scalo never replaces its host's logging. `AUTO_LOGGER_CONFIG=1` runs `setup()` on import instead, without span export, and `NO_LOGGER_CONFIG=1` vetoes that.
+
+Until `setup()` runs, records go to loguru's own stderr sink. Importing scalo rebuilds that sink with `diagnose=False`, because loguru's default prints every local variable of a logged traceback, secrets included. A `LOGURU_DIAGNOSE` you set is left to decide, and an app that removed the sink before importing scalo gets none back. The rebuilt sink has a new id, so remove it with `logger.remove()`, not `logger.remove(0)`.
 
 ---
 
@@ -95,7 +98,7 @@ LOG_ENQUEUE=0                # Sync sinks (default: fire-and-forget)
 
 `logging.intercept_stdlib` (default `true`) is read from config, see [Stdlib logging](#stdlib-logging). `get_logging_config()` also reads `LOG_OUTPUT`, `LOG_TIMESTAMP_FORMAT`, `LOG_CALLER` and `LOG_STACKTRACE_LEVEL`, but `setup()` does not apply them: the console sink always writes to stderr, with RFC 3339 timestamps and the call site.
 
-`NO_LOGGER_CONFIG` and `LOG_ENQUEUE` are scalo control vars, so they
+`AUTO_LOGGER_CONFIG`, `NO_LOGGER_CONFIG` and `LOG_ENQUEUE` are scalo control vars, so they
 take the app's env prefix like every other one: bare by default,
 `<PREFIX>_LOG_ENQUEUE` when the app sets one. There is no `HYPERI_`
 form -- scalo hard-codes no brand.

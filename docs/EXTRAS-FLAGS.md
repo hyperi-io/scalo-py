@@ -27,7 +27,7 @@ dependencies = ["scalo>=2.28.3"]
 That gives you:
 
 - 7-layer config cascade (`from scalo import config`)
-- Structured logger with autodetect format + secret scrubbing (`from scalo import logger`)
+- Structured logger with autodetect format + secret scrubbing (`from scalo import logger`, then `logger.setup()`)
 - Container-aware runtime paths (`from scalo import runtime`)
 - Health probe router primitives (`from scalo import health`)
 - CLI framework (`from scalo.cli import ServiceApp`)
@@ -48,6 +48,7 @@ That's it for the no-extras path. If you only need those, stop here.
 flowchart TB
     Base["base install"]
     API["api"]
+    MCP["mcp"]
     CLI["cli"]
     Resil["resilience"]
     HTTP["http"]
@@ -67,6 +68,7 @@ flowchart TB
     Docs["docs (sphinx)"]
 
     Base --> API
+    Base --> MCP
     Base --> CLI
     Base --> Resil
     Base --> HTTP
@@ -76,6 +78,8 @@ flowchart TB
     Base --> Expr
 
     Resil -.transitive.-> HTTP
+
+    MCP -.transitive.-> API
 
     Metrics -.transitive.-> OTel
 
@@ -123,6 +127,12 @@ alone. `opentelemetry` is a subset of it, kept so existing
 | `api` | `fastapi`, `pydantic` | none | [api/API-CONVENTIONS.md](api/API-CONVENTIONS.md) |
 
 `scalo.api` holds a FastAPI service to the API conventions: operation ids from one resource hierarchy, the `x-scalo` OpenAPI extension, ETag and If-Match, `dry_run`, problem+json, pagination and the conformance check. Base `import scalo` never imports it or FastAPI, and `import scalo.api` without the extra raises an `ImportError` naming `scalo[api]`. `scalo.health.create_health_router` also uses FastAPI, imported only when called.
+
+| Extra | Adds | Native deps | Doc |
+|---|---|---|---|
+| `mcp` | `mcp`, `httpx2`, `jsonschema`, and the `api` extra | none | [api/MCP.md](api/MCP.md) |
+
+`scalo.mcp` serves MCP tools generated from the app's OpenAPI spec on the same app, over the stateless MCP revision of 2026-07-28. Base `import scalo` never imports it, and `import scalo.mcp` without the extra raises an `ImportError` naming `scalo[mcp]`. The MCP SDK brings `uvicorn` and `sse-starlette` as its own dependencies.
 
 ### CLI from a spec
 
