@@ -53,6 +53,7 @@ from dulwich.errors import NotGitRepository
 from dulwich.refs import HEADREF, Ref
 from dulwich.repo import Repo as DulwichRepo
 
+from .._yaml import safe_load
 from ..logger import logger
 
 
@@ -510,7 +511,7 @@ class DirectoryConfigStore:
         """
         try:
             text = path.read_text(encoding="utf-8")
-            data = yaml.safe_load(text)
+            data = safe_load(text)
             if data is None:
                 return {}
             if not isinstance(data, dict):
