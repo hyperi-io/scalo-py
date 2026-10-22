@@ -51,6 +51,10 @@ Providers:
     - kubernetes: the keys of one Kubernetes Secret (optional: scalo[secrets-kubernetes])
 """
 
+from typing import TYPE_CHECKING, Any
+
+from . import providers
+
 # Core types (always available)
 # Cache (always available)
 from .cache import DiskCache
@@ -74,23 +78,8 @@ from .exceptions import (
 # Manager (always available)
 from .manager import SecretsManager
 
-# Providers
-from .providers import (
-    AIOBOTOCORE_AVAILABLE,
-    AZURE_ASYNC_AVAILABLE,
-    AZURE_AVAILABLE,
-    BOTO3_AVAILABLE,
-    GCP_AVAILABLE,
-    HTTPX_AVAILABLE,
-    AWSProvider,
-    AzureProvider,
-    FileProvider,
-    GCPProvider,
-    KubernetesProvider,
-    OpenBaoProvider,
-    SecretProvider,
-    VersionedProvider,
-)
+# Providers that need no SDK. The others load on first access, see below.
+from .providers import FileProvider, SecretProvider, VersionedProvider
 from .types import (
     AWSConfig,
     AzureConfig,
@@ -106,6 +95,47 @@ from .types import (
     SecretValue,
     SourceConfig,
 )
+
+# Type checkers (here and in consumers) see the real names, because the runtime ones load on first access.
+if TYPE_CHECKING:
+    from .providers import (
+        AIOBOTOCORE_AVAILABLE,
+        AZURE_ASYNC_AVAILABLE,
+        AZURE_AVAILABLE,
+        BOTO3_AVAILABLE,
+        GCP_AVAILABLE,
+        HTTPX_AVAILABLE,
+        AWSProvider,
+        AzureProvider,
+        GCPProvider,
+        KubernetesProvider,
+        OpenBaoProvider,
+    )
+
+# Provider names re-exported here, each resolved through ``scalo.secrets.providers`` (PEP 562).
+_PROVIDER_NAMES = frozenset(
+    {
+        "AIOBOTOCORE_AVAILABLE",
+        "AZURE_ASYNC_AVAILABLE",
+        "AZURE_AVAILABLE",
+        "BOTO3_AVAILABLE",
+        "GCP_AVAILABLE",
+        "HTTPX_AVAILABLE",
+        "AWSProvider",
+        "AzureProvider",
+        "GCPProvider",
+        "KubernetesProvider",
+        "OpenBaoProvider",
+    }
+)
+
+
+def __getattr__(name: str) -> Any:
+    """Return a provider name, importing its provider module and SDK on first access (PEP 562)."""
+    if name in _PROVIDER_NAMES:
+        return getattr(providers, name)
+    raise AttributeError(f"module {__name__!r} has no attribute {name!r}")
+
 
 __all__ = [
     "AIOBOTOCORE_AVAILABLE",

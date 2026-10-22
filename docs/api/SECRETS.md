@@ -17,6 +17,8 @@ pip install scalo[secrets-kubernetes]   # Kubernetes Secret keys
 
 File provider is always available — no extra install needed.
 
+`import scalo.secrets` imports no provider SDK. A provider's module, and its SDK with it, loads when `from_config` builds that provider or when its name (`AWSProvider`, `BOTO3_AVAILABLE` and the like) is first read from `scalo.secrets` or `scalo.secrets.providers`.
+
 ---
 
 ## Quick start

@@ -173,7 +173,9 @@ The same extra carries `scalo.rules`, the ordered rule sets scalo-rs builds behi
 | `secrets` | all of the above | none | [api/SECRETS.md](api/SECRETS.md) |
 
 Pick the backend(s) you actually use. The meta-extra `secrets` is
-convenient but pulls ~50 MB of cloud SDKs.
+convenient but pulls ~50 MB of cloud SDKs. An installed SDK costs disk, not
+import time: `import scalo.secrets` loads none, and each loads when its
+provider is configured.
 
 ### Version check
 
