@@ -9,6 +9,7 @@
 """``check_conformance`` over real FastAPI apps: one that follows every convention, and one that breaks each rule."""
 
 import copy
+import threading
 import warnings
 
 import pytest
@@ -244,6 +245,114 @@ class TestEachRuleFires:
         report = check_conformance(app, HIERARCHY)
 
         assert {v.rule for v in report.violations} == {"operation-id", "extension"}
+
+
+class TestSchemaReferences:
+    """A response schema is found by its JSON pointer, not by the last segment of it."""
+
+    @pytest.mark.parametrize("name", ["Page/Source", "Page~Source"])
+    def test_a_page_under_a_name_the_pointer_escapes(self, name):
+        app = conformant_app()
+        spec = copy.deepcopy(app.openapi())
+        content = spec["paths"]["/api/v1/sources"]["get"]["responses"]["200"]["content"]["application/json"]
+        schemas = spec["components"]["schemas"]
+        schemas[name] = schemas.pop(content["schema"]["$ref"].rsplit("/", 1)[-1])
+        content["schema"] = {"$ref": "#/components/schemas/" + name.replace("~", "~0").replace("/", "~1")}
+
+        report = check_conformance(app, HIERARCHY, exempt=EXEMPT, spec=spec)
+
+        assert report.ok, report.format()
+
+
+def _list_spec() -> tuple[FastAPI, dict, dict]:
+    """The conformant app, a copy of its spec to rearrange, and the list route's path item in that copy."""
+    app = conformant_app()
+    spec = copy.deepcopy(app.openapi())
+    return app, spec, spec["paths"]["/api/v1/sources"]
+
+
+def _pagination(app: FastAPI, spec: dict) -> list[str]:
+    report = check_conformance(app, HIERARCHY, exempt=EXEMPT, spec=spec)
+    return [violation.message for violation in report.violations if violation.rule == "pagination"]
+
+
+class TestParametersWhereTheSpecPutsThem:
+    """A parameter counts on the path item and through a ``$ref``, as OpenAPI allows."""
+
+    def test_page_token_on_the_path_item(self):
+        app, spec, item = _list_spec()
+        parameters = item["get"]["parameters"]
+        page_token = next(parameter for parameter in parameters if parameter["name"] == "page_token")
+        parameters.remove(page_token)
+        item["parameters"] = [page_token]
+
+        assert _pagination(app, spec) == []
+
+    def test_page_size_by_reference(self):
+        app, spec, item = _list_spec()
+        parameters = item["get"]["parameters"]
+        index = next(i for i, parameter in enumerate(parameters) if parameter["name"] == "page_size")
+        spec["components"].setdefault("parameters", {})["PageSize"] = parameters[index]
+        parameters[index] = {"$ref": "#/components/parameters/PageSize"}
+
+        assert _pagination(app, spec) == []
+
+    def test_a_list_without_page_token_anywhere_still_fails(self):
+        app, spec, item = _list_spec()
+        item["get"]["parameters"] = [p for p in item["get"]["parameters"] if p["name"] != "page_token"]
+
+        assert _pagination(app, spec) == ["a list without the page_token query parameter: use ListParams"]
+
+
+class TestSuccessResponsesWhereTheSpecPutsThem:
+    """The Page is read from any JSON media type and through a referenced response."""
+
+    def test_a_json_suffixed_media_type(self):
+        app, spec, item = _list_spec()
+        content = item["get"]["responses"]["200"]["content"]
+        content["application/vnd.svc.page+json"] = content.pop("application/json")
+
+        assert _pagination(app, spec) == []
+
+    def test_a_referenced_response(self):
+        app, spec, item = _list_spec()
+        responses = item["get"]["responses"]
+        spec["components"].setdefault("responses", {})["SourcePage"] = responses["200"]
+        responses["200"] = {"$ref": "#/components/responses/SourcePage"}
+
+        assert _pagination(app, spec) == []
+
+    def test_a_success_body_that_is_not_json_still_fails(self):
+        app, spec, item = _list_spec()
+        content = item["get"]["responses"]["200"]["content"]
+        content["text/csv"] = content.pop("application/json")
+
+        assert _pagination(app, spec) == ["a list whose response carries no next_page_token: answer a Page"]
+
+    def test_status_keys_a_yaml_spec_reads_as_integers(self):
+        app, spec, item = _list_spec()
+        responses = item["get"]["responses"]
+        responses[200] = responses.pop("200")
+
+        assert _pagination(app, spec) == []
+
+    def test_a_page_whose_all_of_names_itself_is_checked_in_time(self):
+        app, spec, item = _list_spec()
+        content = item["get"]["responses"]["200"]["content"]["application/json"]
+        loop = "#/components/schemas/Loop"
+        spec["components"]["schemas"]["Loop"] = {"allOf": [{"$ref": loop}, {"$ref": loop}, content["schema"]]}
+        content["schema"] = {"$ref": loop}
+        found: list[list[str]] = []
+        finished = threading.Event()
+
+        def check() -> None:
+            found.append(_pagination(app, spec))
+            finished.set()
+
+        threading.Thread(target=check, daemon=True).start()
+
+        assert finished.wait(5), "a self-referencing allOf did not finish checking in 5 s"
+        assert found == [[]]
 
 
 class TestAllowList:
