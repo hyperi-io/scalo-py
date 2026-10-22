@@ -171,16 +171,14 @@ All sections use the same test inputs:
 
 ```text
 source_commit = "0123456789abcdef0123456789abcdef01234567"
-image_ref     = "ghcr.io/example-org/orders-api:v2.7.3"
+image_ref     = "ghcr.io/hyperi-io/dfe-loader:v2.7.3"
 ```
 
 `tests/unit/deployment/test_contract_identity_parity.py` diffs
-`ContractIdentity` output against each section byte-for-byte. The other
-side of the contract is
-`hyperi-io/scalo-rs:tests/fixtures/contract-parity/v1-output.txt`; when a
-clone of it is on disk the parity test additionally diffs the two repos'
-copies, and any mismatch fails the suite with the diff in the assertion
-message. Without a clone that cross-check skips.
+`ContractIdentity` output against each section byte-for-byte. The test also
+diffs against `hyperi-io/scalo-rs:tests/fixtures/contract-parity/v1-output.txt`
+when a clone is on disk. scalo-rs carries no such file yet, so that
+cross-check skips.
 
 File invariants: LF line endings, UTF-8, trailing newline, no blank
 lines inside content blocks.
