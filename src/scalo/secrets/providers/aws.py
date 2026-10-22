@@ -16,7 +16,7 @@ from ..exceptions import (
     SecretVersionNotFoundError,
 )
 from ..types import AWSConfig, SecretFilter, SecretMetadata, SecretValue
-from .base import VersionedProvider
+from .base import HealthLog, VersionedProvider
 
 logger = logging.getLogger(__name__)
 
@@ -71,6 +71,7 @@ class AWSProvider(VersionedProvider):
         self._config = config
         self._sync_client = None
         self._session = None
+        self._health = HealthLog(logger, self.name)
 
     @property
     def name(self) -> str:
@@ -228,30 +229,24 @@ class AWSProvider(VersionedProvider):
             source=self.name,
         )
 
+    async def _probe_async(self) -> None:
+        session = get_aiobotocore_session()
+        async with session.create_client(**self._get_client_kwargs()) as client:
+            # List secrets with max 1 result to test connectivity
+            await client.list_secrets(MaxResults=1)
+
+    def _probe_sync(self) -> None:
+        self._get_sync_client().list_secrets(MaxResults=1)
+
     async def health_check_async(self) -> bool:
-        """Check if AWS Secrets Manager is reachable."""
+        """Check if AWS Secrets Manager is reachable, logging the reason once when it is not."""
         if not AIOBOTOCORE_AVAILABLE:
             return await run_blocking(self.health_check_sync)
-
-        session = get_aiobotocore_session()
-        kwargs = self._get_client_kwargs()
-
-        try:
-            async with session.create_client(**kwargs) as client:
-                # List secrets with max 1 result to test connectivity
-                await client.list_secrets(MaxResults=1)
-                return True
-        except Exception:
-            return False
+        return await self._health.arun(self._probe_async)
 
     def health_check_sync(self) -> bool:
-        """Check if AWS Secrets Manager is reachable (sync)."""
-        try:
-            client = self._get_sync_client()
-            client.list_secrets(MaxResults=1)
-            return True
-        except Exception:
-            return False
+        """Check if AWS Secrets Manager is reachable (sync), logging the reason once when it is not."""
+        return self._health.run(self._probe_sync)
 
     # --- Helpers for Tier 1+2 ---
 

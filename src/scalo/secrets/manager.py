@@ -2,13 +2,12 @@
 
 import asyncio
 import builtins
-import functools
 import logging
 import os
 import random
 import threading
 from datetime import UTC, datetime
-from typing import TYPE_CHECKING, Any, NamedTuple
+from typing import Any, NamedTuple
 
 from .._env_compat import control_var
 from .cache import DiskCache
@@ -20,7 +19,7 @@ from .exceptions import (
     SecretsError,
     VersioningNotSupportedError,
 )
-from .providers.base import SecretProvider, VersionedProvider
+from .providers.base import SecretProvider, VersionedProvider, mask_fault, mask_fault_off_loop
 from .providers.file import FileProvider
 from .types import (
     AnsibleVaultConfig,
@@ -39,27 +38,9 @@ from .types import (
     SourceConfig,
 )
 
-if TYPE_CHECKING:
-    from ..logger.scrub import Scrubber
-
 logger = logging.getLogger(__name__)
 
-
-@functools.cache
-def _fault_scrubber() -> Scrubber:
-    """Return the scrubber that masks provider error text, built on the first fault (a cold build takes ~0.9 s)."""
-    from ..logger.scrub import build_scrubber
-
-    return build_scrubber()
-
-
-def _masked(text: str) -> str:
-    """Mask credentials in a provider's error text, or withhold the text when it cannot be masked."""
-    try:
-        return _fault_scrubber().scrub(text)
-    except Exception:
-        # Failing closed: a scrubber fault must neither leak the text nor break the health check.
-        return "<message withheld, it could not be masked>"
+_FAULT_LOG = "Health check of provider %s raised %s: %s"
 
 
 class _CacheKey(NamedTuple):
@@ -1076,19 +1057,36 @@ class SecretsManager:
         if self._health_faults.pop(name, None) is not None and healthy:
             logger.info("Health check of provider %s passes again", name)
 
-    def _record_health_fault(self, name: str, fault: Exception) -> None:
-        """Log why a provider's health check raised, masked, once per error type until it stops raising."""
+    def _is_new_fault(self, name: str, fault: Exception) -> bool:
+        """Note the error type a provider's health check raised, and return whether it differs from the last one."""
         error_type = type(fault).__name__
         if self._health_faults.get(name) == error_type:
-            return
+            return False
         self._health_faults[name] = error_type
-        logger.warning("Health check of provider %s raised %s: %s", name, error_type, _masked(str(fault)))
+        return True
+
+    def _record_health_fault(self, name: str, fault: Exception) -> None:
+        """Log why a provider's health check raised, masked, once per error type until it stops raising."""
+        if self._is_new_fault(name, fault):
+            logger.warning(_FAULT_LOG, name, type(fault).__name__, mask_fault(str(fault)))
+
+    async def _arecord_health_fault(self, name: str, fault: Exception) -> None:
+        """Do what ``_record_health_fault`` does, masking on a worker thread so the event loop never stalls."""
+        if self._is_new_fault(name, fault):
+            try:
+                reason = await mask_fault_off_loop(str(fault))
+            except BaseException:
+                # A check cancelled while masking has written nothing, so its fault is still to be logged.
+                self._health_faults.pop(name, None)
+                raise
+            logger.warning(_FAULT_LOG, name, type(fault).__name__, reason)
 
     async def health_check(self) -> dict[str, bool]:
         """Check health of all configured providers.
 
         A provider whose check raises is reported ``False``, and the reason is logged as a warning once per
-        error type, with credentials masked. A provider that returns ``False`` itself is reported as it says.
+        error type, with credentials masked. A provider that returns ``False`` itself is reported as it says,
+        and the providers that catch their own errors log the reason themselves.
 
         Returns:
             Map of provider name to health status.
@@ -1098,7 +1096,7 @@ class SecretsManager:
             try:
                 results[name] = await provider.health_check_async()
             except Exception as fault:
-                self._record_health_fault(name, fault)
+                await self._arecord_health_fault(name, fault)
                 results[name] = False
             else:
                 self._record_health(name, results[name])

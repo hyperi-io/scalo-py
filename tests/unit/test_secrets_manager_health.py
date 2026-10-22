@@ -12,11 +12,13 @@ A provider whose health check raises is reported ``False``. The manager also log
 provider and the error type, with the message masked, and stays quiet while the same fault repeats.
 """
 
+import asyncio
 import logging
 
 import pytest
 
 from scalo.secrets.manager import SecretsManager
+from scalo.secrets.providers.base import _fault_scrubber
 from scalo.secrets.providers.file import FileProvider
 from scalo.secrets.types import CacheConfig
 
@@ -134,12 +136,31 @@ class TestMessageIsMasked:
         self._assert_masked(caplog)
 
 
+class TestCancelledWhileMasking:
+    """A readiness check runs under a timeout, and the first masked message takes ~0.5 s to build the scrubber."""
+
+    async def test_the_next_check_logs_the_fault(self, caplog):
+        _fault_scrubber.cache_clear()
+        provider = _Unhealthy()
+        provider.fault = ConnectionRefusedError("refused")
+        manager = _manager(provider)
+
+        with pytest.raises(TimeoutError):
+            async with asyncio.timeout(0.005):
+                await manager.health_check()
+        assert _health_records(caplog, logging.WARNING) == []
+
+        assert (await manager.health_check())["openbao"] is False
+        assert (await manager.health_check())["openbao"] is False
+        assert len(_health_records(caplog, logging.WARNING)) == 1
+
+
 class TestUnmaskableMessageIsWithheld:
     def test_a_scrubber_fault_logs_no_message_and_still_reports_false(self, caplog, monkeypatch):
         def _broken():
             raise RuntimeError("scrubber rules failed to load")
 
-        monkeypatch.setattr("scalo.secrets.manager._fault_scrubber", _broken)
+        monkeypatch.setattr("scalo.secrets.providers.base._fault_scrubber", _broken)
         provider = _Unhealthy()
         provider.fault = OSError(f"token={_TOKEN}")
 

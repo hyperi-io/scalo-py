@@ -298,7 +298,9 @@ status = await sm.health_check()
 Wire this into `health.register_ready_check(...)` to surface secrets-backend
 outages in `/readyz`.
 
-A provider whose check raises is reported `False` and logged once as a warning with its name, the error type and the message. The message is scrubbed first ([LOGGING.md](../core-pillars/LOGGING.md#scrub-architecture)), and one the scrubbers cannot process is withheld. A repeat of the same error from the same provider is not logged until its check stops raising, so a failing probe writes one line and recovery one INFO line. A provider that catches its own errors and returns `False` gives the manager nothing to log.
+The OpenBao, AWS, GCP, Azure and Kubernetes providers catch their own errors, so each logs its own reason and still returns `False` to a direct caller. The warning names the provider with the error type and message. A sealed OpenBao store gives the status it answered, such as `503 (sealed)`. The message is scrubbed first ([LOGGING.md](../core-pillars/LOGGING.md#scrub-architecture)), and one the scrubbers cannot process is withheld.
+
+The warning is written when the check first fails and not again while it keeps failing, so a probe that runs every few seconds writes one line per outage. The first check to pass writes one INFO line. A provider whose check raises is reported `False` and logged by the manager the same way, once per error type until its check stops raising. Scrubbing runs on a worker thread, because the first one builds the scrubber (0.5 to 0.9 s) and the event loop must not wait for it.
 
 ---
 

@@ -17,7 +17,7 @@ from ..exceptions import (
     SecretVersionNotFoundError,
 )
 from ..types import OpenBaoConfig, SecretFilter, SecretMetadata, SecretValue
-from .base import VersionedProvider
+from .base import HealthLog, VersionedProvider
 
 logger = logging.getLogger(__name__)
 
@@ -29,6 +29,9 @@ try:
 except ImportError:
     # The constructor raises before any use of httpx.
     HTTPX_AVAILABLE = False
+
+# Vault's health statuses for a store that is not initialised (501) and one that is sealed (503).
+_HEALTH_STATES = {501: "not initialised", 503: "sealed"}
 
 
 def _parse_iso_datetime(value: str | None) -> datetime | None:
@@ -72,6 +75,7 @@ class OpenBaoProvider(VersionedProvider):
         self._token_expires_at: datetime | None = None
         self._client: httpx.AsyncClient | None = None
         self._sync_client: httpx.Client | None = None
+        self._health = HealthLog(logger, self.name)
 
     @property
     def name(self) -> str:
@@ -425,24 +429,32 @@ class OpenBaoProvider(VersionedProvider):
             source=self.name,
         )
 
+    @staticmethod
+    def _health_failure(status_code: int) -> str | None:
+        """Return why a health answer is not healthy, or None for one that is."""
+        # Vault returns 200 for initialized+unsealed, 429/472/473/501/503 for other states
+        if status_code in (200, 429):
+            return None
+        state = _HEALTH_STATES.get(status_code)
+        return f"/v1/sys/health answered {status_code}" + (f" ({state})" if state else "")
+
+    async def _probe_async(self) -> str | None:
+        client = await self._get_async_client()
+        response = await client.get("/v1/sys/health")
+        return self._health_failure(response.status_code)
+
+    def _probe_sync(self) -> str | None:
+        client = self._get_sync_client()
+        response = client.get("/v1/sys/health")
+        return self._health_failure(response.status_code)
+
     async def health_check_async(self) -> bool:
-        """Check if Vault is healthy and reachable."""
-        try:
-            client = await self._get_async_client()
-            response = await client.get("/v1/sys/health")
-            # Vault returns 200 for initialized+unsealed, 429/472/473/501/503 for other states
-            return response.status_code in (200, 429)
-        except Exception:
-            return False
+        """Check if Vault is healthy and reachable, logging the reason once when it is not."""
+        return await self._health.arun(self._probe_async)
 
     def health_check_sync(self) -> bool:
-        """Check if Vault is healthy and reachable (sync)."""
-        try:
-            client = self._get_sync_client()
-            response = client.get("/v1/sys/health")
-            return response.status_code in (200, 429)
-        except Exception:
-            return False
+        """Check if Vault is healthy and reachable (sync), logging the reason once when it is not."""
+        return self._health.run(self._probe_sync)
 
     async def close(self) -> None:
         """Close HTTP clients."""
