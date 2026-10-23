@@ -17,6 +17,8 @@ pip install scalo[secrets-kubernetes]   # Kubernetes Secret keys
 
 File provider is always available — no extra install needed.
 
+`import scalo.secrets` imports no provider SDK. A provider's module, and its SDK with it, loads when `from_config` builds that provider or when its name (`AWSProvider`, `BOTO3_AVAILABLE` and the like) is first read from `scalo.secrets` or `scalo.secrets.providers`.
+
 ---
 
 ## Quick start
@@ -295,6 +297,10 @@ status = await sm.health_check()
 
 Wire this into `health.register_ready_check(...)` to surface secrets-backend
 outages in `/readyz`.
+
+The OpenBao, AWS, GCP, Azure and Kubernetes providers catch their own errors, so each logs its own reason and still returns `False` to a direct caller. The warning names the provider with the error type and message. A sealed OpenBao store gives the status it answered, such as `503 (sealed)`. The message is scrubbed first ([LOGGING.md](../core-pillars/LOGGING.md#scrub-architecture)), and one the scrubbers cannot process is withheld.
+
+The warning is written when the check first fails and not again while it keeps failing, so a probe that runs every few seconds writes one line per outage. The first check to pass writes one INFO line. A provider whose check raises is reported `False` and logged by the manager the same way, once per error type until its check stops raising. Scrubbing runs on a worker thread, because the first one builds the scrubber (0.5 to 0.9 s) and the event loop must not wait for it.
 
 ---
 

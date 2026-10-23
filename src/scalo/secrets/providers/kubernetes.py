@@ -41,7 +41,7 @@ from ..exceptions import (
     SecretsError,
 )
 from ..types import KubernetesConfig, SecretFilter, SecretMetadata, SecretValue, _check_namespace
-from .base import SecretProvider
+from .base import HealthLog, SecretProvider
 
 logger = logging.getLogger(__name__)
 
@@ -232,7 +232,7 @@ class KubernetesProvider(SecretProvider):
         self._namespace: str | None = config.namespace
         self._client: httpx.AsyncClient | None = None
         self._sync_client: httpx.Client | None = None
-        self._healthy: bool | None = None
+        self._health = HealthLog(logger, self.name)
 
     @property
     def name(self) -> str:
@@ -696,37 +696,33 @@ class KubernetesProvider(SecretProvider):
 
     # --- Health ---
 
-    def _record_health(self, failure: str | None) -> bool:
-        """Log a change of health, the reason with it, and nothing while it holds. Returns whether healthy."""
-        healthy = failure is None
-        if healthy != self._healthy:
-            # The Secret's name only: the namespace may be what could not be read.
-            if failure is not None:
-                logger.warning("kubernetes provider unhealthy, %s unreadable: %s", self._config.secret_name, failure)
-            elif self._healthy is False:
-                logger.info("kubernetes provider healthy, %s readable again", self._config.secret_name)
-        self._healthy = healthy
-        return healthy
-
     async def health_check_async(self) -> bool:
         """Check the Secret can be read with the service account, logging when that starts or stops being so.
 
         Raises:
             Exception: Anything other than a secrets error, which is a fault in the provider, not in its health.
         """
+        failure = None
         try:
             secret = await self._get_secret_async("read")
         except SecretsError as e:
-            return self._record_health(str(e))
-        return self._record_health(None if secret is not None else f"{self._location()} does not exist")
+            failure = str(e)
+        else:
+            if secret is None:
+                failure = f"{self._location()} does not exist"
+        return await self._health.arecord(failure)
 
     def health_check_sync(self) -> bool:
         """Check the Secret can be read with the service account (sync). See ``health_check_async``."""
+        failure = None
         try:
             secret = self._get_secret_sync("read")
         except SecretsError as e:
-            return self._record_health(str(e))
-        return self._record_health(None if secret is not None else f"{self._location()} does not exist")
+            failure = str(e)
+        else:
+            if secret is None:
+                failure = f"{self._location()} does not exist"
+        return self._health.record(failure)
 
     async def close(self) -> None:
         """Close HTTP clients."""

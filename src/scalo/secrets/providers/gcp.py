@@ -21,7 +21,7 @@ from ..exceptions import (
     SecretVersionNotFoundError,
 )
 from ..types import GCPConfig, SecretFilter, SecretMetadata, SecretValue
-from .base import VersionedProvider
+from .base import HealthLog, VersionedProvider
 
 logger = logging.getLogger(__name__)
 
@@ -68,6 +68,7 @@ class GCPProvider(VersionedProvider):
         self._config = config
         self._sync_client = None
         self._async_client = None
+        self._health = HealthLog(logger, self.name)
 
     @property
     def name(self) -> str:
@@ -194,25 +195,19 @@ class GCPProvider(VersionedProvider):
         except Exception as e:
             raise ProviderError(self.name, f"request failed: {e}")
 
+    async def _probe_async(self) -> None:
+        await self._get_async_client().list_secrets(request={"parent": self._parent(), "page_size": 1})
+
+    def _probe_sync(self) -> None:
+        self._get_sync_client().list_secrets(request={"parent": self._parent(), "page_size": 1})
+
     async def health_check_async(self) -> bool:
-        """Check if GCP Secret Manager is reachable."""
-        try:
-            async_client = self._get_async_client()
-            parent = f"projects/{self._config.project_id}"
-            await async_client.list_secrets(request={"parent": parent, "page_size": 1})
-            return True
-        except Exception:
-            return False
+        """Check if GCP Secret Manager is reachable, logging the reason once when it is not."""
+        return await self._health.arun(self._probe_async)
 
     def health_check_sync(self) -> bool:
-        """Check if GCP Secret Manager is reachable (sync)."""
-        try:
-            client = self._get_sync_client()
-            parent = f"projects/{self._config.project_id}"
-            client.list_secrets(request={"parent": parent, "page_size": 1})
-            return True
-        except Exception:
-            return False
+        """Check if GCP Secret Manager is reachable (sync), logging the reason once when it is not."""
+        return self._health.run(self._probe_sync)
 
     # --- Helpers for Tier 1+2 ---
 

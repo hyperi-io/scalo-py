@@ -1,8 +1,123 @@
-"""Abstract base class for secret providers."""
+"""Abstract base class for secret providers, and the health log every provider shares."""
 
+import functools
+import logging
+import threading
 from abc import ABC, abstractmethod
+from collections.abc import Awaitable, Callable
+from typing import TYPE_CHECKING
 
 from ..types import SecretFilter, SecretMetadata, SecretValue
+
+if TYPE_CHECKING:
+    from ...logger.scrub import Scrubber
+
+
+@functools.cache
+def _fault_scrubber() -> Scrubber:
+    """Return the scrubber that masks provider error text, built on the first fault (a cold build takes ~0.9 s)."""
+    from ...logger.scrub import build_scrubber
+
+    return build_scrubber()
+
+
+def mask_fault(text: str) -> str:
+    """Mask credentials in a provider's error text, or withhold the text when it cannot be masked."""
+    try:
+        return _fault_scrubber().scrub(text)
+    except Exception:
+        # Failing closed: a scrubber fault must neither leak the text nor break the health check.
+        return "<message withheld, it could not be masked>"
+
+
+async def mask_fault_off_loop(text: str) -> str:
+    """Mask a provider's error text on a worker thread, because the first call builds the scrubber."""
+    # Imported here so that ``import scalo.secrets`` does not load anyio.
+    from ...concurrency import run_blocking
+
+    return await run_blocking(mask_fault, text)
+
+
+def _describe(failure: str | BaseException) -> str:
+    """Write a failure as ``ErrorType: message``, or pass on the reason a provider gave as text."""
+    if isinstance(failure, str):
+        return failure
+    message = str(failure)
+    return f"{type(failure).__name__}: {message}" if message else type(failure).__name__
+
+
+class HealthLog:
+    """Logs a provider's health by transition, so a probe that runs every few seconds writes one line per outage.
+
+    The first failed check logs a warning with the masked reason. Checks that keep failing log nothing, and the
+    first one to pass logs one INFO line. One log serves a provider's sync and async checks alike.
+    """
+
+    def __init__(self, log: logging.Logger, provider: str) -> None:
+        """Start a log for ``provider`` that writes to ``log``, the provider module's own logger."""
+        self._log = log
+        self._provider = provider
+        self._healthy: bool | None = None
+        self._lock = threading.Lock()
+
+    def _enter(self, healthy: bool) -> tuple[bool, bool]:
+        """Store the outcome of a check, and return whether it opened an outage and whether it closed one."""
+        with self._lock:
+            before, self._healthy = self._healthy, healthy
+        return (not healthy and before is not False), (healthy and before is False)
+
+    def _withdraw(self) -> None:
+        """Forget an outage whose warning was never written, so the next failed check announces it."""
+        with self._lock:
+            self._healthy = None
+
+    def _went_down(self, reason: str) -> None:
+        self._log.warning("Health check of provider %s failed: %s", self._provider, reason)
+
+    def _recovered(self) -> None:
+        self._log.info("Health check of provider %s passes again", self._provider)
+
+    def record(self, failure: str | BaseException | None) -> bool:
+        """Log what a finished check changed, and return whether the provider is healthy (``failure`` is None)."""
+        went_down, recovered = self._enter(failure is None)
+        if went_down and failure is not None:
+            self._went_down(mask_fault(_describe(failure)))
+        elif recovered:
+            self._recovered()
+        return failure is None
+
+    async def arecord(self, failure: str | BaseException | None) -> bool:
+        """Do what ``record`` does, masking the reason on a worker thread so the event loop never stalls."""
+        went_down, recovered = self._enter(failure is None)
+        if went_down and failure is not None:
+            try:
+                reason = await mask_fault_off_loop(_describe(failure))
+            except BaseException:
+                # A check cancelled while masking has written nothing, so its outage is still to be announced.
+                self._withdraw()
+                raise
+            self._went_down(reason)
+        elif recovered:
+            self._recovered()
+        return failure is None
+
+    def run(self, probe: Callable[[], str | None]) -> bool:
+        """Run ``probe`` and record it: an exception, or a reason it returns, is a failure, and None is a pass."""
+        failure: str | BaseException | None
+        try:
+            failure = probe()
+        except Exception as fault:
+            failure = fault
+        return self.record(failure)
+
+    async def arun(self, probe: Callable[[], Awaitable[str | None]]) -> bool:
+        """Run the async ``probe`` and record it as ``run`` does."""
+        failure: str | BaseException | None
+        try:
+            failure = await probe()
+        except Exception as fault:
+            failure = fault
+        return await self.arecord(failure)
 
 
 class SecretProvider(ABC):
@@ -240,4 +355,4 @@ class VersionedProvider(SecretProvider):
         ...
 
 
-__all__ = ["SecretProvider", "VersionedProvider"]
+__all__ = ["HealthLog", "SecretProvider", "VersionedProvider", "mask_fault", "mask_fault_off_loop"]

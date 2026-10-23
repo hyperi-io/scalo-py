@@ -22,7 +22,7 @@ from ..exceptions import (
     SecretVersionNotFoundError,
 )
 from ..types import AzureConfig, SecretFilter, SecretMetadata, SecretValue
-from .base import VersionedProvider
+from .base import HealthLog, VersionedProvider
 
 logger = logging.getLogger(__name__)
 
@@ -83,6 +83,7 @@ class AzureProvider(VersionedProvider):
             )
         self._config = config
         self._sync_client = None
+        self._health = HealthLog(logger, self.name)
 
     @property
     def name(self) -> str:
@@ -199,29 +200,25 @@ class AzureProvider(VersionedProvider):
         except Exception as e:
             raise ProviderError(self.name, f"request failed: {e}")
 
+    async def _probe_async(self) -> None:
+        credential = self._async_credential()
+        async with credential, AsyncSecretClient(vault_url=self._config.vault_url, credential=credential) as client:
+            async for _ in client.list_properties_of_secrets(max_page_size=1):
+                break
+
+    def _probe_sync(self) -> None:
+        for _ in self._get_sync_client().list_properties_of_secrets(max_page_size=1):
+            break
+
     async def health_check_async(self) -> bool:
-        """Check if Azure Key Vault is reachable."""
+        """Check if Azure Key Vault is reachable, logging the reason once when it is not."""
         if not AZURE_ASYNC_AVAILABLE:
             return await run_blocking(self.health_check_sync)
-
-        try:
-            credential = self._async_credential()
-            async with credential, AsyncSecretClient(vault_url=self._config.vault_url, credential=credential) as client:
-                async for _ in client.list_properties_of_secrets(max_page_size=1):
-                    break
-            return True
-        except Exception:
-            return False
+        return await self._health.arun(self._probe_async)
 
     def health_check_sync(self) -> bool:
-        """Check if Azure Key Vault is reachable (sync)."""
-        try:
-            client = self._get_sync_client()
-            for _ in client.list_properties_of_secrets(max_page_size=1):
-                break
-            return True
-        except Exception:
-            return False
+        """Check if Azure Key Vault is reachable (sync), logging the reason once when it is not."""
+        return self._health.run(self._probe_sync)
 
     async def close(self) -> None:
         """Close sync client and release credentials."""
