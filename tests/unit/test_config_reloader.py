@@ -23,6 +23,25 @@ from scalo.config.reloader import ConfigReloader, ReloaderConfig
 # ---------------------------------------------------------------------------
 
 
+@pytest.fixture
+def reload_log(monkeypatch: pytest.MonkeyPatch, caplog: pytest.LogCaptureFixture):
+    """Capture the reloader's records and keep them off pytest's live log.
+
+    ``log_cli`` echoes every propagated record to the runner's output, which CI renders
+    as an annotation. Records stop at the reloader logger, so only ``caplog`` sees them.
+    """
+    reloader_logger = logging.getLogger("scalo.config.reloader")
+    monkeypatch.setattr(reloader_logger, "propagate", False)
+    caplog.set_level(logging.WARNING, logger=reloader_logger.name)
+    reloader_logger.addHandler(caplog.handler)
+    yield caplog
+    reloader_logger.removeHandler(caplog.handler)
+
+
+def _reload_records(log: pytest.LogCaptureFixture) -> list[tuple[str, str]]:
+    return [(record.levelname, record.getMessage()) for record in log.records]
+
+
 class CallTracker:
     """Track callback invocations with the settings object passed."""
 
@@ -89,7 +108,7 @@ class TestReloadNowValidation:
         assert result is True
         assert tracker.call_count == 1
 
-    def test_validation_fail_blocks_callback(self) -> None:
+    def test_validation_fail_blocks_callback(self, reload_log: pytest.LogCaptureFixture) -> None:
         tracker = CallTracker()
         reloader = ConfigReloader(
             on_reload=tracker,
@@ -100,13 +119,15 @@ class TestReloadNowValidation:
 
         assert result is False
         assert tracker.call_count == 0
+        assert _reload_records(reload_log) == [("WARNING", "Config reload validation failed")]
 
-    def test_validation_fail_increments_error_counter(self) -> None:
+    def test_validation_fail_increments_error_counter(self, reload_log: pytest.LogCaptureFixture) -> None:
         reloader = ConfigReloader(validate_fn=lambda _s: False)
         reloader.reload_now()
 
         assert reloader.reload_count_error == 1
         assert reloader.reload_count_success == 0
+        assert _reload_records(reload_log) == [("WARNING", "Config reload validation failed")]
 
 
 # ---------------------------------------------------------------------------
@@ -117,7 +138,7 @@ class TestReloadNowValidation:
 class TestReloadNowExceptions:
     """reload_now() handles exceptions gracefully without crashing."""
 
-    def test_callback_exception_returns_false(self) -> None:
+    def test_callback_exception_returns_false(self, reload_log: pytest.LogCaptureFixture) -> None:
         def bad_callback(_s: object) -> None:
             raise RuntimeError("callback exploded")
 
@@ -126,18 +147,18 @@ class TestReloadNowExceptions:
 
         assert result is False
         assert reloader.reload_count_error == 1
+        assert _reload_records(reload_log) == [("ERROR", "Config reload failed")]
 
-    def test_validate_exception_returns_false(self, monkeypatch: pytest.MonkeyPatch) -> None:
+    def test_validate_exception_returns_false(self, reload_log: pytest.LogCaptureFixture) -> None:
         def bad_validate(_s: object) -> bool:
             raise ValueError("validation exploded")
 
-        # The failure is the point, so its ERROR line stays out of the CI log, where it would be an annotation.
-        monkeypatch.setattr(logging.getLogger("scalo.config.reloader"), "disabled", True)
         reloader = ConfigReloader(validate_fn=bad_validate)
         result = reloader.reload_now()
 
         assert result is False
         assert reloader.reload_count_error == 1
+        assert _reload_records(reload_log) == [("ERROR", "Config reload failed")]
 
 
 # ---------------------------------------------------------------------------
@@ -162,13 +183,14 @@ class TestReloadCounters:
         assert reloader.reload_count_success == 3
         assert reloader.reload_count_error == 0
 
-    def test_error_counter_increments(self) -> None:
+    def test_error_counter_increments(self, reload_log: pytest.LogCaptureFixture) -> None:
         reloader = ConfigReloader(validate_fn=lambda _s: False)
         reloader.reload_now()
         reloader.reload_now()
 
         assert reloader.reload_count_error == 2
         assert reloader.reload_count_success == 0
+        assert _reload_records(reload_log) == [("WARNING", "Config reload validation failed")] * 2
 
 
 # ---------------------------------------------------------------------------
@@ -191,7 +213,9 @@ def probe_setting(monkeypatch: pytest.MonkeyPatch):
 class TestFailedValidationKeepsLastGood:
     """A reload that fails validation never reaches the live settings."""
 
-    def test_rejected_values_are_not_applied(self, probe_setting: pytest.MonkeyPatch) -> None:
+    def test_rejected_values_are_not_applied(
+        self, probe_setting: pytest.MonkeyPatch, reload_log: pytest.LogCaptureFixture
+    ) -> None:
         from scalo.config import settings
 
         assert settings.get("RELOAD_PROBE") == "good"
@@ -200,6 +224,7 @@ class TestFailedValidationKeepsLastGood:
         probe_setting.setenv("RELOAD_PROBE", "bad")
         assert reloader.reload_now() is False
         assert settings.get("RELOAD_PROBE") == "good"
+        assert _reload_records(reload_log) == [("WARNING", "Config reload validation failed")]
 
         probe_setting.setenv("RELOAD_PROBE", "better")
         assert reloader.reload_now() is True
@@ -217,19 +242,19 @@ class TestFailedValidationKeepsLastGood:
         assert seen == ["next"]
 
     def test_a_raising_validator_keeps_the_last_good(
-        self, probe_setting: pytest.MonkeyPatch, monkeypatch: pytest.MonkeyPatch
+        self, probe_setting: pytest.MonkeyPatch, reload_log: pytest.LogCaptureFixture
     ) -> None:
         from scalo.config import settings
 
         def explode(_s: object) -> bool:
             raise ValueError("validation exploded")
 
-        monkeypatch.setattr(logging.getLogger("scalo.config.reloader"), "disabled", True)
         probe_setting.setenv("RELOAD_PROBE", "bad")
         assert ConfigReloader(validate_fn=explode).reload_now() is False
         assert settings.get("RELOAD_PROBE") == "good"
+        assert _reload_records(reload_log) == [("ERROR", "Config reload failed")]
 
-    def test_mixed_success_and_error(self) -> None:
+    def test_mixed_success_and_error(self, reload_log: pytest.LogCaptureFixture) -> None:
         call_count = 0
 
         def alternating_validate(_s: object) -> bool:
@@ -244,6 +269,7 @@ class TestFailedValidationKeepsLastGood:
 
         assert reloader.reload_count_success == 2
         assert reloader.reload_count_error == 1
+        assert _reload_records(reload_log) == [("WARNING", "Config reload validation failed")]
 
 
 # ---------------------------------------------------------------------------
