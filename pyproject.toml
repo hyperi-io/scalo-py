@@ -419,9 +419,10 @@ exclude-newer = "7 days"
 # certifi GHSA-6q48-6c7w-9gw2 is fixed in 2026.10.19. A per-package entry replaces the
 # global span rather than widening it, so remove this one on 2026-10-28. virtualenv
 # GHSA-43mp-35q3-x3fq, GHSA-c978-59m8-c77v and GHSA-cw65-gx24-rc82 are fixed in
-# 21.14.9 (2026-10-17), so remove that entry on 2026-10-25. filelock CVE-2026-112940 is
-# fixed in 4.2.1 (2026-10-17), so remove that entry on 2026-10-25 too.
-exclude-newer-package = { certifi = "2026-10-21T00:00:00Z", virtualenv = "2026-10-18T00:00:00Z", filelock = "2026-10-18T00:00:00Z" }
+# 21.14.9, and the 21.14.9 activator prompt regression in 21.14.13 (2026-10-22), so
+# remove that entry on 2026-10-30. filelock CVE-2026-112940 is fixed in 4.2.1
+# (2026-10-17), so remove that entry on 2026-10-25.
+exclude-newer-package = { certifi = "2026-10-21T00:00:00Z", virtualenv = "2026-10-23T00:00:00Z", filelock = "2026-10-18T00:00:00Z" }
 # Security floors on transitive packages, applied over whatever their dependents
 # declare. Re-evaluate at each /deps pass; drop one once the tree requires the
 # fixed version itself.

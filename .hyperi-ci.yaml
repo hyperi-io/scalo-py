@@ -16,7 +16,7 @@ release:
 # against offline, and the rules corpus both implementations are tested on.
 vendor:
   - source: hyperi-io/scalo-rs
-    ref: e11f3ce696ce2cfca25e2510a2c2793863fdfc97  # v2.14.18
+    ref: a2598c61bbc3a500cd07f30f09bc297c88d1eaf6  # v2.14.20
     files:
       charts/scalo-service/schema/deployment-contract.v4.schema.json: src/scalo/deployment/data/contract.schema.json
       tests/fixtures/rules_corpus.json: tests/fixtures/rules_corpus.json
