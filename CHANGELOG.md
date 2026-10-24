@@ -3,6 +3,14 @@
 Rendered by CI and committed back at the end of a release -- do not edit by
 hand. Release notes also appear on the GitHub Releases page, one per tag.
 
+## [2.32.1](https://github.com/hyperi-io/scalo-py/compare/v2.32.0...v2.32.1) (2026-10-24)
+
+### Bug Fixes
+
+* name the identity fixture's real inputs in IDENTITY.md ([#156](https://github.com/hyperi-io/scalo-py/issues/156)) ([14c49f1](https://github.com/hyperi-io/scalo-py/commit/14c49f1958076d8f0f7ce79c47e23a14f06fdfa3))
+* **secrets:** health checks say why, providers load when used ([#153](https://github.com/hyperi-io/scalo-py/issues/153)) ([39694b4](https://github.com/hyperi-io/scalo-py/commit/39694b44836c67c92528e3029dcb529641339001))
+* **security:** update filelock to 4.2.1 for CVE-2026-112940 ([#157](https://github.com/hyperi-io/scalo-py/issues/157)) ([7302b7a](https://github.com/hyperi-io/scalo-py/commit/7302b7abf3c88afe77f0ed9e461e669b8101c67e))
+
 ## [2.32.0](https://github.com/hyperi-io/scalo-py/compare/v2.31.21...v2.32.0) (2026-10-22)
 
 ### Features
