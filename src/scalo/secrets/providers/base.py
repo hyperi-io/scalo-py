@@ -72,6 +72,7 @@ class HealthLog:
             self._healthy = None
 
     def _went_down(self, reason: str) -> None:
+        # Every caller passes mask_fault output, so `reason` is scrubbed or withheld text.
         self._log.warning("Health check of provider %s failed: %s", self._provider, reason)
 
     def _recovered(self) -> None:
