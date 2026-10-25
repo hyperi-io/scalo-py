@@ -128,14 +128,44 @@ def load_gitleaks_rules(
 class _CompiledRule:
     """A compiled gitleaks rule ready to scan log text."""
 
-    __slots__ = ("id", "keywords", "label", "pattern")
+    __slots__ = ("id", "keywords", "label", "pattern", "secret_group")
 
     # regex ships no type stubs, so ty cannot see that its Pattern is generic.
-    def __init__(self, id_: str, label: str, pattern: regex.Pattern[str], keywords: tuple[str, ...]) -> None:  # ty: ignore[invalid-type-form]
+    def __init__(
+        self,
+        id_: str,
+        label: str,
+        pattern: regex.Pattern[str],  # ty: ignore[invalid-type-form]
+        keywords: tuple[str, ...],
+        secret_group: int = 0,
+    ) -> None:
         self.id = id_
         self.label = label
         self.pattern = pattern
         self.keywords = keywords
+        self.secret_group = secret_group
+
+    def secret_span(self, m: regex.Match[str]) -> tuple[int, int]:  # ty: ignore[invalid-type-form]
+        """Return the span of ``m`` that holds the secret, so the key name and quotes around it survive.
+
+        An explicit ``secretGroup`` wins, as in gitleaks. Without one, gitleaks takes
+        the first non-empty group, but some upstream rules capture a fragment
+        (``microsoft-teams-webhook``, ``jwt-base64``), so that group is used only when
+        nothing alphanumeric follows it in the match. Otherwise the whole match goes.
+        """
+        whole = m.span()
+        if self.secret_group:
+            if self.secret_group <= self.pattern.groups:
+                start, end = m.span(self.secret_group)
+                if end > start:
+                    return start, end
+            return whole
+        for idx in range(1, self.pattern.groups + 1):
+            start, end = m.span(idx)
+            if end > start:
+                tail = m.string[end : whole[1]]
+                return (start, end) if not any(c.isalnum() for c in tail) else whole
+        return whole
 
     def __repr__(self) -> str:
         return f"_CompiledRule(id={self.id!r}, label={self.label!r})"
@@ -221,7 +251,10 @@ class GitleaksTomlScrubber:
             keywords = entry.get("keywords") or ()
             if not isinstance(keywords, (list, tuple)):
                 keywords = ()
-            self._compiled.append(_CompiledRule(rule_id, label, pattern, tuple(str(k) for k in keywords)))
+            secret_group = entry.get("secretGroup", 0)
+            if not isinstance(secret_group, int) or secret_group < 0:
+                secret_group = 0
+            self._compiled.append(_CompiledRule(rule_id, label, pattern, tuple(str(k) for k in keywords), secret_group))
 
         unknown = sorted(excluded - seen_ids)
         if unknown:
@@ -238,7 +271,7 @@ class GitleaksTomlScrubber:
         return len(self._compiled)
 
     def scrub(self, text: str) -> str:
-        """Return ``text`` with each gitleaks rule match replaced by the labeler's output for it."""
+        """Return ``text`` with the secret in each gitleaks rule match replaced by the labeler's output for it."""
         if not text or not self._compiled:
             return text
 
@@ -252,8 +285,9 @@ class GitleaksTomlScrubber:
         # (more specific). Equal lengths -> earlier rule wins (preserves
         # upstream TOML ordering as a deterministic tiebreaker).
         lowered = text.lower()
-        candidates: list[tuple[int, int, _CompiledRule]] = []
-        for idx, rule in enumerate(self._compiled):
+        # (match start, match end, secret start, secret end, rule)
+        candidates: list[tuple[int, int, int, int, _CompiledRule]] = []
+        for rule in self._compiled:
             if rule.keywords and not any(k in lowered for k in rule.keywords):
                 continue
             for m in rule.pattern.finditer(text):
@@ -261,7 +295,8 @@ class GitleaksTomlScrubber:
                 # Zero-length matches don't redact anything sensible
                 if end <= start:
                     continue
-                candidates.append((start, end, rule))
+                secret_start, secret_end = rule.secret_span(m)
+                candidates.append((start, end, secret_start, secret_end, rule))
 
         if not candidates:
             return text
@@ -276,27 +311,29 @@ class GitleaksTomlScrubber:
         # Algorithm: sort by (-span DESC, start ASC) so the longest
         # match comes first. Greedily take matches that don't overlap
         # anything already kept. Track kept spans in start-order so
-        # final assembly is one left-to-right walk.
+        # final assembly is one left-to-right walk. Overlap is judged on the
+        # whole match, and only the secret span inside it is replaced.
         candidates.sort(key=lambda c: (-(c[1] - c[0]), c[0]))
 
-        kept: list[tuple[int, int, _CompiledRule]] = []
-        for start, end, rule in candidates:
-            overlaps = any(start < ke and end > ks for ks, ke, _ in kept)
+        kept: list[tuple[int, int, int, int, _CompiledRule]] = []
+        for candidate in candidates:
+            start, end = candidate[0], candidate[1]
+            overlaps = any(start < k[1] and end > k[0] for k in kept)
             if not overlaps:
-                kept.append((start, end, rule))
+                kept.append(candidate)
         kept.sort(key=lambda k: k[0])
 
         # Build the redacted output in one walk.
         out: list[str] = []
         cursor = 0
-        for start, end, rule in kept:
-            if start > cursor:
-                out.append(text[cursor:start])
-            value = text[start:end]
+        for _, _, secret_start, secret_end, rule in kept:
+            if secret_start > cursor:
+                out.append(text[cursor:secret_start])
+            value = text[secret_start:secret_end]
             self._metrics.inc_match("L1", rule.label)
             self._metrics.inc_redaction("L1", rule.label)
             out.append(self._labeler(rule.label, value))
-            cursor = end
+            cursor = secret_end
         if cursor < len(text):
             out.append(text[cursor:])
         return "".join(out)
