@@ -212,7 +212,11 @@ There is no L4 -- NLP/NER scrubbing was dropped from scope (the
 false-positive rate on logs was unacceptable, and per-call cost of
 5-200ms broke structured-log budgets). The L1 rule set is the
 gitleaks TOML vendored from hyperi-ai, parsed by
-`scrub/gitleaks_toml.py`. The composed scrubber is selected by
+`scrub/gitleaks_toml.py`. L1 replaces only a rule's secret, so the
+key name and quoting around it survive and a JSON line still parses:
+the rule's `secretGroup` when it has one, else its first non-empty
+capture group when only a terminator follows it in the match, else the
+whole match. The composed scrubber is selected by
 `scrub_resolver.py`, which honours (in order): explicit `scrubber=`
 arg, explicit `scrub_config=` arg, legacy `mask_sensitive`/
 `masking_level` args, new `logging.scrub.*` config keys, legacy
@@ -230,7 +234,7 @@ setup(scrubber=scrubber)
 
 ### Excluding one L1 rule
 
-L1 runs every gitleaks rule over log prose, where a broad rule can match ordinary text. `generic-api-key` is the one known to: it turns `Renamed config keys in .hyperi-ci.yaml: publish.container -> ...` into `Renamed config [GENERIC_API_KEY_REDACTED]-> ...`. Drop the offending rule by id and keep the rest of the set running:
+L1 runs every gitleaks rule over log prose, where a broad rule can match ordinary text. `generic-api-key` is the one known to: it turns `Renamed config keys in .hyperi-ci.yaml: publish.container -> ...` into `Renamed config keys in .hyperi-ci.yaml: [GENERIC_API_KEY_REDACTED] -> ...`. Drop the offending rule by id and keep the rest of the set running:
 
 ```yaml
 logging:

@@ -8,6 +8,7 @@
 
 """Tests for ``scalo.logger.scrub.gitleaks_toml``."""
 
+import json
 import random
 import re
 import string
@@ -246,6 +247,54 @@ class TestGitleaksTomlScrubberLabeler:
         s = GitleaksTomlScrubber(labeler=labeler)
         out = s.scrub(aws_access_key())
         assert re.search(r"\[AWS_ACCESS_TOKEN_[0-9a-f]{6}\]", out)
+
+
+_DENY_EVENT = {"event": "deny", "tier": 2, "password": "hunter2-not-real"}
+
+
+def _teams_webhook() -> str:
+    """A Microsoft Teams webhook URL shape, built at runtime."""
+    uuid = "a1b2c3d4-e5f6-a7b8-c9d0-e1f2a3b4c5d6"
+    return "https://contoso.webhook.office.com/webhook" + f"b2/{uuid}@{uuid}/IncomingWebhook/{'f' * 32}/{uuid}"
+
+
+class TestSecretSpanOnly:
+    """Only the rule's secret is replaced, so the key name and JSON quoting survive."""
+
+    def test_json_line_keeps_key_and_parses(self):
+        out = GitleaksTomlScrubber().scrub(json.dumps(_DENY_EVENT))
+        assert json.loads(out) == {"event": "deny", "tier": 2, "password": "[GENERIC_API_KEY_REDACTED]"}
+
+    def test_layered_scrubber_json_line_parses(self):
+        out = build_scrubber().scrub(json.dumps(_DENY_EVENT))
+        parsed = json.loads(out)
+        assert "hunter2-not-real" not in out
+        assert parsed["event"] == "deny"
+        assert parsed["tier"] == 2
+        assert parsed["password"] != "hunter2-not-real"
+
+    def test_rule_without_groups_redacts_whole_match(self):
+        s = GitleaksTomlScrubber(rules=[{"id": "whole", "regex": r"tok-[a-z]{8}"}])
+        assert s.scrub("x tok-abcdefgh y") == "x [WHOLE_REDACTED] y"
+
+    def test_explicit_secret_group_redacts_only_that_group(self):
+        rule = {"id": "named", "regex": r"(name)=([a-z]{8})\b", "secretGroup": 2}
+        s = GitleaksTomlScrubber(rules=[rule])
+        assert s.scrub("name=abcdefgh") == "name=[NAMED_REDACTED]"
+
+    def test_secret_group_that_did_not_participate_redacts_whole_match(self):
+        rule = {"id": "opt", "regex": r"key(x)?=[a-z]{8}", "secretGroup": 1}
+        s = GitleaksTomlScrubber(rules=[rule])
+        assert s.scrub("key=abcdefgh") == "[OPT_REDACTED]"
+
+    def test_fragment_group_redacts_whole_match(self):
+        s = GitleaksTomlScrubber(rules=[{"id": "frag", "regex": r"id-([a-z]{2}-)+[a-z0-9]{8}"}])
+        assert s.scrub("see id-ab-cd-12345678 here") == "see [FRAG_REDACTED] here"
+
+    def test_teams_webhook_is_redacted_whole(self):
+        url = _teams_webhook()
+        s = GitleaksTomlScrubber(rule_ids={"microsoft-teams-webhook"})
+        assert s.scrub(f"posting to {url} now") == "posting to [MICROSOFT_TEAMS_WEBHOOK_REDACTED] now"
 
 
 class TestGitleaksTomlScrubberBadRules:
