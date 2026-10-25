@@ -3,6 +3,13 @@
 Rendered by CI and committed back at the end of a release -- do not edit by
 hand. Release notes also appear on the GitHub Releases page, one per tag.
 
+## [2.32.2](https://github.com/hyperi-io/scalo-py/compare/v2.32.1...v2.32.2) (2026-10-25)
+
+### Bug Fixes
+
+* redact only the gitleaks secret, so a scrubbed JSON line still parses ([#161](https://github.com/hyperi-io/scalo-py/issues/161)) ([1c1f32c](https://github.com/hyperi-io/scalo-py/commit/1c1f32caa96735166ff618c666e443fea261b9a3))
+* **security:** re-vendor the deployment contract schema and update virtualenv ([#158](https://github.com/hyperi-io/scalo-py/issues/158)) ([77eb78b](https://github.com/hyperi-io/scalo-py/commit/77eb78ba43db83aeeecee11443eea31cdb9a1ccc))
+
 ## [2.32.1](https://github.com/hyperi-io/scalo-py/compare/v2.32.0...v2.32.1) (2026-10-24)
 
 ### Bug Fixes
