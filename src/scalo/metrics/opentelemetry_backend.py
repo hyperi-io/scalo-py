@@ -38,7 +38,7 @@ from dataclasses import dataclass, field
 from typing import Any, Callable
 
 from ..logger import logger
-from ..otel_backoff import DEFAULT_ENDPOINTS, append_signal_path, normalise_protocol
+from ..otel_backoff import DEFAULT_ENDPOINTS, append_signal_path, normalise_protocol, signal_env
 from .base import MetricsBackend, NoOpMetric
 
 # Re-exported under the older name for consumers that import it from here.
@@ -214,7 +214,7 @@ try:
     from opentelemetry.metrics import Observation
     from opentelemetry.sdk.metrics import MeterProvider
     from opentelemetry.sdk.metrics.export import PeriodicExportingMetricReader
-    from opentelemetry.sdk.resources import Resource
+    from opentelemetry.sdk.resources import OTELResourceDetector, Resource
 
     OTEL_AVAILABLE = True
 except ImportError:
@@ -238,6 +238,9 @@ class ResolvedOtelConfig:
 
     enabled: bool = True
     endpoint: str = DEFAULT_OTLP_ENDPOINTS["grpc"]
+    # True when the endpoint came from OTEL_EXPORTER_OTLP_METRICS_ENDPOINT, which
+    # the OTel spec uses as given where the generic one is a base URL.
+    endpoint_verbatim: bool = False
     protocol: str = "grpc"
     export_interval_millis: int = 60_000
     export_timeout_millis: int = 10_000
@@ -267,19 +270,20 @@ def resolve_otel_config(otel_config: dict[str, Any] | None) -> ResolvedOtelConfi
     Precedence per field: the standard ``OTEL_*`` env var, then the config
     cascade's ``metrics.opentelemetry.*``, then the default. The env vars win
     because they are what a deployment sets and what the charts already emit.
+    For the endpoint and protocol the per-signal ``OTEL_EXPORTER_OTLP_METRICS_*``
+    form outranks the generic one.
     """
     otel_config = otel_config or {}
 
-    protocol = normalise_protocol(
-        os.environ.get("OTEL_EXPORTER_OTLP_PROTOCOL"),
-        normalise_protocol(otel_config.get("protocol"), "grpc"),
-    )
+    protocol_env, _ = signal_env("METRICS", "PROTOCOL")
+    protocol = normalise_protocol(protocol_env, normalise_protocol(otel_config.get("protocol"), "grpc"))
 
     # A whitespace-only endpoint resolves to empty, so OTEL_EXPORTER_OTLP_ENDPOINT=" "
     # reads as "off" rather than as an unparseable URI. It is the off switch for
     # an operator who cannot reach the config file.
     configured_endpoint = otel_config.get("endpoint", DEFAULT_OTLP_ENDPOINTS[protocol])
-    endpoint = os.environ.get("OTEL_EXPORTER_OTLP_ENDPOINT", configured_endpoint)
+    endpoint_env, verbatim = signal_env("METRICS", "ENDPOINT")
+    endpoint = endpoint_env if endpoint_env is not None else configured_endpoint
     endpoint = (endpoint or "").strip()
 
     interval = _int_env("OTEL_METRIC_EXPORT_INTERVAL", otel_config.get("export_interval_millis", 60_000))
@@ -290,6 +294,7 @@ def resolve_otel_config(otel_config: dict[str, Any] | None) -> ResolvedOtelConfi
     return ResolvedOtelConfig(
         enabled=bool(otel_config.get("enabled", True)),
         endpoint=endpoint,
+        endpoint_verbatim=verbatim,
         protocol=protocol,
         export_interval_millis=interval,
         export_timeout_millis=timeout,
@@ -313,7 +318,13 @@ def _int_env(name: str, fallback: Any) -> int:
         return 0
 
 
-def _create_otlp_exporter(protocol: str, endpoint: str, timeout_millis: int, headers: dict[str, str]) -> Any:
+def _create_otlp_exporter(
+    protocol: str,
+    endpoint: str,
+    timeout_millis: int,
+    headers: dict[str, str],
+    endpoint_verbatim: bool = False,
+) -> Any:
     """Create the OTLP metric exporter for the given protocol and endpoint.
 
     The timeout is the per-attempt deadline, so an endpoint that accepts the
@@ -325,7 +336,7 @@ def _create_otlp_exporter(protocol: str, endpoint: str, timeout_millis: int, hea
         from opentelemetry.exporter.otlp.proto.http.metric_exporter import OTLPMetricExporter
 
         return OTLPMetricExporter(
-            endpoint=append_signal_path(endpoint, "v1/metrics"),
+            endpoint=endpoint if endpoint_verbatim else append_signal_path(endpoint, "v1/metrics"),
             timeout=timeout_seconds,
             headers=headers or None,
         )
@@ -333,6 +344,15 @@ def _create_otlp_exporter(protocol: str, endpoint: str, timeout_millis: int, hea
     from opentelemetry.exporter.otlp.proto.grpc.metric_exporter import OTLPMetricExporter
 
     return OTLPMetricExporter(endpoint=endpoint, timeout=timeout_seconds, headers=headers or None)
+
+
+def _bucket_boundaries(name: str, buckets: tuple[float, ...] | None) -> list[float] | None:
+    """Explicit boundaries for a histogram, or None to take the SDK default."""
+    if buckets:
+        return list(buckets)
+    if name.endswith("_seconds"):
+        return list(DEFAULT_HISTOGRAM_BUCKETS)
+    return None
 
 
 class OpenTelemetryBackend(MetricsBackend):
@@ -362,7 +382,7 @@ class OpenTelemetryBackend(MetricsBackend):
 
     Example:
         - http_requests_total -> http.server.request.count
-        - http_request_duration_seconds -> http.server.request.duration
+        - http_server_request_duration_seconds -> http.server.request.duration
         - task_execution_total -> task.execution.count
     """
 
@@ -370,7 +390,6 @@ class OpenTelemetryBackend(MetricsBackend):
     PROMETHEUS_TO_OTEL = {
         # HTTP Server metrics
         "http_requests_total": "http.server.request.count",
-        "http_request_duration_seconds": "http.server.request.duration",
         "http_server_request_duration_seconds": "http.server.request.duration",
         "http_requests_in_progress": "http.server.active_requests",
         "http_request_size_bytes": "http.server.request.size",
@@ -460,8 +479,12 @@ class OpenTelemetryBackend(MetricsBackend):
         resource_attrs: dict[str, Any] = {
             "service.name": service_name,
             "service.version": service_version,
-            "service.instance.id": socket.gethostname(),
         }
+        # Instance identity: OTEL_RESOURCE_ATTRIBUTES, then POD_NAME, then the
+        # hostname. Resource.create() lets explicit attributes override the env
+        # ones, so the env value is left to the SDK rather than set here.
+        if "service.instance.id" not in OTELResourceDetector().detect().attributes:
+            resource_attrs["service.instance.id"] = os.environ.get("POD_NAME") or socket.gethostname()
 
         # deployment.environment.name is the STABLE semconv key; the bare
         # deployment.environment is deprecated. Sourced from scalo's own env
@@ -503,6 +526,7 @@ class OpenTelemetryBackend(MetricsBackend):
                         resolved.endpoint,
                         resolved.export_timeout_millis,
                         resolved.headers,
+                        resolved.endpoint_verbatim,
                     )
                     # Backoff starts at one export interval so the first retry is
                     # the next scheduled tick, then doubles while the collector
@@ -539,6 +563,10 @@ class OpenTelemetryBackend(MetricsBackend):
             self._provider = MeterProvider(
                 resource=resource,
                 metric_readers=metric_readers,
+                # _graceful_shutdown below owns the shutdown and bounds its flush.
+                # The SDK's own atexit hook would shut the provider down a second
+                # time and print "shutdown can only be called once" to stderr.
+                shutdown_on_exit=False,
             )
 
             # Set global meter provider
@@ -608,7 +636,12 @@ class OpenTelemetryBackend(MetricsBackend):
         if not self.auto_convert_names:
             return prometheus_name
 
-        otel_name = self.PROMETHEUS_TO_OTEL.get(prometheus_name)
+        # The manager prefixes every name before it reaches the backend, so the
+        # table is looked up on the name without the namespace.
+        bare_name = prometheus_name
+        if self.metric_prefix and prometheus_name.startswith(f"{self.metric_prefix}_"):
+            bare_name = prometheus_name[len(self.metric_prefix) + 1 :]
+        otel_name = self.PROMETHEUS_TO_OTEL.get(bare_name)
 
         if otel_name:
             logger.debug(f"Converted metric name: {prometheus_name} -> {otel_name}")
@@ -749,9 +782,11 @@ class OpenTelemetryBackend(MetricsBackend):
             name: Metric name (Prometheus format, e.g., "http_request_duration_seconds")
             description: Description
             labels: Label names
-            buckets: Bucket boundaries in the metric's own unit. Defaults to
-                prometheus_client's seconds buckets, as the Prometheus backend
-                does; the OTel SDK's own default is in milliseconds.
+            buckets: Bucket boundaries in the metric's own unit. A ``_seconds``
+                metric defaults to prometheus_client's seconds buckets, as the
+                Prometheus backend does. Any other unit (bytes, counts) gets the
+                SDK's own default boundaries, which suit those better than
+                boundaries between 5 ms and 10 s.
 
         Returns:
             Histogram instance
@@ -767,7 +802,7 @@ class OpenTelemetryBackend(MetricsBackend):
 
         histogram = self._meter.create_histogram(
             description=description,
-            explicit_bucket_boundaries_advisory=list(buckets or DEFAULT_HISTOGRAM_BUCKETS),
+            explicit_bucket_boundaries_advisory=_bucket_boundaries(name, buckets),
             name=otel_name,
             unit="s" if name.endswith("_seconds") else "1",
         )

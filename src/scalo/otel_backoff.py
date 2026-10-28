@@ -57,6 +57,7 @@ __all__ = [
     "GatedSpanExporter",
     "append_signal_path",
     "normalise_protocol",
+    "signal_env",
 ]
 
 # Default OTLP endpoint per protocol, shared by every signal.
@@ -94,6 +95,26 @@ def normalise_protocol(value: str | None, fallback: str) -> str:
     if lowered == "grpc":
         return "grpc"
     return fallback
+
+
+def signal_env(signal: str, name: str) -> tuple[str | None, bool]:
+    """Read an OTLP exporter variable, the per-signal form before the generic one.
+
+    ``signal_env("TRACES", "ENDPOINT")`` reads ``OTEL_EXPORTER_OTLP_TRACES_ENDPOINT``
+    and then ``OTEL_EXPORTER_OTLP_ENDPOINT``, which is the order the OTel spec
+    and the SDK exporters use.
+
+    Returns:
+        The value (None when neither is set) and whether it came from the
+        per-signal variable. A per-signal endpoint is used verbatim, where a
+        generic one is a base URL that takes the signal path.
+    """
+    import os
+
+    per_signal = os.environ.get(f"OTEL_EXPORTER_OTLP_{signal}_{name}")
+    if per_signal is not None:
+        return per_signal, True
+    return os.environ.get(f"OTEL_EXPORTER_OTLP_{name}"), False
 
 
 def append_signal_path(endpoint: str, signal_path: str) -> str:

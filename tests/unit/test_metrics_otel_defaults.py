@@ -16,6 +16,8 @@ than standing up a MeterProvider, so they say what they mean.
 from __future__ import annotations
 
 import importlib.util
+import subprocess
+import sys
 
 import pytest
 
@@ -32,6 +34,10 @@ def _clear_otel_env(monkeypatch):
     for name in (
         "OTEL_EXPORTER_OTLP_ENDPOINT",
         "OTEL_EXPORTER_OTLP_PROTOCOL",
+        "OTEL_EXPORTER_OTLP_METRICS_ENDPOINT",
+        "OTEL_EXPORTER_OTLP_METRICS_PROTOCOL",
+        "OTEL_RESOURCE_ATTRIBUTES",
+        "POD_NAME",
         "OTEL_METRIC_EXPORT_INTERVAL",
         "OTEL_METRIC_EXPORT_TIMEOUT",
         "OTEL_SERVICE_NAME",
@@ -114,6 +120,69 @@ class TestEnvOutranksConfig:
         assert resolve_otel_config({"export_interval_millis": 60000}).export_interval_millis == 60000
 
 
+class TestPerSignalEnv:
+    """OTEL_EXPORTER_OTLP_METRICS_* outranks the generic form, which outranks config."""
+
+    @pytest.mark.parametrize(
+        ("env", "config", "endpoint", "protocol", "verbatim"),
+        [
+            ({"OTEL_EXPORTER_OTLP_METRICS_ENDPOINT": "http://m:4318/custom"}, {}, "http://m:4318/custom", "grpc", True),
+            ({"OTEL_EXPORTER_OTLP_METRICS_PROTOCOL": "http/protobuf"}, {}, "http://localhost:4318", "http", False),
+            (
+                {
+                    "OTEL_EXPORTER_OTLP_ENDPOINT": "http://generic:4317",
+                    "OTEL_EXPORTER_OTLP_METRICS_ENDPOINT": "http://metrics:4317",
+                },
+                {},
+                "http://metrics:4317",
+                "grpc",
+                True,
+            ),
+            (
+                {"OTEL_EXPORTER_OTLP_PROTOCOL": "grpc", "OTEL_EXPORTER_OTLP_METRICS_PROTOCOL": "http"},
+                {},
+                "http://localhost:4318",
+                "http",
+                False,
+            ),
+            (
+                {"OTEL_EXPORTER_OTLP_ENDPOINT": "http://generic:4317"},
+                {"endpoint": "http://cfg:4317"},
+                "http://generic:4317",
+                "grpc",
+                False,
+            ),
+            ({"OTEL_EXPORTER_OTLP_METRICS_PROTOCOL": "carrier-pigeon"}, {}, "http://localhost:4317", "grpc", False),
+            (
+                {"OTEL_EXPORTER_OTLP_METRICS_ENDPOINT": " ", "OTEL_EXPORTER_OTLP_ENDPOINT": "http://g:4317"},
+                {},
+                "",
+                "grpc",
+                True,
+            ),
+        ],
+    )
+    def test_resolution(self, monkeypatch, env, config, endpoint, protocol, verbatim):
+        for name, value in env.items():
+            monkeypatch.setenv(name, value)
+        resolved = resolve_otel_config(config)
+        assert (resolved.endpoint, resolved.protocol, resolved.endpoint_verbatim) == (endpoint, protocol, verbatim)
+
+    @pytest.mark.skipif(not _otel_available(), reason="opentelemetry not installed")
+    @pytest.mark.parametrize(
+        ("verbatim", "expected"),
+        [(False, "http://collector:4318/v1/metrics"), (True, "http://collector:4318")],
+    )
+    def test_only_a_base_endpoint_gets_the_metrics_path(self, verbatim, expected):
+        from scalo.metrics.opentelemetry_backend import _create_otlp_exporter
+
+        exporter = _create_otlp_exporter("http", "http://collector:4318", 10_000, {}, verbatim)
+        try:
+            assert exporter._endpoint == expected
+        finally:
+            exporter.shutdown()
+
+
 class TestPassThrough:
     def test_headers_survive_resolution(self):
         resolved = resolve_otel_config({"headers": {"x-api-key": "s3cret"}})
@@ -187,6 +256,48 @@ class TestBackendComposition:
         )
         attributes = backend._provider._sdk_config.resource.attributes
         assert attributes["deployment.environment.name"] == "canary"
+
+    @pytest.mark.parametrize(
+        ("env", "expected"),
+        [
+            ({}, "host"),
+            ({"POD_NAME": "orders-7d9f"}, "orders-7d9f"),
+            ({"OTEL_RESOURCE_ATTRIBUTES": "service.instance.id=from-env"}, "from-env"),
+            (
+                {"OTEL_RESOURCE_ATTRIBUTES": "service.instance.id=from-env", "POD_NAME": "orders-7d9f"},
+                "from-env",
+            ),
+            ({"OTEL_RESOURCE_ATTRIBUTES": "team=control-plane", "POD_NAME": "orders-7d9f"}, "orders-7d9f"),
+        ],
+    )
+    def test_instance_id_is_env_attributes_then_pod_name_then_hostname(self, monkeypatch, otel_backend, env, expected):
+        monkeypatch.setattr("socket.gethostname", lambda: "host")
+        for name, value in env.items():
+            monkeypatch.setenv(name, value)
+        backend = otel_backend("identity", {"opentelemetry": {"endpoint": ""}})
+        attributes = backend._provider._sdk_config.resource.attributes
+        assert attributes["service.instance.id"] == expected
+
+    def test_a_process_with_an_otel_backend_exits_without_a_second_shutdown(self, tmp_path):
+        """The SDK exit hook used to shut the provider down after scalo had, and it said so on stderr."""
+        code = (
+            "from scalo.metrics.opentelemetry_backend import OpenTelemetryBackend\n"
+            "b = OpenTelemetryBackend('exit-hook', {'opentelemetry': {'endpoint': ''}})\n"
+            "assert b.enabled\n"
+        )
+        # An empty cwd, so the child's config cascade cannot load a stray .env.
+        result = subprocess.run(
+            [sys.executable, "-c", code],
+            cwd=tmp_path,
+            capture_output=True,
+            text=True,
+            encoding="utf-8",
+            errors="replace",
+            timeout=60,
+            check=False,
+        )
+        assert result.returncode == 0, result.stderr
+        assert "shutdown can only be called once" not in result.stderr
 
     def test_the_push_exporter_is_actually_gated(self, monkeypatch, otel_backend):
         """The backoff is worth nothing if the wiring silently comes undone."""

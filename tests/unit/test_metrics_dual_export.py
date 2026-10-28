@@ -11,6 +11,7 @@ import os
 import pytest
 
 from scalo.metrics import MetricsManager, create_metrics
+from scalo.metrics.opentelemetry_backend import DEFAULT_HISTOGRAM_BUCKETS
 
 # Check if OTel is available in this environment
 try:
@@ -251,6 +252,50 @@ class TestConfigOverrides:
 
         # Should NOT convert name
         assert backend._convert_metric_name("http_requests_total") == "http_requests_total"
+
+
+@pytest.mark.skipif(not OTEL_INSTALLED, reason="opentelemetry not installed")
+class TestNameMappingAndBuckets:
+    """Mapped names are found with or without the namespace, and buckets suit the unit."""
+
+    @pytest.mark.parametrize(
+        ("prefix", "name", "expected"),
+        [
+            ("", "http_requests_total", "http.server.request.count"),
+            ("", "http_server_request_duration_seconds", "http.server.request.duration"),
+            ("myapp", "myapp_http_server_request_duration_seconds", "http.server.request.duration"),
+            ("myapp", "myapp_task_execution_total", "task.execution.count"),
+            # The legacy alias no longer shares an instrument with the server histogram.
+            ("", "http_request_duration_seconds", "http_request_duration_seconds"),
+            # No mapping, and a name that only looks prefixed, are left alone.
+            ("myapp", "myapp_orders_total", "myapp_orders_total"),
+            ("my", "myapp_http_requests_total", "myapp_http_requests_total"),
+        ],
+    )
+    def test_conversion(self, prefix, name, expected):
+        from scalo.metrics.opentelemetry_backend import OpenTelemetryBackend
+
+        backend = OpenTelemetryBackend("name-map", config={"opentelemetry": {"endpoint": ""}})
+        backend.metric_prefix = prefix
+        assert backend._convert_metric_name(name) == expected
+
+    def test_the_manager_hands_its_namespace_to_the_backend(self):
+        metrics = create_metrics("ns-handoff", backend="opentelemetry", metric_prefix="myapp")
+        assert metrics._backend.metric_prefix == "myapp"
+
+    @pytest.mark.parametrize(
+        ("name", "buckets", "expected"),
+        [
+            ("job_duration_seconds", None, list(DEFAULT_HISTOGRAM_BUCKETS)),
+            ("payload_size_bytes", None, None),
+            ("batch_rows", None, None),
+            ("payload_size_bytes", (1024.0, 65536.0), [1024.0, 65536.0]),
+        ],
+    )
+    def test_bucket_boundaries(self, name, buckets, expected):
+        from scalo.metrics.opentelemetry_backend import _bucket_boundaries
+
+        assert _bucket_boundaries(name, buckets) == expected
 
 
 class TestBackwardCompatibility:

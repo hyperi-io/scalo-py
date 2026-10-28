@@ -51,13 +51,17 @@ otel_tracing:
   export_timeout_millis: 10000
 ```
 
-Env vars outrank config, per the OTel spec.
+Env vars outrank config, per the OTel spec. The per-signal
+`OTEL_EXPORTER_OTLP_TRACES_ENDPOINT` and `OTEL_EXPORTER_OTLP_TRACES_PROTOCOL`
+outrank the generic pair, and a per-signal endpoint is used as given. With no
+endpoint set anywhere, the default port follows the resolved protocol (4317 for
+gRPC, 4318 for http).
 
 `service_name` has no default on purpose. A package-name default would
 report every service in the fleet as "scalo".
 
-On the `http` protocol the signal path (`/v1/traces`) is appended for
-you, for the same reason as metrics.
+On the `http` protocol the signal path (`/v1/traces`) is appended to a
+generic or configured endpoint for you, for the same reason as metrics.
 
 ---
 

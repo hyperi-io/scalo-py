@@ -409,6 +409,7 @@ class TestRegisterGauge:
         sp.set_component("memory", 0.4)
         sp.set_component("queue", 0.6)
         sp.calculate()
+        sp.stop_gauge()
 
         output = mgr.metrics_text
         assert "scaling_pressure" in output
@@ -428,10 +429,66 @@ class TestRegisterGauge:
         sp.set_component("memory", 0.5)
         sp.calculate()
         output2 = mgr.metrics_text
+        sp.stop_gauge()
 
         # Both should contain the gauge, but values differ
         assert "scaling_pressure" in output1
         assert "scaling_pressure" in output2
+
+    def test_gauge_is_written_with_no_calculate_call(self):
+        """The ticker writes the current pressure without anyone calling calculate()."""
+        from scalo.metrics import create_metrics
+
+        mgr = create_metrics(f"test_scaling_{int(time.monotonic_ns())}", backend="prometheus", enable_auto_update=False)
+        sp = ScalingPressure()
+        sp.set_component("queue", 1.0)  # 1.0 * 0.30 weight = 30
+        sp.register_gauge(mgr, interval=0.02)
+        try:
+            deadline = time.monotonic() + 5
+            while time.monotonic() < deadline and "scaling_pressure 30.0" not in mgr.metrics_text:
+                time.sleep(0.02)
+            assert "scaling_pressure 30.0" in mgr.metrics_text
+
+            sp.set_component("queue", 0.0)
+            deadline = time.monotonic() + 5
+            while time.monotonic() < deadline and "scaling_pressure 0.0" not in mgr.metrics_text:
+                time.sleep(0.02)
+            assert "scaling_pressure 0.0" in mgr.metrics_text
+        finally:
+            sp.stop_gauge()
+
+    def test_stop_gauge_ends_the_ticker_and_is_repeatable(self):
+        from scalo.metrics import create_metrics
+
+        mgr = create_metrics(f"test_scaling_{int(time.monotonic_ns())}", backend="prometheus", enable_auto_update=False)
+        sp = ScalingPressure()
+        sp.register_gauge(mgr, interval=0.02)
+        ticker = sp._ticker
+        assert ticker is not None and ticker.is_alive()
+        sp.stop_gauge()
+        sp.stop_gauge()
+        assert not ticker.is_alive()
+
+    def test_registering_again_replaces_the_ticker(self):
+        from scalo.metrics import create_metrics
+
+        mgr = create_metrics(f"test_scaling_{int(time.monotonic_ns())}", backend="prometheus", enable_auto_update=False)
+        sp = ScalingPressure()
+        sp.register_gauge(mgr, interval=0.02)
+        first = sp._ticker
+        sp.register_gauge(mgr, interval=0.02)
+        try:
+            assert first is not None and not first.is_alive()
+            assert sp._ticker is not None and sp._ticker.is_alive()
+        finally:
+            sp.stop_gauge()
+
+    @pytest.mark.parametrize("interval", [0, -1.0])
+    def test_non_positive_interval_is_refused(self, interval):
+        sp = ScalingPressure()
+        with pytest.raises(ValueError, match="interval"):
+            sp.register_gauge(object(), interval=interval)
+        assert sp._ticker is None
 
     def test_works_without_register_gauge(self):
         """ScalingPressure works fine without calling register_gauge."""

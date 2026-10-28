@@ -167,10 +167,17 @@ metrics = create_metrics("my_service")
 pressure = ScalingPressure()
 pressure.register_gauge(metrics)   # creates "scaling_pressure" gauge
 
-# calculate() now also updates the gauge automatically
+# A background thread writes calculate() to the gauge every second, so the
+# scrape and the OTLP push carry it with no traffic. calculate() also updates it.
 pressure.set_component("queue_depth", 0.7)
 score = pressure.calculate()
+
+pressure.stop_gauge()              # at shutdown, if you want the thread ended first
 ```
+
+`register_gauge(metrics, interval=1.0)` takes the seconds between writes,
+the same cadence scalo-rs `ServiceRuntime` uses. The thread is a daemon, so
+it never holds the process open.
 
 The metric name is `scaling_pressure` with the description
 `"Composite scaling pressure score (0-100)"`. KEDA's Prometheus scaler

@@ -26,6 +26,9 @@ class MetricsBackend(ABC):
         self.app_name = app_name
         self.config = config or {}
         self.enabled = True
+        # The owning manager's namespace, set after construction. Backends that
+        # map names need it to find the unprefixed name.
+        self.metric_prefix = ""
 
     @abstractmethod
     def counter(self, name: str, description: str, labels: list[str] | None = None) -> Any:

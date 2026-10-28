@@ -26,6 +26,10 @@ CGROUP_ROOT = Path("/sys/fs/cgroup")
 # scalo-rs reports an unlimited cgroup ("max") as u64::MAX.
 UNLIMITED = float(2**64 - 1)
 
+# cgroup v1 spells "no limit" as LONG_MAX rounded down to a page
+# (9223372036854771712), not as "max". Any limit this large is no limit.
+_V1_UNLIMITED_FLOOR = float(2**62)
+
 
 def _read_number(path: Path) -> float | None:
     """A cgroup value file as a number: "max" is UNLIMITED, anything unreadable is None."""
@@ -153,7 +157,10 @@ class ResourceMetrics:
     def container_memory_limit_bytes(self) -> float | None:
         """The cgroup's memory limit, UNLIMITED when there is none, or None outside a cgroup."""
         name = "memory.max" if self._cgroup_v2 else "memory/memory.limit_in_bytes"
-        return _read_number(self._cgroup_root / name)
+        limit = _read_number(self._cgroup_root / name)
+        if limit is not None and limit >= _V1_UNLIMITED_FLOOR:
+            return UNLIMITED
+        return limit
 
     def container_cpu_limit_cores(self) -> float | None:
         """The cgroup's CPU quota in cores, or None when unlimited or outside a cgroup."""
