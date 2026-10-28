@@ -38,7 +38,7 @@ import pytest
 from faker import Faker
 
 # Mark all tests in this module as integration tests
-pytestmark = pytest.mark.integration
+pytestmark = [pytest.mark.integration, pytest.mark.xdist_group("kafka")]
 
 # Note: kafka_config fixture is provided by conftest.py (session-scoped)
 # It automatically tries remote Kafka, then falls back to Docker

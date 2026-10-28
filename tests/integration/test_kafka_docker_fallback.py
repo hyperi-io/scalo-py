@@ -20,7 +20,7 @@ import uuid
 import pytest
 
 # Mark all tests in this module as integration tests
-pytestmark = pytest.mark.integration
+pytestmark = [pytest.mark.integration, pytest.mark.xdist_group("kafka")]
 
 
 class TestDockerKafkaFallback:
