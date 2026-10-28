@@ -23,6 +23,8 @@ vendor:
 
 test:
   min_coverage: 70  # Current: 73%. Target: 80%. Ratchet up as coverage improves.
+  python:
+    parallel: auto
 
 quality:
   # examples/ has its own tests/ -- exclude from quality scans
