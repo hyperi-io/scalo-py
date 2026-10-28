@@ -166,6 +166,10 @@ def build_scrubber(
 
 def _emit_pattern_versions(metrics: ScrubMetrics) -> None:
     """Emit `log_scrub_pattern_version{source, version}` per spec Section 8."""
+    # A noop sink drops every version, so re-reading the TOML tables for them is wasted work.
+    if metrics._pattern_version is None:
+        return
+
     # L1 -- canonical TOML-driven path (gitleaks.toml vendored from hyperi-ai).
     try:
         from .gitleaks_toml import load_gitleaks_rules
