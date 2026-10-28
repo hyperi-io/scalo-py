@@ -47,6 +47,11 @@ def _drop_logger_sinks_at_session_end():
 # Enable DEBUG logging for all tests
 os.environ["LOG_LEVEL"] = "DEBUG"
 
+# On a GitHub runner scalo's logger turns ERROR and WARNING records into ::error::
+# and ::warning:: workflow commands, so a test that logs one on purpose shows up as a
+# build annotation. Tests that exercise that mode set GITHUB_ACTIONS themselves.
+os.environ.pop("GITHUB_ACTIONS", None)
+
 # OTLP push is ON by default, so the suite has to switch it off explicitly or
 # every backend built in a test dials a collector that is not there. A blank
 # OTEL_EXPORTER_OTLP_ENDPOINT is the documented off switch, and it beats config
