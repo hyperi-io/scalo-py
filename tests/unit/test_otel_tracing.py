@@ -227,6 +227,81 @@ class TestEnvOutranksConfig:
         assert resolve(OtelTracingConfig()).sample_ratio == OtelTracingConfig().sample_ratio
 
 
+class TestPerSignalEnv:
+    """OTEL_EXPORTER_OTLP_TRACES_* outranks the generic form, which outranks config."""
+
+    @pytest.mark.parametrize(
+        ("env", "config", "endpoint", "protocol", "verbatim"),
+        [
+            # Per-signal alone takes effect, and is used as given.
+            ({"OTEL_EXPORTER_OTLP_TRACES_ENDPOINT": "http://t:4318/custom"}, {}, "http://t:4318/custom", "grpc", True),
+            ({"OTEL_EXPORTER_OTLP_TRACES_PROTOCOL": "http/protobuf"}, {}, "http://localhost:4318", "http", False),
+            # Per-signal beats generic.
+            (
+                {
+                    "OTEL_EXPORTER_OTLP_ENDPOINT": "http://generic:4317",
+                    "OTEL_EXPORTER_OTLP_TRACES_ENDPOINT": "http://traces:4317",
+                },
+                {},
+                "http://traces:4317",
+                "grpc",
+                True,
+            ),
+            (
+                {"OTEL_EXPORTER_OTLP_PROTOCOL": "grpc", "OTEL_EXPORTER_OTLP_TRACES_PROTOCOL": "http"},
+                {},
+                "http://localhost:4318",
+                "http",
+                False,
+            ),
+            # Generic beats config, and is a base URL.
+            (
+                {"OTEL_EXPORTER_OTLP_ENDPOINT": "http://generic:4317"},
+                {"endpoint": "http://cfg:4317"},
+                "http://generic:4317",
+                "grpc",
+                False,
+            ),
+            # The default port follows the resolved protocol, config-only included.
+            ({"OTEL_EXPORTER_OTLP_PROTOCOL": "http"}, {}, "http://localhost:4318", "http", False),
+            ({}, {"protocol": "http", "endpoint": "http://localhost:4318"}, "http://localhost:4318", "http", False),
+            # An endpoint config named explicitly is not replaced by a default.
+            (
+                {"OTEL_EXPORTER_OTLP_PROTOCOL": "http"},
+                {"endpoint": "http://cfg:9999"},
+                "http://cfg:9999",
+                "http",
+                False,
+            ),
+            # An unrecognised per-signal protocol falls back rather than failing.
+            ({"OTEL_EXPORTER_OTLP_TRACES_PROTOCOL": "carrier-pigeon"}, {}, "http://localhost:4317", "grpc", False),
+            # A blank per-signal endpoint is the off switch for this signal.
+            (
+                {"OTEL_EXPORTER_OTLP_TRACES_ENDPOINT": " ", "OTEL_EXPORTER_OTLP_ENDPOINT": "http://g:4317"},
+                {},
+                "",
+                "grpc",
+                True,
+            ),
+        ],
+    )
+    def test_resolution(self, monkeypatch, env, config, endpoint, protocol, verbatim):
+        for name, value in env.items():
+            monkeypatch.setenv(name, value)
+        resolved = resolve(OtelTracingConfig(**config))
+        assert (resolved.endpoint, resolved.protocol, resolved.endpoint_verbatim) == (endpoint, protocol, verbatim)
+
+    @pytest.mark.skipif(not _otel_available(), reason="opentelemetry not installed")
+    def test_a_per_signal_http_endpoint_is_not_given_the_traces_path_twice(self, monkeypatch):
+        monkeypatch.setenv("OTEL_EXPORTER_OTLP_TRACES_PROTOCOL", "http/protobuf")
+        monkeypatch.setenv("OTEL_EXPORTER_OTLP_TRACES_ENDPOINT", "http://collector:4318/ingest")
+        exporter = otel_tracing._build_span_exporter(resolve(OtelTracingConfig()))
+        try:
+            assert exporter._endpoint == "http://collector:4318/ingest"
+        finally:
+            exporter.shutdown()
+
+
 class TestFromCascade:
     def test_absent_section_yields_the_defaults(self):
         class _Empty:

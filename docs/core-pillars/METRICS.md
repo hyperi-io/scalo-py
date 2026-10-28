@@ -201,14 +201,19 @@ metrics:
 
 Standard OTel env vars outrank config: `OTEL_EXPORTER_OTLP_ENDPOINT`,
 `OTEL_EXPORTER_OTLP_PROTOCOL`, `OTEL_SERVICE_NAME`,
-`OTEL_METRIC_EXPORT_INTERVAL`, `OTEL_METRIC_EXPORT_TIMEOUT`.
+`OTEL_METRIC_EXPORT_INTERVAL`, `OTEL_METRIC_EXPORT_TIMEOUT`. The
+per-signal `OTEL_EXPORTER_OTLP_METRICS_ENDPOINT` and
+`OTEL_EXPORTER_OTLP_METRICS_PROTOCOL` outrank the generic pair. A
+per-signal endpoint is used as given, where the generic one is a base URL
+that takes `/v1/metrics` on the `http` protocol.
 
 The resource carries `service.name`, `service.version`,
 `service.instance.id` and `deployment.environment.name` -- the stable
 semconv key, sourced from scalo's own env detection
 (`APP_ENV` / `ENVIRONMENT` / `ENV`), so telemetry is tagged with the
-tier without per-app wiring. Anything in `resource_attributes` is
-applied last and wins.
+tier without per-app wiring. `service.instance.id` is the first of
+`OTEL_RESOURCE_ATTRIBUTES`, `POD_NAME` and the hostname. Anything in
+`resource_attributes` is applied last and wins.
 
 `export_timeout_millis` is the per-attempt deadline. Without it an
 endpoint that accepts the connection and never answers holds the

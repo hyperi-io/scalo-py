@@ -45,7 +45,7 @@ from typing import Any, cast
 # during its own initialisation. It is the same singleton object either way.
 from loguru import logger
 
-from .otel_backoff import DEFAULT_ENDPOINTS, normalise_protocol
+from .otel_backoff import DEFAULT_ENDPOINTS, append_signal_path, normalise_protocol, signal_env
 
 __all__ = [
     "OtelTracingConfig",
@@ -70,6 +70,13 @@ class OtelTracingConfig:
 
     endpoint: str = DEFAULT_ENDPOINTS["grpc"]
     """OTLP endpoint. A blank value is the off switch for an operator who cannot reach the config."""
+
+    endpoint_verbatim: bool = False
+    """True when the endpoint came from ``OTEL_EXPORTER_OTLP_TRACES_ENDPOINT``.
+
+    The OTel spec uses a per-signal endpoint as given, where the generic one is a
+    base URL that takes ``/v1/traces``.
+    """
 
     protocol: str = "grpc"
     """Wire protocol, "grpc" or "http"."""
@@ -184,11 +191,23 @@ def config_from_cascade(settings: Any | None = None) -> OtelTracingConfig:
 
 
 def resolve(config: OtelTracingConfig) -> OtelTracingConfig:
-    """Apply the standard ``OTEL_*`` env-var overrides to a config."""
+    """Apply the standard ``OTEL_*`` env-var overrides to a config.
+
+    The per-signal ``OTEL_EXPORTER_OTLP_TRACES_*`` variables win over the generic
+    ones, which win over config. With no endpoint set anywhere, the default port
+    follows the resolved protocol.
+    """
     import os
 
-    protocol = normalise_protocol(os.environ.get("OTEL_EXPORTER_OTLP_PROTOCOL"), config.protocol)
-    endpoint = os.environ.get("OTEL_EXPORTER_OTLP_ENDPOINT", config.endpoint)
+    protocol_env, _ = signal_env("TRACES", "PROTOCOL")
+    protocol = normalise_protocol(protocol_env, config.protocol)
+    endpoint_env, verbatim = signal_env("TRACES", "ENDPOINT")
+    if endpoint_env is not None:
+        endpoint = endpoint_env
+    elif config.endpoint in DEFAULT_ENDPOINTS.values():
+        endpoint = DEFAULT_ENDPOINTS[protocol]
+    else:
+        endpoint = config.endpoint
     service_name = os.environ.get("OTEL_SERVICE_NAME") or config.service_name
     # The spec's sampler knob, so an operator can turn sampling up on one
     # service without a config change.
@@ -197,6 +216,7 @@ def resolve(config: OtelTracingConfig) -> OtelTracingConfig:
     return OtelTracingConfig(
         enabled=config.enabled,
         endpoint=(endpoint or "").strip(),
+        endpoint_verbatim=verbatim,
         protocol=protocol,
         service_name=service_name,
         sample_ratio=sample_ratio,
@@ -213,9 +233,10 @@ def _build_span_exporter(resolved: OtelTracingConfig) -> Any:
     if resolved.protocol == "http":
         from opentelemetry.exporter.otlp.proto.http.trace_exporter import OTLPSpanExporter
 
-        from .otel_backoff import append_signal_path
-
-        return OTLPSpanExporter(endpoint=append_signal_path(resolved.endpoint, "v1/traces"), timeout=timeout_seconds)
+        endpoint = resolved.endpoint
+        if not resolved.endpoint_verbatim:
+            endpoint = append_signal_path(endpoint, "v1/traces")
+        return OTLPSpanExporter(endpoint=endpoint, timeout=timeout_seconds)
 
     from opentelemetry.exporter.otlp.proto.grpc.trace_exporter import OTLPSpanExporter
 

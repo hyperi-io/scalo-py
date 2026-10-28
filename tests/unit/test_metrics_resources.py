@@ -76,6 +76,16 @@ def test_cgroup_v1_reads_the_controller_directories(tmp_path: Path):
     assert resources.container_cpu_limit_cores() == 0.5
 
 
+@pytest.mark.parametrize(
+    ("limit", "expected"),
+    [("9223372036854771712", UNLIMITED), ("9223372036854775807", UNLIMITED), ("268435456", 268435456.0)],
+)
+def test_cgroup_v1_reads_a_huge_memory_limit_as_unlimited(tmp_path: Path, limit: str, expected: float):
+    _write(files={"memory/memory.limit_in_bytes": f"{limit}\n"}, root=tmp_path)
+
+    assert _resources(cgroup_root=tmp_path).container_memory_limit_bytes() == expected
+
+
 def test_a_cgroup_v1_quota_of_minus_one_is_unlimited(tmp_path: Path):
     _write(files={"cpu/cpu.cfs_period_us": "100000\n", "cpu/cpu.cfs_quota_us": "-1\n"}, root=tmp_path)
 

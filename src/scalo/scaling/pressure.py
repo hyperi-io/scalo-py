@@ -23,6 +23,10 @@ import threading
 from dataclasses import dataclass
 from typing import Any
 
+# Seconds between gauge writes. Matches scalo-rs ``ServiceRuntime``, so a KEDA
+# trigger sees the same cadence from either library.
+GAUGE_INTERVAL_SECONDS = 1.0
+
 
 @dataclass(slots=True)
 class ScalingPressureConfig:
@@ -114,6 +118,8 @@ class ScalingPressure:
 
         # Optional metrics gauge (set via register_gauge)
         self._gauge: Any = None
+        self._ticker: threading.Thread | None = None
+        self._ticker_stop = threading.Event()
 
     def set_component(self, name: str, saturation: float) -> None:
         """Set a component's saturation value (0.0-1.0).
@@ -239,15 +245,50 @@ class ScalingPressure:
                 circuit_open=self._circuit_open,
             )
 
-    def register_gauge(self, metrics_manager: Any) -> None:
-        """Register a scaling_pressure gauge on a MetricsManager.
+    def register_gauge(self, metrics_manager: Any, interval: float = GAUGE_INTERVAL_SECONDS) -> None:
+        """Register a scaling_pressure gauge and keep it written.
 
-        The gauge is updated automatically on each calculate() call.
+        A daemon thread writes ``calculate()`` to the gauge at once and then every
+        ``interval`` seconds, so the scrape and the OTLP push carry the value with
+        no traffic and no further calls. Each ``calculate()`` also updates it.
+        Registering again replaces the earlier ticker. Call :meth:`stop_gauge` to
+        end it before the process exits.
 
         Args:
             metrics_manager: A MetricsManager instance from scalo.metrics
+            interval: Seconds between writes, above zero.
+
+        Raises:
+            ValueError: If ``interval`` is not above zero.
         """
+        if interval <= 0:
+            raise ValueError(f"interval must be above 0; got {interval}")
+        self.stop_gauge()
         self._gauge = metrics_manager.gauge("scaling_pressure", "Composite scaling pressure score (0-100)")
+        stop = threading.Event()
+        self._ticker_stop = stop
+        self._ticker = threading.Thread(
+            target=self._tick, args=(stop, interval), name="scalo-scaling-pressure", daemon=True
+        )
+        self._ticker.start()
+
+    def stop_gauge(self) -> None:
+        """Stop the gauge ticker, if one is running."""
+        self._ticker_stop.set()
+        ticker, self._ticker = self._ticker, None
+        if ticker is not None:
+            ticker.join(timeout=2.0)
+
+    def _tick(self, stop: threading.Event, interval: float) -> None:
+        """Write the gauge until ``stop`` is set, the first write at once."""
+        while True:
+            try:
+                self.calculate()
+            except Exception:
+                # A gauge that cannot be written must not take the service down.
+                pass
+            if stop.wait(interval):
+                return
 
     def _update_gauge(self, value: float) -> None:
         """Update the registered gauge if one exists."""
