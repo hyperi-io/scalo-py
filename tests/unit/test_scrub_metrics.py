@@ -531,3 +531,33 @@ class TestUnimplementedKnobsWarn:
         with _w.catch_warnings():
             _w.simplefilter("error", UserWarning)
             build_scrubber(ScrubConfig())
+
+
+class TestPatternVersionsAreOnlyReadForARealSink:
+    """The pattern tables are parsed only to report their versions, so a noop sink skips them."""
+
+    @staticmethod
+    def _tables_read(monkeypatch, metrics: ScrubMetrics) -> list[str]:
+        from scalo.logger.scrub import factory, gitleaks_toml, pii
+
+        read: list[str] = []
+        real_rules, real_registry = gitleaks_toml.load_gitleaks_rules, pii.load_registry
+        monkeypatch.setattr(
+            gitleaks_toml, "load_gitleaks_rules", lambda *a, **k: read.append("gitleaks") or real_rules(*a, **k)
+        )
+        monkeypatch.setattr(pii, "load_registry", lambda *a, **k: read.append("national_ids") or real_registry(*a, **k))
+
+        factory._emit_pattern_versions(metrics)
+        return read
+
+    def test_a_noop_sink_reads_no_table(self, monkeypatch):
+        assert self._tables_read(monkeypatch, ScrubMetrics.noop()) == []
+
+    def test_a_real_sink_reads_both_and_reports_them(self, monkeypatch):
+        backend = _FakeBackend()
+
+        read = self._tables_read(monkeypatch, ScrubMetrics.from_manager(backend))
+
+        assert read == ["gitleaks", "national_ids"]
+        sources = {ev[2]["source"] for ev in backend.events if ev[1] == "log_scrub_pattern_version"}
+        assert {"gitleaks", "national_ids"} <= sources

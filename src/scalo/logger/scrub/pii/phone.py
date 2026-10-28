@@ -17,8 +17,6 @@ candidate. python-stdnum has no phone module; libphonenumber (via
 import re
 from typing import override
 
-import phonenumbers
-
 from ._base import _Validator
 
 
@@ -35,6 +33,9 @@ class PhoneValidator(_Validator):
 
     @override
     def validate(self, candidate: str) -> bool:
+        # Imported on the first phone-shaped match: the library costs ~30 ms to load.
+        import phonenumbers
+
         # Try to parse as international first (region=None). If that
         # fails, the candidate isn't a valid number we can confirm.
         try:

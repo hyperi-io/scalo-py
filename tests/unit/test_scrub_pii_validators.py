@@ -307,3 +307,22 @@ class TestCompositeScrubbing:
         once = email.scrub(text)
         twice = email.scrub(once)
         assert once == twice
+
+
+def test_phonenumbers_loads_on_the_first_phone_shaped_match_not_at_import():
+    """The library costs ~30 ms to import, which every fresh process building a scrubber paid."""
+    import subprocess
+    import sys
+
+    probe = (
+        "import sys\n"
+        "from scalo.logger.scrub.pii import PhoneValidator\n"
+        "before = 'phonenumbers' in sys.modules\n"
+        "valid = PhoneValidator().validate('+61 412 345 678')\n"
+        "print(before, valid, 'phonenumbers' in sys.modules)\n"
+    )
+    out = subprocess.run(
+        [sys.executable, "-c", probe], capture_output=True, text=True, encoding="utf-8", errors="replace", check=True
+    )
+
+    assert out.stdout.split() == ["False", "True", "True"]
