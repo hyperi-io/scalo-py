@@ -83,12 +83,14 @@ def build_manifest() -> dict[str, Any]:
     from .gitleaks_toml import GitleaksTomlScrubber
 
     gl = GitleaksTomlScrubber()
-    loaded_rule_ids = sorted({r.id for r in gl._compiled})
+    gl.compile_all()
+    compiled = [r for r in gl._rules if not r.skipped]
+    loaded_rule_ids = sorted({r.id for r in compiled})
     skipped_rule_ids = sorted(gl.skipped_rules)
 
     # Per-rule labels (derived) -- also part of the cross-language
     # output contract.
-    rule_labels = sorted({r.label for r in gl._compiled})
+    rule_labels = sorted({r.label for r in compiled})
 
     return {
         "implementation": "scalo",
