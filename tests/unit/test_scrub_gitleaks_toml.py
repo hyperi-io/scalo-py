@@ -215,7 +215,7 @@ class TestExcludeRules:
         full = GitleaksTomlScrubber()
         narrowed = GitleaksTomlScrubber(exclude_rule_ids={"generic-api-key"})
         assert narrowed.rule_count == full.rule_count - 1
-        assert "generic-api-key" not in {r.id for r in narrowed._compiled}
+        assert "generic-api-key" not in {r.id for r in narrowed._rules}
 
     def test_exclusion_composes_with_minimal(self):
         minimal = SecretsScrubber(patterns="minimal")
@@ -303,11 +303,27 @@ class TestGitleaksTomlScrubberBadRules:
             {"id": "good-rule", "regex": r"\bgoodval\b", "label": "GOOD"},
             {"id": "bad-rule", "regex": r"[invalid(regex", "label": "BAD"},
         ]
+        s = GitleaksTomlScrubber(rules=bad)
+        assert s.skipped_rules == []
+        assert s.rule_count == 2
         with pytest.warns(RuntimeWarning, match="did not compile"):
-            s = GitleaksTomlScrubber(rules=bad)
-        # Good rule loaded; bad rule skipped
+            s.scrub("goodval")
+        # Good rule still scrubs; bad rule skipped, and warned about once
         assert s.rule_count == 1
-        assert "bad-rule" in s.skipped_rules
+        assert s.skipped_rules == ["bad-rule"]
+        assert s.scrub("a goodval b") == "a [GOOD_REDACTED] b"
+        assert s.skipped_rules == ["bad-rule"]
+
+    def test_compile_all_reports_every_uncompilable_regex(self):
+        bad = [
+            {"id": "good-rule", "regex": r"\bgoodval\b", "keywords": ["goodval"]},
+            {"id": "bad-rule", "regex": r"[invalid(regex", "keywords": ["never-in-the-text"]},
+        ]
+        s = GitleaksTomlScrubber(rules=bad)
+        with pytest.warns(RuntimeWarning, match="did not compile"):
+            s.compile_all()
+        assert s.skipped_rules == ["bad-rule"]
+        assert s.rule_count == 1
 
     def test_missing_required_fields_silently_skipped(self):
         rules = [

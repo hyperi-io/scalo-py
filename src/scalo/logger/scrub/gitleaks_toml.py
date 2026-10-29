@@ -33,22 +33,26 @@ entropy heuristics; ``SecretsScrubber`` picks between them via the
 ``patterns`` setting.
 """
 
+import re
+import threading
 import tomllib
 import warnings
 from collections.abc import Collection
-from importlib import resources
 from pathlib import Path
 from typing import Any
 
 import regex
 
+from ._bundled import load_bundled_table
 from .labeler import LabelFn, _static_label
 from .metrics import ScrubMetrics
+
+_NON_ALNUM = re.compile(r"[^A-Za-z0-9]+")
 
 
 def _derive_label(rule_id: str) -> str:
     """Convert a gitleaks rule id (``"aws-access-key"``) to a redaction label slug (``"AWS_ACCESS_KEY"``)."""
-    return regex.sub(r"[^A-Za-z0-9]+", "_", rule_id).strip("_").upper()
+    return _NON_ALNUM.sub("_", rule_id).strip("_").upper()
 
 
 def load_gitleaks_rules(
@@ -86,9 +90,7 @@ def load_gitleaks_rules(
             return [], {}
     else:
         try:
-            resource = resources.files("scalo") / "data" / "gitleaks.toml"
-            with resource.open("rb") as f:
-                data = tomllib.load(f)
+            data = load_bundled_table("gitleaks")
         except (OSError, tomllib.TOMLDecodeError, ModuleNotFoundError) as e:
             warnings.warn(
                 f"bundled gitleaks.toml not loadable: {e}. L1 will have no rules.",
@@ -126,26 +128,37 @@ def load_gitleaks_rules(
 
 
 class _CompiledRule:
-    """A compiled gitleaks rule ready to scan log text."""
+    """A gitleaks rule whose regex compiles on first use.
 
-    __slots__ = ("id", "keywords", "label", "pattern", "secret_group")
+    Compiling all 221 upstream regexes costs several hundred milliseconds, and a
+    process that scrubs one line needs a handful of them, so
+    :meth:`GitleaksTomlScrubber.scrub` compiles a rule only once its keywords hit.
+    """
 
-    # regex ships no type stubs, so ty cannot see that its Pattern is generic.
+    __slots__ = ("id", "keywords", "label", "pattern", "regex_str", "secret_group", "skipped")
+
     def __init__(
         self,
         id_: str,
         label: str,
-        pattern: regex.Pattern[str],  # ty: ignore[invalid-type-form]
+        regex_str: str,
         keywords: tuple[str, ...],
         secret_group: int = 0,
     ) -> None:
         self.id = id_
         self.label = label
-        self.pattern = pattern
+        self.regex_str = regex_str
         self.keywords = keywords
         self.secret_group = secret_group
+        # regex ships no type stubs, so ty cannot see that its Pattern is generic.
+        self.pattern: regex.Pattern[str] | None = None  # ty: ignore[invalid-type-form]
+        self.skipped = False
 
-    def secret_span(self, m: regex.Match[str]) -> tuple[int, int]:  # ty: ignore[invalid-type-form]
+    def secret_span(
+        self,
+        pattern: regex.Pattern[str],  # ty: ignore[invalid-type-form]
+        m: regex.Match[str],  # ty: ignore[invalid-type-form]
+    ) -> tuple[int, int]:
         """Return the span of ``m`` that holds the secret, so the key name and quotes around it survive.
 
         An explicit ``secretGroup`` wins, as in gitleaks. Without one, gitleaks takes
@@ -155,12 +168,12 @@ class _CompiledRule:
         """
         whole = m.span()
         if self.secret_group:
-            if self.secret_group <= self.pattern.groups:
+            if self.secret_group <= pattern.groups:
                 start, end = m.span(self.secret_group)
                 if end > start:
                     return start, end
             return whole
-        for idx in range(1, self.pattern.groups + 1):
+        for idx in range(1, pattern.groups + 1):
             start, end = m.span(idx)
             if end > start:
                 tail = m.string[end : whole[1]]
@@ -189,10 +202,13 @@ class GitleaksTomlScrubber:
             reported with a one-time warning, since a typo would otherwise
             leave the rule running unnoticed.
 
-    Per spec Section 3.2, rules whose regex doesn't compile in the ``regex``
-    package are skipped with a one-time warning and their ID recorded
-    in :attr:`skipped_rules` (also emitted via the
-    ``log_scrub_skipped_rules_total`` gauge for cross-language parity).
+    Each rule's regex compiles on the first :meth:`scrub` whose text hits one of
+    the rule's keywords, or on the first :meth:`scrub` at all for a rule with no
+    keywords. Per spec Section 3.2, a rule whose regex doesn't compile in the
+    ``regex`` package is skipped with a one-time warning at that point and its ID
+    recorded in :attr:`skipped_rules` (also emitted via the
+    ``log_scrub_skipped_rules_total`` gauge for cross-language parity). Both are
+    empty after construction. :meth:`compile_all` compiles every rule at once.
     """
 
     def __init__(
@@ -215,7 +231,8 @@ class GitleaksTomlScrubber:
         self._labeler: LabelFn = labeler if labeler is not None else _static_label
         self._metrics = metrics if metrics is not None else ScrubMetrics.noop()
         self.skipped_rules: list[str] = []
-        self._compiled: list[_CompiledRule] = []
+        self._rules: list[_CompiledRule] = []
+        self._compile_lock = threading.Lock()
 
         for entry in rules:
             if not isinstance(entry, dict):
@@ -234,27 +251,13 @@ class GitleaksTomlScrubber:
                 continue
             if rule_id in excluded:
                 continue
-            try:
-                # `regex.MULTILINE | regex.V1` -- V1 enables the modern
-                # behaviour (better Unicode, fewer footguns). Accepts the
-                # mid-expression `(?i)` and `\z` constructs upstream uses.
-                pattern = regex.compile(regex_str, regex.MULTILINE | regex.V1)
-            except regex.error as e:
-                warnings.warn(
-                    f"gitleaks rule {rule_id!r} regex did not compile: {e}. Skipping rule.",
-                    RuntimeWarning,
-                    stacklevel=2,
-                )
-                self.skipped_rules.append(rule_id)
-                self._metrics.set_skipped("L1", rule_id, value=1)
-                continue
             keywords = entry.get("keywords") or ()
             if not isinstance(keywords, (list, tuple)):
                 keywords = ()
             secret_group = entry.get("secretGroup", 0)
             if not isinstance(secret_group, int) or secret_group < 0:
                 secret_group = 0
-            self._compiled.append(_CompiledRule(rule_id, label, pattern, tuple(str(k) for k in keywords), secret_group))
+            self._rules.append(_CompiledRule(rule_id, label, regex_str, tuple(str(k) for k in keywords), secret_group))
 
         unknown = sorted(excluded - seen_ids)
         if unknown:
@@ -267,12 +270,45 @@ class GitleaksTomlScrubber:
 
     @property
     def rule_count(self) -> int:
-        """Number of rules compiled successfully and active in this scrubber."""
-        return len(self._compiled)
+        """Number of rules selected and not found uncompilable.
+
+        A regex is only found uncompilable when it first compiles, so a rule
+        counts until then. Call :meth:`compile_all` first for the final figure.
+        """
+        return sum(1 for rule in self._rules if not rule.skipped)
+
+    def compile_all(self) -> None:
+        """Compile every selected rule now, so :attr:`skipped_rules` is complete."""
+        for rule in self._rules:
+            self._pattern(rule)
+
+    def _pattern(self, rule: _CompiledRule) -> regex.Pattern[str] | None:  # ty: ignore[invalid-type-form]
+        """Return the rule's compiled regex, compiling it on first use, or None when it does not compile."""
+        pattern = rule.pattern
+        if pattern is not None or rule.skipped:
+            return pattern
+        with self._compile_lock:
+            if rule.pattern is not None or rule.skipped:
+                return rule.pattern
+            try:
+                # `regex.MULTILINE | regex.V1` -- V1 enables the modern
+                # behaviour (better Unicode, fewer footguns). Accepts the
+                # mid-expression `(?i)` and `\z` constructs upstream uses.
+                rule.pattern = regex.compile(rule.regex_str, regex.MULTILINE | regex.V1)
+            except regex.error as e:
+                warnings.warn(
+                    f"gitleaks rule {rule.id!r} regex did not compile: {e}. Skipping rule.",
+                    RuntimeWarning,
+                    stacklevel=3,
+                )
+                rule.skipped = True
+                self.skipped_rules.append(rule.id)
+                self._metrics.set_skipped("L1", rule.id, value=1)
+            return rule.pattern
 
     def scrub(self, text: str) -> str:
         """Return ``text`` with the secret in each gitleaks rule match replaced by the labeler's output for it."""
-        if not text or not self._compiled:
+        if not text or not self._rules:
             return text
 
         # Scan every rule against the ORIGINAL text, collect matches,
@@ -287,15 +323,18 @@ class GitleaksTomlScrubber:
         lowered = text.lower()
         # (match start, match end, secret start, secret end, rule)
         candidates: list[tuple[int, int, int, int, _CompiledRule]] = []
-        for rule in self._compiled:
+        for rule in self._rules:
             if rule.keywords and not any(k in lowered for k in rule.keywords):
                 continue
-            for m in rule.pattern.finditer(text):
+            pattern = self._pattern(rule)
+            if pattern is None:
+                continue
+            for m in pattern.finditer(text):
                 start, end = m.span()
                 # Zero-length matches don't redact anything sensible
                 if end <= start:
                     continue
-                secret_start, secret_end = rule.secret_span(m)
+                secret_start, secret_end = rule.secret_span(pattern, m)
                 candidates.append((start, end, secret_start, secret_end, rule))
 
         if not candidates:

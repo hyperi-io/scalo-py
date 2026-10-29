@@ -216,7 +216,13 @@ gitleaks TOML vendored from hyperi-ai, parsed by
 key name and quoting around it survive and a JSON line still parses:
 the rule's `secretGroup` when it has one, else its first non-empty
 capture group when only a terminator follows it in the match, else the
-whole match. The composed scrubber is selected by
+whole match. `build_scrubber()` compiles no rule: a rule's regex
+compiles on the first scrub whose text hits one of its keywords (a rule
+with no keywords, on the first scrub), which keeps a fresh-process build
+under 20 ms. A rule whose regex does not compile therefore warns, and
+joins `skipped_rules` and the `log_scrub_skipped_rules_total` gauge, at
+that first scrub, not at build. `GitleaksTomlScrubber.compile_all()`
+compiles them all at once. The composed scrubber is selected by
 `scrub_resolver.py`, which honours (in order): explicit `scrubber=`
 arg, explicit `scrub_config=` arg, legacy `mask_sensitive`/
 `masking_level` args, new `logging.scrub.*` config keys, legacy

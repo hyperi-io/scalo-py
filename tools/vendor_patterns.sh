@@ -27,6 +27,9 @@
 #   1. $SCALO_RS_CHECKOUT env var
 #   2. ../scalo-rs (sibling to this project)
 #
+# After a copy it rewrites the JSON sidecar of each runtime TOML (tools/pattern_json.py),
+# which the runtime reads in place of the TOML.
+#
 # Usage:
 #   ./tools/vendor_patterns.sh            # vendor all canonical patterns
 #   ./tools/vendor_patterns.sh --check    # diff only, exit 1 on drift
@@ -189,5 +192,7 @@ if [[ "$CHECK_MODE" == "true" ]]; then
     info "all vendored patterns match canonical"
     exit 0
 fi
+
+python3 "$SCRIPT_DIR/pattern_json.py" || warn "could not write the JSON sidecars"
 
 info "summary: $copy_count copied, $miss_count missing"

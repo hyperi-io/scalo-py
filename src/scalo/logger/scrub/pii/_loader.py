@@ -20,10 +20,10 @@ scrub code consumes the resulting validator instances.
 
 import tomllib
 import warnings
-from importlib import resources
 from pathlib import Path
 from typing import Any
 
+from .._bundled import load_bundled_table
 from ..labeler import LabelFn
 from ..metrics import ScrubMetrics
 from ._base import _Validator
@@ -45,11 +45,7 @@ def load_registry(path: Path | None = None) -> dict[str, dict[str, Any]]:
         with path.open("rb") as f:
             return tomllib.load(f)
 
-    # Bundled file -- read via importlib.resources so it works whether
-    # scalo-py is installed as a wheel or run from source.
-    resource = resources.files("scalo") / "data" / "national_ids.toml"
-    with resource.open("rb") as f:
-        return tomllib.load(f)
+    return load_bundled_table("national_ids")
 
 
 def build_national_id_validators(
