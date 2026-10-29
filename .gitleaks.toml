@@ -28,6 +28,7 @@ paths = [
     '''tests/unit/test_logger_secrets_leak\.py''', # Fake API keys for L1 secret-leak scrubber tests
     '''tests/unit/test_scrub_gitleaks_toml\.py''', # Fake API keys for L1 gitleaks-TOML scrubber tests
     '''tests/unit/test_scrub_parity_fixtures\.py''', # Fake API keys for L3 parity fixture tests
+    '''src/scalo/data/gitleaks\.json''', # The JSON sidecar of gitleaks.toml, whose rules carry the key prefixes they match
     # The masking corpus is BY CONSTRUCTION a list of credential-shaped strings:
     # its whole job is to assert the masker redacts them. Scanning it for secrets
     # will always fight it. Every value is synthetic -- the flagged one is
