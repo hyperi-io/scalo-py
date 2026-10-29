@@ -15,7 +15,7 @@ if TYPE_CHECKING:
 
 @functools.cache
 def _fault_scrubber() -> Scrubber:
-    """Return the scrubber that masks provider error text, built on the first fault (a cold build takes ~0.9 s)."""
+    """Return the scrubber that masks provider error text, built on the first fault."""
     from ...logger.scrub import build_scrubber
 
     return build_scrubber()
