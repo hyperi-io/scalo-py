@@ -98,10 +98,7 @@ store.delete("loaders/ingest-loader", "database.password",
              author="Ops <ops@example.com>")
 ```
 
-Writes take an advisory file lock (`fcntl.LOCK_EX`), update the YAML
-file, refresh the cache slot, commit to git if the directory is a repo,
-and fire change callbacks. Subdirectories are created automatically on
-first write to a new table.
+Writes hold an exclusive advisory lock (`fcntl.LOCK_EX`) on the table's directory from the read to the write, write the YAML to a temporary sibling and rename it over the table, refresh the cache slot, commit to git if the directory is a repo, and fire change callbacks. Subdirectories are created automatically on first write to a new table.
 
 Read-only stores raise `PermissionError` on writes. Writability is
 auto-detected from filesystem permissions; override with
@@ -203,8 +200,8 @@ finally:
 - YAML loaded via `yaml.safe_load` — no arbitrary object construction.
 - Files that fail to parse keep the last good cached version and log a
   WARN — config errors don't take down the service.
-- Writes use `fcntl.LOCK_EX` so concurrent writers from sibling
-  processes don't tear a half-written file.
+- Two writers, in one process or several, serialise on the directory lock, so neither loses the other's update.
+- A table is replaced by rename, so a reader, the refresh thread included, sees the whole old file or the whole new one. A half-written `.<table>.yaml.*.tmp` is never read as a table.
 
 ---
 

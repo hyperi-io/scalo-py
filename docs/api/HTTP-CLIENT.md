@@ -81,6 +81,7 @@ def _is_retryable(exc):
 | `wait_jitter` | 1.0 s |
 | Retry on | `httpx.TransportError` other than `httpx.LocalProtocolError` and `httpx.UnsupportedProtocol`, 5xx |
 | Never retry on | 4xx, `httpx.LocalProtocolError`, `httpx.UnsupportedProtocol` |
+| Methods retried | GET, HEAD, PUT, DELETE and OPTIONS always. POST and PATCH only with an idempotency key, or `retry_non_idempotent=True` on the client |
 
 Both mean httpx refused to send the request, so they are raised at once. `httpx.LocalProtocolError` comes from a header value holding a line break, and `httpx.UnsupportedProtocol` from a URL with no `http://` or `https://` scheme. The `LocalProtocolError` message quotes the refused header value, which can be a credential. scalo's logger masks that value whatever its auth scheme (see [Layer 2](../core-pillars/LOGGING.md#layer-2-field-name-regex)), and any other log path needs to log the class rather than the text.
 
@@ -92,6 +93,14 @@ client = HttpClient(timeout=60.0, retries=5, base_url="https://slow.api")
 
 `response.raise_for_status()` runs before each retry decision — 4xx
 escapes immediately, 5xx feeds back into the retry loop.
+
+POST and PATCH are sent once by default, because a request that timed out or came back 5xx may already have been applied, and a resend would apply it twice. A request opts in with `idempotency_key=` (or its own `Idempotency-Key` header), which a deduplicating service such as Stripe or AWS honours. A client whose endpoint dedupes, or whose POST only reads, opts in for every request:
+
+```python
+client = HttpClient(base_url="https://query.internal", retry_non_idempotent=True)
+```
+
+scalo-rs makes the same split with `retry_non_idempotent` in its HTTP client config.
 
 ---
 
@@ -204,7 +213,7 @@ assert client.get("/anything").json() == {"ok": True}
 Errors that escape after retries are exhausted:
 
 - `httpx.TransportError` — DNS, TCP, TLS, read/write errors
-- `httpx.HTTPStatusError` — 5xx after `attempts` retries, or any 4xx
+- `httpx.HTTPStatusError` — 5xx after `attempts` retries, a 5xx to a POST or PATCH that was not opted in, or any 4xx
   immediately
 - `httpx.TimeoutException` — exceeded `timeout` per attempt
 - `httpx.LocalProtocolError`, `httpx.UnsupportedProtocol` -- a request httpx refused to send, immediately

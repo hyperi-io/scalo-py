@@ -1,5 +1,6 @@
 """Tests for DirectoryConfigStore."""
 
+import os
 import threading
 import time
 from pathlib import Path
@@ -408,6 +409,72 @@ class TestThreadSafety:
 
         assert len(errors) == 0
         assert all(r == "localhost" for r in results)
+
+    def test_concurrent_writers_lose_no_update(self, config_dir):
+        writer_a = DirectoryConfigStore(config_dir, refresh_interval=0, writable=True)
+        writer_b = DirectoryConfigStore(config_dir, refresh_interval=0, writable=True)
+
+        def write(store, prefix):
+            for i in range(50):
+                store.set("shared", f"{prefix}.k{i}", i)
+
+        threads = [
+            threading.Thread(target=write, args=(writer_a, "a")),
+            threading.Thread(target=write, args=(writer_b, "b")),
+        ]
+        for t in threads:
+            t.start()
+        for t in threads:
+            t.join()
+
+        on_disk = yaml.safe_load((config_dir / "shared.yaml").read_text())
+        assert len(on_disk["a"]) == 50
+        assert len(on_disk["b"]) == 50
+
+    def test_refresh_racing_a_write_never_sees_a_partial_table(self, config_dir):
+        big = {f"key{i:04d}": "x" * 64 for i in range(2000)}
+        writer = DirectoryConfigStore(config_dir, refresh_interval=0, writable=True)
+        writer.set("big", "data", big)
+        reader = DirectoryConfigStore(config_dir, refresh_interval=0)
+        reader.start()
+        seen_sizes = []
+        reader.on_change("big", lambda _t, data: seen_sizes.append(len(data.get("data", {}))))
+        stop = threading.Event()
+
+        def refresh():
+            while not stop.is_set():
+                reader._refresh_all()
+
+        t = threading.Thread(target=refresh)
+        t.start()
+        for i in range(40):
+            writer.set("big", "data", {**big, "key0000": f"v{i}"})
+        stop.set()
+        t.join()
+
+        assert seen_sizes, "the refresh thread never observed a write"
+        assert set(seen_sizes) == {len(big)}
+        assert not list(config_dir.glob(".*.tmp")), "a temporary write file was left behind"
+
+    @pytest.mark.parametrize(
+        ("existing_mode", "want_mode"),
+        [
+            pytest.param(None, 0o600, id="new-table-honours-umask"),
+            pytest.param(0o640, 0o640, id="existing-table-keeps-its-mode"),
+        ],
+    )
+    def test_a_write_keeps_the_table_permissions(self, config_dir, existing_mode, want_mode):
+        table_file = config_dir / "perm.yaml"
+        if existing_mode is not None:
+            table_file.write_text("a: 1\n")
+            table_file.chmod(existing_mode)
+        previous = os.umask(0o077)
+        try:
+            DirectoryConfigStore(config_dir, refresh_interval=0, writable=True).set("perm", "a", 2)
+        finally:
+            os.umask(previous)
+
+        assert table_file.stat().st_mode & 0o777 == want_mode
 
 
 class TestContextManager:

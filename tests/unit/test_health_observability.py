@@ -15,6 +15,7 @@ kubelet probes aimed at that port got connection-refused.
 
 import http.client
 import json
+import socket
 import time
 
 import pytest
@@ -29,7 +30,17 @@ from scalo.health import (
 LOCAL = "127.0.0.1:0"
 
 
-def _get(port: int, path: str) -> tuple[int, dict | bytes, str]:
+def _ipv6_loopback_available() -> bool:
+    """Return True when this host can bind the IPv6 loopback."""
+    try:
+        with socket.socket(socket.AF_INET6, socket.SOCK_STREAM) as probe:
+            probe.bind(("::1", 0))
+    except OSError:
+        return False
+    return True
+
+
+def _get(port: int, path: str, host: str = "127.0.0.1") -> tuple[int, dict | bytes, str]:
     """GET a path, returning (status, parsed-or-raw body, content type).
 
     http.client rather than urllib.request: the host and scheme are fixed,
@@ -38,7 +49,7 @@ def _get(port: int, path: str) -> tuple[int, dict | bytes, str]:
     the whole point here, since most of these assertions are ABOUT the
     non-200 statuses.
     """
-    conn = http.client.HTTPConnection("127.0.0.1", port, timeout=5)
+    conn = http.client.HTTPConnection(host, port, timeout=5)
     try:
         conn.request("GET", path)
         resp = conn.getresponse()
@@ -328,6 +339,21 @@ class TestLifecycle:
         again = ObservabilityServer(HealthManager(), None, f"127.0.0.1:{port}")
         again.start()
         again.stop()
+
+    @pytest.mark.parametrize(
+        ("addr", "probe_hosts"),
+        [
+            pytest.param("127.0.0.1:0", ["127.0.0.1"], id="ipv4"),
+            pytest.param("[::1]:0", ["::1"], id="ipv6-loopback"),
+            pytest.param("[::]:0", ["::1", "127.0.0.1"], id="ipv6-any-dual-stack"),
+        ],
+    )
+    def test_answers_on_every_bind_address_form(self, addr, probe_hosts):
+        if ":" in addr.split("]")[0] and not _ipv6_loopback_available():
+            pytest.skip("this host has no IPv6 loopback to bind")
+        with ObservabilityServer(HealthManager(), None, addr) as srv:
+            for host in probe_hosts:
+                assert _get(_port(srv), "/livez", host=host)[0] == 200, f"no answer on {host}"
 
     def test_bind_failure_raises_rather_than_going_quiet(self):
         # A service that cannot open its observability port must say so.

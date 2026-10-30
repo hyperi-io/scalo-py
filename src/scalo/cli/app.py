@@ -40,6 +40,7 @@ import os
 import sys
 from abc import ABC, abstractmethod
 from dataclasses import dataclass
+from pathlib import Path
 from typing import Any
 
 from .error import CliError, ConfigError, LoggerError, ServiceError
@@ -188,8 +189,10 @@ class CommonArgs:
             Dynaconf settings object.
 
         Raises:
-            ConfigError: If configuration cannot be loaded.
+            ConfigError: If configuration cannot be loaded, or ``--config``
+                names a file that is missing or unreadable.
         """
+        additional_files = [_named_config_file(self.config)] if self.config else None
         try:
             from scalo._env_compat import set_env_prefix
 
@@ -197,7 +200,6 @@ class CommonArgs:
 
             from scalo.config import get_config
 
-            additional_files = [self.config] if self.config else None
             return get_config(
                 additional_files=additional_files,
                 env_prefix=env_prefix,
@@ -763,6 +765,27 @@ def _warn_on_unreachable_otlp_endpoint(backend: str) -> None:
         f"so nothing is pushed to it -- use the 'opentelemetry' backend (it also serves /metrics) "
         f"or unset the endpoint"
     )
+
+
+def _named_config_file(path: str) -> str:
+    """Resolve ``--config`` against the working directory and refuse a file that cannot be read.
+
+    ``get_config`` skips a missing file and reads a relative one from the mount
+    config directory, so without this a mistyped or unmounted ``--config`` starts
+    the service on defaults.
+
+    Raises:
+        ConfigError: If the path is not a readable file.
+    """
+    resolved = Path(path).expanduser().resolve()
+    if not resolved.is_file():
+        raise ConfigError(f"config file not found: {resolved}")
+    try:
+        with resolved.open("rb"):
+            pass
+    except OSError as exc:
+        raise ConfigError(f"config file not readable: {resolved}: {exc.strerror or exc}") from exc
+    return str(resolved)
 
 
 def _config_section(config: Any | None, name: str) -> dict[str, Any]:
