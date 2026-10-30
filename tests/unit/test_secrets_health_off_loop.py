@@ -8,10 +8,8 @@
 
 """The first masked health fault builds the scrubber, which takes about half a second, and must not stall the loop.
 
-Each case runs in a fresh interpreter, because the scrubber build is cached once per process and a test process
-has usually built it already. A heartbeat task wakes every 10 ms and records the longest gap between wake-ups.
-Built on the loop, the build is one gap as long as the health check itself. Built on a worker thread, the loop
-still sees short gaps while the thread holds the GIL, but none close to the check's duration.
+Each case runs in a fresh interpreter, so no other test's patching or cached scrubber reaches it. The probe
+records the thread that reaches the scrubber and compares it with the event loop's thread.
 """
 
 import json
@@ -34,9 +32,10 @@ import json
 import logging
 import socket
 import sys
-import time
+import threading
 
 from scalo.secrets.manager import SecretsManager
+from scalo.secrets.providers import base
 from scalo.secrets.providers.file import FileProvider
 from scalo.secrets.providers.openbao import OpenBaoProvider
 from scalo.secrets.types import CacheConfig, OpenBaoConfig
@@ -74,26 +73,22 @@ async def main(scenario):
         provider = OpenBaoProvider(OpenBaoConfig(address=f"http://127.0.0.1:{closed_port()}", token="t", timeout_secs=2))
     manager = SecretsManager(providers={"openbao": provider}, cache_config=CacheConfig(enabled=False))
 
-    gaps = []
+    scrubber_threads = []
+    build = base._fault_scrubber
 
-    async def beat():
-        last = time.perf_counter()
-        while True:
-            await asyncio.sleep(0.01)
-            now = time.perf_counter()
-            gaps.append(now - last)
-            last = now
+    def recording_build():
+        scrubber_threads.append(threading.get_ident())
+        return build()
 
-    heartbeat = asyncio.create_task(beat())
-    await asyncio.sleep(0.1)
-    started = time.perf_counter()
+    base._fault_scrubber = recording_build
     result = await manager.health_check()
-    took = time.perf_counter() - started
-    # A stall ends when the heartbeat next runs, so let it run before reading the gaps.
-    await asyncio.sleep(0.05)
-    heartbeat.cancel()
     await manager.close()
-    print(json.dumps({"max_gap": max(gaps), "took": took, "result": result, "lines": collector.lines}))
+    print(json.dumps({
+        "loop_thread": threading.get_ident(),
+        "scrubber_threads": scrubber_threads,
+        "result": result,
+        "lines": collector.lines,
+    }))
 
 
 asyncio.run(main(sys.argv[1]))
@@ -116,12 +111,9 @@ def _run(scenario: str, tmp_path: Path) -> dict:
 
 
 def _assert_loop_kept_running(reported: dict) -> None:
-    # Below 0.2 s the whole check is too short to tell a stall from scheduling jitter.
-    limit = max(0.6 * reported["took"], 0.2)
-    assert reported["max_gap"] < limit, (
-        f"the event loop stalled for {reported['max_gap']:.3f} s during a health check that took "
-        f"{reported['took']:.3f} s, so the scrubber was built on it"
-    )
+    threads = reported["scrubber_threads"]
+    assert threads, "the fault was never masked"
+    assert reported["loop_thread"] not in threads, "the scrubber was reached on the event loop thread"
 
 
 class TestColdScrubberBuild:
