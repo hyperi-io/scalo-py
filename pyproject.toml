@@ -8,7 +8,8 @@ name = "scalo"
 # only VERSION back, so a real number in this file goes stale on the next release.
 version = "0.0.0"
 description = "Opinionated-for-scale integrated runtime of config, logging, secrets, cli and more for control-plane services."
-readme = "README.md"
+# The PyPI page. README.md stays the GitHub front page.
+readme = "docs/pypi.md"
 authors = [
     { name = "HyperI Team", email = "dev@hyperi.io" },
 ]
@@ -207,7 +208,7 @@ docs = [
 
 [project.urls]
 Homepage = "https://github.com/hyperi-io/scalo-py"
-Documentation = "https://hyperi-io.github.io/scalo-py/"
+Documentation = "https://github.com/hyperi-io/scalo-py/tree/main/docs"
 Repository = "https://github.com/hyperi-io/scalo-py"
 "Bug Reports" = "https://github.com/hyperi-io/scalo-py/issues"
 Changelog = "https://github.com/hyperi-io/scalo-py/blob/main/CHANGELOG.md"
