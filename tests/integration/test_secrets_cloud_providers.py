@@ -70,7 +70,7 @@ AWS_SECRET_NAME = os.environ.get("TEST_AWS_SECRET_NAME", "scalo-test")
 GCP_PROJECT_ID = os.environ.get("TEST_GCP_PROJECT_ID", "hyperi-dfe")
 GCP_SECRET_NAME = os.environ.get("TEST_GCP_SECRET_NAME", "scalo-test")
 
-AZURE_VAULT_URL = os.environ.get("TEST_AZURE_VAULT_URL", "https://scalo-test.vault.azure.net/")
+AZURE_VAULT_URL = os.environ.get("TEST_AZURE_VAULT_URL", "")
 AZURE_SECRET_NAME = os.environ.get("TEST_AZURE_SECRET_NAME", "scalo-test")
 
 VAULT_ADDR = os.environ.get("TEST_VAULT_ADDR", "")
@@ -134,7 +134,9 @@ def _gcp_unusable_reason() -> str | None:
 
 
 def _azure_creds_available() -> bool:
-    """True when Azure CLI credentials are present and no stale client secret overrides them."""
+    """True when a test vault is named, Azure CLI credentials are present and no stale client secret overrides them."""
+    if not AZURE_VAULT_URL:
+        return False
     if os.environ.get("AZURE_CLIENT_SECRET"):
         # Stale service principal secret overrides CLI auth and will fail
         return False
@@ -166,7 +168,7 @@ requires_gcp = pytest.mark.usefixtures("gcp_adc")
 
 requires_azure = pytest.mark.skipif(
     not _azure_creds_available(),
-    reason="Azure CLI credentials not available or AZURE_CLIENT_SECRET is set (run: az login)",
+    reason="Azure test vault not configured (set TEST_AZURE_VAULT_URL, run az login, unset AZURE_CLIENT_SECRET)",
 )
 
 requires_vault = pytest.mark.skipif(

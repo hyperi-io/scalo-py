@@ -29,11 +29,12 @@ to inject a W3C trace-context header on a single request, or wire it
 globally via httpx event hooks at construction time (see
 ``HttpClient.__init__`` extras).
 
-**Idempotent retries** -- POST/PATCH retries are unsafe by default
-because a retried request may have already landed. To opt in, pass
-``idempotency_key="<uuid>"`` per request. The value is sent as the
-``Idempotency-Key`` header and downstream services that support the
-pattern (Stripe, AWS, etc.) deduplicate on it.
+**Idempotent retries** -- POST and PATCH are never retried by default,
+because a retried request may already have landed. A request opts in with
+``idempotency_key="<uuid>"`` (sent as the ``Idempotency-Key`` header, which
+services such as Stripe and AWS deduplicate on) or its own
+``Idempotency-Key`` header. A client whose endpoint dedupes, or whose POST
+is a read, opts in for every request with ``retry_non_idempotent=True``.
 """
 
 from __future__ import annotations
@@ -115,6 +116,22 @@ def _is_retryable(exc: BaseException) -> bool:
     return False
 
 
+_NON_IDEMPOTENT_METHODS = frozenset({"POST", "PATCH"})
+
+
+def _never_retry(_exc: BaseException) -> bool:
+    """Refuse every retry, for a request that may already have landed."""
+    return False
+
+
+def _replayable(method: str, kwargs: dict[str, Any], retry_non_idempotent: bool, client_headers: httpx.Headers) -> bool:
+    """Return True when resending the request cannot apply it twice."""
+    if retry_non_idempotent or method.upper() not in _NON_IDEMPOTENT_METHODS:
+        return True
+    # A key set on the client is sent with every request, so it counts as much as a per-request one.
+    return "idempotency-key" in client_headers or "idempotency-key" in httpx.Headers(kwargs.get("headers"))
+
+
 def _apply_request_headers(
     kwargs: dict[str, Any],
     traceparent: str | None,
@@ -168,6 +185,7 @@ class HttpClient:
         crypto_profile: CryptoProfile | None = CryptoProfile.PROD,
         cafile: str | None = None,
         capath: str | None = None,
+        retry_non_idempotent: bool = False,
         **client_kwargs: Any,
     ) -> None:
         """Initialise HTTP client.
@@ -181,12 +199,15 @@ class HttpClient:
                 :func:`scalo.crypto.ssl_context`.
             cafile: PEM CA file for verifying an internal-CA peer (optional).
             capath: OpenSSL CA directory (optional).
+            retry_non_idempotent: Retry POST and PATCH without an idempotency key. Only for
+                endpoints that dedupe, or a POST that only reads.
             **client_kwargs: Additional arguments passed to httpx.Client. Pass
                 ``verify=False`` (or a custom context) to fully override the
                 posture - e.g. a dev/test server with a self-signed cert.
         """
         self._timeout = timeout
         self._retries = retries
+        self._retry_non_idempotent = retry_non_idempotent
         _apply_crypto_posture(client_kwargs, crypto_profile, cafile, capath)
         self._client = httpx.Client(
             base_url=base_url or "",
@@ -224,7 +245,9 @@ class HttpClient:
         """Execute HTTP request with stamina-driven retries.
 
         Retries on transport errors and 5xx responses with exponential backoff
-        and jitter. 4xx responses surface immediately.
+        and jitter. 4xx responses surface immediately. POST and PATCH are sent
+        once unless the request carries an idempotency key or the client was
+        built with ``retry_non_idempotent=True``.
 
         Args:
             method: HTTP method (GET, POST, etc.)
@@ -245,9 +268,14 @@ class HttpClient:
             httpx.HTTPError: On non-retryable errors or after retries exhausted
         """
         _apply_request_headers(kwargs, traceparent, idempotency_key)
+        retry_on = (
+            _is_retryable
+            if _replayable(method, kwargs, self._retry_non_idempotent, self._client.headers)
+            else _never_retry
+        )
         try:
             for attempt in stamina.retry_context(
-                on=_is_retryable,
+                on=retry_on,
                 attempts=self._retries,
                 wait_initial=0.5,
                 wait_max=10.0,
@@ -386,6 +414,7 @@ class AsyncHttpClient:
         crypto_profile: CryptoProfile | None = CryptoProfile.PROD,
         cafile: str | None = None,
         capath: str | None = None,
+        retry_non_idempotent: bool = False,
         **client_kwargs: Any,
     ) -> None:
         """Initialise async HTTP client.
@@ -399,12 +428,15 @@ class AsyncHttpClient:
                 :func:`scalo.crypto.ssl_context`.
             cafile: PEM CA file for verifying an internal-CA peer (optional).
             capath: OpenSSL CA directory (optional).
+            retry_non_idempotent: Retry POST and PATCH without an idempotency key. Only for
+                endpoints that dedupe, or a POST that only reads.
             **client_kwargs: Additional arguments passed to httpx.AsyncClient.
                 Pass ``verify=False`` (or a custom context) to fully override the
                 posture - e.g. a dev/test server with a self-signed cert.
         """
         self._timeout = timeout
         self._retries = retries
+        self._retry_non_idempotent = retry_non_idempotent
         _apply_crypto_posture(client_kwargs, crypto_profile, cafile, capath)
         self._client = httpx.AsyncClient(
             base_url=base_url or "",
@@ -445,9 +477,14 @@ class AsyncHttpClient:
         idempotency_key semantics.
         """
         _apply_request_headers(kwargs, traceparent, idempotency_key)
+        retry_on = (
+            _is_retryable
+            if _replayable(method, kwargs, self._retry_non_idempotent, self._client.headers)
+            else _never_retry
+        )
         try:
             async for attempt in stamina.retry_context(
-                on=_is_retryable,
+                on=retry_on,
                 attempts=self._retries,
                 wait_initial=0.5,
                 wait_max=10.0,

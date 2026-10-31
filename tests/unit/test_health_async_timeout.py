@@ -17,7 +17,6 @@ from __future__ import annotations
 
 import asyncio
 import threading
-import time
 
 import pytest
 
@@ -27,19 +26,25 @@ from scalo.health.manager import HealthManager
 @pytest.mark.asyncio
 async def test_per_check_timeout_marks_slow_check_as_failed():
     mgr = HealthManager(default_check_timeout=0.05)
+    release = threading.Event()
+    finished = threading.Event()
 
-    def slow():
-        time.sleep(1.0)  # exceeds 50ms budget
+    def hung():
+        # Held until the test lets go. The 5 s wait only keeps a missing timeout from hanging the suite.
+        release.wait(5)
+        finished.set()
         return True
 
-    mgr.register_ready_check("slow_db", slow)
+    mgr.register_ready_check("slow_db", hung)
     mgr.set_ready()
 
-    t0 = time.monotonic()
-    resp = await mgr.readiness_response_async()
-    elapsed = time.monotonic() - t0
+    try:
+        resp = await mgr.readiness_response_async()
+        answered_while_hung = not finished.is_set()
+    finally:
+        release.set()
 
-    assert elapsed < 0.5, f"timeout did not fire ({elapsed:.2f}s)"
+    assert answered_while_hung, "the response waited for the check instead of timing it out"
     assert resp["status"] == "not_ready"
     assert resp["checks"]["slow_db"] is False
 
@@ -62,28 +67,23 @@ async def test_async_check_supported():
 
 @pytest.mark.asyncio
 async def test_one_slow_check_does_not_block_others():
-    """Checks run concurrently. Total time ~= slowest check, not sum."""
-    mgr = HealthManager(default_check_timeout=0.5)
+    """Checks run concurrently: each one waits for the other two, which only passes when all three are running at once."""
+    mgr = HealthManager(default_check_timeout=5)
+    meeting = asyncio.Barrier(3)
 
-    async def fast():
-        await asyncio.sleep(0.05)
+    async def meets_the_others():
+        await meeting.wait()
         return True
 
-    async def medium():
-        await asyncio.sleep(0.1)
-        return True
-
-    mgr.register_ready_check("a", fast)
-    mgr.register_ready_check("b", medium)
-    mgr.register_ready_check("c", fast)
+    mgr.register_ready_check("a", meets_the_others)
+    mgr.register_ready_check("b", meets_the_others)
+    mgr.register_ready_check("c", meets_the_others)
     mgr.set_ready()
 
-    t0 = time.monotonic()
     resp = await mgr.readiness_response_async()
-    elapsed = time.monotonic() - t0
 
-    assert elapsed < 0.3, f"checks ran serially? {elapsed:.2f}s"
     assert resp["status"] == "ready"
+    assert resp["checks"] == {"a": True, "b": True, "c": True}
 
 
 @pytest.mark.asyncio

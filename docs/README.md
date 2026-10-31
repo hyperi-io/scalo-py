@@ -7,9 +7,9 @@ management, resilience primitives, a Kafka client, and deployment-artefact
 generation — all opinionated, all production-tested.
 
 This is the index. Read [architecture.md](architecture.md) for the
-10,000-foot view, [INTEGRATION.md](INTEGRATION.md) for a recipe to build
-a scalo-based service, [AUTO-WIRING.md](AUTO-WIRING.md) for the "you get
-this for free" model, and [EXTRAS-FLAGS.md](EXTRAS-FLAGS.md) for which
+10,000-foot view, [integration.md](integration.md) for a recipe to build
+a scalo-based service, [auto-wiring.md](auto-wiring.md) for the "you get
+this for free" model, and [extras-flags.md](extras-flags.md) for which
 Python extras pull in which deps.
 
 ---
@@ -24,7 +24,7 @@ Python extras pull in which deps.
 | `from scalo import health` | `/livez` and `/readyz` router, downstream-dep registry, K8s-shaped responses | Write probe handlers, manage dependency state |
 | `from scalo import runtime` | K8s / Docker / bare-metal autodetect, container-aware paths (config_dir, data_dir, cache_dir, run_dir), `CONTAINER_BASE_PATH` override | Read `/.dockerenv`, parse cgroups, pick path defaults |
 | `from scalo import secrets` | OpenBao / Vault / AWS / GCP / Azure / ansible-vault / Kubernetes Secret / file providers behind one interface | Pick a provider SDK, wrap each behind a uniform API |
-| `from scalo.deployment import DeploymentContract` | Pydantic contract -> Dockerfile + container manifest + Compose fragment carrying [Contract Identity v1](deployment/IDENTITY.md) labels, and the `deployment-contract.json` the scalo-service chart renders the Kubernetes objects from | Write the generators and the chart yourself, keep them in sync, stamp identity by hand |
+| `from scalo.deployment import DeploymentContract` | Pydantic contract -> Dockerfile + container manifest + Compose fragment carrying [Contract Identity v1](deployment/identity.md) labels, and the `deployment-contract.json` the scalo-service chart renders the Kubernetes objects from | Write the generators and the chart yourself, keep them in sync, stamp identity by hand |
 | `from scalo.api import Hierarchy, install` | Operation ids from one resource hierarchy, the `x-scalo` spec extension, ETag/If-Match, `dry_run`, problem+json, pagination, a conformance check | Name operations by hand, hand-roll error envelopes and list paging per router |
 | `from scalo.mcp import mount` | MCP tools generated from the spec, called in-process with the caller's token, writes that preview before they commit, stateless 2026-07-28 transport, RFC 9728 metadata | Hand-write a tool per route, re-implement RBAC in a second server, pin MCP clients to one replica |
 | `from scalo.kafka import KafkaProducer, KafkaConsumer` | confluent-kafka clients with at-least-once producer defaults, schema sampling, consumer lag health, async wrappers | Configure librdkafka, hand-roll a retry wrapper, write a lag probe |
@@ -93,52 +93,52 @@ flowchart TB
 ### Start here
 
 - [architecture.md](architecture.md) — module map, dependency graph, layering
-- [INTEGRATION.md](INTEGRATION.md) — "I'm building a scalo service" recipe
-- [AUTO-WIRING.md](AUTO-WIRING.md) — what's wired automatically, what's manual
-- [EXTRAS-FLAGS.md](EXTRAS-FLAGS.md) — extras tree, recommended bundles, native deps
+- [integration.md](integration.md) — "I'm building a scalo service" recipe
+- [auto-wiring.md](auto-wiring.md) — what's wired automatically, what's manual
+- [extras-flags.md](extras-flags.md) — extras tree, recommended bundles, native deps
 - [migrations.md](migrations.md) -- behaviour and API changes a consumer adjusts for, by release
 
 ### Core pillars (always available)
 
-- [core-pillars/CONFIG.md](core-pillars/CONFIG.md) — 7-layer cascade, registry, sensitive masking
-- [core-pillars/LOGGING.md](core-pillars/LOGGING.md) — loguru setup, JSON/text autodetect, fields, JSON record shape, scrub, rate-limit, CI mode
-- [core-pillars/METRICS.md](core-pillars/METRICS.md) — Prometheus + OTel dual, metric groups, cardinality cap
-- [core-pillars/TRACING.md](core-pillars/TRACING.md) — OTLP span export, sampling, backoff when the collector is absent
-- [core-pillars/HEALTH.md](core-pillars/HEALTH.md) — `HealthManager`, `/livez` / `/readyz`
-- [core-pillars/SHUTDOWN.md](core-pillars/SHUTDOWN.md) — SIGTERM handling, K8s pre-stop delay
+- [core-pillars/config.md](core-pillars/config.md) — 7-layer cascade, registry, sensitive masking
+- [core-pillars/logging.md](core-pillars/logging.md) — loguru setup, JSON/text autodetect, fields, JSON record shape, scrub, rate-limit, CI mode
+- [core-pillars/metrics.md](core-pillars/metrics.md) — Prometheus + OTel dual, metric groups, cardinality cap
+- [core-pillars/tracing.md](core-pillars/tracing.md) — OTLP span export, sampling, backoff when the collector is absent
+- [core-pillars/health.md](core-pillars/health.md) — `HealthManager`, `/livez` / `/readyz`
+- [core-pillars/shutdown.md](core-pillars/shutdown.md) — SIGTERM handling, K8s pre-stop delay
 
 ### Runtime
 
-- [runtime/RUNTIME-CONTEXT.md](runtime/RUNTIME-CONTEXT.md) — K8s/Docker/BareMetal detection, container-aware paths
-- [runtime/SERVICE-RUNTIME.md](runtime/SERVICE-RUNTIME.md) — composable-modules pattern (the `Application` framework is deprecated)
+- [runtime/runtime-context.md](runtime/runtime-context.md) — K8s/Docker/BareMetal detection, container-aware paths
+- [runtime/service-runtime.md](runtime/service-runtime.md) — composable-modules pattern (the `Application` framework is deprecated)
 
 ### Transport
 
-- [transport/KAFKA.md](transport/KAFKA.md) — producer, consumer, admin, async wrappers, schema sampling, lag health
+- [transport/kafka.md](transport/kafka.md) — producer, consumer, admin, async wrappers, schema sampling, lag health
 
 ### Deployment
 
-- [deployment/CONTRACT.md](deployment/CONTRACT.md) — `DeploymentContract` Pydantic model, schema versioning
-- [deployment/ARTEFACTS.md](deployment/ARTEFACTS.md) -- Dockerfile / container manifest / Compose / the Kubernetes objects
-- [deployment/NATIVE-DEPS.md](deployment/NATIVE-DEPS.md) — `NativeDepsContract`, extras → APT package map
-- [deployment/KEDA.md](deployment/KEDA.md) — `KedaContract`, scaler triggers, fallback HPA
-- [deployment/IDENTITY.md](deployment/IDENTITY.md) — Contract Identity Annotation Scheme v1
-- [deployment/TEST-SUPPORT.md](deployment/TEST-SUPPORT.md) — e2e probes, skip helper, `KindClusterGuard`
+- [deployment/contract.md](deployment/contract.md) — `DeploymentContract` Pydantic model, schema versioning
+- [deployment/artefacts.md](deployment/artefacts.md) -- Dockerfile / container manifest / Compose / the Kubernetes objects
+- [deployment/native-deps.md](deployment/native-deps.md) — `NativeDepsContract`, extras → APT package map
+- [deployment/keda.md](deployment/keda.md) — `KedaContract`, scaler triggers, fallback HPA
+- [deployment/identity.md](deployment/identity.md) — Contract Identity Annotation Scheme v1
+- [deployment/test-support.md](deployment/test-support.md) — e2e probes, skip helper, `KindClusterGuard`
 
 ### API modules
 
-- [api/SECRETS.md](api/SECRETS.md) -- OpenBao / Vault / AWS / GCP / Azure / ansible-vault / Kubernetes Secret / file
-- [api/HTTP-CLIENT.md](api/HTTP-CLIENT.md) — `HttpClient` + `AsyncHttpClient` with retries + circuit breaker
-- [api/CONCURRENCY.md](api/CONCURRENCY.md) — `run_blocking`, `Bulkhead`, `gather_with_timeouts`
-- [api/DIRECTORY-CONFIG.md](api/DIRECTORY-CONFIG.md) — YAML directory store with optional git tracking
-- [api/EXPRESSION.md](api/EXPRESSION.md) — CEL via Rust/PyO3 (Python/Rust evaluation parity)
-- [api/RULES.md](api/RULES.md) -- ordered first-match rules setting target fields, with a per-call clamp and hit counters
-- [api/RESILIENCE.md](api/RESILIENCE.md) — `CircuitBreaker` Closed/Open/HalfOpen, `ReconnectingResilience` for pooled connections
-- [api/VERSION-CHECK.md](api/VERSION-CHECK.md) — Non-blocking startup version probe
-- [api/SCALING.md](api/SCALING.md) — `ScalingPressure` composite score for KEDA
-- [api/CLI.md](api/CLI.md) — Typer-based CLI framework, `ServiceApp`, standard options
-- [api/API-CONVENTIONS.md](api/API-CONVENTIONS.md) -- `scalo.api` (the `api` extra): resource hierarchy and operation ids, `x-scalo`, preconditions, problem+json, pagination, conformance check
-- [api/MCP.md](api/MCP.md) -- `scalo.mcp` (the `mcp` extra): MCP tools from the spec, in-process calls, preview and commit, stateless transport, RFC 9728
+- [api/secrets.md](api/secrets.md) -- OpenBao / Vault / AWS / GCP / Azure / ansible-vault / Kubernetes Secret / file
+- [api/http-client.md](api/http-client.md) — `HttpClient` + `AsyncHttpClient` with retries + circuit breaker
+- [api/concurrency.md](api/concurrency.md) — `run_blocking`, `Bulkhead`, `gather_with_timeouts`
+- [api/directory-config.md](api/directory-config.md) — YAML directory store with optional git tracking
+- [api/expression.md](api/expression.md) — CEL via Rust/PyO3 (Python/Rust evaluation parity)
+- [api/rules.md](api/rules.md) -- ordered first-match rules setting target fields, with a per-call clamp and hit counters
+- [api/resilience.md](api/resilience.md) — `CircuitBreaker` Closed/Open/HalfOpen, `ReconnectingResilience` for pooled connections
+- [api/version-check.md](api/version-check.md) — Non-blocking startup version probe
+- [api/scaling.md](api/scaling.md) — `ScalingPressure` composite score for KEDA
+- [api/cli.md](api/cli.md) — Typer-based CLI framework, `ServiceApp`, standard options
+- [api/api-conventions.md](api/api-conventions.md) -- `scalo.api` (the `api` extra): resource hierarchy and operation ids, `x-scalo`, preconditions, problem+json, pagination, conformance check
+- [api/mcp.md](api/mcp.md) -- `scalo.mcp` (the `mcp` extra): MCP tools from the spec, in-process calls, preview and commit, stateless transport, RFC 9728
 
 ---
 

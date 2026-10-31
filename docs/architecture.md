@@ -146,7 +146,7 @@ scalo-rs ships several modules scalo-py does not, by design:
 - `tracing` as a distinct module. Pylib emits structured log fields
   but does not currently wire W3C `traceparent` propagation across
   modules. Tracking issue: when this lands, it'll get a
-  `core-pillars/TRACING.md`.
+  `core-pillars/tracing.md`.
 
 What scalo-py has that scalo-rs doesn't:
 
@@ -179,7 +179,7 @@ absent rather than carrying placeholder files.
 ## Related
 
 - [README.md](README.md)
-- [INTEGRATION.md](INTEGRATION.md)
-- [AUTO-WIRING.md](AUTO-WIRING.md)
-- [EXTRAS-FLAGS.md](EXTRAS-FLAGS.md)
-- [runtime/RUNTIME-CONTEXT.md](runtime/RUNTIME-CONTEXT.md)
+- [integration.md](integration.md)
+- [auto-wiring.md](auto-wiring.md)
+- [extras-flags.md](extras-flags.md)
+- [runtime/runtime-context.md](runtime/runtime-context.md)

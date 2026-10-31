@@ -13,7 +13,7 @@ per-element iteration and time functions are restricted by default, and each
 category is unlocked by a :class:`ProfileConfig` flag, which apps set under the
 ``expression`` key of the config cascade.
 
-See: docs/api/EXPRESSION.md
+See: docs/api/expression.md
 """
 
 from collections.abc import Mapping

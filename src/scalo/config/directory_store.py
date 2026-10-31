@@ -43,7 +43,10 @@ Usage:
 
 import fcntl
 import os
+import tempfile
 import threading
+from collections.abc import Iterator
+from contextlib import contextmanager, suppress
 from pathlib import Path
 from typing import Any, Callable
 
@@ -55,6 +58,17 @@ from dulwich.repo import Repo as DulwichRepo
 
 from .._yaml import safe_load
 from ..logger import logger
+
+
+def _process_umask() -> int:
+    """Return the process umask, read from /proc where it is published so no other thread sees it change."""
+    with suppress(OSError, ValueError):
+        for line in Path("/proc/self/status").read_text(encoding="utf-8").splitlines():
+            if line.startswith("Umask:"):
+                return int(line.split()[1], 8)
+    current = os.umask(0o022)
+    os.umask(current)
+    return current
 
 
 class DirectoryConfigStore:
@@ -231,12 +245,13 @@ class DirectoryConfigStore:
 
         table = self._validate_table_name(table)
         file_path = self._table_path(table)
-        data = self._load_yaml_locked(file_path) or {}
-        self._set_nested(data, key, value)
-        self._write_yaml_locked(file_path, data)
+        file_path.parent.mkdir(parents=True, exist_ok=True)
+        with self._write_lock(file_path):
+            data = self._load_yaml_locked(file_path) or {}
+            self._set_nested(data, key, value)
+            self._write_yaml_locked(file_path, data)
+            mtime = file_path.stat().st_mtime
 
-        # Update cache
-        mtime = file_path.stat().st_mtime
         with self._lock:
             self._cache[table] = (data, mtime)
 
@@ -275,15 +290,16 @@ class DirectoryConfigStore:
 
         table = self._validate_table_name(table)
         file_path = self._table_path(table)
-        data = self._load_yaml_locked(file_path)
-        if data is None:
+        if not file_path.parent.is_dir():
             raise KeyError(f"Table '{table}' does not exist")
+        with self._write_lock(file_path):
+            data = self._load_yaml_locked(file_path)
+            if data is None:
+                raise KeyError(f"Table '{table}' does not exist")
+            self._delete_nested(data, key)
+            self._write_yaml_locked(file_path, data)
+            mtime = file_path.stat().st_mtime
 
-        self._delete_nested(data, key)
-        self._write_yaml_locked(file_path, data)
-
-        # Update cache
-        mtime = file_path.stat().st_mtime
         with self._lock:
             self._cache[table] = (data, mtime)
 
@@ -542,19 +558,58 @@ class DirectoryConfigStore:
             logger.warning(f"Failed to lock/read {path}: {e}")
             return self._load_yaml(path)
 
-    def _write_yaml_locked(self, path: Path, data: dict) -> None:
-        """Write YAML with advisory file lock."""
-        path.parent.mkdir(parents=True, exist_ok=True)
+    @staticmethod
+    @contextmanager
+    def _write_lock(path: Path) -> Iterator[None]:
+        """Hold an exclusive advisory lock on the table's directory across a read-modify-write.
+
+        The table file itself cannot carry the lock, because each write replaces its inode.
+        """
+        dir_fd = os.open(str(path.parent), os.O_RDONLY)
         try:
-            fd = os.open(str(path), os.O_WRONLY | os.O_CREAT | os.O_TRUNC, 0o644)
+            fcntl.flock(dir_fd, fcntl.LOCK_EX)
+            yield
+        finally:
+            fcntl.flock(dir_fd, fcntl.LOCK_UN)
+            os.close(dir_fd)
+
+    def _write_yaml_locked(self, path: Path, data: dict) -> None:
+        """Write YAML to a temporary sibling and rename it over the table.
+
+        A reader, the refresh thread included, sees the old table or the new one, never a partial one.
+        """
+        content = yaml.safe_dump(data, default_flow_style=False, sort_keys=True).encode("utf-8")
+        owner: tuple[int, int] | None = None
+        try:
+            st = path.stat()
+            mode = st.st_mode & 0o777
+            owner = (st.st_uid, st.st_gid)
+        except FileNotFoundError:
+            mode = 0o644 & ~_process_umask()
+        # The .tmp suffix keeps the half-written file out of the *.yaml / *.yml table scan.
+        fd, tmp_name = tempfile.mkstemp(dir=path.parent, prefix=f".{path.name}.", suffix=".tmp")
+        try:
+            with os.fdopen(fd, "wb") as handle:
+                handle.write(content)
+                handle.flush()
+                os.fsync(handle.fileno())
+            os.chmod(tmp_name, mode)
+            # The new inode belongs to the writer, so a table another uid or group reads keeps its owner,
+            # and a write that cannot keep it fails rather than lock the readers out.
+            if owner is not None:
+                tmp_stat = os.stat(tmp_name)
+                if (tmp_stat.st_uid, tmp_stat.st_gid) != owner:
+                    os.chown(tmp_name, *owner)
+            os.replace(tmp_name, path)
+            # The rename lives in the directory, which a crash can lose until it is synced too.
+            dir_fd = os.open(str(path.parent), os.O_RDONLY)
             try:
-                fcntl.flock(fd, fcntl.LOCK_EX)
-                content = yaml.safe_dump(data, default_flow_style=False, sort_keys=True)
-                os.write(fd, content.encode("utf-8"))
+                os.fsync(dir_fd)
             finally:
-                fcntl.flock(fd, fcntl.LOCK_UN)
-                os.close(fd)
+                os.close(dir_fd)
         except OSError as e:
+            with suppress(FileNotFoundError):
+                os.unlink(tmp_name)
             raise OSError(f"Failed to write {path}: {e}") from e
 
     # -- Internal: Nested Key Access ------------------------------------

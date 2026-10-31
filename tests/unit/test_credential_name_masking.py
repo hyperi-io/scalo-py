@@ -11,12 +11,14 @@
 Every value is built at runtime, so no secret-shaped literal sits in source.
 """
 
+import contextlib
 import json
 import random
 import re
+import signal
 import subprocess
 import sys
-import time
+import threading
 from pathlib import Path
 
 import pytest
@@ -25,6 +27,7 @@ from common.log_capture import LOGGER_ENV_VARS, StreamDouble, preserved_stdlib_l
 from loguru import logger
 
 from scalo.kafka.config import mask_credentials
+from scalo.logger import filters
 from scalo.logger.filters import (
     _MAX_WRAPPER_LEN,
     MASK_VALUE,
@@ -455,6 +458,92 @@ def test_a_quoted_value_is_read_as_a_scanner_reads_it():
         assert scrubber.scrub('{"password": ' + value) == _reference_colon(value), repr(value)
 
 
+# The most regex input a scan may read per character of text. The scans here read up to 8, a rescan reads thousands.
+_READ_LIMIT_PER_CHARACTER = 32
+# A regex that backtracks inside one call reads no more input, so only a deadline sees it. Far above any linear run.
+_HANG_BACKSTOP_SECONDS = 30
+
+
+class _CountingPattern:
+    """A compiled pattern that adds the input each call reads to a shared total.
+
+    A match counts the text it consumed, a search or a failed search the text it passed over, and a ``finditer`` or
+    ``sub`` the rest of the string. Every call counts for one more, so a loop that restarts shows too. A failed
+    ``match`` counts for one: the engine does not say how far it read.
+    """
+
+    def __init__(self, pattern: re.Pattern[str], total: list[int]) -> None:
+        self._pattern = pattern
+        self._total = total
+
+    def __getattr__(self, name):
+        return getattr(self._pattern, name)
+
+    def match(self, string, pos=0, endpos=sys.maxsize):
+        found = self._pattern.match(string, pos, endpos)
+        self._total[0] += 1 + (found.end() - pos if found else 0)
+        return found
+
+    def search(self, string, pos=0, endpos=sys.maxsize):
+        found = self._pattern.search(string, pos, endpos)
+        self._total[0] += 1 + (found.end() if found else min(endpos, len(string))) - pos
+        return found
+
+    def finditer(self, string, pos=0, endpos=sys.maxsize):
+        self._total[0] += 1 + min(endpos, len(string)) - pos
+        return self._pattern.finditer(string, pos, endpos)
+
+    def sub(self, repl, string, count=0):
+        self._total[0] += 1 + len(string)
+        return self._pattern.sub(repl, string, count)
+
+
+@contextlib.contextmanager
+def _hang_backstop():
+    """Fail the test if the body is still running at the deadline. SIGALRM reaches into a regex that is backtracking."""
+    in_main_thread = threading.current_thread() is threading.main_thread()
+    if not (hasattr(signal, "setitimer") and in_main_thread):
+        yield
+        return
+
+    def stop(_signum, _frame):
+        pytest.fail(f"still scanning after {_HANG_BACKSTOP_SECONDS} s")
+
+    previous = signal.signal(signal.SIGALRM, stop)
+    signal.setitimer(signal.ITIMER_REAL, _HANG_BACKSTOP_SECONDS)
+    try:
+        yield
+    finally:
+        signal.setitimer(signal.ITIMER_REAL, 0)
+        signal.signal(signal.SIGALRM, previous)
+
+
+@pytest.fixture
+def regex_input(monkeypatch):
+    """Return ``read(scan, text)``: the characters of regex input ``scan(text)`` reads in ``scalo.logger.filters``."""
+
+    def read(scan, text):
+        total = [0]
+        with monkeypatch.context() as patch:
+            for name, value in list(vars(filters).items()):
+                if isinstance(value, re.Pattern):
+                    patch.setattr(filters, name, _CountingPattern(value, total))
+            with _hang_backstop():
+                scan(text)
+        return total[0]
+
+    return read
+
+
+def _assert_read_linearly(regex_input, scan, text):
+    """A linear scan reads each character a few times over, a quadratic one reads the text again from each head."""
+    read = regex_input(scan, text)
+
+    assert read <= _READ_LIMIT_PER_CHARACTER * len(text), (
+        f"{len(text)} characters read {read} characters of regex input"
+    )
+
+
 @pytest.mark.parametrize(
     "text",
     [
@@ -482,13 +571,8 @@ def test_a_quoted_value_is_read_as_a_scanner_reads_it():
         pytest.param("&si" * 70_000, id="query-near-signature-names"),
     ],
 )
-def test_a_long_line_of_backslashes_and_quotes_is_masked_in_linear_time(text):
-    started = time.perf_counter()
-    FieldNameScrubber().scrub(text)
-    elapsed = time.perf_counter() - started
-
-    # A quadratic scan of 200,000 characters takes minutes, so the bound sits far above a linear one.
-    assert elapsed < 2.0
+def test_a_long_line_of_backslashes_and_quotes_is_masked_in_linear_time(regex_input, text):
+    _assert_read_linearly(regex_input, FieldNameScrubber().scrub, text)
 
 
 # ---------------------------------------------------------------------------
@@ -631,13 +715,8 @@ def test_a_wrapped_value_is_read_whole_up_to_4096_bytes(value, whole):
         pytest.param("pin: f(\\' x) " * 16_000, id="escaped-quote-closing-wrappers"),
     ],
 )
-def test_a_long_line_of_wrapped_values_is_masked_in_linear_time(text):
-    started = time.perf_counter()
-    FieldNameScrubber().scrub(text)
-    elapsed = time.perf_counter() - started
-
-    # A quadratic scan of 200,000 characters takes minutes, so the bound sits far above a linear one.
-    assert elapsed < 2.0
+def test_a_long_line_of_wrapped_values_is_masked_in_linear_time(regex_input, text):
+    _assert_read_linearly(regex_input, FieldNameScrubber().scrub, text)
 
 
 @pytest.mark.parametrize(
@@ -796,14 +875,12 @@ def test_the_url_masker_reads_random_text_as_the_grammar_does():
         pytest.param("://" + "a" * 200_000, id="user-with-no-colon"),
     ],
 )
-def test_a_long_line_is_read_in_linear_time(text):
-    started = time.perf_counter()
-    mask_url_userinfo(text)
-    mask_url_userinfo(text, keep_user=False)
-    elapsed = time.perf_counter() - started
+def test_a_long_line_is_read_in_linear_time(regex_input, text):
+    def mask_both_ways(line):
+        mask_url_userinfo(line)
+        mask_url_userinfo(line, keep_user=False)
 
-    # A quadratic scan of 200,000 characters takes minutes, so the bound sits far above a linear one.
-    assert elapsed < 2.0
+    _assert_read_linearly(regex_input, mask_both_ways, text)
 
 
 # The per-character pattern that defines which URL passwords are masked, at a stack frame per character.

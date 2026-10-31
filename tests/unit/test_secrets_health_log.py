@@ -15,10 +15,11 @@ passing stands in for the backend here, and the recovery line is proved on that.
 
 import asyncio
 import logging
+import threading
 
 import pytest
 
-from scalo.secrets.providers.base import HealthLog, _fault_scrubber
+from scalo.secrets.providers.base import HealthLog
 
 _LOGGER = "scalo.test.health"
 
@@ -102,16 +103,34 @@ class TestTransitions:
         assert len(_logged(caplog, logging.INFO)) == 1
 
 
+class _HeldScrubber:
+    """A scrubber whose scrub stays in flight until the test releases it."""
+
+    def __init__(self) -> None:
+        self.entered = threading.Event()
+        self.release = threading.Event()
+
+    def scrub(self, text: str) -> str:
+        self.entered.set()
+        self.release.wait(30)
+        return text
+
+
 class TestCancelledWhileMasking:
-    """A readiness check runs under a timeout, and the first masked reason takes ~0.5 s to build the scrubber."""
+    """A readiness check runs under a timeout, and masking runs on a worker thread that outlives a cancel."""
 
-    async def test_the_next_failed_check_announces_the_outage(self, health, caplog):
-        _fault_scrubber.cache_clear()
+    async def test_the_next_failed_check_announces_the_outage(self, health, caplog, monkeypatch):
+        held = _HeldScrubber()
+        monkeypatch.setattr("scalo.secrets.providers.base._fault_scrubber", lambda: held)
 
-        with pytest.raises(TimeoutError):
-            async with asyncio.timeout(0.005):
-                await health.arecord("refused")
+        check = asyncio.create_task(health.arecord("refused"))
+        await asyncio.to_thread(held.entered.wait)
+        check.cancel()
+        held.release.set()
+        with pytest.raises(asyncio.CancelledError):
+            await check
         assert _logged(caplog, logging.WARNING) == []
+        monkeypatch.undo()
 
         assert await health.arecord("refused") is False
         assert await health.arecord("refused") is False

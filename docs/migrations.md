@@ -1,6 +1,6 @@
 # Migrations
 
-Behaviour and API changes that need a consumer adjustment, indexed by the scalo release where each first ships. Moving over from `hyperi-pylib` has its own guide, [MIGRATING-FROM-HYPERI-PYLIB.md](MIGRATING-FROM-HYPERI-PYLIB.md).
+Behaviour and API changes that need a consumer adjustment, indexed by the scalo release where each first ships. Moving over from `hyperi-pylib` has its own guide, [migrating-from-hyperi-pylib.md](migrating-from-hyperi-pylib.md).
 
 ---
 
@@ -8,7 +8,7 @@ Behaviour and API changes that need a consumer adjustment, indexed by the scalo 
 
 ### `matches()` needs `allow_regex` (BEHAVIOUR CHANGE)
 
-The expression profile refuses `matches()` unless it allows regex, as scalo-rs's does, because regex cost per record is unbounded. `validate`, `diagnose`, `compile_expression`, `evaluate`, `evaluate_condition` and `transpile_to_clickhouse` all enforce it. The profile is now `ProfileConfig` (`allow_regex`, `allow_iteration`, `allow_time`), read from the cascade's `expression` key, and `validate`, `diagnose`, `compile_expression` and `transpile_to_clickhouse` take `profile=` to override it per call. `matches` moved from `ALLOWED_FUNCTIONS` to `DISALLOWED_FUNCTIONS` and `RESTRICTED_REGEX`. The profile check now reads string and bytes literals (quoted, triple-quoted and raw), `//` comments and the gap before a call the way CEL's lexer does. A function name inside a literal or comment is no longer reported, so `msg.contains("map(x)")` validates clean. A call hidden behind a raw literal's backslash, a triple-quoted literal, a comment, or a tab or newline before its `(` is now refused, where it validated clean and ran: `r"\" == "x" || x.matches("a")` and `x.matches//\n("a")` are two. See [api/EXPRESSION.md](api/EXPRESSION.md#the-expression-profile).
+The expression profile refuses `matches()` unless it allows regex, as scalo-rs's does, because regex cost per record is unbounded. `validate`, `diagnose`, `compile_expression`, `evaluate`, `evaluate_condition` and `transpile_to_clickhouse` all enforce it. The profile is now `ProfileConfig` (`allow_regex`, `allow_iteration`, `allow_time`), read from the cascade's `expression` key, and `validate`, `diagnose`, `compile_expression` and `transpile_to_clickhouse` take `profile=` to override it per call. `matches` moved from `ALLOWED_FUNCTIONS` to `DISALLOWED_FUNCTIONS` and `RESTRICTED_REGEX`. The profile check now reads string and bytes literals (quoted, triple-quoted and raw), `//` comments and the gap before a call the way CEL's lexer does. A function name inside a literal or comment is no longer reported, so `msg.contains("map(x)")` validates clean. A call hidden behind a raw literal's backslash, a triple-quoted literal, a comment, or a tab or newline before its `(` is now refused, where it validated clean and ran: `r"\" == "x" || x.matches("a")` and `x.matches//\n("a")` are two. See [api/expression.md](api/expression.md#the-expression-profile).
 
 **Consumer adjustment** -- an app that validates, evaluates or transpiles regex conditions sets `expression.allow_regex: true` in its config, or passes `profile=ProfileConfig(allow_regex=True)`. A test that expects `matches` in `ALLOWED_FUNCTIONS` looks in `RESTRICTED_REGEX`.
 
@@ -20,7 +20,7 @@ A missing map key, division by zero, an index out of range or an overflow raised
 
 ### A reload that fails validation keeps the last good config (BEHAVIOUR CHANGE)
 
-`ConfigReloader.reload_now` reloaded the live settings and then validated them, so a config `validate_fn` rejected stayed live. It now reloads a copy, validates the copy and swaps it in only when it passes. `validate_fn` receives the copy, and `on_reload` still receives `scalo.config.settings`. See [core-pillars/CONFIG.md](core-pillars/CONFIG.md#hot-reload).
+`ConfigReloader.reload_now` reloaded the live settings and then validated them, so a config `validate_fn` rejected stayed live. It now reloads a copy, validates the copy and swaps it in only when it passes. `validate_fn` receives the copy, and `on_reload` still receives `scalo.config.settings`. See [core-pillars/config.md](core-pillars/config.md#hot-reload).
 
 **Consumer adjustment** -- a `validate_fn` that read `scalo.config.settings` instead of its argument reads its argument.
 
@@ -32,7 +32,7 @@ The floor rose from 0.5.6 to 0.10.0. It is the first release that imports in a c
 
 ### `scalo.rules` and `diagnose` (additive)
 
-New `scalo.rules`, needing the `expression` extra: ordered first-match rule sets, with native tests and CEL Fast conditions, literal, copy and lookup actions, a per-call clamp and per-row hit counters, checked against scalo-rs's rules corpus. `diagnose` returns `validate`'s findings with the UTF-8 byte span each covers, and `Span.char_offsets` and `Span.utf16_offsets` convert a span for an editor that indexes by character or by UTF-16 code unit. See [api/RULES.md](api/RULES.md) and [api/EXPRESSION.md](api/EXPRESSION.md#locating-a-problem).
+New `scalo.rules`, needing the `expression` extra: ordered first-match rule sets, with native tests and CEL Fast conditions, literal, copy and lookup actions, a per-call clamp and per-row hit counters, checked against scalo-rs's rules corpus. `diagnose` returns `validate`'s findings with the UTF-8 byte span each covers, and `Span.char_offsets` and `Span.utf16_offsets` convert a span for an editor that indexes by character or by UTF-16 code unit. See [api/rules.md](api/rules.md) and [api/expression.md](api/expression.md#locating-a-problem).
 
 **Consumer adjustment** -- none.
 
@@ -40,7 +40,7 @@ New `scalo.rules`, needing the `expression` extra: ordered first-match rule sets
 
 ### A configured secrets provider with no SDK is left out, not fatal (BEHAVIOUR CHANGE)
 
-`SecretsManager.from_config` caught `ImportError` for a provider whose extra is not installed, but the providers raise `ProviderNotAvailableError`. The warning never fired and `from_config` raised at startup. It now logs the warning and returns without that provider. Using the provider raises `ProviderNotConfiguredError`, and a named source falls back to ENV. See [api/SECRETS.md](api/SECRETS.md#a-provider-whose-sdk-is-not-installed).
+`SecretsManager.from_config` caught `ImportError` for a provider whose extra is not installed, but the providers raise `ProviderNotAvailableError`. The warning never fired and `from_config` raised at startup. It now logs the warning and returns without that provider. Using the provider raises `ProviderNotConfiguredError`, and a named source falls back to ENV. See [api/secrets.md](api/secrets.md#a-provider-whose-sdk-is-not-installed).
 
 **Consumer adjustment** -- code that relied on the startup exception to catch a missing extra checks that the provider is in `health_check()`, or builds it directly (`AWSProvider(...)`), which still raises `ProviderNotAvailableError`.
 
@@ -48,7 +48,7 @@ New `scalo.rules`, needing the `expression` extra: ordered first-match rule sets
 
 ### The AWS secrets provider has no default region (BEHAVIOUR CHANGE)
 
-`AWSConfig.region` defaults to `None`, and the client sets a region only when one is configured. `SecretsManager.from_config` takes it from `aws.region`, then `AWS_REGION`, then `AWS_DEFAULT_REGION`. An unset region was forced to `us-east-1`, so a deployment with no region configured read and wrote secrets in the wrong region. It now goes to the SDK, which reads the active profile's region. With none, every call fails because botocore cannot build a client (`NoRegionError`). scalo-rs dropped the same default in 2.12.3. See [api/SECRETS.md](api/SECRETS.md#aws-region-kms-key-and-deletion-window).
+`AWSConfig.region` defaults to `None`, and the client sets a region only when one is configured. `SecretsManager.from_config` takes it from `aws.region`, then `AWS_REGION`, then `AWS_DEFAULT_REGION`. An unset region was forced to `us-east-1`, so a deployment with no region configured read and wrote secrets in the wrong region. It now goes to the SDK, which reads the active profile's region. With none, every call fails because botocore cannot build a client (`NoRegionError`). scalo-rs dropped the same default in 2.12.3. See [api/secrets.md](api/secrets.md#aws-region-kms-key-and-deletion-window).
 
 **Consumer adjustment** -- anything that relied on the `us-east-1` default names the region it means, in `aws.region`, `AWSConfig(region=...)`, `AWS_REGION` or `AWS_DEFAULT_REGION`.
 
@@ -68,9 +68,9 @@ AWS refuses to read, update or re-create a secret inside its deletion recovery w
 
 ### URL passwords mask to the last `@`, and a list of two names is not a pair (BEHAVIOUR CHANGE)
 
-The password in `scheme://user:password@host` is masked up to the last `@` a host follows, so `postgres://u:ab@cd/ef@host/db`, which logged `cd/ef`, now logs as `postgres://u:***REDACTED***@host/db`. The same holds when `?` or `#` follows an `@` in the password. `scalo.logger.filters.mask_url_userinfo` applies the rule to any string. See [core-pillars/LOGGING.md](core-pillars/LOGGING.md#layer-2-field-name-regex).
+The password in `scheme://user:password@host` is masked up to the last `@` a host follows, so `postgres://u:ab@cd/ef@host/db`, which logged `cd/ef`, now logs as `postgres://u:***REDACTED***@host/db`. The same holds when `?` or `#` follows an `@` in the password. `scalo.logger.filters.mask_url_userinfo` applies the rule to any string. See [core-pillars/logging.md](core-pillars/logging.md#layer-2-field-name-regex).
 
-A two-item list under a key is no longer read as a `(name, value)` pair, so `{"fields": ["email", "name"]}` is logged whole. A two-item tuple, and a two-item list inside a list or tuple, stay pairs. See [core-pillars/LOGGING.md](core-pillars/LOGGING.md#fields).
+A two-item list under a key is no longer read as a `(name, value)` pair, so `{"fields": ["email", "name"]}` is logged whole. A two-item tuple, and a two-item list inside a list or tuple, stay pairs. See [core-pillars/logging.md](core-pillars/logging.md#fields).
 
 **Consumer adjustment** -- an `@` later in the path or query of a URL that carries a password is masked with it: `https://u:p@host/x?to=ops@example.com` logs as `https://u:***REDACTED***@example.com`. Code carrying its own URL-password regex calls `mask_url_userinfo` instead.
 
@@ -78,7 +78,7 @@ A two-item list under a key is no longer read as a `(name, value)` pair, so `{"f
 
 ### Credential names match by substring, in any spelling (BEHAVIOUR CHANGE)
 
-Log fields, dict keys, `key=value` and `key: value` text, and Kafka config reprs now mask a value whose name holds a sensitive field anywhere in it, the rule scalo-rs uses. Separators and camelCase do not hide one, so `sasl_password`, `x-api-key`, `secretAccessKey` and `PGPASSWORD`, which went out in clear, are masked. `SENSITIVE_FIELDS` is now the union of the scalo-py and scalo-rs lists and the standard's sensitive-field floor, adding `pass`, `pin`, `session`, `private`, `email`, `phone` and qualified keys such as `signing_key`. A URL password holding `@` is masked whole. All of it goes through one matcher, `scalo.logger.filters.is_credential_name`. See [core-pillars/LOGGING.md](core-pillars/LOGGING.md#layer-2-field-name-regex).
+Log fields, dict keys, `key=value` and `key: value` text, and Kafka config reprs now mask a value whose name holds a sensitive field anywhere in it, the rule scalo-rs uses. Separators and camelCase do not hide one, so `sasl_password`, `x-api-key`, `secretAccessKey` and `PGPASSWORD`, which went out in clear, are masked. `SENSITIVE_FIELDS` is now the union of the scalo-py and scalo-rs lists and the standard's sensitive-field floor, adding `pass`, `pin`, `session`, `private`, `email`, `phone` and qualified keys such as `signing_key`. A URL password holding `@` is masked whole. All of it goes through one matcher, `scalo.logger.filters.is_credential_name`. See [core-pillars/logging.md](core-pillars/logging.md#layer-2-field-name-regex).
 
 **Consumer adjustment** -- expect more masking. A name that only contains a field is masked too: `token_count`, `tokenizer`, `mapping` (`pin`), `author` (`auth`), `session_timeout_ms` (`session`) and `email_count` (`email`). Log a value an operator must read under a name that holds no field. Code that matches a name against `SENSITIVE_FIELDS` itself calls `is_credential_name` instead.
 
@@ -86,7 +86,7 @@ Log fields, dict keys, `key=value` and `key: value` text, and Kafka config reprs
 
 ### scalo writes no Helm chart or ArgoCD Application (API CHANGE)
 
-The chart generator, the ArgoCD generator and the chart check are removed: `generate_chart`, `generate_argocd_application`, `ArgocdConfig`, `argocd_repo_url_from_cascade`, `argocd_dest_namespace_from_cascade`, `validate_helm_values`, `ParseYamlError` and `scalo.deployment.generate.to_camel_suffix`, along with the `templates/helm/scalo-app` scaffold. `generate-artefacts` stops writing `argocd-application.yaml` and reads no `deployment.argocd.*` key. The Kubernetes objects come from the thin chart a chart assembler builds from `deployment-contract.json` on the [scalo-service](https://github.com/hyperi-io/scalo-rs/blob/main/charts/scalo-service/README.md) library chart. To preview a service's chart locally, run `hyperi-ci chart assemble` -- see [deployment/ARTEFACTS.md](deployment/ARTEFACTS.md#kubernetes-objects). `generate_argocd_app_project`, the sync-wave constants and `ContractIdentity.as_yaml_annotations` stay.
+The chart generator, the ArgoCD generator and the chart check are removed: `generate_chart`, `generate_argocd_application`, `ArgocdConfig`, `argocd_repo_url_from_cascade`, `argocd_dest_namespace_from_cascade`, `validate_helm_values`, `ParseYamlError` and `scalo.deployment.generate.to_camel_suffix`, along with the `templates/helm/scalo-app` scaffold. `generate-artefacts` stops writing `argocd-application.yaml` and reads no `deployment.argocd.*` key. The Kubernetes objects come from the thin chart a chart assembler builds from `deployment-contract.json` on the [scalo-service](https://github.com/hyperi-io/scalo-rs/blob/main/charts/scalo-service/README.md) library chart. To preview a service's chart locally, run `hyperi-ci chart assemble` -- see [deployment/artefacts.md](deployment/artefacts.md#kubernetes-objects). `generate_argocd_app_project`, the sync-wave constants and `ContractIdentity.as_yaml_annotations` stay.
 
 **Consumer adjustment** -- remove every call to the removed names and the tests that make them, in the same change as the bump, along with any committed `chart/` or `argocd-application.yaml` and any `deployment.argocd.*` setting. Deploy from the thin chart.
 
@@ -100,7 +100,7 @@ The classmethod did nothing. The memory cache belongs to each instance, so there
 
 ### `CacheConfig(enabled=False)` turns off the memory cache too (BEHAVIOUR CHANGE)
 
-`enabled=False` used to switch off only the disk tier, and the in-process memory cache still served each value for `ttl_secs`. Now every read goes to the provider, there is no stale-grace fallback, and a provider failure raises. See [api/SECRETS.md](api/SECRETS.md#caching).
+`enabled=False` used to switch off only the disk tier, and the in-process memory cache still served each value for `ttl_secs`. Now every read goes to the provider, there is no stale-grace fallback, and a provider failure raises. See [api/secrets.md](api/secrets.md#caching).
 
 **Consumer adjustment** -- a consumer that wants in-process caching sets `enabled: true`. One that turned caching off so a rotated secret is read at once needs no change.
 
@@ -114,7 +114,7 @@ With `enabled=True` the stale-grace fallback now serves from the in-memory tier 
 
 ### L3 email redaction needs a letter in the domain's last label (BEHAVIOUR CHANGE)
 
-`pkg@1.2.3`, npm and pip specs such as `@scope/pkg@2.0.0`, and `user@10.0.0.1` now pass through unredacted. Literal, `%40` and `%2540` addresses are redacted as before. See [core-pillars/LOGGING.md](core-pillars/LOGGING.md#layer-3-email-addresses).
+`pkg@1.2.3`, npm and pip specs such as `@scope/pkg@2.0.0`, and `user@10.0.0.1` now pass through unredacted. Literal, `%40` and `%2540` addresses are redacted as before. See [core-pillars/logging.md](core-pillars/logging.md#layer-3-email-addresses).
 
 **Consumer adjustment** -- none. A consumer that must hide a user-at-IPv4 value masks its field by name with `SensitiveDataFilter.add_sensitive_fields`.
 
@@ -132,7 +132,7 @@ The AppRole and Kubernetes logins raised `AuthenticationError` for every failure
 
 ### HTTP retry logs name the error by class and status (BEHAVIOUR CHANGE)
 
-stamina's default retry hooks recorded `repr()` of the httpx error, which carries the request URL. `HttpClient` and `AsyncHttpClient` now hand them a carrier whose repr is the class plus any status, so `stamina.caused_by` reads `HTTPStatusError(status=503)` or `ConnectError`. The Prometheus `stamina_retries_total` `error_type` label for these retries reads `scalo.http.client._RetriedHTTPError` where it read `httpx.HTTPStatusError`, `httpx.ConnectError` and so on. Callers still receive the original httpx exception. See [api/HTTP-CLIENT.md](api/HTTP-CLIENT.md#observability).
+stamina's default retry hooks recorded `repr()` of the httpx error, which carries the request URL. `HttpClient` and `AsyncHttpClient` now hand them a carrier whose repr is the class plus any status, so `stamina.caused_by` reads `HTTPStatusError(status=503)` or `ConnectError`. The Prometheus `stamina_retries_total` `error_type` label for these retries reads `scalo.http.client._RetriedHTTPError` where it read `httpx.HTTPStatusError`, `httpx.ConnectError` and so on. Callers still receive the original httpx exception. See [api/http-client.md](api/http-client.md#observability).
 
 **Consumer adjustment** -- a dashboard or alert that filters retries on an httpx `error_type` value filters on `scalo.http.client._RetriedHTTPError`, and reads the class and status from the log field.
 
@@ -158,7 +158,7 @@ The module (`DeploymentTopology`, `load_topology` and its errors) loaded a cross
 
 ### The contract carries every field scalo-rs writes (BEHAVIOUR CHANGE)
 
-`DeploymentContract` parses a contract scalo-rs emitted, where it used to refuse it with `extra_forbidden`. New fields, each with scalo-rs's name, type and default: `unbound_listen_paths`, `PortContract.when` (`EnabledCondition`, `EqualsCondition` or `OneOfCondition`) and `bound_from`, `KedaContract.enabled` and `kafka_trigger` (`KafkaLagTrigger`), and `NativeDepsContract.distro` (`BaseDistro`), `unresolved_base_image` and `contradicted_base_image`. See [deployment/CONTRACT.md](deployment/CONTRACT.md).
+`DeploymentContract` parses a contract scalo-rs emitted, where it used to refuse it with `extra_forbidden`. New fields, each with scalo-rs's name, type and default: `unbound_listen_paths`, `PortContract.when` (`EnabledCondition`, `EqualsCondition` or `OneOfCondition`) and `bound_from`, `KedaContract.enabled` and `kafka_trigger` (`KafkaLagTrigger`), and `NativeDepsContract.distro` (`BaseDistro`), `unresolved_base_image` and `contradicted_base_image`. See [deployment/contract.md](deployment/contract.md).
 
 - An emitted contract with a `keda` block gains `keda.enabled` and `keda.kafka_trigger`.
 - One built through `for_scalo_extras` or `for_scalo_features` gains `native_deps.distro`.
@@ -168,7 +168,7 @@ The module (`DeploymentTopology`, `load_topology` and its errors) loaded a cross
 
 ### Deployment contract schema 4 (BEHAVIOUR CHANGE)
 
-`DEFAULT_SCHEMA_VERSION` and `MAX_SUPPORTED_SCHEMA_VERSION` are 4, matching scalo-rs. `DeploymentContract` gains `writable_paths` (`WritablePath`), `termination_grace_seconds` (45), `resources` (`ResourcesContract`, `ResourceList`), `security` (`SecurityContract`) and `singleton`. `HealthContract` gains `startup_budget_seconds` (150, at least 1), `PortContract` gains `public` and `app_protocol`, and `SecretGroupContract` gains `optional`. `config_mount_path` may be omitted or empty, meaning no config file. An app marks an operator dial with `json_schema_extra={DIAL_KEYWORD: "big"}` or `"small"`. The wheel ships scalo-rs's v4 contract JSON Schema. See [deployment/CONTRACT.md](deployment/CONTRACT.md).
+`DEFAULT_SCHEMA_VERSION` and `MAX_SUPPORTED_SCHEMA_VERSION` are 4, matching scalo-rs. `DeploymentContract` gains `writable_paths` (`WritablePath`), `termination_grace_seconds` (45), `resources` (`ResourcesContract`, `ResourceList`), `security` (`SecurityContract`) and `singleton`. `HealthContract` gains `startup_budget_seconds` (150, at least 1), `PortContract` gains `public` and `app_protocol`, and `SecretGroupContract` gains `optional`. `config_mount_path` may be omitted or empty, meaning no config file. An app marks an operator dial with `json_schema_extra={DIAL_KEYWORD: "big"}` or `"small"`. The wheel ships scalo-rs's v4 contract JSON Schema. See [deployment/contract.md](deployment/contract.md).
 
 **Consumer adjustment** -- an emitted contract now carries `schema_version: 4`, `termination_grace_seconds`, `security`, `singleton` and `health.startup_budget_seconds`, so a committed `deployment-contract.json` changes on regeneration. An app that passes `schema_version=3` passes nothing, or `DEFAULT_SCHEMA_VERSION`, because a v4 chart assembler refuses version 3. Construction now refuses a malformed writable path, a capability that is not an upper-case name, a singleton with KEDA on, and an `x-scalo-dial` other than `big` or `small`.
 
@@ -182,27 +182,27 @@ The module (`DeploymentTopology`, `load_topology` and its errors) loaded a cross
 - KEDA on with no trigger, or with CPU the only trigger and `min_replicas` of 0.
 - A `$ref` in `config_schema` that the dial search follows and that is remote, points at nothing or loops through a dial.
 
-**Consumer adjustment** -- an app that builds one of these gets a `ValidationError` reading `<field>: <reason>`, and fixes the value in the same change as the bump. See [deployment/CONTRACT.md](deployment/CONTRACT.md).
+**Consumer adjustment** -- an app that builds one of these gets a `ValidationError` reading `<field>: <reason>`, and fixes the value in the same change as the bump. See [deployment/contract.md](deployment/contract.md).
 
 ## 2.31.0
 
 ### Console logs: JSON off a TTY, fields in text, colour only on a TTY (BEHAVIOUR CHANGE)
 
-`auto`, the default `LOG_FORMAT`, now does what [core-pillars/LOGGING.md](core-pillars/LOGGING.md#format-selection) always said: JSON when stderr is not a TTY, text when it is. It used to write coloured text everywhere, so a container's logs carried ANSI escapes and no keyword fields. Text now appends the fields as `key=value`, and colour is on only for a TTY unless `LOG_COLOR`, `NO_COLOR` or `logging.color` says otherwise.
+`auto`, the default `LOG_FORMAT`, now does what [core-pillars/logging.md](core-pillars/logging.md#format-selection) always said: JSON when stderr is not a TTY, text when it is. It used to write coloured text everywhere, so a container's logs carried ANSI escapes and no keyword fields. Text now appends the fields as `key=value`, and colour is on only for a TTY unless `LOG_COLOR`, `NO_COLOR` or `logging.color` says otherwise.
 
-`LOG_FORMAT=json` no longer dumps loguru's raw record (`{"text": ..., "record": {...}}`). Each line is one flat object, `timestamp`, `level`, `target`, `function`, `line_number`, `message` and `fields`, described in [core-pillars/LOGGING.md](core-pillars/LOGGING.md#json-records). `logfmt` was documented but never had a renderer; it is now reported as unrecognised and treated as `auto`.
+`LOG_FORMAT=json` no longer dumps loguru's raw record (`{"text": ..., "record": {...}}`). Each line is one flat object, `timestamp`, `level`, `target`, `function`, `line_number`, `message` and `fields`, described in [core-pillars/logging.md](core-pillars/logging.md#json-records). `logfmt` was documented but never had a renderer; it is now reported as unrecognised and treated as `auto`.
 
 **Consumer adjustment** -- a deployment that wants text in a container sets `LOG_FORMAT=text`. A parser that read `record.extra` or `text` from the old JSON reads `fields` and `message` instead.
 
 ### Stdlib logging goes through the scalo sinks (BEHAVIOUR CHANGE)
 
-`setup()` now routes stdlib `logging` records into the scalo sinks, see [core-pillars/LOGGING.md](core-pillars/LOGGING.md#stdlib-logging). Before, a library logging through `logging` (uvicorn, clickhouse_connect, scalo's own secrets manager) wrote unformatted and unscrubbed lines, or nothing below WARNING. The root logger's existing handlers are replaced and its level follows the scalo level.
+`setup()` now routes stdlib `logging` records into the scalo sinks, see [core-pillars/logging.md](core-pillars/logging.md#stdlib-logging). Before, a library logging through `logging` (uvicorn, clickhouse_connect, scalo's own secrets manager) wrote unformatted and unscrubbed lines, or nothing below WARNING. The root logger's existing handlers are replaced and its level follows the scalo level.
 
 **Consumer adjustment** -- build any `uvicorn.Config` after `setup()` with `log_config=None`, or uvicorn's own handlers come back. An app that relies on its own root handler sets `logging.intercept_stdlib: false`.
 
 ### Scrubbed tracebacks, bounded fields, httpx capped (BEHAVIOUR CHANGE)
 
-Tracebacks are now formatted the way the stdlib formats them and scrubbed before any sink writes them, in every format; loguru's extended frames above the `except` are gone. Keys and strings inside a field's containers are scrubbed up to 64 per record, and the rest of a larger list or dict is elided with a count, see [core-pillars/LOGGING.md](core-pillars/LOGGING.md#fields). `httpx` and `httpcore` join the loggers capped at WARNING, because their INFO request lines carry whole URLs.
+Tracebacks are now formatted the way the stdlib formats them and scrubbed before any sink writes them, in every format; loguru's extended frames above the `except` are gone. Keys and strings inside a field's containers are scrubbed up to 64 per record, and the rest of a larger list or dict is elided with a count, see [core-pillars/logging.md](core-pillars/logging.md#fields). `httpx` and `httpcore` join the loggers capped at WARNING, because their INFO request lines carry whole URLs.
 
 **Consumer adjustment** -- a sink added with `logger.add()` after `setup()` sees `record["extra"]` as the scrubbed fields in plain JSON data, not the objects passed in. An app that wants httpx's request lines sets `logging.getLogger("httpx").setLevel(logging.INFO)` after `setup()`, knowing a signed URL goes out whole.
 
@@ -238,7 +238,7 @@ scalo-rs's rows for `KafkaSource` consumer groups, the DLQ paths and topic, and 
 
 ### Internal Kafka group ids derive from the client's config (BEHAVIOUR CHANGE)
 
-The consumer that `KafkaClient`, `AsyncKafkaClient` and `ReadOnlyKafkaClient` build for watermark and offset-for-time queries used fixed group ids of scalo's own: `scalo-offset-lookup-<n>`, `scalo-watermark-<n>`, `scalo-async-<n>`, `scalo-async-wm-<n>` and `scalo-readonly-<n>`, where `<n>` was the Python object id of the client. A broker granting groups by prefix refused all five, logging `GroupAuthorizationFailed`. They are now one id, `<group.id>-admin`, falling back to `<client.id>-admin` and then `scalo-admin`. See [transport/KAFKA.md](transport/KAFKA.md), "Internal consumer groups and broker ACLs".
+The consumer that `KafkaClient`, `AsyncKafkaClient` and `ReadOnlyKafkaClient` build for watermark and offset-for-time queries used fixed group ids of scalo's own: `scalo-offset-lookup-<n>`, `scalo-watermark-<n>`, `scalo-async-<n>`, `scalo-async-wm-<n>` and `scalo-readonly-<n>`, where `<n>` was the Python object id of the client. A broker granting groups by prefix refused all five, logging `GroupAuthorizationFailed`. They are now one id, `<group.id>-admin`, falling back to `<client.id>-admin` and then `scalo-admin`. See [transport/kafka.md](transport/kafka.md), "Internal consumer groups and broker ACLs".
 
 None of those consumers ever joined its group or committed an offset, and `<n>` changed with every process, so no offsets are stranded under the old names.
 

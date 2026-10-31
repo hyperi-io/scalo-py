@@ -14,10 +14,10 @@ so it cannot eat a termination grace period.
 """
 
 import importlib.util
+import json
 import subprocess
 import sys
 import threading
-import time
 from collections.abc import Iterator
 from pathlib import Path
 from typing import Any
@@ -26,6 +26,8 @@ import pytest
 
 from scalo import otel_tracing
 from scalo.otel_tracing import OtelTracingConfig, config_from_cascade, resolve
+
+FLUSH_THREAD = "scalo-otel-span-shutdown"
 
 
 @pytest.fixture(autouse=True)
@@ -136,10 +138,26 @@ def _exit_flush_config(endpoint: str) -> OtelTracingConfig:
 
 # Run in a child interpreter, so the flush happens on a real exit through atexit.
 _EXITING_CHILD = """
+import atexit
+import json
 import sys
+import threading
 
 from scalo import otel_tracing
 from scalo.otel_tracing import OtelTracingConfig
+
+waits = []
+join = threading.Thread.join
+
+
+def recording_join(thread, timeout=None):
+    waits.append([thread.name, timeout])
+    return join(thread, timeout)
+
+
+threading.Thread.join = recording_join
+# Registered before the exporter's own handler, so it runs after the flush and reports every wait the flush made.
+atexit.register(lambda: print(json.dumps(waits), file=sys.stderr))
 
 config = OtelTracingConfig(
     endpoint=sys.argv[1], service_name="exit-test", sample_ratio=1.0, batch_scheduled_delay_millis=600_000
@@ -425,17 +443,25 @@ class TestTheExitFlush:
         otel_tracing.shutdown()
         assert collector.received == ["buffered"]
 
-    def test_a_stalled_collector_cannot_hold_shutdown_past_the_bound(self, stalled_collector):
+    def test_a_stalled_collector_cannot_hold_shutdown_past_the_bound(self, stalled_collector, monkeypatch):
         assert otel_tracing.setup_tracing(_exit_flush_config(stalled_collector.endpoint)) is True
         with otel_tracing._PROVIDER.get_tracer("exit-test").start_as_current_span("stalled"):
             pass
+        flushes = []
+        join = threading.Thread.join
 
-        started = time.monotonic()
+        def recording_join(thread, timeout=None):
+            if thread.name == FLUSH_THREAD:
+                flushes.append((thread, timeout))
+            return join(thread, timeout)
+
+        monkeypatch.setattr(threading.Thread, "join", recording_join)
+
         otel_tracing.shutdown()
-        elapsed = time.monotonic() - started
 
         assert stalled_collector.called.is_set(), "shutdown never tried to flush"
-        assert self.BOUND_SECONDS - 0.2 <= elapsed < self.BOUND_SECONDS + 1.0, elapsed
+        assert [timeout for _, timeout in flushes] == [self.BOUND_SECONDS]
+        assert flushes[0][0].is_alive(), "shutdown waited for the stalled collector to answer"
 
     def test_buffered_spans_reach_the_collector_when_the_process_exits(self, collector, tmp_path):
         child = _start_exiting_child(collector.endpoint, tmp_path)
@@ -449,15 +475,14 @@ class TestTheExitFlush:
         try:
             assert child.stdout is not None
             assert child.stdout.readline().strip() == "span ended"
-            started = time.monotonic()
             _, err = child.communicate(timeout=60)
-            elapsed = time.monotonic() - started
         finally:
             child.kill()
 
         assert child.returncode == 0, err
         assert stalled_collector.called.is_set(), f"the exit flush never reached the collector: {err}"
-        assert self.BOUND_SECONDS - 0.2 <= elapsed < self.BOUND_SECONDS + 1.5, elapsed
+        waits = next(json.loads(line) for line in reversed(err.splitlines()) if line.startswith("["))
+        assert [FLUSH_THREAD, self.BOUND_SECONDS] in waits, err
 
 
 @pytest.mark.skipif(not _otel_available(), reason="opentelemetry not installed")

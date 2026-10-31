@@ -107,6 +107,36 @@ class TestConfigReachesTheLogger:
         assert min(app.console_levels) == 20, f"expected INFO (20), got {app.console_levels}"
 
 
+class TestNamedConfigFile:
+    """A file named by --config is loaded or refused, never quietly replaced by defaults."""
+
+    @pytest.mark.parametrize("command", ["run", "config-check"])
+    @pytest.mark.parametrize(
+        "make_path",
+        [
+            pytest.param(lambda tmp: tmp / "missing.yaml", id="missing"),
+            pytest.param(lambda tmp: tmp, id="directory"),
+        ],
+    )
+    def test_an_unusable_file_stops_the_command(self, tmp_path, capsys, command, make_path):
+        path = make_path(tmp_path)
+        app = _OrderApp()
+        with pytest.raises(SystemExit) as exc:
+            app.cli([command, "--config", str(path)])
+
+        assert exc.value.code == 1
+        assert not hasattr(app, "seen_config"), "the service ran on defaults"
+        assert "config file not found" in capsys.readouterr().err
+
+    def test_a_relative_path_is_read_from_the_working_directory(self, tmp_path, monkeypatch):
+        (tmp_path / "local.yaml").write_text(yaml.safe_dump({"database": {"host": "from-cwd"}}), encoding="utf-8")
+        monkeypatch.chdir(tmp_path)
+        app = _OrderApp()
+        _run(app, ["run", "--config", "local.yaml"])
+
+        assert app.seen_config.get("database.host") == "from-cwd"
+
+
 class TestConfigCheckReportsTheCascade:
     """config-check PRINTS the resolved level, so it must resolve it, not guess."""
 

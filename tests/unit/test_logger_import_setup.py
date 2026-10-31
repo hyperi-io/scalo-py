@@ -6,7 +6,7 @@
 #  License:   Apache-2.0
 #  Copyright: (c) 2026 HYPERI PTY LIMITED
 
-"""What ``import scalo.logger`` does to the host's logging, as LOGGING.md states it.
+"""What ``import scalo.logger`` does to the host's logging, as logging.md states it.
 
 Each case runs in a fresh interpreter. ``LOG_FORMAT=json`` tells the two sinks apart:
 scalo's writes a JSON line, and loguru's own default ignores the variable.

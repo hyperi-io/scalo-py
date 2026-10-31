@@ -115,5 +115,5 @@ scrape_configs:
 
 ## See Also
 
-- [scalo Metrics Documentation](../../docs/METRICS.md)
+- [scalo Metrics Documentation](../../docs/core-pillars/metrics.md)
 - [Prometheus Python Client](https://github.com/prometheus/client_python)

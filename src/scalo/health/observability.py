@@ -60,8 +60,10 @@ Usage::
 
 import asyncio
 import json
+import socket
 import threading
 from collections.abc import Coroutine
+from contextlib import suppress
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from typing import Any
 
@@ -136,6 +138,18 @@ def _port(text: str, addr: str) -> int:
         raise ValueError(f"invalid port in bind address: {addr!r}") from None
 
 
+class _IPv6HTTPServer(ThreadingHTTPServer):
+    """Threading HTTP server for an IPv6 literal, answering IPv4 as well when bound to ``::``."""
+
+    address_family = socket.AF_INET6
+
+    def server_bind(self) -> None:
+        """Bind, accepting IPv4-mapped connections where the kernel allows it."""
+        with suppress(OSError, AttributeError):
+            self.socket.setsockopt(socket.IPPROTO_IPV6, socket.IPV6_V6ONLY, 0)
+        super().server_bind()
+
+
 class ObservabilityServer:
     """Small HTTP server answering health probes and metrics scrapes.
 
@@ -171,7 +185,8 @@ class ObservabilityServer:
 
         host, port = parse_addr(self.addr)
         handler = _make_handler(self.health, self.metrics)
-        httpd = ThreadingHTTPServer((host, port), handler)
+        server_class = _IPv6HTTPServer if ":" in host else ThreadingHTTPServer
+        httpd = server_class((host, port), handler)
         httpd.daemon_threads = True
 
         thread = threading.Thread(

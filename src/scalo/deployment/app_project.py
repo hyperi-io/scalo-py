@@ -15,7 +15,7 @@ ArgoCD project with restricted ``sourceRepos``, ``destinations``, and
 Mirrors ``scalo::deployment::app_project`` for byte-level
 cross-language parity.
 
-See the Topology section in ``docs/deployment/CONTRACT.md`` for how this
+See the Topology section in ``docs/deployment/contract.md`` for how this
 fits with the per-app deployment contract.
 """
 

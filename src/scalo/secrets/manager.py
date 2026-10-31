@@ -126,7 +126,7 @@ class SecretsManager:
     def from_config(cls, config: dict[str, Any]) -> SecretsManager:
         """Create manager from configuration dictionary.
 
-        Config structure matches docs/SECRETS.md.
+        Config structure matches docs/api/secrets.md.
 
         A provider named in ``config`` whose SDK is not installed is logged at WARNING and left
         out. Using it then raises ``ProviderNotConfiguredError``, or falls back to ENV for a named

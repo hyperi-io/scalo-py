@@ -23,7 +23,7 @@ ENV overrides:
     AUTO_LOGGER_CONFIG=1  # Run setup() on import, without span export
     NO_LOGGER_CONFIG=1    # Veto AUTO_LOGGER_CONFIG
 
-See docs/core-pillars/LOGGING.md for examples and configuration details.
+See docs/core-pillars/logging.md for examples and configuration details.
 """
 
 import contextlib

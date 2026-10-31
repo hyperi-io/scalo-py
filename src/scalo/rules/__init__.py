@@ -41,7 +41,7 @@ Usage::
 
 Compile errors and warnings are :class:`RuleDiagnostic` values naming the config
 location, the rule id, and for a CEL condition the byte span the scanner or parser
-found. See docs/api/RULES.md.
+found. See docs/api/rules.md.
 """
 
 # Loaded before any submodule imports cel, so a missing extra raises the ImportError that names it.

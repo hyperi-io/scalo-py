@@ -13,11 +13,15 @@ silently double-submit and tracing context is lost on the second hop."""
 
 from __future__ import annotations
 
+import http.server
 import re
+import socket
+import threading
 import uuid
 
 import httpx
 import pytest
+import stamina
 
 from scalo.http.client import AsyncHttpClient, HttpClient, new_idempotency_key
 
@@ -105,6 +109,94 @@ async def test_async_client_traceparent_rides_every_retry():
 
     assert seen[0]["traceparent"] == tp
     assert seen[1]["traceparent"] == tp
+
+
+class _ApplyThenFail(http.server.BaseHTTPRequestHandler):
+    """Apply the request, then answer 503 (path /503) or drop the connection (path /drop)."""
+
+    hits: list[str]
+
+    def _handle(self) -> None:
+        self.rfile.read(int(self.headers.get("Content-Length", "0")))
+        self.hits.append(self.command)
+        if self.path == "/drop":
+            self.close_connection = True
+            self.connection.shutdown(socket.SHUT_RDWR)
+            return
+        self.send_response(503)
+        self.send_header("Content-Length", "0")
+        self.end_headers()
+
+    # Names fixed by BaseHTTPRequestHandler's dispatch.
+    def do_GET(self) -> None:
+        self._handle()
+
+    def do_PUT(self) -> None:
+        self._handle()
+
+    def do_POST(self) -> None:
+        self._handle()
+
+    def do_PATCH(self) -> None:
+        self._handle()
+
+    def log_message(self, format: str, *args: object) -> None:
+        return
+
+
+@pytest.fixture
+def apply_then_fail():
+    """A real local server that applies every request and then fails it, recording each one it applied."""
+    hits: list[str] = []
+    handler = type("_Handler", (_ApplyThenFail,), {"hits": hits})
+    server = http.server.ThreadingHTTPServer(("127.0.0.1", 0), handler)
+    thread = threading.Thread(target=server.serve_forever, daemon=True)
+    thread.start()
+    stamina.set_testing(True, attempts=3)
+    try:
+        yield f"http://127.0.0.1:{server.server_address[1]}", hits
+    finally:
+        stamina.set_testing(False)
+        server.shutdown()
+        server.server_close()
+
+
+_MUTATION_CASES = [
+    pytest.param("POST", "/503", {}, {}, 1, id="post-503-not-retried"),
+    pytest.param("PATCH", "/drop", {}, {}, 1, id="patch-dropped-not-retried"),
+    pytest.param("POST", "/drop", {}, {"idempotency_key": "k-1"}, 3, id="post-with-key-retried"),
+    pytest.param("PATCH", "/503", {}, {"headers": {"Idempotency-Key": "k-2"}}, 3, id="patch-with-key-header-retried"),
+    pytest.param(
+        "POST", "/503", {"headers": {"Idempotency-Key": "k-3"}}, {}, 3, id="post-with-client-key-header-retried"
+    ),
+    pytest.param("POST", "/503", {"retry_non_idempotent": True}, {}, 3, id="post-opted-in-retried"),
+    pytest.param("PUT", "/503", {}, {}, 3, id="put-replayable-retried"),
+    pytest.param("GET", "/drop", {}, {}, 3, id="get-replayable-retried"),
+]
+
+
+@pytest.mark.parametrize(("method", "path", "client_kwargs", "request_kwargs", "want_hits"), _MUTATION_CASES)
+def test_sync_client_resends_a_mutation_only_when_it_is_safe(
+    apply_then_fail, method, path, client_kwargs, request_kwargs, want_hits
+):
+    base, hits = apply_then_fail
+    with HttpClient(base_url=base, timeout=5.0, **client_kwargs) as client, pytest.raises(httpx.HTTPError):
+        client._request(method, path, **request_kwargs)
+
+    assert len(hits) == want_hits, f"the server applied the {method} {len(hits)} times"
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize(("method", "path", "client_kwargs", "request_kwargs", "want_hits"), _MUTATION_CASES)
+async def test_async_client_resends_a_mutation_only_when_it_is_safe(
+    apply_then_fail, method, path, client_kwargs, request_kwargs, want_hits
+):
+    base, hits = apply_then_fail
+    async with AsyncHttpClient(base_url=base, timeout=5.0, **client_kwargs) as client:
+        with pytest.raises(httpx.HTTPError):
+            await client._request(method, path, **request_kwargs)
+
+    assert len(hits) == want_hits, f"the server applied the {method} {len(hits)} times"
 
 
 def test_new_idempotency_key_is_unique():
