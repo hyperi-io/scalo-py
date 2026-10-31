@@ -21,8 +21,9 @@ Two test groups:
    ``run_in_executor``.
 
 2. :class:`TestEventLoopLiveness` -- runtime probe. While a capability
-   is doing async work, a ticker on the event loop must keep firing.
-   If the ticker stops, the work was blocking.
+   is doing blocking work, the event loop must still run a task. The
+   blocking call waits for that task, so it times out if the loop was
+   blocked.
 
 Pattern for capability authors: add an entry to
 ``TestEventLoopLiveness`` whenever you ship a new async method that
@@ -31,7 +32,7 @@ calls into a blocking SDK.
 
 import ast
 import asyncio
-import time
+import threading
 from pathlib import Path
 
 import pytest
@@ -244,95 +245,70 @@ class TestNoSyncInAsync:
 # ---------------------------------------------------------------------------
 
 
-class EventLoopLivenessProbe:
-    """Background ticker that records how many times it fires.
+class LoopRanProbe:
+    """Records that the event loop ran a task while a blocking call was waiting.
 
-    Use in tests: start the probe before kicking off async work; if the
-    work blocks the event loop, the ticker stops firing and ``ticks``
-    falls below ``expected_ticks``.
+    Create it inside a running loop. The blocking call under test waits on
+    :meth:`seen_by` from wherever it executes. On a worker thread the loop is
+    free to run the task, so the wait returns True. On the loop thread
+    nothing can run the task, so the wait times out and returns False. The
+    outcome does not depend on how fast the host is.
     """
 
-    def __init__(self, tick_interval: float = 0.01) -> None:
-        self.tick_interval = tick_interval
-        self.ticks: list[float] = []
-        self._task: asyncio.Task | None = None
-        self._stop = asyncio.Event()
-
-    async def _run(self) -> None:
-        while not self._stop.is_set():
-            self.ticks.append(time.monotonic())
-            try:
-                await asyncio.wait_for(self._stop.wait(), timeout=self.tick_interval)
-            except TimeoutError:
-                continue
-
-    def start(self) -> None:
+    def __init__(self) -> None:
+        self._ran = threading.Event()
         self._task = asyncio.create_task(self._run())
 
-    async def stop(self) -> None:
-        self._stop.set()
-        if self._task is not None:
-            await self._task
+    async def _run(self) -> None:
+        self._ran.set()
 
-    @property
-    def expected_ticks(self) -> int:
-        """How many ticks should have fired given the elapsed wall time?"""
-        if len(self.ticks) < 2:
-            return 1
-        elapsed = self.ticks[-1] - self.ticks[0]
-        return max(1, int(elapsed / self.tick_interval))
+    def seen_by(self, timeout: float) -> bool:
+        """Block up to ``timeout`` seconds for the loop to have run the task."""
+        return self._ran.wait(timeout)
+
+    async def close(self) -> None:
+        await self._task
 
 
 class TestEventLoopLiveness:
     """Runtime probe: capability calls must not block the event loop.
 
-    Each test starts a ticker on the loop, runs the capability, and
-    asserts the ticker kept firing throughout.
+    Each test hands the capability a call that only returns True once the
+    loop has run a task, so it passes only when the loop stayed free.
     """
 
     async def test_run_blocking_keeps_loop_responsive(self):
-        """run_blocking() of a sync sleep must not block the loop."""
-        probe = EventLoopLivenessProbe(tick_interval=0.01)
-        probe.start()
-        await run_blocking(time.sleep, 0.1)
-        await probe.stop()
-        # 100ms of blocking + 10ms ticks = at least 5 ticks should fire
-        assert len(probe.ticks) >= 5, f"loop was blocked: only {len(probe.ticks)} ticks fired"
+        """run_blocking() of a call that waits for the loop must not block the loop."""
+        probe = LoopRanProbe()
+        loop_ran = await run_blocking(probe.seen_by, 5)
+        await probe.close()
+
+        assert loop_ran, "loop was blocked by run_blocking"
 
     async def test_make_async_method_keeps_loop_responsive(self):
         """A method wrapped with make_async must not block the loop."""
 
-        class _Sleeper:
-            def slow_sync(self, duration: float) -> str:
-                time.sleep(duration)
-                return "done"
+        class _Waiter:
+            def wait_sync(self, probe: LoopRanProbe, timeout: float) -> bool:
+                return probe.seen_by(timeout)
 
-            slow_async = make_async(slow_sync)
+            wait_async = make_async(wait_sync)
 
-        s = _Sleeper()
-        probe = EventLoopLivenessProbe(tick_interval=0.01)
-        probe.start()
+        waiter = _Waiter()
+        probe = LoopRanProbe()
         # ty types a Callable class attribute as unbound, but the async def wrapper binds `self` at runtime.
-        result = await s.slow_async(0.1)  # ty: ignore[missing-argument, invalid-argument-type]
-        await probe.stop()
+        loop_ran = await waiter.wait_async(probe, 5)  # ty: ignore[missing-argument, invalid-argument-type]
+        await probe.close()
 
-        assert result == "done"
-        assert len(probe.ticks) >= 5, f"loop was blocked by make_async wrapper: only {len(probe.ticks)} ticks fired"
+        assert loop_ran, "loop was blocked by make_async wrapper"
 
     async def test_naive_sync_call_DOES_block_the_loop(self):  # noqa: N802
-        """Negative control: directly calling a sync sleep in an async
+        """Negative control: directly calling the blocking call in an async
         function DOES block the loop. This test exists to prove the
-        liveness probe is sensitive enough to detect blocking. If this
-        test starts passing, the probe is broken."""
-        probe = EventLoopLivenessProbe(tick_interval=0.01)
-        probe.start()
-        # Yield once so the ticker fires at least once before the block
-        await asyncio.sleep(0)
-        time.sleep(0.1)  # ← blocks the loop, the bug we're catching
-        await probe.stop()
+        probe is sensitive enough to detect blocking. If this
+        test starts failing, the probe is broken."""
+        probe = LoopRanProbe()
+        loop_ran = probe.seen_by(0.1)  # blocks the loop, the bug we're catching
+        await probe.close()
 
-        # Loop was blocked: ticker fired at most once before the sleep
-        # plus once after, so 1-2 ticks total (not 5+)
-        assert len(probe.ticks) <= 3, (
-            f"liveness probe is too lax: {len(probe.ticks)} ticks fired during a blocking sleep"
-        )
+        assert not loop_ran, "liveness probe is too lax: the loop ran a task during a blocking call"
