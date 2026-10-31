@@ -16,6 +16,7 @@ kubelet probes aimed at that port got connection-refused.
 import http.client
 import json
 import socket
+import threading
 import time
 
 import pytest
@@ -162,15 +163,26 @@ class TestProbeSemantics:
         # the kubelet kept retrying.
         _, health, port = server
         health.set_ready()
-        health.register_ready_check("hung", lambda: time.sleep(30) or True, per_check_timeout=0.5)
+        release = threading.Event()
+        finished = threading.Event()
 
-        started = time.monotonic()
-        status, body, _ = _get_json(port, "/readyz")
-        elapsed = time.monotonic() - started
+        def hung() -> bool:
+            # Held until the test lets go. Without a timeout the probe waits on it and _get gives up after 5 s.
+            release.wait(30)
+            finished.set()
+            return True
+
+        health.register_ready_check("hung", hung, per_check_timeout=0.5)
+
+        try:
+            status, body, _ = _get_json(port, "/readyz")
+            answered_while_hung = not finished.is_set()
+        finally:
+            release.set()
 
         assert status == 503
         assert body["checks"]["hung"] is False
-        assert elapsed < 10, f"probe took {elapsed:.1f}s -- timeout not enforced"
+        assert answered_while_hung, "the probe waited for the check -- timeout not enforced"
 
     def test_server_still_answers_after_a_hung_check(self, server):
         _, health, port = server

@@ -328,26 +328,34 @@ class TestLayeredCompositionPii:
 
 
 # ---------------------------------------------------------------------------
-# Performance sanity (regression guard, not a benchmark)
+# Clean lines skip the regex
 # ---------------------------------------------------------------------------
 
 
-class TestPerformanceSanity:
-    """Loose timing guard. Aim is to catch ~10× regressions, not bench."""
+class _CountingPattern:
+    """Wraps a pattern and counts the ``sub`` calls made on it."""
 
-    def test_long_clean_line_fast(self):
-        """A 10KB line with no matches scrubs in well under 100ms via
-        the full validator chain. Spec §7 target is <350µs/line for
-        the always-on stack -- 100ms is a regression bar, not a target."""
-        import time
+    def __init__(self, pattern):
+        self._pattern = pattern
+        self.subs = 0
 
-        v = EmailValidator()
+    def sub(self, repl, string):
+        self.subs += 1
+        return self._pattern.sub(repl, string)
+
+
+class TestCleanLinesSkipTheRegex:
+    """A line that cannot hold a match costs one membership test per marker, not a regex scan."""
+
+    def test_long_clean_line_never_reaches_the_regex(self, monkeypatch):
+        pattern = _CountingPattern(EmailValidator.PATTERN)
+        monkeypatch.setattr(EmailValidator, "PATTERN", pattern)
         line = ("the quick brown fox jumps over the lazy dog. " * 200).strip()
         assert len(line) > 5000
-        start = time.monotonic()
-        for _ in range(100):
-            v.scrub(line)
-        elapsed = time.monotonic() - start
-        # 100 scrubs of 10KB clean text in less than 1 second
-        # (i.e. >10ms per scrub would be a serious regression)
-        assert elapsed < 1.0, f"100 scrubs took {elapsed:.3f}s"
+
+        assert EmailValidator().scrub(line) == line
+        assert pattern.subs == 0
+
+        # The count is live: a line with an address runs the regex, once for the whole line.
+        EmailValidator().scrub(line + " alice@example.com")
+        assert pattern.subs == 1
