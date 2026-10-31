@@ -1,0 +1,229 @@
+# Contract Identity Annotation Scheme v1
+
+Three greppable keys stamped onto the image so the same logical
+contract output is traceable across surfaces (Dockerfile `LABEL`,
+container manifest JSON `labels`, and YAML annotations on a chart or
+ArgoCD `Application` built elsewhere) and across language tiers
+(scalo-rs, scalo-py, hyperi-ci). Mirrors
+`scalo::deployment::contract_identity` byte-for-byte; both
+implementations are diffed against a shared golden fixture.
+
+Import surface -- no pydantic dependency, importable as soon as the
+deployment package is available:
+
+```python
+from scalo.deployment import (
+    DEFAULT_LABEL_NAMESPACE,  # "io.scalo"
+    KEY_SEGMENT,              # "contract"
+    VERSION,                  # "v1"
+    ContractIdentity,
+    IdentityError,
+)
+```
+
+---
+
+## The three keys
+
+The keys sit under `<namespace>.contract`, where `<namespace>` is the contract's `oci_labels.label_namespace`: `io.scalo` unless the app sets its own. The table shows the default.
+
+| Key | Value form | Validation |
+|---|---|---|
+| `io.scalo.contract.version` | literal `v1` | constant -- the scheme version |
+| `io.scalo.contract.source-commit` | 40-char lowercase hex SHA | matches `^[0-9a-f]{40}$` exactly. No `sha256:` prefix, no whitespace |
+| `io.scalo.contract.image-ref` | `<registry>/<repo>:<tag>` OR `<registry>/<repo>@sha256:<digest>` | non-empty; must include `/`; registry host must contain `.`, a port `:`, or be literal `localhost` |
+
+The registry validation deliberately forbids implicit `docker.io` --
+ambiguous registries break image provenance. Use the explicit form
+`docker.io/library/...` if you need Docker Hub.
+
+---
+
+## `ContractIdentity`
+
+`@dataclass(frozen=True, slots=True)` -- immutable, no `__dict__`.
+
+```python
+@dataclass(frozen=True, slots=True)
+class ContractIdentity:
+    source_commit: str
+    image_ref: str
+```
+
+`__post_init__` runs both validators, so invalid input raises
+`IdentityError` at construction.
+
+### `detect(image_ref)` classmethod
+
+Auto-resolve `source_commit` from the environment:
+
+1. `GITHUB_SHA` env var (GitHub Actions).
+2. `CI_COMMIT_SHA` env var (GitLab).
+3. `git rev-parse HEAD` in the current working directory (10s
+   timeout; `FileNotFoundError` or `TimeoutExpired` -> falls through).
+
+If none yield a 40-char lowercase hex SHA, raises `IdentityError`.
+
+```python
+identity = ContractIdentity.detect(
+    image_ref="ghcr.io/example-org/orders-api:v2.7.3",
+)
+```
+
+### `as_dockerfile_labels(namespace)` -- emit Dockerfile `LABEL` lines
+
+Three lines under `namespace`, canonical order, NO trailing newline. `as_dockerfile_labels("io.scalo")`:
+
+```dockerfile
+LABEL io.scalo.contract.version="v1"
+LABEL io.scalo.contract.source-commit="0123456789abcdef0123456789abcdef01234567"
+LABEL io.scalo.contract.image-ref="ghcr.io/example-org/orders-api:v2.7.3"
+```
+
+### `as_yaml_annotations(namespace, indent=0)` -- emit YAML annotation lines
+
+Three lines under `namespace`, canonical order, NO trailing newline, padded with `indent` spaces. Values are always double-quoted so YAML parsers don't coerce `v1` to a partial version literal and don't misread refs containing `@sha256:`. `as_yaml_annotations("io.scalo", indent=2)`:
+
+```yaml
+  io.scalo.contract.version: "v1"
+  io.scalo.contract.source-commit: "0123456789abcdef0123456789abcdef01234567"
+  io.scalo.contract.image-ref: "ghcr.io/example-org/orders-api:v2.7.3"
+```
+
+### `as_labels(namespace)` -- the keys as a dict
+
+The same three keys and values, in the same order, as a `dict[str, str]`. The container manifest merges it into its `labels`. scalo-rs has no equivalent, because its manifest carries no identity keys.
+
+No scalo-py generator calls `as_yaml_annotations`. It is for code that builds a YAML surface itself: `indent=2` fits a `Chart.yaml` top-level `annotations:` block, and `indent=4` an ArgoCD `Application` `metadata.annotations:` block.
+
+---
+
+## `IdentityError`
+
+```python
+class IdentityError(DeploymentError, ValueError):
+    ...
+```
+
+Subclasses BOTH `DeploymentError` (so consumers catching the broad
+deployment exception still trigger) AND `ValueError` (so generic
+validation handlers in calling code still trigger). The double-base
+is intentional and load-bearing.
+
+---
+
+## Pre-push vs post-push image refs
+
+Two valid forms for `image_ref`:
+
+| Form | When | Example |
+|---|---|---|
+| Tag | Pre-push, mutable | `ghcr.io/example-org/orders-api:v2.7.3` |
+| Digest | Post-push, immutable | `ghcr.io/example-org/orders-api@sha256:abc123...` |
+
+CI typically stamps the tag form during build (the digest doesn't
+exist yet) and re-stamps the digest form post-push for the production
+artefact. Both forms pass validation; consumers wanting the immutable
+guarantee filter by the presence of `@sha256:` in the value.
+
+---
+
+## Wiring into the generators
+
+All three identity-aware generators take `identity` as a keyword-only
+opt-in, default `None`:
+
+```python
+generate_dockerfile(contract, identity=identity)
+generate_runtime_stage(contract, identity=identity)
+generate_container_manifest(contract, identity=identity)
+```
+
+Behaviour when `identity=None`: pre-identity output, byte-for-byte
+unchanged. Behaviour when `identity` is provided:
+
+| Generator | Where identity lands |
+|---|---|
+| `generate_dockerfile` | three `LABEL` lines after `io.scalo.profile` |
+| `generate_runtime_stage` | three `LABEL` lines after `io.scalo.profile`, before the dynamic OCI `ARG`/`LABEL` block |
+| `generate_container_manifest` | three keys in the `labels` JSON dict |
+
+Every generator renders the keys under the contract's `oci_labels.label_namespace`.
+
+`generate_compose_fragment` and `generate_argocd_app_project` do NOT
+take `identity` -- Compose has no annotation surface, and AppProjects
+predate any individual contract instance.
+
+---
+
+## Cross-language parity
+
+The scheme is single-sourced via a golden fixture at
+`tests/fixtures/contract-parity/v1-output.txt`. Four sections, separated
+by `=== <section-name> ===` headers, all rendered under `io.scalo`:
+
+- `dockerfile-labels` -- output of `as_dockerfile_labels("io.scalo")`
+- `yaml-annotations-indent-0` -- output of `as_yaml_annotations("io.scalo", 0)`
+- `yaml-annotations-indent-2` -- output of `as_yaml_annotations("io.scalo", 2)`
+- `yaml-annotations-indent-4` -- output of `as_yaml_annotations("io.scalo", 4)`
+
+All sections use the same test inputs:
+
+```text
+source_commit = "0123456789abcdef0123456789abcdef01234567"
+image_ref     = "ghcr.io/hyperi-io/dfe-loader:v2.7.3"
+```
+
+`tests/unit/deployment/test_contract_identity_parity.py` diffs
+`ContractIdentity` output against each section byte-for-byte. The test also
+diffs against `hyperi-io/scalo-rs:tests/fixtures/contract-parity/v1-output.txt`
+when a clone is on disk. scalo-rs carries no such file yet, so that
+cross-check skips.
+
+File invariants: LF line endings, UTF-8, trailing newline, no blank
+lines inside content blocks.
+
+### Status
+
+The scalo-py fixture is the authored reference until scalo-rs publishes
+its `contract_identity` module. Once scalo-rs lands, copy its golden
+verbatim into the scalo-py repo and update the parity test's drift
+detection to point at the scalo-rs path. Eventually both copies move
+to `hyperi-ci/tests/fixtures/contract-parity/` and both libs consume
+from there.
+
+---
+
+## Phase staging
+
+The scheme rolls out in three coordinated phases across scalo-py,
+scalo-rs, and the consumer apps:
+
+| Phase | State | Default | Generators |
+|---|---|---|---|
+| 1 (current) | opt-in | `identity=None` | output unchanged unless caller passes identity |
+| 2 | required | `identity` is required at call sites | running without identity raises -- forces consumers to wire it |
+| 3 | inlined | wrapper dropped | identity is always stamped; the kwarg disappears |
+
+Phase 1 keeps existing CI green during the rollout. Phase 2 lands
+once every consumer app has been updated -- the change is
+`identity: ContractIdentity` (positional or required kwarg).
+Phase 3 is a major version bump.
+
+---
+
+## Why a separate scheme
+
+OCI has `org.opencontainers.image.source` and `.revision` already -- those cover the source repo URL and commit SHA, but stop at the container image. Helm charts and ArgoCD `Application` CRs are separate surfaces with no equivalent convention. The `<namespace>.contract.*` keys carry the same values onto any of the three, and the reverse-DNS namespace keeps them clear of OCI's reserved namespaces.
+
+---
+
+## Related
+
+- [contract.md](contract.md)
+- [artefacts.md](artefacts.md)
+- [test-support.md](test-support.md)
+- [native-deps.md](native-deps.md)
+- [keda.md](keda.md)
+- [../integration.md](../integration.md)
+- [../README.md](../README.md)

@@ -39,7 +39,7 @@ Usage::
     program = compile_expression("score > threshold")
     program.execute({"score": 85, "threshold": 80})  # True
 
-See: docs/api/EXPRESSION.md for the full profile specification.
+See: docs/api/expression.md for the full profile specification.
 """
 
 from .cel import (

@@ -32,7 +32,7 @@ uv add "scalo[http,metrics,expression,kafka,opentelemetry,secrets,deployment]"
 ```
 
 `scalo` on PyPI, `scalo` for imports. Extras and their install sizes are in
-[docs/EXTRAS-FLAGS.md](docs/EXTRAS-FLAGS.md) -- `secrets-aws` alone is ~100 MB, so
+[docs/extras-flags.md](docs/extras-flags.md) -- `secrets-aws` alone is ~100 MB, so
 pick the backend you use rather than `secrets`.
 
 ## What it is for
@@ -85,22 +85,22 @@ the scalo-service chart that renders your Kubernetes objects.
 
 | Topic | Doc |
 |---|---|
-| Config cascade | [core-pillars/CONFIG.md](docs/core-pillars/CONFIG.md) |
-| Logging and PII scrubbing | [core-pillars/LOGGING.md](docs/core-pillars/LOGGING.md) |
-| Metrics | [core-pillars/METRICS.md](docs/core-pillars/METRICS.md) |
-| Health, and the observability port | [core-pillars/HEALTH.md](docs/core-pillars/HEALTH.md) |
-| `ServiceApp` and the CLI | [api/CLI.md](docs/api/CLI.md) |
-| Secrets backends | [api/SECRETS.md](docs/api/SECRETS.md) |
-| Kafka | [transport/KAFKA.md](docs/transport/KAFKA.md) |
-| Path resolution | [runtime/RUNTIME-CONTEXT.md](docs/runtime/RUNTIME-CONTEXT.md) |
-| Deployment contract | [deployment/CONTRACT.md](docs/deployment/CONTRACT.md) |
-| What wires itself | [AUTO-WIRING.md](docs/AUTO-WIRING.md) |
+| Config cascade | [core-pillars/config.md](docs/core-pillars/config.md) |
+| Logging and PII scrubbing | [core-pillars/logging.md](docs/core-pillars/logging.md) |
+| Metrics | [core-pillars/metrics.md](docs/core-pillars/metrics.md) |
+| Health, and the observability port | [core-pillars/health.md](docs/core-pillars/health.md) |
+| `ServiceApp` and the CLI | [api/cli.md](docs/api/cli.md) |
+| Secrets backends | [api/secrets.md](docs/api/secrets.md) |
+| Kafka | [transport/kafka.md](docs/transport/kafka.md) |
+| Path resolution | [runtime/runtime-context.md](docs/runtime/runtime-context.md) |
+| Deployment contract | [deployment/contract.md](docs/deployment/contract.md) |
+| What wires itself | [auto-wiring.md](docs/auto-wiring.md) |
 | Layering and the module graph | [architecture.md](docs/architecture.md) |
 
 Two things worth reading before you deploy: `/livez` and `/readyz` are the whole
 health surface and there are no aliases, and the observability port is separate
 from your application's on purpose -- exposing user traffic must never expose the
-operator surface. Both are in [HEALTH.md](docs/core-pillars/HEALTH.md).
+operator surface. Both are in [health.md](docs/core-pillars/health.md).
 
 ## Development
 
@@ -119,7 +119,7 @@ make build     # build wheel
 - **[scalo-rs](https://github.com/hyperi-io/scalo-rs)** -- sister library for Rust
   services. Same opinions, same patterns, native Rust performance for hot-path
   workloads.
-- **[Migrating from hyperi-pylib](docs/MIGRATING-FROM-HYPERI-PYLIB.md)** -- `scalo`
+- **[Migrating from hyperi-pylib](docs/migrating-from-hyperi-pylib.md)** -- `scalo`
   is the renamed, Apache-2.0 continuation of `hyperi-pylib`; this guide covers the
   mechanical changes.
 

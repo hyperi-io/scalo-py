@@ -58,4 +58,4 @@ uv run pytest
 
 ## See Also
 
-- [scalo Logging Documentation](../../docs/LOGGING.md)
+- [scalo Logging Documentation](../../docs/core-pillars/logging.md)

@@ -85,4 +85,4 @@ Cache: memory (TTL: 300s)
 
 ## See Also
 
-- [scalo Configuration Documentation](../../docs/core-pillars/CONFIG.md)
+- [scalo Configuration Documentation](../../docs/core-pillars/config.md)

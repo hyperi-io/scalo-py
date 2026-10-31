@@ -1,0 +1,283 @@
+# Health
+
+Kubernetes-style probe endpoints with three-state semantics. Instantiate
+`HealthManager`, register downstream checks, mount the FastAPI router,
+and the service exposes `/livez` and `/readyz` -- each returning a 200 JSON
+body when healthy and a 503 with check details when not. The manager itself is pure Python and
+has no external dependencies; the router factory imports FastAPI
+lazily so the core module installs without it.
+
+```python
+from fastapi import FastAPI
+from scalo.health import HealthManager, create_health_router
+
+health = HealthManager()
+# fastapi 0.142+ otherwise reads OTEL_EXPORTER_OTLP_ENDPOINT and adds http/protobuf exporters, which fail against a gRPC collector.
+app = FastAPI(telemetry={"auto_configure": False})
+app.include_router(create_health_router(health))
+
+# Wire downstream checks.
+health.register_ready_check("postgres", lambda: db.is_connected())
+health.register_ready_check("kafka", lambda: producer.health_check())
+
+# Flip the gates once init completes.
+health.set_started()
+health.set_ready()
+```
+
+---
+
+## Three probes, three semantics
+
+| Probe | Path | 200 when | 503 when | Purpose |
+|-------|------|----------|----------|---------|
+| Liveness | `/livez` | All registered liveness checks pass (or none registered) | A check returns false or raises | K8s restarts the pod |
+| Readiness | `/readyz` | `set_ready()` called AND all readiness checks pass | Either gate fails | K8s removes pod from Service |
+| Startup | none -- probe `/livez` | -- | -- | K8s defers liveness until it passes |
+
+Liveness defaults to "alive" when no checks are registered -- the
+process is running, that's enough. Readiness defaults to NOT ready
+until you explicitly call `set_ready()`. This matters for K8s
+rolling updates: the pod stays out of the load balancer until your
+init code finishes connecting to downstreams.
+
+---
+
+## Response shape
+
+```json
+{
+  "status": "ready",
+  "timestamp": "2026-05-25T10:30:00.123456+00:00",
+  "checks": {
+    "postgres": true,
+    "kafka": true
+  }
+}
+```
+
+Failed probes return the same shape with `"status": "not_ready"`
+(or `"not_alive"`, `"starting"`) and the failing check set to `false`.
+Timestamps are RFC 3339 with UTC offset. Checks that raise are
+treated as `false` -- the manager catches every exception so one
+broken check never takes the probe with it.
+
+---
+
+## Paths
+
+`/livez` and `/readyz` are canonical. The `*z` suffix is the
+convention, chosen so probe routes stay visually distinct from
+application routes, and scalo-rs serves the same names.
+
+`/livez` and `/readyz` are the whole surface -- **there are no aliases**.
+Both the observability server and the FastAPI router serve exactly these
+two, and every retired path returns 404.
+
+That is deliberate. An alias looks
+like kindness and behaves like a blindfold: while every spelling answers
+200, nothing can tell you which spelling a service actually intends, so a
+chart probing a name the app no longer means keeps passing and a
+half-finished migration is indistinguishable from a finished one.
+
+An earlier version of the sibling library served six spellings. Across one fleet of six services on that version,
+the deployment contracts had drifted into three different answers for the
+same question -- and all three worked, because the library answered them
+all. The drift stayed invisible until one service, which did not inherit
+those routes, wired its chart to one spelling and its app to another. The
+probe 404'd, liveness killed a healthy process, and the replacement
+crash-looped for six days before anyone noticed.
+
+So the contract has two halves: canonical paths return 200, retired paths
+return **404**, and the tests assert both. The 404 is the half that does
+the work -- it turns a stale probe from a silent success into an obvious
+failure, and it stops an alias creeping back in later.
+
+There is **no startup path**. Aim `startupProbe` at the liveness path --
+Kubernetes suspends liveness until the startup probe passes, so one path
+gives both a generous boot budget and a tight liveness period without the
+two drifting apart.
+
+## K8s probe spec
+
+Probe the **observability port**, not the traffic port. That is the
+whole point of a separate port: exposing the application must not
+expose the operator surface.
+
+```yaml
+livenessProbe:
+  httpGet:
+    path: /livez
+    port: metrics       # the observability port (9090), NOT http
+  initialDelaySeconds: 30
+  periodSeconds: 10
+  timeoutSeconds: 3
+  failureThreshold: 3
+
+readinessProbe:
+  httpGet:
+    path: /readyz
+    port: metrics
+  initialDelaySeconds: 5
+  periodSeconds: 5
+  timeoutSeconds: 3
+  failureThreshold: 2
+
+startupProbe:
+  httpGet:
+    path: /livez      # reuses liveness, by design
+    port: metrics
+  periodSeconds: 5
+  failureThreshold: 30      # 30 * 5s = 150s max startup
+```
+
+The deployment generator already emits exactly this from the default
+`HealthContract` -- no override needed.
+
+---
+
+## Serving the probes
+
+Two shapes, and the first is the one you want.
+
+**Dedicated observability port (recommended).** `ServiceApp` binds
+`--metrics-addr` (default `0.0.0.0:9090`) during `run` and serves
+`/metrics`, `/livez` and `/readyz` there. Register checks and flip
+readiness on the manager it hands you, or `/readyz` will report
+something the service does not mean:
+
+```python
+class MyService(ServiceApp):
+    name = "my-service"
+    env_prefix = "MYAPP"
+
+    def run_service(self, config):
+        self.health().register_ready_check("db", db.is_connected)
+        self.health().set_ready()
+        ...
+```
+
+Outside `ServiceApp`, do the same directly:
+
+```python
+from scalo.health import HealthManager, serve_observability
+
+health = HealthManager()
+server = serve_observability(health, metrics, "0.0.0.0:9090")
+```
+
+That listener is stdlib-only, so it does not need the FastAPI extra.
+
+**App-mounted router.** `create_health_router` still exists for
+services that want the probes on their own FastAPI app. Be aware this
+puts the operator surface behind the same ingress as user traffic --
+which is how an unauthenticated `/metrics` ends up on a public API
+port.
+
+---
+
+## Registering checks
+
+```python
+def db_ok() -> bool:
+    try:
+        db.execute("SELECT 1")
+        return True
+    except Exception:
+        return False
+
+health.register_ready_check("postgres", db_ok)
+health.register_live_check("eventloop", lambda: not loop.is_closed())
+```
+
+Checks must be synchronous and return a bool. For checks that need
+async work, wrap with `asyncio.run` in a thread, or use the parallel
+helper:
+
+```python
+from scalo.concurrency import gather_with_timeouts
+
+async def aggregate_health() -> dict[str, bool]:
+    results = await gather_with_timeouts(
+        {
+            "db": lambda: db.ping(),
+            "kafka": lambda: producer.health_check(),
+        },
+        per_task_timeout=1.0,
+    )
+    return {k: not isinstance(v, Exception) and v for k, v in results.items()}
+```
+
+Each check gets its own timeout -- one slow downstream doesn't fail
+the others.
+
+---
+
+## Startup phase
+
+Two-stage startup -- mark `set_started()` after init logic completes,
+then `set_ready()` after downstreams connect:
+
+```python
+async def startup() -> None:
+    await db.connect()
+    await kafka.connect()
+    await cache.warmup()
+    health.set_started()        # startup probe passes
+    health.set_ready()           # readiness probe passes
+```
+
+The startup probe matters for slow-init services -- K8s waits for it
+to pass before running liveness checks, preventing a slow boot from
+triggering restart loops. Without it, the `initialDelaySeconds`
+guess is your only buffer.
+
+---
+
+## State machine
+
+```mermaid
+stateDiagram-v2
+    [*] --> Starting
+    Starting --> Started: set_started()
+    Started --> Ready: set_ready() and checks pass
+    Ready --> NotReady: any check fails
+    NotReady --> Ready: checks recover
+    Ready --> [*]: shutdown
+    NotReady --> [*]: shutdown
+```
+
+Liveness is independent of this -- the manager tracks it as a
+separate set of checks that K8s polls regardless of readiness state.
+
+---
+
+## Without FastAPI
+
+The manager is pure Python; if you use Starlette, Flask, or a custom
+framework, wire the responses directly:
+
+```python
+health = HealthManager()
+
+# Your framework's handler:
+def liveness_handler():
+    resp = health.liveness_response()
+    status = 200 if health.is_live() else 503
+    return JSONResponse(resp, status_code=status)
+```
+
+`liveness_response()`, `readiness_response()`, `startup_response()`,
+`is_live()`, `is_ready()`, `is_started()` are the full surface.
+
+---
+
+## Related
+
+- [config.md](config.md) -- readiness can gate on config validity
+- [logging.md](logging.md) -- failed checks log via the same logger
+- [metrics.md](metrics.md) -- probes are not exported as metrics by design
+- [shutdown.md](shutdown.md) -- flip ready off before draining
+- [api/concurrency.md](../api/concurrency.md) -- `gather_with_timeouts` for async checks
+- [deployment/contract.md](../deployment/contract.md) -- `HealthContract` defaults
+- [transport/kafka.md](../transport/kafka.md) -- consumer-lag readiness check
