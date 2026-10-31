@@ -124,11 +124,12 @@ def _never_retry(_exc: BaseException) -> bool:
     return False
 
 
-def _replayable(method: str, kwargs: dict[str, Any], retry_non_idempotent: bool) -> bool:
+def _replayable(method: str, kwargs: dict[str, Any], retry_non_idempotent: bool, client_headers: httpx.Headers) -> bool:
     """Return True when resending the request cannot apply it twice."""
     if retry_non_idempotent or method.upper() not in _NON_IDEMPOTENT_METHODS:
         return True
-    return "idempotency-key" in httpx.Headers(kwargs.get("headers"))
+    # A key set on the client is sent with every request, so it counts as much as a per-request one.
+    return "idempotency-key" in client_headers or "idempotency-key" in httpx.Headers(kwargs.get("headers"))
 
 
 def _apply_request_headers(
@@ -267,7 +268,11 @@ class HttpClient:
             httpx.HTTPError: On non-retryable errors or after retries exhausted
         """
         _apply_request_headers(kwargs, traceparent, idempotency_key)
-        retry_on = _is_retryable if _replayable(method, kwargs, self._retry_non_idempotent) else _never_retry
+        retry_on = (
+            _is_retryable
+            if _replayable(method, kwargs, self._retry_non_idempotent, self._client.headers)
+            else _never_retry
+        )
         try:
             for attempt in stamina.retry_context(
                 on=retry_on,
@@ -472,7 +477,11 @@ class AsyncHttpClient:
         idempotency_key semantics.
         """
         _apply_request_headers(kwargs, traceparent, idempotency_key)
-        retry_on = _is_retryable if _replayable(method, kwargs, self._retry_non_idempotent) else _never_retry
+        retry_on = (
+            _is_retryable
+            if _replayable(method, kwargs, self._retry_non_idempotent, self._client.headers)
+            else _never_retry
+        )
         try:
             async for attempt in stamina.retry_context(
                 on=retry_on,

@@ -166,6 +166,9 @@ _MUTATION_CASES = [
     pytest.param("PATCH", "/drop", {}, {}, 1, id="patch-dropped-not-retried"),
     pytest.param("POST", "/drop", {}, {"idempotency_key": "k-1"}, 3, id="post-with-key-retried"),
     pytest.param("PATCH", "/503", {}, {"headers": {"Idempotency-Key": "k-2"}}, 3, id="patch-with-key-header-retried"),
+    pytest.param(
+        "POST", "/503", {"headers": {"Idempotency-Key": "k-3"}}, {}, 3, id="post-with-client-key-header-retried"
+    ),
     pytest.param("POST", "/503", {"retry_non_idempotent": True}, {}, 3, id="post-opted-in-retried"),
     pytest.param("PUT", "/503", {}, {}, 3, id="put-replayable-retried"),
     pytest.param("GET", "/drop", {}, {}, 3, id="get-replayable-retried"),

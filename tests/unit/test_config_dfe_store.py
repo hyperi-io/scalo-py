@@ -1,6 +1,7 @@
 """Tests for DirectoryConfigStore."""
 
 import os
+import stat
 import threading
 import time
 from pathlib import Path
@@ -475,6 +476,32 @@ class TestThreadSafety:
             os.umask(previous)
 
         assert table_file.stat().st_mode & 0o777 == want_mode
+
+    def test_a_write_keeps_the_table_group(self, config_dir):
+        other = next((g for g in os.getgroups() if g != os.getegid()), None)
+        if other is None:
+            pytest.skip("needs a process with a second group")
+        table_file = config_dir / "shared.yaml"
+        table_file.write_text("a: 1\n")
+        os.chown(table_file, -1, other)
+
+        DirectoryConfigStore(config_dir, refresh_interval=0, writable=True).set("shared", "a", 2)
+
+        assert table_file.stat().st_gid == other
+
+    def test_a_write_syncs_the_directory_after_the_rename(self, config_dir, monkeypatch):
+        synced_dirs = []
+        real_fsync = os.fsync
+
+        def recording_fsync(fd):
+            if stat.S_ISDIR(os.fstat(fd).st_mode):
+                synced_dirs.append(fd)
+            real_fsync(fd)
+
+        monkeypatch.setattr(os, "fsync", recording_fsync)
+        DirectoryConfigStore(config_dir, refresh_interval=0, writable=True).set("durable", "a", 1)
+
+        assert synced_dirs, "the table's directory was never synced, so a crash can lose the rename"
 
 
 class TestContextManager:

@@ -579,8 +579,11 @@ class DirectoryConfigStore:
         A reader, the refresh thread included, sees the old table or the new one, never a partial one.
         """
         content = yaml.safe_dump(data, default_flow_style=False, sort_keys=True).encode("utf-8")
+        owner: tuple[int, int] | None = None
         try:
-            mode = path.stat().st_mode & 0o777
+            st = path.stat()
+            mode = st.st_mode & 0o777
+            owner = (st.st_uid, st.st_gid)
         except FileNotFoundError:
             mode = 0o644 & ~_process_umask()
         # The .tmp suffix keeps the half-written file out of the *.yaml / *.yml table scan.
@@ -591,7 +594,19 @@ class DirectoryConfigStore:
                 handle.flush()
                 os.fsync(handle.fileno())
             os.chmod(tmp_name, mode)
+            # The new inode belongs to the writer, so a table another uid or group reads keeps its owner,
+            # and a write that cannot keep it fails rather than lock the readers out.
+            if owner is not None:
+                tmp_stat = os.stat(tmp_name)
+                if (tmp_stat.st_uid, tmp_stat.st_gid) != owner:
+                    os.chown(tmp_name, *owner)
             os.replace(tmp_name, path)
+            # The rename lives in the directory, which a crash can lose until it is synced too.
+            dir_fd = os.open(str(path.parent), os.O_RDONLY)
+            try:
+                os.fsync(dir_fd)
+            finally:
+                os.close(dir_fd)
         except OSError as e:
             with suppress(FileNotFoundError):
                 os.unlink(tmp_name)
