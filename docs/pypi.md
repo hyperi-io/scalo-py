@@ -7,10 +7,10 @@ It is built for APIs, orchestrators, CLI tools and integration glue. For the hot
 ## What it gives you
 
 - A seven-layer config cascade, from CLI flags and env vars down to YAML and defaults, that reads the same in a laptop shell and a Kubernetes pod.
-- Structured logs, JSON in a container and readable text at a terminal. Credentials, tokens and keys are masked, and so are cards, IBANs, emails, phone numbers and Australian ABN, ACN, TFN and Medicare numbers.
+- Structured logs, JSON in a container and readable text at a terminal. Credentials, tokens and keys are masked, and so are cards, IBANs, emails and phone numbers, and Australian ABN, ACN, TFN and Medicare numbers where a keyword names them. TRACE records skip the scrubber by default.
 - `ServiceApp`: subclass it and get `run`, `version`, `config-check` and `generate-artefacts`, with config and logging started for you, and metrics too once `scalo[metrics]` is installed.
-- `/metrics`, `/livez` and `/readyz` on an observability port kept apart from your application's own.
-- With the `metrics` extra, Prometheus and OpenTelemetry metrics, process and container gauges included.
+- `/livez` and `/readyz` on an observability port kept apart from your application's own.
+- With the `metrics` extra, Prometheus and OpenTelemetry metrics, process and container gauges included, scraped from `/metrics` on the same port. Without a metrics manager that path answers 404.
 - Secrets from OpenBao or Vault, AWS, GCP, Azure, Kubernetes and Ansible Vault, one extra per backend.
 - A deployment contract: return one from `deployment_contract()` and `generate-artefacts` writes your runtime Dockerfile and the contract the scalo-service Helm chart renders from.
 - Kafka, CEL expressions and an HTTP client with jittered retry, each behind its own extra.

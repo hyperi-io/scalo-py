@@ -1,27 +1,24 @@
 # scalo
 
 <!-- BADGES:START -->
-<!-- Build Status badge omitted: the repo is private, so GitHub's Actions
-     badge SVG 404s for anonymous PyPI viewers (shields.io can't read a
-     private repo's status either). Re-add at the public-visibility flip:
-     [![Build Status](https://github.com/hyperi-io/scalo-py/actions/workflows/ci.yml/badge.svg)](https://github.com/hyperi-io/scalo-py/actions) -->
-
 | | |
 | --- | --- |
+| Build | [![Build Status](https://github.com/hyperi-io/scalo-py/actions/workflows/ci.yml/badge.svg)](https://github.com/hyperi-io/scalo-py/actions) |
 | Package | [![PyPI](https://img.shields.io/pypi/v/scalo?logo=pypi)](https://pypi.org/project/scalo/) [![Python Version](https://img.shields.io/badge/python-3.14%2B-blue)](https://www.python.org/) |
 | Meta | [![License](https://img.shields.io/badge/license-Apache--2.0-green)](https://www.apache.org/licenses/LICENSE-2.0) |
 <!-- BADGES:END -->
 
-Opinionated-for-scale integrated runtime of config, logging, secrets, cli and more for control-plane services.
+The runtime layer for Python control-plane services: config, logging, metrics, health probes, secrets and a service CLI, already wired together. In a DFE deployment dfe-engine is built on it, with the same config and logging conventions scalo-rs gives the Rust services.
 
-## Key features
+## What it gives you
 
-- configuration cascade for local test through at scale k8s deployments (env, config, cli)
-- integrated logger (line and json) for enterprise deployments, configured by `ServiceApp` or one `setup()` call
-- auto enabled Otel and Prometheus metrics in expected forms and buckets for cloud and k8s deployments
-- secrets management integration
-- authentication and secrets integration for most common deployments and services
-- deployment contracts, your code automatically generates docker, and k8s artefacts for deployment consumption
+- A seven-layer config cascade, from CLI flags and env vars down to YAML and defaults, that reads the same in a laptop shell and a Kubernetes pod.
+- Structured logs, JSON in a container and readable text at a terminal, with secrets, credential fields and validated PII values redacted at every level but TRACE, which the scrubber skips by default.
+- `ServiceApp`: subclass it and get `run`, `version`, `config-check` and `generate-artefacts`, with config and logging started for you.
+- `/livez` and `/readyz` on an observability port kept apart from your application's own.
+- Prometheus and OpenTelemetry metrics with the `metrics` extra, scraped from `/metrics` on the same port. Without a metrics manager that path answers 404.
+- Secrets from OpenBao or Vault, AWS, GCP, Azure, Kubernetes and Ansible Vault, one extra per backend.
+- A deployment contract that writes your runtime Dockerfile and the input the scalo-service Helm chart renders from.
 
 ## Install
 
@@ -58,7 +55,7 @@ Core, always installed:
 
 | Module | What it does | Deps |
 |---|---|---|
-| `logger` | Structured JSON logging, PII masked, secrets filtered, container-aware | loguru |
+| `logger` | Structured logging, JSON in a container. Redacts gitleaks secret patterns, credential field names, card numbers (Luhn-checked), IBANs, emails and phone numbers, and AU ABN, ACN, TFN and Medicare numbers where a keyword names them. TRACE records skip the scrubber by default (`logging.scrub.log_levels.trace`) | loguru |
 | `config` | 7-layer cascade (CLI -> ENV -> .env -> YAML -> defaults) | dynaconf, pyyaml, python-dotenv, mergedeep, tomli-w, dulwich |
 | `runtime` | Detects K8s / Docker / local, resolves config and data paths | stdlib only |
 | `cli` | `ServiceApp` -- subclass for `run` / `version` / `config-check` | typer |
@@ -179,4 +176,4 @@ feeds this repo -- it declares no inbound edges.
 
 ## Issues
 
-Open bugs: [this repo](https://github.com/hyperi-io/scalo-py/issues?q=is%3Aopen+is%3Aissue+type%3ABug+-label%3Abacklog+-label%3Anext-minor) | [whole DFE suite](https://github.com/search?type=issues&q=is%3Aopen+is%3Aissue+type%3ABug+-label%3Abacklog+-label%3Anext-minor+repo%3Ahyperi-io%2Fdfe-infra+repo%3Ahyperi-io%2Fdfe-docker+repo%3Ahyperi-io%2Fdfe-deploy+repo%3Ahyperi-io%2Fdfe-engine+repo%3Ahyperi-io%2Fdfe-loader+repo%3Ahyperi-io%2Fdfe-receiver+repo%3Ahyperi-io%2Fdfe-fetcher+repo%3Ahyperi-io%2Fdfe-archiver+repo%3Ahyperi-io%2Fdfe-transform-vrl+repo%3Ahyperi-io%2Fdfe-transform-vector+repo%3Ahyperi-io%2Fdfe-transform-elastic+repo%3Ahyperi-io%2Fdfe-ui+repo%3Ahyperi-io%2Fdfe-hyperdx+repo%3Ahyperi-io%2Fscalo-rs+repo%3Ahyperi-io%2Fscalo-py+repo%3Ahyperi-io%2Flogreducer+repo%3Ahyperi-io%2Fdfe-schemas+repo%3Ahyperi-io%2Fvector-vrl+repo%3Ahyperi-io%2Fculvert+repo%3Ahyperi-io%2Fclickhouse-dfe+repo%3Ahyperi-io%2Ffactbook-rs)
+Open bugs: [this repo](https://github.com/hyperi-io/scalo-py/issues?q=is%3Aopen+is%3Aissue+type%3ABug+-label%3Abacklog+-label%3Anext-minor) | [whole DFE suite](https://github.com/search?type=issues&q=is%3Aopen+is%3Aissue+type%3ABug+-label%3Abacklog+-label%3Anext-minor+repo%3Ahyperi-io%2Fdfe-infra+repo%3Ahyperi-io%2Fdfe-docker+repo%3Ahyperi-io%2Fdfe-deploy+repo%3Ahyperi-io%2Fdfe-engine+repo%3Ahyperi-io%2Fdfe-loader+repo%3Ahyperi-io%2Fdfe-receiver+repo%3Ahyperi-io%2Fdfe-fetcher+repo%3Ahyperi-io%2Fdfe-archiver+repo%3Ahyperi-io%2Fdfe-transform-vrl+repo%3Ahyperi-io%2Fdfe-transform-vector+repo%3Ahyperi-io%2Fdfe-transform-elastic+repo%3Ahyperi-io%2Fdfe-ui+repo%3Ahyperi-io%2Fdfe-hyperdx+repo%3Ahyperi-io%2Fscalo-rs+repo%3Ahyperi-io%2Fscalo-py+repo%3Ahyperi-io%2Flogreducer+repo%3Ahyperi-io%2Fdfe-schemas+repo%3Ahyperi-io%2Fvector-vrl+repo%3Ahyperi-io%2Fculvert+repo%3Ahyperi-io%2Fdfe-clickhouse-rs+repo%3Ahyperi-io%2Ffactbook-rs)
