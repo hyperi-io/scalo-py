@@ -3,6 +3,18 @@
 Rendered by CI and committed back at the end of a release -- do not edit by
 hand. Release notes also appear on the GitHub Releases page, one per tag.
 
+## [2.32.3](https://github.com/hyperi-io/scalo-py/compare/v2.32.2...v2.32.3) (2026-10-31)
+
+### Bug Fixes
+
+* build the default scrubber without compiling its secret rules ([#167](https://github.com/hyperi-io/scalo-py/issues/167)) ([919bf37](https://github.com/hyperi-io/scalo-py/commit/919bf37215faa02c02fd26d90066c6fd42ef5c9c)), closes [#69](https://github.com/hyperi-io/scalo-py/issues/69)
+* hold the scrubber in flight to test a cancelled health check ([#169](https://github.com/hyperi-io/scalo-py/issues/169)) ([9497388](https://github.com/hyperi-io/scalo-py/commit/949738815fe38549a8e1d85e35db451ffefe1172)), closes [#167](https://github.com/hyperi-io/scalo-py/issues/167)
+* keep test log lines out of the CI annotations ([#165](https://github.com/hyperi-io/scalo-py/issues/165)) ([4580cca](https://github.com/hyperi-io/scalo-py/commit/4580ccab5ebd209c57cee349a7c9c340f3eebcab))
+* per-signal OTLP env vars, pod identity, scaling gauge tick and OTel metrics follow-ups ([#166](https://github.com/hyperi-io/scalo-py/issues/166)) ([5e951b3](https://github.com/hyperi-io/scalo-py/commit/5e951b3ca156c184c934148c4cd439c293a18989))
+* refuse a missing --config, write config atomically, bind IPv6, never retry POST or PATCH ([#170](https://github.com/hyperi-io/scalo-py/issues/170)) ([1d698cd](https://github.com/hyperi-io/scalo-py/commit/1d698cd9809841bf9978bfdacac607ad09fffb2b))
+* run the test suite in parallel ([#164](https://github.com/hyperi-io/scalo-py/issues/164)) ([f7c190e](https://github.com/hyperi-io/scalo-py/commit/f7c190e7676d50d9851011481c6e533fa875fa68))
+* stop the scrubber build paying for a noop metrics sink and an unused phone library ([#163](https://github.com/hyperi-io/scalo-py/issues/163)) ([7832817](https://github.com/hyperi-io/scalo-py/commit/7832817fe4e95fef2410242cb8768edaa2a26c79))
+
 ## [2.32.2](https://github.com/hyperi-io/scalo-py/compare/v2.32.1...v2.32.2) (2026-10-25)
 
 ### Bug Fixes
