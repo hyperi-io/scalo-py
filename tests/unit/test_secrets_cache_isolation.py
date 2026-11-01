@@ -8,10 +8,9 @@
 
 """Two SecretsManager instances must not share cached secrets."""
 
-from __future__ import annotations
-
 from datetime import UTC, datetime
 from pathlib import Path
+from typing import Any
 
 import pytest
 
@@ -157,8 +156,9 @@ def test_two_openbao_backends_named_alike_never_share_a_disk_entry(tmp_path, a, 
     from scalo.secrets.providers.openbao import OpenBaoProvider
     from scalo.secrets.types import OpenBaoConfig
 
-    def manager(fields: dict) -> SecretsManager:
-        config = OpenBaoConfig(**{"address": "https://bao:8200", **fields})
+    def manager(fields: dict[str, Any]) -> SecretsManager:
+        settings: dict[str, Any] = {"address": "https://bao:8200", **fields}
+        config = OpenBaoConfig(**settings)
         return SecretsManager(providers={"openbao": OpenBaoProvider(config)}, cache_config=_disk_cached(tmp_path))
 
     key = _CacheKey("openbao", "secret/data/app", "password")
