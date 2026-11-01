@@ -235,6 +235,36 @@ class TestCorruptYAML:
         # Should still have last good version
         assert store.get("dfe-loader", "database.host") == "localhost"
 
+    @pytest.mark.parametrize(
+        ("broken", "error"),
+        [
+            pytest.param("{{{{invalid yaml: [", ValueError, id="malformed"),
+            pytest.param("- just\n- a\n- list\n", ValueError, id="not-a-mapping"),
+            pytest.param(None, PermissionError, id="unreadable"),
+        ],
+    )
+    @pytest.mark.parametrize("write", ["set", "delete"])
+    def test_a_write_over_a_table_it_cannot_read_is_refused(self, store, config_dir, broken, error, write):
+        path = config_dir / "dfe-loader.yaml"
+        if broken is None:
+            if os.geteuid() == 0:
+                pytest.skip("root reads a file whatever its mode")
+            path.chmod(0)
+        else:
+            path.write_text(broken)
+        before = path.read_bytes() if broken is not None else None
+
+        with pytest.raises(error):
+            if write == "set":
+                store.set("dfe-loader", "batch_size", 5)
+            else:
+                store.delete("dfe-loader", "batch_size")
+
+        path.chmod(0o644)
+        assert path.read_bytes() == before or broken is None, "the file was rewritten"
+        if broken is None:
+            assert yaml.safe_load(path.read_text())["database"]["host"] == "localhost"
+
     def test_non_dict_yaml_skipped(self, config_dir):
         (config_dir / "bad.yaml").write_text("- just\n- a\n- list\n")
         store = DirectoryConfigStore(config_dir, refresh_interval=0)

@@ -98,7 +98,7 @@ store.delete("loaders/ingest-loader", "database.password",
              author="Ops <ops@example.com>")
 ```
 
-Writes hold an exclusive advisory lock (`fcntl.LOCK_EX`) on the table's directory from the read to the write, write the YAML to a temporary sibling and rename it over the table, refresh the cache slot, commit to git if the directory is a repo, and fire change callbacks. Subdirectories are created automatically on first write to a new table.
+Writes hold an exclusive advisory lock (`fcntl.LOCK_EX`) on the table's directory from the read to the write, write the YAML to a temporary sibling and rename it over the table, refresh the cache slot, commit to git if the directory is a repo, and fire change callbacks. Subdirectories are created automatically on first write to a new table. A write to a table whose file is not a YAML mapping raises `ValueError`, and one whose file cannot be read raises the `OSError`, leaving the file as it was rather than replacing it with the one new key.
 
 Read-only stores raise `PermissionError` on writes. Writability is
 auto-detected from filesystem permissions; override with

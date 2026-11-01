@@ -6,6 +6,12 @@ Behaviour and API changes that need a consumer adjustment, indexed by the scalo 
 
 ## Unreleased
 
+### `DirectoryConfigStore` refuses a write over a table it cannot read (BEHAVIOUR CHANGE)
+
+`set` read a malformed, non-mapping or unreadable table as empty and wrote back only the new key. It now raises `ValueError` or the `OSError`, as `delete` does, and leaves the file alone.
+
+**Consumer adjustment** -- a caller that relied on `set` to overwrite a broken table fixes or removes the file first.
+
 ### The secrets disk cache is keyed by backend and principal (BEHAVIOUR CHANGE)
 
 A disk entry was keyed `<provider name>:<path>:<key>`, so two managers on one host reading the same path from different backends, or as different principals, shared an entry, and a colon in the path or key could make two secrets collide. The key is now the provider's `cache_identity` (its endpoint, scope and a digest of its credential), the path and the sub-key. Entries written under the old key are never read again. See [api/secrets.md](api/secrets.md#caching).
