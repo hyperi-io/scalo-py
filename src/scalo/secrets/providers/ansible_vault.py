@@ -43,6 +43,7 @@ from ..exceptions import (
 )
 from ..types import AnsibleVaultConfig, SecretFilter, SecretMetadata, SecretValue
 from .base import SecretProvider, credential_digest
+from .file import _make_private_dirs, _write_private
 
 logger = logging.getLogger(__name__)
 
@@ -357,7 +358,7 @@ class AnsibleVaultProvider(SecretProvider):
         return self.create_sync(path, value, tags)
 
     def create_sync(self, path: str, value: bytes, tags: dict[str, str] | None = None) -> SecretMetadata:
-        """Create a new vault-encrypted secret file. Fails if file already exists."""
+        """Create a new vault-encrypted secret file as 0o600, all or nothing. Fails if file already exists."""
         file_path = Path(path)
 
         if file_path.exists():
@@ -365,8 +366,10 @@ class AnsibleVaultProvider(SecretProvider):
 
         try:
             encrypted = self._encrypt(value)
-            file_path.parent.mkdir(parents=True, exist_ok=True)
-            file_path.write_text(encrypted, encoding="utf-8")
+            _make_private_dirs(file_path.parent)
+            _write_private(file_path, encrypted.encode("utf-8"), replace=False)
+        except FileExistsError:
+            raise SecretAlreadyExistsError(path, self.name)
         except PermissionError:
             raise SecretPermissionError(self.name, "create", path, f"check filesystem permissions on '{path}'")
         except OSError as e:
@@ -381,7 +384,7 @@ class AnsibleVaultProvider(SecretProvider):
         return self.update_sync(path, value)
 
     def update_sync(self, path: str, value: bytes) -> SecretMetadata:
-        """Update an existing vault-encrypted secret file. Fails if file doesn't exist."""
+        """Replace an existing vault-encrypted secret file as 0o600, all or nothing. Fails if file doesn't exist."""
         file_path = Path(path)
 
         if not file_path.exists():
@@ -389,7 +392,9 @@ class AnsibleVaultProvider(SecretProvider):
 
         try:
             encrypted = self._encrypt(value)
-            file_path.write_text(encrypted, encoding="utf-8")
+            _write_private(file_path.resolve(), encrypted.encode("utf-8"), replace=True)
+        except FileNotFoundError:
+            raise SecretNotFoundError(path, self.name)
         except PermissionError:
             raise SecretPermissionError(self.name, "update", path, f"check filesystem permissions on '{path}'")
         except OSError as e:

@@ -248,7 +248,7 @@ Tags are server-side on cloud providers, ignored by file-based ones.
 Writes raise `SecretAlreadyExistsError`, `SecretPermissionError`, or
 `ProviderError` — never silently fail.
 
-The file provider writes each secret file as `0600` and makes any missing directory `0700`, whatever the umask. An update sets an existing file to `0600` before it writes, so updating a file the process does not own raises `SecretPermissionError` and leaves the file as it was.
+The file and Ansible Vault providers write each secret file as `0600` and make any missing directory `0700`, whatever the umask. A create or update writes a private sibling, flushes it to disk and then renames it into place, so a reader sees the old secret or the new one, never an empty or partial file, and a write that fails (a full disk) leaves the old secret. Updating a file the process does not own or cannot write raises `SecretPermissionError` and leaves the file as it was. An update through a symlink replaces the file it points to.
 
 On AWS, `delete()` follows `recovery_window_days` (see [AWS region, KMS key and deletion window](#aws-region-kms-key-and-deletion-window)).
 
