@@ -17,6 +17,14 @@ import textwrap
 import pytest
 
 
+@pytest.fixture
+def runtime_home(tmp_path, monkeypatch):
+    """Point both container mode's base path and local mode's home at tmp_path, so either mode can write."""
+    monkeypatch.setenv("CONTAINER_BASE_PATH", str(tmp_path / "container"))
+    monkeypatch.setenv("HOME", str(tmp_path / "home"))
+    return tmp_path
+
+
 @pytest.mark.smoke
 class TestCoreImports:
     """Verify all core modules import without error."""
@@ -36,14 +44,10 @@ class TestCoreImports:
 
         assert settings is not None
 
-    def test_import_runtime(self):
+    def test_import_runtime(self, runtime_home):
         from scalo.runtime import get_runtime_paths
 
-        try:
-            paths = get_runtime_paths("smoke-test")
-            assert paths is not None
-        except RuntimeError:
-            pytest.skip("Runtime paths require writable /app/data (CI container)")
+        assert get_runtime_paths("smoke-test") is not None
 
     def test_import_cli(self):
         from scalo.cli import ServiceApp, VersionInfo
@@ -66,15 +70,13 @@ class TestCoreDefaults:
 
         assert settings is not None
 
-    def test_runtime_paths_resolve(self):
+    def test_runtime_paths_resolve(self, runtime_home):
         from scalo.runtime import get_runtime_paths
 
-        try:
-            paths = get_runtime_paths("smoke-test")
-            assert paths.cache_dir is not None
-            assert paths.config_dir is not None
-        except RuntimeError:
-            pytest.skip("Runtime paths require writable /app/data (CI container)")
+        paths = get_runtime_paths("smoke-test")
+        assert paths.cache_dir is not None
+        assert paths.config_dir is not None
+        assert paths.data_dir.is_dir()
 
     def test_version_info_from_env(self):
         from scalo.cli import VersionInfo
