@@ -16,7 +16,7 @@ from typing import Any, Iterator
 
 from confluent_kafka import Consumer, KafkaError, TopicPartition
 
-from .config import CONSUMER_DEFAULTS, merge_config
+from .config import CONSUMER_DEFAULTS, broker_call, call_timeout, merge_config
 from .types import Message
 
 
@@ -63,6 +63,7 @@ class KafkaConsumer:
 
         # Merge with defaults
         self._config = merge_config(config, CONSUMER_DEFAULTS, verify_ssl=verify_ssl)
+        self._timeout = call_timeout(self._config)
 
         # Create consumer
         self._consumer = Consumer(self._config)
@@ -214,7 +215,7 @@ class KafkaConsumer:
             partition: Partition number
         """
         tp = TopicPartition(topic, partition)
-        low, _ = self._consumer.get_watermark_offsets(tp)
+        low, _ = broker_call(self._timeout, self._consumer.get_watermark_offsets, tp)
         self.seek(topic, partition, low)
 
     def seek_to_end(self, topic: str, partition: int) -> None:
@@ -225,7 +226,7 @@ class KafkaConsumer:
             partition: Partition number
         """
         tp = TopicPartition(topic, partition)
-        _, high = self._consumer.get_watermark_offsets(tp)
+        _, high = broker_call(self._timeout, self._consumer.get_watermark_offsets, tp)
         self.seek(topic, partition, high)
 
     def position(self, topic: str, partition: int) -> int:
@@ -265,7 +266,7 @@ class KafkaConsumer:
             Dict of partition -> committed offset
         """
         tps = [TopicPartition(topic, p) for p in partitions]
-        result = self._consumer.committed(tps)
+        result = broker_call(self._timeout, self._consumer.committed, tps)
         return {tp.partition: tp.offset for tp in result}
 
     # =========================================================================

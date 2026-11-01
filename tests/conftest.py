@@ -74,10 +74,15 @@ if env_file.exists():
 
 @pytest.fixture(scope="session")
 def kafka_config(shared_kafka) -> dict:
-    """librdkafka settings for the run's Kafka, with scalo's admin defaults."""
+    """librdkafka settings for the run's Kafka, with scalo's admin defaults.
+
+    The ``client.id`` anchors the group ids scalo derives for its own consumers,
+    so it carries the group prefix a pet broker grants.
+    """
     from scalo.kafka.config import ADMIN_DEFAULTS, merge_config
 
-    return merge_config(dict(shared_kafka.client_config), ADMIN_DEFAULTS, verify_ssl=False)
+    config = {**shared_kafka.client_config, "client.id": shared_kafka.group_name("client")}
+    return merge_config(config, ADMIN_DEFAULTS, verify_ssl=False)
 
 
 @pytest.fixture(scope="session")

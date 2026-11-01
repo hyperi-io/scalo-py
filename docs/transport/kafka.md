@@ -206,6 +206,8 @@ the call site, not via librdkafka transactions.
 
 - `request.timeout.ms: 30000`
 
+Every blocking metadata, watermark, committed-offset and offsets-for-times call in `KafkaClient`, `AsyncKafkaClient`, `ReadOnlyKafkaClient` and `KafkaConsumer` waits at most the config's `socket.timeout.ms`, or 30 s where it is unset. `KafkaAdmin` bounds the same calls by each method's `timeout` argument. A call that gets no broker answer in time raises `KafkaTimeoutError`, a `TimeoutError` naming the call. A per-partition read makes one call per partition, so `describe_topic` on 12 partitions can wait up to 13 bounds. A `socket.timeout.ms` that is not a positive number fails the client's constructor with `ValueError`.
+
 ### Loading from elsewhere
 
 | Helper | Source |
@@ -237,7 +239,7 @@ librdkafka will not build a consumer without a `group.id`, and a consumer asks t
 
 A client given `group.id: orders-api` gets `orders-api-admin`, and one given only `client.id: orders-api` gets the same, both inside an `orders-` grant. With neither set the anchor is `scalo`, and `scalo-admin` sits outside any app prefix, so set one of the two on a client that talks to a broker enforcing group ACLs. The anchor order and the `-admin` suffix match scalo-rs's `KafkaAdmin`.
 
-The group you pass to `get_consumer_lag` or a `KafkaAdmin` offset reset is used as named, so the grant has to cover it too. The lag read fetches that group's committed offsets; the resets commit to it.
+The group you pass to `get_consumer_lag` or a `KafkaAdmin` offset reset is used as named, so the grant has to cover it too. The lag read fetches that group's committed offsets, and the resets commit to it. librdkafka keeps retrying a refused coordinator lookup, so a group outside the grant ends a lag read in `KafkaTimeoutError`. A topic the credentials may not describe raises `KafkaException` carrying `TOPIC_AUTHORIZATION_FAILED`, never an empty answer.
 
 ---
 

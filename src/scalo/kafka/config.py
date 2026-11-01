@@ -21,6 +21,7 @@ Supports loading configuration from common file formats:
 import configparser
 import json
 import os
+from collections.abc import Callable, Mapping
 from pathlib import Path
 from typing import Any, Literal
 
@@ -201,11 +202,96 @@ def _topic_missing(metadata: Any, topic: str) -> bool:
 
     A broker with topic auto-create off still lists a topic it was asked about,
     carrying ``UNKNOWN_TOPIC_OR_PART``, so absence from the dict is not enough.
+
+    Raises:
+        KafkaException: The broker listed the topic with any other error, such as
+            ``TOPIC_AUTHORIZATION_FAILED``, which leaves it with no partitions to read.
     """
-    from confluent_kafka import KafkaError
+    from confluent_kafka import KafkaError, KafkaException
 
     found = metadata.topics.get(topic)
-    return found is None or (found.error is not None and found.error.code() == KafkaError.UNKNOWN_TOPIC_OR_PART)
+    if found is None:
+        return True
+    if found.error is None:
+        return False
+    if found.error.code() == KafkaError.UNKNOWN_TOPIC_OR_PART:
+        return True
+    raise KafkaException(found.error)
+
+
+# =============================================================================
+# Bounded broker calls
+# =============================================================================
+
+# The bound when a config sets no socket.timeout.ms, matching ADMIN_DEFAULTS' request.timeout.ms.
+_DEFAULT_CALL_TIMEOUT_MS = 30000
+
+
+class KafkaTimeoutError(TimeoutError):
+    """A broker gave no answer to a blocking call within its timeout.
+
+    Attributes:
+        operation: The librdkafka call that timed out, such as ``committed``.
+        timeout: The bound it ran under, in seconds.
+    """
+
+    def __init__(self, operation: str, timeout: float):
+        self.operation = operation
+        self.timeout = timeout
+        super().__init__(f"Kafka {operation}: no usable broker answer within {timeout}s")
+
+
+def call_timeout(config: Mapping[str, Any]) -> float:
+    """Return the seconds one blocking metadata, watermark or offset call may wait.
+
+    The bound is the config's ``socket.timeout.ms``, librdkafka's own timeout for a
+    network request, and 30 s where the config does not set it.
+
+    Args:
+        config: A librdkafka config.
+
+    Returns:
+        The bound in seconds.
+
+    Raises:
+        ValueError: ``socket.timeout.ms`` is not a positive number.
+    """
+    raw = config.get("socket.timeout.ms", _DEFAULT_CALL_TIMEOUT_MS)
+    try:
+        ms = float(raw)
+    except TypeError, ValueError:
+        ms = 0.0
+    if not ms > 0:
+        raise ValueError(f"socket.timeout.ms must be a positive number of milliseconds, not {raw!r}")
+    return ms / 1000
+
+
+def broker_call[T](timeout: float, call: Callable[..., T], *args: Any) -> T:
+    """Run a blocking librdkafka call with ``timeout``, naming the call when no broker answered.
+
+    Args:
+        timeout: Seconds the call may wait, passed as its ``timeout`` argument.
+        call: A confluent-kafka method that takes ``timeout``, such as ``Consumer.committed``.
+        *args: Its positional arguments.
+
+    Returns:
+        What ``call`` returned.
+
+    Raises:
+        KafkaTimeoutError: librdkafka gave up waiting for a broker. Any other
+            ``KafkaException`` propagates unchanged.
+    """
+    from confluent_kafka import KafkaError, KafkaException
+
+    # The codes librdkafka raises when the bound ran out with no broker answer.
+    no_answer = (KafkaError._TIMED_OUT, KafkaError._TRANSPORT, KafkaError._ALL_BROKERS_DOWN)
+    try:
+        return call(*args, timeout=timeout)
+    except KafkaException as exc:
+        error = exc.args[0] if exc.args else None
+        if isinstance(error, KafkaError) and error.code() in no_answer:
+            raise KafkaTimeoutError(getattr(call, "__name__", "call"), timeout) from exc
+        raise
 
 
 def config_from_env(prefix: str = "KAFKA_") -> dict[str, Any]:

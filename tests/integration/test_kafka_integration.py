@@ -37,7 +37,7 @@ def _produce(kafka_config: dict, topic: str, events: list[dict]) -> None:
 class TestKafkaClientIntegration:
     """KafkaClient's read calls against a topic this test made and filled."""
 
-    def test_reads_of_a_filled_topic(self, kafka_config, kafka_topics):
+    def test_reads_of_a_filled_topic(self, kafka_config, kafka_topics, kafka_group):
         from scalo.kafka.client import KafkaClient
 
         topic = kafka_topics("client-reads", partitions=3)
@@ -57,13 +57,13 @@ class TestKafkaClientIntegration:
             assert client.get_topic_message_count(topic) == 6
 
             # A group that never committed lags by the whole topic.
-            lag = client.get_consumer_lag(f"lag-{uuid.uuid4().hex[:8]}", topic)
+            lag = client.get_consumer_lag(kafka_group("lag"), topic)
             assert sum(lag.values()) == 6
 
-    def test_a_missing_topic_is_named(self, kafka_config):
+    def test_a_missing_topic_is_named(self, kafka_config, shared_kafka):
         from scalo.kafka.client import KafkaClient, TopicNotFoundError
 
-        missing = f"absent-{uuid.uuid4().hex[:8]}"
+        missing = shared_kafka.topic_name("absent")
         with KafkaClient(kafka_config, verify_ssl=False) as client, pytest.raises(TopicNotFoundError):
             client.describe_topic(missing)
 
@@ -72,7 +72,7 @@ class TestKafkaClientIntegration:
 class TestReadOnlyMetricsIntegration:
     """Integration tests for read-only admin with Prometheus metrics collection."""
 
-    def test_readonly_admin_stats_collection(self, kafka_config, kafka_topics):
+    def test_readonly_admin_stats_collection(self, kafka_config, kafka_topics, kafka_group):
         """
         Connect as admin in read-only mode, retrieve stats, expose to Prometheus.
 
@@ -100,7 +100,7 @@ class TestReadOnlyMetricsIntegration:
             CONSUMER_DEFAULTS,
             verify_ssl=False,
         )
-        consumer_config["group.id"] = f"scalo-metrics-{uuid.uuid4().hex[:8]}"
+        consumer_config["group.id"] = kafka_group("metrics")
         topic = kafka_topics("metrics")
         consumer_config["statistics.interval.ms"] = 1000  # Collect every 1s
         consumer_config["stats_cb"] = callback
@@ -130,8 +130,8 @@ class TestReadOnlyMetricsIntegration:
             assert "kafka_requests_total" in metrics, "Missing kafka_requests_total"
             assert "kafka_responses_total" in metrics, "Missing kafka_responses_total"
 
-            # Client name should contain rdkafka
-            assert "rdkafka" in metrics["kafka_client_name"].lower()
+            # librdkafka names the handle "<client.id>#consumer-<n>".
+            assert metrics["kafka_client_name"].startswith(f"{consumer_config['client.id']}#consumer-")
 
             # Client type should be consumer
             assert metrics["kafka_client_type"] == "consumer"
@@ -218,7 +218,7 @@ class TestReadOnlyMetricsIntegration:
             print("  ✓ Has get_consumer_lag()")
             print("  ✓ Has get_topic_message_count()")
 
-    def test_prometheus_format_output(self, kafka_config, kafka_topics):
+    def test_prometheus_format_output(self, kafka_config, kafka_topics, kafka_group):
         """
         Verify metrics can be formatted for Prometheus scraping.
 
@@ -240,7 +240,7 @@ class TestReadOnlyMetricsIntegration:
             CONSUMER_DEFAULTS,
             verify_ssl=False,
         )
-        consumer_config["group.id"] = f"scalo-prometheus-{uuid.uuid4().hex[:8]}"
+        consumer_config["group.id"] = kafka_group("prometheus")
         topic = kafka_topics("prometheus")
         consumer_config["statistics.interval.ms"] = 1000
         consumer_config["stats_cb"] = callback
@@ -362,7 +362,7 @@ class TestKafkaProducerConsumerIntegration:
         """A topic of this test's own."""
         return kafka_topics()
 
-    def test_produce_and_consume_user_events(self, kafka_config, test_topic):
+    def test_produce_and_consume_user_events(self, kafka_config, test_topic, kafka_group):
         """Should produce and consume user events with JSON payloads."""
         from scalo.kafka import KafkaConsumer, KafkaProducer
 
@@ -393,7 +393,7 @@ class TestKafkaProducerConsumerIntegration:
         print(f"\n=== Consuming messages from {test_topic} ===")
         consumed_messages: list[dict] = []
 
-        with KafkaConsumer(kafka_config, f"test-group-{uuid.uuid4().hex[:8]}", verify_ssl=False) as consumer:
+        with KafkaConsumer(kafka_config, kafka_group("consume"), verify_ssl=False) as consumer:
             consumer.subscribe([test_topic])
 
             # Poll for messages with timeout
@@ -418,7 +418,7 @@ class TestKafkaProducerConsumerIntegration:
         assert event_ids == expected_ids, "Message content mismatch"
 
     @pytest.mark.full
-    def test_produce_order_events_with_headers(self, kafka_config, test_topic):
+    def test_produce_order_events_with_headers(self, kafka_config, test_topic, kafka_group):
         """Should produce order events with custom headers."""
         from scalo.kafka import KafkaConsumer, KafkaProducer
 
@@ -449,7 +449,7 @@ class TestKafkaProducerConsumerIntegration:
 
         # 2. Consume and verify headers
         consumed = 0
-        with KafkaConsumer(kafka_config, f"test-group-{uuid.uuid4().hex[:8]}", verify_ssl=False) as consumer:
+        with KafkaConsumer(kafka_config, kafka_group("consume"), verify_ssl=False) as consumer:
             consumer.subscribe([test_topic])
 
             start = time.time()
@@ -532,11 +532,11 @@ class TestKafkaConsumerOffsetReset:
         print(f"\n  Created test topic {topic} with 20 messages")
         return topic
 
-    def test_reset_offsets_to_earliest(self, kafka_config, populated_topic):
+    def test_reset_offsets_to_earliest(self, kafka_config, populated_topic, kafka_group):
         """Should reset consumer group offsets to earliest."""
         from scalo.kafka import KafkaAdmin, KafkaConsumer
 
-        group_id = f"test-reset-earliest-{uuid.uuid4().hex[:8]}"
+        group_id = kafka_group("reset-earliest")
 
         # First, consume some messages to create committed offsets
         with KafkaConsumer(kafka_config, group_id, verify_ssl=False) as consumer:
@@ -565,11 +565,11 @@ class TestKafkaConsumerOffsetReset:
 
         print("  Offsets reset to earliest successfully")
 
-    def test_reset_offsets_to_latest(self, kafka_config, populated_topic):
+    def test_reset_offsets_to_latest(self, kafka_config, populated_topic, kafka_group):
         """Should reset consumer group offsets to latest."""
         from scalo.kafka import KafkaAdmin, KafkaClient
 
-        group_id = f"test-reset-latest-{uuid.uuid4().hex[:8]}"
+        group_id = kafka_group("reset-latest")
 
         # Get current high watermarks
         with KafkaClient(kafka_config, verify_ssl=False) as client:
@@ -596,12 +596,12 @@ class TestKafkaConsumerOffsetReset:
 class TestSchemaAnalyserIntegration:
     """Integration tests for schema analysis with real Kafka data."""
 
-    def test_analyse_topic_schema(self, kafka_config, kafka_topics):
+    def test_analyse_topic_schema(self, kafka_config, kafka_topics, kafka_group):
         """Should analyse JSON schema from topic messages."""
         from scalo.kafka import KafkaConsumer, KafkaProducer, SchemaAnalyser
 
         topic = kafka_topics("schema")
-        group_id = f"schema-analyser-{uuid.uuid4().hex[:8]}"
+        group_id = kafka_group("schema-analyser")
 
         # Produce mixed events
         with KafkaProducer(kafka_config, verify_ssl=False) as producer:
@@ -690,13 +690,13 @@ class TestAsyncKafkaIntegration:
 class TestSamplingIntegration:
     """Integration tests for sampling utilities."""
 
-    def test_reservoir_sample_from_topic(self, kafka_config, kafka_topics):
+    def test_reservoir_sample_from_topic(self, kafka_config, kafka_topics, kafka_group):
         """Should sample k of the messages a topic holds, by reservoir sampling."""
         from scalo.kafka import KafkaConsumer, reservoir_sample
 
         topic = kafka_topics("sampling")
         _produce(kafka_config, topic, [{"n": n} for n in range(20)])
-        group_id = f"sampler-{uuid.uuid4().hex[:8]}"
+        group_id = kafka_group("sampler")
 
         with KafkaConsumer(kafka_config, group_id, verify_ssl=False) as consumer:
             consumer.subscribe([topic])

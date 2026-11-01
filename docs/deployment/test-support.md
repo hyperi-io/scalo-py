@@ -45,13 +45,14 @@ shared_service_repo = "my-app"
 | `clickhouse_database` | test | a `Replicated` database of the test's own, made `ON CLUSTER` and dropped after |
 | `shared_kafka` | session | `KafkaService`: bootstrap and the librdkafka `client_config` |
 | `kafka_topics` | test | `make(label, partitions=3)` creating run-prefixed topics, deleted after |
+| `kafka_group` | test | `kafka_group(label)` naming a run-prefixed consumer group, under the grant a pet broker enforces |
 | `shared_openbao` | session | `OpenBaoService`: address and root token |
 
 - The controller names the run, the first worker to ask starts each container under a lock in `<rootdir>/.tmp/shared-services/<run>/`, and the rest join it. The controller removes them at the end, and a watcher removes each one if the controller dies first.
 - Ports bind 127.0.0.1 on the daemon host. An `ssh://` daemon gets an `ssh -L` tunnel per port, and a remote `tcp://` daemon needs `HYPERI_TEST_DOCKER_BIND`.
 - The ClickHouse password and the OpenBao token are generated per run and never logged.
 - Containers carry `io.hyperi.test.*` owner labels, and each create removes the suite's containers whose owner has gone.
-- ClickHouse and Kafka use the always-present pet named by `HYPERI_TEST_*` settings (the environment, then `.env`, then the file `HYPERI_TEST_ENV_FILE` names) when a quick probe answers, never in CI or under the full tier.
+- ClickHouse and Kafka use the always-present pet named by `HYPERI_TEST_*` settings (the environment, then `.env`, then the file `HYPERI_TEST_ENV_FILE` names) when a quick probe answers, never in CI or under the full tier. A Kafka pet's groups take `HYPERI_TEST_KAFKA_GROUP_PREFIX`, else its topic prefix.
 - Without Docker a test skips on a developer's machine, and fails in CI or under `HYPERCI_TEST_TIER=full`. `unavailable(reason)` applies the same rule to a test's own prerequisites.
 
 A service the plugin does not cover takes a `ServiceSpec` (image, ports, env, `secret_env`, files, readiness by HTTP, log line or command) to `shared_service.acquire(suite_for(config), spec)`. A test that stops or reconfigures its server holds one alone with `start_alone(suite, spec, container_name(suite, test, service))`. The pinned images and their specs are `scalo.deployment.test_support.services`.

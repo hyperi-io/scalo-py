@@ -18,6 +18,12 @@ On a broker with topic auto-create off, `describe_topic`, `get_watermark_offsets
 
 **Consumer adjustment** -- a caller that read an empty answer as "no such topic" catches the error.
 
+### Kafka broker calls end at `socket.timeout.ms` (BEHAVIOUR CHANGE)
+
+Metadata, watermark, committed-offset and offsets-for-times calls on the Kafka clients and `KafkaConsumer` waited forever for a broker that accepted the connection and never answered. Each now waits at most `socket.timeout.ms` (30 s when unset), or the method's `timeout` on `KafkaAdmin`, then raises `KafkaTimeoutError`. A topic listed with an error other than `UNKNOWN_TOPIC_OR_PART`, such as `TOPIC_AUTHORIZATION_FAILED`, raises `KafkaException` instead of reading as a topic with no partitions. `scalo.kafka.readonly.TopicNotFoundError` is now the same class as `scalo.kafka.TopicNotFoundError`. See [transport/kafka.md](transport/kafka.md#admin-defaults-admin_defaults).
+
+**Consumer adjustment** -- a caller that waits on a slow broker on purpose raises `socket.timeout.ms`. One that caught `KafkaException` for a broker outage also catches `KafkaTimeoutError`.
+
 ### Shared test services, and the compose files gone (additive)
 
 `scalo.deployment.test_support.pytest_plugin` gives a pytest run one ClickHouse, Kafka and OpenBao, shared by every xdist worker. See [deployment/test-support.md](deployment/test-support.md#shared-test-services). scalo-py's own `docker-compose.kafka.yml` and `docker-compose.openbao.yml` are removed.

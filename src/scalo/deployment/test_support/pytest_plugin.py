@@ -353,17 +353,23 @@ class KafkaService:
         bootstrap: ``host:port`` of the bootstrap broker.
         client_config: librdkafka settings a client needs, security included.
         topic_prefix: Prefix every run's topics carry.
+        group_prefix: Prefix every run's consumer groups carry, the one a pet broker grants.
         rung: ``pet`` or ``container``.
     """
 
     bootstrap: str
     client_config: Mapping[str, str] = field(repr=False)
     topic_prefix: str = "test-"
+    group_prefix: str = "test-"
     rung: str = "container"
 
     def topic_name(self, label: str) -> str:
         """A topic name unique to this run and call, carrying :attr:`topic_prefix`."""
         return _object_name(self.topic_prefix, label, "-")
+
+    def group_name(self, label: str) -> str:
+        """A consumer group id unique to this run and call, carrying :attr:`group_prefix`."""
+        return _object_name(self.group_prefix, label, "-")
 
 
 def _kafka_pet(suite: Suite) -> KafkaService | None:
@@ -386,7 +392,8 @@ def _kafka_pet(suite: Suite) -> KafkaService | None:
         if value := lookup(suite, key):
             config[setting] = value
     prefix = lookup(suite, "HYPERI_TEST_KAFKA_TOPIC_PREFIX") or "test-"
-    return KafkaService(bootstrap=bootstrap, client_config=config, topic_prefix=prefix, rung="pet")
+    groups = lookup(suite, "HYPERI_TEST_KAFKA_GROUP_PREFIX") or prefix
+    return KafkaService(bootstrap=bootstrap, client_config=config, topic_prefix=prefix, group_prefix=groups, rung="pet")
 
 
 def _admin(service: KafkaService):
@@ -486,6 +493,12 @@ def kafka_topics(shared_kafka: KafkaService, request: pytest.FixtureRequest) -> 
     if made:
         for future in admin.delete_topics(made, operation_timeout=30).values():
             future.result()
+
+
+@pytest.fixture
+def kafka_group(shared_kafka: KafkaService) -> Callable[[str], str]:
+    """Name consumer groups under the run's group prefix, which a pet broker's ACLs grant: ``kafka_group("lag")``."""
+    return shared_kafka.group_name
 
 
 # ---------------------------------------------------------------------------

@@ -19,7 +19,14 @@ from confluent_kafka import TopicPartition
 from confluent_kafka.admin import AdminClient
 
 from ..concurrency import run_blocking
-from .config import ADMIN_DEFAULTS, _offset_query_consumer_config, _topic_missing, merge_config
+from .config import (
+    ADMIN_DEFAULTS,
+    _offset_query_consumer_config,
+    _topic_missing,
+    broker_call,
+    call_timeout,
+    merge_config,
+)
 from .types import PartitionInfo, TopicInfo, TopicMetadata
 
 
@@ -51,6 +58,7 @@ class AsyncKafkaClient:
         self._user_config = config.copy()
         self._config = merge_config(config, ADMIN_DEFAULTS, verify_ssl=verify_ssl)
         self._verify_ssl = verify_ssl
+        self._timeout = call_timeout(self._config)
 
         self._admin = AdminClient(self._config)
 
@@ -77,7 +85,7 @@ class AsyncKafkaClient:
 
     def _list_topics_sync(self, include_internal: bool) -> list[TopicInfo]:
         """Sync implementation of list_topics."""
-        metadata = self._admin.list_topics()
+        metadata = broker_call(self._timeout, self._admin.list_topics)
 
         topics = []
         for name, topic_meta in metadata.topics.items():
@@ -104,7 +112,7 @@ class AsyncKafkaClient:
         """Sync implementation of describe_topic."""
         from confluent_kafka import Consumer
 
-        metadata = self._admin.list_topics(topic)
+        metadata = broker_call(self._timeout, self._admin.list_topics, topic)
 
         if _topic_missing(metadata, topic):
             from .client import TopicNotFoundError
@@ -118,7 +126,7 @@ class AsyncKafkaClient:
             partitions = []
             for partition_id, partition_meta in topic_meta.partitions.items():
                 tp = TopicPartition(topic, partition_id)
-                low, high = consumer.get_watermark_offsets(tp)
+                low, high = broker_call(self._timeout, consumer.get_watermark_offsets, tp)
                 partitions.append(
                     PartitionInfo(
                         partition=partition_id,
@@ -148,7 +156,7 @@ class AsyncKafkaClient:
 
         from .client import TopicNotFoundError
 
-        metadata = self._admin.list_topics(topic)
+        metadata = broker_call(self._timeout, self._admin.list_topics, topic)
         if _topic_missing(metadata, topic):
             raise TopicNotFoundError(topic)
 
@@ -159,7 +167,7 @@ class AsyncKafkaClient:
             watermarks = {}
             for partition_id in partition_ids:
                 tp = TopicPartition(topic, partition_id)
-                low, high = consumer.get_watermark_offsets(tp)
+                low, high = broker_call(self._timeout, consumer.get_watermark_offsets, tp)
                 watermarks[partition_id] = (low, high)
             return watermarks
         finally:
