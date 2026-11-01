@@ -4,6 +4,20 @@ Behaviour and API changes that need a consumer adjustment, indexed by the scalo 
 
 ---
 
+## Unreleased
+
+### A missing topic raises `TopicNotFoundError` (BEHAVIOUR CHANGE)
+
+On a broker with topic auto-create off, `describe_topic`, `get_watermark_offsets`, `get_topic_message_count` and `get_consumer_lag` on the sync, async and read-only Kafka clients returned empty answers for a topic that does not exist, because the broker still lists the asked-for topic, carrying `UNKNOWN_TOPIC_OR_PART`. They now raise `TopicNotFoundError` as documented, and `KafkaAdmin` raises `KafkaAdminError`.
+
+**Consumer adjustment** -- a caller that read an empty answer as "no such topic" catches the error.
+
+### Shared test services, and the compose files gone (additive)
+
+`scalo.deployment.test_support.pytest_plugin` gives a pytest run one ClickHouse, Kafka and OpenBao, shared by every xdist worker. See [deployment/test-support.md](deployment/test-support.md#shared-test-services). scalo-py's own `docker-compose.kafka.yml` and `docker-compose.openbao.yml` are removed.
+
+**Consumer adjustment** -- none.
+
 ## 2.31.20
 
 ### `matches()` needs `allow_regex` (BEHAVIOUR CHANGE)

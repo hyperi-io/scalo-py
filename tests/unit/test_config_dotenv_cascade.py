@@ -224,7 +224,9 @@ class TestDotenvCascade:
 
         # Clear any existing env vars
         for key in ["API_KEY", "DEBUG", "HOME_ONLY", "PROJECT_ONLY"]:
-            monkeypatch.delenv(key, raising=False)
+            # Set first, so monkeypatch also removes the value the cascade loads.
+            monkeypatch.setenv(key, "")
+            monkeypatch.delenv(key)
 
         # Import and test
         from scalo.config.config import _load_dotenv_cascade
@@ -286,7 +288,9 @@ class TestDotenvCascade:
 
         # Clear env vars
         for key in ["LEVEL", "SYSTEM_VAR", "USER_VAR", "PROJECT_VAR"]:
-            monkeypatch.delenv(key, raising=False)
+            # Set first, so monkeypatch also removes the value the cascade loads.
+            monkeypatch.setenv(key, "")
+            monkeypatch.delenv(key)
 
         from scalo.config.config import _load_dotenv_cascade
 
@@ -353,7 +357,9 @@ class TestDotenvCascade:
         env2.write_text("CUSTOM_FILE_2=value2\nSHARED=from-file2\n")
 
         for key in ["CUSTOM_FILE_1", "CUSTOM_FILE_2", "SHARED"]:
-            monkeypatch.delenv(key, raising=False)
+            # Set first, so monkeypatch also removes the value the cascade loads.
+            monkeypatch.setenv(key, "")
+            monkeypatch.delenv(key)
 
         from scalo.config import get_config
 
@@ -384,7 +390,9 @@ class TestDotenvCascade:
         monkeypatch.chdir(work_dir)
         monkeypatch.setenv("HOME", str(fake_home))
         for key in ["WALKUP_HOME", "WALKUP_PARENT"]:
-            monkeypatch.delenv(key, raising=False)
+            # Set first, so monkeypatch also removes the value the cascade loads.
+            monkeypatch.setenv(key, "")
+            monkeypatch.delenv(key)
 
         from scalo.config import get_config
 

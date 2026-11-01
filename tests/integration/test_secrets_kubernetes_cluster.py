@@ -6,11 +6,12 @@
 #  License:   Apache-2.0
 #  Copyright: (c) 2026 HYPERI PTY LIMITED
 
-"""The Kubernetes secrets provider against a real API server: an existing one, or k3s in Docker.
+"""The Kubernetes secrets provider against a real API server: an existing one, or the run's k3s in Docker.
 
 tests/common/kube_cluster.py resolves the server. Each test gets its own namespace and a service account
 whose Role grants ``get`` and ``update`` on named Secrets only, as a deployment would. The parity tests send
-the same requests to the server and to the fake the unit tests use, so the fake cannot drift from it.
+the same requests to the server and to the fake the unit tests use, so the fake cannot drift from it. One
+read runs in core, and the rest run in full.
 """
 
 import os
@@ -23,20 +24,9 @@ import httpx
 import pytest
 from common.fake_kube_api import running_fake_kube_api
 from common.fake_secrets import opaque_secret
-from common.kube_cluster import (
-    REPO,
-    SERVICE,
-    SUITE_LABEL,
-    ClusterUnavailable,
-    KubeCluster,
-    Namespace,
-    container_name,
-    existing_cluster,
-    inspect,
-    remove,
-    start_k3s,
-)
+from common.kube_cluster import ClusterUnavailable, KubeCluster, Namespace, existing_cluster, shared_k3s
 
+from scalo.deployment.test_support.pytest_plugin import suite_for, unavailable
 from scalo.secrets import KubernetesConfig, KubernetesProvider, ProviderError, SecretAlreadyExistsError
 from scalo.secrets.providers import kubernetes as kubernetes_module
 
@@ -47,32 +37,19 @@ OTHER = "not-in-the-role"
 ABSENT = "never-created"
 
 
-def _unavailable(reason: str) -> None:
-    """Skip locally, and fail in CI, where a missing service is a broken pipeline."""
-    if os.environ.get("CI"):
-        pytest.fail(f"Kubernetes API server unavailable in CI: {reason}")
-    pytest.skip(f"Kubernetes API server unavailable: {reason}")
-
-
-@pytest.fixture(scope="module")
-def cluster(tmp_path_factory: pytest.TempPathFactory) -> Iterator[KubeCluster]:
+@pytest.fixture(scope="session")
+def cluster(tmp_path_factory: pytest.TempPathFactory, pytestconfig: pytest.Config) -> KubeCluster:
     try:
         found = existing_cluster()
     except ClusterUnavailable as e:
         pytest.fail(str(e))
     if found is not None:
-        yield found
-        return
-    name = container_name("secrets-kubernetes", os.environ.get("PYTEST_XDIST_WORKER"))
+        return found
     try:
-        started = start_k3s(name, tmp_path_factory.mktemp("k3s"))
+        return shared_k3s(suite_for(pytestconfig), tmp_path_factory.mktemp("k3s"))
     except ClusterUnavailable as e:
-        _unavailable(str(e))
-        return
-    try:
-        yield started
-    finally:
-        remove(name)
+        unavailable(f"Kubernetes API server unavailable: {e}")
+        raise
 
 
 @pytest.fixture
@@ -133,23 +110,6 @@ def _watch_puts(provider: KubernetesProvider, before_put: Callable[[], None]) ->
     return statuses
 
 
-class TestTheContainer:
-    def test_it_is_named_and_labelled_for_this_suite(self, cluster):
-        if cluster.container is None:
-            pytest.skip("an existing API server was configured, so no container was started")
-        name = inspect(cluster.container, "{{.Name}}")
-        assert name == f"/{container_name('secrets-kubernetes', os.environ.get('PYTEST_XDIST_WORKER'))}"
-        labels = inspect(cluster.container, "{{json .Config.Labels}}")
-        assert f'"io.hyperi.test.suite":"{SUITE_LABEL}"' in labels
-        assert f'"io.hyperi.test.repo":"{REPO}"' in labels
-        assert f'"io.hyperi.test.service":"{SERVICE}"' in labels
-        assert f'"io.hyperi.test.owner-pid":"{os.getpid()}"' in labels
-
-    def test_each_xdist_worker_gets_its_own_name(self):
-        assert container_name("secrets-kubernetes", "gw0") != container_name("secrets-kubernetes", "gw1")
-        assert container_name("secrets-kubernetes") == "scalo-py-test-integration-secrets-kubernetes-k3s"
-
-
 class TestReadAndWrite:
     def test_get_reads_a_key_at_the_secret_resource_version(self, namespace, make_provider):
         namespace.create_secret(SECRET, {"http": b"cred-a:token-a\n"})
@@ -158,6 +118,7 @@ class TestReadAndWrite:
         assert value.data == b"cred-a:token-a\n"
         assert value.version == stored["metadata"]["resourceVersion"]
 
+    @pytest.mark.full
     async def test_async_get_list_and_metadata(self, namespace, make_provider):
         namespace.create_secret(SECRET, {"http": b"a", "grpc": b"b"})
         provider = make_provider()
@@ -166,6 +127,7 @@ class TestReadAndWrite:
         assert (await provider.get_metadata_async("http")).created_at is not None
         await provider.close()
 
+    @pytest.mark.full
     def test_create_adds_a_key_only_when_it_is_absent(self, namespace, make_provider):
         namespace.create_secret(SECRET, {"http": b"a"})
         provider = make_provider()
@@ -177,6 +139,7 @@ class TestReadAndWrite:
         assert namespace.read_secret(SECRET)["metadata"]["resourceVersion"] == version
         assert namespace.data(SECRET)["grpc"] == b"b"
 
+    @pytest.mark.full
     def test_update_replaces_at_the_resource_version_it_read(self, namespace, make_provider):
         created = namespace.create_secret(SECRET, {"http": b"a"})
         meta = make_provider().update_sync("http", b"rotated")
@@ -185,6 +148,7 @@ class TestReadAndWrite:
         assert meta.version == stored["metadata"]["resourceVersion"]
         assert meta.version != created["metadata"]["resourceVersion"]
 
+    @pytest.mark.full
     def test_a_write_to_a_missing_secret_never_creates_it(self, namespace, make_provider, cluster):
         with pytest.raises(ProviderError, match="does not exist"):
             make_provider(secret_name=ABSENT).create_sync("http", b"x")
@@ -192,6 +156,7 @@ class TestReadAndWrite:
             assert admin.get(f"/api/v1/namespaces/{namespace.name}/secrets/{ABSENT}").status_code == 404
 
 
+@pytest.mark.full
 class TestConflicts:
     def test_a_write_racing_another_writer_is_retried_and_keeps_both(self, namespace, make_provider):
         namespace.create_secret(SECRET, {"http": b"a"})
@@ -220,6 +185,7 @@ class TestConflicts:
         assert namespace.data(SECRET)["http"] == b"a"
 
 
+@pytest.mark.full
 class TestRefusals:
     def test_a_value_that_is_not_base64_is_refused_as_invalid(self, namespace, make_provider, monkeypatch):
         namespace.create_secret(SECRET, {"http": b"a"})
@@ -274,6 +240,7 @@ _EXPECTED = {
 }
 
 
+@pytest.mark.full
 class TestTheFakeAnswersAsTheApiServerDoes:
     @pytest.mark.parametrize("case", sorted(_CASES))
     def test_status(self, case, cluster, namespace, token_file, tmp_path):

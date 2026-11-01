@@ -8,8 +8,8 @@
 
 """A refused AppRole login against a real OpenBao is an AuthenticationError chained to the refusal.
 
-Uses the ``openbao_endpoint`` fixture from conftest.py. Each test enables AppRole on its own
-mount with the root token, so the credentials it refuses or accepts are real ones.
+Uses the run's shared OpenBao (``openbao_endpoint``). Each test enables AppRole on its own
+mount with the root token, so the credentials it refuses or accepts are real ones. Full tier.
 """
 
 import uuid
@@ -23,6 +23,7 @@ from scalo.secrets.types import OpenBaoConfig
 
 pytestmark = [
     pytest.mark.integration,
+    pytest.mark.full,
     pytest.mark.skipif(not HTTPX_AVAILABLE, reason="httpx not installed"),
 ]
 

@@ -46,6 +46,7 @@ from scalo.deployment.test_support import (
 
 pytestmark = [
     pytest.mark.integration,
+    pytest.mark.full,
     pytest.mark.skipif(not deployment_importable, reason="requires the [deployment] extra"),
     pytest.mark.skipif(shutil.which("uv") is None, reason="requires uv"),
     pytest.mark.skipif(not docker_available(), reason="requires a running docker daemon"),

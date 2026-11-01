@@ -196,6 +196,18 @@ def _offset_query_consumer_config(user_config: dict[str, Any], verify_ssl: bool)
     return merge_config(base_config, CONSUMER_DEFAULTS, verify_ssl=verify_ssl)
 
 
+def _topic_missing(metadata: Any, topic: str) -> bool:
+    """Whether cluster metadata from ``list_topics(topic)`` says ``topic`` does not exist.
+
+    A broker with topic auto-create off still lists a topic it was asked about,
+    carrying ``UNKNOWN_TOPIC_OR_PART``, so absence from the dict is not enough.
+    """
+    from confluent_kafka import KafkaError
+
+    found = metadata.topics.get(topic)
+    return found is None or (found.error is not None and found.error.code() == KafkaError.UNKNOWN_TOPIC_OR_PART)
+
+
 def config_from_env(prefix: str = "KAFKA_") -> dict[str, Any]:
     """Build Kafka configuration from environment variables.
 

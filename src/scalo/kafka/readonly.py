@@ -22,7 +22,7 @@ from typing import Any
 from confluent_kafka import Consumer, TopicPartition
 from confluent_kafka.admin import AdminClient
 
-from .config import ADMIN_DEFAULTS, CONSUMER_DEFAULTS, _offset_query_consumer_config, merge_config
+from .config import ADMIN_DEFAULTS, CONSUMER_DEFAULTS, _offset_query_consumer_config, _topic_missing, merge_config
 from .types import PartitionInfo, TopicInfo, TopicMetadata
 
 
@@ -124,7 +124,7 @@ class ReadOnlyKafkaClient:
         """
         metadata = self._admin.list_topics(topic)
 
-        if topic not in metadata.topics:
+        if _topic_missing(metadata, topic):
             raise TopicNotFoundError(topic)
 
         topic_meta = metadata.topics[topic]
@@ -166,7 +166,7 @@ class ReadOnlyKafkaClient:
             Dict of partition -> (low_watermark, high_watermark)
         """
         metadata = self._admin.list_topics(topic)
-        if topic not in metadata.topics:
+        if _topic_missing(metadata, topic):
             raise TopicNotFoundError(topic)
 
         partition_ids = list(metadata.topics[topic].partitions.keys())
@@ -199,7 +199,7 @@ class ReadOnlyKafkaClient:
             Dict of partition -> lag (messages behind)
         """
         metadata = self._admin.list_topics(topic)
-        if topic not in metadata.topics:
+        if _topic_missing(metadata, topic):
             raise TopicNotFoundError(topic)
 
         partition_ids = list(metadata.topics[topic].partitions.keys())

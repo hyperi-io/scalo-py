@@ -8,21 +8,17 @@
 
 """A real Kubernetes API server for the secrets provider's integration tests.
 
-Resolution, as tests/README.md documents: ``SCALO_TEST_K8S_API``, ``SCALO_TEST_K8S_TOKEN_FILE`` and
+Resolution, as tests/TESTING.md documents: ``SCALO_TEST_K8S_API``, ``SCALO_TEST_K8S_TOKEN_FILE`` and
 ``SCALO_TEST_K8S_CA_FILE`` name an existing API server and a token that may create and delete namespaces and
-the ServiceAccounts, Roles, RoleBindings and Secrets in them. Unset, k3s starts in Docker, API server only.
-Neither available, the tests skip locally and fail when ``CI`` is set.
+the ServiceAccounts, Roles, RoleBindings and Secrets in them. Unset, the run's one k3s starts in Docker, API
+server only, through the shared-service owner. Neither available, the tests skip locally and fail in CI.
 
 Each test works in a namespace of its own, deleted afterwards, so an existing cluster keeps nothing.
 """
 
 import base64
 import os
-import re
-import shutil
 import ssl
-import subprocess
-import time
 import uuid
 from dataclasses import dataclass
 from pathlib import Path
@@ -30,13 +26,19 @@ from typing import Any
 
 import httpx
 
+from scalo.deployment.test_support.shared_service import (
+    ExecReady,
+    ServiceSpec,
+    SharedServiceError,
+    Suite,
+    acquire,
+)
+
 K3S_IMAGE = "rancher/k3s:v1.37.1-k3s1@sha256:ca7f37d993d82ef0dcdcfecb2e0e2618ea541dbaffc620c8cedebe01a82acd0d"
-REPO = "scalo-py"
-SERVICE = "k3s"
-SUITE_LABEL = f"{REPO}-integration"
+K3S_PORT = 6443
 
 # Only the API server and its controllers run: no kubelet, so no privileges and no pods.
-_K3S_ARGS = [
+_K3S_ARGS = (
     "server",
     "--disable-agent",
     "--tls-san=127.0.0.1",
@@ -44,7 +46,7 @@ _K3S_ARGS = [
     "--disable-helm-controller",
     "--disable-network-policy",
     "--disable-cloud-controller",
-]
+)
 _READY_DEADLINE_SECS = 120.0
 _ADMIN = "scalo-test-admin"
 
@@ -53,33 +55,16 @@ class ClusterUnavailable(Exception):
     """No API server could be found or started. The message says why."""
 
 
-def container_name(test: str, worker: str | None = None) -> str:
-    """``<repo>-test-integration-<test>[-<xdist worker>]-k3s``, lowercased with other characters as ``-``."""
-    parts = [REPO, "test", "integration", test, *([worker] if worker else []), SERVICE]
-    return re.sub(r"[^a-z0-9]+", "-", "-".join(parts).lower()).strip("-")
-
-
-def _docker(*args: str, timeout: float = 60) -> subprocess.CompletedProcess[str]:
-    return subprocess.run(
-        ["docker", *args], capture_output=True, text=True, encoding="utf-8", errors="replace", timeout=timeout
+def k3s_spec() -> ServiceSpec:
+    """The run's k3s, ready once its API server answers ``/readyz``."""
+    return ServiceSpec(
+        service="k3s",
+        image=K3S_IMAGE,
+        startup_timeout=_READY_DEADLINE_SECS,
+        ready=ExecReady(("kubectl", "get", "--raw", "/readyz"), "ok"),
+        ports=(K3S_PORT,),
+        args=_K3S_ARGS,
     )
-
-
-def reap_stale(name: str) -> None:
-    """Remove a stopped container left holding ``name``. A running one belongs to a concurrent run and stays."""
-    if _docker("ps", "-q", "--filter", f"name=^{name}$").stdout.strip():
-        return
-    _docker("rm", "-f", "-v", name)
-
-
-def remove(name: str) -> None:
-    """Remove the container and its anonymous volumes."""
-    _docker("rm", "-f", "-v", name)
-
-
-def inspect(name: str, template: str) -> str:
-    """``docker inspect`` of the container through a Go template, empty when there is no such container."""
-    return _docker("inspect", name, "--format", template).stdout.strip()
 
 
 @dataclass
@@ -124,70 +109,38 @@ def existing_cluster() -> KubeCluster | None:
     return cluster
 
 
-def _exec(name: str, *command: str) -> str:
-    result = _docker("exec", name, *command)
-    if result.returncode != 0:
-        raise ClusterUnavailable(f"docker exec {' '.join(command[:3])} failed: {result.stderr.strip()[:300]}")
-    return result.stdout
+def shared_k3s(suite: Suite, workdir: Path) -> KubeCluster:
+    """The run's k3s, with its CA and a cluster-admin token written under ``workdir``.
 
-
-def start_k3s(name: str, workdir: Path) -> KubeCluster:
-    """Start k3s in Docker as ``name`` and make an admin token for it. The caller removes the container.
+    Every process of the run joins the one container and mints a token of its own.
 
     Raises:
-        ClusterUnavailable: Docker is missing, the start failed, or the API server was not ready in time.
-            A container that started is removed before this is raised.
+        ClusterUnavailable: The container did not start or the admin account could not be made.
     """
-    if shutil.which("docker") is None or _docker("info", timeout=20).returncode != 0:
-        raise ClusterUnavailable("Docker is not available")
-    reap_stale(name)
-    labels = {
-        "io.hyperi.test.suite": SUITE_LABEL,
-        "io.hyperi.test.repo": REPO,
-        "io.hyperi.test.service": SERVICE,
-        "io.hyperi.test.owner-pid": str(os.getpid()),
-    }
-    label_args = [arg for key, value in labels.items() for arg in ("--label", f"{key}={value}")]
-    started = _docker(
-        "run", "-d", "--name", name, *label_args, "-p", "127.0.0.1::6443", K3S_IMAGE, *_K3S_ARGS, timeout=300
-    )
-    if started.returncode != 0:
-        raise ClusterUnavailable(f"docker run {name} failed: {started.stderr.strip()[:300]}")
     try:
-        return _prepare(name, workdir)
-    except BaseException:
-        remove(name)
-        raise
-
-
-def _prepare(name: str, workdir: Path) -> KubeCluster:
-    """Wait for the API server in ``name``, then fetch its CA and mint a cluster-admin token."""
-    deadline = time.monotonic() + _READY_DEADLINE_SECS
-    while _docker("exec", name, "kubectl", "get", "--raw", "/readyz").stdout.strip() != "ok":
-        if time.monotonic() > deadline:
-            raise ClusterUnavailable(f"k3s in {name} was not ready within {_READY_DEADLINE_SECS:.0f} s")
-        time.sleep(0.5)
-    published = _docker("port", name, "6443/tcp").stdout.strip()
-    if not published:
-        raise ClusterUnavailable(f"{name} published no port for the API server")
-    port = published.splitlines()[0].rsplit(":", 1)[-1]
-    ca_file = workdir / "ca.crt"
-    ca_file.write_text(_exec(name, "cat", "/var/lib/rancher/k3s/server/tls/server-ca.crt"), encoding="utf-8")
-    _exec(name, "kubectl", "create", "serviceaccount", _ADMIN, "-n", "kube-system")
-    _exec(
-        name,
-        "kubectl",
-        "create",
-        "clusterrolebinding",
-        _ADMIN,
-        "--clusterrole=cluster-admin",
-        f"--serviceaccount=kube-system:{_ADMIN}",
-    )
+        container = acquire(suite, k3s_spec())
+        ca_file = workdir / "ca.crt"
+        ca_file.write_text(container.read_file("/var/lib/rancher/k3s/server/tls/server-ca.crt"), encoding="utf-8")
+        # Every worker runs these, so one another worker made already counts, and anything else fails.
+        account = f"kubectl -n kube-system create serviceaccount {_ADMIN} 2>/dev/null || kubectl -n kube-system get serviceaccount {_ADMIN}"
+        container.exec("sh", "-c", account)
+        grant = (
+            f"kubectl create clusterrolebinding {_ADMIN} --clusterrole=cluster-admin "
+            f"--serviceaccount=kube-system:{_ADMIN} 2>/dev/null || kubectl get clusterrolebinding {_ADMIN}"
+        )
+        container.exec("sh", "-c", grant)
+        token = container.exec("kubectl", "create", "token", _ADMIN, "-n", "kube-system", "--duration=2h")
+    except SharedServiceError as e:
+        raise ClusterUnavailable(str(e)) from e
     token_file = workdir / "admin-token"
     token_file.touch(mode=0o600)
-    token = _exec(name, "kubectl", "create", "token", _ADMIN, "-n", "kube-system", "--duration=2h")
     token_file.write_text(token.strip(), encoding="utf-8")
-    return KubeCluster(api=f"https://127.0.0.1:{port}", ca_file=ca_file, admin_token_file=token_file, container=name)
+    return KubeCluster(
+        api=f"https://{container.addr(K3S_PORT)}",
+        ca_file=ca_file,
+        admin_token_file=token_file,
+        container=container.name,
+    )
 
 
 def _encoded(data: dict[str, bytes]) -> dict[str, str]:

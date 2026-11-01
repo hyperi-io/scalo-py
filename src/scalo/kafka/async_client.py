@@ -19,7 +19,7 @@ from confluent_kafka import TopicPartition
 from confluent_kafka.admin import AdminClient
 
 from ..concurrency import run_blocking
-from .config import ADMIN_DEFAULTS, _offset_query_consumer_config, merge_config
+from .config import ADMIN_DEFAULTS, _offset_query_consumer_config, _topic_missing, merge_config
 from .types import PartitionInfo, TopicInfo, TopicMetadata
 
 
@@ -106,7 +106,7 @@ class AsyncKafkaClient:
 
         metadata = self._admin.list_topics(topic)
 
-        if topic not in metadata.topics:
+        if _topic_missing(metadata, topic):
             from .client import TopicNotFoundError
 
             raise TopicNotFoundError(topic)
@@ -149,7 +149,7 @@ class AsyncKafkaClient:
         from .client import TopicNotFoundError
 
         metadata = self._admin.list_topics(topic)
-        if topic not in metadata.topics:
+        if _topic_missing(metadata, topic):
             raise TopicNotFoundError(topic)
 
         partition_ids = list(metadata.topics[topic].partitions.keys())

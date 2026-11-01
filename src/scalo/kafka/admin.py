@@ -33,7 +33,7 @@ from confluent_kafka.admin import (
     ResourceType,
 )
 
-from .config import ADMIN_DEFAULTS, merge_config
+from .config import ADMIN_DEFAULTS, _topic_missing, merge_config
 
 
 class KafkaAdminError(Exception):
@@ -298,7 +298,7 @@ class KafkaAdmin:
     def _get_partition_count(self, topic: str) -> int:
         """Get the number of partitions for a topic."""
         metadata = self._admin.list_topics(topic)
-        if topic not in metadata.topics:
+        if _topic_missing(metadata, topic):
             raise KafkaAdminError(f"Topic {topic} not found")
         return len(metadata.topics[topic].partitions)
 

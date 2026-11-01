@@ -150,19 +150,6 @@ This runs the full validation pipeline including:
 
 ## Docker Services
 
-Integration tests use Docker for external services:
-
-| Service | Docker Compose File | Port |
-|---------|---------------------|------|
-| Kafka | `docker-compose.kafka.yml` | 9092 |
-| OpenBao / Vault | `docker-compose.openbao.yml` | 8200 |
-
-Fixtures in `conftest.py` auto-start containers when needed.
-
-`tests/integration/test_secrets_kubernetes_cluster.py` runs the Kubernetes secrets provider against a real API server, resolved by `tests/common/kube_cluster.py`:
-
-1. An existing one, when all three are set: `SCALO_TEST_K8S_API` (an `https://` URL), `SCALO_TEST_K8S_TOKEN_FILE` (a token that may create and delete namespaces, and the ServiceAccounts, Roles, RoleBindings and Secrets in them) and `SCALO_TEST_K8S_CA_FILE`. Each test works in a namespace of its own and deletes it.
-2. Otherwise k3s `v1.37.1+k3s1` in Docker, API server only, so it needs no privileges. The container is `scalo-py-test-integration-secrets-kubernetes-k3s` (with the xdist worker before `-k3s`), labelled `io.hyperi.test.suite=scalo-py-integration`, and removed when the module ends.
-3. Otherwise the tests skip, and fail when `CI` is set.
+The integration tests run against one ClickHouse, Kafka, OpenBao and k3s per run, shared by every xdist worker and removed when the run ends. Which tests use them, the pinned images, the devex pets and an existing Kubernetes API server are in [TESTING.md](TESTING.md).
 
 Remove a container a killed run left behind with `docker rm -f -v` on the names `docker ps -aq --filter label=io.hyperi.test.suite=scalo-py-integration` lists.
