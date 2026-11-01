@@ -80,6 +80,9 @@ Usage Examples
 """
 
 import json
+import os
+import shutil
+import tempfile
 import tomllib
 from pathlib import Path
 from typing import Any, Literal
@@ -290,7 +293,8 @@ def merge_files(
     Auto-detects file type and applies appropriate merge strategy.
 
     Args:
-        source: Source file(s) to merge from
+        source: Source file(s) to merge from. A list merges in order into a scratch
+            copy of ``target``, which replaces ``target`` only once every source merged.
         target: Target file to merge into
         strategy: Merge strategy (auto, deep, append, overwrite)
         dry_run: If True, return merged content without writing
@@ -316,14 +320,8 @@ def merge_files(
     # Convert to Path
     target = Path(target)
 
-    # Handle batch merge
     if isinstance(source, list):
-        # Merge multiple sources sequentially into target
-        for src in source:
-            merge_files(src, target, strategy=strategy, dry_run=False)
-        if dry_run:
-            return target.read_text(encoding="utf-8") if target.exists() else None
-        return None
+        return _merge_batch(source, target, strategy, dry_run)
 
     source = Path(source)
 
@@ -413,6 +411,37 @@ def merge_files(
     except UnicodeEncodeError as e:
         raise UnicodeEncodeError(e.encoding, e.object, e.start, e.end, f"Cannot encode content to {target}") from e
 
+    return None
+
+
+def _merge_batch(sources: list[Path | str], target: Path, strategy: MergeStrategy, dry_run: bool) -> str | None:
+    """Merge ``sources`` in order into a scratch copy of ``target``, so nothing touches it until all succeed.
+
+    Returns:
+        The merged text when ``dry_run``, else None once ``target`` holds it.
+    """
+    with tempfile.TemporaryDirectory(prefix="scalo-merge-") as scratch:
+        # The same file name keeps type detection the same as on the real target.
+        working = Path(scratch) / target.name
+        if target.exists():
+            shutil.copyfile(target, working)
+        for src in sources:
+            merge_files(src, working, strategy=strategy, dry_run=False)
+        if not working.exists():
+            return None
+        if dry_run:
+            return working.read_text(encoding="utf-8")
+        target.parent.mkdir(parents=True, exist_ok=True)
+        # A sibling of the target, so the rename is atomic on its filesystem, created under the umask as a plain write is.
+        staged = target.with_name(f".{target.name}.{os.urandom(4).hex()}")
+        try:
+            shutil.copyfile(working, staged)
+            if target.exists():
+                shutil.copymode(target, staged)
+            os.replace(staged, target)
+        except BaseException:
+            Path(staged).unlink(missing_ok=True)
+            raise
     return None
 
 
