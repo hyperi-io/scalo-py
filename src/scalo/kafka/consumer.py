@@ -12,12 +12,15 @@ Provides a high-level consumer that wraps confluent-kafka
 with sensible defaults for enterprise use.
 """
 
+import logging
 from typing import Any, Iterator
 
 from confluent_kafka import Consumer, KafkaError, KafkaException, TopicPartition
 
 from .config import CONSUMER_DEFAULTS, broker_call, call_timeout, merge_config
 from .types import Message
+
+logger = logging.getLogger(__name__)
 
 
 class KafkaConsumerError(Exception):
@@ -69,7 +72,11 @@ def _hand_over(consumer: Consumer, msgs: list[Any], stores_offsets: bool) -> lis
             following: dict[tuple[str, int], int] = {}
             for message in messages:
                 following[(message.topic, message.partition)] = message.offset + 1
-            consumer.store_offsets(offsets=[TopicPartition(t, p, o) for (t, p), o in following.items()])
+            try:
+                consumer.store_offsets(offsets=[TopicPartition(t, p, o) for (t, p), o in following.items()])
+            except KafkaException:
+                # Only a partition revoked since the read refuses its store, and its new owner reads it again.
+                logger.debug("Kafka offset store refused for a revoked partition", exc_info=True)
         return messages
 
     first: dict[tuple[str, int], int] = {}
