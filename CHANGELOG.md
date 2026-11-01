@@ -3,6 +3,13 @@
 Rendered by CI and committed back at the end of a release -- do not edit by
 hand. Release notes also appear on the GitHub Releases page, one per tag.
 
+## [2.32.4](https://github.com/hyperi-io/scalo-py/compare/v2.32.3...v2.32.4) (2026-11-01)
+
+### Bug Fixes
+
+* let the full tier run the startup smoke tests and allow the GCP credential skip ([#175](https://github.com/hyperi-io/scalo-py/issues/175)) ([fe952ef](https://github.com/hyperi-io/scalo-py/commit/fe952eff2dd601c38babb6ee11610149aceb3412))
+* manual remediation of LLM auto fixes -- bound Kafka calls, fix review findings ([#174](https://github.com/hyperi-io/scalo-py/issues/174)) ([3f2a2c5](https://github.com/hyperi-io/scalo-py/commit/3f2a2c542fe01148e3b8251b59dc0bc2f27f94b6))
+
 ## [2.32.3](https://github.com/hyperi-io/scalo-py/compare/v2.32.2...v2.32.3) (2026-10-31)
 
 ### Bug Fixes
