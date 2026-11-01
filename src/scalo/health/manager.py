@@ -219,7 +219,11 @@ class HealthManager:
                     return bool(await check())
                 from scalo.concurrency import run_blocking
 
-                return bool(await run_blocking(check))
+                result = await run_blocking(check)
+                # A lambda or an object with an async __call__ hands back its coroutine unrun.
+                if inspect.isawaitable(result):
+                    result = await result
+                return bool(result)
         except TimeoutError:
             return False
         except Exception:
