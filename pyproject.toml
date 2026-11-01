@@ -340,6 +340,8 @@ ignore = [
     # D rules are not selected here: hyperi-ci's docstring pass runs `--select D`,
     # and its two relaxations (D105, D107) are declared in .hyperi-ci.yaml.
 ]
+# vulture reads `# noqa: V1xx` on the same line as ruff's codes.
+external = ["V"]
 fixable = [
     "ALL",
 ]

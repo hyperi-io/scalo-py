@@ -41,6 +41,12 @@ try:
 except Exception:
     deployment_importable = False
 
+from .support import deps_with_repo
+
+# Every C library these link is in the wheel or the static binary, so none installs a package.
+STATICALLY_LINKED_EXTRAS = ["kafka", "opentelemetry", "http", "secrets-aws", "secrets-vault", "expression", "metrics"]
+STATICALLY_LINKED_FEATURES = ["transport-kafka", "dlq-kafka", "spool", "tiered-sink", "http", "secrets", "otel"]
+
 
 pytestmark = pytest.mark.skipif(
     not deployment_importable,
@@ -191,31 +197,43 @@ class TestGenerateDockerfile:
         assert 'ENTRYPOINT ["dfe-loader"]' in df
         assert 'CMD ["--config", "/etc/dfe/loader.yaml"]' in df
 
-    def test_with_native_deps_emits_confluent(self):
+    def test_with_native_deps_emits_the_repo_and_packages(self):
         c = _full_contract()
-        c.native_deps = NativeDepsContract.for_scalo_extras(["kafka"], "ubuntu:24.04")
+        c.native_deps = deps_with_repo("ubuntu:24.04")
         df = generate_dockerfile(c)
         # Substring check on the generated Dockerfile, not a host allow-list.
-        assert "packages.confluent.io" in df
-        assert "confluent-clients.gpg" in df
-        assert "librdkafka1" in df
-        assert "libssl3" in df
+        assert "https://apt.vendor.example/deb" in df
+        assert "signed-by=/usr/share/keyrings/vendor.gpg" in df
+        assert "vendor-runtime" in df
+        assert "libgit2-1.9" in df
         assert "gnupg" in df
 
-    def test_pure_python_extras_have_no_apt_repos(self):
+    def test_statically_linked_extras_and_features_install_nothing(self):
         c = _full_contract()
-        c.native_deps = NativeDepsContract.for_scalo_extras(["expression"], "ubuntu:24.04")
-        df = generate_dockerfile(c)
-        assert "confluent" not in df
-        assert "librdkafka1" not in df
-        assert "gnupg" not in df
+        for deps in (
+            NativeDepsContract.for_scalo_extras(STATICALLY_LINKED_EXTRAS, "ubuntu:24.04"),
+            NativeDepsContract.for_scalo_features(STATICALLY_LINKED_FEATURES, "ubuntu:24.04"),
+        ):
+            c.native_deps = deps
+            for image in (generate_dockerfile(c), generate_runtime_stage(c)):
+                for absent in ("librdkafka", "libssl", "zlib1g", "libzstd", "confluent", "signed-by", "gnupg"):
+                    assert absent not in image, absent
+                # The linked-in OpenSSL reads the CA store ca-certificates installs.
+                assert " ca-certificates" in image
 
-    def test_bookworm_codename(self):
+    @pytest.mark.parametrize(
+        ("codename", "line"),
+        [
+            pytest.param("", "deb bookworm main", id="no-codename-takes-the-release"),
+            pytest.param("noble", "deb noble main", id="a-codename-is-kept"),
+        ],
+    )
+    def test_a_repo_codename(self, codename, line):
         c = _full_contract()
         c.base_image = "debian:bookworm-slim"
-        c.native_deps = NativeDepsContract.for_scalo_extras(["kafka"], "debian:bookworm-slim")
-        df = generate_dockerfile(c)
-        assert "bookworm main" in df
+        c.native_deps = deps_with_repo("debian:bookworm-slim", distro_codename="bookworm")
+        c.native_deps.apt_repos[0].codename = codename
+        assert f"https://apt.vendor.example/{line}" in generate_dockerfile(c)
 
     def test_production_profile(self):
         df = generate_dockerfile(_full_contract())
@@ -236,10 +254,10 @@ class TestGenerateDockerfile:
 
     def test_dev_with_native_deps_includes_both(self):
         c = _full_contract()
-        c.native_deps = NativeDepsContract.for_scalo_extras(["kafka"], "ubuntu:24.04")
+        c.native_deps = deps_with_repo("ubuntu:24.04")
         df = generate_dockerfile(c.with_dev_profile())
         assert "strace" in df
-        assert "librdkafka1" in df
+        assert "vendor-runtime" in df
         assert 'LABEL io.scalo.profile="development"' in df
 
     def test_extra_ports_in_expose(self):
@@ -391,12 +409,11 @@ class TestGenerateContainerManifest:
 
     def test_includes_native_deps_when_present(self):
         c = _full_contract()
-        c.native_deps = NativeDepsContract.for_scalo_extras(["kafka"], "ubuntu:24.04")
+        c.native_deps = deps_with_repo("ubuntu:24.04")
         manifest = json.loads(generate_container_manifest(c))
         assert len(manifest["runtime_packages"]["apt_repos"]) == 1
-        # Prefix check on the generated manifest, not a host allow-list.
-        assert manifest["runtime_packages"]["apt_repos"][0]["url"].startswith("https://packages.confluent.io")
-        assert "libssl3" in manifest["runtime_packages"]["apt_packages"]
+        assert manifest["runtime_packages"]["apt_repos"][0]["url"] == "https://apt.vendor.example/deb"
+        assert manifest["runtime_packages"]["apt_packages"] == ["libgit2-1.9"]
 
     def test_oci_labels_default_to_app_name(self):
         manifest = json.loads(generate_container_manifest(_full_contract()))
@@ -503,44 +520,28 @@ class TestKedaContract:
 
 
 class TestNativeDepsForPylibExtras:
-    def test_kafka_adds_confluent_repo(self):
-        deps = NativeDepsContract.for_scalo_extras(["kafka"], "ubuntu:24.04")
-        assert len(deps.apt_repos) == 1
-        assert "confluent" in deps.apt_repos[0].url
-        assert "librdkafka1" in deps.apt_repos[0].packages
-        assert deps.apt_repos[0].codename == "noble"
-        assert "libssl3" in deps.apt_packages
-        assert "zlib1g" in deps.apt_packages
-
-    def test_no_extras_is_empty(self):
-        deps = NativeDepsContract.for_scalo_extras([], "ubuntu:24.04")
+    @pytest.mark.parametrize("extras", [[], ["kafka"], STATICALLY_LINKED_EXTRAS], ids=["none", "kafka", "all"])
+    def test_no_extra_installs_a_package(self, extras):
+        deps = NativeDepsContract.for_scalo_extras(extras, "ubuntu:24.04")
         assert deps.is_empty()
-
-    def test_pure_python_extras_empty(self):
-        deps = NativeDepsContract.for_scalo_extras(["expression", "metrics"], "ubuntu:24.04")
-        assert deps.is_empty()
-
-    def test_no_duplicate_packages(self):
-        deps = NativeDepsContract.for_scalo_extras(["kafka", "http", "secrets-aws"], "ubuntu:24.04")
-        ssl_count = deps.apt_packages.count("libssl3")
-        assert ssl_count == 1
-
-    def test_bookworm_codename(self):
-        deps = NativeDepsContract.for_scalo_extras(["kafka"], "debian:bookworm-slim")
-        assert deps.apt_repos[0].codename == "bookworm"
+        assert deps.distro_codename == "trixie"
 
 
 class TestNativeDepsForRustlibFeatures:
     """Polyglot path -- when a Python app re-binds a Rust core via PyO3."""
 
-    def test_kafka_feature_adds_confluent(self):
-        deps = NativeDepsContract.for_scalo_features(["transport-kafka"], "ubuntu:24.04")
-        assert len(deps.apt_repos) == 1
-        assert "librdkafka1" in deps.apt_repos[0].packages
-
-    def test_spool_adds_zstd(self):
-        deps = NativeDepsContract.for_scalo_features(["spool"], "ubuntu:24.04")
-        assert "libzstd1" in deps.apt_packages
+    @pytest.mark.parametrize(
+        ("features", "codename", "packages"),
+        [
+            pytest.param(STATICALLY_LINKED_FEATURES, "trixie", [], id="statically-linked"),
+            pytest.param(["directory-config-git", "transport-kafka"], "trixie", ["libgit2-1.9"], id="libgit2-trixie"),
+            pytest.param(["directory-config-git"], "bookworm", ["libgit2-1.7"], id="libgit2-bookworm"),
+        ],
+    )
+    def test_only_libgit2_installs_a_package(self, features, codename, packages):
+        deps = NativeDepsContract.for_scalo_features(features, "ubuntu:24.04", distro_codename=codename)
+        assert deps.apt_packages == packages
+        assert deps.apt_repos == []
 
 
 # -----------------------------------------------------------------------------
@@ -570,7 +571,7 @@ class TestGeneratorDeterminism:
 
     def test_dockerfile_deterministic(self):
         c = _full_contract()
-        c.native_deps = NativeDepsContract.for_scalo_extras(["kafka", "http"], "ubuntu:24.04")
+        c.native_deps = deps_with_repo("ubuntu:24.04")
         assert generate_dockerfile(c) == generate_dockerfile(c)
 
     def test_runtime_stage_deterministic(self):

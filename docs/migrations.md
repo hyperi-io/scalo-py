@@ -6,6 +6,12 @@ Behaviour and API changes that need a consumer adjustment, indexed by the scalo 
 
 ## Unreleased
 
+### Generated images install no Kafka C libraries (API CHANGE)
+
+`NativeDepsContract.for_scalo_extras` maps no extra to a package, and `for_scalo_features` maps none but `directory-config-git` (libgit2), as scalo-rs's does: the confluent-kafka wheel and the scalo-rs release build carry librdkafka, OpenSSL, zlib and zstd. `CONFLUENT_KEY_FINGERPRINT` is gone. An `AptRepoContract` with an empty `codename` now takes the contract's `distro_codename` instead of writing an empty suite. See [deployment/native-deps.md](deployment/native-deps.md).
+
+**Consumer adjustment** -- regenerate a committed `Dockerfile` or `Dockerfile.runtime`. Code that imported `CONFLUENT_KEY_FINGERPRINT` drops the import.
+
 ### A missing topic raises `TopicNotFoundError` (BEHAVIOUR CHANGE)
 
 On a broker with topic auto-create off, `describe_topic`, `get_watermark_offsets`, `get_topic_message_count` and `get_consumer_lag` on the sync, async and read-only Kafka clients returned empty answers for a topic that does not exist, because the broker still lists the asked-for topic, carrying `UNKNOWN_TOPIC_OR_PART`. They now raise `TopicNotFoundError` as documented, and `KafkaAdmin` raises `KafkaAdminError`.

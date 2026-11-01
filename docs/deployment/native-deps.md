@@ -1,20 +1,18 @@
 # NativeDepsContract
 
-Runtime shared libraries the container needs because a Python wheel
-dynamically links against system C libs (librdkafka, libpq, OpenSSL,
-etc.). The contract drives the Dockerfile's APT block automatically --
+Runtime shared libraries the container needs beyond what the wheels
+carry. The contract drives the Dockerfile's APT block automatically --
 consumers don't hand-write `RUN apt-get install` lines.
 
 ```python
 from scalo.deployment import NativeDepsContract, AptRepoContract
 ```
 
-Most scalo-py services need NOTHING beyond `ca-certificates curl
-netcat-openbsd iputils-ping` (the always-on base packages). Wheels are
-self-contained for `config`, `logger`, `metrics`, `health`, `runtime`,
-`secrets-file`, `secrets-ansible`, `expression`, `resilience`,
-`concurrency`, `http` (default), and pretty much every pillar except
-the explicitly C-linked transports.
+No scalo-py extra installs a package beyond `ca-certificates curl
+netcat-openbsd iputils-ping` (the always-on base packages). The
+confluent-kafka wheel bundles a librdkafka with OpenSSL and zlib linked
+in, the Python image holds its own OpenSSL, and `ca-certificates` fills
+the CA store both read.
 
 ---
 
@@ -53,23 +51,19 @@ name that does not exist in the target suite (see
 
 ## `AptRepoContract`
 
-A custom APT repository (e.g. Confluent for `librdkafka`).
+A custom APT repository, for a package no distro suite carries.
 
 | Field | Required | Notes |
 |---|---|---|
 | `key_url` | yes | GPG key URL -- fetched via `curl -fsSL` |
 | `keyring` | yes | Local path; the basename (sans extension) names the sources-list file |
 | `url` | yes | Base URL after `deb` |
-| `codename` | no | E.g. `noble`. The *vendor repo's* suite, derived from `base_image` when empty |
+| `codename` | no | E.g. `noble`. The *vendor repo's* suite, the contract's `distro_codename` when empty |
 | `packages` | no | Packages installed from this specific repo |
 
-`codename` here is the suite the **vendor** publishes, which is not the
-same thing as the base image's distro suite. Confluent ships its own
-set of suites, so the repo tracks one Confluent actually publishes: the
-autodetect maps `bookworm`/`jammy`/`focal` out of the base-image string
-and otherwise falls back to `noble`. Both `bookworm` and `noble` are
-verified by build to install cleanly on a trixie base, which is why the
-move to Debian 13 needed no change here.
+`codename` here is the suite the **vendor** publishes, which is not
+always the base image's own suite. Leave it empty to take the
+contract's release.
 
 For distro-versioned package names (`libgit2-1.9` vs `libgit2-1.7`) use
 `distro_codename` on the contract instead -- never this field.
@@ -84,27 +78,10 @@ strings used in `pip install "scalo[...]"`.
 
 | Extra | Adds repos | Adds packages |
 |---|---|---|
-| `kafka` | Confluent | `librdkafka1`, `libssl3`, `zlib1g` |
-| `opentelemetry` | -- | `libssl3`, `zlib1g` |
-| `http` | -- | `libssl3`, `zlib1g` |
-| `secrets-*` (any) | -- | `libssl3`, `zlib1g` |
-| all others | -- | none |
+| every extra, `kafka` included | -- | none |
 
-Dedup is built in: `libssl3` and `zlib1g` appear once no matter how
-many extras pull them in.
-
-Example -- a typical data-pipeline service:
-
-```python
-native_deps = NativeDepsContract.for_scalo_extras(
-    ["kafka", "metrics", "opentelemetry", "secrets-vault", "http"],
-    base_image="python:{python_version}-slim",
-)
-```
-
-Produces: Confluent repo + `librdkafka1`, plus `libssl3` and `zlib1g`.
-Anything not in the table maps to no extra packages -- intentionally
-strict so the image stays minimal.
+The contract still records the release (`distro_codename`), so CI can
+audit which suite the image targets.
 
 ---
 
@@ -115,16 +92,13 @@ For services with a Rust core re-bound to Python (or vice-versa),
 names and maps them to runtime APT packages. The mapping mirrors
 scalo-rs's own `NativeDepsContract::for_scalo_features` -- both
 implementations resolve to the same package set for the same feature
-list, by design.
-
-Feature mapping (excerpt):
+list, by design. The scalo-rs release build links librdkafka, OpenSSL,
+zlib and zstd statically.
 
 | Cargo feature | APT packages |
 |---|---|
-| `transport-kafka`, `dlq-kafka*` | Confluent repo + `librdkafka1` + `libssl3` + `zlib1g` |
-| `spool`, `tiered-sink` | `libzstd1` |
-| `http`, `secrets*`, `transport*`, `config-postgres`, `otel*` | `libssl3` + `zlib1g` |
 | `directory-config-git` | `libgit2-1.9` (trixie) / `libgit2-1.7` (older) |
+| `transport-kafka`, `dlq-kafka*`, `spool`, `tiered-sink`, `http`, `secrets*`, `otel*` | none: linked statically |
 
 The libgit2 name is resolved from `distro_codename` via
 `libgit2_runtime_package()`. Soname-versioned packages do not alias --
