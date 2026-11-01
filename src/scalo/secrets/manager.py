@@ -114,6 +114,8 @@ class SecretsManager:
         self._sources = sources or {}
         self._cache = DiskCache(cache or cache_config or CacheConfig())
         self._env_prefix = env_prefix.rstrip("_") if env_prefix else None
+        # Source name -> (that name, its ENV fallback variable), both from configuration, never from a caller.
+        self._env_fallbacks = {name: (name, self._env_fallback_var(name, src)) for name, src in self._sources.items()}
         self._rotation_callbacks: list[tuple[RotationCallback, list[str] | None]] = []
         self._refresh_task: asyncio.Task | None = None
         self._refresh_stop_event: asyncio.Event | None = None
@@ -121,6 +123,8 @@ class SecretsManager:
         # managers configured against different tenants/namespaces.
         self._memory_cache: dict[_CacheKey, SecretValue] = {}
         self._memory_cache_lock = threading.Lock()
+        # Provider name -> its cache identity, derived on first use.
+        self._identities: dict[str, tuple[str, ...]] = {}
         # Bumped by every change to a path, so a read that began before the change caches nothing.
         self._generations: dict[tuple[str, str], int] = {}
         # Held across a generation check and the cache writes it allows, and across a change's eviction.
@@ -830,13 +834,26 @@ class SecretsManager:
         Raises:
             ProviderNotConfiguredError: No provider by that name is configured.
         """
-        identity = self._get_provider(cache_key.provider).cache_identity
+        identity = self._identity(cache_key.provider)
         return json.dumps([list(identity), cache_key.path, cache_key.key], separators=(",", ":"))
 
     def _disk_group(self, provider_name: str, path: str) -> str:
         """Group a path's disk entries, every sub-key of it, so one change can drop them all."""
-        identity = self._get_provider(provider_name).cache_identity
+        identity = self._identity(provider_name)
         return json.dumps([list(identity), path], separators=(",", ":"))
+
+    def _identity(self, provider_name: str) -> tuple[str, ...]:
+        """Return a provider's cache identity, deriving it once: its credential digests cost a KDF each.
+
+        Raises:
+            ProviderNotConfiguredError: No provider by that name is configured.
+        """
+        provider = self._get_provider(provider_name)
+        identity = self._identities.get(provider_name)
+        if identity is None:
+            identity = provider.cache_identity(self._cache.salt())
+            self._identities[provider_name] = identity
+        return identity
 
     def _forget(self, provider_name: str, path: str) -> None:
         """Drop every cached entry for ``path`` from both tiers, after a write or delete there.
@@ -914,9 +931,13 @@ class SecretsManager:
             return f"{self._env_prefix}_{upper}"
         return upper
 
-    def _resolve_env_fallback(self, name: str, source: SourceConfig) -> SecretValue | None:
-        """Look up ENV fallback value; return SecretValue or None if not set."""
-        env_var = self._env_fallback_var(name, source)
+    def _resolve_env_fallback(self, name: str) -> SecretValue | None:
+        """Look up a configured source's ENV fallback, or None when it is not set.
+
+        The log names the source and the variable from configuration, so nothing a caller
+        passed in, which may be a secret's path, reaches it.
+        """
+        source_name, env_var = self._env_fallbacks[name]
         if env_var is None:
             return None
         env_value = os.environ.get(env_var)
@@ -924,7 +945,7 @@ class SecretsManager:
             return None
         logger.warning(
             "Provider unavailable, using ENV fallback",
-            extra={"source": name, "env_var": env_var},
+            extra={"source": source_name, "env_var": env_var},
         )
         return SecretValue(data=env_value.encode("utf-8"), fetched_at=datetime.now(UTC), source="env")
 
@@ -940,7 +961,7 @@ class SecretsManager:
         try:
             return await self._get_from_provider(provider_name, path, source.key)
         except ProviderError, ProviderNotConfiguredError, SecretNotFoundError:
-            fallback = self._resolve_env_fallback(name, source)
+            fallback = self._resolve_env_fallback(name)
             if fallback is not None:
                 return fallback
             raise
@@ -957,7 +978,7 @@ class SecretsManager:
         try:
             return self._get_from_provider_sync(provider_name, path, source.key)
         except ProviderError, ProviderNotConfiguredError, SecretNotFoundError:
-            fallback = self._resolve_env_fallback(name, source)
+            fallback = self._resolve_env_fallback(name)
             if fallback is not None:
                 return fallback
             raise

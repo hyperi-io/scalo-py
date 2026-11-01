@@ -21,7 +21,7 @@ from ..exceptions import (
     SecretVersionNotFoundError,
 )
 from ..types import GCPConfig, SecretFilter, SecretMetadata, SecretValue
-from .base import HealthLog, VersionedProvider, credential_digest
+from .base import HealthLog, VersionedProvider
 
 logger = logging.getLogger(__name__)
 
@@ -75,8 +75,7 @@ class GCPProvider(VersionedProvider):
         """Provider name."""
         return "gcp"
 
-    @property
-    def cache_identity(self) -> tuple[str, ...]:
+    def cache_identity(self, salt: bytes) -> tuple[str, ...]:  # noqa: V107 -- no credential to digest
         """See base class."""
         return (
             self.name,

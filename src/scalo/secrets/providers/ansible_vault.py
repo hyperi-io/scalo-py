@@ -161,12 +161,11 @@ class AnsibleVaultProvider(SecretProvider):
         """Provider name."""
         return "ansible_vault"
 
-    @property
-    def cache_identity(self) -> tuple[str, ...]:
+    def cache_identity(self, salt: bytes) -> tuple[str, ...]:
         """See base class."""
         return (
             self.name,
-            credential_digest(self._password),
+            credential_digest(self._password, salt),
         )
 
     def _compute_version(self, path: Path) -> str:

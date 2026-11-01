@@ -39,12 +39,28 @@ async def mask_fault_off_loop(text: str) -> str:
     return await run_blocking(mask_fault, text)
 
 
-def credential_digest(value: str | bytes | None) -> str:
-    """Return a 16-hex-digit SHA-256 digest of a credential, or "" for none, to scope a cache entry to it."""
+# scrypt cost: about 16 MiB and tens of milliseconds per credential, paid once per provider instance.
+_SCRYPT_N = 2**14
+_SCRYPT_R = 8
+
+
+def credential_digest(value: str | bytes | None, salt: bytes) -> str:
+    """Return a salted scrypt digest of a credential, or "" for none, to scope a cache entry to it.
+
+    The digest reaches cache file names on disk, so a fast hash would let a low-entropy
+    password be guessed offline. scrypt with the cache directory's own salt does not.
+
+    Args:
+        value: The credential.
+        salt: The cache directory's salt (``DiskCache.salt``).
+
+    Returns:
+        32 hex digits, or "" when there is no credential.
+    """
     if not value:
         return ""
     raw = value.encode("utf-8") if isinstance(value, str) else value
-    return hashlib.sha256(raw).hexdigest()[:16]
+    return hashlib.scrypt(raw, salt=salt, n=_SCRYPT_N, r=_SCRYPT_R, p=1, dklen=16).hex()
 
 
 def _describe(failure: str | BaseException) -> str:
@@ -149,12 +165,18 @@ class SecretProvider(ABC):
         """Provider name for logging and error messages."""
         ...
 
-    @property
-    def cache_identity(self) -> tuple[str, ...]:
+    def cache_identity(self, salt: bytes) -> tuple[str, ...]:  # noqa: V107 -- overrides digest credentials with it
         """Name the backend and principal this provider reads as, to key the shared disk cache.
 
         Two providers that can return different values for one path must differ here.
-        A credential appears only as :func:`credential_digest`.
+        A credential appears only as :func:`credential_digest` with ``salt``. The manager
+        calls this once per provider.
+
+        Args:
+            salt: The cache directory's salt.
+
+        Returns:
+            The identity, the provider's name first.
         """
         return (self.name,)
 

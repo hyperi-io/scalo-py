@@ -12,7 +12,7 @@ Behaviour and API changes that need a consumer adjustment, indexed by the scalo 
 
 ### The secrets disk cache is keyed by backend and principal (BEHAVIOUR CHANGE)
 
-A disk entry was keyed `<provider name>:<path>:<key>`, so managers reading one path from different backends or principals shared it, and colons could collide. It is now keyed by the provider's `cache_identity`, the path and the sub-key, and old entries are not read. See [api/secrets.md](api/secrets.md#caching). **Consumer adjustment** -- a custom `SecretProvider` whose reads depend on its config overrides `cache_identity`.
+A disk entry was keyed `<provider name>:<path>:<key>`, so managers reading one path from different backends or principals shared it, and colons could collide. It is now keyed by the provider's `cache_identity`, the path and the sub-key, and old entries are not read. See [api/secrets.md](api/secrets.md#caching). **Consumer adjustment** -- a custom `SecretProvider` whose reads depend on its config overrides `cache_identity(salt)`, passing each credential through `credential_digest(value, salt)`.
 
 ### A Kafka consume error no longer skips its batch on the next commit (BEHAVIOUR CHANGE)
 

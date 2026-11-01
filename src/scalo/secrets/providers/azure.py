@@ -90,15 +90,14 @@ class AzureProvider(VersionedProvider):
         """Provider name."""
         return "azure"
 
-    @property
-    def cache_identity(self) -> tuple[str, ...]:
+    def cache_identity(self, salt: bytes) -> tuple[str, ...]:
         """See base class."""
         return (
             self.name,
             self._config.vault_url,
             self._config.tenant_id or "",
             self._config.client_id or "",
-            credential_digest(self._config.client_secret),
+            credential_digest(self._config.client_secret, salt),
         )
 
     def _sync_credential(self):

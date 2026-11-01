@@ -332,3 +332,29 @@ def test_a_read_in_flight_across_a_change_never_caches_the_old_value(tmp_path, c
         else:
             with pytest.raises(SecretNotFoundError):
                 later.get_sync(str(secret))
+
+
+def test_a_credential_reaches_the_disk_cache_only_through_a_salted_kdf(tmp_path):
+    """A fast hash of a low-entropy token in a cache key or file name can be brute-forced offline."""
+    import hashlib
+    import stat as stat_module
+
+    from scalo.secrets.providers.openbao import OpenBaoProvider
+    from scalo.secrets.types import OpenBaoConfig
+
+    token = "s.hunter2"
+    fast = hashlib.sha256(token.encode()).hexdigest()
+
+    def disk_key(cache_dir: Path) -> str:
+        provider = OpenBaoProvider(OpenBaoConfig(address="https://bao:8200", token=token))
+        manager = SecretsManager(providers={"openbao": provider}, cache_config=_disk_cached(cache_dir))
+        return manager._disk_key(_CacheKey("openbao", "secret/data/app", "password"))
+
+    first, again, elsewhere = disk_key(tmp_path / "a"), disk_key(tmp_path / "a"), disk_key(tmp_path / "b")
+    for length in (16, 32, 64):
+        assert fast[:length] not in first, "the key holds a fast digest of the token"
+    assert first == again, "one directory keys a credential the same way every time"
+    assert first != elsewhere, "each directory salts its own keys"
+    salt = tmp_path / "a" / ".salt"
+    assert stat_module.S_IMODE(salt.stat().st_mode) == 0o600
+    assert len(salt.read_bytes()) == 16

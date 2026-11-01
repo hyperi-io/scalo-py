@@ -82,8 +82,7 @@ class OpenBaoProvider(VersionedProvider):
         """Provider name."""
         return "openbao"
 
-    @property
-    def cache_identity(self) -> tuple[str, ...]:
+    def cache_identity(self, salt: bytes) -> tuple[str, ...]:
         """See base class."""
         return (
             self.name,
@@ -93,9 +92,9 @@ class OpenBaoProvider(VersionedProvider):
             self._config.auth_method,
             self._config.role or "",
             self._config.token_path,
-            credential_digest(self._config.token),
-            credential_digest(self._config.role_id),
-            credential_digest(self._config.secret_id),
+            credential_digest(self._config.token, salt),
+            credential_digest(self._config.role_id, salt),
+            credential_digest(self._config.secret_id, salt),
         )
 
     def _get_base_headers(self) -> dict[str, str]:

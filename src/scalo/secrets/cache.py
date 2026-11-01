@@ -6,6 +6,7 @@ import logging
 import os
 import sys
 import tempfile
+from contextlib import suppress
 from datetime import UTC, datetime
 from pathlib import Path
 
@@ -29,6 +30,8 @@ except ImportError:
 _CACHE_FILE_MODE = 0o600
 # Directory mode: owner rwx only (0o700).
 _CACHE_DIR_MODE = 0o700
+# Length of the per-directory salt for credential digests.
+_SALT_BYTES = 16
 
 
 def _is_production() -> bool:
@@ -64,6 +67,7 @@ class DiskCache:
     def __init__(self, config: CacheConfig) -> None:
         self._config = config
         self._directory = self._resolve_directory(config.directory)
+        self._salt: bytes | None = None
         # Normalised encryption key bytes (HKDF IKM), or None = plaintext.
         self._enc_key: bytes | None = None
 
@@ -100,6 +104,41 @@ class DiskCache:
                 )
         elif config.enabled:
             logger.debug("Secrets disk cache is off (no encryption_key); caching in memory only")
+
+    def salt(self) -> bytes:
+        """Return the 16 random bytes this directory salts its credential digests with.
+
+        They live in ``.salt`` (0600) in the cache directory, so every manager sharing the
+        directory derives the same keys. With the disk tier off nothing is written, and the
+        salt is this instance's own.
+
+        Raises:
+            OSError: The salt file cannot be read or created.
+        """
+        if self._salt is not None:
+            return self._salt
+        if not self._disk_enabled:
+            self._salt = os.urandom(_SALT_BYTES)
+            return self._salt
+        path = self._directory / ".salt"
+        if not path.exists():
+            # Written whole to a private sibling and linked in, so a reader never sees a part of it.
+            staged = self._directory / f".salt.{os.urandom(6).hex()}.tmp"
+            fd = os.open(staged, os.O_CREAT | os.O_EXCL | os.O_WRONLY | getattr(os, "O_BINARY", 0), _CACHE_FILE_MODE)
+            try:
+                with os.fdopen(fd, "wb") as handle:
+                    handle.write(os.urandom(_SALT_BYTES))
+                    handle.flush()
+                    os.fsync(handle.fileno())
+                with suppress(FileExistsError):
+                    os.link(staged, path)
+            finally:
+                staged.unlink(missing_ok=True)
+        salt = path.read_bytes()
+        if len(salt) != _SALT_BYTES:
+            raise OSError(f"{path} holds {len(salt)} bytes, not a {_SALT_BYTES}-byte salt")
+        self._salt = salt
+        return salt
 
     @property
     def config(self) -> CacheConfig:
