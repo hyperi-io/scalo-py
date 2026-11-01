@@ -489,8 +489,12 @@ def _emit(node: Expr, parent_prec: int = 0) -> str:
             raise TranspileError(f"Unsupported operator: {node.op!r}")
 
         my_prec = _SQL_PREC.get(sql_op, 0)
-        left_sql = _emit(node.left, my_prec)
-        right_sql = _emit(node.right, my_prec)
+        # SQL groups equal-precedence operators from the left, so a right operand at
+        # this precedence keeps its parentheses: a - (b - c) is not a - b - c. A
+        # comparison does not chain, so its left operand keeps them as well.
+        comparison = my_prec == _SQL_PREC["="]
+        left_sql = _emit(node.left, my_prec + 1 if comparison else my_prec)
+        right_sql = _emit(node.right, my_prec + 1)
 
         # NULL comparisons need IS NULL / IS NOT NULL semantics in
         # ClickHouse -- `x = NULL` always returns NULL (never true), and
