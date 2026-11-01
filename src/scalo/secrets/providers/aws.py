@@ -16,7 +16,7 @@ from ..exceptions import (
     SecretVersionNotFoundError,
 )
 from ..types import AWSConfig, SecretFilter, SecretMetadata, SecretValue
-from .base import HealthLog, VersionedProvider
+from .base import HealthLog, VersionedProvider, credential_digest
 
 logger = logging.getLogger(__name__)
 
@@ -77,6 +77,16 @@ class AWSProvider(VersionedProvider):
     def name(self) -> str:
         """Provider name."""
         return "aws"
+
+    @property
+    def cache_identity(self) -> tuple[str, ...]:
+        """See base class."""
+        return (
+            self.name,
+            self._config.region or "",
+            self._config.endpoint_url or "",
+            credential_digest(self._config.access_key_id),
+        )
 
     def _get_client_kwargs(self) -> dict:
         """Get kwargs for boto3/aiobotocore client creation."""

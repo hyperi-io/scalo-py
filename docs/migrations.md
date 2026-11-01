@@ -6,6 +6,12 @@ Behaviour and API changes that need a consumer adjustment, indexed by the scalo 
 
 ## Unreleased
 
+### The secrets disk cache is keyed by backend and principal (BEHAVIOUR CHANGE)
+
+A disk entry was keyed `<provider name>:<path>:<key>`, so two managers on one host reading the same path from different backends, or as different principals, shared an entry, and a colon in the path or key could make two secrets collide. The key is now the provider's `cache_identity` (its endpoint, scope and a digest of its credential), the path and the sub-key. Entries written under the old key are never read again. See [api/secrets.md](api/secrets.md#caching).
+
+**Consumer adjustment** -- a custom `SecretProvider` whose reads depend on its configuration overrides `cache_identity`. The first read after an upgrade goes to the provider.
+
 ### Generated images install no Kafka C libraries (API CHANGE)
 
 `NativeDepsContract.for_scalo_extras` maps no extra to a package, and `for_scalo_features` maps none but `directory-config-git` (libgit2), as scalo-rs's does: the confluent-kafka wheel and the scalo-rs release build carry librdkafka, OpenSSL, zlib and zstd. `CONFLUENT_KEY_FINGERPRINT` is gone. An `AptRepoContract` with an empty `codename` now takes the contract's `distro_codename` instead of writing an empty suite. See [deployment/native-deps.md](deployment/native-deps.md).

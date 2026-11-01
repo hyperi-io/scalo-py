@@ -1,6 +1,7 @@
 """Abstract base class for secret providers, and the health log every provider shares."""
 
 import functools
+import hashlib
 import logging
 import threading
 from abc import ABC, abstractmethod
@@ -36,6 +37,14 @@ async def mask_fault_off_loop(text: str) -> str:
     from ...concurrency import run_blocking
 
     return await run_blocking(mask_fault, text)
+
+
+def credential_digest(value: str | bytes | None) -> str:
+    """Return a 16-hex-digit SHA-256 digest of a credential, or "" for none, to scope a cache entry to it."""
+    if not value:
+        return ""
+    raw = value.encode("utf-8") if isinstance(value, str) else value
+    return hashlib.sha256(raw).hexdigest()[:16]
 
 
 def _describe(failure: str | BaseException) -> str:
@@ -139,6 +148,15 @@ class SecretProvider(ABC):
     def name(self) -> str:
         """Provider name for logging and error messages."""
         ...
+
+    @property
+    def cache_identity(self) -> tuple[str, ...]:
+        """Name the backend and principal this provider reads as, to key the shared disk cache.
+
+        Two providers that can return different values for one path must differ here.
+        A credential appears only as :func:`credential_digest`.
+        """
+        return (self.name,)
 
     # --- Read ---
 

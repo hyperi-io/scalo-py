@@ -41,7 +41,7 @@ from ..exceptions import (
     SecretsError,
 )
 from ..types import KubernetesConfig, SecretFilter, SecretMetadata, SecretValue, _check_namespace
-from .base import HealthLog, SecretProvider
+from .base import HealthLog, SecretProvider, credential_digest
 
 logger = logging.getLogger(__name__)
 
@@ -238,6 +238,17 @@ class KubernetesProvider(SecretProvider):
     def name(self) -> str:
         """Provider name."""
         return "kubernetes"
+
+    @property
+    def cache_identity(self) -> tuple[str, ...]:
+        """See base class."""
+        return (
+            self.name,
+            self._config.api_server or "",
+            self._config.namespace or "",
+            self._config.secret_name,
+            self._config.token_path,
+        )
 
     # --- Connection ---
 

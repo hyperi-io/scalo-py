@@ -17,7 +17,7 @@ from ..exceptions import (
     SecretVersionNotFoundError,
 )
 from ..types import OpenBaoConfig, SecretFilter, SecretMetadata, SecretValue
-from .base import HealthLog, VersionedProvider
+from .base import HealthLog, VersionedProvider, credential_digest
 
 logger = logging.getLogger(__name__)
 
@@ -81,6 +81,22 @@ class OpenBaoProvider(VersionedProvider):
     def name(self) -> str:
         """Provider name."""
         return "openbao"
+
+    @property
+    def cache_identity(self) -> tuple[str, ...]:
+        """See base class."""
+        return (
+            self.name,
+            self._config.address,
+            self._config.namespace or "",
+            self._config.mount or "",
+            self._config.auth_method,
+            self._config.role or "",
+            self._config.token_path,
+            credential_digest(self._config.token),
+            credential_digest(self._config.role_id),
+            credential_digest(self._config.secret_id),
+        )
 
     def _get_base_headers(self) -> dict[str, str]:
         """Get base headers for requests."""

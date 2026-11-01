@@ -116,3 +116,54 @@ def test_memory_cache_is_instance_not_class_attribute():
     assert mgr1._memory_cache is not mgr2._memory_cache
     # And not present on the class itself
     assert "_memory_cache" not in vars(SecretsManager)
+
+
+# Seals disk-cache entries, so the disk tier is on.
+_CACHE_KEY = "k" * 32
+
+
+def _disk_cached(cache_dir: Path) -> CacheConfig:
+    return CacheConfig(enabled=True, directory=str(cache_dir), encryption_key=_CACHE_KEY)
+
+
+def test_a_colon_in_path_or_key_never_shares_a_disk_entry(tmp_path):
+    """``(path="x:y", key="c")`` and ``(path="x", key="y:c")`` once both became ``file:x:y:c`` on disk."""
+    base = tmp_path / "secrets"
+    _write(base / "x:y", b'{"c": "ONE"}')
+    _write(base / "x", b'{"y:c": "TWO"}')
+    cache = _disk_cached(tmp_path / "cache")
+
+    first = SecretsManager(cache_config=cache).get_sync(str(base / "x:y"), key="c")
+    # A second manager starts with an empty memory tier, so its read reaches the disk tier.
+    second = SecretsManager(cache_config=cache).get_sync(str(base / "x"), key="y:c")
+
+    assert first.data == b"ONE"
+    assert second.data == b"TWO"
+
+
+@pytest.mark.parametrize(
+    ("a", "b"),
+    [
+        pytest.param({"address": "https://bao-a:8200"}, {"address": "https://bao-b:8200"}, id="address"),
+        pytest.param({"namespace": "tenant-a"}, {"namespace": "tenant-b"}, id="namespace"),
+        pytest.param({"mount": "kv-a"}, {"mount": "kv-b"}, id="mount"),
+        pytest.param({"token": "s.one"}, {"token": "s.two"}, id="credential"),
+        pytest.param(
+            {"auth_method": "approle", "role_id": "r1"}, {"auth_method": "approle", "role_id": "r2"}, id="role"
+        ),
+    ],
+)
+def test_two_openbao_backends_named_alike_never_share_a_disk_entry(tmp_path, a, b):
+    from scalo.secrets.providers.openbao import OpenBaoProvider
+    from scalo.secrets.types import OpenBaoConfig
+
+    def manager(fields: dict) -> SecretsManager:
+        config = OpenBaoConfig(**{"address": "https://bao:8200", **fields})
+        return SecretsManager(providers={"openbao": OpenBaoProvider(config)}, cache_config=_disk_cached(tmp_path))
+
+    key = _CacheKey("openbao", "secret/data/app", "password")
+    first, second = manager(a)._disk_key(key), manager(b)._disk_key(key)
+    assert first != second
+    # A credential reaches the cache file name only as a digest.
+    assert "s.one" not in first
+    assert "r1" not in first

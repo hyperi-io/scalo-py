@@ -21,7 +21,7 @@ from ..exceptions import (
     SecretVersionNotFoundError,
 )
 from ..types import GCPConfig, SecretFilter, SecretMetadata, SecretValue
-from .base import HealthLog, VersionedProvider
+from .base import HealthLog, VersionedProvider, credential_digest
 
 logger = logging.getLogger(__name__)
 
@@ -74,6 +74,15 @@ class GCPProvider(VersionedProvider):
     def name(self) -> str:
         """Provider name."""
         return "gcp"
+
+    @property
+    def cache_identity(self) -> tuple[str, ...]:
+        """See base class."""
+        return (
+            self.name,
+            self._config.project_id,
+            self._config.credentials_file or "",
+        )
 
     def _version_name(self, path: str) -> str:
         """Build full secret version resource name."""

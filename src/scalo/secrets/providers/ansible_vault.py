@@ -42,7 +42,7 @@ from ..exceptions import (
     SecretPermissionError,
 )
 from ..types import AnsibleVaultConfig, SecretFilter, SecretMetadata, SecretValue
-from .base import SecretProvider
+from .base import SecretProvider, credential_digest
 
 logger = logging.getLogger(__name__)
 
@@ -159,6 +159,14 @@ class AnsibleVaultProvider(SecretProvider):
     def name(self) -> str:
         """Provider name."""
         return "ansible_vault"
+
+    @property
+    def cache_identity(self) -> tuple[str, ...]:
+        """See base class."""
+        return (
+            self.name,
+            credential_digest(self._password),
+        )
 
     def _compute_version(self, path: Path) -> str:
         """Compute version from file mtime and size."""
