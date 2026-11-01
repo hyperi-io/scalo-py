@@ -167,3 +167,39 @@ def test_two_openbao_backends_named_alike_never_share_a_disk_entry(tmp_path, a, 
     # A credential reaches the cache file name only as a digest.
     assert "s.one" not in first
     assert "r1" not in first
+
+
+@pytest.mark.parametrize("mode", ["sync", "async"])
+@pytest.mark.parametrize("change", ["update", "delete"])
+def test_an_update_or_delete_is_never_answered_from_either_cache_tier(tmp_path, change, mode):
+    """Both tiers hold the old value and a sub-key of it, and neither may answer once it changed."""
+    import asyncio
+
+    from scalo.secrets.exceptions import SecretNotFoundError
+
+    secret = tmp_path / "secrets" / "db"
+    _write(secret, b'{"password": "OLD"}')
+    cache = _disk_cached(tmp_path / "cache")
+    manager = SecretsManager(cache_config=cache)
+    assert manager.get_sync(str(secret)).data == b'{"password": "OLD"}'
+    assert manager.get_sync(str(secret), key="password").data == b"OLD"
+
+    if change == "update" and mode == "sync":
+        manager.update_sync(str(secret), b'{"password": "NEW"}')
+    elif change == "update":
+        asyncio.run(manager.update(str(secret), b'{"password": "NEW"}'))
+    elif mode == "sync":
+        manager.delete_sync(str(secret))
+    else:
+        asyncio.run(manager.delete(str(secret)))
+
+    # A second manager on the same directory starts with an empty memory tier, so it reads the disk tier.
+    for reader in (manager, SecretsManager(cache_config=cache)):
+        if change == "update":
+            assert reader.get_sync(str(secret), key="password").data == b"NEW"
+            assert reader.get_sync(str(secret)).data == b'{"password": "NEW"}'
+        else:
+            with pytest.raises(SecretNotFoundError):
+                reader.get_sync(str(secret), key="password")
+            with pytest.raises(SecretNotFoundError):
+                reader.get_sync(str(secret))

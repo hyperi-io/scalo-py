@@ -564,7 +564,10 @@ class SecretsManager:
         """
         provider_name = provider or "file"
         p = self._get_provider(provider_name)
-        return await p.update_async(path, value)
+        try:
+            return await p.update_async(path, value)
+        finally:
+            self._forget(provider_name, path)
 
     def update_sync(
         self,
@@ -575,7 +578,10 @@ class SecretsManager:
         """Update an existing secret's value (sync)."""
         provider_name = provider or "file"
         p = self._get_provider(provider_name)
-        return p.update_sync(path, value)
+        try:
+            return p.update_sync(path, value)
+        finally:
+            self._forget(provider_name, path)
 
     async def delete(
         self,
@@ -596,7 +602,10 @@ class SecretsManager:
         """
         provider_name = provider or "file"
         p = self._get_provider(provider_name)
-        await p.delete_async(path)
+        try:
+            await p.delete_async(path)
+        finally:
+            self._forget(provider_name, path)
 
     def delete_sync(
         self,
@@ -606,7 +615,10 @@ class SecretsManager:
         """Delete a secret (sync)."""
         provider_name = provider or "file"
         p = self._get_provider(provider_name)
-        p.delete_sync(path)
+        try:
+            p.delete_sync(path)
+        finally:
+            self._forget(provider_name, path)
 
     # -------------------------------------------------------------------------
     # Batch get
@@ -812,10 +824,26 @@ class SecretsManager:
         identity = self._get_provider(cache_key.provider).cache_identity
         return json.dumps([list(identity), cache_key.path, cache_key.key], separators=(",", ":"))
 
+    def _disk_group(self, provider_name: str, path: str) -> str:
+        """Group a path's disk entries, every sub-key of it, so one change can drop them all."""
+        identity = self._get_provider(provider_name).cache_identity
+        return json.dumps([list(identity), path], separators=(",", ":"))
+
+    def _forget(self, provider_name: str, path: str) -> None:
+        """Drop every cached entry for ``path`` from both tiers, after a write or delete there.
+
+        Raises:
+            OSError: A disk entry could not be removed, so it could still be served.
+        """
+        with self._memory_cache_lock:
+            for cache_key in [k for k in self._memory_cache if k.provider == provider_name and k.path == path]:
+                del self._memory_cache[cache_key]
+        self._cache.delete_group(self._disk_group(provider_name, path))
+
     def _store_fetched(self, cache_key: _CacheKey, value: SecretValue) -> None:
         """Cache a value fresh from its provider, reporting a rotation against the value it replaces."""
         old_value = self._memory_put(cache_key, value)
-        self._cache.set(self._disk_key(cache_key), value)
+        self._cache.set(self._disk_key(cache_key), value, self._disk_group(cache_key.provider, cache_key.path))
         self._check_rotation(cache_key.label(), old_value, value)
 
     async def _fetch(self, cache_key: _CacheKey) -> SecretValue:
@@ -923,7 +951,7 @@ class SecretsManager:
             return remembered
 
         # Check disk cache
-        cached = self._cache.get(disk_key)
+        cached = self._cache.get(disk_key, self._disk_group(provider_name, path))
         if cached and not cached.is_expired(self._cache.config.ttl_secs):
             self._memory_put(cache_key, cached)
             logger.debug("Disk cache hit", extra={"key": cache_key.label()})
@@ -959,7 +987,7 @@ class SecretsManager:
             return remembered
 
         # Check disk cache
-        cached = self._cache.get(disk_key)
+        cached = self._cache.get(disk_key, self._disk_group(provider_name, path))
         if cached and not cached.is_expired(self._cache.config.ttl_secs):
             self._memory_put(cache_key, cached)
             return cached
