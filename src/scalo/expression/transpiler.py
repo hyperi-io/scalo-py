@@ -454,6 +454,48 @@ def _escape_string(s: str) -> str:
     return "'" + s.replace("\\", "\\\\").replace("'", "\\'") + "'"
 
 
+def _static_type(node: Expr) -> str | None:
+    """Return ``"int"`` or ``"double"`` when the expression alone fixes ``node``'s numeric type, else None.
+
+    CEL never mixes the two in one operation, so a typed literal or conversion on
+    either side fixes the type of the whole arithmetic around it.
+    """
+    if isinstance(node, Literal) and not isinstance(node.value, bool):
+        if isinstance(node.value, int):
+            return "int"
+        if isinstance(node.value, float):
+            return "double"
+        return None
+    if isinstance(node, UnaryOp) and node.op == "-":
+        return _static_type(node.operand)
+    if isinstance(node, BinaryOp) and node.op == "%":
+        return "int"
+    if isinstance(node, BinaryOp) and node.op in ("+", "-", "*", "/"):
+        return _static_type(node.left) or _static_type(node.right)
+    if isinstance(node, FunctionCall):
+        return {"int": "int", "size": "int", "double": "double"}.get(node.name)
+    return None
+
+
+def _emit_division(node: BinaryOp) -> str:
+    """Emit ``/`` as CEL means it: integer division truncating toward zero, or double division.
+
+    Raises:
+        TranspileError: Neither operand fixes the type, so only the data decides which division CEL does.
+    """
+    kind = _static_type(node)
+    if kind is None:
+        raise TranspileError(
+            "`/` between operands with no fixed type divides as int or as double depending on the data, "
+            "so it is not pushed down: evaluate it in process, or give an operand a type with int() or double()"
+        )
+    if kind == "int":
+        # ClickHouse's intDiv truncates toward zero, as CEL does. Its `/` always returns a double.
+        return f"intDiv({_emit(node.left)}, {_emit(node.right)})"
+    my_prec = _SQL_PREC["/"]
+    return f"{_emit(node.left, my_prec)} / {_emit(node.right, my_prec + 1)}"
+
+
 def _emit(node: Expr, parent_prec: int = 0) -> str:
     """Emit a ClickHouse SQL string from an AST node."""
     if isinstance(node, Literal):
@@ -489,6 +531,9 @@ def _emit(node: Expr, parent_prec: int = 0) -> str:
             raise TranspileError(f"Unsupported operator: {node.op!r}")
 
         my_prec = _SQL_PREC.get(sql_op, 0)
+        if node.op == "/":
+            divided = _emit_division(node)
+            return f"({divided})" if my_prec < parent_prec else divided
         # SQL groups equal-precedence operators from the left, so a right operand at
         # this precedence keeps its parentheses: a - (b - c) is not a - b - c. A
         # comparison does not chain, so its left operand keeps them as well.

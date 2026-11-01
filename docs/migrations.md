@@ -20,11 +20,15 @@ A disk entry was keyed `<provider name>:<path>:<key>`, so managers reading one p
 
 ### Kafka broker calls end at `socket.timeout.ms`, and topic errors raise (BEHAVIOUR CHANGE)
 
-Metadata, watermark, committed-offset and offsets-for-times calls waited forever on a broker that never answered. Each now waits at most `socket.timeout.ms` (30 s unset), or the `KafkaAdmin` method's `timeout`, then raises `KafkaTimeoutError`. A missing topic raises `TopicNotFoundError` (`KafkaAdminError` on `KafkaAdmin`), where the read clients returned empty answers. Any other topic error, such as `TOPIC_AUTHORIZATION_FAILED`, raises `KafkaException`. `scalo.kafka.readonly.TopicNotFoundError` is now `scalo.kafka.TopicNotFoundError`. See [transport/kafka.md](transport/kafka.md#admin-defaults-admin_defaults). **Consumer adjustment** -- catch the new errors where an empty answer or a hang stood in for them.
+Broker calls that waited forever now wait at most `socket.timeout.ms` (30 s unset), or the `KafkaAdmin` method's `timeout`, then raise `KafkaTimeoutError`. A missing topic raises `TopicNotFoundError` where the read clients returned empty, and any other topic error raises `KafkaException`. `scalo.kafka.readonly.TopicNotFoundError` is now `scalo.kafka.TopicNotFoundError`. See [transport/kafka.md](transport/kafka.md#admin-defaults-admin_defaults). **Consumer adjustment** -- catch the new errors where an empty answer or a hang stood in for them.
+
+### A division with no fixed type no longer pushes down (BEHAVIOUR CHANGE)
+
+`transpile_to_clickhouse` wrote CEL's `/` as ClickHouse's double `/` even between ints. It now writes `intDiv` where an operand is int-typed, `/` where one is double-typed, and raises `TranspileError` where neither is. See [api/expression.md](api/expression.md#transpile-to-clickhouse-sql). **Consumer adjustment** -- evaluate such a filter in process, or type an operand with `double()` or `int()`.
 
 ### Generated images install no Kafka C libraries (API CHANGE)
 
-`NativeDepsContract.for_scalo_extras` maps no extra to a package, and `for_scalo_features` maps only `directory-config-git` (libgit2), as scalo-rs does: the confluent-kafka wheel carries librdkafka and its libraries. `CONFLUENT_KEY_FINGERPRINT` is gone, and an `AptRepoContract` with an empty `codename` takes `distro_codename`. See [deployment/native-deps.md](deployment/native-deps.md). **Consumer adjustment** -- regenerate a committed `Dockerfile` or `Dockerfile.runtime`.
+`NativeDepsContract.for_scalo_extras` maps no extra to a package, and `for_scalo_features` maps only `directory-config-git` (libgit2), as scalo-rs does. `CONFLUENT_KEY_FINGERPRINT` is gone, and an `AptRepoContract` with an empty `codename` takes `distro_codename`. See [deployment/native-deps.md](deployment/native-deps.md). **Consumer adjustment** -- regenerate a committed `Dockerfile` or `Dockerfile.runtime`.
 
 ### Shared test services, and the compose files gone (additive)
 

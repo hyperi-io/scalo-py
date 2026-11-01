@@ -217,8 +217,21 @@ class TestArithmetic:
     def test_subtraction(self):
         assert transpile_to_clickhouse("a - b > 0") == "a - b > 0"
 
-    def test_division(self):
-        assert transpile_to_clickhouse("total / count > 5") == "total / count > 5"
+    @pytest.mark.parametrize(
+        ("expr", "sql"),
+        [
+            pytest.param("total / 2 > 5", "intDiv(total, 2) > 5", id="int"),
+            pytest.param("total / int(count) > 5", "intDiv(total, toInt64(count)) > 5", id="int-conversion"),
+            pytest.param("total / 2.0 > 5.0", "total / 2.0 > 5.0", id="double"),
+            pytest.param("total / count > 5", None, id="no-fixed-type"),
+        ],
+    )
+    def test_division(self, expr, sql):
+        if sql is None:
+            with pytest.raises(TranspileError, match="no fixed type"):
+                transpile_to_clickhouse(expr)
+        else:
+            assert transpile_to_clickhouse(expr) == sql
 
 
 # ── Literals ──────────────────────────────────────────────────
