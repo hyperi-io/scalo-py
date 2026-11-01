@@ -76,6 +76,8 @@ with KafkaConsumer("localhost:9092", group_id="my-service") as consumer:
 | Subscription | `subscribe(str\|list[str])`, `unsubscribe()`, `assign(topic, partitions)`, `assignment()`. |
 | Offsets | `commit(asynchronous=False)` commits **all** current offsets -- no `commit_message(msg)`. `committed(topic, partitions)`, `seek(topic, partition, offset)`, `seek_to_beginning/end(topic, partition)`, `position(topic, partition)`. |
 
+`commit()` covers only messages `poll` and `consume` have handed over: the consumer sets `enable.auto.offset.store` false and stores each partition's next offset itself as it returns messages. A `consume` batch that carries an error raises `KafkaConsumerError` and returns none of its messages, and each partition it read is sought back to its first message in the batch, so the next read returns them again. A config that sets `enable.auto.offset.store` keeps librdkafka's store, which marks every fetched message as done, and then a commit after a batch error skips that batch. `AsyncKafkaConsumer` behaves the same.
+
 For seek-by-timestamp use `KafkaAdmin.reset_offsets_to_timestamp()` or
 `KafkaAdmin.reset_offsets_to_time()` -- there is no `seek_to_timestamp()`
 on the consumer. `KafkaConsumerError` carries `.error_code` from

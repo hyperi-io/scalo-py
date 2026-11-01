@@ -418,6 +418,49 @@ class TestKafkaProducerConsumerIntegration:
         assert event_ids == expected_ids, "Message content mismatch"
 
     @pytest.mark.full
+    def test_an_error_in_a_batch_rewinds_so_no_message_is_skipped(self, kafka_config, kafka_topics, kafka_group):
+        """Partition 0 holds 5 messages, partition 1 a committed offset past its end, which errors.
+
+        One ``consume`` call returns both and raises. A commit then must cover only what earlier
+        calls handed over, and the next read must return partition 0's messages again.
+        """
+        from confluent_kafka import Consumer, KafkaError, KafkaException, Producer, TopicPartition
+
+        from scalo.kafka import KafkaConsumer, KafkaConsumerError
+
+        topic = kafka_topics("batch-error", partitions=2)
+        group = kafka_group("batch-error")
+        producer = Producer(dict(kafka_config))
+        for n in range(5):
+            producer.produce(topic, value=str(n).encode(), partition=0)
+        assert producer.flush(10) == 0
+        seeder = Consumer({**kafka_config, "group.id": group})
+        seeder.commit(offsets=[TopicPartition(topic, 0, 0), TopicPartition(topic, 1, 1000)], asynchronous=False)
+        seeder.close()
+
+        config = {**kafka_config, "auto.offset.reset": "error"}
+        with KafkaConsumer(config, group, verify_ssl=False) as consumer:
+            consumer.assign(topic, [0, 1])
+            delivered: list[int] = []
+            with pytest.raises(KafkaConsumerError, match="Offset out of range"):
+                deadline = time.monotonic() + 30
+                while time.monotonic() < deadline:
+                    delivered += [m.offset for m in consumer.consume(num_messages=100, timeout=5.0)]
+            # A commit straight after the error moves the group past what was handed over, and no further.
+            try:
+                consumer.commit()
+            except KafkaException as exc:
+                assert exc.args[0].code() == KafkaError._NO_OFFSET, "only 'nothing to commit' is expected"
+            assert consumer.committed(topic, [0]) == {0: len(delivered)}
+
+            # librdkafka reports partition 1's reset error once, then the same consumer reads on.
+            for _ in range(10):
+                delivered += [m.offset for m in consumer.consume(num_messages=100, timeout=1.0)]
+                if len(delivered) >= 5:
+                    break
+            assert sorted(delivered) == [0, 1, 2, 3, 4]
+
+    @pytest.mark.full
     def test_produce_order_events_with_headers(self, kafka_config, test_topic, kafka_group):
         """Should produce order events with custom headers."""
         from scalo.kafka import KafkaConsumer, KafkaProducer

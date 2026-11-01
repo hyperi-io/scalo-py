@@ -8,39 +8,27 @@ Behaviour and API changes that need a consumer adjustment, indexed by the scalo 
 
 ### `DirectoryConfigStore` refuses a write over a table it cannot read (BEHAVIOUR CHANGE)
 
-`set` read a malformed, non-mapping or unreadable table as empty and wrote back only the new key. It now raises `ValueError` or the `OSError`, as `delete` does, and leaves the file alone.
-
-**Consumer adjustment** -- a caller that relied on `set` to overwrite a broken table fixes or removes the file first.
+`set` read a malformed, non-mapping or unreadable table as empty and wrote back only the new key. It now raises `ValueError` or the `OSError`, as `delete` does. **Consumer adjustment** -- fix or remove a broken table before writing to it.
 
 ### The secrets disk cache is keyed by backend and principal (BEHAVIOUR CHANGE)
 
-A disk entry was keyed `<provider name>:<path>:<key>`, so two managers on one host reading the same path from different backends, or as different principals, shared an entry, and a colon in the path or key could make two secrets collide. The key is now the provider's `cache_identity` (its endpoint, scope and a digest of its credential), the path and the sub-key. Entries written under the old key are never read again. See [api/secrets.md](api/secrets.md#caching).
+A disk entry was keyed `<provider name>:<path>:<key>`, so managers reading one path from different backends or principals shared it, and colons could collide. It is now keyed by the provider's `cache_identity`, the path and the sub-key, and old entries are not read. See [api/secrets.md](api/secrets.md#caching). **Consumer adjustment** -- a custom `SecretProvider` whose reads depend on its config overrides `cache_identity`.
 
-**Consumer adjustment** -- a custom `SecretProvider` whose reads depend on its configuration overrides `cache_identity`. The first read after an upgrade goes to the provider.
+### A Kafka consume error no longer skips its batch on the next commit (BEHAVIOUR CHANGE)
+
+`consume` dropped a failed batch's good messages while librdkafka had stored their offsets, so the next `commit()` skipped them. `KafkaConsumer` and `AsyncKafkaConsumer` now store an offset only once its message is returned, and seek a failed batch back. See [transport/kafka.md](transport/kafka.md#kafkaconsumer). **Consumer adjustment** -- a `commit()` with nothing returned since the last one raises `_NO_OFFSET`. Setting `enable.auto.offset.store` keeps the old behaviour.
+
+### Kafka broker calls end at `socket.timeout.ms`, and topic errors raise (BEHAVIOUR CHANGE)
+
+Metadata, watermark, committed-offset and offsets-for-times calls waited forever on a broker that never answered. Each now waits at most `socket.timeout.ms` (30 s unset), or the `KafkaAdmin` method's `timeout`, then raises `KafkaTimeoutError`. A missing topic raises `TopicNotFoundError` (`KafkaAdminError` on `KafkaAdmin`), where the read clients returned empty answers. Any other topic error, such as `TOPIC_AUTHORIZATION_FAILED`, raises `KafkaException`. `scalo.kafka.readonly.TopicNotFoundError` is now `scalo.kafka.TopicNotFoundError`. See [transport/kafka.md](transport/kafka.md#admin-defaults-admin_defaults). **Consumer adjustment** -- catch the new errors where an empty answer or a hang stood in for them.
 
 ### Generated images install no Kafka C libraries (API CHANGE)
 
-`NativeDepsContract.for_scalo_extras` maps no extra to a package, and `for_scalo_features` maps none but `directory-config-git` (libgit2), as scalo-rs's does: the confluent-kafka wheel and the scalo-rs release build carry librdkafka, OpenSSL, zlib and zstd. `CONFLUENT_KEY_FINGERPRINT` is gone. An `AptRepoContract` with an empty `codename` now takes the contract's `distro_codename` instead of writing an empty suite. See [deployment/native-deps.md](deployment/native-deps.md).
-
-**Consumer adjustment** -- regenerate a committed `Dockerfile` or `Dockerfile.runtime`. Code that imported `CONFLUENT_KEY_FINGERPRINT` drops the import.
-
-### A missing topic raises `TopicNotFoundError` (BEHAVIOUR CHANGE)
-
-On a broker with topic auto-create off, `describe_topic`, `get_watermark_offsets`, `get_topic_message_count` and `get_consumer_lag` on the sync, async and read-only Kafka clients returned empty answers for a topic that does not exist, because the broker still lists the asked-for topic, carrying `UNKNOWN_TOPIC_OR_PART`. They now raise `TopicNotFoundError` as documented, and `KafkaAdmin` raises `KafkaAdminError`.
-
-**Consumer adjustment** -- a caller that read an empty answer as "no such topic" catches the error.
-
-### Kafka broker calls end at `socket.timeout.ms` (BEHAVIOUR CHANGE)
-
-Metadata, watermark, committed-offset and offsets-for-times calls on the Kafka clients and `KafkaConsumer` waited forever for a broker that accepted the connection and never answered. Each now waits at most `socket.timeout.ms` (30 s when unset), or the method's `timeout` on `KafkaAdmin`, then raises `KafkaTimeoutError`. A topic listed with an error other than `UNKNOWN_TOPIC_OR_PART`, such as `TOPIC_AUTHORIZATION_FAILED`, raises `KafkaException` instead of reading as a topic with no partitions. `scalo.kafka.readonly.TopicNotFoundError` is now the same class as `scalo.kafka.TopicNotFoundError`. See [transport/kafka.md](transport/kafka.md#admin-defaults-admin_defaults).
-
-**Consumer adjustment** -- a caller that waits on a slow broker on purpose raises `socket.timeout.ms`. One that caught `KafkaException` for a broker outage also catches `KafkaTimeoutError`.
+`NativeDepsContract.for_scalo_extras` maps no extra to a package, and `for_scalo_features` maps only `directory-config-git` (libgit2), as scalo-rs does: the confluent-kafka wheel carries librdkafka and its libraries. `CONFLUENT_KEY_FINGERPRINT` is gone, and an `AptRepoContract` with an empty `codename` takes `distro_codename`. See [deployment/native-deps.md](deployment/native-deps.md). **Consumer adjustment** -- regenerate a committed `Dockerfile` or `Dockerfile.runtime`.
 
 ### Shared test services, and the compose files gone (additive)
 
-`scalo.deployment.test_support.pytest_plugin` gives a pytest run one ClickHouse, Kafka and OpenBao, shared by every xdist worker. See [deployment/test-support.md](deployment/test-support.md#shared-test-services). scalo-py's own `docker-compose.kafka.yml` and `docker-compose.openbao.yml` are removed.
-
-**Consumer adjustment** -- none.
+`scalo.deployment.test_support.pytest_plugin` gives a pytest run one ClickHouse, Kafka and OpenBao, shared by every xdist worker. See [deployment/test-support.md](deployment/test-support.md#shared-test-services). scalo-py's `docker-compose.kafka.yml` and `docker-compose.openbao.yml` are gone.
 
 ## 2.31.20
 

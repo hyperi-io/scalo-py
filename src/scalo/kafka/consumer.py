@@ -14,7 +14,7 @@ with sensible defaults for enterprise use.
 
 from typing import Any, Iterator
 
-from confluent_kafka import Consumer, KafkaError, TopicPartition
+from confluent_kafka import Consumer, KafkaError, KafkaException, TopicPartition
 
 from .config import CONSUMER_DEFAULTS, broker_call, call_timeout, merge_config
 from .types import Message
@@ -26,6 +26,64 @@ class KafkaConsumerError(Exception):
     def __init__(self, message: str, error_code: int | None = None):
         self.error_code = error_code
         super().__init__(message)
+
+
+def _to_message(msg: Any) -> Message:
+    """Convert a confluent-kafka message to a :class:`Message`."""
+    _, timestamp = msg.timestamp()
+    return Message(
+        topic=msg.topic(),
+        partition=msg.partition(),
+        offset=msg.offset(),
+        key=msg.key(),
+        value=msg.value(),
+        timestamp=timestamp,
+        headers=msg.headers(),
+    )
+
+
+def _hand_over(consumer: Consumer, msgs: list[Any], stores_offsets: bool) -> list[Message]:
+    """Return the messages a ``poll`` or ``consume`` read, skipping partition EOF.
+
+    With ``stores_offsets`` the wrapper, not librdkafka, stores each partition's
+    next offset, and only once its messages are handed over, so a ``commit`` never
+    moves the group past a message the caller did not get. Any other error raises,
+    and none of the batch's messages reach the caller. Each partition is then
+    sought back to the first message of it the batch read, so the next read
+    returns them again.
+
+    Raises:
+        KafkaConsumerError: A message carried an error other than partition EOF.
+    """
+    messages: list[Message] = []
+    error = None
+    for msg in msgs:
+        fault = msg.error()
+        if fault is None:
+            messages.append(_to_message(msg))
+        elif fault.code() != KafkaError._PARTITION_EOF and error is None:
+            error = fault
+
+    if error is None:
+        if stores_offsets and messages:
+            following: dict[tuple[str, int], int] = {}
+            for message in messages:
+                following[(message.topic, message.partition)] = message.offset + 1
+            consumer.store_offsets(offsets=[TopicPartition(t, p, o) for (t, p), o in following.items()])
+        return messages
+
+    first: dict[tuple[str, int], int] = {}
+    for message in messages:
+        first.setdefault((message.topic, message.partition), message.offset)
+    try:
+        for (topic, partition), offset in first.items():
+            consumer.seek(TopicPartition(topic, partition, offset))
+    except KafkaException as exc:
+        raise KafkaConsumerError(
+            f"Kafka error: {error.str()}, and rewinding past the batch failed: {exc}",
+            error_code=error.code(),
+        ) from exc
+    raise KafkaConsumerError(f"Kafka error: {error.str()}", error_code=error.code())
 
 
 class KafkaConsumer:
@@ -64,6 +122,10 @@ class KafkaConsumer:
         # Merge with defaults
         self._config = merge_config(config, CONSUMER_DEFAULTS, verify_ssl=verify_ssl)
         self._timeout = call_timeout(self._config)
+        # Offsets are stored as messages are handed over (see _hand_over), unless the caller chose librdkafka's store.
+        self._stores_offsets = "enable.auto.offset.store" not in config
+        if self._stores_offsets:
+            self._config["enable.auto.offset.store"] = False
 
         # Create consumer
         self._consumer = Consumer(self._config)
@@ -144,20 +206,8 @@ class KafkaConsumer:
             KafkaConsumerError: On fatal Kafka error
         """
         msg = self._consumer.poll(timeout)
-
-        if msg is None:
-            return None
-
-        error = msg.error()
-        if error:
-            if error.code() == KafkaError._PARTITION_EOF:
-                return None
-            raise KafkaConsumerError(
-                f"Kafka error: {error.str()}",
-                error_code=error.code(),
-            )
-
-        return self._to_message(msg)
+        handed = _hand_over(self._consumer, [] if msg is None else [msg], self._stores_offsets)
+        return handed[0] if handed else None
 
     def consume(
         self,
@@ -174,23 +224,11 @@ class KafkaConsumer:
             List of Message objects (may be empty)
 
         Raises:
-            KafkaConsumerError: On fatal Kafka error
+            KafkaConsumerError: The batch carried a Kafka error. Every partition it
+                read from is sought back first, so the next read returns its
+                messages again.
         """
-        msgs = self._consumer.consume(num_messages, timeout)
-
-        messages = []
-        for msg in msgs:
-            error = msg.error()
-            if error:
-                if error.code() == KafkaError._PARTITION_EOF:
-                    continue
-                raise KafkaConsumerError(
-                    f"Kafka error: {error.str()}",
-                    error_code=error.code(),
-                )
-            messages.append(self._to_message(msg))
-
-        return messages
+        return _hand_over(self._consumer, self._consumer.consume(num_messages, timeout), self._stores_offsets)
 
     # =========================================================================
     # Seek Operations
@@ -283,20 +321,3 @@ class KafkaConsumer:
             if msg is not None:
                 return msg
         raise StopIteration
-
-    # =========================================================================
-    # Internal Helpers
-    # =========================================================================
-
-    def _to_message(self, msg) -> Message:
-        """Convert confluent-kafka message to Message type."""
-        _, timestamp = msg.timestamp()
-        return Message(
-            topic=msg.topic(),
-            partition=msg.partition(),
-            offset=msg.offset(),
-            key=msg.key(),
-            value=msg.value(),
-            timestamp=timestamp,
-            headers=msg.headers(),
-        )

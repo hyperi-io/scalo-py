@@ -10,11 +10,11 @@
 
 from typing import Any, AsyncIterator
 
-from confluent_kafka import Consumer, KafkaError, TopicPartition
+from confluent_kafka import Consumer, TopicPartition
 
 from ..concurrency import run_blocking
 from .config import CONSUMER_DEFAULTS, merge_config
-from .consumer import KafkaConsumerError
+from .consumer import _hand_over
 from .types import Message
 
 
@@ -49,6 +49,10 @@ class AsyncKafkaConsumer:
         config["group.id"] = group_id
 
         self._config = merge_config(config, CONSUMER_DEFAULTS, verify_ssl=verify_ssl)
+        # Offsets are stored as messages are handed over, as KafkaConsumer does.
+        self._stores_offsets = "enable.auto.offset.store" not in config
+        if self._stores_offsets:
+            self._config["enable.auto.offset.store"] = False
         self._consumer = Consumer(self._config)
         self._closed = False
 
@@ -86,20 +90,8 @@ class AsyncKafkaConsumer:
     def _poll_sync(self, timeout: float) -> Message | None:
         """Sync poll implementation."""
         msg = self._consumer.poll(timeout)
-
-        if msg is None:
-            return None
-
-        error = msg.error()
-        if error:
-            if error.code() == KafkaError._PARTITION_EOF:
-                return None
-            raise KafkaConsumerError(
-                f"Kafka error: {error.str()}",
-                error_code=error.code(),
-            )
-
-        return self._to_message(msg)
+        handed = _hand_over(self._consumer, [] if msg is None else [msg], self._stores_offsets)
+        return handed[0] if handed else None
 
     async def consume(
         self,
@@ -110,22 +102,8 @@ class AsyncKafkaConsumer:
         return await run_blocking(self._consume_sync, num_messages, timeout)
 
     def _consume_sync(self, num_messages: int, timeout: float) -> list[Message]:
-        """Sync consume implementation."""
-        msgs = self._consumer.consume(num_messages, timeout)
-
-        messages = []
-        for msg in msgs:
-            error = msg.error()
-            if error:
-                if error.code() == KafkaError._PARTITION_EOF:
-                    continue
-                raise KafkaConsumerError(
-                    f"Kafka error: {error.str()}",
-                    error_code=error.code(),
-                )
-            messages.append(self._to_message(msg))
-
-        return messages
+        """Sync consume implementation, rewinding on a batch error as ``KafkaConsumer.consume`` does."""
+        return _hand_over(self._consumer, self._consumer.consume(num_messages, timeout), self._stores_offsets)
 
     async def seek(self, topic: str, partition: int, offset: int) -> None:
         """Seek to specific offset."""
@@ -148,16 +126,3 @@ class AsyncKafkaConsumer:
             if msg is not None:
                 return msg
         raise StopAsyncIteration
-
-    def _to_message(self, msg) -> Message:
-        """Convert confluent-kafka message to Message type."""
-        _, timestamp = msg.timestamp()
-        return Message(
-            topic=msg.topic(),
-            partition=msg.partition(),
-            offset=msg.offset(),
-            key=msg.key(),
-            value=msg.value(),
-            timestamp=timestamp,
-            headers=msg.headers(),
-        )
