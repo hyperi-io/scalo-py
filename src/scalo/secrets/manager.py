@@ -121,6 +121,10 @@ class SecretsManager:
         # managers configured against different tenants/namespaces.
         self._memory_cache: dict[_CacheKey, SecretValue] = {}
         self._memory_cache_lock = threading.Lock()
+        # Bumped by every change to a path, so a read that began before the change caches nothing.
+        self._generations: dict[tuple[str, str], int] = {}
+        # Held across a generation check and the cache writes it allows, and across a change's eviction.
+        self._store_lock = threading.Lock()
         # Provider name -> error type its health check last raised, so a probe loop logs one outage once.
         self._health_faults: dict[str, str] = {}
 
@@ -840,22 +844,40 @@ class SecretsManager:
         Raises:
             OSError: A disk entry could not be removed, so it could still be served.
         """
-        with self._memory_cache_lock:
-            for cache_key in [k for k in self._memory_cache if k.provider == provider_name and k.path == path]:
-                del self._memory_cache[cache_key]
-        self._cache.delete_group(self._disk_group(provider_name, path))
+        with self._store_lock:
+            self._generations[(provider_name, path)] = self._generation(provider_name, path) + 1
+            with self._memory_cache_lock:
+                for cache_key in [k for k in self._memory_cache if k.provider == provider_name and k.path == path]:
+                    del self._memory_cache[cache_key]
+            self._cache.delete_group(self._disk_group(provider_name, path))
 
-    def _store_fetched(self, cache_key: _CacheKey, value: SecretValue) -> None:
-        """Cache a value fresh from its provider, reporting a rotation against the value it replaces."""
-        old_value = self._memory_put(cache_key, value)
-        self._cache.set(self._disk_key(cache_key), value, self._disk_group(cache_key.provider, cache_key.path))
-        self._check_rotation(cache_key.label(), old_value, value)
+    def _generation(self, provider_name: str, path: str) -> int:
+        """How many changes the manager has made to ``path``: a read records it before it starts."""
+        return self._generations.get((provider_name, path), 0)
+
+    def _store(self, cache_key: _CacheKey, value: SecretValue, generation: int, *, fetched: bool) -> None:
+        """Cache a value read at ``generation``, unless ``path`` has changed since.
+
+        A value ``fetched`` from the provider goes to both tiers and is checked for rotation. One
+        read from the disk tier goes to memory only.
+        """
+        old_value = None
+        with self._store_lock:
+            if self._generation(cache_key.provider, cache_key.path) != generation:
+                logger.debug("Secret changed during the read, so it is not cached", extra={"key": cache_key.label()})
+                return
+            old_value = self._memory_put(cache_key, value)
+            if fetched:
+                self._cache.set(self._disk_key(cache_key), value, self._disk_group(cache_key.provider, cache_key.path))
+        if fetched:
+            self._check_rotation(cache_key.label(), old_value, value)
 
     async def _fetch(self, cache_key: _CacheKey) -> SecretValue:
         """Read ``cache_key`` from its provider, skipping both cache tiers, and cache the result."""
         provider = self._get_provider(cache_key.provider)
+        generation = self._generation(cache_key.provider, cache_key.path)
         value = await provider.get_async(cache_key.path, cache_key.key or None)
-        self._store_fetched(cache_key, value)
+        self._store(cache_key, value, generation, fetched=True)
         return value
 
     def _check_rotation(self, name: str, old_value: SecretValue | None, value: SecretValue) -> None:
@@ -949,6 +971,7 @@ class SecretsManager:
         """Fetch from provider with caching and fallback."""
         cache_key = _CacheKey(provider_name, path, key or "")
         disk_key = self._disk_key(cache_key)
+        generation = self._generation(provider_name, path)
 
         remembered = self._memory_get(cache_key)
         if remembered is not None and not remembered.is_expired(self._cache.config.ttl_secs):
@@ -958,7 +981,7 @@ class SecretsManager:
         # Check disk cache
         cached = self._cache.get(disk_key, self._disk_group(provider_name, path))
         if cached and not cached.is_expired(self._cache.config.ttl_secs):
-            self._memory_put(cache_key, cached)
+            self._store(cache_key, cached, generation, fetched=False)
             logger.debug("Disk cache hit", extra={"key": cache_key.label()})
             return cached
 
@@ -989,6 +1012,7 @@ class SecretsManager:
         """Fetch from provider with caching and fallback (sync)."""
         cache_key = _CacheKey(provider_name, path, key or "")
         disk_key = self._disk_key(cache_key)
+        generation = self._generation(provider_name, path)
 
         remembered = self._memory_get(cache_key)
         if remembered is not None and not remembered.is_expired(self._cache.config.ttl_secs):
@@ -997,13 +1021,13 @@ class SecretsManager:
         # Check disk cache
         cached = self._cache.get(disk_key, self._disk_group(provider_name, path))
         if cached and not cached.is_expired(self._cache.config.ttl_secs):
-            self._memory_put(cache_key, cached)
+            self._store(cache_key, cached, generation, fetched=False)
             return cached
 
         provider = self._get_provider(provider_name)
         try:
             value = provider.get_sync(path, key)
-            self._store_fetched(cache_key, value)
+            self._store(cache_key, value, generation, fetched=True)
             return value
 
         except _AUTHORITATIVE:

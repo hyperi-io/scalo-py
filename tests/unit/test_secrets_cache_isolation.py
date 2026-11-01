@@ -279,3 +279,56 @@ def test_only_an_outage_is_answered_from_the_stale_grace_window(tmp_path, kind, 
             read()
         assert not [k for k in manager._memory_cache if k.path == str(secret)]
         assert not list(cache_dir.glob("*.cache")), "a disk entry outlived an authoritative refusal"
+
+
+class _Paused(FileProvider):
+    """The file provider, pausing its first read after the file is read and before it returns."""
+
+    def __init__(self) -> None:
+        import threading
+
+        self.read_done = threading.Event()
+        self.release = threading.Event()
+        self._paused = False
+
+    def get_sync(self, path: str, key: str | None = None) -> SecretValue:
+        value = super().get_sync(path, key)
+        if not self._paused:
+            self._paused = True
+            self.read_done.set()
+            assert self.release.wait(10), "the test never released the read"
+        return value
+
+
+@pytest.mark.parametrize("change", ["update", "delete"])
+def test_a_read_in_flight_across_a_change_never_caches_the_old_value(tmp_path, change):
+    """A read holds OLD from the provider while an update or delete lands, then tries to cache it."""
+    import threading
+
+    from scalo.secrets.exceptions import SecretNotFoundError
+
+    secret = tmp_path / "secrets" / "db"
+    _write(secret, b"OLD")
+    provider = _Paused()
+    cache = _disk_cached(tmp_path / "cache")
+    manager = SecretsManager(providers={"file": provider}, cache_config=cache)
+
+    in_flight: list[bytes] = []
+    reader = threading.Thread(target=lambda: in_flight.append(manager.get_sync(str(secret)).data))
+    reader.start()
+    assert provider.read_done.wait(10)
+    if change == "update":
+        manager.update_sync(str(secret), b"NEW")
+    else:
+        manager.delete_sync(str(secret))
+    provider.release.set()
+    reader.join(10)
+
+    assert in_flight == [b"OLD"], "the read in flight still answers with what it read"
+    # Neither the reader's own manager nor a fresh one on the same disk may now see OLD.
+    for later in (manager, SecretsManager(providers={"file": FileProvider()}, cache_config=cache)):
+        if change == "update":
+            assert later.get_sync(str(secret)).data == b"NEW"
+        else:
+            with pytest.raises(SecretNotFoundError):
+                later.get_sync(str(secret))
