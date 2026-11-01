@@ -36,6 +36,7 @@ test:
       allow_skip:
         - "AWS credentials not available"
         - "GCP ADC cannot mint a token"
+        - "GCP ADC not configured"
         - "Azure test vault not configured"
         - "Vault credentials not configured"
         - "SCALO_RS_GOLDEN_PATH is not set"
