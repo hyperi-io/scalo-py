@@ -33,7 +33,7 @@ from typing import Callable
 
 import pytest
 
-from .._env_compat import control_var
+from scalo._env_compat import control_var
 
 SKIP_PREFIX = "HYPERCI-SKIP[contract-e2e]"
 """Canonical greppable prefix for runner aggregation."""

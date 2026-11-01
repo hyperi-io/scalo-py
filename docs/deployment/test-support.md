@@ -24,6 +24,40 @@ hyperi-ci runner aggregates skip counts uniformly.
 
 ---
 
+## Shared test services
+
+One ClickHouse, Kafka and OpenBao per pytest run, shared by every xdist worker, the way scalo-rs's `deployment::test_support::shared_service` does it for nextest. Load the plugin from the root `conftest.py` and name the repo for container names and labels:
+
+```python
+# conftest.py
+pytest_plugins = ["scalo.deployment.test_support.pytest_plugin"]
+```
+
+```toml
+# pyproject.toml
+[tool.pytest.ini_options]
+shared_service_repo = "my-app"
+```
+
+| Fixture | Scope | Gives |
+|---|---|---|
+| `shared_clickhouse` | session | `ClickHouseService`: host, ports, user, password, cluster, and `execute(sql, params)` over HTTP |
+| `clickhouse_database` | test | a `Replicated` database of the test's own, made `ON CLUSTER` and dropped after |
+| `shared_kafka` | session | `KafkaService`: bootstrap and the librdkafka `client_config` |
+| `kafka_topics` | test | `make(label, partitions=3)` creating run-prefixed topics, deleted after |
+| `shared_openbao` | session | `OpenBaoService`: address and root token |
+
+- The controller names the run, the first worker to ask starts each container under a lock in `<rootdir>/.tmp/shared-services/<run>/`, and the rest join it. The controller removes them at the end, and a watcher removes each one if the controller dies first.
+- Ports bind 127.0.0.1 on the daemon host. An `ssh://` daemon gets an `ssh -L` tunnel per port, and a remote `tcp://` daemon needs `HYPERI_TEST_DOCKER_BIND`.
+- The ClickHouse password and the OpenBao token are generated per run and never logged.
+- Containers carry `io.hyperi.test.*` owner labels, and each create removes the suite's containers whose owner has gone.
+- ClickHouse and Kafka use the always-present pet named by `HYPERI_TEST_*` settings (the environment, then `.env`, then the file `HYPERI_TEST_ENV_FILE` names) when a quick probe answers, never in CI or under the full tier.
+- Without Docker a test skips on a developer's machine, and fails in CI or under `HYPERCI_TEST_TIER=full`. `unavailable(reason)` applies the same rule to a test's own prerequisites.
+
+A service the plugin does not cover takes a `ServiceSpec` (image, ports, env, `secret_env`, files, readiness by HTTP, log line or command) to `shared_service.acquire(suite_for(config), spec)`. A test that stops or reconfigures its server holds one alone with `start_alone(suite, spec, container_name(suite, test, service))`. The pinned images and their specs are `scalo.deployment.test_support.services`.
+
+---
+
 ## Tool probes
 
 All five probes are `@lru_cache`d -- each tool shells out at most
@@ -182,8 +216,8 @@ Tier B helpers above stay for a consumer that brings up its own cluster.
 
 Two pytest markers, declared in `pyproject.toml`, map to the tiers:
 
-- `@pytest.mark.integration` -- Tier A, which the template uses. Runs in
-  CI's integration job with docker-compose services available.
+- `@pytest.mark.integration` -- Tier A, which the template uses. Runs
+  wherever Docker is, against the shared services above.
 - `@pytest.mark.e2e` -- Tier B. Env-gated and only runs in the
   dedicated e2e job that has kind installed.
 
