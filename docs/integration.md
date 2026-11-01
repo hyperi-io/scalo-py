@@ -249,7 +249,7 @@ Pylib uses pytest with `asyncio_mode=auto`. Three marker tiers:
 
 ```bash
 uv run pytest -m unit          # fast, no external deps
-uv run pytest -m integration   # docker-compose fixtures (kafka, postgres, openbao)
+uv run pytest -m integration   # the run's shared ClickHouse, Kafka and OpenBao (deployment/test-support.md)
 uv run pytest -m e2e           # full K8s harness (kind) — env-gated
 ```
 

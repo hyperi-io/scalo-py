@@ -6,6 +6,7 @@ import logging
 import os
 import sys
 import tempfile
+from contextlib import suppress
 from datetime import UTC, datetime
 from pathlib import Path
 
@@ -29,6 +30,8 @@ except ImportError:
 _CACHE_FILE_MODE = 0o600
 # Directory mode: owner rwx only (0o700).
 _CACHE_DIR_MODE = 0o700
+# Length of the per-directory salt for credential digests.
+_SALT_BYTES = 16
 
 
 def _is_production() -> bool:
@@ -64,6 +67,7 @@ class DiskCache:
     def __init__(self, config: CacheConfig) -> None:
         self._config = config
         self._directory = self._resolve_directory(config.directory)
+        self._salt: bytes | None = None
         # Normalised encryption key bytes (HKDF IKM), or None = plaintext.
         self._enc_key: bytes | None = None
 
@@ -101,6 +105,41 @@ class DiskCache:
         elif config.enabled:
             logger.debug("Secrets disk cache is off (no encryption_key); caching in memory only")
 
+    def salt(self) -> bytes:
+        """Return the 16 random bytes this directory salts its credential digests with.
+
+        They live in ``.salt`` (0600) in the cache directory, so every manager sharing the
+        directory derives the same keys. With the disk tier off nothing is written, and the
+        salt is this instance's own.
+
+        Raises:
+            OSError: The salt file cannot be read or created.
+        """
+        if self._salt is not None:
+            return self._salt
+        if not self._disk_enabled:
+            self._salt = os.urandom(_SALT_BYTES)
+            return self._salt
+        path = self._directory / ".salt"
+        if not path.exists():
+            # Written whole to a private sibling and linked in, so a reader never sees a part of it.
+            staged = self._directory / f".salt.{os.urandom(6).hex()}.tmp"
+            fd = os.open(staged, os.O_CREAT | os.O_EXCL | os.O_WRONLY | getattr(os, "O_BINARY", 0), _CACHE_FILE_MODE)
+            try:
+                with os.fdopen(fd, "wb") as handle:
+                    handle.write(os.urandom(_SALT_BYTES))
+                    handle.flush()
+                    os.fsync(handle.fileno())
+                with suppress(FileExistsError):
+                    os.link(staged, path)
+            finally:
+                staged.unlink(missing_ok=True)
+        salt = path.read_bytes()
+        if len(salt) != _SALT_BYTES:
+            raise OSError(f"{path} holds {len(salt)} bytes, not a {_SALT_BYTES}-byte salt")
+        self._salt = salt
+        return salt
+
     @property
     def config(self) -> CacheConfig:
         """Get cache configuration."""
@@ -129,18 +168,30 @@ class DiskCache:
 
         return Path.home() / ".cache" / "scalo" / "secrets-cache"
 
-    def _key_to_path(self, secret_name: str) -> Path:
+    @staticmethod
+    def _digest(text: str) -> str:
+        return hashlib.sha256(text.encode()).hexdigest()[:16]
+
+    def _key_to_path(self, secret_name: str, group: str | None = None) -> Path:
         """Convert secret name to cache file path.
 
-        Uses hash to avoid filesystem issues with special characters.
+        Uses hash to avoid filesystem issues with special characters. An entry in
+        a ``group`` is named by the group's digest first, so :meth:`delete_group`
+        finds every entry in it.
         """
-        name_hash = hashlib.sha256(secret_name.encode()).hexdigest()[:16]
+        name_hash = self._digest(secret_name)
+        if group is not None:
+            return self._directory / f"{self._digest(group)}-{name_hash}.cache"
         # Sanitize name for filename (keep first 50 chars)
         safe_name = "".join(c if c.isalnum() or c in "._-" else "_" for c in secret_name)[:50]
         return self._directory / f"{safe_name}_{name_hash}.cache"
 
-    def get(self, secret_name: str) -> SecretValue | None:
+    def get(self, secret_name: str, group: str | None = None) -> SecretValue | None:
         """Get cached secret if valid.
+
+        Args:
+            secret_name: The entry's key.
+            group: The group the entry was set in, if any.
 
         Returns:
             SecretValue if cache hit and not expired, None otherwise.
@@ -148,7 +199,7 @@ class DiskCache:
         if not self._disk_enabled:
             return None
 
-        path = self._key_to_path(secret_name)
+        path = self._key_to_path(secret_name, group)
         if not path.exists():
             return None
 
@@ -197,7 +248,7 @@ class DiskCache:
             logger.warning("Cache read failed", extra={"secret_name": secret_name, "error": str(e)})
             return None
 
-    def set(self, secret_name: str, value: SecretValue) -> None:
+    def set(self, secret_name: str, value: SecretValue, group: str | None = None) -> None:
         """Cache a secret value.
 
         Uses a UNIQUE tempfile (tempfile.NamedTemporaryFile in the same
@@ -212,7 +263,7 @@ class DiskCache:
         if not self._disk_enabled:
             return
 
-        path = self._key_to_path(secret_name)
+        path = self._key_to_path(secret_name, group)
 
         try:
             cached = {
@@ -257,18 +308,35 @@ class DiskCache:
         except Exception as e:
             logger.warning("Cache write failed", extra={"secret_name": secret_name, "error": str(e)})
 
-    def delete(self, secret_name: str) -> bool:
+    def delete(self, secret_name: str, group: str | None = None) -> bool:
         """Delete cached secret.
 
         Returns:
             True if deleted, False if not found or error.
         """
-        path = self._key_to_path(secret_name)
+        path = self._key_to_path(secret_name, group)
         try:
             path.unlink(missing_ok=True)
             return True
         except Exception:
             return False
+
+    def delete_group(self, group: str) -> int:
+        """Delete every entry set in ``group``.
+
+        Returns:
+            Number of entries deleted.
+
+        Raises:
+            OSError: An entry exists and cannot be removed, so it could still be served.
+        """
+        if not self._directory.exists():
+            return 0
+        count = 0
+        for cache_file in self._directory.glob(f"{self._digest(group)}-*.cache"):
+            cache_file.unlink(missing_ok=True)
+            count += 1
+        return count
 
     def clear(self) -> int:
         """Clear all cached secrets.

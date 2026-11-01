@@ -75,6 +75,14 @@ class GCPProvider(VersionedProvider):
         """Provider name."""
         return "gcp"
 
+    def cache_identity(self, salt: bytes) -> tuple[str, ...]:  # noqa: V107 -- no credential to digest
+        """See base class."""
+        return (
+            self.name,
+            self._config.project_id,
+            self._config.credentials_file or "",
+        )
+
     def _version_name(self, path: str) -> str:
         """Build full secret version resource name."""
         if path.startswith("projects/"):

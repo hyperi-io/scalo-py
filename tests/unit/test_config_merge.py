@@ -329,6 +329,34 @@ class TestMergeFilesHighLevel:
         result = yaml.safe_load(target.read_text())
         assert result == {"a": 1, "b": 20, "c": 30, "d": 4}
 
+    @pytest.mark.parametrize("existing", [True, False], ids=["target-exists", "no-target"])
+    def test_a_batch_dry_run_returns_the_merge_and_writes_nothing(self, tmp_path, existing):
+        base, env, target = tmp_path / "base.yaml", tmp_path / "env.yaml", tmp_path / "merged.yaml"
+        base.write_text("a: 1\nb: 2")
+        env.write_text("b: 20")
+        if existing:
+            target.write_text("z: 0")
+
+        content = merge_files([base, env], target, dry_run=True)
+
+        want = {"a": 1, "b": 20, **({"z": 0} if existing else {})}
+        assert yaml.safe_load(content) == want
+        assert target.read_text() == "z: 0" if existing else not target.exists()
+        assert sorted(p.name for p in tmp_path.iterdir()) == sorted(
+            ["base.yaml", "env.yaml", *(["merged.yaml"] if existing else [])]
+        )
+
+    def test_a_batch_that_fails_partway_leaves_the_target_untouched(self, tmp_path):
+        good, broken, target = tmp_path / "good.yaml", tmp_path / "broken.yaml", tmp_path / "merged.yaml"
+        good.write_text("a: 1")
+        broken.write_text("{{{{ not yaml")
+        target.write_text("z: 0")
+
+        with pytest.raises(ValueError, match="Invalid YAML"):
+            merge_files([good, broken], target)
+
+        assert target.read_text() == "z: 0"
+
     def test_merge_files_source_missing(self, tmp_path):
         """Test error when source file doesn't exist."""
         source = tmp_path / "missing.json"

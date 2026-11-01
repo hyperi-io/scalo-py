@@ -25,6 +25,22 @@ test:
   min_coverage: 70  # Current: 73%. Target: 80%. Ratchet up as coverage improves.
   python:
     parallel: auto
+  # The shared test services' run log (tests/TESTING.md), printed after the tests.
+  logs:
+    - ".tmp/shared-services-*.log"
+  full:
+    required_for_release: true
+    python:
+      # Each names a setting or platform no CI runner has: a live cloud account,
+      # the scalo-rs golden file, macOS, or a moto gap the live tests cover.
+      allow_skip:
+        - "AWS credentials not available"
+        - "GCP ADC cannot mint a token"
+        - "Azure test vault not configured"
+        - "Vault credentials not configured"
+        - "SCALO_RS_GOLDEN_PATH is not set"
+        - "macOS-specific test"
+        - "moto raises KeyError instead of ResourceNotFoundException"
 
 quality:
   # examples/ has its own tests/ -- exclude from quality scans

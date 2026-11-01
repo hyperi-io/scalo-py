@@ -33,21 +33,53 @@ def _make_private_dirs(directory: Path) -> None:
         path.chmod(_DIR_MODE)
 
 
-def _write_private(path: Path, value: bytes, flags: int) -> None:
-    """Replace the contents of ``path`` with ``value`` as owner-only (0o600), whatever the umask.
+def _sync_directory(directory: Path) -> None:
+    """Flush a directory entry change to disk, where the platform can open a directory."""
+    if os.name == "nt":
+        return
+    fd = os.open(directory, os.O_RDONLY)
+    try:
+        os.fsync(fd)
+    finally:
+        os.close(fd)
 
-    The mode is set on the open descriptor before the file is truncated or written, so the new value is never
-    readable by another user, and a file whose mode cannot be set keeps its old contents.
+
+def _write_private(path: Path, value: bytes, *, replace: bool) -> None:
+    """Put ``value`` at ``path`` as an owner-only (0o600) file, whatever the umask, all or nothing.
+
+    The value goes to a private sibling first, flushed to disk, which is then renamed over ``path``
+    (``replace``) or linked in only if ``path`` does not exist. A reader sees the old secret or the
+    new one, never an empty or partial file, and a failed write leaves the old secret in place.
 
     Raises:
-        PermissionError: The file cannot be opened for writing, or the process cannot set its mode.
+        FileExistsError: ``replace`` is False and ``path`` exists.
+        PermissionError: The existing file is not writable or not this user's, or the directory cannot take
+            the sibling.
+        OSError: The write or the rename failed.
     """
+    if replace and not os.access(path, os.W_OK):
+        raise PermissionError(f"{path} is not writable")
+    # The rename would hand another user's file to this process, which chmod refuses.
+    if replace and os.name != "nt" and os.geteuid() not in (0, path.stat().st_uid):
+        raise PermissionError(f"{path} belongs to another user")
+    staged = path.with_name(f".{path.name}.{os.urandom(6).hex()}.tmp")
     # O_BINARY exists only on Windows, where its absence would translate newlines.
-    fd = os.open(path, flags | os.O_WRONLY | getattr(os, "O_BINARY", 0), _FILE_MODE)
-    with open(fd, "wb") as handle:
-        os.fchmod(handle.fileno(), _FILE_MODE)
-        handle.truncate(0)
-        handle.write(value)
+    fd = os.open(staged, os.O_CREAT | os.O_EXCL | os.O_WRONLY | getattr(os, "O_BINARY", 0), _FILE_MODE)
+    try:
+        with open(fd, "wb") as handle:
+            os.fchmod(handle.fileno(), _FILE_MODE)
+            handle.write(value)
+            handle.flush()
+            os.fsync(handle.fileno())
+        if replace:
+            os.replace(staged, path)
+        else:
+            os.link(staged, path)
+            staged.unlink()
+    except BaseException:
+        staged.unlink(missing_ok=True)
+        raise
+    _sync_directory(path.parent)
 
 
 class FileProvider(SecretProvider):
@@ -207,7 +239,7 @@ class FileProvider(SecretProvider):
 
         try:
             _make_private_dirs(file_path.parent)
-            _write_private(file_path, value, os.O_CREAT | os.O_EXCL)
+            _write_private(file_path, value, replace=False)
         except FileExistsError:
             raise SecretAlreadyExistsError(path, self.name)
         except PermissionError:
@@ -231,7 +263,7 @@ class FileProvider(SecretProvider):
             raise SecretNotFoundError(path, self.name)
 
         try:
-            _write_private(file_path, value, 0)
+            _write_private(file_path.resolve(), value, replace=True)
         except FileNotFoundError:
             raise SecretNotFoundError(path, self.name)
         except PermissionError:

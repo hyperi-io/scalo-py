@@ -239,6 +239,16 @@ class KubernetesProvider(SecretProvider):
         """Provider name."""
         return "kubernetes"
 
+    def cache_identity(self, salt: bytes) -> tuple[str, ...]:  # noqa: V107 -- no credential to digest
+        """See base class."""
+        return (
+            self.name,
+            self._config.api_server or "",
+            self._config.namespace or "",
+            self._config.secret_name,
+            self._config.token_path,
+        )
+
     # --- Connection ---
 
     def _base_url(self) -> str:

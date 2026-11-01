@@ -8,17 +8,10 @@
 
 """Integration tests for OpenBao Tier 1 + Tier 2 methods.
 
-Uses the ``openbao_endpoint`` fixture from conftest.py -- cascade of:
-1. Existing local Vault on :8200 → use it
-2. ``docker compose -f docker-compose.openbao.yml up -d`` → spawn one
-3. Skip the test class if neither available
-
-Validates the actual KV v2 wire protocol against a real Vault binary, which
-unit tests (httpx-stubbed) cannot. One round-trip per Tier 1 method covers
-the contract.
+Runs against the run's shared dev-mode OpenBao (``openbao_endpoint``, tests/TESTING.md),
+and validates the KV v2 wire protocol against the real server, which unit tests
+(httpx-stubbed) cannot. The round trip runs in core, and the rest run in full.
 """
-
-from __future__ import annotations
 
 import uuid
 
@@ -80,6 +73,7 @@ class TestOpenBaoTier1Roundtrip:
         with pytest.raises(SecretNotFoundError):
             provider.get_metadata_sync(path)
 
+    @pytest.mark.full
     def test_create_already_exists(self, provider):
         path = _unique_path("dup")
         provider.create_sync(path, b"x")
@@ -89,17 +83,20 @@ class TestOpenBaoTier1Roundtrip:
         finally:
             provider.delete_sync(path)
 
+    @pytest.mark.full
     def test_update_not_found(self, provider):
         path = _unique_path("missing-update")
         with pytest.raises(SecretNotFoundError):
             provider.update_sync(path, b"x")
 
+    @pytest.mark.full
     def test_delete_not_found(self, provider):
         path = _unique_path("missing-delete")
         with pytest.raises(SecretNotFoundError):
             provider.delete_sync(path)
 
 
+@pytest.mark.full
 class TestOpenBaoTier2Versioning:
     """Tier 2 (versioned) methods against real Vault."""
 
@@ -137,6 +134,7 @@ class TestOpenBaoTier2Versioning:
             provider.list_versions_sync(path)
 
 
+@pytest.mark.full
 class TestOpenBaoListing:
     """Listing under a prefix works against real Vault LIST verb."""
 
@@ -173,6 +171,7 @@ class TestOpenBaoListing:
                     pass
 
 
+@pytest.mark.full
 class TestOpenBaoAsyncRoundtrip:
     """Async path against real Vault -- proves the httpx async client wiring."""
 

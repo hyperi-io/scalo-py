@@ -13,8 +13,6 @@
 - serialise concurrent registration safely.
 """
 
-from __future__ import annotations
-
 import asyncio
 import threading
 
@@ -49,20 +47,66 @@ async def test_per_check_timeout_marks_slow_check_as_failed():
     assert resp["checks"]["slow_db"] is False
 
 
-@pytest.mark.asyncio
-async def test_async_check_supported():
-    mgr = HealthManager()
+async def _answer(healthy: bool) -> bool:
+    await asyncio.sleep(0.01)
+    if healthy is None:
+        raise ConnectionError("broker down")
+    return healthy
 
+
+class _AsyncCallable:
+    def __init__(self, healthy):
+        self.healthy = healthy
+
+    async def __call__(self):
+        return await _answer(self.healthy)
+
+
+def _async_def(healthy):
     async def ping():
-        await asyncio.sleep(0.01)
-        return True
+        return await _answer(healthy)
 
-    mgr.register_ready_check("kafka", ping)
+    return ping
+
+
+def _sync(healthy):
+    def ping():
+        if healthy is None:
+            raise ConnectionError("broker down")
+        return healthy
+
+    return ping
+
+
+SHAPES = [
+    pytest.param(_async_def, id="async-def"),
+    pytest.param(lambda healthy: lambda: _answer(healthy), id="lambda-returning-a-coroutine"),
+    pytest.param(_AsyncCallable, id="async-callable-object"),
+    pytest.param(_sync, id="sync"),
+]
+
+
+@pytest.mark.parametrize("shape", SHAPES)
+@pytest.mark.parametrize(
+    ("healthy", "status"),
+    [
+        pytest.param(True, "ready", id="healthy"),
+        pytest.param(False, "not_ready", id="unhealthy"),
+        pytest.param(None, "not_ready", id="raises"),
+    ],
+)
+@pytest.mark.parametrize("path", ["async", "sync"])
+async def test_every_check_shape_reports_what_it_returns(shape, healthy, status, path):
+    mgr = HealthManager()
+    mgr.register_ready_check("dep", shape(healthy))
     mgr.set_ready()
 
-    resp = await mgr.readiness_response_async()
-    assert resp["status"] == "ready"
-    assert resp["checks"]["kafka"] is True
+    if path == "async":
+        resp = await mgr.readiness_response_async()
+    else:
+        resp = await asyncio.to_thread(mgr.readiness_response)
+    assert resp["status"] == status
+    assert resp["checks"]["dep"] is (status == "ready")
 
 
 @pytest.mark.asyncio

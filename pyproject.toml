@@ -222,8 +222,9 @@ minversion = "8.0"
 testpaths = [
     "tests",
 ]
-# loadgroup keeps each xdist_group on one worker: the Kafka tests share one broker.
-addopts = "-ra -q --strict-markers --dist loadgroup"
+# Core deselects `full`. The full tier passes -m "" and runs everything (tests/TESTING.md).
+addopts = "-ra -q --strict-markers -m 'not full'"
+shared_service_repo = "scalo-py"
 pythonpath = [
     "src",
     "tests",
@@ -237,6 +238,7 @@ markers = [
     "e2e: end-to-end tests (Minikube/K8s required)",
     "smoke: startup smoke tests (mandatory, every push)",
     "slow: tests exceeding 30 seconds",
+    "full: full tier only (nightly and before every release), deselected from core",
 ]
 filterwarnings = []
 
@@ -338,6 +340,8 @@ ignore = [
     # D rules are not selected here: hyperi-ci's docstring pass runs `--select D`,
     # and its two relaxations (D105, D107) are declared in .hyperi-ci.yaml.
 ]
+# vulture reads `# noqa: V1xx` on the same line as ruff's codes.
+external = ["V"]
 fixable = [
     "ALL",
 ]
@@ -449,4 +453,6 @@ dev = [
     # starlette's TestClient uses httpx2 and warns when it has to fall back to httpx.
     "httpx2>=2.13.1",
     "pytest-xdist>=3.8.0",
+    # The real ClickHouse client the DDL engine-selection tests drive.
+    "clickhouse-connect>=1.11.0",
 ]

@@ -84,9 +84,9 @@ def _cmd_line(contract: DeploymentContract) -> str:
 def _build_apt_block(deps: NativeDepsContract, profile: ImageProfile) -> str:
     """Build the apt-get RUN block from native deps contract and image profile.
 
-    When custom APT repos are needed (e.g., Confluent for librdkafka), emits
-    the GPG key download, sources list entry, and repo-specific packages.
-    Development profile adds diagnostic tools.
+    When the contract names custom APT repos, emits the GPG key download,
+    sources list entry, and repo-specific packages. A repo with no codename
+    takes the contract's distro release. Development profile adds diagnostic tools.
     """
     is_dev = profile == ImageProfile.DEVELOPMENT
 
@@ -132,7 +132,7 @@ def _build_apt_block(deps: NativeDepsContract, profile: ImageProfile) -> str:
             f"    && gpg --dearmor -o {repo.keyring} /tmp/repo-key.asc \\\n"
             "    && rm -f /tmp/repo-key.asc \\\n"
             f'    && echo "deb [signed-by={repo.keyring}] \\\n'
-            f'       {repo.url} {repo.codename} main" \\\n'
+            f'       {repo.url} {repo.codename or deps.distro_codename} main" \\\n'
             f"       > /etc/apt/sources.list.d/{keyring_stem}.list \\\n"
         )
 

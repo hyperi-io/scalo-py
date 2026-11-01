@@ -197,13 +197,14 @@ to push the filter down into a ClickHouse `WHERE` clause instead of
 fetching every row and filtering in Python. Raises `TranspileError` for
 constructs that don't map to SQL. `matches()` transpiles to `match()` only under a profile that allows regex.
 
+Division pushes down only where the expression fixes its type, because CEL divides ints as integers and doubles as doubles. An int literal, `int()`, `size()` or `%` on either side makes it ClickHouse's `intDiv`, which truncates toward zero as CEL does, and a double literal or `double()` makes it `/`. `total / count`, with no typed operand, raises `TranspileError`: evaluate it in process, or write `total / double(count)`.
+
 ---
 
 ## Result types
 
 CEL types map to Python types directly: `bool`, `int`, `float`, `str`,
-`list`, `dict`. Numeric operations follow CEL's type promotion rules —
-`evaluate('1 + 1.0')` returns `2.0`.
+`list`, `dict`. CEL never mixes int and double: `evaluate('1 + 1.0')` raises `TypeError`, so write `1.0 + 1.0` or convert with `double()`. Int division truncates toward zero (`-7 / 2` is `-3`), and `%` takes the dividend's sign.
 
 ---
 

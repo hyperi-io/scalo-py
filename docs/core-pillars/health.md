@@ -35,6 +35,8 @@ health.set_ready()
 | Readiness | `/readyz` | `set_ready()` called AND all readiness checks pass | Either gate fails | K8s removes pod from Service |
 | Startup | none -- probe `/livez` | -- | -- | K8s defers liveness until it passes |
 
+A check is a sync function, an `async def`, or any callable that returns a coroutine (`lambda: client.ping_async()`, an object with an async `__call__`). The coroutine is awaited within the check's timeout, so its result counts, not the coroutine object.
+
 Liveness defaults to "alive" when no checks are registered -- the
 process is running, that's enough. Readiness defaults to NOT ready
 until you explicitly call `set_ready()`. This matters for K8s

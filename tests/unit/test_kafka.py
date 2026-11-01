@@ -525,6 +525,7 @@ class TestKafkaClientListTopics:
         mock_topic = Mock()
         mock_topic.topic = "test-topic"
         mock_topic.partitions = {0: Mock(), 1: Mock(), 2: Mock()}
+        mock_topic.error = None
 
         mock_metadata = Mock()
         mock_metadata.topics = {"test-topic": mock_topic}
@@ -547,10 +548,12 @@ class TestKafkaClientListTopics:
         mock_internal = Mock()
         mock_internal.topic = "__consumer_offsets"
         mock_internal.partitions = {0: Mock()}
+        mock_internal.error = None
 
         mock_user = Mock()
         mock_user.topic = "user-topic"
         mock_user.partitions = {0: Mock()}
+        mock_user.error = None
 
         mock_metadata = Mock()
         mock_metadata.topics = {
@@ -574,10 +577,12 @@ class TestKafkaClientListTopics:
         mock_internal = Mock()
         mock_internal.topic = "__consumer_offsets"
         mock_internal.partitions = {0: Mock()}
+        mock_internal.error = None
 
         mock_user = Mock()
         mock_user.topic = "user-topic"
         mock_user.partitions = {0: Mock()}
+        mock_user.error = None
 
         mock_metadata = Mock()
         mock_metadata.topics = {
@@ -628,6 +633,7 @@ class TestKafkaClientDescribeTopic:
         mock_topic = Mock()
         mock_topic.topic = "test-topic"
         mock_topic.partitions = {0: mock_partition}
+        mock_topic.error = None
 
         mock_metadata = Mock()
         mock_metadata.topics = {"test-topic": mock_topic}
@@ -660,6 +666,7 @@ class TestKafkaClientDescribeTopic:
         mock_topic = Mock()
         mock_topic.topic = "test-topic"
         mock_topic.partitions = {0: mock_partition}
+        mock_topic.error = None
 
         mock_metadata = Mock()
         mock_metadata.topics = {"test-topic": mock_topic}
@@ -748,6 +755,7 @@ class TestKafkaClientConsumerLag:
         mock_topic = Mock()
         mock_topic.topic = "test-topic"
         mock_topic.partitions = {0: mock_partition}
+        mock_topic.error = None
 
         mock_metadata = Mock()
         mock_metadata.topics = {"test-topic": mock_topic}
@@ -780,6 +788,7 @@ class TestKafkaClientConsumerLag:
         mock_topic = Mock()
         mock_topic.topic = "test-topic"
         mock_topic.partitions = {0: mock_partition}
+        mock_topic.error = None
 
         mock_metadata = Mock()
         mock_metadata.topics = {"test-topic": mock_topic}
@@ -810,6 +819,7 @@ class TestKafkaClientConsumerLag:
         mock_topic = Mock()
         mock_topic.topic = "test-topic"
         mock_topic.partitions = {0: mock_partition}
+        mock_topic.error = None
 
         mock_metadata = Mock()
         mock_metadata.topics = {"test-topic": mock_topic}
@@ -846,6 +856,7 @@ class TestKafkaClientTopicStats:
         mock_topic = Mock()
         mock_topic.topic = "test-topic"
         mock_topic.partitions = {0: mock_partition0, 1: mock_partition1}
+        mock_topic.error = None
 
         mock_metadata = Mock()
         mock_metadata.topics = {"test-topic": mock_topic}
@@ -877,6 +888,7 @@ class TestKafkaClientTopicStats:
         mock_topic = Mock()
         mock_topic.topic = "test-topic"
         mock_topic.partitions = {0: mock_partition0, 1: mock_partition1}
+        mock_topic.error = None
 
         mock_metadata = Mock()
         mock_metadata.topics = {"test-topic": mock_topic}
@@ -2101,6 +2113,7 @@ class TestAsyncKafkaClient:
         mock_topic = Mock()
         mock_topic.topic = "test-topic"
         mock_topic.partitions = {0: Mock()}
+        mock_topic.error = None
 
         mock_metadata = Mock()
         mock_metadata.topics = {"test-topic": mock_topic}
@@ -2553,6 +2566,7 @@ class TestReadOnlyKafkaClient:
         mock_topic = Mock()
         mock_topic.topic = "test-topic"
         mock_topic.partitions = {0: Mock()}
+        mock_topic.error = None
         mock_metadata = Mock()
         mock_metadata.topics = {"test-topic": mock_topic}
         mock_readonly_admin_client.return_value.list_topics.return_value = mock_metadata
@@ -2572,6 +2586,7 @@ class TestReadOnlyKafkaClient:
         mock_topic = Mock()
         mock_topic.topic = "test-topic"
         mock_topic.partitions = {0: mock_partition}
+        mock_topic.error = None
         mock_metadata = Mock()
         mock_metadata.topics = {"test-topic": mock_topic}
         mock_readonly_admin_client.return_value.list_topics.return_value = mock_metadata
@@ -2941,6 +2956,7 @@ class TestKafkaAdminOffsetReset:
         # Mock list_topics to return topic with partitions
         mock_topic_meta = Mock()
         mock_topic_meta.partitions = {0: Mock(), 1: Mock(), 2: Mock()}
+        mock_topic_meta.error = None
         mock_metadata = Mock()
         mock_metadata.topics = {"test-topic": mock_topic_meta}
         mock_admin.return_value.list_topics.return_value = mock_metadata
@@ -2984,6 +3000,7 @@ class TestKafkaAdminOffsetReset:
         # Mock list_topics
         mock_topic_meta = Mock()
         mock_topic_meta.partitions = {0: Mock()}
+        mock_topic_meta.error = None
         mock_metadata = Mock()
         mock_metadata.topics = {"test-topic": mock_topic_meta}
         mock_admin.return_value.list_topics.return_value = mock_metadata
@@ -3021,6 +3038,7 @@ class TestKafkaAdminOffsetReset:
         # Mock list_topics
         mock_topic_meta = Mock()
         mock_topic_meta.partitions = {0: Mock(), 1: Mock()}
+        mock_topic_meta.error = None
         mock_metadata = Mock()
         mock_metadata.topics = {"test-topic": mock_topic_meta}
         mock_admin.return_value.list_topics.return_value = mock_metadata
@@ -3055,6 +3073,7 @@ class TestKafkaAdminOffsetReset:
         # Mock list_topics
         mock_topic_meta = Mock()
         mock_topic_meta.partitions = {0: Mock()}
+        mock_topic_meta.error = None
         mock_metadata = Mock()
         mock_metadata.topics = {"test-topic": mock_topic_meta}
         mock_admin.return_value.list_topics.return_value = mock_metadata

@@ -4,6 +4,36 @@ Behaviour and API changes that need a consumer adjustment, indexed by the scalo 
 
 ---
 
+## Unreleased
+
+### `DirectoryConfigStore` refuses a write over a table it cannot read (BEHAVIOUR CHANGE)
+
+`set` read a malformed, non-mapping or unreadable table as empty and wrote back only the new key. It now raises `ValueError` or the `OSError`, as `delete` does. **Consumer adjustment** -- fix or remove a broken table before writing to it.
+
+### The secrets disk cache is keyed by backend and principal (BEHAVIOUR CHANGE)
+
+A disk entry was keyed `<provider name>:<path>:<key>`, so managers reading one path from different backends or principals shared it, and colons could collide. It is now keyed by the provider's `cache_identity`, the path and the sub-key, and old entries are not read. See [api/secrets.md](api/secrets.md#caching). **Consumer adjustment** -- a custom `SecretProvider` whose reads depend on its config overrides `cache_identity(salt)`, passing each credential through `credential_digest(value, salt)`.
+
+### A Kafka consume error no longer skips its batch on the next commit (BEHAVIOUR CHANGE)
+
+`consume` dropped a failed batch's good messages while librdkafka had stored their offsets, so the next `commit()` skipped them. `KafkaConsumer` and `AsyncKafkaConsumer` now store an offset only once its message is returned, and seek a failed batch back. See [transport/kafka.md](transport/kafka.md#kafkaconsumer). **Consumer adjustment** -- a `commit()` with nothing returned since the last one raises `_NO_OFFSET`. Setting `enable.auto.offset.store` keeps the old behaviour.
+
+### Kafka broker calls end at `socket.timeout.ms`, and topic errors raise (BEHAVIOUR CHANGE)
+
+Broker calls that waited forever now wait at most `socket.timeout.ms` (30 s unset), or the `KafkaAdmin` method's `timeout`, then raise `KafkaTimeoutError`. A missing topic raises `TopicNotFoundError` where the read clients returned empty, and any other topic error raises `KafkaException`. `scalo.kafka.readonly.TopicNotFoundError` is now `scalo.kafka.TopicNotFoundError`. See [transport/kafka.md](transport/kafka.md#admin-defaults-admin_defaults). **Consumer adjustment** -- catch the new errors where an empty answer or a hang stood in for them.
+
+### A division with no fixed type no longer pushes down (BEHAVIOUR CHANGE)
+
+`transpile_to_clickhouse` wrote CEL's `/` as ClickHouse's double `/` even between ints. It now writes `intDiv` where an operand is int-typed, `/` where one is double-typed, and raises `TranspileError` where neither is. See [api/expression.md](api/expression.md#transpile-to-clickhouse-sql). **Consumer adjustment** -- evaluate such a filter in process, or type an operand with `double()` or `int()`.
+
+### Generated images install no Kafka C libraries (API CHANGE)
+
+`NativeDepsContract.for_scalo_extras` maps no extra to a package, and `for_scalo_features` maps only `directory-config-git` (libgit2), as scalo-rs does. `CONFLUENT_KEY_FINGERPRINT` is gone, and an `AptRepoContract` with an empty `codename` takes `distro_codename`. See [deployment/native-deps.md](deployment/native-deps.md). **Consumer adjustment** -- regenerate a committed `Dockerfile` or `Dockerfile.runtime`.
+
+### Shared test services, and the compose files gone (additive)
+
+`scalo.deployment.test_support.pytest_plugin` gives a pytest run one ClickHouse, Kafka and OpenBao, shared by every xdist worker. See [deployment/test-support.md](deployment/test-support.md#shared-test-services). scalo-py's `docker-compose.kafka.yml` and `docker-compose.openbao.yml` are gone.
+
 ## 2.31.20
 
 ### `matches()` needs `allow_regex` (BEHAVIOUR CHANGE)

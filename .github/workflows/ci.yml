@@ -8,6 +8,8 @@
 name: CI
 
 on:
+  schedule:
+    - cron: '27 16 * * *'
   push:
     branches: ["**"]
   pull_request:
@@ -29,6 +31,12 @@ on:
         required: false
         default: "auto"
         description: "Version resolution for from-head: auto | patch | minor (forced) | X.Y.Z (exact version)."
+      test-tier:
+        type: choice
+        required: false
+        default: "core"
+        options: [core, full]
+        description: "core | full. full runs the full test tier on this run."
 
 permissions:
   contents: write
@@ -44,4 +52,5 @@ jobs:
       tag: ${{ inputs.tag || '' }}
       from-head: ${{ inputs.from-head || '' }}
       bump: ${{ inputs.bump || 'auto' }}
+      test-tier: ${{ inputs.test-tier || 'core' }}
     secrets: inherit

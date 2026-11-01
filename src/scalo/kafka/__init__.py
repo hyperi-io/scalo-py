@@ -51,6 +51,7 @@ from .config import (
     ADMIN_DEFAULTS,
     CONSUMER_DEFAULTS,
     PRODUCER_DEFAULTS,
+    KafkaTimeoutError,
     config_from_env,
     config_from_file,
     external_sasl_scram,
@@ -163,6 +164,7 @@ __all__ = [
     "KafkaProducer",
     "KafkaProvider",
     "KafkaProviderError",
+    "KafkaTimeoutError",
     "KnownProvider",
     # Types
     "Message",

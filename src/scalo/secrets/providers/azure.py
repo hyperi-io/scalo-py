@@ -22,7 +22,7 @@ from ..exceptions import (
     SecretVersionNotFoundError,
 )
 from ..types import AzureConfig, SecretFilter, SecretMetadata, SecretValue
-from .base import HealthLog, VersionedProvider
+from .base import HealthLog, VersionedProvider, credential_digest
 
 logger = logging.getLogger(__name__)
 
@@ -89,6 +89,16 @@ class AzureProvider(VersionedProvider):
     def name(self) -> str:
         """Provider name."""
         return "azure"
+
+    def cache_identity(self, salt: bytes) -> tuple[str, ...]:
+        """See base class."""
+        return (
+            self.name,
+            self._config.vault_url,
+            self._config.tenant_id or "",
+            self._config.client_id or "",
+            credential_digest(self._config.client_secret, salt),
+        )
 
     def _sync_credential(self):
         """Return sync credential -- explicit service principal or DefaultAzureCredential."""

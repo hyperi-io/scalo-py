@@ -33,7 +33,7 @@ from confluent_kafka.admin import (
     ResourceType,
 )
 
-from .config import ADMIN_DEFAULTS, merge_config
+from .config import ADMIN_DEFAULTS, _topic_missing, broker_call, merge_config
 
 
 class KafkaAdminError(Exception):
@@ -295,10 +295,10 @@ class KafkaAdmin:
     # Consumer Group Offset Operations
     # =========================================================================
 
-    def _get_partition_count(self, topic: str) -> int:
+    def _get_partition_count(self, topic: str, timeout: float) -> int:
         """Get the number of partitions for a topic."""
-        metadata = self._admin.list_topics(topic)
-        if topic not in metadata.topics:
+        metadata = broker_call(timeout, self._admin.list_topics, topic)
+        if _topic_missing(metadata, topic):
             raise KafkaAdminError(f"Topic {topic} not found")
         return len(metadata.topics[topic].partitions)
 
@@ -334,7 +334,7 @@ class KafkaAdmin:
                 timestamp_ms=1704067200000,
             )
         """
-        partition_count = self._get_partition_count(topic)
+        partition_count = self._get_partition_count(topic, timeout)
 
         # Create a temporary consumer to use offsets_for_times
         consumer_config = self._config.copy()
@@ -347,7 +347,7 @@ class KafkaAdmin:
             partitions = [TopicPartition(topic, p, timestamp_ms) for p in range(partition_count)]
 
             # Get offsets for the timestamps
-            result_partitions = consumer.offsets_for_times(partitions, timeout=timeout)
+            result_partitions = broker_call(timeout, consumer.offsets_for_times, partitions)
 
             # Build new offsets
             new_offsets = {}
@@ -430,7 +430,7 @@ class KafkaAdmin:
             # Reprocess all messages from the beginning
             admin.reset_offsets_to_earliest("my-group", "my-topic")
         """
-        partition_count = self._get_partition_count(topic)
+        partition_count = self._get_partition_count(topic, timeout)
 
         # Create a temporary consumer to get watermarks
         consumer_config = self._config.copy()
@@ -443,7 +443,7 @@ class KafkaAdmin:
             commit_partitions = []
 
             for p in range(partition_count):
-                low, high = consumer.get_watermark_offsets(TopicPartition(topic, p), timeout=timeout)
+                low, high = broker_call(timeout, consumer.get_watermark_offsets, TopicPartition(topic, p))
                 new_offsets[p] = low
                 commit_partitions.append(TopicPartition(topic, p, low))
 
@@ -485,7 +485,7 @@ class KafkaAdmin:
             # Skip all existing messages
             admin.reset_offsets_to_latest("my-group", "my-topic")
         """
-        partition_count = self._get_partition_count(topic)
+        partition_count = self._get_partition_count(topic, timeout)
 
         # Create a temporary consumer to get watermarks
         consumer_config = self._config.copy()
@@ -498,7 +498,7 @@ class KafkaAdmin:
             commit_partitions = []
 
             for p in range(partition_count):
-                low, high = consumer.get_watermark_offsets(TopicPartition(topic, p), timeout=timeout)
+                low, high = broker_call(timeout, consumer.get_watermark_offsets, TopicPartition(topic, p))
                 new_offsets[p] = high
                 commit_partitions.append(TopicPartition(topic, p, high))
 

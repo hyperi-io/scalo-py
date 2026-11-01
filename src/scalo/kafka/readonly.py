@@ -22,16 +22,17 @@ from typing import Any
 from confluent_kafka import Consumer, TopicPartition
 from confluent_kafka.admin import AdminClient
 
-from .config import ADMIN_DEFAULTS, CONSUMER_DEFAULTS, _offset_query_consumer_config, merge_config
+from .client import TopicNotFoundError
+from .config import (
+    ADMIN_DEFAULTS,
+    CONSUMER_DEFAULTS,
+    _offset_query_consumer_config,
+    _topic_missing,
+    broker_call,
+    call_timeout,
+    merge_config,
+)
 from .types import PartitionInfo, TopicInfo, TopicMetadata
-
-
-class TopicNotFoundError(Exception):
-    """Topic does not exist."""
-
-    def __init__(self, topic: str):
-        self.topic = topic
-        super().__init__(f"Topic not found: {topic}")
 
 
 class ReadOnlyKafkaClient:
@@ -67,6 +68,7 @@ class ReadOnlyKafkaClient:
         self._user_config = config.copy()
         self._config = merge_config(config, ADMIN_DEFAULTS, verify_ssl=verify_ssl)
         self._verify_ssl = verify_ssl
+        self._timeout = call_timeout(self._config)
         self._admin = AdminClient(self._config)
 
     def __enter__(self) -> ReadOnlyKafkaClient:
@@ -91,7 +93,7 @@ class ReadOnlyKafkaClient:
         Returns:
             List of TopicInfo objects
         """
-        metadata = self._admin.list_topics()
+        metadata = broker_call(self._timeout, self._admin.list_topics)
 
         topics = []
         for name, topic_meta in metadata.topics.items():
@@ -122,9 +124,9 @@ class ReadOnlyKafkaClient:
         Raises:
             TopicNotFoundError: If topic doesn't exist
         """
-        metadata = self._admin.list_topics(topic)
+        metadata = broker_call(self._timeout, self._admin.list_topics, topic)
 
-        if topic not in metadata.topics:
+        if _topic_missing(metadata, topic):
             raise TopicNotFoundError(topic)
 
         topic_meta = metadata.topics[topic]
@@ -165,8 +167,8 @@ class ReadOnlyKafkaClient:
         Returns:
             Dict of partition -> (low_watermark, high_watermark)
         """
-        metadata = self._admin.list_topics(topic)
-        if topic not in metadata.topics:
+        metadata = broker_call(self._timeout, self._admin.list_topics, topic)
+        if _topic_missing(metadata, topic):
             raise TopicNotFoundError(topic)
 
         partition_ids = list(metadata.topics[topic].partitions.keys())
@@ -198,8 +200,8 @@ class ReadOnlyKafkaClient:
         Returns:
             Dict of partition -> lag (messages behind)
         """
-        metadata = self._admin.list_topics(topic)
-        if topic not in metadata.topics:
+        metadata = broker_call(self._timeout, self._admin.list_topics, topic)
+        if _topic_missing(metadata, topic):
             raise TopicNotFoundError(topic)
 
         partition_ids = list(metadata.topics[topic].partitions.keys())
@@ -217,13 +219,13 @@ class ReadOnlyKafkaClient:
         consumer = Consumer(consumer_config)
         try:
             tps = [TopicPartition(topic, p) for p in partition_ids]
-            committed = consumer.committed(tps)
+            committed = broker_call(self._timeout, consumer.committed, tps)
             committed_map = {tp.partition: tp.offset for tp in committed}
 
             watermarks = {}
             for partition_id in partition_ids:
                 tp = TopicPartition(topic, partition_id)
-                low, high = consumer.get_watermark_offsets(tp)
+                low, high = broker_call(self._timeout, consumer.get_watermark_offsets, tp)
                 watermarks[partition_id] = (low, high)
 
             lag = {}
@@ -255,7 +257,7 @@ class ReadOnlyKafkaClient:
             watermarks = {}
             for partition_id in partition_ids:
                 tp = TopicPartition(topic, partition_id)
-                low, high = consumer.get_watermark_offsets(tp)
+                low, high = broker_call(self._timeout, consumer.get_watermark_offsets, tp)
                 watermarks[partition_id] = (low, high)
             return watermarks
         finally:

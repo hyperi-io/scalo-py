@@ -2,6 +2,7 @@
 
 import asyncio
 import builtins
+import json
 import logging
 import os
 import random
@@ -16,6 +17,8 @@ from .exceptions import (
     ProviderNotAvailableError,
     ProviderNotConfiguredError,
     SecretNotFoundError,
+    SecretPendingDeletionError,
+    SecretPermissionError,
     SecretsError,
     VersioningNotSupportedError,
 )
@@ -40,17 +43,21 @@ from .types import (
 
 logger = logging.getLogger(__name__)
 
+# A provider's answer about the secret itself, not an outage: it is gone, going, or no longer ours to read.
+_AUTHORITATIVE = (SecretNotFoundError, SecretPendingDeletionError, SecretPermissionError)
+
 _FAULT_LOG = "Health check of provider %s raised %s: %s"
 
 
 class _CacheKey(NamedTuple):
-    """Memory-cache key. Hashable; survives colons in path/key."""
+    """Memory-cache key: the provider name, the path and the sub-key, "" when there is none."""
 
     provider: str
     path: str
-    key: str  # "" when no sub-key
+    key: str
 
-    def to_disk_str(self) -> str:
+    def label(self) -> str:
+        """Name the entry in logs and rotation events, never as a cache key: colons make it ambiguous."""
         return f"{self.provider}:{self.path}:{self.key}"
 
 
@@ -107,6 +114,8 @@ class SecretsManager:
         self._sources = sources or {}
         self._cache = DiskCache(cache or cache_config or CacheConfig())
         self._env_prefix = env_prefix.rstrip("_") if env_prefix else None
+        # Source name -> (that name, its ENV fallback variable), both from configuration, never from a caller.
+        self._env_fallbacks = {name: (name, self._env_fallback_var(name, src)) for name, src in self._sources.items()}
         self._rotation_callbacks: list[tuple[RotationCallback, list[str] | None]] = []
         self._refresh_task: asyncio.Task | None = None
         self._refresh_stop_event: asyncio.Event | None = None
@@ -114,6 +123,12 @@ class SecretsManager:
         # managers configured against different tenants/namespaces.
         self._memory_cache: dict[_CacheKey, SecretValue] = {}
         self._memory_cache_lock = threading.Lock()
+        # Provider name -> its cache identity, derived on first use.
+        self._identities: dict[str, tuple[str, ...]] = {}
+        # Bumped by every change to a path, so a read that began before the change caches nothing.
+        self._generations: dict[tuple[str, str], int] = {}
+        # Held across a generation check and the cache writes it allows, and across a change's eviction.
+        self._store_lock = threading.Lock()
         # Provider name -> error type its health check last raised, so a probe loop logs one outage once.
         self._health_faults: dict[str, str] = {}
 
@@ -562,7 +577,10 @@ class SecretsManager:
         """
         provider_name = provider or "file"
         p = self._get_provider(provider_name)
-        return await p.update_async(path, value)
+        try:
+            return await p.update_async(path, value)
+        finally:
+            self._forget(provider_name, path)
 
     def update_sync(
         self,
@@ -573,7 +591,10 @@ class SecretsManager:
         """Update an existing secret's value (sync)."""
         provider_name = provider or "file"
         p = self._get_provider(provider_name)
-        return p.update_sync(path, value)
+        try:
+            return p.update_sync(path, value)
+        finally:
+            self._forget(provider_name, path)
 
     async def delete(
         self,
@@ -594,7 +615,10 @@ class SecretsManager:
         """
         provider_name = provider or "file"
         p = self._get_provider(provider_name)
-        await p.delete_async(path)
+        try:
+            await p.delete_async(path)
+        finally:
+            self._forget(provider_name, path)
 
     def delete_sync(
         self,
@@ -604,7 +628,10 @@ class SecretsManager:
         """Delete a secret (sync)."""
         provider_name = provider or "file"
         p = self._get_provider(provider_name)
-        p.delete_sync(path)
+        try:
+            p.delete_sync(path)
+        finally:
+            self._forget(provider_name, path)
 
     # -------------------------------------------------------------------------
     # Batch get
@@ -798,18 +825,76 @@ class SecretsManager:
                 freshest = candidate
         return freshest
 
-    def _store_fetched(self, cache_key: _CacheKey, value: SecretValue) -> None:
-        """Cache a value fresh from its provider, reporting a rotation against the value it replaces."""
-        disk_key = cache_key.to_disk_str()
-        old_value = self._memory_put(cache_key, value)
-        self._cache.set(disk_key, value)
-        self._check_rotation(disk_key, old_value, value)
+    def _disk_key(self, cache_key: _CacheKey) -> str:
+        """Key the shared disk tier by the provider's backend identity, the path and the sub-key, as JSON.
+
+        Every manager on a host shares the disk directory, so the provider name alone would let two
+        backends, or two principals on one backend, read each other's entries.
+
+        Raises:
+            ProviderNotConfiguredError: No provider by that name is configured.
+        """
+        identity = self._identity(cache_key.provider)
+        return json.dumps([list(identity), cache_key.path, cache_key.key], separators=(",", ":"))
+
+    def _disk_group(self, provider_name: str, path: str) -> str:
+        """Group a path's disk entries, every sub-key of it, so one change can drop them all."""
+        identity = self._identity(provider_name)
+        return json.dumps([list(identity), path], separators=(",", ":"))
+
+    def _identity(self, provider_name: str) -> tuple[str, ...]:
+        """Return a provider's cache identity, deriving it once: its credential digests cost a KDF each.
+
+        Raises:
+            ProviderNotConfiguredError: No provider by that name is configured.
+        """
+        provider = self._get_provider(provider_name)
+        identity = self._identities.get(provider_name)
+        if identity is None:
+            identity = provider.cache_identity(self._cache.salt())
+            self._identities[provider_name] = identity
+        return identity
+
+    def _forget(self, provider_name: str, path: str) -> None:
+        """Drop every cached entry for ``path`` from both tiers, after a write or delete there.
+
+        Raises:
+            OSError: A disk entry could not be removed, so it could still be served.
+        """
+        with self._store_lock:
+            self._generations[(provider_name, path)] = self._generation(provider_name, path) + 1
+            with self._memory_cache_lock:
+                for cache_key in [k for k in self._memory_cache if k.provider == provider_name and k.path == path]:
+                    del self._memory_cache[cache_key]
+            self._cache.delete_group(self._disk_group(provider_name, path))
+
+    def _generation(self, provider_name: str, path: str) -> int:
+        """How many changes the manager has made to ``path``: a read records it before it starts."""
+        return self._generations.get((provider_name, path), 0)
+
+    def _store(self, cache_key: _CacheKey, value: SecretValue, generation: int, *, fetched: bool) -> None:
+        """Cache a value read at ``generation``, unless ``path`` has changed since.
+
+        A value ``fetched`` from the provider goes to both tiers and is checked for rotation. One
+        read from the disk tier goes to memory only.
+        """
+        old_value = None
+        with self._store_lock:
+            if self._generation(cache_key.provider, cache_key.path) != generation:
+                logger.debug("Secret changed during the read, so it is not cached", extra={"key": cache_key.label()})
+                return
+            old_value = self._memory_put(cache_key, value)
+            if fetched:
+                self._cache.set(self._disk_key(cache_key), value, self._disk_group(cache_key.provider, cache_key.path))
+        if fetched:
+            self._check_rotation(cache_key.label(), old_value, value)
 
     async def _fetch(self, cache_key: _CacheKey) -> SecretValue:
         """Read ``cache_key`` from its provider, skipping both cache tiers, and cache the result."""
         provider = self._get_provider(cache_key.provider)
+        generation = self._generation(cache_key.provider, cache_key.path)
         value = await provider.get_async(cache_key.path, cache_key.key or None)
-        self._store_fetched(cache_key, value)
+        self._store(cache_key, value, generation, fetched=True)
         return value
 
     def _check_rotation(self, name: str, old_value: SecretValue | None, value: SecretValue) -> None:
@@ -846,9 +931,13 @@ class SecretsManager:
             return f"{self._env_prefix}_{upper}"
         return upper
 
-    def _resolve_env_fallback(self, name: str, source: SourceConfig) -> SecretValue | None:
-        """Look up ENV fallback value; return SecretValue or None if not set."""
-        env_var = self._env_fallback_var(name, source)
+    def _resolve_env_fallback(self, name: str) -> SecretValue | None:
+        """Look up a configured source's ENV fallback, or None when it is not set.
+
+        The log names the source and the variable from configuration, so nothing a caller
+        passed in, which may be a secret's path, reaches it.
+        """
+        source_name, env_var = self._env_fallbacks[name]
         if env_var is None:
             return None
         env_value = os.environ.get(env_var)
@@ -856,7 +945,7 @@ class SecretsManager:
             return None
         logger.warning(
             "Provider unavailable, using ENV fallback",
-            extra={"source": name, "env_var": env_var},
+            extra={"source": source_name, "env_var": env_var},
         )
         return SecretValue(data=env_value.encode("utf-8"), fetched_at=datetime.now(UTC), source="env")
 
@@ -872,7 +961,7 @@ class SecretsManager:
         try:
             return await self._get_from_provider(provider_name, path, source.key)
         except ProviderError, ProviderNotConfiguredError, SecretNotFoundError:
-            fallback = self._resolve_env_fallback(name, source)
+            fallback = self._resolve_env_fallback(name)
             if fallback is not None:
                 return fallback
             raise
@@ -889,7 +978,7 @@ class SecretsManager:
         try:
             return self._get_from_provider_sync(provider_name, path, source.key)
         except ProviderError, ProviderNotConfiguredError, SecretNotFoundError:
-            fallback = self._resolve_env_fallback(name, source)
+            fallback = self._resolve_env_fallback(name)
             if fallback is not None:
                 return fallback
             raise
@@ -902,31 +991,35 @@ class SecretsManager:
     ) -> SecretValue:
         """Fetch from provider with caching and fallback."""
         cache_key = _CacheKey(provider_name, path, key or "")
-        disk_key = cache_key.to_disk_str()
+        disk_key = self._disk_key(cache_key)
+        generation = self._generation(provider_name, path)
 
         remembered = self._memory_get(cache_key)
         if remembered is not None and not remembered.is_expired(self._cache.config.ttl_secs):
-            logger.debug("Memory cache hit", extra={"key": disk_key})
+            logger.debug("Memory cache hit", extra={"key": cache_key.label()})
             return remembered
 
         # Check disk cache
-        cached = self._cache.get(disk_key)
+        cached = self._cache.get(disk_key, self._disk_group(provider_name, path))
         if cached and not cached.is_expired(self._cache.config.ttl_secs):
-            self._memory_put(cache_key, cached)
-            logger.debug("Disk cache hit", extra={"key": disk_key})
+            self._store(cache_key, cached, generation, fetched=False)
+            logger.debug("Disk cache hit", extra={"key": cache_key.label()})
             return cached
 
         try:
             value = await self._fetch(cache_key)
-            logger.debug("Provider fetch", extra={"key": disk_key, "provider": provider_name})
+            logger.debug("Provider fetch", extra={"key": cache_key.label(), "provider": provider_name})
             return value
 
-        except (SecretNotFoundError, ProviderError) as e:
+        except _AUTHORITATIVE:
+            self._forget(provider_name, path)
+            raise
+        except ProviderError as e:
             stale = self._stale_fallback(remembered, cached)
             if stale is not None:
                 logger.warning(
                     "Provider failed, using stale cache",
-                    extra={"provider": provider_name, "error": str(e), "key": disk_key},
+                    extra={"provider": provider_name, "error": str(e), "key": cache_key.label()},
                 )
                 return stale
             raise
@@ -939,25 +1032,29 @@ class SecretsManager:
     ) -> SecretValue:
         """Fetch from provider with caching and fallback (sync)."""
         cache_key = _CacheKey(provider_name, path, key or "")
-        disk_key = cache_key.to_disk_str()
+        disk_key = self._disk_key(cache_key)
+        generation = self._generation(provider_name, path)
 
         remembered = self._memory_get(cache_key)
         if remembered is not None and not remembered.is_expired(self._cache.config.ttl_secs):
             return remembered
 
         # Check disk cache
-        cached = self._cache.get(disk_key)
+        cached = self._cache.get(disk_key, self._disk_group(provider_name, path))
         if cached and not cached.is_expired(self._cache.config.ttl_secs):
-            self._memory_put(cache_key, cached)
+            self._store(cache_key, cached, generation, fetched=False)
             return cached
 
         provider = self._get_provider(provider_name)
         try:
             value = provider.get_sync(path, key)
-            self._store_fetched(cache_key, value)
+            self._store(cache_key, value, generation, fetched=True)
             return value
 
-        except (SecretNotFoundError, ProviderError) as e:
+        except _AUTHORITATIVE:
+            self._forget(provider_name, path)
+            raise
+        except ProviderError as e:
             stale = self._stale_fallback(remembered, cached)
             if stale is not None:
                 logger.warning(
@@ -1046,10 +1143,12 @@ class SecretsManager:
         for cache_key in keys:
             try:
                 await self._fetch(cache_key)
+            except _AUTHORITATIVE:
+                self._forget(cache_key.provider, cache_key.path)
             except Exception as e:
                 logger.warning(
                     "Refresh failed",
-                    extra={"key": cache_key.to_disk_str(), "error": str(e)},
+                    extra={"key": cache_key.label(), "error": str(e)},
                 )
 
     def _record_health(self, name: str, healthy: bool) -> None:

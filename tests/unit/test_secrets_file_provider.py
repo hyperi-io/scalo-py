@@ -3,6 +3,7 @@
 import json
 import os
 import stat
+import subprocess
 import sys
 from pathlib import Path
 
@@ -414,6 +415,50 @@ class TestFileProviderModes:
         assert _mode(path) == 0o600
         # A directory the provider did not make keeps its mode.
         assert _mode(tmp_path) == before
+
+    @pytest.mark.parametrize(
+        "provider",
+        [
+            pytest.param("scalo.secrets.providers.file.FileProvider()", id="file"),
+            pytest.param(
+                "scalo.secrets.providers.ansible_vault.AnsibleVaultProvider("
+                "scalo.secrets.types.AnsibleVaultConfig(password='pw'))",
+                id="ansible-vault",
+            ),
+        ],
+    )
+    @pytest.mark.parametrize("operation", ["update", "create"])
+    def test_a_write_that_fails_partway_leaves_the_old_secret(self, tmp_path, operation, provider):
+        """A file-size limit makes the write fail after 1 KiB, as a full disk would."""
+        if provider.startswith("scalo.secrets.providers.ansible_vault"):
+            pytest.importorskip("ansible_vault")
+        path = tmp_path / "secret"
+        if operation == "update":
+            path.write_bytes(b"old-secret")
+        script = (
+            "import resource, signal, sys\n"
+            "import scalo.secrets.providers.ansible_vault, scalo.secrets.providers.file, scalo.secrets.types\n"
+            "signal.signal(signal.SIGXFSZ, signal.SIG_IGN)\n"
+            "resource.setrlimit(resource.RLIMIT_FSIZE, (1024, resource.RLIM_INFINITY))\n"
+            "try:\n"
+            f"    {provider}.{operation}_sync(sys.argv[1], b'x' * 8192)\n"
+            "except Exception as exc:\n"
+            "    print(type(exc).__name__)\n"
+        )
+        done = subprocess.run(
+            [sys.executable, "-c", script, str(path)],
+            capture_output=True,
+            text=True,
+            encoding="utf-8",
+            errors="replace",
+            check=True,
+        )
+        assert done.stdout.strip() == "ProviderError", done.stderr
+        if operation == "update":
+            assert path.read_bytes() == b"old-secret"
+        else:
+            assert not path.exists(), "a failed create left a partial secret behind"
+        assert sorted(p.name for p in tmp_path.iterdir()) == (["secret"] if operation == "update" else [])
 
     def test_update_tightens_a_readable_file(self, tmp_path, process_umask):
         path = tmp_path / "secret"

@@ -77,6 +77,7 @@ def _make_identity() -> ContractIdentity:
 
 
 @pytest.mark.integration
+@pytest.mark.full
 def test_tier_a_dockerfile_builds_and_image_runs() -> None:
     """Build a minimal image carrying the three identity labels and verify
     they round-trip through ``docker inspect``.

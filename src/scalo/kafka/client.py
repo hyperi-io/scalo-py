@@ -19,7 +19,15 @@ from typing import Any
 from confluent_kafka import Consumer, TopicPartition
 from confluent_kafka.admin import AdminClient
 
-from .config import ADMIN_DEFAULTS, CONSUMER_DEFAULTS, _offset_query_consumer_config, merge_config
+from .config import (
+    ADMIN_DEFAULTS,
+    CONSUMER_DEFAULTS,
+    _offset_query_consumer_config,
+    _topic_missing,
+    broker_call,
+    call_timeout,
+    merge_config,
+)
 from .types import (
     PartitionInfo,
     TopicInfo,
@@ -75,6 +83,7 @@ class KafkaClient:
         # Merge with defaults
         self._config = merge_config(config, ADMIN_DEFAULTS, verify_ssl=verify_ssl)
         self._verify_ssl = verify_ssl
+        self._timeout = call_timeout(self._config)
 
         # Create admin client
         self._admin = AdminClient(self._config)
@@ -106,7 +115,7 @@ class KafkaClient:
         Returns:
             List of TopicInfo objects
         """
-        metadata = self._admin.list_topics()
+        metadata = broker_call(self._timeout, self._admin.list_topics)
 
         topics = []
         for name, topic_meta in metadata.topics.items():
@@ -137,9 +146,9 @@ class KafkaClient:
         Raises:
             TopicNotFoundError: If topic doesn't exist
         """
-        metadata = self._admin.list_topics(topic)
+        metadata = broker_call(self._timeout, self._admin.list_topics, topic)
 
-        if topic not in metadata.topics:
+        if _topic_missing(metadata, topic):
             raise TopicNotFoundError(topic)
 
         topic_meta = metadata.topics[topic]
@@ -184,8 +193,8 @@ class KafkaClient:
             Dict of partition -> (low_watermark, high_watermark)
         """
         # Get partition list
-        metadata = self._admin.list_topics(topic)
-        if topic not in metadata.topics:
+        metadata = broker_call(self._timeout, self._admin.list_topics, topic)
+        if _topic_missing(metadata, topic):
             raise TopicNotFoundError(topic)
 
         partition_ids = list(metadata.topics[topic].partitions.keys())
@@ -226,7 +235,7 @@ class KafkaClient:
             tps = [TopicPartition(topic, partition, timestamp) for partition, timestamp in timestamps.items()]
 
             # Get offsets
-            result = consumer.offsets_for_times(tps)
+            result = broker_call(self._timeout, consumer.offsets_for_times, tps)
 
             return {tp.partition: tp.offset for tp in result}
         finally:
@@ -253,8 +262,8 @@ class KafkaClient:
             Dict of partition -> lag (messages behind)
         """
         # Get partition list
-        metadata = self._admin.list_topics(topic)
-        if topic not in metadata.topics:
+        metadata = broker_call(self._timeout, self._admin.list_topics, topic)
+        if _topic_missing(metadata, topic):
             raise TopicNotFoundError(topic)
 
         partition_ids = list(metadata.topics[topic].partitions.keys())
@@ -275,14 +284,14 @@ class KafkaClient:
             tps = [TopicPartition(topic, p) for p in partition_ids]
 
             # Get committed offsets
-            committed = consumer.committed(tps)
+            committed = broker_call(self._timeout, consumer.committed, tps)
             committed_map = {tp.partition: tp.offset for tp in committed}
 
             # Get watermarks
             watermarks = {}
             for partition_id in partition_ids:
                 tp = TopicPartition(topic, partition_id)
-                low, high = consumer.get_watermark_offsets(tp)
+                low, high = broker_call(self._timeout, consumer.get_watermark_offsets, tp)
                 watermarks[partition_id] = (low, high)
 
             # Calculate lag
@@ -316,7 +325,7 @@ class KafkaClient:
             watermarks = {}
             for partition_id in partition_ids:
                 tp = TopicPartition(topic, partition_id)
-                low, high = consumer.get_watermark_offsets(tp)
+                low, high = broker_call(self._timeout, consumer.get_watermark_offsets, tp)
                 watermarks[partition_id] = (low, high)
             return watermarks
         finally:

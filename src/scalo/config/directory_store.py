@@ -239,6 +239,8 @@ class DirectoryConfigStore:
 
         Raises:
             PermissionError: If store is not writable.
+            ValueError: The table's file is not a YAML mapping, so the write would replace it.
+            OSError: The table's file exists but cannot be read.
         """
         if not self._writable:
             raise PermissionError("DirectoryConfigStore is read-only")
@@ -247,7 +249,7 @@ class DirectoryConfigStore:
         file_path = self._table_path(table)
         file_path.parent.mkdir(parents=True, exist_ok=True)
         with self._write_lock(file_path):
-            data = self._load_yaml_locked(file_path) or {}
+            data = self._load_for_write(file_path) if file_path.exists() else {}
             self._set_nested(data, key, value)
             self._write_yaml_locked(file_path, data)
             mtime = file_path.stat().st_mtime
@@ -284,6 +286,8 @@ class DirectoryConfigStore:
         Raises:
             PermissionError: If store is not writable.
             KeyError: If key does not exist.
+            ValueError: The table's file is not a YAML mapping.
+            OSError: The table's file exists but cannot be read.
         """
         if not self._writable:
             raise PermissionError("DirectoryConfigStore is read-only")
@@ -293,9 +297,9 @@ class DirectoryConfigStore:
         if not file_path.parent.is_dir():
             raise KeyError(f"Table '{table}' does not exist")
         with self._write_lock(file_path):
-            data = self._load_yaml_locked(file_path)
-            if data is None:
+            if not file_path.exists():
                 raise KeyError(f"Table '{table}' does not exist")
+            data = self._load_for_write(file_path)
             self._delete_nested(data, key)
             self._write_yaml_locked(file_path, data)
             mtime = file_path.stat().st_mtime
@@ -541,22 +545,24 @@ class DirectoryConfigStore:
             logger.warning(f"Failed to read {path}: {e}")
             return None
 
-    def _load_yaml_locked(self, path: Path) -> dict | None:
-        """Load YAML with advisory file lock."""
-        if not path.exists():
-            return None
+    @staticmethod
+    def _load_for_write(path: Path) -> dict:
+        """Load an existing table's mapping for a read-modify-write, raising rather than reading it as empty.
+
+        Raises:
+            ValueError: The file is not valid YAML, or not a mapping.
+            OSError: The file cannot be read.
+        """
+        text = path.read_text(encoding="utf-8")
         try:
-            fd = os.open(str(path), os.O_RDONLY)
-            try:
-                fcntl.flock(fd, fcntl.LOCK_SH)
-                data = self._load_yaml(path)
-            finally:
-                fcntl.flock(fd, fcntl.LOCK_UN)
-                os.close(fd)
-            return data
-        except OSError as e:
-            logger.warning(f"Failed to lock/read {path}: {e}")
-            return self._load_yaml(path)
+            data = safe_load(text)
+        except yaml.YAMLError as e:
+            raise ValueError(f"{path} is not valid YAML, so it is left as it is: {e}") from e
+        if data is None:
+            return {}
+        if not isinstance(data, dict):
+            raise ValueError(f"{path} holds a {type(data).__name__}, not a mapping, so it is left as it is")
+        return data
 
     @staticmethod
     @contextmanager
