@@ -17,6 +17,8 @@ from .exceptions import (
     ProviderNotAvailableError,
     ProviderNotConfiguredError,
     SecretNotFoundError,
+    SecretPendingDeletionError,
+    SecretPermissionError,
     SecretsError,
     VersioningNotSupportedError,
 )
@@ -40,6 +42,9 @@ from .types import (
 )
 
 logger = logging.getLogger(__name__)
+
+# A provider's answer about the secret itself, not an outage: it is gone, going, or no longer ours to read.
+_AUTHORITATIVE = (SecretNotFoundError, SecretPendingDeletionError, SecretPermissionError)
 
 _FAULT_LOG = "Health check of provider %s raised %s: %s"
 
@@ -962,7 +967,10 @@ class SecretsManager:
             logger.debug("Provider fetch", extra={"key": cache_key.label(), "provider": provider_name})
             return value
 
-        except (SecretNotFoundError, ProviderError) as e:
+        except _AUTHORITATIVE:
+            self._forget(provider_name, path)
+            raise
+        except ProviderError as e:
             stale = self._stale_fallback(remembered, cached)
             if stale is not None:
                 logger.warning(
@@ -998,7 +1006,10 @@ class SecretsManager:
             self._store_fetched(cache_key, value)
             return value
 
-        except (SecretNotFoundError, ProviderError) as e:
+        except _AUTHORITATIVE:
+            self._forget(provider_name, path)
+            raise
+        except ProviderError as e:
             stale = self._stale_fallback(remembered, cached)
             if stale is not None:
                 logger.warning(
@@ -1087,6 +1098,8 @@ class SecretsManager:
         for cache_key in keys:
             try:
                 await self._fetch(cache_key)
+            except _AUTHORITATIVE:
+                self._forget(cache_key.provider, cache_key.path)
             except Exception as e:
                 logger.warning(
                     "Refresh failed",

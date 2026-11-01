@@ -181,11 +181,11 @@ For `env_prefix="APP"` and source `db_password`, the manager checks
 
 ## Caching
 
-Two tiers: an in-process memory cache, one per `SecretsManager` instance, and a disk cache. Both expire on `ttl_secs`. On provider failure the manager returns the most recent cached value from either tier while it is within `stale_grace_secs` past TTL, so your service keeps running through a secrets-backend outage.
+Two tiers: an in-process memory cache, one per `SecretsManager` instance, and a disk cache. Both expire on `ttl_secs`. On an outage (a `ProviderError` such as a refused connection, a timeout or a 5xx, or an `AuthenticationError`) the manager returns the most recent cached value from either tier while it is within `stale_grace_secs` past TTL. A `SecretNotFoundError`, `SecretPendingDeletionError` or `SecretPermissionError` is an answer about the secret itself: the manager drops the path from both tiers and raises it.
 
 The disk tier writes only when `encryption_key` is set, which seals each entry with AES-256-GCM (via the `cryptography` package; there is no `[cache]` extra), or when `allow_plaintext_disk_cache` is True. Without either it is off, the cache is memory-only, and a plaintext file found in the cache directory is not read. The plaintext opt-in is ignored once `encryption_key` is set, and refused at startup when the app environment (`APP_ENV`, `ENVIRONMENT`, `ENV`) is `production` or `prod`.
 
-Every manager on a host shares the disk directory, so each entry is keyed by the provider's backend and principal as well as the path and sub-key: the OpenBao address, namespace, mount and auth role, the AWS region and endpoint, the GCP project, the Azure vault, the Kubernetes API server, namespace and Secret. A credential (a token, an access key id, a client secret) enters the key only as a SHA-256 digest. Two managers reading one path from different backends, or as different principals, never read each other's entry. An `update` or `delete` through the manager drops the path, every sub-key of it included, from both tiers, so the next read goes to the provider and a deleted secret is never served stale. A change made outside the manager is still served from cache until `ttl_secs`.
+Every manager on a host shares the disk directory, so each entry is keyed by the provider's backend and principal (`cache_identity`: address, namespace, mount, role, region, project or vault, with any credential as a SHA-256 digest) as well as the path and sub-key. An `update` or `delete` through the manager drops the path and its sub-keys from both tiers. A change made outside the manager is served from cache until `ttl_secs`.
 
 `"enabled": False` turns off both tiers. Every read goes to the provider, nothing is held in memory or written to disk, there is no stale-grace fallback, and a provider failure raises. Use it where a secret rotates and a stale value is worse than an error.
 
@@ -199,7 +199,7 @@ await sm.stop_refresh()   # on shutdown
 Background refresh adds jitter (`refresh_jitter_secs`, default 5 min) so
 a fleet doesn't slam the secrets backend at the same instant.
 
-Each refresh re-reads every secret held in the memory cache from its provider, fresh entries included, replaces the cached value and reports any rotation it finds. A secret whose provider fails keeps its cached value, and the failure is logged. With `"enabled": False` the memory cache is empty, so there is nothing to refresh.
+Each refresh re-reads every secret held in the memory cache from its provider, fresh entries included, replaces the cached value and reports any rotation it finds. A secret whose provider has an outage keeps its cached value, and the failure is logged. One the provider says is gone or forbidden is dropped. With `"enabled": False` the memory cache is empty, so there is nothing to refresh.
 
 ---
 

@@ -203,3 +203,79 @@ def test_an_update_or_delete_is_never_answered_from_either_cache_tier(tmp_path, 
                 reader.get_sync(str(secret), key="password")
             with pytest.raises(SecretNotFoundError):
                 reader.get_sync(str(secret))
+
+
+class _Failing(FileProvider):
+    """The file provider, failing every read with ``fail`` once it is set."""
+
+    fail: Exception | None = None
+
+    def get_sync(self, path: str, key: str | None = None) -> SecretValue:
+        if self.fail is not None:
+            raise self.fail
+        return super().get_sync(path, key)
+
+    async def get_async(self, path: str, key: str | None = None) -> SecretValue:
+        return self.get_sync(path, key)
+
+
+def _failure(kind: str, path: str) -> Exception:
+    from scalo.secrets.exceptions import (
+        AuthenticationError,
+        ProviderError,
+        SecretNotFoundError,
+        SecretPendingDeletionError,
+        SecretPermissionError,
+    )
+
+    return {
+        "not-found": SecretNotFoundError(path, "file"),
+        "permission": SecretPermissionError("file", "read", path),
+        "pending-deletion": SecretPendingDeletionError("file", "read", path),
+        "outage": ProviderError("file", "connection reset by peer"),
+        "timeout": ProviderError("file", "read timed out"),
+        "auth-backend": AuthenticationError("file", "login endpoint returned 503"),
+    }[kind]
+
+
+@pytest.mark.parametrize("mode", ["sync", "async"])
+@pytest.mark.parametrize(
+    ("kind", "stale_served"),
+    [
+        pytest.param("not-found", False, id="not-found-is-authoritative"),
+        pytest.param("permission", False, id="permission-is-authoritative"),
+        pytest.param("pending-deletion", False, id="pending-deletion-is-authoritative"),
+        pytest.param("outage", True, id="outage-serves-stale"),
+        pytest.param("timeout", True, id="timeout-serves-stale"),
+        pytest.param("auth-backend", True, id="auth-backend-down-serves-stale"),
+    ],
+)
+def test_only_an_outage_is_answered_from_the_stale_grace_window(tmp_path, kind, stale_served, mode):
+    """With ttl 0 every read goes to the provider, so a failure decides between stale and raise."""
+    import asyncio
+
+    secret = tmp_path / "secrets" / "db"
+    _write(secret, b"OLD")
+    provider = _Failing()
+    cache_dir = tmp_path / "cache"
+    config = CacheConfig(
+        enabled=True, directory=str(cache_dir), encryption_key=_CACHE_KEY, ttl_secs=0, stale_grace_secs=3600
+    )
+    manager = SecretsManager(providers={"file": provider}, cache_config=config)
+    assert manager.get_sync(str(secret)).data == b"OLD"
+
+    provider.fail = _failure(kind, str(secret))
+
+    def read() -> SecretValue:
+        if mode == "sync":
+            return manager.get_sync(str(secret))
+        return asyncio.run(manager.get(str(secret)))
+
+    if stale_served:
+        assert read().data == b"OLD"
+        assert list(cache_dir.glob("*.cache")), "an outage keeps the entry"
+    else:
+        with pytest.raises(type(provider.fail)):
+            read()
+        assert not [k for k in manager._memory_cache if k.path == str(secret)]
+        assert not list(cache_dir.glob("*.cache")), "a disk entry outlived an authoritative refusal"
