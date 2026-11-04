@@ -124,9 +124,9 @@ alone. `opentelemetry` is a subset of it, kept so existing
 
 | Extra | Adds | Native deps | Doc |
 |---|---|---|---|
-| `api` | `fastapi`, `pydantic` | none | [api/api-conventions.md](api/api-conventions.md) |
+| `api` | `fastapi`, `pydantic`, `cryptography` | none | [api/api-conventions.md](api/api-conventions.md) |
 
-`scalo.api` holds a FastAPI service to the API conventions: operation ids from one resource hierarchy, the `x-scalo` OpenAPI extension, ETag and If-Match, `dry_run`, problem+json, pagination and the conformance check. Base `import scalo` never imports it or FastAPI, and `import scalo.api` without the extra raises an `ImportError` naming `scalo[api]`. `scalo.health.create_health_router` also uses FastAPI, imported only when called.
+`scalo.api` holds a FastAPI service to the API conventions: operation ids from one resource hierarchy, the `x-scalo` OpenAPI extension, ETag and If-Match, `dry_run`, problem+json, sealed-token pagination, long-running operations and the conformance check. Base `import scalo` never imports it or FastAPI, and `import scalo.api` without the extra raises an `ImportError` naming `scalo[api]`. `scalo.health.create_health_router` also uses FastAPI, imported only when called.
 
 | Extra | Adds | Native deps | Doc |
 |---|---|---|---|

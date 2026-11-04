@@ -464,7 +464,8 @@ class TestRegisterGauge:
         sp = ScalingPressure()
         sp.register_gauge(mgr, interval=0.02)
         ticker = sp._ticker
-        assert ticker is not None and ticker.is_alive()
+        assert ticker is not None
+        assert ticker.is_alive()
         sp.stop_gauge()
         sp.stop_gauge()
         assert not ticker.is_alive()
@@ -478,8 +479,10 @@ class TestRegisterGauge:
         first = sp._ticker
         sp.register_gauge(mgr, interval=0.02)
         try:
-            assert first is not None and not first.is_alive()
-            assert sp._ticker is not None and sp._ticker.is_alive()
+            assert first is not None
+            assert not first.is_alive()
+            assert sp._ticker is not None
+            assert sp._ticker.is_alive()
         finally:
             sp.stop_gauge()
 

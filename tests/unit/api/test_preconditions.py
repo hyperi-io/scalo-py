@@ -8,6 +8,8 @@
 
 """Optimistic concurrency for apply: the RFC 9110 conditions, then the same flow over HTTP."""
 
+import threading
+
 import pytest
 from fastapi import FastAPI, Response
 from fastapi.testclient import TestClient
@@ -17,6 +19,7 @@ from scalo.api import (
     DryRun,
     EntityTag,
     PreconditionHeaders,
+    Preconditions,
     ProblemError,
     check_preconditions,
     etag_of,
@@ -176,3 +179,40 @@ class TestApplyOverHttp:
         committed = client.put("/docs/a", json={"name": "a"}, headers={"If-None-Match": "*"})
         assert committed.status_code == 200
         assert committed.headers["etag"] == preview.headers["etag"]
+
+
+class TestGuard:
+    def test_two_writers_with_the_same_if_match_cannot_both_win(self):
+        store = {"etag": CURRENT}
+        lock = threading.Lock()
+        first_in, release = threading.Event(), threading.Event()
+        outcomes: list[str] = []
+
+        def write(name: str, hold: bool) -> None:
+            try:
+                with Preconditions(if_match=CURRENT).guard(lock, lambda: store["etag"]):
+                    if hold:
+                        first_in.set()
+                        release.wait(5)
+                    store["etag"] = f'"{name}"'
+                outcomes.append(name)
+            except ProblemError as exc:
+                outcomes.append(exc.problem.code or "")
+
+        first = threading.Thread(target=write, args=("first", True))
+        first.start()
+        assert first_in.wait(5)
+        second = threading.Thread(target=write, args=("second", False))
+        second.start()
+        release.set()
+        first.join(5)
+        second.join(5)
+
+        assert outcomes == ["first", "etag_mismatch"]
+        assert store["etag"] == '"first"'
+
+    def test_the_guard_yields_the_etag_it_checked_and_refuses_before_the_write(self):
+        with Preconditions(if_match=CURRENT).guard(threading.Lock(), lambda: CURRENT) as checked:
+            assert checked == CURRENT
+        with pytest.raises(ProblemError), Preconditions(if_match='"old"').guard(threading.Lock(), lambda: CURRENT):
+            pytest.fail("the write ran after a failed check")

@@ -75,9 +75,11 @@ license-files = ["LICENSE", "NOTICE"]
 
 [project.optional-dependencies]
 # scalo.api reads routes through fastapi.routing.iter_route_contexts, tested from fastapi 0.142.2.
+# cryptography's Fernet seals page tokens.
 api = [
     "fastapi>=0.142.2",
     "pydantic>=2.13.0",
+    "cryptography>=50.0.2",
 ]
 # scalo.cli.openapi: Typer builds the commands, jmespath answers --query. typer is in the base too, for ServiceApp.
 cli = [

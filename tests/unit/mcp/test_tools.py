@@ -66,10 +66,11 @@ class TestFromTheServiceSpec:
         assert sorted(tool.input_schema["properties"]) == ["dry_run", "preview_token", "source"]
         assert tool.task
 
-    def test_a_list_keeps_its_paging_parameters(self, tools):
-        properties = tools["svc_sources_list"].input_schema["properties"]
+    def test_a_list_keeps_its_paging_parameters_and_only_those_it_takes(self, tools):
+        properties = set(tools["svc_sources_list"].input_schema["properties"])
 
-        assert {"page_size", "page_token", "filter", "order_by"} <= set(properties)
+        assert {"page_size", "page_token", "skip"} <= properties
+        assert not {"filter", "order_by"} & properties
 
     def test_every_input_schema_is_valid_json_schema(self, tools):
         for tool in tools.values():

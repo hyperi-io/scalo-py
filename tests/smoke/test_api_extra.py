@@ -20,7 +20,7 @@ import textwrap
 import pytest
 
 # Import roots that only the api extra brings in.
-_API_EXTRA_MODULES = ("fastapi", "starlette", "pydantic", "pydantic_core")
+_API_EXTRA_MODULES = ("fastapi", "starlette", "pydantic", "pydantic_core", "cryptography")
 
 _BLOCKER = """
 import importlib.abc
