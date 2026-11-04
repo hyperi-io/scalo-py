@@ -21,7 +21,8 @@ Each operation gets::
       action: rule:read           # or public: true
 
 :func:`install` wires an app in one call: problem+json handlers, and an
-``app.openapi`` that annotates the spec it generates.
+``app.openapi`` that annotates the spec it generates and declares ``ETag`` on
+each GET whose path takes an If-Match write.
 """
 
 from collections.abc import Iterator, Sequence
@@ -33,6 +34,7 @@ from starlette.routing import BaseRoute
 
 from .extension import EXTENSION, declared_extension, dependency_actions
 from .hierarchy import Hierarchy, OperationName
+from .preconditions import declare_etag_headers
 from .problems import declare_problem_responses, install_problem_handlers
 
 _READ_ONLY_METHODS = frozenset({"GET", "HEAD", "OPTIONS"})
@@ -131,7 +133,7 @@ def annotate_openapi(spec: dict[str, Any], routes: Sequence[BaseRoute], hierarch
 
 
 def install(app: FastAPI, hierarchy: Hierarchy, *, problem_handlers: bool = True, catch_unhandled: bool = True) -> None:
-    """Hold an app to the conventions: annotated spec, and problem+json errors.
+    """Hold an app to the conventions: annotated spec, ETag headers, and problem+json errors.
 
     Wraps whatever ``app.openapi`` is at the time of the call, so a custom
     ``app.openapi`` must be assigned first.
@@ -159,6 +161,7 @@ def install(app: FastAPI, hierarchy: Hierarchy, *, problem_handlers: bool = True
         if app.openapi_schema:
             return app.openapi_schema
         spec = annotate_openapi(generate(), app.routes, hierarchy)
+        declare_etag_headers(spec)
         if problem_handlers:
             declare_problem_responses(spec)
         app.openapi_schema = spec

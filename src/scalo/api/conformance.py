@@ -32,8 +32,12 @@ The rules:
 ``response-model``          no response model on a response with a body
 ``summary``                 neither a summary nor a docstring
 ``permission``              no ``x-scalo.action`` and not declared public
-``pagination``              a list without ``page_size``, ``page_token`` and a
-                            ``next_page_token`` in its response
+``pagination``              a list without the ``page_size`` and ``page_token``
+                            query parameters
+``list-shape``              a list answering a bare array, or a page without an
+                            ``items`` array and ``next_page_token``
+``problem-response``        no error response, or one not declared as
+                            ``application/problem+json``
 ``dry-run``                 a mutation without the ``dry_run`` query parameter
 ``if-match``                a PUT, PATCH or DELETE without the ``If-Match`` header
 ==========================  =====================================================
@@ -54,6 +58,7 @@ from scalo._openapi import RefResolver, json_media, merge_all_of, merged_paramet
 from .extension import EXTENSION, declared_extension
 from .hierarchy import Hierarchy, OperationName
 from .openapi import api_routes, operation_extension, route_actions
+from .problems import PROBLEM_MEDIA_TYPE
 
 _OPERATION_ID = re.compile(r"^[a-z][a-z0-9]*(-[a-z0-9]+)*(\.[a-z][a-z0-9]*(-[a-z0-9]+)*)+$")
 _SPEC_METHODS = frozenset({"get", "put", "post", "delete", "options", "head", "patch", "trace"})
@@ -126,14 +131,14 @@ class ConformanceReport:
         return "\n".join(lines)
 
 
-def _success_properties(operation: dict[str, Any], resolver: RefResolver) -> set[str]:
-    """Property names of the first 2xx response's JSON body, through a referenced response."""
+def _success_properties(operation: dict[str, Any], resolver: RefResolver) -> dict[str, Any]:
+    """Properties of the first 2xx response's JSON body, through a referenced response."""
     # A YAML spec reads unquoted status codes as integers, beside string keys such as "default".
     for status, response in sorted((operation.get("responses") or {}).items(), key=lambda pair: str(pair[0])):
         if str(status).startswith("2") and isinstance(response, dict):
             media = json_media(resolver.resolve(response).get("content")) or {}
-            return set(merge_all_of(media.get("schema"), resolver)[0])
-    return set()
+            return merge_all_of(media.get("schema"), resolver)[0]
+    return {}
 
 
 def _parameters(item: dict[str, Any], operation: dict[str, Any], resolver: RefResolver) -> set[tuple[str, str]]:
@@ -214,8 +219,22 @@ def _operation_problems(
             problems.append(
                 ("pagination", f"a list without the {' and '.join(missing)} query parameter: use ListParams")
             )
-        if "next_page_token" not in _success_properties(operation, resolver):
-            problems.append(("pagination", "a list whose response carries no next_page_token: answer a Page"))
+        properties = _success_properties(operation, resolver)
+        items = resolver.resolve(properties.get("items") or {})
+        if items.get("type") != "array" or "next_page_token" not in properties:
+            problems.append(("list-shape", "a bare array or a page without items and next_page_token: answer Page[T]"))
+    errors = {
+        str(status): resolver.resolve(response)
+        for status, response in (operation.get("responses") or {}).items()
+        if str(status)[0] in "45" or str(status) == "default"
+    }
+    plain = sorted(
+        status for status, response in errors.items() if PROBLEM_MEDIA_TYPE not in (response.get("content") or {})
+    )
+    if not errors or plain:
+        problems.append(
+            ("problem-response", f"error responses {plain} are not {PROBLEM_MEDIA_TYPE}: wire the app with install()")
+        )
     if not extension["read_only"]:
         if ("query", "dry_run") not in params:
             problems.append(("dry-run", "a mutation without the dry_run query parameter: take DryRun"))

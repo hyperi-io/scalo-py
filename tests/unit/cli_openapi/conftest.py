@@ -19,11 +19,11 @@ import threading
 from collections.abc import Iterator, Mapping
 from dataclasses import dataclass, field
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
-from typing import Any
+from typing import Annotated, Any
 from urllib.parse import urlsplit
 
 import pytest
-from fastapi import APIRouter, FastAPI, Header, Response
+from fastapi import APIRouter, Depends, FastAPI, Header, Response
 from fastapi.testclient import TestClient
 from pydantic import BaseModel, Field
 from typer.testing import CliRunner
@@ -33,11 +33,13 @@ from scalo.api import (
     DryRun,
     Hierarchy,
     ListParams,
+    ListQuery,
     Page,
     PreconditionHeaders,
     ProblemError,
     etag_of,
     install,
+    list_query,
     paginate,
     scalo_extra,
 )
@@ -95,7 +97,7 @@ def build_service() -> FastAPI:
     router = APIRouter(prefix="/sources")
 
     @router.get("", openapi_extra=scalo_extra(public=True))
-    def list_sources(query: ListParams) -> Page[Source]:
+    def list_sources(query: Annotated[ListQuery, Depends(list_query(filter=True))]) -> Page[Source]:
         """List sources."""
         found = [source for _, source in sorted(store.items())]
         if query.filter:

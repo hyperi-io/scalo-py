@@ -10,19 +10,24 @@
 
 One ``apply`` (PUT) both creates and updates: ``If-None-Match: *`` creates and
 fails when the resource exists, ``If-Match: <etag>`` updates and fails when
-someone else wrote first. A write that sends neither is refused with 428::
+someone else wrote first. A write that sends neither is refused with 428.
+:meth:`Preconditions.guard` holds one lock across the check and the write, so
+a second writer is checked against the ETag the first one left::
 
     @router.put("/{source}", response_model=Source)
     def apply_source(source: str, body: Source, pre: PreconditionHeaders, dry_run: DryRun,
                      response: Response) -> Source:
-        pre.check(store.etag(source))          # None when the source does not exist
-        ...
+        with pre.guard(store.lock, lambda: store.etag(source)):   # None when the source does not exist
+            if not dry_run:
+                store.write(source, body)
         response.headers["ETag"] = etag_of(body)
 """
 
 import hashlib
 import json
 import re
+from collections.abc import Callable, Iterator
+from contextlib import AbstractContextManager, contextmanager
 from dataclasses import dataclass
 from typing import Annotated, Any, Literal
 
@@ -202,6 +207,30 @@ class Preconditions:
         """Run :func:`check_preconditions` with these headers."""
         check_preconditions(current_etag, if_match=self.if_match, if_none_match=self.if_none_match, require=require)
 
+    @contextmanager
+    def guard(
+        self, lock: AbstractContextManager[Any], current_etag: Callable[[], str | None], *, require: bool = True
+    ) -> Iterator[str | None]:
+        """Hold ``lock`` while the current ETag is read, checked and the write runs.
+
+        A write in the ``with`` block cannot race another writer holding the same lock.
+
+        Args:
+            lock: A lock every writer of the resource takes, such as a ``threading.Lock``.
+            current_etag: Reads the resource's current ETag, ``None`` when it does not exist.
+            require: Refuse a write that sends neither header.
+
+        Yields:
+            The ETag the check passed against, for a store that writes on condition of it.
+
+        Raises:
+            ProblemError: As :func:`check_preconditions` does.
+        """
+        with lock:
+            etag = current_etag()
+            self.check(etag, require=require)
+            yield etag
+
 
 def _preconditions(
     if_match: Annotated[
@@ -217,3 +246,22 @@ def _preconditions(
 
 
 PreconditionHeaders = Annotated[Preconditions, Depends(_preconditions)]
+
+
+def declare_etag_headers(spec: dict[str, Any]) -> None:
+    """Declare the ``ETag`` response header on each GET whose path takes an If-Match write.
+
+    Args:
+        spec: The generated OpenAPI document, updated in place.
+    """
+    header = {"description": "The current entity-tag, for If-Match", "schema": {"type": "string"}}
+    for item in spec.get("paths", {}).values():
+        params = [
+            param for method in ("put", "patch", "delete") for param in (item.get(method) or {}).get("parameters", ())
+        ]
+        guarded = any(param.get("in") == "header" and param.get("name", "").lower() == "if-match" for param in params)
+        if not guarded or "get" not in item:
+            continue
+        for status, response in item["get"].get("responses", {}).items():
+            if str(status).startswith("2"):
+                response.setdefault("headers", {})["ETag"] = header

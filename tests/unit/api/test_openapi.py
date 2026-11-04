@@ -12,14 +12,21 @@ import copy
 
 import pytest
 from fastapi import APIRouter, Depends, FastAPI
+from fastapi import Response as FastApiResponse
 from fastapi.openapi.utils import get_openapi
+from fastapi.testclient import TestClient
+from pydantic import BaseModel, ValidationError
 
 from scalo.api import (
+    ACCEPTED_RESPONSES,
     ACTION_ATTRIBUTE,
     EXTENSION,
     CliHints,
     Hierarchy,
     McpHints,
+    Operation,
+    PreconditionHeaders,
+    accept,
     annotate_openapi,
     install,
     permission,
@@ -224,3 +231,80 @@ class TestDeclarations:
     def test_mcp_hints_leave_derived_defaults_out(self):
         assert McpHints().as_dict() == {"task": False}
         assert McpHints(tool="t", read_only=True, task=True).as_dict() == {"task": True, "tool": "t", "read_only": True}
+
+
+class Result(BaseModel):
+    built: int
+
+
+def _resource_app() -> FastAPI:
+    app = FastAPI(generate_unique_id_function=HIERARCHY.unique_id)
+
+    @app.get("/api/v1/items/{item}", openapi_extra=scalo_extra(public=True))
+    def get_item(item: str) -> Result:
+        """Get an item."""
+        return Result(built=0)
+
+    @app.put("/api/v1/items/{item}", openapi_extra=scalo_extra(public=True))
+    def apply_item(item: str, body: Result, pre: PreconditionHeaders) -> Result:
+        """Apply an item."""
+        return body
+
+    @app.get("/api/v1/notes/{note}", openapi_extra=scalo_extra(public=True))
+    def get_note(note: str) -> Result:
+        """Get a note, which nothing writes with If-Match."""
+        return Result(built=0)
+
+    @app.post(
+        "/api/v1/items/{item}/rebuild",
+        status_code=202,
+        responses=ACCEPTED_RESPONSES,
+        openapi_extra=scalo_extra(public=True),
+    )
+    def rebuild(item: str, response: FastApiResponse) -> Operation[dict, Result]:
+        """Start a rebuild."""
+        return accept(response, Operation[dict, Result](name="operations/1"), location="/api/v1/operations/1")
+
+    install(app, HIERARCHY)
+    return app
+
+
+class TestSpecDeclarations:
+    """What ``install`` declares beyond ``x-scalo``."""
+
+    @pytest.mark.parametrize(("path", "declared"), [("/api/v1/items/{item}", True), ("/api/v1/notes/{note}", False)])
+    def test_etag_is_declared_on_a_get_whose_path_takes_an_if_match_write(self, path, declared):
+        response = _resource_app().openapi()["paths"][path]["get"]["responses"]["200"]
+
+        assert ("ETag" in response.get("headers", {})) is declared
+
+    def test_an_operation_answers_202_with_a_location_the_spec_declares(self):
+        app = _resource_app()
+        accepted = app.openapi()["paths"]["/api/v1/items/{item}/rebuild"]["post"]["responses"]["202"]
+        answer = TestClient(app).post("/api/v1/items/a/rebuild")
+
+        assert "Location" in accepted["headers"]
+        assert accepted["content"]["application/json"]["schema"]["$ref"].startswith("#/components/schemas/Operation")
+        assert (answer.status_code, answer.headers["location"]) == (202, "/api/v1/operations/1")
+        assert answer.json() == {
+            "name": "operations/1",
+            "done": False,
+            "metadata": None,
+            "error": None,
+            "response": None,
+        }
+
+    @pytest.mark.parametrize(("fields", "valid"), [
+        pytest.param({}, True, id="pending"),
+        pytest.param({"done": True, "response": {"built": 1}}, True, id="done_with_response"),
+        pytest.param({"done": True, "error": {"title": "Gone", "status": 410}}, True, id="done_with_error"),
+        pytest.param({"response": {"built": 1}}, False, id="pending_with_response"),
+        pytest.param({"done": True}, False, id="done_with_neither"),
+        pytest.param({"done": True, "response": {"built": 1}, "error": {"title": "x", "status": 500}}, False, id="done_with_both"),
+    ])  # fmt: skip
+    def test_an_operation_is_pending_or_done_with_one_outcome(self, fields, valid):
+        if valid:
+            Operation[dict, Result](name="operations/1", **fields)
+        else:
+            with pytest.raises(ValidationError, match="exactly one"):
+                Operation[dict, Result](name="operations/1", **fields)

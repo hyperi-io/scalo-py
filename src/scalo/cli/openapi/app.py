@@ -611,7 +611,8 @@ class SpecCli:
         max_items = _value(layout.first("max_items"), values)
 
         def fetch(token: str | None) -> Any:
-            query = {**request["query"], "page_token": token}
+            # AIP-158 skip counts from the token's position, so it goes on the first page only.
+            query = {**request["query"], "page_token": token, **({"skip": None} if token else {})}
             return client.call(operation, {**request, "query": query})
 
         if run.no_paginate:

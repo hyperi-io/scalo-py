@@ -2889,6 +2889,7 @@ dependencies = [
 
 [package.optional-dependencies]
 api = [
+    { name = "cryptography" },
     { name = "fastapi" },
     { name = "pydantic" },
 ]
@@ -2943,6 +2944,7 @@ kafka = [
     { name = "genson" },
 ]
 mcp = [
+    { name = "cryptography" },
     { name = "fastapi" },
     { name = "httpx2" },
     { name = "jsonschema" },
@@ -3035,6 +3037,7 @@ requires-dist = [
     { name = "boto3", marker = "extra == 'secrets-aws'", specifier = ">=1.43.0" },
     { name = "common-expression-language", marker = "extra == 'expression'", specifier = ">=0.10.0" },
     { name = "confluent-kafka", marker = "extra == 'kafka'", specifier = ">=2.14.0" },
+    { name = "cryptography", marker = "extra == 'api'", specifier = ">=50.0.2" },
     { name = "cryptography", marker = "extra == 'dev'", specifier = ">=50.0.0" },
     { name = "detect-secrets", specifier = ">=1.5.0" },
     { name = "dulwich", specifier = ">=1.2.15" },

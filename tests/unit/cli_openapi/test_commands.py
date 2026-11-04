@@ -146,6 +146,12 @@ class TestPagination:
 
         assert all("filter=syslog" in sent["url"] for sent in transport.sent)
 
+    def test_skip_goes_on_the_first_request_only(self, run, transport):
+        result = run(*URL, "sources", "list", "--page-size", "2", "--skip", "1")
+
+        assert [item["name"] for item in json.loads(result.stdout)["items"]] == [f"src-{i:02d}" for i in range(1, 7)]
+        assert ["skip=1" in sent["url"] for sent in transport.sent] == [True, False, False]
+
     def test_a_child_list_takes_its_parent_as_an_option(self, run):
         result = run(*URL, "sources", "rules", "list", "--source", "src-02")
 

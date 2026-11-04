@@ -262,9 +262,10 @@ def _problem_content() -> dict[str, Any]:
 def declare_problem_responses(spec: dict[str, Any]) -> None:
     """Declare problem+json as every operation's error response in ``spec``.
 
-    Adds the ``Problem`` schema, points FastAPI's default 422 at it, adds a
-    ``default`` response where an operation has none, and drops FastAPI's
-    validation-error schemas once nothing references them.
+    Adds the ``Problem`` schema, points every 4xx and 5xx response a route
+    declares at it, FastAPI's 422 included, adds a ``default`` response where an
+    operation has none, and drops FastAPI's validation-error schemas once
+    nothing references them.
 
     Args:
         spec: The generated OpenAPI document, updated in place.
@@ -275,15 +276,14 @@ def declare_problem_responses(spec: dict[str, Any]) -> None:
         schemas.setdefault(nested_name, nested)
     schemas.setdefault(Problem.__name__, definition)
 
-    default_ref = REF_TEMPLATE.format(model=_DEFAULT_ERROR_SCHEMAS[0])
     for item in spec.get("paths", {}).values():
         for operation in item.values():
             if not isinstance(operation, dict) or "responses" not in operation:
                 continue
             responses = operation["responses"]
-            invalid = responses.get("422")
-            if isinstance(invalid, dict) and default_ref in json.dumps(invalid.get("content", {})):
-                invalid["content"] = _problem_content()
+            for status, response in responses.items():
+                if str(status)[0] in "45" and isinstance(response, dict):
+                    response["content"] = _problem_content()
             responses.setdefault(
                 "default", {"description": "Problem details (RFC 9457)", "content": _problem_content()}
             )

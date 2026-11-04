@@ -184,6 +184,7 @@ class TestEachRuleFires:
         [
             ("/api/v1/widget", "hierarchy"),
             ("/api/v1/widget", "pagination"),
+            ("/api/v1/widget", "list-shape"),
             ("/api/v1/a-items/{a}/b-items/{b}/c-items/{c}/d-items/{d}", "depth"),
             ("/api/v1/things/{thing}", "response-model"),
             ("/api/v1/nodes/{node}", "summary"),
@@ -234,6 +235,21 @@ class TestEachRuleFires:
         }
         assert any("['verb']" in v.message for v in report.violations)
 
+    def test_an_error_response_not_declared_as_problem_json(self):
+        app = conformant_app()
+        spec = copy.deepcopy(app.openapi())
+        responses = spec["paths"]["/api/v1/sources/{source}"]["get"]["responses"]
+        responses["404"] = {"description": "Not found", "content": {"application/json": {}}}
+
+        report = check_conformance(app, HIERARCHY, exempt=EXEMPT, spec=spec)
+
+        assert [(v.rule, v.message) for v in report.violations] == [
+            (
+                "problem-response",
+                "error responses ['404'] are not application/problem+json: wire the app with install()",
+            )
+        ]
+
     def test_an_app_without_unique_ids_fails_operation_id(self):
         app = FastAPI()
 
@@ -244,7 +260,7 @@ class TestEachRuleFires:
 
         report = check_conformance(app, HIERARCHY)
 
-        assert {v.rule for v in report.violations} == {"operation-id", "extension"}
+        assert {v.rule for v in report.violations} == {"operation-id", "extension", "problem-response"}
 
 
 class TestSchemaReferences:
@@ -273,7 +289,7 @@ def _list_spec() -> tuple[FastAPI, dict, dict]:
 
 def _pagination(app: FastAPI, spec: dict) -> list[str]:
     report = check_conformance(app, HIERARCHY, exempt=EXEMPT, spec=spec)
-    return [violation.message for violation in report.violations if violation.rule == "pagination"]
+    return [violation.message for violation in report.violations if violation.rule in {"pagination", "list-shape"}]
 
 
 class TestParametersWhereTheSpecPutsThem:
@@ -327,7 +343,15 @@ class TestSuccessResponsesWhereTheSpecPutsThem:
         content = item["get"]["responses"]["200"]["content"]
         content["text/csv"] = content.pop("application/json")
 
-        assert _pagination(app, spec) == ["a list whose response carries no next_page_token: answer a Page"]
+        assert _pagination(app, spec) == ["a bare array or a page without items and next_page_token: answer Page[T]"]
+
+    @pytest.mark.parametrize("drop", ["items", "next_page_token"])
+    def test_a_page_missing_a_member_fails(self, drop):
+        app, spec, item = _list_spec()
+        ref = item["get"]["responses"]["200"]["content"]["application/json"]["schema"]["$ref"]
+        del spec["components"]["schemas"][ref.rsplit("/", 1)[-1]]["properties"][drop]
+
+        assert _pagination(app, spec) == ["a bare array or a page without items and next_page_token: answer Page[T]"]
 
     def test_status_keys_a_yaml_spec_reads_as_integers(self):
         app, spec, item = _list_spec()

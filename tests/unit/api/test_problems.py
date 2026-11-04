@@ -161,11 +161,32 @@ class TestSpec:
         assert "HTTPValidationError" not in spec["components"]["schemas"]
         assert "ValidationError" not in spec["components"]["schemas"]
 
-    def test_a_validation_schema_still_referenced_is_kept(self):
+    @pytest.mark.parametrize("status", ["400", "404", "409", "503"])
+    def test_a_routes_own_error_response_is_declared_as_a_problem(self, status):
         spec = _app().openapi()
-        spec["paths"]["/items"]["post"]["responses"]["400"] = {
-            "description": "x",
+        spec["paths"]["/items"]["post"]["responses"][status] = {
+            "description": "mine",
             "content": {"application/json": {"schema": {"$ref": "#/components/schemas/HTTPValidationError"}}},
+        }
+        declare_problem_responses(spec)
+        response = spec["paths"]["/items"]["post"]["responses"][status]
+
+        assert response["description"] == "mine"
+        assert response["content"] == {PROBLEM_MEDIA_TYPE: {"schema": {"$ref": "#/components/schemas/Problem"}}}
+        assert "HTTPValidationError" not in spec["components"]["schemas"]
+
+    def test_the_problem_schema_types_code_and_errors(self):
+        spec = _app().openapi()
+        declare_problem_responses(spec)
+        problem = spec["components"]["schemas"]["Problem"]["properties"]
+
+        assert {"code", "errors"} <= set(problem)
+        assert problem["errors"]["items"] == {"$ref": "#/components/schemas/FieldError"}
+
+    def test_a_validation_schema_a_success_body_names_is_kept(self):
+        spec = _app().openapi()
+        spec["paths"]["/items"]["post"]["responses"]["200"]["content"]["application/json"]["schema"] = {
+            "$ref": "#/components/schemas/HTTPValidationError"
         }
         declare_problem_responses(spec)
 
