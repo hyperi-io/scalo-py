@@ -3,6 +3,12 @@
 Rendered by CI and committed back at the end of a release -- do not edit by
 hand. Release notes also appear on the GitHub Releases page, one per tag.
 
+## [2.32.5](https://github.com/hyperi-io/scalo-py/compare/v2.32.4...v2.32.5) (2026-11-04)
+
+### Bug Fixes
+
+* **api:** align lists, errors, preconditions and operations ([#176](https://github.com/hyperi-io/scalo-py/issues/176)) ([d7c77da](https://github.com/hyperi-io/scalo-py/commit/d7c77dad1d33db72ec52b65d188ab998700cf369))
+
 ## [2.32.4](https://github.com/hyperi-io/scalo-py/compare/v2.32.3...v2.32.4) (2026-11-01)
 
 ### Bug Fixes
