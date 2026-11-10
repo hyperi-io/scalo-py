@@ -50,6 +50,21 @@ quality:
   # Seeded verbatim from python-stdnum's id descriptions: native-script data, not prose.
   charset_exclude:
     - src/scalo/data/national_ids.toml
+  # Each ships a generic or full-text licence classifier the checker cannot map.
+  dep_licenses:
+    overrides:
+      - name: alabaster
+        licence: BSD-3-Clause
+        reason: "Q167 A: upstream LICENSE.rst carries the three BSD clauses, endorsement clause included."
+      - name: colorama
+        licence: BSD-3-Clause
+        reason: "Q168 A: the packaged LICENSE.txt is BSD-3-Clause."
+      - name: nodeenv
+        licence: BSD-3-Clause
+        reason: "Q169 A: upstream LICENSE carries the three BSD clauses, endorsement clause included."
+      - name: tiktoken
+        licence: MIT
+        reason: "Q170 A: the package metadata carries the full MIT licence text instead of an identifier."
   python:
     # vulture: library code has extensive public API that looks "unused"
     vulture: warn
