@@ -201,35 +201,6 @@ wheels = [
 ]
 
 [[package]]
-name = "ansible-core"
-version = "2.21.5"
-source = { registry = "https://pypi.org/simple" }
-dependencies = [
-    { name = "cryptography" },
-    { name = "jinja2" },
-    { name = "packaging" },
-    { name = "pyyaml" },
-    { name = "resolvelib" },
-]
-sdist = { url = "https://files.pythonhosted.org/packages/0b/27/d02c3f75e9f1468b5efbe49667574f68331b17e8a9f2bb99e1d18be70052/ansible_core-2.21.5.tar.gz", hash = "sha256:65bb3148c58ebb843cd5074004c805f404f152114d98476dd823324616c9c6cb", size = 3395026, upload-time = "2026-10-05T15:11:00.15Z" }
-wheels = [
-    { url = "https://files.pythonhosted.org/packages/57/6f/7321059b2d1a5ea3c7e60807a5269942d93b2c11a2fc89ba8e4a3e827891/ansible_core-2.21.5-py3-none-any.whl", hash = "sha256:08886f9f3e23d129aa98a01271c4a47833516e1cb7c737a246788cb474f41222", size = 2457267, upload-time = "2026-10-05T15:10:58.444Z" },
-]
-
-[[package]]
-name = "ansible-vault"
-version = "4.1.0"
-source = { registry = "https://pypi.org/simple" }
-dependencies = [
-    { name = "ansible-core" },
-    { name = "pyyaml" },
-]
-sdist = { url = "https://files.pythonhosted.org/packages/33/60/bd340a38b7d9fd4fcdd2df4a2b21f5e23af0481c5424c07d30668a7d6ed8/ansible_vault-4.1.0.tar.gz", hash = "sha256:7e985a9329e4728961d7a00f62412fa8ec246a4d832ad6e6d158165e0026529b", size = 15876, upload-time = "2025-05-15T11:50:42.647Z" }
-wheels = [
-    { url = "https://files.pythonhosted.org/packages/9e/0b/1c4e83665280bde1101862635ee6d69b43886002b30128d2fe82ba63cab7/ansible_vault-4.1.0-py3-none-any.whl", hash = "sha256:ae2e194bb68cc94471d0cdba0705cea9390d9c3dfe6299eeb1d4ee36af602bd9", size = 16062, upload-time = "2025-05-15T11:50:41.435Z" },
-]
-
-[[package]]
 name = "anyio"
 version = "4.15.1"
 source = { registry = "https://pypi.org/simple" }
@@ -2719,15 +2690,6 @@ wheels = [
 ]
 
 [[package]]
-name = "resolvelib"
-version = "1.2.1"
-source = { registry = "https://pypi.org/simple" }
-sdist = { url = "https://files.pythonhosted.org/packages/1d/14/4669927e06631070edb968c78fdb6ce8992e27c9ab2cde4b3993e22ac7af/resolvelib-1.2.1.tar.gz", hash = "sha256:7d08a2022f6e16ce405d60b68c390f054efcfd0477d4b9bd019cc941c28fad1c", size = 24575, upload-time = "2025-10-11T01:07:44.582Z" }
-wheels = [
-    { url = "https://files.pythonhosted.org/packages/e2/23/c941a0d0353681ca138489983c4309e0f5095dfd902e1357004f2357ddf2/resolvelib-1.2.1-py3-none-any.whl", hash = "sha256:fb06b66c8da04172d9e72a21d7d06186d8919e32ae5ab5cdf5b9d920be805ac2", size = 18737, upload-time = "2025-10-11T01:07:43.081Z" },
-]
-
-[[package]]
 name = "responses"
 version = "0.26.3"
 source = { registry = "https://pypi.org/simple" }
@@ -2902,8 +2864,6 @@ deployment = [
 ]
 dev = [
     { name = "aiobotocore" },
-    { name = "ansible-core" },
-    { name = "ansible-vault" },
     { name = "bandit" },
     { name = "boto3" },
     { name = "cryptography" },
@@ -2970,18 +2930,12 @@ resilience = [
 ]
 secrets = [
     { name = "aiobotocore" },
-    { name = "ansible-core" },
-    { name = "ansible-vault" },
     { name = "azure-identity" },
     { name = "azure-keyvault-secrets" },
     { name = "boto3" },
     { name = "google-cloud-secret-manager" },
     { name = "httpx" },
     { name = "stamina" },
-]
-secrets-ansible-vault = [
-    { name = "ansible-core" },
-    { name = "ansible-vault" },
 ]
 secrets-aws = [
     { name = "aiobotocore" },
@@ -3019,12 +2973,6 @@ requires-dist = [
     { name = "aiobotocore", marker = "extra == 'dev'", specifier = ">=3.6.0" },
     { name = "aiobotocore", marker = "extra == 'secrets'", specifier = ">=3.6.0" },
     { name = "aiobotocore", marker = "extra == 'secrets-aws'", specifier = ">=3.6.0" },
-    { name = "ansible-core", marker = "extra == 'dev'", specifier = ">=2.21.1" },
-    { name = "ansible-core", marker = "extra == 'secrets'", specifier = ">=2.21.1" },
-    { name = "ansible-core", marker = "extra == 'secrets-ansible-vault'", specifier = ">=2.21.1" },
-    { name = "ansible-vault", marker = "extra == 'dev'", specifier = ">=4.0.0" },
-    { name = "ansible-vault", marker = "extra == 'secrets'", specifier = ">=4.0.0" },
-    { name = "ansible-vault", marker = "extra == 'secrets-ansible-vault'", specifier = ">=4.0.0" },
     { name = "anyio", specifier = ">=4.14.2" },
     { name = "asyncer", specifier = ">=0.0.17" },
     { name = "azure-identity", marker = "extra == 'secrets'", specifier = ">=1.25.1" },
@@ -3104,7 +3052,7 @@ requires-dist = [
     { name = "typer", marker = "extra == 'cli'", specifier = ">=0.25.0" },
     { name = "vulture", marker = "extra == 'dev'", specifier = ">=2.16" },
 ]
-provides-extras = ["api", "cli", "mcp", "resilience", "http", "metrics", "opentelemetry", "expression", "deployment", "kafka", "secrets-ansible-vault", "secrets-vault", "secrets-aws", "secrets-gcp", "secrets-azure", "secrets-kubernetes", "secrets", "version-check", "enhanced", "dev", "docs"]
+provides-extras = ["api", "cli", "mcp", "resilience", "http", "metrics", "opentelemetry", "expression", "deployment", "kafka", "secrets-vault", "secrets-aws", "secrets-gcp", "secrets-azure", "secrets-kubernetes", "secrets", "version-check", "enhanced", "dev", "docs"]
 
 [package.metadata.requires-dev]
 dev = [

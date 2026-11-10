@@ -416,28 +416,16 @@ class TestFileProviderModes:
         # A directory the provider did not make keeps its mode.
         assert _mode(tmp_path) == before
 
-    @pytest.mark.parametrize(
-        "provider",
-        [
-            pytest.param("scalo.secrets.providers.file.FileProvider()", id="file"),
-            pytest.param(
-                "scalo.secrets.providers.ansible_vault.AnsibleVaultProvider("
-                "scalo.secrets.types.AnsibleVaultConfig(password='pw'))",
-                id="ansible-vault",
-            ),
-        ],
-    )
     @pytest.mark.parametrize("operation", ["update", "create"])
-    def test_a_write_that_fails_partway_leaves_the_old_secret(self, tmp_path, operation, provider):
+    def test_a_write_that_fails_partway_leaves_the_old_secret(self, tmp_path, operation):
         """A file-size limit makes the write fail after 1 KiB, as a full disk would."""
-        if provider.startswith("scalo.secrets.providers.ansible_vault"):
-            pytest.importorskip("ansible_vault")
+        provider = "scalo.secrets.providers.file.FileProvider()"
         path = tmp_path / "secret"
         if operation == "update":
             path.write_bytes(b"old-secret")
         script = (
             "import resource, signal, sys\n"
-            "import scalo.secrets.providers.ansible_vault, scalo.secrets.providers.file, scalo.secrets.types\n"
+            "import scalo.secrets.providers.file\n"
             "signal.signal(signal.SIGXFSZ, signal.SIG_IGN)\n"
             "resource.setrlimit(resource.RLIMIT_FSIZE, (1024, resource.RLIM_INFINITY))\n"
             "try:\n"

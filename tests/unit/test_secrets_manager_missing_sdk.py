@@ -32,7 +32,6 @@ _PROVIDERS = [
     ("gcp", "google.cloud.secretmanager", {"project_id": "demo"}, "secrets-gcp"),
     ("azure", "azure.keyvault.secrets", {"vault_url": "https://demo.vault.azure.net/"}, "secrets-azure"),
     ("openbao", "httpx", {"address": "https://vault:8200"}, "secrets-vault"),
-    ("ansible_vault", "ansible_vault", {"password": "pw"}, "secrets-ansible-vault"),
 ]
 
 _SCRIPT = """
@@ -125,16 +124,28 @@ class TestOtherProviderFailuresStillRaise:
     """Only a missing SDK is skipped. A provider whose SDK is present and whose config is bad fails fast."""
 
     @pytest.fixture(autouse=True)
-    def _no_vault_password(self, monkeypatch):
-        pytest.importorskip("ansible_vault")
-        for name in ("ANSIBLE_VAULT_PASSWORD", "ANSIBLE_VAULT_PASS", "ANSIBLE_VAULT_PASSWORD_FILE"):
-            monkeypatch.delenv(name, raising=False)
+    def _kubernetes_sdk(self):
+        pytest.importorskip("httpx")
+        pytest.importorskip("stamina")
 
-    def test_missing_password_raises_provider_error(self):
-        with pytest.raises(ProviderError, match="no vault password"):
-            SecretsManager.from_config({"ansible_vault": {}, "cache": {"enabled": False}})
+    def test_a_bad_api_server_raises(self):
+        with pytest.raises(ValueError, match="api_server must be an https:// URL"):
+            SecretsManager.from_config(
+                {"kubernetes": {"secret_name": "demo", "api_server": "ftp://cluster"}, "cache": {"enabled": False}}
+            )
 
-    def test_provider_with_its_sdk_is_registered(self):
-        manager = SecretsManager.from_config({"ansible_vault": {"password": "pw"}, "cache": {"enabled": False}})
+    def test_provider_with_its_sdk_is_registered(self, tmp_path):
+        manager = SecretsManager.from_config(
+            {
+                "kubernetes": {
+                    "secret_name": "demo",
+                    "api_server": "https://127.0.0.1:1",
+                    "token_path": str(tmp_path / "token"),
+                    "namespace": "demo",
+                    "timeout_secs": 1,
+                },
+                "cache": {"enabled": False},
+            }
+        )
 
-        assert "ansible_vault" in manager.health_check_sync()
+        assert "kubernetes" in manager.health_check_sync()

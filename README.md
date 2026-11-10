@@ -17,7 +17,7 @@ The runtime layer for Python control-plane services: config, logging, metrics, h
 - `ServiceApp`: subclass it and get `run`, `version`, `config-check` and `generate-artefacts`, with config and logging started for you.
 - `/livez` and `/readyz` on an observability port kept apart from your application's own.
 - Prometheus and OpenTelemetry metrics with the `metrics` extra, scraped from `/metrics` on the same port. Without a metrics manager that path answers 404.
-- Secrets from OpenBao or Vault, AWS, GCP, Azure, Kubernetes and Ansible Vault, one extra per backend.
+- Secrets from OpenBao or Vault, AWS, GCP, Azure, and Kubernetes, one extra per backend.
 - A deployment contract that writes your runtime Dockerfile and the input the scalo-service Helm chart renders from.
 
 ## Install

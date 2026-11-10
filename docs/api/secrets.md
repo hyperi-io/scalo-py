@@ -2,7 +2,7 @@
 
 Unified async/sync secrets API across the supported providers — file, OpenBao,
 HashiCorp Vault (same protocol as OpenBao), AWS Secrets Manager, GCP
-Secret Manager, Azure Key Vault, Ansible Vault, and the keys of a Kubernetes Secret. One `SecretsManager`
+Secret Manager, Azure Key Vault, and the keys of a Kubernetes Secret. One `SecretsManager`
 object, one configuration shape, two-tier caching, stale-grace fallback,
 background refresh, and rotation callbacks.
 
@@ -11,11 +11,10 @@ pip install scalo[secrets-vault]        # OpenBao / Vault
 pip install scalo[secrets-aws]          # AWS Secrets Manager
 pip install scalo[secrets-gcp]          # GCP Secret Manager
 pip install scalo[secrets-azure]        # Azure Key Vault
-pip install scalo[secrets-ansible-vault]  # Ansible Vault
 pip install scalo[secrets-kubernetes]   # Kubernetes Secret keys
 ```
 
-File provider is always available — no extra install needed.
+File provider is always available — no extra install needed. There is no Ansible Vault provider: its libraries are GPL-3.0, and a GPL import would bind every application that ships scalo with it.
 
 `import scalo.secrets` imports no provider SDK. A provider's module, and its SDK with it, loads when `from_config` builds that provider or when its name (`AWSProvider`, `BOTO3_AVAILABLE` and the like) is first read from `scalo.secrets` or `scalo.secrets.providers`.
 
@@ -44,7 +43,6 @@ password = await sm.get_string("db_password")
 | `aws` | `secrets-aws` | yes | yes (aiobotocore) | prefix + tags | boto3 default chain |
 | `gcp` | `secrets-gcp` | yes | yes (async client) | prefix + labels | ADC |
 | `azure` | `secrets-azure` | yes | yes (`azure.identity.aio`) | prefix + tags | `DefaultAzureCredential` or service principal |
-| `ansible_vault` | `secrets-ansible-vault` | no | thread-pool | prefix + tags | password / password file |
 | `kubernetes` | `secrets-kubernetes` | no | yes (httpx) | none (prefix and pattern client-side) | pod service account token |
 
 OpenBao and HashiCorp Vault share the KV v2 protocol — the same provider
@@ -81,14 +79,13 @@ sm = SecretsManager.from_config({
 ```
 
 Env-var overrides for every provider — `VAULT_ADDR`, `VAULT_TOKEN`,
-`AWS_REGION`, `AWS_DEFAULT_REGION`, `GOOGLE_APPLICATION_CREDENTIALS`, `AZURE_VAULT_URL`,
-`ANSIBLE_VAULT_PASSWORD`, etc. Cache settings respect
+`AWS_REGION`, `AWS_DEFAULT_REGION`, `GOOGLE_APPLICATION_CREDENTIALS`, `AZURE_VAULT_URL`, etc. Cache settings respect
 `SECRETS_CACHE_DIR`, `SECRETS_CACHE_TTL`,
 `SECRETS_CACHE_KEY`.
 
 ### A provider whose SDK is not installed
 
-A provider named in the config whose extra is not installed is logged at WARN and left out, and `from_config` still returns. Using it then raises `ProviderNotConfiguredError`, and a named source falls back to ENV (see [ENV fallback](#env-fallback)). Building the provider directly raises `ProviderNotAvailableError`. A provider whose SDK is present but whose config is bad, such as Ansible Vault with no password, still raises from `from_config`.
+A provider named in the config whose extra is not installed is logged at WARN and left out, and `from_config` still returns. Using it then raises `ProviderNotConfiguredError`, and a named source falls back to ENV (see [ENV fallback](#env-fallback)). Building the provider directly raises `ProviderNotAvailableError`. A provider whose SDK is present but whose config is bad, such as a Kubernetes provider with an `ftp://` API server, still raises from `from_config`.
 
 ### AWS region, KMS key and deletion window
 
@@ -232,7 +229,7 @@ old = await sm.get_version("secret/data/api-key", version="3", provider="openbao
 history = await sm.list_versions("secret/data/api-key", provider="openbao")
 ```
 
-File, Ansible Vault and Kubernetes providers raise `VersioningNotSupportedError`.
+File and Kubernetes providers raise `VersioningNotSupportedError`.
 
 ---
 
@@ -248,7 +245,7 @@ Tags are server-side on cloud providers, ignored by file-based ones.
 Writes raise `SecretAlreadyExistsError`, `SecretPermissionError`, or
 `ProviderError` — never silently fail.
 
-The file and Ansible Vault providers write each secret file as `0600` and make any missing directory `0700`, whatever the umask. A create or update writes a private sibling, flushes it to disk and then renames it into place, so a reader sees the old secret or the new one, never an empty or partial file, and a write that fails (a full disk) leaves the old secret. Updating a file the process does not own or cannot write raises `SecretPermissionError` and leaves the file as it was. An update through a symlink replaces the file it points to.
+The file provider writes each secret file as `0600` and make any missing directory `0700`, whatever the umask. A create or update writes a private sibling, flushes it to disk and then renames it into place, so a reader sees the old secret or the new one, never an empty or partial file, and a write that fails (a full disk) leaves the old secret. Updating a file the process does not own or cannot write raises `SecretPermissionError` and leaves the file as it was. An update through a symlink replaces the file it points to.
 
 On AWS, `delete()` follows `recovery_window_days` (see [AWS region, KMS key and deletion window](#aws-region-kms-key-and-deletion-window)).
 
@@ -266,7 +263,7 @@ paths = await sm.list(
 ```
 
 `prefix` is server-side on all cloud providers. `tags` is server-side on
-AWS/GCP/Azure/OpenBao, ignored by file/ansible-vault. `pattern` is
+AWS/GCP/Azure/OpenBao, ignored by file and Kubernetes. `pattern` is
 client-side fnmatch.
 
 `get_metadata(path, provider=...)` returns `SecretMetadata` without
@@ -320,7 +317,7 @@ The warning is written when the check first fails and not again while it keeps f
 | `SecretPendingDeletionError` | AWS: the secret is inside its deletion recovery window, so its name can be neither read nor reused (a `ProviderError` subclass) |
 | `SecretAlreadyExistsError` | `create()` on existing path |
 | `SecretVersionNotFoundError` | `get_version()` for unknown version |
-| `VersioningNotSupportedError` | versioned op on file/ansible-vault |
+| `VersioningNotSupportedError` | versioned op on file/kubernetes |
 | `CacheError` | disk cache I/O failed |
 
 ---
