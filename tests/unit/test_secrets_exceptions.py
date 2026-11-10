@@ -272,6 +272,6 @@ class TestVersioningNotSupportedError:
         assert "versioned access" in str(err).lower()
 
     def test_inheritance(self):
-        err = VersioningNotSupportedError("ansible_vault")
+        err = VersioningNotSupportedError("kubernetes")
         assert isinstance(err, ProviderError)
         assert isinstance(err, SecretsError)

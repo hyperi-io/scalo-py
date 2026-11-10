@@ -11,7 +11,7 @@ It is built for APIs, orchestrators, CLI tools and integration glue. For the hot
 - `ServiceApp`: subclass it and get `run`, `version`, `config-check` and `generate-artefacts`, with config and logging started for you, and metrics too once `scalo[metrics]` is installed.
 - `/livez` and `/readyz` on an observability port kept apart from your application's own.
 - With the `metrics` extra, Prometheus and OpenTelemetry metrics, process and container gauges included, scraped from `/metrics` on the same port. Without a metrics manager that path answers 404.
-- Secrets from OpenBao or Vault, AWS, GCP, Azure, Kubernetes and Ansible Vault, one extra per backend.
+- Secrets from OpenBao or Vault, AWS, GCP, Azure, and Kubernetes, one extra per backend.
 - A deployment contract: return one from `deployment_contract()` and `generate-artefacts` writes your runtime Dockerfile and the contract the scalo-service Helm chart renders from.
 - Kafka, CEL expressions and an HTTP client with jittered retry, each behind its own extra.
 
@@ -56,7 +56,7 @@ if __name__ == "__main__":
 | `expression` | CEL expressions |
 | `kafka` | Produce, consume and schema inference |
 | `deployment` | The deployment contract and its Dockerfile and manifest generators |
-| `secrets-vault`, `secrets-aws`, `secrets-gcp`, `secrets-azure`, `secrets-kubernetes`, `secrets-ansible-vault` | One secrets backend each |
+| `secrets-vault`, `secrets-aws`, `secrets-gcp`, `secrets-azure`, `secrets-kubernetes` | One secrets backend each |
 | `secrets` | Every secrets backend |
 
 Pick the secrets backend you use rather than `secrets`, since each backend brings its own cloud SDK.

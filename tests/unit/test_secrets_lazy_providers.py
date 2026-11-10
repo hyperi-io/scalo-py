@@ -31,7 +31,7 @@ import sys
 
 SDKS = [
     "boto3", "botocore", "aiobotocore", "google.cloud.secretmanager", "azure.keyvault.secrets",
-    "azure.identity", "ansible_vault", "httpx", "stamina",
+    "azure.identity", "httpx", "stamina",
 ]
 
 
@@ -68,7 +68,6 @@ _CONFIGURED = [
     ("azure", {"vault_url": "https://demo.vault.azure.net/"}, "azure", {"azure.keyvault.secrets", "azure.identity"}),
     ("openbao", {"address": "https://vault:8200"}, "openbao", {"httpx"}),
     ("kubernetes", {"secret_name": "demo"}, "kubernetes", {"httpx", "stamina"}),
-    ("ansible_vault", {"password": "pw"}, "ansible_vault", {"ansible_vault"}),
 ]
 
 
@@ -121,15 +120,14 @@ import scalo.secrets.providers
 
 reached = {
     name: getattr(scalo.secrets.providers, name).__name__
-    for name in ("aws", "azure", "gcp", "openbao", "kubernetes", "ansible_vault")
+    for name in ("aws", "azure", "gcp", "openbao", "kubernetes")
 }
 report(reached=reached)
 """
         reported = _run(body, tmp_path)
 
         assert reported["reached"] == {
-            name: f"scalo.secrets.providers.{name}"
-            for name in ("aws", "azure", "gcp", "openbao", "kubernetes", "ansible_vault")
+            name: f"scalo.secrets.providers.{name}" for name in ("aws", "azure", "gcp", "openbao", "kubernetes")
         }
 
     def test_a_name_the_package_does_not_have_is_an_attribute_error(self, tmp_path):

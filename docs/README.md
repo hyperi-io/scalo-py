@@ -23,7 +23,7 @@ Python extras pull in which deps.
 | `from scalo import metrics` | Prometheus + OpenTelemetry dual backend, `MetricsManager` content + content-type for an app-served `/metrics` route, process collector, cardinality cap, metric groups (consumer/sink/buffer/circuit-breaker) | Stand up an exporter, wire a process collector, hand-roll a cardinality limiter |
 | `from scalo import health` | `/livez` and `/readyz` router, downstream-dep registry, K8s-shaped responses | Write probe handlers, manage dependency state |
 | `from scalo import runtime` | K8s / Docker / bare-metal autodetect, container-aware paths (config_dir, data_dir, cache_dir, run_dir), `CONTAINER_BASE_PATH` override | Read `/.dockerenv`, parse cgroups, pick path defaults |
-| `from scalo import secrets` | OpenBao / Vault / AWS / GCP / Azure / ansible-vault / Kubernetes Secret / file providers behind one interface | Pick a provider SDK, wrap each behind a uniform API |
+| `from scalo import secrets` | OpenBao / Vault / AWS / GCP / Azure / Kubernetes Secret / file providers behind one interface | Pick a provider SDK, wrap each behind a uniform API |
 | `from scalo.deployment import DeploymentContract` | Pydantic contract -> Dockerfile + container manifest + Compose fragment carrying [Contract Identity v1](deployment/identity.md) labels, and the `deployment-contract.json` the scalo-service chart renders the Kubernetes objects from | Write the generators and the chart yourself, keep them in sync, stamp identity by hand |
 | `from scalo.api import Hierarchy, install` | Operation ids from one resource hierarchy, the `x-scalo` spec extension, ETag/If-Match, `dry_run`, problem+json, pagination, a conformance check | Name operations by hand, hand-roll error envelopes and list paging per router |
 | `from scalo.mcp import mount` | MCP tools generated from the spec, called in-process with the caller's token, writes that preview before they commit, stateless 2026-07-28 transport, RFC 9728 metadata | Hand-write a tool per route, re-implement RBAC in a second server, pin MCP clients to one replica |
@@ -127,7 +127,7 @@ flowchart TB
 
 ### API modules
 
-- [api/secrets.md](api/secrets.md) -- OpenBao / Vault / AWS / GCP / Azure / ansible-vault / Kubernetes Secret / file
+- [api/secrets.md](api/secrets.md) -- OpenBao / Vault / AWS / GCP / Azure / Kubernetes Secret / file
 - [api/http-client.md](api/http-client.md) — `HttpClient` + `AsyncHttpClient` with retries + circuit breaker
 - [api/concurrency.md](api/concurrency.md) — `run_blocking`, `Bulkhead`, `gather_with_timeouts`
 - [api/directory-config.md](api/directory-config.md) — YAML directory store with optional git tracking

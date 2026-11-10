@@ -13,7 +13,6 @@ from __future__ import annotations
 from common.fake_secrets import opaque_secret
 
 from scalo.secrets.types import (
-    AnsibleVaultConfig,
     AWSConfig,
     AzureConfig,
     GCPConfig,
@@ -45,13 +44,6 @@ def test_azure_config_client_secret_redacted():
     assert SECRET not in repr(cfg)
     # Substring check on repr() output, not a host allow-list.
     assert "kv.azure.net" in repr(cfg)
-
-
-def test_ansible_vault_config_password_redacted():
-    cfg = AnsibleVaultConfig(password=SECRET, password_file="/tmp/pw")
-    assert SECRET not in repr(cfg)
-    # password_file path is non-sensitive metadata, still shown
-    assert "/tmp/pw" in repr(cfg)
 
 
 def test_gcp_config_unchanged():

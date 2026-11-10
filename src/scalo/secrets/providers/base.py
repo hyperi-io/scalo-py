@@ -344,7 +344,7 @@ class VersionedProvider(SecretProvider):
     """Extended base class for providers that support versioned secret access.
 
     Providers: OpenBao, AWS, GCP, Azure.
-    Not implemented by: File, AnsibleVault.
+    Not implemented by: File, Kubernetes.
 
     Use isinstance(provider, VersionedProvider) to check capability before
     calling version-specific methods.

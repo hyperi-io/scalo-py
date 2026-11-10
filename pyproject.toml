@@ -136,11 +136,6 @@ kafka = [
 # TOML-driven national-ID registry). NLP/NER is out of scope for both
 # pylib and rustlib log scrubbing — too costly and the false-positive
 # rate on unstructured names/locations is unacceptable for logs.
-secrets-ansible-vault = [
-    "ansible-vault>=4.0.0",
-    # ansible-core arrives transitively; 2.21.1 fixes CVE-2026-11332.
-    "ansible-core>=2.21.1",
-]
 secrets-vault = [
     "httpx>=0.28.0",
 ]
@@ -162,8 +157,6 @@ secrets-kubernetes = [
 secrets = [
     "httpx>=0.28.0",
     "stamina>=26.1.0",
-    "ansible-vault>=4.0.0",
-    "ansible-core>=2.21.1",
     "boto3>=1.43.0",
     "aiobotocore>=3.6.0",
     "google-cloud-secret-manager>=2.28.0",
@@ -173,8 +166,6 @@ secrets = [
 version-check = []
 enhanced = []
 dev = [
-    "ansible-vault>=4.0.0",
-    "ansible-core>=2.21.1",
     "cryptography>=50.0.0",
     "pytest>=9.1.1",
     "pytest-cov>=7.0.0",

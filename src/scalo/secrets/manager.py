@@ -25,7 +25,6 @@ from .exceptions import (
 from .providers.base import SecretProvider, VersionedProvider, mask_fault, mask_fault_off_loop
 from .providers.file import FileProvider
 from .types import (
-    AnsibleVaultConfig,
     AWSConfig,
     AzureConfig,
     CacheConfig,
@@ -213,16 +212,6 @@ class SecretsManager:
             except ProviderNotAvailableError as exc:
                 logger.warning("Provider left out, SDK not installed: %s", exc)
 
-        # Ansible Vault provider
-        if "ansible_vault" in config:
-            try:
-                from .providers.ansible_vault import AnsibleVaultProvider
-
-                av_config = cls._parse_ansible_vault_config(config["ansible_vault"])
-                providers["ansible_vault"] = AnsibleVaultProvider(av_config)
-            except ProviderNotAvailableError as exc:
-                logger.warning("Provider left out, SDK not installed: %s", exc)
-
         # Parse sources
         sources: dict[str, SourceConfig] = {}
         for name, source_cfg in config.get("sources", {}).items():
@@ -336,16 +325,6 @@ class SecretsManager:
             "conflict_retries",
         )
         return KubernetesConfig(secret_name=cfg["secret_name"], **{name: cfg[name] for name in optional if name in cfg})
-
-    @staticmethod
-    def _parse_ansible_vault_config(cfg: dict) -> AnsibleVaultConfig:
-        """Parse Ansible Vault config with env var fallbacks."""
-        return AnsibleVaultConfig(
-            password=cfg.get("password")
-            or os.environ.get("ANSIBLE_VAULT_PASSWORD")
-            or os.environ.get("ANSIBLE_VAULT_PASS"),
-            password_file=cfg.get("password_file"),
-        )
 
     async def get(
         self,

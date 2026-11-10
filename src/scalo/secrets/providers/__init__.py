@@ -13,7 +13,6 @@ from .file import FileProvider
 
 # Type checkers (here and in consumers) see the real names, because the runtime ones load on first access.
 if TYPE_CHECKING:
-    from .ansible_vault import ANSIBLE_VAULT_AVAILABLE, AnsibleVaultProvider
     from .aws import AIOBOTOCORE_AVAILABLE, BOTO3_AVAILABLE, AWSProvider
     from .azure import AZURE_ASYNC_AVAILABLE, AZURE_AVAILABLE, AzureProvider
     from .gcp import GCP_AVAILABLE, GCPProvider
@@ -24,14 +23,12 @@ if TYPE_CHECKING:
 # never raises for a missing SDK: the availability flag is False and the provider's constructor raises.
 _LAZY = {
     "AIOBOTOCORE_AVAILABLE": "aws",
-    "ANSIBLE_VAULT_AVAILABLE": "ansible_vault",
     "AZURE_ASYNC_AVAILABLE": "azure",
     "AZURE_AVAILABLE": "azure",
     "BOTO3_AVAILABLE": "aws",
     "GCP_AVAILABLE": "gcp",
     "HTTPX_AVAILABLE": "openbao",
     "AWSProvider": "aws",
-    "AnsibleVaultProvider": "ansible_vault",
     "AzureProvider": "azure",
     "GCPProvider": "gcp",
     "KubernetesProvider": "kubernetes",
@@ -60,14 +57,12 @@ def __getattr__(name: str) -> Any:
 
 __all__ = [
     "AIOBOTOCORE_AVAILABLE",
-    "ANSIBLE_VAULT_AVAILABLE",
     "AZURE_ASYNC_AVAILABLE",
     "AZURE_AVAILABLE",
     "BOTO3_AVAILABLE",
     "GCP_AVAILABLE",
     "HTTPX_AVAILABLE",
     "AWSProvider",
-    "AnsibleVaultProvider",
     "AzureProvider",
     "FileProvider",
     "GCPProvider",

@@ -202,7 +202,7 @@ For the avoidance of doubt -- the following are DONE, not deferred:
 ### Deferred from Codex review (kept on the post-GA list)
 
 - **C13** -- Provider exception sanitiser helper across AWS, Azure,
-  GCP, OpenBao, Ansible Vault. No demonstrated leak; deferred to a
+  GCP, OpenBao. No demonstrated leak; deferred to a
   focused secrets-provider hardening pass.
 - **C16** -- `hyperi-ci check --quick` exits 0 despite type-check
   errors. Tool-side issue, not scalo-py. Filed against hyperi-ci.

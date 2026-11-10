@@ -17,7 +17,6 @@ class ProviderType(Enum):
     AWS = "aws"
     GCP = "gcp"
     AZURE = "azure"
-    ANSIBLE_VAULT = "ansible_vault"
     KUBERNETES = "kubernetes"
 
 
@@ -335,23 +334,6 @@ class KubernetesConfig:
 
 
 @dataclass
-class AnsibleVaultConfig:
-    """Ansible Vault provider configuration.
-
-    Designed primarily for SME networks that need encrypted-at-rest secrets
-    without the operational overhead of a dedicated secrets server. Also suitable
-    for dev/test environments, CI pipelines, or any setup where Ansible Vault is
-    already the team's standard for secret management.
-    """
-
-    password: str | None = field(default=None, repr=False)
-    """Resolved vault password (from env var or file). repr=False to prevent repr leak."""
-
-    password_file: str | None = None
-    """Path to file containing the vault password (fallback)."""
-
-
-@dataclass
 class SecretMetadata:
     """Normalised secret metadata across all providers.
 
@@ -410,7 +392,6 @@ RotationCallback = Callable[[RotationEvent], None]
 
 __all__ = [
     "AWSConfig",
-    "AnsibleVaultConfig",
     "AzureConfig",
     "CacheConfig",
     "GCPConfig",

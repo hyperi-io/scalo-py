@@ -57,7 +57,6 @@ flowchart TB
     Kafka["kafka"]
     Expr["expression"]
     Deploy["deployment"]
-    SAV["secrets-ansible-vault"]
     SV["secrets-vault"]
     SA["secrets-aws"]
     SG["secrets-gcp"]
@@ -83,7 +82,6 @@ flowchart TB
 
     Metrics -.transitive.-> OTel
 
-    SAV --> SAll
     SV --> SAll
     SA --> SAll
     SG --> SAll
@@ -178,7 +176,6 @@ The same extra carries `scalo.rules`, the ordered rule sets scalo-rs builds behi
 | `secrets-aws` | `boto3`, `aiobotocore` | none | [api/secrets.md](api/secrets.md) |
 | `secrets-gcp` | `google-cloud-secret-manager` | none | [api/secrets.md](api/secrets.md) |
 | `secrets-azure` | `azure-keyvault-secrets`, `azure-identity` | none | [api/secrets.md](api/secrets.md) |
-| `secrets-ansible-vault` | `ansible-vault` | none | [api/secrets.md](api/secrets.md) |
 | `secrets-kubernetes` | `httpx`, `stamina` | none | [api/secrets.md](api/secrets.md#kubernetes-secret) |
 | `secrets` | all of the above | none | [api/secrets.md](api/secrets.md) |
 

@@ -179,7 +179,6 @@ def _scan_async_function(fn: ast.AsyncFunctionDef) -> list[tuple[int, str]]:
 KNOWN_UNFIXED: dict[str, set[tuple[int, str]]] = {
     # tracked in TODO.md "Async correctness" -- converting to make_async
     "src/scalo/secrets/providers/file.py": set(),
-    "src/scalo/secrets/providers/ansible_vault.py": set(),
     "src/scalo/secrets/providers/openbao.py": set(),
 }
 
