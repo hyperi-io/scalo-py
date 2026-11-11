@@ -3,6 +3,14 @@
 Rendered by CI and committed back at the end of a release -- do not edit by
 hand. Release notes also appear on the GitHub Releases page, one per tag.
 
+## [2.32.6](https://github.com/hyperi-io/scalo-py/compare/v2.32.5...v2.32.6) (2026-11-11)
+
+### Bug Fixes
+
+* **ci:** name the licences the checker cannot map ([75f5e37](https://github.com/hyperi-io/scalo-py/commit/75f5e3739f9767f63c8494d69828d498881667c5))
+* **expression:** type JSON paths in pushed-down CEL filters ([1f19b11](https://github.com/hyperi-io/scalo-py/commit/1f19b1103564a7552df821365f44c5ef0141abc2))
+* **secrets:** remove the Ansible Vault provider ([abeff6c](https://github.com/hyperi-io/scalo-py/commit/abeff6c80b545f01eacb474b3f3815614ee32fe1))
+
 ## [2.32.5](https://github.com/hyperi-io/scalo-py/compare/v2.32.4...v2.32.5) (2026-11-04)
 
 ### Bug Fixes
