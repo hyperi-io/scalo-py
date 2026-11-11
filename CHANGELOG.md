@@ -3,6 +3,12 @@
 Rendered by CI and committed back at the end of a release -- do not edit by
 hand. Release notes also appear on the GitHub Releases page, one per tag.
 
+## [2.32.7](https://github.com/hyperi-io/scalo-py/compare/v2.32.6...v2.32.7) (2026-11-11)
+
+### Bug Fixes
+
+* **kafka:** add strimzi-no-tls and redpanda-no-tls providers ([08cfd08](https://github.com/hyperi-io/scalo-py/commit/08cfd08b0fad5a588aff862a5c404851984f475e))
+
 ## [2.32.6](https://github.com/hyperi-io/scalo-py/compare/v2.32.5...v2.32.6) (2026-11-11)
 
 ### Bug Fixes
