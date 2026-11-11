@@ -63,6 +63,7 @@ from typing import Any, Protocol, runtime_checkable
 
 # (security_protocol, sasl_mechanism) pairs.
 _SCRAM = ("SASL_SSL", "SCRAM-SHA-512")
+_SCRAM_NO_TLS = ("SASL_PLAINTEXT", "SCRAM-SHA-512")
 _PLAIN = ("SASL_SSL", "PLAIN")
 
 # Local dev with no auth.
@@ -76,6 +77,10 @@ MSK_IAM = "msk_iam"
 DERIVATION: dict[str, tuple[str, str]] = {
     "strimzi": _SCRAM,  # self-hosted Apache Kafka / Strimzi
     "redpanda": _SCRAM,  # self-hosted Redpanda
+    # The same brokers on a TLS-off listener. SCRAM is challenge-response, so the
+    # password never crosses it. No PLAIN or OAUTHBEARER provider has such a key.
+    "strimzi-no-tls": _SCRAM_NO_TLS,
+    "redpanda-no-tls": _SCRAM_NO_TLS,
     "msk": _SCRAM,  # AWS MSK provisioned (SCRAM; serverless = msk_iam)
     "redpanda-cloud": _SCRAM,  # Redpanda Cloud (SASL_SSL + SCRAM-256/512)
     "confluent-cloud": _PLAIN,  # Confluent Cloud: no SCRAM -> API-key PLAIN over TLS
@@ -93,6 +98,8 @@ def derive(provider: str) -> tuple[str, str]:
     """Return ``(security_protocol, sasl_mechanism)`` for a provider.
 
     ``plaintext`` -> ``("PLAINTEXT", "")`` (local dev, no auth).
+    ``*-no-tls``  -> ``("SASL_PLAINTEXT", "SCRAM-SHA-512")`` (a self-hosted
+                     broker's TLS-off listener).
     ``msk_iam``   -> ``("SASL_SSL", "OAUTHBEARER")`` (quarantined IAM token path;
                      the caller wires the AWS MSK IAM callback, not user/pass).
     unknown       -> ``KafkaProviderError``.
@@ -163,7 +170,7 @@ def provider_config(
 # section is the FULL abstraction: one open `KafkaProvider` behind which
 # every provider-specific concern (auth, capabilities, metadata plane, schema
 # registry, transport tuning) is normalised. `KnownProvider` implements it
-# for the seven built-in providers using the SAME `derive()` table above, so
+# for the built-in providers using the SAME `derive()` table above, so
 # there is exactly one source of truth for the auth facts.
 
 
@@ -268,6 +275,8 @@ class KnownProvider(Enum):
 
     STRIMZI = "strimzi"  # Self-hosted Apache Kafka / Strimzi - SCRAM-SHA-512
     REDPANDA = "redpanda"  # Self-hosted Redpanda - SCRAM-SHA-512
+    STRIMZI_NO_TLS = "strimzi-no-tls"  # Strimzi's TLS-off listener - SASL_PLAINTEXT + SCRAM-SHA-512
+    REDPANDA_NO_TLS = "redpanda-no-tls"  # Redpanda's TLS-off listener - SASL_PLAINTEXT + SCRAM-SHA-512
     MSK = "msk"  # AWS MSK provisioned - SCRAM-SHA-512 (serverless is IAM-only: MSK_IAM)
     REDPANDA_CLOUD = "redpanda-cloud"  # Redpanda Cloud - SASL_SSL + SCRAM-SHA-512
     CONFLUENT_CLOUD = "confluent-cloud"  # Confluent Cloud - no SCRAM, API-key PLAIN over TLS
@@ -321,7 +330,7 @@ class KnownProvider(Enum):
             requires_tls=True,
             auth_kind=AuthKind.USER_PASSWORD,
         )
-        if self in (KnownProvider.STRIMZI, KnownProvider.REDPANDA):
+        if self in _SELF_HOSTED:
             return self_hosted
         if self is KnownProvider.MSK:
             # Provisioned MSK: fixed broker-hour capacity (MSK Serverless is
@@ -341,7 +350,7 @@ class KnownProvider(Enum):
         """Return this provider's metadata plane."""
         # Redpanda is KRaft-native (no ZooKeeper); Strimzi + local dev default
         # to KRaft on modern Kafka; provisioned MSK is KRaft-forward.
-        if self in (KnownProvider.REDPANDA, KnownProvider.STRIMZI, KnownProvider.PLAINTEXT, KnownProvider.MSK):
+        if self in _SELF_HOSTED or self in (KnownProvider.PLAINTEXT, KnownProvider.MSK):
             return MetadataMode.KRAFT
         # The clouds hide their metadata plane entirely.
         return MetadataMode.MANAGED
@@ -350,10 +359,16 @@ class KnownProvider(Enum):
         """Return the schema registry this provider bundles, if any."""
         if self is KnownProvider.CONFLUENT_CLOUD:
             return SchemaRegistry.CONFLUENT
-        if self in (KnownProvider.REDPANDA, KnownProvider.REDPANDA_CLOUD):
+        if self in (KnownProvider.REDPANDA, KnownProvider.REDPANDA_NO_TLS, KnownProvider.REDPANDA_CLOUD):
             return SchemaRegistry.REDPANDA
         return SchemaRegistry.NONE
 
     def transport_overrides(self) -> dict[str, str]:
         """Return no overrides, because no built-in provider needs transport tuning."""
         return {}
+
+
+# Brokers the operator runs, on either listener.
+_SELF_HOSTED = frozenset(
+    {KnownProvider.STRIMZI, KnownProvider.REDPANDA, KnownProvider.STRIMZI_NO_TLS, KnownProvider.REDPANDA_NO_TLS}
+)

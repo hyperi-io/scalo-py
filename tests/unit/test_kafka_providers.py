@@ -23,6 +23,8 @@ from scalo.kafka.providers import derive, validate
 CANONICAL_TABLE = {
     "strimzi": ("SASL_SSL", "SCRAM-SHA-512"),
     "redpanda": ("SASL_SSL", "SCRAM-SHA-512"),
+    "strimzi-no-tls": ("SASL_PLAINTEXT", "SCRAM-SHA-512"),
+    "redpanda-no-tls": ("SASL_PLAINTEXT", "SCRAM-SHA-512"),
     "msk": ("SASL_SSL", "SCRAM-SHA-512"),
     "redpanda-cloud": ("SASL_SSL", "SCRAM-SHA-512"),
     "confluent-cloud": ("SASL_SSL", "PLAIN"),
@@ -71,6 +73,12 @@ class TestProviderConfig:
     def test_owned_broker_builds_scram(self):
         cfg = provider_config("strimzi", "b:9092", "u", "p")
         assert cfg["sasl.mechanisms"] == "SCRAM-SHA-512"
+
+    def test_no_tls_listener_builds_scram_over_plaintext(self):
+        cfg = provider_config("strimzi-no-tls", "b:9092", "u", "p", verify_ssl=False)
+        assert cfg["security.protocol"] == "SASL_PLAINTEXT"
+        assert cfg["sasl.mechanisms"] == "SCRAM-SHA-512"
+        assert "enable.ssl.certificate.verification" not in cfg
 
     def test_plaintext_has_no_sasl_keys(self):
         cfg = provider_config("plaintext", "b:9092")

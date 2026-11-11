@@ -31,6 +31,8 @@ from scalo.kafka.providers import (
 CANONICAL_TABLE = [
     ("strimzi", "SASL_SSL", "SCRAM-SHA-512"),
     ("redpanda", "SASL_SSL", "SCRAM-SHA-512"),
+    ("strimzi-no-tls", "SASL_PLAINTEXT", "SCRAM-SHA-512"),
+    ("redpanda-no-tls", "SASL_PLAINTEXT", "SCRAM-SHA-512"),
     ("msk", "SASL_SSL", "SCRAM-SHA-512"),
     ("redpanda-cloud", "SASL_SSL", "SCRAM-SHA-512"),
     ("confluent-cloud", "SASL_SSL", "PLAIN"),
@@ -70,7 +72,7 @@ class TestCapabilities:
             assert caps.requires_tls, f"{key} mandates TLS"
 
     def test_self_hosted_is_not_managed(self):
-        for key in ("strimzi", "redpanda", "plaintext"):
+        for key in ("strimzi", "redpanda", "strimzi-no-tls", "redpanda-no-tls", "plaintext"):
             caps = KnownProvider.parse(key).capabilities()
             assert not caps.managed, f"{key} is self-hosted"
             assert not caps.always_on
@@ -101,6 +103,8 @@ class TestMetadataMode:
         assert KnownProvider.STRIMZI.metadata_mode() == MetadataMode.KRAFT
         assert KnownProvider.MSK.metadata_mode() == MetadataMode.KRAFT
         assert KnownProvider.PLAINTEXT.metadata_mode() == MetadataMode.KRAFT
+        assert KnownProvider.STRIMZI_NO_TLS.metadata_mode() == MetadataMode.KRAFT
+        assert KnownProvider.REDPANDA_NO_TLS.metadata_mode() == MetadataMode.KRAFT
 
     def test_clouds_are_managed_hidden(self):
         for key in ("confluent-cloud", "redpanda-cloud", "msk_iam"):
@@ -112,6 +116,8 @@ class TestSchemaRegistry:
         assert KnownProvider.CONFLUENT_CLOUD.schema_registry() == SchemaRegistry.CONFLUENT
         assert KnownProvider.REDPANDA_CLOUD.schema_registry() == SchemaRegistry.REDPANDA
         assert KnownProvider.REDPANDA.schema_registry() == SchemaRegistry.REDPANDA
+        assert KnownProvider.REDPANDA_NO_TLS.schema_registry() == SchemaRegistry.REDPANDA
+        assert KnownProvider.STRIMZI_NO_TLS.schema_registry() == SchemaRegistry.NONE
         assert KnownProvider.STRIMZI.schema_registry() == SchemaRegistry.NONE
         assert KnownProvider.MSK.schema_registry() == SchemaRegistry.NONE
         assert KnownProvider.PLAINTEXT.schema_registry() == SchemaRegistry.NONE
