@@ -220,6 +220,18 @@ Every blocking metadata, watermark, committed-offset and offsets-for-times call 
 | `internal_sasl_scram(brokers, user, pw)` | SASL_PLAINTEXT + SCRAM-SHA-512 (in-cluster, TLS-terminated upstream). |
 | `get_default_config()` | `config_from_env()` + `ADMIN_DEFAULTS`. |
 
+`scalo.kafka.providers.provider_config(provider, brokers, user, pw)` derives the protocol and mechanism from a provider key, so neither is hand-set:
+
+| Provider | `security.protocol` | `sasl.mechanisms` |
+|---|---|---|
+| `strimzi`, `redpanda`, `msk`, `redpanda-cloud` | `SASL_SSL` | `SCRAM-SHA-512` |
+| `strimzi-no-tls`, `redpanda-no-tls` | `SASL_PLAINTEXT` | `SCRAM-SHA-512` |
+| `confluent-cloud` | `SASL_SSL` | `PLAIN` |
+| `msk_iam` | `SASL_SSL` | `OAUTHBEARER` |
+| `plaintext` | `PLAINTEXT` | none |
+
+A `-no-tls` key names a self-hosted broker's TLS-off listener. Only SCRAM gets one, because its challenge-response never sends the password. `scalo.kafka.contract.DEFAULT_ALLOWED` leaves both out.
+
 ### Identity propagation
 
 Headers carry whatever you pass to `producer.send(headers=...)`. The
