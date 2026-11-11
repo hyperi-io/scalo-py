@@ -27,6 +27,7 @@ Usage::
 """
 
 import re
+from collections.abc import Collection
 from dataclasses import dataclass, field
 from enum import Enum, auto
 
@@ -477,53 +478,226 @@ def _static_type(node: Expr) -> str | None:
     return None
 
 
-def _emit_division(node: BinaryOp) -> str:
-    """Emit ``/`` as CEL means it: integer division truncating toward zero, or double division.
+# ClickHouse infers a JSON number as Int64, as UInt64 past Int64's range, or as Float64.
+_JSON_TYPES: dict[str, tuple[str, ...]] = {
+    "number": ("Int64", "UInt64", "Float64"),
+    "string": ("String",),
+    "bool": ("Bool",),
+}
 
-    Raises:
-        TranspileError: Neither operand fixes the type, so only the data decides which division CEL does.
-    """
-    kind = _static_type(node)
-    if kind is None:
-        raise TranspileError(
-            "`/` between operands with no fixed type divides as int or as double depending on the data, "
-            "so it is not pushed down: evaluate it in process, or give an operand a type with int() or double()"
-        )
-    if kind == "int":
-        # ClickHouse's intDiv truncates toward zero, as CEL does. Its `/` always returns a double.
-        return f"intDiv({_emit(node.left)}, {_emit(node.right)})"
-    my_prec = _SQL_PREC["/"]
-    return f"{_emit(node.left, my_prec)} / {_emit(node.right, my_prec + 1)}"
+# A comparison read with its operands swapped.
+_FLIPPED: dict[str, str] = {"<": ">", "<=": ">=", ">": "<", ">=": "<=", "==": "==", "!=": "!="}
+
+# CEL conversions of a JSON path, built from the typed sub-columns the conversion accepts.
+_JSON_CONVERSIONS: dict[str, str] = {
+    "size": "coalesce(lengthUTF8({p}.:String), JSONArrayLength(toJSONString({p})))",
+    "int": "coalesce({p}.:Int64, accurateCastOrNull(trunc({p}.:Float64), 'Int64'), toInt64OrNull({p}.:String))",
+    "uint": (
+        "coalesce({p}.:UInt64, accurateCastOrNull({p}.:Int64, 'UInt64'),"
+        " accurateCastOrNull(trunc({p}.:Float64), 'UInt64'), toUInt64OrNull({p}.:String))"
+    ),
+    "double": "coalesce({p}.:Float64, toFloat64({p}.:Int64), toFloat64({p}.:UInt64), toFloat64OrNull({p}.:String))",
+    "string": "if({p} IS NULL, NULL, toString({p}))",
+}
+
+# CEL string methods as ClickHouse functions of the target and the argument.
+_STRING_METHODS: dict[str, str] = {
+    "contains": "position({0}, {1}) > 0",
+    "startsWith": "startsWith({0}, {1})",
+    "endsWith": "endsWith({0}, {1})",
+    "matches": "match({0}, {1})",
+}
 
 
-def _emit(node: Expr, parent_prec: int = 0) -> str:
-    """Emit a ClickHouse SQL string from an AST node."""
+def _value_kind(node: Expr) -> str | None:
+    """Return ``"number"``, ``"string"`` or ``"bool"`` when ``node`` has that CEL type whatever the data, else None."""
     if isinstance(node, Literal):
-        if node.value is None:
-            return "NULL"
         if isinstance(node.value, bool):
-            return "1" if node.value else "0"
+            return "bool"
         if isinstance(node.value, str):
-            return _escape_string(node.value)
-        if isinstance(node.value, float):
-            return repr(node.value)
-        return str(node.value)
-
-    if isinstance(node, Ident):
-        if not _IDENT_RE.match(node.name):
-            raise TranspileError(f"Invalid identifier: {node.name!r}")
+            return "string"
+        return None if node.value is None else "number"
+    if isinstance(node, FunctionCall) and node.name in ("string", "bool"):
         return node.name
+    if isinstance(node, FunctionCall) and node.name == "uint":
+        return "number"
+    return "number" if _static_type(node) is not None else None
 
-    if isinstance(node, UnaryOp):
-        if node.op == "!":
-            inner = _emit(node.operand, _PREC_UNARY)
-            return f"NOT {inner}"
-        if node.op == "-":
-            inner = _emit(node.operand, _PREC_UNARY)
-            return f"-{inner}"
-        raise TranspileError(f"Unsupported unary operator: {node.op!r}")
 
-    if isinstance(node, BinaryOp):
+@dataclass(frozen=True, slots=True)
+class _Emitter:
+    """Emit ClickHouse SQL for an AST, reading each path under a JSON column through its typed sub-columns.
+
+    A dynamic JSON path holds whatever type each row sent, and comparing it as one type
+    fails the query once another type lands there. The typed sub-column ``path.:T`` is
+    NULL in every row holding another type, so a test on it is CEL's answer for that
+    type and NULL, which no row matches, for the rest.
+    """
+
+    json_columns: frozenset[str] = frozenset()
+
+    def json_path(self, node: Expr) -> str | None:
+        """Return ``node``'s SQL when it is a path under a JSON column, else None."""
+        if not isinstance(node, Ident):
+            return None
+        root, dot, _ = node.name.partition(".")
+        if not dot or root not in self.json_columns:
+            return None
+        return self.emit(node)
+
+    def boolean(self, node: Expr, parent_prec: int = 0) -> str:
+        """Emit ``node`` where CEL needs a bool."""
+        path = self.json_path(node)
+        return f"{path}.:Bool" if path is not None else self.emit(node, parent_prec)
+
+    def string(self, node: Expr) -> str:
+        """Emit ``node`` where CEL needs a string."""
+        path = self.json_path(node)
+        return f"{path}.:String" if path is not None else self.emit(node)
+
+    def arithmetic(self, node: Expr, kind: str | None, parent_prec: int) -> str:
+        """Emit an operand of arithmetic whose type is ``kind`` (``"int"``, ``"double"`` or None).
+
+        Raises:
+            TranspileError: The operand is a JSON path and nothing in the arithmetic fixes its type.
+        """
+        path = self.json_path(node)
+        if path is None:
+            return self.emit(node, parent_prec)
+        if kind is None:
+            raise TranspileError(
+                f"arithmetic on `{path}` has no fixed type, so it is not pushed down: "
+                "give it one with int() or double(), or a typed literal"
+            )
+        return f"{path}.:{'Int64' if kind == 'int' else 'Float64'}"
+
+    def division(self, node: BinaryOp) -> str:
+        """Emit ``/`` as CEL means it: integer division truncating toward zero, or double division.
+
+        Raises:
+            TranspileError: Neither operand fixes the type, so only the data decides which division CEL does.
+        """
+        kind = _static_type(node)
+        if kind is None:
+            raise TranspileError(
+                "`/` between operands with no fixed type divides as int or as double depending on the data, "
+                "so it is not pushed down: evaluate it in process, or give an operand a type with int() or double()"
+            )
+        my_prec = _SQL_PREC["/"]
+        if kind == "int":
+            # ClickHouse's intDiv truncates toward zero, as CEL does. Its `/` always returns a double.
+            return f"intDiv({self.arithmetic(node.left, kind, 0)}, {self.arithmetic(node.right, kind, 0)})"
+        return f"{self.arithmetic(node.left, kind, my_prec)} / {self.arithmetic(node.right, kind, my_prec + 1)}"
+
+    def json_comparison(self, node: BinaryOp, parent_prec: int) -> str | None:
+        """Emit a comparison or ``in`` on a JSON path, or return None when it has none to type.
+
+        Raises:
+            TranspileError: The path is compared with a value whose type depends on the data.
+        """
+        if node.op not in _FLIPPED and node.op != "in":
+            return None
+        left_path = self.json_path(node.left)
+        right_path = self.json_path(node.right)
+        if node.op == "in":
+            if left_path is None or not isinstance(node.right, ListExpr):
+                return None
+            return self._json_in(left_path, node.right.elements)
+        if left_path is not None and right_path is not None:
+            raise TranspileError(
+                f"`{left_path}` and `{right_path}` are both JSON paths, so their types depend on the data "
+                "and the comparison is not pushed down: compare one with a literal or a converted value"
+            )
+        if left_path is not None:
+            path, other, op = left_path, node.right, node.op
+        elif right_path is not None:
+            path, other, op = right_path, node.left, _FLIPPED[node.op]
+        else:
+            return None
+        if isinstance(other, Literal) and other.value is None:
+            return None
+        kind = _value_kind(other)
+        if kind is None:
+            raise TranspileError(
+                f"`{path}` is compared with a value of no fixed type, so the comparison is not pushed down: "
+                "compare it with a literal, or convert the other side with int(), double() or string()"
+            )
+        other_sql = self.emit(other, _SQL_PREC["="] + 1)
+        tests = [f"{path}.:{typed} {_OP_MAP[op]} {other_sql}" for typed in _JSON_TYPES[kind]]
+        if op in ("==", "!="):
+            tests.append(_when_present(path, op == "!="))
+        if len(tests) > 1:
+            return f"coalesce({', '.join(tests)})"
+        return f"({tests[0]})" if _SQL_PREC["="] < parent_prec else tests[0]
+
+    def _json_in(self, path: str, elements: list[Expr]) -> str:
+        """Emit ``path in [...]``, testing each element against the sub-columns of its own type."""
+        by_kind: dict[str, list[str]] = {}
+        for element in elements:
+            kind = _value_kind(element)
+            if kind is None:
+                raise TranspileError(f"`{path} in [...]` lists a value of no fixed type, so it is not pushed down")
+            by_kind.setdefault(kind, []).append(self.emit(element))
+        tests: list[str] = []
+        for kind, values in by_kind.items():
+            listed = ", ".join(values)
+            tests.extend(f"{path}.:{typed} IN ({listed})" for typed in _JSON_TYPES[kind])
+        tests.append(_when_present(path, False))
+        return f"coalesce({', '.join(tests)})"
+
+    def emit(self, node: Expr, parent_prec: int = 0) -> str:
+        """Emit a ClickHouse SQL string from an AST node."""
+        if isinstance(node, Literal):
+            if node.value is None:
+                return "NULL"
+            if isinstance(node.value, bool):
+                return "1" if node.value else "0"
+            if isinstance(node.value, str):
+                return _escape_string(node.value)
+            if isinstance(node.value, float):
+                return repr(node.value)
+            return str(node.value)
+
+        if isinstance(node, Ident):
+            if not _IDENT_RE.match(node.name):
+                raise TranspileError(f"Invalid identifier: {node.name!r}")
+            return node.name
+
+        if isinstance(node, UnaryOp):
+            if node.op == "!":
+                return f"NOT {self.boolean(node.operand, _PREC_UNARY)}"
+            if node.op == "-":
+                return f"-{self.arithmetic(node.operand, _static_type(node), _PREC_UNARY)}"
+            raise TranspileError(f"Unsupported unary operator: {node.op!r}")
+
+        if isinstance(node, BinaryOp):
+            return self._binary(node, parent_prec)
+
+        if isinstance(node, MethodCall):
+            template = _STRING_METHODS.get(node.method)
+            if template is None:
+                raise TranspileError(f"Unsupported method: {node.method!r}")
+            if len(node.args) != 1:
+                raise TranspileError(f"{node.method}() requires exactly 1 argument")
+            return template.format(self.string(node.target), self.string(node.args[0]))
+
+        if isinstance(node, FunctionCall):
+            return self._function(node, parent_prec)
+
+        if isinstance(node, Ternary):
+            cond_sql = self.boolean(node.condition)
+            true_sql = self.emit(node.true_expr)
+            false_sql = self.emit(node.false_expr)
+            return f"if({cond_sql}, {true_sql}, {false_sql})"
+
+        if isinstance(node, ListExpr):
+            # Standalone list (not part of 'in') -- emit as tuple
+            elems = ", ".join(self.emit(e) for e in node.elements)
+            return f"({elems})"
+
+        raise TranspileError(f"Unsupported AST node: {type(node).__name__}")
+
+    def _binary(self, node: BinaryOp, parent_prec: int) -> str:
         sql_op = _OP_MAP.get(node.op)
         if sql_op is None and node.op == "in":
             sql_op = "IN"
@@ -532,14 +706,26 @@ def _emit(node: Expr, parent_prec: int = 0) -> str:
 
         my_prec = _SQL_PREC.get(sql_op, 0)
         if node.op == "/":
-            divided = _emit_division(node)
+            divided = self.division(node)
             return f"({divided})" if my_prec < parent_prec else divided
+        json_sql = self.json_comparison(node, parent_prec)
+        if json_sql is not None:
+            return json_sql
         # SQL groups equal-precedence operators from the left, so a right operand at
         # this precedence keeps its parentheses: a - (b - c) is not a - b - c. A
         # comparison does not chain, so its left operand keeps them as well.
         comparison = my_prec == _SQL_PREC["="]
-        left_sql = _emit(node.left, my_prec + 1 if comparison else my_prec)
-        right_sql = _emit(node.right, my_prec + 1)
+        left_prec = my_prec + 1 if comparison else my_prec
+        if node.op in ("&&", "||"):
+            left_sql = self.boolean(node.left, left_prec)
+            right_sql = self.boolean(node.right, my_prec + 1)
+        elif node.op in ("+", "-", "*", "%"):
+            kind = _static_type(node)
+            left_sql = self.arithmetic(node.left, kind, left_prec)
+            right_sql = self.arithmetic(node.right, kind, my_prec + 1)
+        else:
+            left_sql = self.emit(node.left, left_prec)
+            right_sql = self.emit(node.right, my_prec + 1)
 
         # NULL comparisons need IS NULL / IS NOT NULL semantics in
         # ClickHouse -- `x = NULL` always returns NULL (never true), and
@@ -554,7 +740,7 @@ def _emit(node: Expr, parent_prec: int = 0) -> str:
             result = f"{target} IS NOT NULL"
         # 'in' with list: x IN (a, b, c)
         elif node.op == "in" and isinstance(node.right, ListExpr):
-            elems = ", ".join(_emit(e) for e in node.right.elements)
+            elems = ", ".join(self.emit(e) for e in node.right.elements)
             result = f"{left_sql} IN ({elems})"
         else:
             result = f"{left_sql} {sql_op} {right_sql}"
@@ -563,72 +749,44 @@ def _emit(node: Expr, parent_prec: int = 0) -> str:
             return f"({result})"
         return result
 
-    if isinstance(node, MethodCall):
-        target_sql = _emit(node.target)
-
-        if node.method == "contains":
-            if len(node.args) != 1:
-                raise TranspileError("contains() requires exactly 1 argument")
-            arg_sql = _emit(node.args[0])
-            return f"position({target_sql}, {arg_sql}) > 0"
-
-        if node.method == "startsWith":
-            if len(node.args) != 1:
-                raise TranspileError("startsWith() requires exactly 1 argument")
-            arg_sql = _emit(node.args[0])
-            return f"startsWith({target_sql}, {arg_sql})"
-
-        if node.method == "endsWith":
-            if len(node.args) != 1:
-                raise TranspileError("endsWith() requires exactly 1 argument")
-            arg_sql = _emit(node.args[0])
-            return f"endsWith({target_sql}, {arg_sql})"
-
-        if node.method == "matches":
-            if len(node.args) != 1:
-                raise TranspileError("matches() requires exactly 1 argument")
-            arg_sql = _emit(node.args[0])
-            return f"match({target_sql}, {arg_sql})"
-
-        raise TranspileError(f"Unsupported method: {node.method!r}")
-
-    if isinstance(node, FunctionCall):
+    def _function(self, node: FunctionCall, parent_prec: int) -> str:
         # has(x) -> x IS NOT NULL
         if node.name == "has":
             if len(node.args) != 1:
                 raise TranspileError("has() requires exactly 1 argument")
-            arg_sql = _emit(node.args[0])
+            arg_sql = self.emit(node.args[0])
             result = f"{arg_sql} IS NOT NULL"
             if parent_prec > _SQL_PREC.get("=", 0):
                 return f"({result})"
             return result
 
+        path = self.json_path(node.args[0]) if len(node.args) == 1 else None
+        if path is not None and node.name in _JSON_CONVERSIONS:
+            return _JSON_CONVERSIONS[node.name].format(p=path)
+
         # Mapped functions: size -> length, int -> toInt64, etc.
         ch_name = _FUNC_MAP.get(node.name)
         if ch_name is not None:
-            args_sql = ", ".join(_emit(a) for a in node.args)
+            args_sql = ", ".join(self.emit(a) for a in node.args)
             return f"{ch_name}({args_sql})"
 
         raise TranspileError(f"Unsupported function: {node.name!r}")
 
-    if isinstance(node, Ternary):
-        cond_sql = _emit(node.condition)
-        true_sql = _emit(node.true_expr)
-        false_sql = _emit(node.false_expr)
-        return f"if({cond_sql}, {true_sql}, {false_sql})"
 
-    if isinstance(node, ListExpr):
-        # Standalone list (not part of 'in') -- emit as tuple
-        elems = ", ".join(_emit(e) for e in node.elements)
-        return f"({elems})"
-
-    raise TranspileError(f"Unsupported AST node: {type(node).__name__}")
+def _when_present(path: str, value: bool) -> str:
+    """Return ``value`` where ``path`` holds anything, else NULL, as CEL errors on a missing field."""
+    return f"if({path} IS NULL, NULL, {'true' if value else 'false'})"
 
 
 # -- Public API ----------------------------------------------------
 
 
-def transpile_to_clickhouse(expr: str, profile: ProfileConfig | None = None) -> str:
+def transpile_to_clickhouse(
+    expr: str,
+    profile: ProfileConfig | None = None,
+    *,
+    json_columns: Collection[str] = (),
+) -> str:
     """Transpile a CEL expression to a ClickHouse SQL WHERE clause.
 
     The expression is first validated against the expression profile (syntax +
@@ -638,6 +796,10 @@ def transpile_to_clickhouse(expr: str, profile: ProfileConfig | None = None) -> 
         expr: CEL expression string.
         profile: The profile to enforce. ``None`` means the cascade's, which refuses
             ``matches()`` unless ``expression.allow_regex`` is set.
+        json_columns: Names of ClickHouse ``JSON`` columns. A dotted identifier under
+            one of them is a dynamic path, read through the typed sub-column the
+            other operand's type picks, so a path holding numbers in some rows and
+            strings in others compares as CEL compares it.
 
     Returns:
         ClickHouse SQL WHERE clause fragment.
@@ -654,6 +816,8 @@ def transpile_to_clickhouse(expr: str, profile: ProfileConfig | None = None) -> 
         'amount > 10000 AND NOT is_test'
         >>> transpile_to_clickhouse('status in ["active", "pending"]')
         "status IN ('active', 'pending')"
+        >>> transpile_to_clickhouse('doc.port > 1024', json_columns=["doc"])
+        'coalesce(doc.port.:Int64 > 1024, doc.port.:UInt64 > 1024, doc.port.:Float64 > 1024)'
     """
     # Gate: validate CEL syntax + expression profile.
     errors = validate(expr, profile)
@@ -662,4 +826,4 @@ def transpile_to_clickhouse(expr: str, profile: ProfileConfig | None = None) -> 
 
     # Parse and emit.
     ast = _parse(expr)
-    return _emit(ast)
+    return _Emitter(frozenset(json_columns)).boolean(ast)
