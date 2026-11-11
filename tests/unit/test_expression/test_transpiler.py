@@ -387,3 +387,113 @@ class TestSQLInjection:
         # Semicolons inside string literals are safe (just data).
         result = transpile_to_clickhouse('cmd == "DROP; --"')
         assert result == "cmd = 'DROP; --'"
+
+
+# ── JSON columns ──────────────────────────────────────────────
+
+_N = "doc.a.:Int64 {op} {v}, doc.a.:UInt64 {op} {v}, doc.a.:Float64 {op} {v}"
+
+
+class TestJsonColumns:
+    """A path under a JSON column reads the typed sub-column the other operand's type picks."""
+
+    @pytest.mark.parametrize(
+        ("expr", "sql"),
+        [
+            pytest.param(
+                "doc.a == 42",
+                f"coalesce({_N.format(op='=', v=42)}, if(doc.a IS NULL, NULL, false))",
+                id="number-equals",
+            ),
+            pytest.param(
+                "doc.a != 42",
+                f"coalesce({_N.format(op='!=', v=42)}, if(doc.a IS NULL, NULL, true))",
+                id="number-not-equals-holds-for-other-types",
+            ),
+            pytest.param("doc.a > 10", f"coalesce({_N.format(op='>', v=10)})", id="number-ordering"),
+            pytest.param("doc.a >= -1.5", f"coalesce({_N.format(op='>=', v=-1.5)})", id="negative-double"),
+            pytest.param("10 < doc.a", f"coalesce({_N.format(op='>', v=10)})", id="path-on-the-right"),
+            pytest.param(
+                'doc.a == "8080"',
+                "coalesce(doc.a.:String = '8080', if(doc.a IS NULL, NULL, false))",
+                id="string-never-matches-a-number",
+            ),
+            pytest.param('doc.a > "m"', "doc.a.:String > 'm'", id="string-ordering"),
+            pytest.param('!(doc.a > "m")', "NOT (doc.a.:String > 'm')", id="string-ordering-negated"),
+            pytest.param(
+                "doc.a == true",
+                "coalesce(doc.a.:Bool = 1, if(doc.a IS NULL, NULL, false))",
+                id="bool-equals",
+            ),
+            pytest.param(
+                'doc.a in [1, "x", 2]',
+                "coalesce(doc.a.:Int64 IN (1, 2), doc.a.:UInt64 IN (1, 2), doc.a.:Float64 IN (1, 2),"
+                " doc.a.:String IN ('x'), if(doc.a IS NULL, NULL, false))",
+                id="in-splits-by-type",
+            ),
+            pytest.param('doc.a.contains("x")', "position(doc.a.:String, 'x') > 0", id="contains"),
+            pytest.param('doc.a.startsWith("x")', "startsWith(doc.a.:String, 'x')", id="starts-with"),
+            pytest.param('doc.a.endsWith("x")', "endsWith(doc.a.:String, 'x')", id="ends-with"),
+            pytest.param("doc.f", "doc.f.:Bool", id="bare-path-is-a-bool"),
+            pytest.param("!doc.f && doc.g", "NOT doc.f.:Bool AND doc.g.:Bool", id="logic-on-paths"),
+            pytest.param("doc.f ? 1 : 2", "if(doc.f.:Bool, 1, 2)", id="ternary-condition"),
+            pytest.param("doc.a == null", "doc.a IS NULL", id="null"),
+            pytest.param("has(doc.a)", "doc.a IS NOT NULL", id="has"),
+            pytest.param(
+                "size(doc.a) > 0",
+                "coalesce(lengthUTF8(doc.a.:String), JSONArrayLength(toJSONString(doc.a))) > 0",
+                id="size",
+            ),
+            pytest.param(
+                "int(doc.a) > 1",
+                "coalesce(doc.a.:Int64, accurateCastOrNull(trunc(doc.a.:Float64), 'Int64'),"
+                " toInt64OrNull(doc.a.:String)) > 1",
+                id="int",
+            ),
+            pytest.param(
+                "double(doc.a) > 1.0",
+                "coalesce(doc.a.:Float64, toFloat64(doc.a.:Int64), toFloat64(doc.a.:UInt64),"
+                " toFloat64OrNull(doc.a.:String)) > 1.0",
+                id="double",
+            ),
+            pytest.param(
+                'string(doc.a) == "1"', "if(doc.a IS NULL, NULL, toString(doc.a)) = '1'", id="string-conversion"
+            ),
+            pytest.param("doc.a + 1 > 2", "doc.a.:Int64 + 1 > 2", id="int-arithmetic"),
+            pytest.param("doc.a * 1.5 > 2.0", "doc.a.:Float64 * 1.5 > 2.0", id="double-arithmetic"),
+            pytest.param("doc.a / 2 > 1", "intDiv(doc.a.:Int64, 2) > 1", id="int-division"),
+            pytest.param(
+                "doc.b.c == 1",
+                "coalesce(doc.b.c.:Int64 = 1, doc.b.c.:UInt64 = 1, doc.b.c.:Float64 = 1,"
+                " if(doc.b.c IS NULL, NULL, false))",
+                id="nested-path",
+            ),
+            pytest.param(
+                "doc.a > double(limit)",
+                "coalesce(doc.a.:Int64 > toFloat64(limit), doc.a.:UInt64 > toFloat64(limit),"
+                " doc.a.:Float64 > toFloat64(limit))",
+                id="typed-expression",
+            ),
+            pytest.param("other.a == 1", "other.a = 1", id="other-columns-unchanged"),
+            pytest.param("doc == 1", "doc = 1", id="the-column-itself-unchanged"),
+        ],
+    )
+    def test_emits(self, expr, sql):
+        assert transpile_to_clickhouse(expr, json_columns=["doc"]) == sql
+
+    @pytest.mark.parametrize(
+        "expr",
+        [
+            pytest.param("doc.a == doc.b", id="two-paths"),
+            pytest.param("doc.a == limit", id="untyped-identifier"),
+            pytest.param("doc.a in [1, limit]", id="untyped-list-element"),
+            pytest.param("doc.a + doc.b > 1", id="untyped-arithmetic"),
+            pytest.param("-doc.a > 1", id="negated-path"),
+        ],
+    )
+    def test_a_type_only_the_data_decides_is_left_to_evaluate(self, expr):
+        with pytest.raises(TranspileError, match="no fixed type|both JSON paths"):
+            transpile_to_clickhouse(expr, json_columns=["doc"])
+
+    def test_without_json_columns_a_path_is_read_as_is(self):
+        assert transpile_to_clickhouse("doc.a == 42") == "doc.a = 42"

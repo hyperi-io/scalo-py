@@ -43,7 +43,7 @@ assert result is True
 | `evaluate(expr, ctx)` | the typed result | one-shot evaluation |
 | `evaluate_condition(expr, ctx)` | `bool` | scoring conditions, alert triggers (missing fields -> `False`) |
 | `compile_expression(expr, profile=None)` | `cel.Program` | hot-path reuse: compile once, execute many |
-| `transpile_to_clickhouse(expr, profile=None)` | `str` (SQL) | push CEL filters down into ClickHouse queries |
+| `transpile_to_clickhouse(expr, profile=None, *, json_columns=())` | `str` (SQL) | push CEL filters down into ClickHouse queries |
 
 `profile=None` enforces the profile the config cascade sets, and `evaluate` and `evaluate_condition` always do. `compile_expression`, `evaluate` and `transpile_to_clickhouse` raise `ExpressionError` on profile violations or syntax errors, with an `errors: list[str]` attribute carrying every diagnostic. [rules.md](rules.md) builds ordered first-match rule sets on top.
 
@@ -198,6 +198,22 @@ fetching every row and filtering in Python. Raises `TranspileError` for
 constructs that don't map to SQL. `matches()` transpiles to `match()` only under a profile that allows regex.
 
 Division pushes down only where the expression fixes its type, because CEL divides ints as integers and doubles as doubles. An int literal, `int()`, `size()` or `%` on either side makes it ClickHouse's `intDiv`, which truncates toward zero as CEL does, and a double literal or `double()` makes it `/`. `total / count`, with no typed operand, raises `TranspileError`: evaluate it in process, or write `total / double(count)`.
+
+ClickHouse infers a dynamic `JSON` path's type per row, so `doc.port` can hold an Int64 in one row and a String in the next. Compared as one type, the query fails with `NO_COMMON_TYPE` or `TYPE_MISMATCH` once a second type lands there, and `IN` fails on any JSON path. Pass `json_columns` and each path under those columns reads the typed sub-column the other operand picks:
+
+```python
+transpile_to_clickhouse('doc.port == 8080', json_columns=["doc"])
+# coalesce(doc.port.:Int64 = 8080, doc.port.:UInt64 = 8080, doc.port.:Float64 = 8080,
+#          if(doc.port IS NULL, NULL, false))
+```
+
+The answer is CEL's, row by row. `doc.port == 8080` never matches the string `"8080"`, `!=` holds for a row of another type, and a comparison that CEL refuses (`>` on a string and a number, `.contains()` on a number) matches nothing, negated or not. String methods read `.:String`, a bare path in a condition reads `.:Bool`, `size()`, `int()`, `uint()`, `double()` and `string()` read every sub-column they accept, and arithmetic reads `.:Int64` or `.:Float64` by its literal. A path compared with another path, or with a value of no fixed type, raises `TranspileError`.
+
+Limits, all from ClickHouse:
+
+- A path declared with a type in the column (`JSON(port UInt16)`) has no typed sub-columns. List only columns whose filtered paths are dynamic.
+- JSON `null` is stored as an absent path, so `== null` and `has()` cannot tell the two apart.
+- A string ClickHouse infers as a date or time is not a String. Insert with `input_format_try_infer_dates=0` and `input_format_try_infer_datetimes=0` to keep it one.
 
 ---
 
