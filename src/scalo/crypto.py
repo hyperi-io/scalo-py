@@ -108,7 +108,7 @@ def _truthy(env: str) -> bool:
 def tls_verify_default() -> bool:
     """Effective default for cert verification from the env escape valve.
 
-    True (verify) unless ``SCALO_TLS_VERIFY`` is falsey. The config-cascade seam
+    True (verify) unless ``SCALO_TLS_VERIFY`` is falsey. It is the config-cascade value
     a consumer's ENV layer sets for a whole dev/test environment; an explicit
     ``verify=`` argument still overrides it per client.
     """
@@ -230,7 +230,7 @@ def ssl_context(
     floor, the AES-256 cipher list and cert verification; the PQC group is the
     OpenSSL default (see the module docstring for why it cannot be set here).
 
-    Two escape valves, each ``None`` -> consult the env seam (config cascade),
+    Two escape valves, each ``None`` -> consult the env layer (config cascade),
     else the explicit value wins:
 
     - ``verify``: ``False`` drops the peer-CERTIFICATE check (keeps the floor,
@@ -292,7 +292,7 @@ def tls_parts(
     """Emit the primitives mint form for path/string-based consumers.
 
     ``verify`` and ``allow_weak`` mirror :func:`ssl_context` (each ``None`` ->
-    the env seam, else explicit wins). ``TlsParts.verify`` is what a libpq
+    the env layer, else explicit wins). ``TlsParts.verify`` is what a libpq
     ``sslmode`` / clickhouse-connect ``verify`` / librdkafka
     ``enable.ssl.certificate.verification`` should follow; when ``allow_weak`` is
     on, ``min_version`` drops to ``"1.0"`` and ``cipher_string`` widens for the

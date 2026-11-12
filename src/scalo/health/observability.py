@@ -42,7 +42,7 @@ There is no startup path. A ``startupProbe`` targets ``/livez`` -- Kubernetes
 suspends liveness until the startup probe passes, so one path gives both a
 generous boot budget and a tight liveness period without the two drifting.
 
-Liveness answers "is this process wedged" and MUST NOT check dependencies:
+Liveness answers "is this process hung" and MUST NOT check dependencies:
 restarting will not fix someone else's datastore, it just destroys warm state
 mid-outage. Dependency checks belong in readiness.
 

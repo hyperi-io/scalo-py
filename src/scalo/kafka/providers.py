@@ -227,7 +227,7 @@ class KafkaProvider(Protocol):
     """The generic, open Kafka provider abstraction.
 
     Implement this for any provider - built-in or your own - to teach scalo
-    its auth shape, capabilities, and (at their seams) transport tuning.
+    its auth shape, capabilities, and transport tuning (``transport_overrides``).
     Mirrors scalo-rs's ``KafkaProvider`` trait. A third party (e.g. AutoMQ)
     plugs in by implementing this Protocol - no change to scalo required.
     ``KnownProvider`` (below) implements it via ordinary duck typing (no

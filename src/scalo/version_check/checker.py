@@ -71,8 +71,8 @@ class VersionCheckConfig:
 
         Every ``version_check`` key the cascade sets wins -- an explicit
         ``enabled: false`` included -- and a key it leaves unset falls to
-        the given default instead of this class's own. The seam an app
-        uses to supply its endpoint default while any config layer (file
+        the given default instead of this class's own. This is how an app
+        supplies its endpoint default while any config layer (file
         or env) can still turn the check off. Mirrors scalo-rs
         ``VersionCheckConfig::from_cascade_or``.
         """

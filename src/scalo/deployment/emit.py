@@ -48,7 +48,7 @@ def config_schema_json(model: type[BaseModel]) -> dict[str, Any]:
     """Derive a JSON Schema (draft 2020-12) for a pydantic config model.
 
     Secret fields are marked ``x-scalo-secret`` so the control plane masks them
-    and routes them through the secrets seam. A field is treated as secret when
+    and reads them through the secrets provider. A field is treated as secret when
     it uses pydantic ``SecretStr`` (schema ``format: password``) or carries an
     explicit ``json_schema_extra={"x-scalo-secret": True}``. A secret field ends
     ``"x-scalo-secret": true, "writeOnly": true``, the keys and order scalo-rs's
