@@ -1,6 +1,6 @@
 #  Project:   scalo
 #  File:      src/scalo/cli/openapi/transport.py
-#  Purpose:   The HTTP seam the generated CLI sends through: stdlib by default, scalo.http on request
+#  Purpose:   The HTTP layer the generated CLI sends through: stdlib by default, scalo.http on request
 #  Language:  Python
 #
 #  License:   Apache-2.0
