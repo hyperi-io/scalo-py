@@ -150,7 +150,7 @@ alone. `opentelemetry` is a subset of it, kept so existing
 
 | Extra | Adds | Native deps | Doc |
 |---|---|---|---|
-| `deployment` | `pydantic>=2.13` | none | [deployment/contract.md](deployment/contract.md) |
+| `deployment` | `pydantic` | none | [deployment/contract.md](deployment/contract.md) |
 
 `ContractIdentity` and the parity/test-support helpers ship with the
 `deployment` extra. The fixture under `tests/fixtures/contract-parity/`
@@ -160,7 +160,7 @@ is part of the test suite, not a runtime artefact.
 
 | Extra | Adds | Native deps | Doc |
 |---|---|---|---|
-| `expression` | `common-expression-language>=0.10.0` (PyO3 wrapper around the `cel` Rust crate) | none (precompiled wheels) | [api/expression.md](api/expression.md), [api/rules.md](api/rules.md) |
+| `expression` | `common-expression-language` (PyO3 wrapper around the `cel` Rust crate) | none (precompiled wheels) | [api/expression.md](api/expression.md), [api/rules.md](api/rules.md) |
 
 Provides byte-identical CEL evaluation with scalo-rs's `expression`
 crate. Same expression, same result, regardless of which language the

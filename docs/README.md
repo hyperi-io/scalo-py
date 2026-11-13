@@ -145,5 +145,5 @@ flowchart TB
 ## Project facts
 
 - **Package:** [scalo](https://pypi.org/project/scalo/) (PyPI)
-- **Python:** >=3.14
+- **Python:** `requires-python` in `pyproject.toml`
 - **Sibling lib:** [scalo-rs](https://github.com/hyperi-io/scalo-rs) (Rust equivalent; same subdir layout where the concept maps 1:1)
