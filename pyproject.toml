@@ -7,7 +7,7 @@ name = "scalo"
 # Placeholder: CI stamps the released version here at build time and commits
 # only VERSION back, so a real number in this file goes stale on the next release.
 version = "0.0.0"
-description = "Opinionated-for-scale integrated runtime of config, logging, secrets, cli and more for control-plane services."
+description = "The runtime layer for Python control-plane services: config, logging, metrics, health, secrets and a service CLI."
 # The PyPI page. README.md stays the GitHub front page.
 readme = "docs/pypi.md"
 authors = [
