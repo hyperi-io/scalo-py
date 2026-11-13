@@ -192,7 +192,7 @@ scalo-py and scalo-rs share conventions and have separate APIs and repositories,
 | Path | What it holds |
 |------|---------------|
 | `src/scalo/<module>/` | One directory per module: `config`, `logger`, `metrics`, `health`, `http`, `kafka`, `secrets`, `deployment`, `cli` |
-| `src/scalo/data/` | Vendored corpora and rule files, landed by `tools/vendor_patterns.sh` |
+| `src/scalo/data/` | Vendored runtime pattern files, copied by `tools/vendor_patterns.sh` |
 | `tests/{unit,integration,e2e,smoke}/` | Split by what each needs in order to run |
 | `docs/architecture.md` | Layering, the module dependency graph, and what scalo-rs has that this does not |
 
@@ -200,16 +200,13 @@ scalo-py and scalo-rs share conventions and have separate APIs and repositories,
 
 ```bash
 make quality   # lint, type-check, security audit
-make test      # the suite
+make test      # the core test tier
 make build     # the wheel
 ```
 
-`addopts` deselects no markers, so `make test` runs integration and e2e as well,
-and on a developer box that is not green. This run was 9 failed, 2552 passed, 31
-skipped in 7m01s -- 6 GCP secrets tests wanting `gcloud auth
-application-default login`, 2 CLI tests binding a fixed `0.0.0.0:9090`, and one
-Dockerfile build. Read the per-job CI result, never a local summary. Coverage is
-gated in `.hyperi-ci.yaml`.
+The core tier excludes tests marked `full`. [tests/TESTING.md](tests/TESTING.md)
+has both tiers and what each needs on the box. Read the per-job CI result, never
+a local summary. Coverage is gated in `.hyperi-ci.yaml`.
 
 ### What tends to bite
 
