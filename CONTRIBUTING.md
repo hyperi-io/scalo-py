@@ -155,9 +155,10 @@ hyperi-ci check
 
 `hyperi-ci` is the HyperI CI CLI (public on PyPI). If you do not have it, install
 it once with `uv tool install hyperi-ci` (or `pipx install hyperi-ci`), or run it
-ad hoc with `uvx hyperi-ci check`. It runs the project's full local validation --
-the same suite CI runs -- and reports what to fix. Run it before every push and before opening a
-pull request; it is the single best way to give your change the best chance of
+ad hoc with `uvx hyperi-ci check`. It runs the project's local validation and reports
+what to fix. [tests/TESTING.md](tests/TESTING.md) has the core and full test
+tiers and when CI runs each. Run it before every push and before opening a
+pull request. It is the single best way to give your change the best chance of
 surviving CI.
 
 ## CI/CD Workflow
@@ -175,3 +176,54 @@ This happens automatically - no manual intervention required.
 ## Questions
 
 If you have questions about contributing, please open an issue or contact us.
+
+## Context
+
+### What this is
+
+HyperI's shared Python library -- config cascade, logging, metrics, health,
+secrets, Kafka and the deployment-contract generators -- published as `scalo` on
+PyPI under Apache-2.0.
+
+scalo-py and scalo-rs share conventions and have separate APIs and repositories, so check each API on its own. Where the two must agree, a shared corpus vendored from scalo-rs says so: credential masking is checked against `tests/fixtures/patterns/credential_masking_parity.json`, and the rules engine against `tests/fixtures/rules_corpus.json`.
+
+### Where things live
+
+| Path | What it holds |
+|------|---------------|
+| `src/scalo/<module>/` | One directory per module: `config`, `logger`, `metrics`, `health`, `http`, `kafka`, `secrets`, `deployment`, `cli` |
+| `src/scalo/data/` | Vendored runtime pattern files, copied by `tools/vendor_patterns.sh` |
+| `tests/{unit,integration,e2e,smoke}/` | Split by what each needs in order to run |
+| `docs/architecture.md` | Layering, the module dependency graph, and what scalo-rs has that this does not |
+
+### Commands that prove a change
+
+```bash
+make quality   # lint, type-check, security audit
+make test      # the core test tier
+make build     # the wheel
+```
+
+The core tier excludes tests marked `full`. [tests/TESTING.md](tests/TESTING.md)
+has both tiers and what each needs on the box. Read the per-job CI result, never
+a local summary. Coverage is gated in `.hyperi-ci.yaml`.
+
+### What tends to bite
+
+| Don't | Do | Why |
+|-------|----|-----|
+| Read a skip as a pass | Make a guard fail when what it guards is absent | A parity guard fails when its fixture file is missing, and an import guard names the symbols it imports so a renamed one fails rather than skips (`2ca8329`) |
+| Copy an API name or an env var out of the docs | Check the `control_var` call sites and the module | The code is the source for names, and a doc can lag a rename (`da005a0`) |
+| Assume a config key you added is read | Follow it to its reader | SIGHUP reload and polling are checked on their own, and a label key is unique in the OTel label map (`6a2b21b`) |
+
+### Where this sits
+
+Generated from `dfe-infra/suite.yaml` via `dfe-stack suite`. Nothing in the suite
+feeds this repo -- it declares no inbound edges.
+
+| Repo | Kind | Mechanism, outbound |
+|------|------|---------------------|
+| dfe-engine | `python-dep`, potential | Declares `scalo` by range in `pyproject.toml`, no upper bound |
+| dfe-engine | `contract-guard`, lockstep | It overrides our runtime base image with its own literal, and its own test fails when its committed Dockerfile stops matching. The validator is ours, `scalo.deployment.validate_dockerfile` |
+| culvert | `python-dep`, potential | Declares `scalo` by range. A second range, for the deployment-contract generators, is dev-only |
+| vector-vrl | `python-dep`, potential | Build system only, not the published wheel |
