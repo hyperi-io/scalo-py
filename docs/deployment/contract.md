@@ -7,7 +7,7 @@ The Pydantic model an app builds once from its `Config.default()`. `validate_doc
 `src/scalo/deployment/data/contract.schema.json` ships in the wheel. It is scalo-rs's `charts/scalo-service/schema/deployment-contract.v4.schema.json`, the JSON Schema a chart assembler validates every contract against, copied byte for byte. `.hyperi-ci-vendor.lock` records the source repo, path, ref and sha256 of the copy. `tests/unit/deployment/test_contract_schema.py` checks the copy against the lock and validates what scalo-py emits against it. Update the copy from scalo-rs, never by hand: move `ref` in the `vendor:` block of `.hyperi-ci.yaml` and run `hyperi-ci vendor sync`.
 
 Import surface (gated on the `[deployment]` extra; importing without
-`pydantic>=2.13` defers and raises `ProviderNotAvailableError`):
+`pydantic` defers and raises `ProviderNotAvailableError`):
 
 ```python
 from scalo.deployment import (
@@ -44,7 +44,7 @@ from scalo.deployment import (
 | `keda` | `KedaContract \| None` | `None` | See [keda.md](keda.md) |
 | `base_image` | `str` | `""` -> `python:{python_version}-slim` | Runtime base for Dockerfile; read via `effective_base_image()` |
 | `builder_image` | `str` | `""` -> uv image for `python_version` | Builder stage; read via `effective_builder_image()` |
-| `python_version` | `str` | `3.14` | Drives BOTH default images |
+| `python_version` | `str` | `DEFAULT_PYTHON_VERSION` (`scalo.deployment.registry`) | Drives BOTH default images |
 | `native_deps` | `NativeDepsContract` | factory | See [native-deps.md](native-deps.md) |
 | `image_profile` | `ImageProfile` | `PRODUCTION` | See below |
 | `oci_labels` | `OciLabels` | factory | Static OCI labels and the namespace of scalo's own keys -- see [`OciLabels`](#ocilabels) |
@@ -113,8 +113,8 @@ linking strategy; the difference is debug tooling and tag suffix.
 
 | Profile | Tag suffix | Adds these APT packages |
 |---|---|---|
-| `PRODUCTION` | none -- `:1.15.0`, `:latest` | none beyond base |
-| `DEVELOPMENT` | `-dev` -- `:1.15.0-dev`, `:latest-dev` | `bash strace tcpdump procps dnsutils net-tools less jq` |
+| `PRODUCTION` | none -- `:<version>`, `:latest` | none beyond base |
+| `DEVELOPMENT` | `-dev` -- `:<version>-dev`, `:latest-dev` | `bash strace tcpdump procps dnsutils net-tools less jq` |
 
 `with_dev_profile()` returns a deep-copied clone flipped to
 `DEVELOPMENT`. Use it in CI matrix expansions to emit both image

@@ -4,7 +4,7 @@
 | | |
 | --- | --- |
 | Build | [![Build Status](https://github.com/hyperi-io/scalo-py/actions/workflows/ci.yml/badge.svg)](https://github.com/hyperi-io/scalo-py/actions) |
-| Package | [![PyPI](https://img.shields.io/pypi/v/scalo?logo=pypi)](https://pypi.org/project/scalo/) [![Python Version](https://img.shields.io/badge/python-3.14%2B-blue)](https://www.python.org/) |
+| Package | [![PyPI](https://img.shields.io/pypi/v/scalo?logo=pypi)](https://pypi.org/project/scalo/) [![Python Version](https://img.shields.io/python/required-version-toml?tomlFilePath=https://raw.githubusercontent.com/hyperi-io/scalo-py/main/pyproject.toml)](pyproject.toml) |
 | Meta | [![License](https://img.shields.io/badge/license-Apache--2.0-green)](https://www.apache.org/licenses/LICENSE-2.0) |
 <!-- BADGES:END -->
 
