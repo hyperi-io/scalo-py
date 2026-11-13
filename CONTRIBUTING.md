@@ -184,7 +184,7 @@ HyperI's shared Python library -- config cascade, logging, metrics, health,
 secrets, Kafka and the deployment-contract generators -- published as `scalo` on
 PyPI under Apache-2.0.
 
-It is scalo-rs's SISTER, not its twin: same conventions, DIFFERENT API, separate repo. Never assume parity. Where the two must agree, a shared corpus vendored from scalo-rs says so: credential masking is checked against `tests/fixtures/patterns/credential_masking_parity.json`, and the rules engine against `tests/fixtures/rules_corpus.json`.
+scalo-py and scalo-rs share conventions and have separate APIs and repositories, so check each API on its own. Where the two must agree, a shared corpus vendored from scalo-rs says so: credential masking is checked against `tests/fixtures/patterns/credential_masking_parity.json`, and the rules engine against `tests/fixtures/rules_corpus.json`.
 
 ### Where things live
 
@@ -214,7 +214,7 @@ gated in `.hyperi-ci.yaml`.
 
 | Don't | Do | Why |
 |-------|----|-----|
-| Read a skip as a pass | Make a guard fail when what it guards is absent | Both parity modules read fixtures from a `scalo-spec` checkout that never existed, so every case skipped everywhere including CI -- and the canary was itself `skipif(not path.exists())`, its skip condition being its own assertion negated. Tightening the import guards then caught `test_import_http` importing `create_client`, which does not exist (`2ca8329`) |
+| Read a skip as a pass | Make a guard fail when what it guards is absent | A parity guard fails when its fixture file is missing, and an import guard names the symbols it imports so a renamed one fails rather than skips (`2ca8329`) |
 | Copy an API name or an env var out of the docs | Check the `control_var` call sites and the module | The docs named `for_pylib_extras` and `for_rustlib_features`, really `for_scalo_extras` and `for_scalo_features`, plus eight `HYPERI_*` variables removed with no fallback (`da005a0`) |
 | Assume a config key you added is read | Follow it to its reader | `enable_sighup` was honoured only when `poll_interval > 0`, so "reload on SIGHUP, never poll" registered no handler. A duplicate `status` key in the OTel label map exported every HTTP metric as `task.status` (`6a2b21b`) |
 
