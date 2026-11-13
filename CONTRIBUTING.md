@@ -155,8 +155,9 @@ hyperi-ci check
 
 `hyperi-ci` is the HyperI CI CLI (public on PyPI). If you do not have it, install
 it once with `uv tool install hyperi-ci` (or `pipx install hyperi-ci`), or run it
-ad hoc with `uvx hyperi-ci check`. It runs the project's full local validation --
-the same suite CI runs -- and reports what to fix. Run it before every push and before opening a
+ad hoc with `uvx hyperi-ci check`. It runs the project's local validation and reports
+what to fix. [tests/TESTING.md](tests/TESTING.md) has the core and full test
+tiers and when CI runs each. Run it before every push and before opening a
 pull request. It is the single best way to give your change the best chance of
 surviving CI.
 
@@ -215,8 +216,8 @@ gated in `.hyperi-ci.yaml`.
 | Don't | Do | Why |
 |-------|----|-----|
 | Read a skip as a pass | Make a guard fail when what it guards is absent | A parity guard fails when its fixture file is missing, and an import guard names the symbols it imports so a renamed one fails rather than skips (`2ca8329`) |
-| Copy an API name or an env var out of the docs | Check the `control_var` call sites and the module | The docs named `for_pylib_extras` and `for_rustlib_features`, really `for_scalo_extras` and `for_scalo_features`, plus eight `HYPERI_*` variables removed with no fallback (`da005a0`) |
-| Assume a config key you added is read | Follow it to its reader | `enable_sighup` was honoured only when `poll_interval > 0`, so "reload on SIGHUP, never poll" registered no handler. A duplicate `status` key in the OTel label map exported every HTTP metric as `task.status` (`6a2b21b`) |
+| Copy an API name or an env var out of the docs | Check the `control_var` call sites and the module | The code is the source for names, and a doc can lag a rename (`da005a0`) |
+| Assume a config key you added is read | Follow it to its reader | SIGHUP reload and polling are checked on their own, and a label key is unique in the OTel label map (`6a2b21b`) |
 
 ### Where this sits
 
