@@ -28,7 +28,7 @@ call is the only token check.
 
 import re
 import time
-from collections.abc import AsyncIterator, Awaitable, Callable, Sequence
+from collections.abc import AsyncGenerator, Awaitable, Callable, Sequence
 from contextlib import asynccontextmanager
 from typing import Any
 from urllib.parse import urlsplit
@@ -233,7 +233,7 @@ class McpServer:
         return tools
 
     @asynccontextmanager
-    async def run(self) -> AsyncIterator[None]:
+    async def run(self) -> AsyncGenerator[None]:
         """Generate the tools and serve requests until the context exits.
 
         :func:`mount` runs this inside the app's lifespan. Each entry starts a
@@ -454,7 +454,7 @@ def mount(
     serve_app = app.router.lifespan_context
 
     @asynccontextmanager
-    async def lifespan(target: Any) -> AsyncIterator[Any]:
+    async def lifespan(target: Any) -> AsyncGenerator[Any]:
         async with serve_app(target) as state, server.run():
             yield state
 

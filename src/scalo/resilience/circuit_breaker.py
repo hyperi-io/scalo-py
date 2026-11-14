@@ -20,10 +20,10 @@ multiple threads or async tasks.
 
 import threading
 import time
+from collections.abc import Generator
 from contextlib import contextmanager
 from dataclasses import dataclass
 from enum import StrEnum
-from typing import Iterator
 
 
 class CircuitState(StrEnum):
@@ -131,7 +131,7 @@ class CircuitBreaker:
             return True
 
     @contextmanager
-    def probe(self) -> Iterator[bool]:
+    def probe(self) -> Generator[bool]:
         """Context manager wrapping :meth:`try_acquire_probe`.
 
         Always records success/failure on exit, even if the body raises

@@ -224,7 +224,7 @@ type Answer = tuple[int, dict[str, str], bytes]
 class _Handler(BaseHTTPRequestHandler):
     """Answers from the server's route table and records every request."""
 
-    server: _Server
+    server: _Server  # ty: ignore[invalid-mutable-override]  # the handler reads server, never writes it
 
     def _serve(self) -> None:
         length = int(self.headers.get("Content-Length") or 0)

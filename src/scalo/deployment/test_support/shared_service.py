@@ -62,7 +62,7 @@ import subprocess
 import sys
 import tempfile
 import time
-from collections.abc import Callable, Iterator, Mapping, Sequence
+from collections.abc import Callable, Generator, Mapping, Sequence
 from contextlib import contextmanager
 from dataclasses import dataclass, field, replace
 from pathlib import Path
@@ -793,7 +793,7 @@ def _start_owned(
 
 
 @contextmanager
-def locked(path: Path) -> Iterator[None]:
+def locked(path: Path) -> Generator[None]:
     """Hold an exclusive lock on ``path`` across the run's processes, waiting for it."""
     with path.open("a", encoding="utf-8") as handle:
         fcntl.flock(handle, fcntl.LOCK_EX)

@@ -45,7 +45,7 @@ import fcntl
 import os
 import tempfile
 import threading
-from collections.abc import Iterator
+from collections.abc import Generator
 from contextlib import contextmanager, suppress
 from pathlib import Path
 from typing import Any, Callable
@@ -566,7 +566,7 @@ class DirectoryConfigStore:
 
     @staticmethod
     @contextmanager
-    def _write_lock(path: Path) -> Iterator[None]:
+    def _write_lock(path: Path) -> Generator[None]:
         """Hold an exclusive advisory lock on the table's directory across a read-modify-write.
 
         The table file itself cannot carry the lock, because each write replaces its inode.

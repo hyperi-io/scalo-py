@@ -127,7 +127,7 @@ class _OtlpServer(ThreadingHTTPServer):
 class _OtlpHandler(BaseHTTPRequestHandler):
     """Records an OTLP/HTTP export body and acknowledges it."""
 
-    server: _OtlpServer
+    server: _OtlpServer  # ty: ignore[invalid-mutable-override]  # the handler reads server, never writes it
 
     def do_POST(self) -> None:
         length = int(self.headers["Content-Length"])

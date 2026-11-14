@@ -295,7 +295,7 @@ class KnownProvider(Enum):
         except ValueError:
             raise KafkaProviderError(f"unknown kafka provider {value!r}; expected one of {KNOWN_PROVIDERS}") from None
 
-    def name(self) -> str:  # type: ignore[override]
+    def name(self) -> str:  # ty: ignore[invalid-property-type-override]  # KafkaProvider.name() is a method, Enum.name a property
         """A stable identifier - the provider key itself (e.g. ``"strimzi"``).
 
         Deliberately shadows ``Enum.name`` (typeshed types it as a plain
