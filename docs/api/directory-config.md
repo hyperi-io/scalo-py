@@ -1,9 +1,6 @@
 # Directory config
 
-A YAML-directory configuration store where each file is a "table"
-(database-style). In-memory cache, background polling refresh, optional
-git tracking for writes. Pure-Python git via `dulwich` — no `git`
-binary required. Ships in the base package.
+A YAML-directory configuration store where each file is a "table" (database-style). In-memory cache, background polling refresh, optional git tracking for writes. Git goes through `dulwich`, so no `git` binary is needed. Ships in the base package.
 
 ```python
 from scalo.config import DirectoryConfigStore
@@ -78,8 +75,7 @@ tables = store.list_tables()
 #  "monitoring/alerts/thresholds"]
 ```
 
-Reads return deep copies — mutating the returned dict won't poison the
-cache. Thread-safe via `RLock`.
+A whole-table read returns a shallow copy, and a keyed read returns the cached value itself, so mutating a nested dict you got back changes the cache for every reader. Copy it (`copy.deepcopy`) before you change it. Reads are thread-safe via an `RLock`.
 
 ---
 
@@ -100,18 +96,13 @@ store.delete("loaders/ingest-loader", "database.password",
 
 Writes hold an exclusive advisory lock (`fcntl.LOCK_EX`) on the table's directory from the read to the write, write the YAML to a temporary sibling and rename it over the table, refresh the cache slot, commit to git if the directory is a repo, and fire change callbacks. Subdirectories are created automatically on first write to a new table. A write to a table whose file is not a YAML mapping raises `ValueError`, and one whose file cannot be read raises the `OSError`, leaving the file as it was rather than replacing it with the one new key.
 
-Read-only stores raise `PermissionError` on writes. Writability is
-auto-detected from filesystem permissions; override with
-`writable=True/False`.
+Read-only stores raise `PermissionError` on writes. Writability is auto-detected from filesystem permissions, and `writable=True` or `writable=False` overrides it. `delete()` raises `KeyError` for a missing table or key.
 
 ---
 
 ## Git awareness
 
-If the directory is inside a git repo, writes auto-commit through
-`dulwich`. Commit messages default to `config: set <table>.<key>` —
-override per call with `message=...`. The `author` argument follows the
-standard `"Name <email>"` format.
+If the directory is inside a git repo, writes auto-commit through `dulwich`. Commit messages default to `config: set <table>.<key>` and `config: delete <table>.<key>`, and `message=...` overrides one per call. The `author` argument follows the standard `"Name <email>"` format.
 
 ```python
 store = DirectoryConfigStore(
@@ -125,10 +116,7 @@ store.switch_branch("main") # switch + refresh cache
 store.switch_branch("experiments/new-rules", create=True)
 ```
 
-`switch_branch` refreshes the cache after switching — files on the new
-branch may differ. `git_push` pushes the current branch to `origin`
-after every commit; on push failure the change still lives locally and
-gets logged at ERROR level.
+`switch_branch` refreshes the cache after switching, because files on the new branch may differ. `git_push` pushes the current branch to `origin` after every commit. A push that fails is logged at ERROR and the change stays in the local repo.
 
 | Property | Meaning |
 |----------|---------|
@@ -144,14 +132,9 @@ store = DirectoryConfigStore("/config/app", refresh_interval=30)
 store.start()
 ```
 
-A daemon thread polls every `refresh_interval` seconds. When a file's
-mtime changes, the store reparses it and fires registered callbacks.
-Set `refresh_interval=0` to disable polling — useful in tests or when
-you'd rather poke `store._refresh_all()` from a SIGHUP handler.
+A daemon thread polls every `refresh_interval` seconds. When a file's mtime changes, the store reparses it and fires registered callbacks. Set `refresh_interval=0` to disable polling, in tests or when you would rather call the private `store._refresh_all()` from a SIGHUP handler.
 
-Polling beats `inotify` for two reasons: it works over NFS, FUSE, and
-ConfigMap subPath mounts where filesystem events are unreliable; and
-it survives the daemon thread being slow to spawn.
+Polling works over NFS, FUSE and ConfigMap subPath mounts, where filesystem events such as `inotify` are unreliable.
 
 ---
 
@@ -165,20 +148,16 @@ def on_loader_change(table: str, data: dict) -> None:
 store.on_change("loaders/ingest-loader", on_loader_change)
 ```
 
-Callbacks fire from the polling thread when the new YAML parses
-successfully **and** the contents actually differ from what was cached.
-Callback exceptions are caught and logged — one bad callback doesn't
-break refresh for everyone else.
+Callbacks fire from the polling thread when the new YAML parses successfully **and** the contents differ from what was cached. Callback exceptions are caught and logged at ERROR, so one bad callback doesn't break refresh for everyone else.
 
-Also fires on explicit `set()` / `delete()` operations, so a service can
-update its own config and react in the same callback.
+They also fire on `set()` and `delete()`, from the calling thread, so a service can update its own config and react in the same callback.
 
 ---
 
 ## Lifecycle
 
 ```python
-# Context manager — calls start() / stop() for you
+# Context manager -- calls start() / stop() for you
 with DirectoryConfigStore("/config/app") as store:
     host = store.get("loaders/ingest-loader", "database.host")
 
@@ -195,11 +174,9 @@ finally:
 
 ## Safety
 
-- Table names go through `_validate_table_name`: backslashes normalised,
-  leading/trailing slashes stripped, `..` rejected, empty rejected.
-- YAML loaded via `yaml.safe_load` — no arbitrary object construction.
-- Files that fail to parse keep the last good cached version and log a
-  WARN — config errors don't take down the service.
+- Table names are normalised and checked: backslashes become slashes, leading and trailing slashes go, and `..` or an empty name raises `ValueError`.
+- YAML is loaded with PyYAML's safe loader, so a file cannot construct arbitrary objects.
+- A file that fails to parse keeps the last good cached version and logs a WARNING, so a config error doesn't take down the service.
 - Two writers, in one process or several, serialise on the directory lock, so neither loses the other's update.
 - A table is replaced by rename, so a reader, the refresh thread included, sees the whole old file or the whole new one. A half-written `.<table>.yaml.*.tmp` is never read as a table.
 

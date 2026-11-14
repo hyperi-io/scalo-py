@@ -1,8 +1,6 @@
 # Concurrency
 
-Four async primitives every scalo capability composes — built on
-AnyIO and asyncer so they work under asyncio (and trio, if you ever
-need it). Ships in the base package — no extras to install.
+Four async primitives, in the base package with no extra to install. `run_blocking`, `make_async` and `Bulkhead` are built on AnyIO and asyncer, so they run under asyncio or trio. `gather_with_timeouts` uses `asyncio.timeout` and `asyncio.gather`, so it needs asyncio. scalo's own health checks, Kafka async wrappers and secrets providers go through `run_blocking`.
 
 ```python
 from scalo.concurrency import (
@@ -10,10 +8,7 @@ from scalo.concurrency import (
 )
 ```
 
-Composable resilience (retry, circuit breaker, reconnect-and-retry) is
-in [`resilience.md`](resilience.md) — this module is the building
-blocks you wrap a resilience layer around (there is no `with_resilience()`
-decorator; compose them explicitly, as resilience.md's own examples do).
+Retry, circuit breaker and reconnect-and-retry are in [`resilience.md`](resilience.md). This module is the building blocks you wrap them around, and there is no decorator that does it for you, so compose them explicitly, as resilience.md's examples do.
 
 ---
 
@@ -34,15 +29,12 @@ async def get_secret(path: str) -> bytes:
 ## Discipline (the reason this module exists)
 
 - Never call `loop.run_in_executor` directly. Use `run_blocking`.
-- Never write `async def foo_async(...): return self.foo_sync(...)` —
-  that blocks the event loop. Use `make_async` or the dual-API pattern
-  below.
-- Never share one global `ThreadPoolExecutor` across many downstreams.
-  Use one `Bulkhead` per dependency — that's what "bulkhead" means.
+- Never write `async def foo_async(...): return self.foo_sync(...)`, which blocks the event loop. Use `make_async` or the dual-API pattern below.
+- Never share one global `ThreadPoolExecutor` across many downstreams. Use one `Bulkhead` per dependency.
 
 ---
 
-## `run_blocking` — sync-to-async bridge
+## `run_blocking` -- sync-to-async bridge
 
 ```python
 import anyio
@@ -67,7 +59,7 @@ usage. Pass a per-dependency limiter or a `Bulkhead` for finer control.
 
 ---
 
-## `make_async` — dual-API pattern
+## `make_async` -- dual-API pattern
 
 When wrapping a sync library, implement `X_sync()` once and bind
 `X_async = make_async(X_sync)` at class level:
@@ -82,15 +74,11 @@ class FileProvider:
     get_async = make_async(get_sync)
 ```
 
-`make_async` is `asyncer.asyncify` — type checkers see the wrapped
-signature, IDE completion just works, and the async version always
-offloads to a worker thread. The bad pattern — `async def foo(): return
-self.foo_sync()` — silently blocks the loop; the audit script in
-`tests/` catches it.
+`make_async` is `asyncer.asyncify`, so type checkers see the wrapped signature and the async version always offloads to a worker thread. The bad pattern, `async def foo(): return self.foo_sync()`, blocks the loop without a word. scalo's own `tests/unit/test_async_correctness.py` fails on it in scalo's code, and your code needs its own check.
 
 ---
 
-## `Bulkhead` — bounded concurrency per dependency
+## `Bulkhead` -- bounded concurrency per dependency
 
 Pattern: one `Bulkhead` instance per `(service, endpoint)` pair. When
 the in-flight count hits `limit`, the next async caller waits.
@@ -106,27 +94,24 @@ async def fetch_with_isolation(path: str):
         return await vault_client.read(path)
 ```
 
-A slow Vault doesn't starve every other coroutine that needs Postgres —
-each downstream has its own queue.
+A slow Vault doesn't starve every other coroutine that needs Postgres, because each downstream has its own queue.
 
 ```mermaid
 stateDiagram-v2
     [*] --> Available
     Available --> AtCapacity: limit reached
-    AtCapacity --> Available: in-flight call completes
-    Available --> Available: __aenter__ (count < limit)
-    AtCapacity --> AtCapacity: __aenter__ waits
+    AtCapacity --> Available: a call completes
+    Available --> Available: enter while under the limit
+    AtCapacity --> AtCapacity: enter waits
 ```
 
 Built on `anyio.Semaphore`. `limit` must be `>= 1`.
 
 ---
 
-## `gather_with_timeouts` — parallel exec with per-task timeout
+## `gather_with_timeouts` -- parallel exec with per-task timeout
 
-Each task gets its own `asyncio.timeout(per_task_timeout)`. Exceptions
-(including `TimeoutError`) are captured per-task — one slow check
-doesn't fail the others.
+Each task gets its own `asyncio.timeout(per_task_timeout)`. Exceptions (including `TimeoutError`) are captured per task, so one slow check doesn't fail the others.
 
 ```python
 from scalo.concurrency import gather_with_timeouts
@@ -134,7 +119,7 @@ from scalo.concurrency import gather_with_timeouts
 results = await gather_with_timeouts(
     {
         "db":    lambda: db.ping(),
-        "kafka": lambda: producer.health_check(),
+        "cache": lambda: cache.ping(),
     },
     per_task_timeout=1.0,
 )
@@ -142,13 +127,9 @@ results = await gather_with_timeouts(
 healthy = {k: v for k, v in results.items() if not isinstance(v, Exception)}
 ```
 
-Note that values in the input dict are **coroutine factories**, not
-coroutines — passing a coroutine directly couples its lifetime to the
-gather call and prevents clean cancellation. The lambda wrapper keeps
-each task independent.
+Values in the input dict are **coroutine factories**, not coroutines: passing a coroutine directly couples its lifetime to the gather call and prevents clean cancellation. Each factory must return an awaitable, so wrap a sync call in `run_blocking`.
 
-Return shape: `dict[str, T | Exception]`. Inspect with `isinstance(v,
-Exception)` to separate success from failure.
+It returns `dict[str, T | Exception]`. Inspect with `isinstance(v, Exception)` to separate success from failure.
 
 ---
 
@@ -161,7 +142,7 @@ Exception)` to separate success from failure.
 | A downstream service that occasionally goes slow | `Bulkhead` around the call |
 | A bunch of independent async health checks | `gather_with_timeouts` |
 | Retry + circuit breaker + bulkhead | Compose `CircuitBreaker` / `ReconnectingResilience` from [`resilience.md`](resilience.md) with `Bulkhead` |
-| Parallel CPU-bound work | Not this module — use `ProcessPoolExecutor` or move to Rust |
+| Parallel CPU-bound work | Not this module -- use `ProcessPoolExecutor` or move to Rust |
 
 ---
 

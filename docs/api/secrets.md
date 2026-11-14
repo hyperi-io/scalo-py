@@ -1,10 +1,6 @@
 # Secrets
 
-Unified async/sync secrets API across the supported providers — file, OpenBao,
-HashiCorp Vault (same protocol as OpenBao), AWS Secrets Manager, GCP
-Secret Manager, Azure Key Vault, and the keys of a Kubernetes Secret. One `SecretsManager`
-object, one configuration shape, two-tier caching, stale-grace fallback,
-background refresh, and rotation callbacks.
+Unified async/sync secrets API across the supported providers: file, OpenBao, HashiCorp Vault (same protocol as OpenBao), AWS Secrets Manager, GCP Secret Manager, Azure Key Vault, and the keys of a Kubernetes Secret. One `SecretsManager` object and one configuration dict give two-tier caching, stale-grace fallback, background refresh, and rotation callbacks.
 
 ```bash
 pip install scalo[secrets-vault]        # OpenBao / Vault
@@ -14,7 +10,7 @@ pip install scalo[secrets-azure]        # Azure Key Vault
 pip install scalo[secrets-kubernetes]   # Kubernetes Secret keys
 ```
 
-File provider is always available — no extra install needed. There is no Ansible Vault provider: its libraries are GPL-3.0, and a GPL import would bind every application that ships scalo with it.
+File provider is always available, with no extra install. There is no Ansible Vault provider: its libraries are GPL-3.0, and a GPL import would bind every application that ships scalo with it.
 
 `import scalo.secrets` imports no provider SDK. A provider's module, and its SDK with it, loads when `from_config` builds that provider or when its name (`AWSProvider`, `BOTO3_AVAILABLE` and the like) is first read from `scalo.secrets` or `scalo.secrets.providers`.
 
@@ -36,17 +32,18 @@ password = await sm.get_string("db_password")
 
 ## Provider matrix
 
-| Provider | Extra | Versioned | Native async | Server-side filter | Auth chain |
-|----------|-------|-----------|--------------|--------------------|------------|
-| `file` | (always available) | no | thread-pool | prefix only | n/a |
-| `openbao` / `vault` | `secrets-vault` | yes (KV v2) | yes (httpx) | prefix + tags | token, approle, kubernetes |
-| `aws` | `secrets-aws` | yes | yes (aiobotocore) | prefix + tags | boto3 default chain |
-| `gcp` | `secrets-gcp` | yes | yes (async client) | prefix + labels | ADC |
-| `azure` | `secrets-azure` | yes | yes (`azure.identity.aio`) | prefix + tags | `DefaultAzureCredential` or service principal |
-| `kubernetes` | `secrets-kubernetes` | no | yes (httpx) | none (prefix and pattern client-side) | pod service account token |
+| Provider | Extra | Versioned | Native async | Listing filter | Auth chain |
+|----------|-------|-----------|--------------|----------------|------------|
+| `file` | (always available) | no | thread-pool | `prefix` is the directory listed, required, and tags are ignored | n/a |
+| `openbao` / `vault` | `secrets-vault` | yes (KV v2) | yes (httpx) | `prefix` is the path LIST reads, required, and tags are ignored | token, approle, kubernetes |
+| `aws` | `secrets-aws` | yes | yes (aiobotocore) | prefix + tags, server-side | boto3 default chain |
+| `gcp` | `secrets-gcp` | yes | yes (async client) | prefix + labels, server-side | ADC |
+| `azure` | `secrets-azure` | yes | yes (`azure.identity.aio`) | prefix client-side, tags ignored | `DefaultAzureCredential` or service principal |
+| `kubernetes` | `secrets-kubernetes` | no | yes (httpx) | prefix client-side, tags ignored | pod service account token |
 
-OpenBao and HashiCorp Vault share the KV v2 protocol — the same provider
-talks to both. Use the `openbao` provider for Vault too.
+`pattern` is a client-side fnmatch on every provider.
+
+OpenBao and HashiCorp Vault share the KV v2 protocol, so the same provider talks to both. Use the `openbao` provider for Vault too. A config key of either `openbao` or `vault` builds it, registered under both names.
 
 ---
 
@@ -78,10 +75,7 @@ sm = SecretsManager.from_config({
 })
 ```
 
-Env-var overrides for every provider — `VAULT_ADDR`, `VAULT_TOKEN`,
-`AWS_REGION`, `AWS_DEFAULT_REGION`, `GOOGLE_APPLICATION_CREDENTIALS`, `AZURE_VAULT_URL`, etc. Cache settings respect
-`SECRETS_CACHE_DIR`, `SECRETS_CACHE_TTL`,
-`SECRETS_CACHE_KEY`.
+A configured provider falls back to the usual env vars for a key the dict leaves out: `VAULT_ADDR`, `VAULT_TOKEN`, `VAULT_ROLE_ID`, `VAULT_SECRET_ID`, `VAULT_NAMESPACE`, `AWS_REGION`, `AWS_DEFAULT_REGION`, `GOOGLE_CLOUD_PROJECT`, `GOOGLE_APPLICATION_CREDENTIALS`, `AZURE_VAULT_URL`, `AZURE_TENANT_ID`, `AZURE_CLIENT_ID` and `AZURE_CLIENT_SECRET`. The cache and fallback settings read `SECRETS_CACHE_DIR`, `SECRETS_CACHE_TTL`, `SECRETS_CACHE_KEY` and `SECRETS_ENV_PREFIX`, as `<PREFIX>_SECRETS_CACHE_DIR` and so on under an env prefix.
 
 ### A provider whose SDK is not installed
 
@@ -153,26 +147,21 @@ val = await sm.get("secret/data/prod", key="token", provider="openbao")
 cert = await sm.get_string("/etc/ssl/cert.pem")
 ```
 
-Sync siblings exist for every method (`get_sync`, `get_string_sync`,
-`list_sync`, …) — use them in startup code, signal handlers, or any
-non-async context.
+Sync siblings exist for every method (`get_sync`, `get_string_sync`, `list_sync`, ...). Use them in startup code, signal handlers, or any non-async context.
 
-`SecretValue` carries the raw `data: bytes`, `fetched_at`, `version`
-(for rotation detection), and `source` (provider name).
+`SecretValue` carries the raw `data: bytes`, `fetched_at`, `version` (for rotation detection), and `source` (provider name).
 
 ---
 
 ## ENV fallback
 
-When a provider is unreachable, `SecretsManager` looks up an ENV
-variable named after the source. Lookup order:
+When a named source's read fails -- a `ProviderError`, a provider left out of the config, or `SecretNotFoundError` -- `SecretsManager` reads one ENV variable, picked for each source when the manager is built:
 
-1. `source.env_fallback` (explicit override on the source config)
-2. `{env_prefix}_{NAME.upper()}` if `SecretsManager(env_prefix=...)`
-3. `NAME.upper()` (no prefix)
+1. `source.env_fallback` (explicit override on the source config), when set
+2. else `{env_prefix}_{NAME.upper()}` when the manager has an `env_prefix` (the config's `env_prefix`, else `SECRETS_ENV_PREFIX`)
+3. else `NAME.upper()` (no prefix)
 
-For `env_prefix="APP"` and source `db_password`, the manager checks
-`APP_DB_PASSWORD`. Logged at WARN level so it shows up in dashboards.
+An unset variable does not fall through to the next one. For `env_prefix="APP"` and source `db_password`, the manager reads `APP_DB_PASSWORD` only, so a set `DB_PASSWORD` is never used. The fallback is logged at WARNING, naming the source and the variable.
 
 ---
 
@@ -180,7 +169,7 @@ For `env_prefix="APP"` and source `db_password`, the manager checks
 
 Two tiers: an in-process memory cache, one per `SecretsManager` instance, and a disk cache. Both expire on `ttl_secs`. On an outage (a `ProviderError` such as a refused connection, a timeout or a 5xx, or an `AuthenticationError`) the manager returns the most recent cached value from either tier while it is within `stale_grace_secs` past TTL. A `SecretNotFoundError`, `SecretPendingDeletionError` or `SecretPermissionError` is an answer about the secret itself: the manager drops the path from both tiers and raises it.
 
-The disk tier writes only when `encryption_key` is set, which seals each entry with AES-256-GCM (via the `cryptography` package; there is no `[cache]` extra), or when `allow_plaintext_disk_cache` is True. Without either it is off, the cache is memory-only, and a plaintext file found in the cache directory is not read. The plaintext opt-in is ignored once `encryption_key` is set, and refused at startup when the app environment (`APP_ENV`, `ENVIRONMENT`, `ENV`) is `production` or `prod`.
+The disk tier writes only when `encryption_key` is set, which seals each entry with AES-256-GCM, or when `allow_plaintext_disk_cache` is True. Sealing needs the `cryptography` package, which no secrets extra installs (the `api` extra does), and a key set without it logs a warning and leaves the disk tier off. Without either it is off, the cache is memory-only, and a plaintext file found in the cache directory is not read. The plaintext opt-in is ignored once `encryption_key` is set, and refused at startup when the app environment (`APP_ENV`, `ENVIRONMENT`, `ENV`) is `production` or `prod`.
 
 Every manager on a host shares the disk directory, so each entry is keyed by the provider's backend and principal (`cache_identity`: address, namespace, mount, role, region, project or vault, with any credential as a scrypt digest salted from the directory's 0600 `.salt` file) as well as the path and sub-key. An `update` or `delete` through the manager drops the path and its sub-keys from both tiers, and a read that began before it caches nothing. A change made outside the manager is served from cache until `ttl_secs`.
 
@@ -193,8 +182,7 @@ await sm.start_refresh()  # spawns asyncio task
 await sm.stop_refresh()   # on shutdown
 ```
 
-Background refresh adds jitter (`refresh_jitter_secs`, default 5 min) so
-a fleet doesn't slam the secrets backend at the same instant.
+Background refresh runs every `refresh_interval_secs` (default 1800) plus jitter (`refresh_jitter_secs`, default 300), so a fleet doesn't hit the secrets backend at the same instant.
 
 Each refresh re-reads every secret held in the memory cache from its provider, fresh entries included, replaces the cached value and reports any rotation it finds. A secret whose provider has an outage keeps its cached value, and the failure is logged. One the provider says is gone or forbidden is dropped. With `"enabled": False` the memory cache is empty, so there is nothing to refresh.
 
@@ -213,8 +201,7 @@ def on_rotate(event):
 sm.on_rotation(on_rotate, names=["db_password"])  # None = all secrets
 ```
 
-Triggered when the cached and the freshly fetched `SecretValue.version` are both set and differ. A value with no version never reports a rotation. File provider derives version from `mtime:size`; cloud
-providers use the native version ID.
+Triggered when the cached and the freshly fetched `SecretValue.version` are both set and differ. A value with no version never reports a rotation. The file provider derives its version from `mtime:size`, and the cloud providers use the native version ID.
 
 With `"enabled": False` there is no cached version to compare against, so no rotation event fires.
 
@@ -241,11 +228,9 @@ await sm.update("secret/data/new-key", b"rotated", provider="openbao")
 await sm.delete("secret/data/old-key", provider="openbao")
 ```
 
-Tags are server-side on cloud providers, ignored by file-based ones.
-Writes raise `SecretAlreadyExistsError`, `SecretPermissionError`, or
-`ProviderError` — never silently fail.
+Tags are stored by the providers that have them and ignored by the file and Kubernetes providers. Writes raise `SecretAlreadyExistsError`, `SecretPermissionError`, or `ProviderError`, and never fail silently.
 
-The file provider writes each secret file as `0600` and make any missing directory `0700`, whatever the umask. A create or update writes a private sibling, flushes it to disk and then renames it into place, so a reader sees the old secret or the new one, never an empty or partial file, and a write that fails (a full disk) leaves the old secret. Updating a file the process does not own or cannot write raises `SecretPermissionError` and leaves the file as it was. An update through a symlink replaces the file it points to.
+The file provider writes each secret file as `0600` and makes any missing directory `0700`, whatever the umask. A create or update writes a private sibling, flushes it to disk and then renames it into place, so a reader sees the old secret or the new one, never an empty or partial file, and a write that fails (a full disk) leaves the old secret. Updating a file the process does not own or cannot write raises `SecretPermissionError` and leaves the file as it was. An update through a symlink replaces the file it points to.
 
 On AWS, `delete()` follows `recovery_window_days` (see [AWS region, KMS key and deletion window](#aws-region-kms-key-and-deletion-window)).
 
@@ -262,13 +247,9 @@ paths = await sm.list(
 )
 ```
 
-`prefix` is server-side on all cloud providers. `tags` is server-side on
-AWS/GCP/Azure/OpenBao, ignored by file and Kubernetes. `pattern` is
-client-side fnmatch.
+Which filters run where is in the [provider matrix](#provider-matrix): AWS and GCP filter the prefix and tags on the server, OpenBao and the file provider need a prefix and ignore tags, and Azure and Kubernetes filter the prefix in process and ignore tags. `pattern` is a client-side fnmatch.
 
-`get_metadata(path, provider=...)` returns `SecretMetadata` without
-fetching the value — `created_at`, `updated_at`, `expires_at`, `version`,
-`version_count`, `tags`.
+`get_metadata(path, provider=...)` returns `SecretMetadata` without fetching the value: `created_at`, `updated_at`, `expires_at`, `version`, `version_count`, `tags`.
 
 ---
 
@@ -281,9 +262,7 @@ secrets = await sm.batch_get(
 )
 ```
 
-AWS uses its native `BatchGetSecretValue` API. Other providers fall back
-to `asyncio.gather` with per-item error isolation — failures are logged
-and omitted from the result, not raised.
+AWS uses its native `BatchGetSecretValue` API. Other providers fall back to `asyncio.gather` with per-item error isolation: a `SecretNotFoundError` or `ProviderError` is logged and the path omitted from the result. `batch_get` reads the provider directly, never the cache.
 
 ---
 
@@ -291,15 +270,21 @@ and omitted from the result, not raised.
 
 ```python
 status = await sm.health_check()
-# {"file": True, "openbao": True, "aws": False}
+# {"file": True, "openbao": True, "vault": True, "aws": False}
 ```
 
-Wire this into `health.register_ready_check(...)` to surface secrets-backend
-outages in `/readyz`.
+An OpenBao provider is reported under both its names. To surface a secrets-backend outage in `/readyz`, register a check that reduces the map to one answer. Registering `sm.health_check` itself reports ready whatever the providers say, because a readiness check counts as passed when its result is truthy, and a non-empty map always is:
 
-The OpenBao, AWS, GCP, Azure and Kubernetes providers catch their own errors, so each logs its own reason and still returns `False` to a direct caller. The warning names the provider with the error type and message. A sealed OpenBao store gives the status it answered, such as `503 (sealed)`. The message is scrubbed first ([logging.md](../core-pillars/logging.md#scrub-architecture)), and one the scrubbers cannot process is withheld.
+```python
+async def secrets_ready() -> bool:
+    return all((await sm.health_check()).values())
 
-The warning is written when the check first fails and not again while it keeps failing, so a probe that runs every few seconds writes one line per outage. The first check to pass writes one INFO line. A provider whose check raises is reported `False` and logged by the manager the same way, once per error type until its check stops raising. Scrubbing runs on a worker thread, because the first one builds the scrubber (0.5 to 0.9 s) and the event loop must not wait for it.
+health.register_ready_check("secrets", secrets_ready)
+```
+
+The OpenBao, AWS, GCP, Azure and Kubernetes providers catch their own errors, so each logs its own reason and still returns `False` to a direct caller. The warning names the provider with the error type and message. A sealed OpenBao store gives the status it answered, such as `503 (sealed)`. The message is scrubbed first ([logging.md](../core-pillars/scrubbing.md#scrub-architecture)), and one the scrubbers cannot process is withheld.
+
+The warning is written when the check first fails and not again while it keeps failing, so a probe that runs every few seconds writes one line per outage. The first check to pass writes one INFO line. A provider whose check raises is reported `False` and logged by the manager the same way, once per error type until its check stops raising. Scrubbing runs on a worker thread, because the first one builds the scrubber and the event loop must not wait for it.
 
 ---
 
@@ -331,8 +316,7 @@ await sm.start_refresh()      # at startup
 await sm.close()              # on SIGTERM (closes providers + stops refresh)
 ```
 
-`close()` releases httpx clients, aiobotocore sessions, Azure
-credentials, and joins the refresh task.
+`close()` stops the refresh task, then closes every provider, which releases httpx clients, aiobotocore sessions and Azure credentials.
 
 ---
 

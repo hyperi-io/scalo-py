@@ -1,7 +1,6 @@
 # Tracing
 
-OTLP span export, composed in at `logger.setup()`. An app that calls it
-and nothing else gets distributed tracing.
+OTLP span export, composed in at `logger.setup()`. An app that calls it and nothing else gets distributed tracing, once the OTel SDK is installed (the `metrics` or `opentelemetry` extra). Without it `setup()` skips span export and logs that at DEBUG.
 
 ```python
 from scalo.logger import setup
@@ -9,16 +8,13 @@ from scalo.logger import setup
 setup(service_name="my-service")   # spans now export
 ```
 
-`ServiceApp` does this for you on `run`, passing its own `name` as the
-service name.
+`ServiceApp` does this for you on `run`, passing its own `name` as the service name.
 
 ---
 
 ## On by default
 
-Span export is on and pointed at a local collector, the same posture as
-metrics and the same as scalo-rs. Opting out is a config line, not a
-feature you had to know about:
+Span export is on and pointed at a local collector, as metric push is and as scalo-rs does. Opting out is a config line:
 
 ```yaml
 otel_tracing:
@@ -51,7 +47,7 @@ otel_tracing:
   export_timeout_millis: 10000
 ```
 
-Env vars outrank config, per the OTel spec. The per-signal
+`setup()` reads `otel_tracing` from the module-level `settings`, so a file `ServiceApp` adds with `--config` does not reach it, while the env vars always do. Env vars outrank config, per the OTel spec. The per-signal
 `OTEL_EXPORTER_OTLP_TRACES_ENDPOINT` and `OTEL_EXPORTER_OTLP_TRACES_PROTOCOL`
 outrank the generic pair, and a per-signal endpoint is used as given. With no
 endpoint set anywhere, the default port follows the resolved protocol (4317 for
@@ -67,11 +63,7 @@ generic or configured endpoint for you, for the same reason as metrics.
 
 ## Sampling
 
-The sampler is parent-based over a ratio well under 1.0. A request
-already sampled upstream is always kept, so distributed traces stay
-whole; the ratio only governs traces that START here. A busy service
-creates spans at request rate and exporting all of them costs more than
-the traces are worth.
+The sampler is parent-based over a ratio well under 1.0. A request already sampled upstream is always kept, so distributed traces stay whole, and the ratio only governs traces that START here. A busy service creates spans at request rate and exporting all of them costs more than the traces are worth.
 
 Turn it up for one service without a config change:
 
@@ -83,26 +75,11 @@ OTEL_TRACES_SAMPLER_ARG=1.0
 
 ## Bounded, so a missing collector costs telemetry and nothing else
 
-- **The queue is bounded.** Once `batch_max_queue_size` fills, new spans
-  are dropped rather than buffered, so an unreachable collector costs
-  spans instead of growing memory without bound.
-- **Each export has a deadline.** It goes on the exporter, not the batch
-  processor -- `BatchSpanProcessor` accepts an `export_timeout_millis`
-  and never uses it.
-- **Failures back off.** Same gate as the metric exporter: doubling to a
-  15-minute ceiling with jitter, one warning per outage, reset on
-  success. See [metrics.md](metrics.md#when-the-collector-is-not-there).
-- **Spans still buffered at exit are flushed, bounded at 2 seconds** for
-  the flush and the provider shutdown together, well inside a Kubernetes
-  termination grace period. scalo registers its own `atexit` hook in
-  place of the SDK's, which would wait 30 seconds. The SDK bounds
-  neither step -- `BatchSpanProcessor.force_flush()` ignores its timeout
-  and `TracerProvider.shutdown()` takes none -- so both run on a daemon
-  thread that exit stops waiting for at the bound. Spans still queued
-  then are dropped. Call `scalo.otel_tracing.shutdown()` to flush
-  earlier; it is the same bounded path, and a second call does nothing.
-- **Startup never fails on telemetry.** A collector that is missing or
-  misconfigured degrades tracing and the service still starts.
+- The queue is bounded. Once `batch_max_queue_size` fills, new spans are dropped rather than buffered, so an unreachable collector costs spans instead of growing memory without bound.
+- Each export has a deadline. It goes on the exporter, not the batch processor -- `BatchSpanProcessor` accepts an `export_timeout_millis` and never uses it.
+- Failures back off, through the same gate as the metric exporter: doubling to a 15-minute ceiling with jitter, one warning per outage, reset on success. See [metrics.md](metrics.md#when-the-collector-is-not-there).
+- Spans still buffered at exit are flushed, bounded at 2 seconds for the flush and the provider shutdown together. scalo registers its own `atexit` hook in place of the SDK's, which would wait 30 seconds. The SDK bounds neither step -- `BatchSpanProcessor.force_flush()` ignores its timeout and `TracerProvider.shutdown()` takes none -- so both run on a daemon thread that exit stops waiting for at the bound, and spans still queued then are dropped. Call `scalo.otel_tracing.shutdown()` to flush earlier: it is the same bounded path, and a second call does nothing.
+- Startup never fails on telemetry. A collector that is missing or misconfigured degrades tracing and the service still starts.
 
 ---
 
@@ -131,6 +108,6 @@ on the transport cannot re-enter.
 
 ## Related
 
-- [metrics.md](metrics.md) -- the metric half of the same posture
+- [metrics.md](metrics.md) -- OTLP metric push, the same defaults
 - [logging.md](logging.md) -- where span export is composed in
 - [shutdown.md](shutdown.md) -- flush on exit

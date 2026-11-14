@@ -1,15 +1,8 @@
 # Migrating from `hyperi-pylib` to `scalo`
 
-`scalo` is the renamed, de-branded, Apache-2.0 continuation of the
-`hyperi-pylib` library. It is the **same codebase and the same version
-line** -- `scalo` picks up where `hyperi-pylib` left off (the 2.28.x
-series continues into 2.29.x; there is no version reset). The import
-package was renamed `hyperi_pylib` -> `scalo`, a handful of unused
-subsystems were dropped, and brand-specific naming was made
-configurable.
+`scalo` is the renamed, de-branded, Apache-2.0 continuation of the `hyperi-pylib` library. It is the **same codebase and the same version line**: `scalo` picks up where `hyperi-pylib` left off, and the 2.28.x series continues into 2.29.x with no version reset. The import package was renamed `hyperi_pylib` -> `scalo`, a handful of unused subsystems were dropped, and brand-specific naming was made configurable.
 
-This guide lists every change a consumer needs to make. Most are
-mechanical.
+This guide lists every change a consumer needs to make. Most are mechanical.
 
 ---
 
@@ -47,18 +40,16 @@ restrictions, or `COMMERCIAL.md` / `AI-TRAINING-POLICY.md` files.
 
 ## 3. Removed subsystems
 
-The following were dropped because no current consumer used them. If you
-relied on one, the replacement is noted.
+These were dropped, with the replacement where there is one.
 
 | Removed | Notes / replacement |
 |---|---|
 | `hyperi_pylib.database` (URL builders) | Build your DSN directly, or with your driver's helpers. |
-| `hyperi_pylib.cache` (`PostgresCache`) | No drop-in replacement. A shared Postgres cache is the wrong shape for resilience (adds a SPOF). For config last-known-good, use `scalo.config.DirectoryConfigStore`. |
+| `hyperi_pylib.cache` (`PostgresCache`) | No drop-in replacement: a shared Postgres cache is one more single point of failure. For config last-known-good, use `scalo.config.DirectoryConfigStore`. |
 | PostgreSQL config-cascade layer | The cascade is now 7 layers (was 8). Load DB config like any other setting via `settings`. |
-| `hyperi_pylib.harness` | Was test-only; moved into the library's own test suite. |
+| `hyperi_pylib.harness` | Was test-only, and moved into the library's own test suite. |
 
-Dropping `cache` also removed `psycopg`, `cashews`, and `msgpack` from
-the dependency tree.
+Dropping `cache` also removed `psycopg`, `cashews`, and `msgpack` from scalo's dependencies.
 
 ---
 
@@ -70,9 +61,7 @@ configurable env-var prefix that is **bare ("") by default**:
 
 - With no prefix set, control/config vars are read bare: `DEBUG`,
   `LOG_LEVEL`, `DATABASE_HOST`, ...
-- A consuming app sets its own prefix once -- then *everything*
-  (scalo's control knobs and your config-cascade keys) is read as
-  `<PREFIX>_<KEY>`:
+- A consuming app sets its own prefix once, and scalo's control knobs and your config-cascade keys are then read as `<PREFIX>_<KEY>`:
 
   ```python
   from scalo.cli import ServiceApp
@@ -82,9 +71,7 @@ configurable env-var prefix that is **bare ("") by default**:
       env_prefix = "APP"        # -> APP_DEBUG, APP_DATABASE__HOST, ...
   ```
 
-  or imperatively via `set_env_prefix("APP")` (importable today only from
-  `scalo._env_compat` - a public re-export is on the review list),
-  or via the bare `ENV_PREFIX` environment variable.
+  or via the bare `ENV_PREFIX` environment variable. `ServiceApp`'s prefix reaches the `config` it hands `run_service` and the knobs read after startup. The module-level `settings`, and knobs read at import such as `AUTO_DETECT`, see only `ENV_PREFIX`, so export it too if you read those. `set_env_prefix()` exists only in the private `scalo._env_compat`. See [core-pillars/config.md](core-pillars/config.md#read-it-like-a-dict).
 
 **Action for downstream apps:** pick your prefix (e.g. `APP`, `ORDERS_API`)
 and set it on your `ServiceApp`. Any `HYPERI_*` env vars in your
@@ -134,16 +121,13 @@ or process-wide via `from scalo.metrics import set_metric_prefix; set_metric_pre
 or config `metrics.namespace: dfe`. Dashboards/alerts that assume
 `dfe_*` names keep working unchanged once the namespace is set.
 
-The naming validator `validate_dfe_prefix(name, app)` shipped as a
-deprecated alias and has since been removed; use
-`validate_metric_prefix(name, app, prefix=...)`.
+The naming validator `validate_dfe_prefix(name, app)` shipped as a deprecated alias and has since been removed. Use `validate_metric_prefix(name, app, prefix=...)`.
 
 ---
 
 ## 7. version-check: opt-in, configurable URL
 
-The startup version check is now **off by default** and must be enabled
-explicitly. Its endpoint is a config-cascade value (no hard-coded URL):
+The startup version check has no built-in endpoint, so it does nothing until you name one. `version_check.enabled` defaults to true, and the URL is a config-cascade value:
 
 ```yaml
 version_check:
@@ -151,8 +135,7 @@ version_check:
   api_url: "https://your-release-feed.example/latest"
 ```
 
-It is a *version check*, not telemetry -- it does not phone home unless
-you enable it and point it at a URL you control.
+It is a version check, not telemetry, and it contacts nothing until `api_url` points at a URL you control.
 
 ---
 
@@ -164,12 +147,12 @@ The deployment generators (`scalo.deployment`) carry no organisation's name. The
 
 ## Quick checklist
 
-- [ ] `hyperi-pylib` -> `scalo` in dependencies; `hyperi_pylib` -> `scalo` in imports.
+- [ ] `hyperi-pylib` -> `scalo` in dependencies, `hyperi_pylib` -> `scalo` in imports.
 - [ ] Rename `HYPERI_*` env vars to `<YOURPREFIX>_*` and set `env_prefix` on your `ServiceApp`.
 - [ ] `DfeApp` -> `ServiceApp` (alias removed).
 - [ ] `metrics.dfe_groups` -> `metrics.groups`.
 - [ ] If you want `dfe_`-prefixed metric names, set the metric namespace to `dfe`.
 - [ ] Replace any use of the removed `database` / `cache` modules.
-- [ ] Enable `version_check` explicitly if you used it.
+- [ ] Set `version_check.api_url` if you used the version check.
 - [ ] Set your `deployment.*` cascade overrides if you generate artefacts.
 - [ ] Note the licence change to Apache-2.0.

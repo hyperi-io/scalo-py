@@ -8,7 +8,7 @@
 | Meta | [![License](https://img.shields.io/badge/license-Apache--2.0-green)](https://www.apache.org/licenses/LICENSE-2.0) |
 <!-- BADGES:END -->
 
-The runtime layer for Python control-plane services: config, logging, metrics, health probes, secrets and a service CLI, already wired together. In a DFE deployment dfe-engine is built on it, with the same config and logging conventions scalo-rs gives the Rust services.
+The runtime layer for Python control-plane services: config, logging, metrics, health, secrets and a service CLI. It comes already wired together. In a DFE deployment dfe-engine is built on it, with the same config and logging conventions scalo-rs gives the Rust services.
 
 ## What it gives you
 
@@ -28,9 +28,7 @@ uv add "scalo[http,metrics,kafka]"              # common extras
 uv add "scalo[http,metrics,expression,kafka,opentelemetry,secrets,deployment]"
 ```
 
-`scalo` on PyPI, `scalo` for imports. Extras and their install sizes are in
-[docs/extras-flags.md](docs/extras-flags.md) -- `secrets-aws` alone is ~100 MB, so
-pick the backend you use rather than `secrets`.
+`scalo` on PyPI, `scalo` for imports. The extras are in [docs/extras-flags.md](docs/extras-flags.md). Each secrets backend has its own extra, so pick the one you use rather than `secrets`, which installs every cloud SDK.
 
 ## What it is for
 
@@ -55,7 +53,7 @@ Core, always installed:
 
 | Module | What it does | Deps |
 |---|---|---|
-| `logger` | Structured logging, JSON in a container. Redacts gitleaks secret patterns, credential field names, card numbers (Luhn-checked), IBANs, emails and phone numbers, and AU ABN, ACN, TFN and Medicare numbers where a keyword names them. TRACE records skip the scrubber by default (`logging.scrub.log_levels.trace`) | loguru |
+| `logger` | Structured logging, JSON in a container. Redacts gitleaks secret patterns, credential field names, card numbers (Luhn-checked), IBANs, emails and phone numbers, and AU ABN, ACN, TFN and Medicare numbers where a keyword names them. TRACE records skip the scrubber by default (`logging.scrub.log_levels.trace`) | loguru, detect-secrets, regex, phonenumbers, python-stdnum |
 | `config` | 7-layer cascade (CLI -> ENV -> .env -> YAML -> defaults) | dynaconf, pyyaml, python-dotenv, mergedeep, tomli-w, dulwich |
 | `runtime` | Detects K8s / Docker / local, resolves config and data paths | stdlib only |
 | `cli` | `ServiceApp` -- subclass for `run` / `version` / `config-check` | typer |
@@ -68,9 +66,7 @@ gauges), `expression` (CEL), `kafka` (produce, consume, schema inference),
 `opentelemetry` (OTLP traces and metrics), `secrets` (OpenBao/Vault, AWS, GCP,
 Azure, Kubernetes Secret), `deployment` (Dockerfile, container manifest, compose generators).
 
-Wired together already, which is the part you would otherwise build: config,
-logging and metrics are global singletons with no init dance beyond the logger's one
-`setup()`, which `ServiceApp` runs for you. The cascade feeds the
+Wired together already, which is the part you would otherwise build: config and logging are global singletons with no init dance beyond the logger's one `setup()`, and `ServiceApp` runs that and builds the metrics manager for you. The cascade feeds the
 CLI so `run`, `version` and `config-check` work without you parsing an argument.
 The metrics and health wiring feeds the Kubernetes probes. The deployment contract,
 built from the config the app already declares, writes your Dockerfile and drives
@@ -83,7 +79,7 @@ the scalo-service chart that renders your Kubernetes objects.
 | Topic | Doc |
 |---|---|
 | Config cascade | [core-pillars/config.md](docs/core-pillars/config.md) |
-| Logging and PII scrubbing | [core-pillars/logging.md](docs/core-pillars/logging.md) |
+| Logging and PII scrubbing | [core-pillars/logging.md](docs/core-pillars/logging.md), [core-pillars/scrubbing.md](docs/core-pillars/scrubbing.md) |
 | Metrics | [core-pillars/metrics.md](docs/core-pillars/metrics.md) |
 | Health, and the observability port | [core-pillars/health.md](docs/core-pillars/health.md) |
 | `ServiceApp` and the CLI | [api/cli.md](docs/api/cli.md) |

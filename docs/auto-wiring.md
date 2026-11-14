@@ -1,12 +1,6 @@
 # Auto-wiring
 
-What scalo-py does automatically when you import a module, versus what
-you wire by hand. The principle: opinionated defaults that just work,
-escape hatches when you need them.
-
-The deprecated `Application` framework was the scalo-rs-style "wire
-everything from one call" entry point. It's gone. Pylib's auto-wiring
-is now per-module and happens at first use.
+What scalo-py does automatically when you import a module or call its entry point, versus what you wire by hand. Defaults that work as they are, and an argument or a setting wherever you need to change one.
 
 ---
 
@@ -14,16 +8,17 @@ is now per-module and happens at first use.
 
 | Module | Wired at | What's automatic |
 |---|---|---|
-| `config` | First `from scalo.config import settings` | Dynaconf cascade construction, sensitive masking, `RuntimePaths.config_dir` selection |
+| `config` | Any scalo import (`scalo/__init__.py` imports `config`) | Dynaconf cascade construction, YAML file discovery, container detection and the `MountConfig` paths |
 | `.env` layer | `get_config()` or `ServiceApp.cli()` | `./.env` (plus `~/.env` under `DOTENV_CASCADE`) loaded into `os.environ` beneath variables already set. Importing scalo reads no `.env` and never writes `os.environ` |
-| `logger` | First import | Loguru sink installed, JSON/text autodetect (TTY vs not), RFC 3339 format, level from `LOG_LEVEL` env (default INFO), scrub filters loaded from `data/gitleaks.toml` + `data/national_ids.toml`, CI mode autodetect (GitHub Actions / GitLab CI / Jenkins) for ASCII-only output |
-| `runtime` | First `get_runtime_paths()` call | K8s / Docker / BareMetal detection (7 indicators), path-set materialisation, `CONTAINER_BASE_PATH` env override |
-| `metrics` | First `create_metrics(namespace)` call | Backend selection (OTel default, Prometheus fallback if OTel not installed), `MetricsManager` content + content-type for the observability server (or an app-served route), process collector (RSS, CPU, FDs via psutil). The cardinality cap is NOT automatic -- see [core-pillars/metrics.md](core-pillars/metrics.md) |
-| `health` | First `HealthManager()` instantiation | Probe handlers ready; `/livez` is unconditionally 200; `/readyz` returns 503 until `set_ready()` is called and all registered downstream checks pass |
-| scrub metrics | `ServiceApp` `run`, once the metrics manager exists | The log scrub layers emit `log_scrub_matches_total` / `redactions` / `errors` / `skipped` / `duration` / `pattern_version` (spec 8, parity manifest). `ServiceApp` re-runs `logger.setup(metrics=...)` after `create_metrics` to wire it; outside `ServiceApp` pass `metrics=` to `setup()` yourself, or the layers stay no-op. Honours `scrub.metrics_enabled` and `scrub.metrics_type_cardinality_cap` |
+| `logger` | `logger.setup()`, which `ServiceApp` runs | Sinks installed, JSON/text autodetect (TTY vs not), RFC 3339 timestamps, level from `LOG_LEVEL`, then `logging.level`, then INFO, scrub rules loaded from `data/gitleaks.toml` and `data/national_ids.toml`, CI mode autodetect (`CI`, GitHub Actions, GitLab CI, Jenkins, CircleCI, Travis) for ASCII-only output. Importing the module installs nothing beyond turning off loguru's `diagnose` on its default sink |
+| `runtime` | Each `get_runtime_paths(app_name)` call | K8s / Docker / BareMetal detection (7 indicators), directory creation (`ensure_dirs=True`), `CONTAINER_BASE_PATH` env override |
+| `metrics` | Each `create_metrics(app_name)` call | Backend selection (OTel default, Prometheus fallback if OTel not installed), `MetricsManager.metrics` + `content_type` for the observability server or an app-served route, prometheus_client's process collector on `/metrics`. The cardinality cap is NOT automatic -- see [core-pillars/metrics.md](core-pillars/metrics.md) |
+| `health` | `HealthManager()` | Probe state ready. `/livez` is 200 until a registered liveness check fails, and `/readyz` returns 503 until `set_ready()` is called and all registered downstream checks pass |
+| scrub metrics | `ServiceApp` `run`, once the metrics manager exists | The log scrub layers emit `log_scrub_matches_total`, `log_scrub_redactions_total`, `log_scrub_errors_total`, `log_scrub_skipped_rules_total`, `log_scrub_duration_seconds` and `log_scrub_pattern_version`. `ServiceApp` re-runs `logger.setup(metrics=...)` after `create_metrics` to wire them. Outside `ServiceApp` pass `metrics=` to `setup()` yourself, or the layers stay no-op. Honours `scrub.metrics_enabled` and `scrub.metrics_type_cardinality_cap` |
+| resource metrics | `ServiceApp` `run`, once the metrics manager exists | `ResourceMetrics`: psutil process gauges and cgroup container gauges, read at every collection |
 | observability port | `ServiceApp` `run` (unless `serve_observability = False`) | Binds `--metrics-addr` (default `0.0.0.0:9090`) and serves `/metrics`, `/livez` and `/readyz` -- and nothing else -- off `app.health()` and the auto-initialised metrics manager. A bind failure is fatal by design |
-| `version_check` | `check_on_startup(product, version)` call | Daemon thread fires-and-forgets a probe to the app's configured `version_check.api_url`, and does nothing without one; never blocks, never raises |
-| `secrets` | `SecretsManager.from_config(...)` | Provider class selected from `settings.secrets.provider`; backend extras (`secrets-vault`, `secrets-aws`, etc.) imported lazily |
+| `version_check` | `check_on_startup(product, version)` call | Daemon thread fires-and-forgets a probe to the app's configured `version_check.api_url`, and does nothing without one. It never blocks and never raises |
+| `secrets` | `SecretsManager.from_config(config)` | One provider per backend key in the dict (`openbao` or `vault`, `aws`, `gcp`, `azure`, `kubernetes`), plus `file` always. Each named source picks its provider. A provider whose SDK is missing is left out with a warning |
 
 ---
 
@@ -31,33 +26,31 @@ is now per-module and happens at first use.
 
 | Concern | You wire | Why not automatic |
 |---|---|---|
-| FastAPI server with `/health/*` router | `app.include_router(create_health_router(...))` | Pylib doesn't own your HTTP framework. `/metrics` is served by the app using `MetricsManager.content` + `content_type` (see core-pillars/metrics.md). No `/config` router ships |
-| Kafka producer flush on shutdown | `producer.flush()` in your signal handler | Producer lifecycle is app-specific; we don't intercept SIGTERM |
-| Circuit breaker around a downstream | `with CircuitBreaker(config): call()` | Failure modes vary per downstream; sensible defaults exist but explicit is better |
-| Metric registration | `m.counter(name, help, labels)` per metric | Metrics are app-specific; we provide the framework, not the catalogue |
-| Application class / runtime entry point | Nothing — compose modules directly | The `Application` framework was experimental and deprecated; production code uses the modules directly |
+| Health routes on your own FastAPI app | `app.include_router(create_health_router(...))` for `/livez` and `/readyz` | scalo-py doesn't own your HTTP framework. `/metrics` there is served by the app from `MetricsManager.metrics` + `content_type` (see core-pillars/metrics.md). No `/config` router ships |
+| Kafka producer flush on shutdown | `producer.flush()` in your signal handler | Producer lifecycle is app-specific, and we don't intercept SIGTERM |
+| Circuit breaker around a downstream | `with CircuitBreaker("name", config): call()` | Failure modes vary per downstream. The defaults are sensible, but explicit is better |
+| Metric registration | `m.counter(name, description, labels)` per metric | Metrics are app-specific: we provide the framework, not the catalogue |
 
 ---
 
-## You-get-this-for-free matrix
+## What each extra adds
 
-Read top-to-bottom: install the extra in the first column, get every
-"automatic" item from every row above it for free.
+Each extra adds its row to the base install. Extras do not include each other, except `mcp`, which pulls in `api`.
 
 | Install | Adds | Automatic |
 |---|---|---|
-| `scalo` (base) | `config`, `logger`, `runtime`, `cli`, `health`, `version_check`, `concurrency` | Cascade, structured logs, path detection, version probe |
-| `scalo[metrics]` | `metrics` + `prometheus-client` + `psutil` + OTel SDK/exporters | Above + the default OTel backend: OTLP push AND `MetricsManager.content` for the observability server or an app-served `/metrics` route + process collector (cardinality cap is opt-in) |
+| `scalo` (base) | `config`, `logger`, `runtime`, `cli`, `health`, `version_check`, `concurrency`, `resilience`, `scaling` | Cascade, structured logs, path detection, version probe, the observability listener |
+| `scalo[metrics]` | `metrics` + `prometheus-client` + `psutil` + OTel SDK/exporters | The default OTel backend: OTLP push AND `MetricsManager.metrics` for the observability server or an app-served `/metrics` route, plus process gauges (cardinality cap is opt-in) |
 | `scalo[opentelemetry]` | OTel SDK + exporters | Subset of `[metrics]`, kept for existing pins |
-| `scalo[http]` | `http` + `httpx` + `stamina` | Above + HTTP client with retry + circuit breaker + metrics integration |
-| `scalo[kafka]` | `kafka` + `confluent-kafka` + `genson` | Above + producer/consumer/admin + schema sampling. Consumer-lag health is MANUAL: `KafkaConsumer` does not install the statistics callback, so `KafkaConsumerHealth` and the `kafka.health.*` keys stay inert until the app wires `create_stats_callback` itself |
-| `scalo[secrets-{vault,aws,gcp,azure,kubernetes}]` | `secrets` provider | Above + uniform interface, lazy-loaded provider |
-| `scalo[deployment]` | `deployment` + `pydantic` | Above + `DeploymentContract` + generators + `ContractIdentity` + `test_support` |
-| `scalo[expression]` | `expression` + `common-expression-language` | Above + CEL evaluation (Python/Rust parity via PyO3) |
-| `scalo[api]` | `api` + `fastapi` + `pydantic` | Above + `install(app, hierarchy)`: problem+json handlers and a spec whose operation ids and `x-scalo` come from the resource hierarchy. The app still passes `generate_unique_id_function=hierarchy.unique_id` itself |
-| `scalo[mcp]` | `mcp` + the MCP SDK + `httpx2` + `jsonschema`, and `[api]` | Above + `mount(app)`: MCP tools generated from the spec at startup, each call run in-process with the caller's token, writes that preview first and commit only the previewed request, an `Origin` allow-list, RFC 9728 metadata and an optional token verifier when an issuer is named |
-| `scalo[resilience]` | `stamina` | Above + the stamina retry engine without the HTTP client; `scalo.resilience` itself is stdlib-only and needs no extra |
-| `scalo[cli]` | `cli.openapi` + `typer` + `jmespath` | Above + a whole CLI from an OpenAPI spec alone: the resource hierarchy as the command tree, `--output`, `--query`, pagination, input documents, problem+json exit codes |
+| `scalo[http]` | `http` + `httpx` + `stamina` | HTTP client with retry and jitter. A circuit breaker is yours to wrap around it |
+| `scalo[kafka]` | `kafka` + `confluent-kafka` + `genson` | Producer/consumer/admin + schema sampling. Consumer-lag health is MANUAL: `KafkaConsumer` does not install the statistics callback, so `KafkaConsumerHealth` and the `kafka.health.*` keys stay inert until the app wires `create_stats_callback` itself |
+| `scalo[secrets-{vault,aws,gcp,azure,kubernetes}]` | one provider's SDK | That provider behind the uniform interface, imported lazily |
+| `scalo[deployment]` | `deployment` + `pydantic` | `DeploymentContract` + generators + `ContractIdentity` + `test_support` |
+| `scalo[expression]` | `expression` + `common-expression-language` | CEL evaluation, the same crate scalo-rs evaluates with |
+| `scalo[api]` | `api` + `fastapi` + `pydantic` + `cryptography` | `install(app, hierarchy)`: problem+json handlers and a spec whose operation ids and `x-scalo` come from the resource hierarchy. The app still passes `generate_unique_id_function=hierarchy.unique_id` itself |
+| `scalo[mcp]` | `mcp` + the MCP SDK + `httpx2` + `jsonschema`, and `[api]` | `mount(app)`: MCP tools generated from the spec at startup, each call run in-process with the caller's token, writes that preview first and commit only the previewed request, and an `Origin` check. Naming an issuer adds RFC 9728 metadata and the token challenge |
+| `scalo[resilience]` | `stamina` | The stamina retry engine without the HTTP client. `scalo.resilience` itself is stdlib-only and needs no extra |
+| `scalo[cli]` | `cli.openapi` + `typer` + `jmespath` | A whole CLI from an OpenAPI spec alone: the resource hierarchy as the command tree, `--output`, `--query`, pagination, input documents, problem+json exit codes |
 
 ---
 
@@ -66,13 +59,13 @@ Read top-to-bottom: install the extra in the first column, get every
 ```mermaid
 flowchart TB
     Start["Process start"]
-    Import["import scalo.{config,logger,runtime}"]
-    Cascade["config: build cascade, read no .env"]
+    Import["import scalo"]
+    Cascade["config: build cascade, detect container, read no .env"]
     DotEnv["get_config() / ServiceApp.cli(): load .env"]
-    LogFmt["logger: detect TTY/CI, install sink"]
-    RtDetect["runtime: detect K8s/Docker/BareMetal"]
+    LogSetup["logger.setup(): detect TTY/CI, install sinks"]
+    RtDetect["get_runtime_paths(): detect K8s/Docker/BareMetal"]
     AppInit["App startup logic"]
-    Metrics["metrics: create_metrics(ns)"]
+    Metrics["metrics: create_metrics(app_name)"]
     Health["health: HealthManager()"]
     DepCheck["health: register checks"]
     Connect["Connect downstream deps (db, kafka, secrets)"]
@@ -84,12 +77,10 @@ flowchart TB
 
     Start --> Import
     Import --> Cascade
-    Import --> LogFmt
-    Import --> RtDetect
     Cascade --> DotEnv
-    DotEnv --> AppInit
-    LogFmt --> AppInit
-    RtDetect --> AppInit
+    DotEnv --> LogSetup
+    LogSetup --> AppInit
+    AppInit --> RtDetect
     AppInit --> Metrics
     AppInit --> Health
     Health --> DepCheck
@@ -103,15 +94,9 @@ flowchart TB
 
 Three points:
 
-- The import-time work is cheap (no I/O except cascade file reads)
-  and never writes `os.environ`. Apps can `import scalo.config` from a
-  `__init__.py` without startup latency surprises.
-- `set_ready()` is explicit, not inferred. Until you call it, `/readyz`
-  returns 503 — which is the desired K8s rolling-update behaviour.
-- SIGTERM handling is the app's job. We expose `concurrency` primitives
-  (`Bulkhead`, `gather_with_timeouts`, `run_blocking`) but don't install
-  signal handlers on import. [shutdown.md](core-pillars/shutdown.md) shows
-  the wiring.
+- The import-time work reads files and nothing else: the cascade's YAML, `/proc` for container detection, and a stat of each candidate mount directory. It never writes `os.environ`, so apps can `import scalo.config` from a `__init__.py` without startup latency surprises.
+- `set_ready()` is explicit, not inferred. Until you call it, `/readyz` returns 503, which is what a K8s rolling update wants.
+- SIGTERM handling is the app's job. We expose `concurrency` primitives (`Bulkhead`, `gather_with_timeouts`, `run_blocking`) but install no signal handlers. [shutdown.md](core-pillars/shutdown.md) shows the wiring.
 
 ---
 

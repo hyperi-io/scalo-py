@@ -1,9 +1,6 @@
 # Scaling
 
-`ScalingPressure` — a weighted composite 0-100 score that KEDA's
-external scaler can target. Matches the `scalo` crate's
-`src/scaling/pressure.rs` byte for byte, so Python and Rust services in
-the same fleet produce comparable scores. Ships in the base package.
+`ScalingPressure` is a weighted composite 0-100 score that a KEDA scaler can target. It runs the same three gates, in the same order, as scalo-rs's `src/scaling/pressure.rs` and writes the same `scaling_pressure` gauge, but the component model and the default memory gate differ (see [Cross-language parity](#cross-language-parity)). Ships in the base package.
 
 ```python
 from scalo.scaling import (
@@ -32,11 +29,9 @@ score = pressure.calculate()   # 0-100, feed to KEDA external scaler
 
 Three gates evaluated in order:
 
-1. **Circuit open** → `0.0`. Scaling cannot help if a downstream is
-   tripped — adding pods just trips more breakers.
-2. **Memory ≥ gate threshold** (`0.85` by default) → `100.0`. Scale
-   immediately before OOMKill.
-3. **Otherwise** → weighted sum of components × 100.
+1. Circuit open -> `0.0`. Scaling cannot help if a downstream is tripped, and adding pods trips more breakers.
+2. Memory >= the gate threshold (`0.85` by default) -> `100.0`, to scale before an OOMKill.
+3. Otherwise -> the weighted sum of the components x 100, clamped to `[0, 100]`.
 
 ```python
 weighted_sum = (
@@ -60,10 +55,7 @@ weighted_sum = (
 | `error_rate` | 0.15 | Failed requests / total |
 | `custom` | 0.05 | Whatever else matters for this service |
 
-Weights sum to 1.0. The memory gate threshold (`memory_gate_threshold =
-0.85`) means anything above 85% memory utilisation pegs the score at
-100 regardless of the other components — a KEDA scaler watching this
-metric scales out instantly.
+The weights must sum to 1.0, within 0.001, and each sit in `[0.0, 1.0]`. The memory gate threshold sits in `(0.0, 1.0]`. `ScalingPressureConfig` raises `ValueError` at construction otherwise. With `memory_gate_threshold = 0.85`, memory at 85% of its limit or above pegs the score at 100 regardless of the other components, so a KEDA scaler watching it scales out at once.
 
 Override via `ScalingPressureConfig`:
 
@@ -92,14 +84,10 @@ pressure.set_component("queue_depth", 0.4)    # same thing
 pressure.set_component("latency", 0.6)        # 60% of latency budget consumed
 pressure.set_component("error", 0.02)         # alias for "error_rate"
 pressure.set_component("error_rate", 0.02)    # same thing
-pressure.set_component("anything-else", 0.5)  # → custom slot
+pressure.set_component("anything-else", 0.5)  # -> custom slot
 ```
 
-Saturation values are clamped to `[0.0, 1.0]`. Unknown component names
-land in the `custom` slot — useful for one-off pressure signals (open
-DB connections, in-flight ML predictions). Multiple calls to
-`set_component("custom-x", ...)` overwrite each other; only one custom
-signal is held at a time.
+Saturation values are clamped to `[0.0, 1.0]`. Unknown component names land in the `custom` slot, for a one-off pressure signal such as open DB connections. Every unknown name writes the same slot, so only one custom signal is held at a time.
 
 Convenience helper for memory:
 
@@ -108,22 +96,19 @@ pressure.set_memory(used_bytes=psutil.Process().memory_info().rss,
                     limit_bytes=cgroup_memory_limit())
 ```
 
-Calls `set_component("memory", used / limit)` with the right
-clamping. Returns 0.0 if `limit_bytes <= 0` (no limit set).
+It calls `set_component("memory", used / limit)`, and sets memory to `0.0` when `limit_bytes <= 0` (no limit set). `cgroup_memory_limit()` above stands for your own reader of the cgroup limit.
 
 ---
 
 ## Circuit-open signal
 
 ```python
-pressure.set_circuit_open(True)   # downstream tripped — calculate() now returns 0.0
+pressure.set_circuit_open(True)   # downstream tripped -- calculate() now returns 0.0
 ...
-pressure.set_circuit_open(False)  # recovered — back to weighted sum
+pressure.set_circuit_open(False)  # recovered -- back to weighted sum
 ```
 
-Wire this into your `CircuitBreaker` state changes. The whole point of
-the gate is to keep KEDA from scaling out under a failure mode that
-adding pods can't fix.
+Wire this into your `CircuitBreaker` state changes. The gate keeps KEDA from scaling out under a failure that adding pods can't fix.
 
 ---
 
@@ -133,9 +118,7 @@ adding pods can't fix.
 score = pressure.calculate()       # float in [0.0, 100.0]
 ```
 
-Call from your metrics gauge update path. The lock is held only long
-enough to read and recompute — calling `calculate()` once per scrape
-interval is cheap.
+Call it from your metrics gauge update path. The lock is held only to read and recompute, so calling `calculate()` once per scrape interval is cheap.
 
 For a frozen, consistent view of every component plus the overall
 score:
@@ -143,7 +126,7 @@ score:
 ```python
 snap = pressure.snapshot()
 # PressureSnapshot(
-#   overall=72.5,
+#   overall=50.5,
 #   memory=0.60,
 #   queue=0.80,
 #   latency=0.40,
@@ -152,8 +135,7 @@ snap = pressure.snapshot()
 # )
 ```
 
-`PressureSnapshot` is frozen — useful for structured-log lines and unit
-test assertions where you want one atomic read of state.
+`PressureSnapshot` is frozen, so a structured-log line or a test assertion gets one consistent read of the state. It carries no custom slot, though `overall` includes it.
 
 ---
 
@@ -179,9 +161,7 @@ pressure.stop_gauge()              # at shutdown, if you want the thread ended f
 the same cadence scalo-rs `ServiceRuntime` uses. The thread is a daemon, so
 it never holds the process open.
 
-The metric name is `scaling_pressure` with the description
-`"Composite scaling pressure score (0-100)"`. KEDA's Prometheus scaler
-points at this:
+The metric name is `scaling_pressure`, under the manager's metric prefix when one is set, with the description `"Composite scaling pressure score (0-100)"`. KEDA's Prometheus scaler points at it:
 
 ```yaml
 triggers:
@@ -200,19 +180,23 @@ Above 70 (configurable per service), KEDA scales out.
 
 ## Concurrent updates
 
-All mutating methods (`set_component`, `set_memory`,
-`set_circuit_open`) and read methods (`calculate`, `snapshot`) take
-`self._lock`. Safe to call from any thread or async task without
-external synchronisation.
+All mutating methods (`set_component`, `set_memory`, `set_circuit_open`) and read methods (`calculate`, `snapshot`) take one internal lock, so they are safe to call from any thread or async task without external synchronisation.
 
 ---
 
 ## Cross-language parity
 
-Same struct in Rust (`scalo::scaling::ScalingPressure`), same
-default weights, same gate thresholds, same calculation. A KEDA scaler
-that targets `scaling_pressure >= 70` works identically against a
-Python service and a Rust service in the same deployment.
+Both libraries gate in the same order (circuit open, then memory, then the weighted sum) and write a `scaling_pressure` gauge once a second. The rest differs:
+
+| | scalo-py | scalo-rs `scalo::scaling::ScalingPressure` |
+|---|---|---|
+| Components | five fixed slots: `memory`, `queue`, `latency`, `error`, `custom` | the app's own `ScalingComponent(name, weight, saturation)` list |
+| `set_component` value | a saturation, clamped to `[0, 1]` | a raw value, scored as `min(value / saturation, 1)` |
+| Default weights | 0.25 / 0.30 / 0.25 / 0.15 / 0.05 | none, each app sets its own |
+| Default memory gate | `0.85` | `0.8` |
+| Kill switch | none | `enabled: false` returns `0.0` |
+
+So the same KEDA threshold means the same thing in both only when the two apps weight comparable signals the same way and set the same memory gate.
 
 ---
 

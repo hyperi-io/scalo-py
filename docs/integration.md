@@ -1,8 +1,6 @@
 # Integration
 
-Wiring `scalo` into a new Python service from empty
-`pyproject.toml` to running app. Self-contained recipe; details per subsystem
-live in the subsystem docs (core-pillars/, runtime/, transport/, deployment/, api/).
+Wiring `scalo` into a new Python service from an empty `pyproject.toml` to a running app. Details per subsystem live in the subsystem docs (core-pillars/, runtime/, transport/, deployment/, api/).
 
 ---
 
@@ -21,17 +19,17 @@ OTel metrics, uses Vault secrets, and ships container artefacts:
 ```toml
 [project]
 dependencies = [
-    "scalo[kafka,metrics,secrets-vault,deployment,resilience,http]>=2.28.3",
+    "scalo[kafka,metrics,secrets-vault,deployment,resilience,http]",
 ]
 ```
 
 For a tooling CLI that just reads config and writes logs:
 
 ```toml
-dependencies = ["scalo>=2.28.3"]
+dependencies = ["scalo"]
 ```
 
-`config` and `logger` ship in the base package — nothing extra needed.
+`config` and `logger` ship in the base package, so nothing extra is needed. Pin the floor to the release you test against.
 
 See [extras-flags.md](extras-flags.md) for the full extras tree and
 recommended bundles.
@@ -40,10 +38,7 @@ recommended bundles.
 
 ## 2. Config
 
-`scalo.config` exposes a `settings` object built from an 7-layer
-cascade (CLI > env > .env > settings.<env>.yaml > settings.yaml >
-defaults.yaml > scalo-py defaults > hard-coded). Read it like a dict;
-nested keys via dot or `__`.
+`scalo.config` exposes a `settings` object built from a 7-layer cascade: your CLI flags, env, `.env`, `settings.<env>.yaml`, `settings.yaml`, `defaults.yaml`, then the fallback in your code. Read it like a dict with dotted keys.
 
 ```python
 from scalo.config import settings
@@ -54,10 +49,7 @@ batch_size = settings.get("processor.batch_size", 100)
 
 Importing reads no `.env`. The `.env` layer loads when the app calls `get_config()` or runs under `ServiceApp.cli()`, so an app that reads `settings` directly calls `get_config()` once at startup.
 
-Env-var nesting follows the cascade rule: `KAFKA__BROKERS=...` maps to
-`settings.kafka.brokers`. Cross-cutting envs (`LOG_LEVEL`,
-`DOTENV_CASCADE`, `CONTAINER_BASE_PATH`) override defaults without
-needing a settings file.
+An env key nests with a double underscore: `KAFKA__BROKERS=...` maps to `settings.kafka.brokers`, and `KAFKA_BROKERS` would set a top-level `kafka_brokers`. Cross-cutting envs (`LOG_LEVEL`, `DOTENV_CASCADE`, `CONTAINER_BASE_PATH`) override defaults without needing a settings file.
 
 See [core-pillars/config.md](core-pillars/config.md) for the full
 cascade and sensitive masking.
@@ -70,19 +62,16 @@ cascade and sensitive masking.
 from scalo.logger import error, info, logger, setup
 
 setup()  # ServiceApp calls this for you; importing scalo.logger installs nothing
-info("Service starting", version="2.28.3")
+info("Service starting", version="1.4.0")
 logger.bind(component="kafka_consumer").info("subscribed", topic="events")
 
 try:
     process()
-except Exception as e:
-    error("processing failed", exc_info=True, retries=3)
+except Exception:
+    logger.exception("processing failed", retries=3)   # logs the traceback too
 ```
 
-`setup()` autodetects the format: JSON when stderr is not a TTY (containers, CI),
-human-readable on a TTY. Secrets get scrubbed automatically via
-gitleaks rules + the national-ID validators in `data/`. RFC 3339
-timestamps everywhere.
+`setup()` autodetects the format: JSON when stderr is not a TTY (containers), and human-readable text on a TTY or in CI. Secrets, credential field names and PII values are scrubbed from every message and field. Timestamps are RFC 3339.
 
 See [core-pillars/logging.md](core-pillars/logging.md) for scrub, rate
 limiting, CI mode, and the emoji-to-text conversion.
@@ -99,14 +88,9 @@ requests = m.counter("requests_total", "Total requests", ["method", "status"])
 requests.labels(method="POST", status="200").inc()
 ```
 
-Backend default is OpenTelemetry with a Prometheus exporter on
-`/metrics`; cardinality is capped per metric (50 by default) to
-prevent label explosions.
+The default backend is OpenTelemetry, which pushes over OTLP and serves a Prometheus body for `/metrics`. Nothing caps label cardinality unless you wire `CardinalityTracker` in.
 
-For Kafka-shaped or processing-shaped services, use the pre-wired
-**built-in metric groups** in `metrics.groups/` — `AppMetrics`,
-`ConsumerMetrics`, `BufferMetrics`, `SinkMetrics`, `BackpressureMetrics`,
-`CircuitBreakerMetrics`. They emit standard metric names and labels.
+For Kafka consumers and processing services, `scalo.metrics.groups` has the standard groups -- `AppMetrics`, `ConsumerMetrics`, `BufferMetrics`, `SinkMetrics`, `BackpressureMetrics`, `CircuitBreakerMetrics` -- each registering fixed metric names and labels when you construct it.
 
 See [core-pillars/metrics.md](core-pillars/metrics.md).
 
@@ -133,7 +117,7 @@ async def db_ok() -> bool:
 health.register_ready_check("postgres", db_ok)
 ```
 
-That gives you `/livez` and `/readyz` with K8s-shaped responses (200 / 503).
+That gives you `/livez` and `/readyz`, answering 200 or 503 with a JSON body.
 Aim a `startupProbe` at `/livez` -- there is no separate startup path.
 
 See [core-pillars/health.md](core-pillars/health.md).
@@ -146,14 +130,12 @@ See [core-pillars/health.md](core-pillars/health.md).
 from scalo.runtime import get_runtime_paths
 
 paths = get_runtime_paths("my-service")
-config_file = paths.config_dir / "app.yaml"   # /config in K8s, ~/.config locally
-data_file = paths.data_dir / "state.db"       # /data in K8s, ~/.local/share locally
-cache_file = paths.cache_dir / "warmup.json"  # /cache in K8s, ~/.cache locally
+config_file = paths.config_dir / "app.yaml"   # /app/config in a container, ~/.my-service/config locally
+data_file = paths.data_dir / "state.db"       # /app/data in a container, ~/.my-service/data locally
+cache_file = paths.cache_dir / "warmup.json"  # /app/cache in a container, ~/.my-service/cache locally
 ```
 
-Same code in K8s, Docker, and bare metal. The detection walks 7
-indicators (`/var/run/secrets`, env vars, `/.dockerenv`, cgroups
-v1/v2, mountinfo, PID 1) and caches the verdict.
+Same code in K8s, Docker, and bare metal. Each call walks 7 indicators (`/var/run/secrets`, env vars, `/.dockerenv`, cgroups v1/v2, mountinfo, PID 1) and creates the directories.
 
 See [runtime/runtime-context.md](runtime/runtime-context.md).
 
@@ -168,11 +150,7 @@ sm = SecretsManager.from_config(settings.get("secrets"))
 api_key = await sm.get_string("third-party/api-key")
 ```
 
-One uniform interface; backends pick themselves up from
-`settings.secrets.provider`. OpenBao, Vault, AWS Secrets Manager, GCP
-Secret Manager, Azure Key Vault, Kubernetes Secret, and file backends are
-all supported via their respective extras (`secrets-vault`,
-`secrets-aws`, etc.).
+One interface over every backend. `from_config` builds a provider for each backend key in the dict (`openbao` or `vault`, `aws`, `gcp`, `azure`, `kubernetes`) plus `file`, and each named source picks its provider. Each backend needs its extra (`secrets-vault`, `secrets-aws`, etc.).
 
 See [api/secrets.md](api/secrets.md).
 
@@ -243,48 +221,24 @@ See [deployment/contract.md](deployment/contract.md),
 
 ---
 
-## 10. Running tests
+## 10. Testing the service
 
-Pylib uses pytest with `asyncio_mode=auto`. Three marker tiers:
+For the deployment contract, an e2e TEMPLATE lives at [`tests/e2e/test_contract_artefacts.py`](../tests/e2e/test_contract_artefacts.py). Copy it into your own `tests/e2e/` and point it at your entrypoint. It runs Tier A (cluster-less: docker build and run) locally when docker is present, and every skip it takes prints a `HYPERCI-SKIP[contract-e2e][...]:` line. See [deployment/test-support.md](deployment/test-support.md) for that and the shared test services.
 
-```bash
-uv run pytest -m unit          # fast, no external deps
-uv run pytest -m integration   # the run's shared ClickHouse, Kafka and OpenBao (deployment/test-support.md)
-uv run pytest -m e2e           # full K8s harness (kind) — env-gated
-```
-
-For the deployment contract subsystem, an e2e TEMPLATE lives at
-[`tests/e2e/test_contract_artefacts.py`](../tests/e2e/test_contract_artefacts.py).
-It runs Tier A (cluster-less: docker build and run) locally when
-docker is present. Skips emit a canonical
-`HYPERCI-SKIP[contract-e2e][...]:` prefix; see
-[deployment/test-support.md](deployment/test-support.md).
-
-Run the full pipeline locally — same code path as CI:
-
-```bash
-hyperi-ci check          # quality + tests + build (no publish)
-hyperi-ci check --quick  # quality + unit tests only
-```
+On a hyperi-ci project, `hyperi-ci check` runs quality and tests before a push, `--quick` runs quality only, and `--full` adds the build.
 
 ---
 
 ## Checklist for a new service
 
 - [ ] `pyproject.toml` lists `scalo` with the right extras
-- [ ] `settings.yaml` in the repo for static config; env vars for
-      per-environment override
+- [ ] `settings.yaml` in the repo for static config, env vars for per-environment override
 - [ ] Logger imported at the top of `main`
-- [ ] `create_metrics(<app_name>)` called once, registered on
-      `/metrics`
-- [ ] `HealthManager` created, `set_ready()` called after dependencies
-      connect, downstream checks registered
-- [ ] If Kafka: producer flushed in shutdown; consumer commits on
-      `SIGTERM`
-- [ ] `DeploymentContract` defined and `generate_*` artefacts committed
-      to the gitops repo
-- [ ] e2e test template copied into `tests/e2e/` and adapted for the
-      service's actual entrypoint
+- [ ] `create_metrics(<app_name>)` called once, served on `/metrics`
+- [ ] `HealthManager` created, `set_ready()` called after dependencies connect, downstream checks registered
+- [ ] If Kafka: producer flushed in shutdown, consumer commits on `SIGTERM`
+- [ ] `DeploymentContract` returned from `deployment_contract()`, so `generate-artefacts` writes its files
+- [ ] e2e test template copied into `tests/e2e/` and adapted for the service's actual entrypoint
 
 ---
 

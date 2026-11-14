@@ -1,15 +1,8 @@
 # Contract Identity Annotation Scheme v1
 
-Three greppable keys stamped onto the image so the same logical
-contract output is traceable across surfaces (Dockerfile `LABEL`,
-container manifest JSON `labels`, and YAML annotations on a chart or
-ArgoCD `Application` built elsewhere) and across language tiers
-(scalo-rs, scalo-py, hyperi-ci). Mirrors
-`scalo::deployment::contract_identity` byte-for-byte; both
-implementations are diffed against a shared golden fixture.
+Three greppable keys stamped onto the image so the same contract output is traceable across surfaces (Dockerfile `LABEL`, container manifest JSON `labels`, and YAML annotations on a chart or ArgoCD `Application` built elsewhere) and across scalo-rs and scalo-py. It mirrors scalo-rs's `scalo::deployment::contract_identity`. scalo-py's output is pinned byte for byte by a golden fixture, which scalo-rs keeps no copy of (see [Cross-language parity](#cross-language-parity)).
 
-Import surface -- no pydantic dependency, importable as soon as the
-deployment package is available:
+Import surface, with no pydantic dependency, so it imports without the `deployment` extra:
 
 ```python
 from scalo.deployment import (
@@ -31,11 +24,9 @@ The keys sit under `<namespace>.contract`, where `<namespace>` is the contract's
 |---|---|---|
 | `io.scalo.contract.version` | literal `v1` | constant -- the scheme version |
 | `io.scalo.contract.source-commit` | 40-char lowercase hex SHA | matches `^[0-9a-f]{40}$` exactly. No `sha256:` prefix, no whitespace |
-| `io.scalo.contract.image-ref` | `<registry>/<repo>:<tag>` OR `<registry>/<repo>@sha256:<digest>` | non-empty; must include `/`; registry host must contain `.`, a port `:`, or be literal `localhost` |
+| `io.scalo.contract.image-ref` | `<registry>/<repo>:<tag>` OR `<registry>/<repo>@sha256:<digest>` | non-empty, includes `/`, and the registry host contains `.` or a port `:`, or is the literal `localhost` |
 
-The registry validation deliberately forbids implicit `docker.io` --
-ambiguous registries break image provenance. Use the explicit form
-`docker.io/library/...` if you need Docker Hub.
+The registry validation forbids an implicit `docker.io`, because an ambiguous registry breaks image provenance. Use the explicit form `docker.io/library/...` if you need Docker Hub.
 
 ---
 
@@ -59,8 +50,7 @@ Auto-resolve `source_commit` from the environment:
 
 1. `GITHUB_SHA` env var (GitHub Actions).
 2. `CI_COMMIT_SHA` env var (GitLab).
-3. `git rev-parse HEAD` in the current working directory (10s
-   timeout; `FileNotFoundError` or `TimeoutExpired` -> falls through).
+3. `git rev-parse HEAD` in the current working directory, with a 10 s timeout. A missing `git` or a timeout falls through.
 
 If none yield a 40-char lowercase hex SHA, raises `IdentityError`.
 
@@ -105,10 +95,7 @@ class IdentityError(DeploymentError, ValueError):
     ...
 ```
 
-Subclasses BOTH `DeploymentError` (so consumers catching the broad
-deployment exception still trigger) AND `ValueError` (so generic
-validation handlers in calling code still trigger). The double-base
-is intentional and load-bearing.
+Subclasses BOTH `DeploymentError`, so a handler for the broad deployment exception catches it, AND `ValueError`, so a generic validation handler does too.
 
 ---
 
@@ -121,10 +108,7 @@ Two valid forms for `image_ref`:
 | Tag | Pre-push, mutable | `ghcr.io/example-org/orders-api:v2.7.3` |
 | Digest | Post-push, immutable | `ghcr.io/example-org/orders-api@sha256:abc123...` |
 
-CI typically stamps the tag form during build (the digest doesn't
-exist yet) and re-stamps the digest form post-push for the production
-artefact. Both forms pass validation; consumers wanting the immutable
-guarantee filter by the presence of `@sha256:` in the value.
+CI typically stamps the tag form during build, before the digest exists, and re-stamps the digest form post-push for the production artefact. Both forms pass validation, and a consumer that needs the immutable form checks for `@sha256:` in the value.
 
 ---
 
@@ -139,8 +123,7 @@ generate_runtime_stage(contract, identity=identity)
 generate_container_manifest(contract, identity=identity)
 ```
 
-Behaviour when `identity=None`: pre-identity output, byte-for-byte
-unchanged. Behaviour when `identity` is provided:
+With `identity=None` the output carries no identity keys. With an `identity`:
 
 | Generator | Where identity lands |
 |---|---|
@@ -150,17 +133,13 @@ unchanged. Behaviour when `identity` is provided:
 
 Every generator renders the keys under the contract's `oci_labels.label_namespace`.
 
-`generate_compose_fragment` and `generate_argocd_app_project` do NOT
-take `identity` -- Compose has no annotation surface, and AppProjects
-predate any individual contract instance.
+`generate_compose_fragment` and `generate_argocd_app_project` do NOT take `identity`.
 
 ---
 
 ## Cross-language parity
 
-The scheme is single-sourced via a golden fixture at
-`tests/fixtures/contract-parity/v1-output.txt`. Four sections, separated
-by `=== <section-name> ===` headers, all rendered under `io.scalo`:
+A golden fixture at `tests/fixtures/contract-parity/v1-output.txt` pins the output. It has four sections, separated by `=== <section-name> ===` headers, all rendered under `io.scalo`:
 
 - `dockerfile-labels` -- output of `as_dockerfile_labels("io.scalo")`
 - `yaml-annotations-indent-0` -- output of `as_yaml_annotations("io.scalo", 0)`
@@ -174,41 +153,7 @@ source_commit = "0123456789abcdef0123456789abcdef01234567"
 image_ref     = "ghcr.io/hyperi-io/dfe-loader:v2.7.3"
 ```
 
-`tests/unit/deployment/test_contract_identity_parity.py` diffs
-`ContractIdentity` output against each section byte-for-byte. The test also
-diffs against `hyperi-io/scalo-rs:tests/fixtures/contract-parity/v1-output.txt`
-when a clone is on disk. scalo-rs carries no such file yet, so that
-cross-check skips.
-
-File invariants: LF line endings, UTF-8, trailing newline, no blank
-lines inside content blocks.
-
-### Status
-
-The scalo-py fixture is the authored reference until scalo-rs publishes
-its `contract_identity` module. Once scalo-rs lands, copy its golden
-verbatim into the scalo-py repo and update the parity test's drift
-detection to point at the scalo-rs path. Eventually both copies move
-to `hyperi-ci/tests/fixtures/contract-parity/` and both libs consume
-from there.
-
----
-
-## Phase staging
-
-The scheme rolls out in three coordinated phases across scalo-py,
-scalo-rs, and the consumer apps:
-
-| Phase | State | Default | Generators |
-|---|---|---|---|
-| 1 (current) | opt-in | `identity=None` | output unchanged unless caller passes identity |
-| 2 | required | `identity` is required at call sites | running without identity raises -- forces consumers to wire it |
-| 3 | inlined | wrapper dropped | identity is always stamped; the kwarg disappears |
-
-Phase 1 keeps existing CI green during the rollout. Phase 2 lands
-once every consumer app has been updated -- the change is
-`identity: ContractIdentity` (positional or required kwarg).
-Phase 3 is a major version bump.
+`tests/unit/deployment/test_contract_identity_parity.py` diffs `ContractIdentity` output against each section byte for byte, and checks the file has LF line endings. When `SCALO_RS_GOLDEN_PATH` names another copy of the file, it diffs that too, and skips otherwise. scalo-rs has the `contract_identity` module (`src/deployment/contract_identity.rs`) but no copy of the fixture, so nothing diffs the two implementations' output.
 
 ---
 

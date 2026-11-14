@@ -1,9 +1,6 @@
 # HTTP client
 
-Sync and async HTTP clients built on `httpx`, with `stamina`-driven
-retries (exponential backoff + jitter) and a 30 s default timeout.
-stamina's own retry hooks log and count each retry (see [Observability](#observability)). Replaces ad-hoc `requests` / `httpx` usage where Bandit's
-B113 (request without timeout) keeps biting.
+Sync and async HTTP clients built on `httpx`, with `stamina`-driven retries (exponential backoff + jitter) and a 30 s default timeout. stamina's own retry hooks log and count each retry (see [Observability](#observability)). Use it in place of ad-hoc `requests` / `httpx` calls, which trip Bandit's B113 (request without timeout).
 
 ```bash
 pip install scalo[http]
@@ -25,14 +22,10 @@ data = response.json()
 
 ## Why this exists
 
-- Default 30 s timeout silences Bandit B113 and stops hung connections
-  from stealing a worker forever.
-- Stamina retries cover the cases everyone forgets: transport errors and
-  5xx server errors, with exponential backoff and jitter. 4xx errors
-  surface immediately — retrying client errors is a bug.
+- Default 30 s timeout silences Bandit B113 and stops hung connections from holding a worker forever.
+- Stamina retries transport errors and 5xx server errors, with exponential backoff and jitter. 4xx errors surface immediately, because retrying a client error repeats the same mistake.
 - A retry is logged and counted by stamina's default hooks, which name the error by class and status only, never the request URL.
-- `stamina.set_testing(True)` disables backoff in tests so suites stay
-  fast and deterministic.
+- `stamina.set_testing(True)` disables backoff in tests so suites stay fast and deterministic.
 
 ---
 
@@ -41,14 +34,14 @@ data = response.json()
 Pick by call site:
 
 ```python
-# Sync — startup probes, CLI tools, CI checks
+# Sync -- startup probes, CLI tools, CI checks
 from scalo.http import HttpClient
 
 with HttpClient(base_url="https://api.example.com") as client:
     r = client.get("/health")
     assert r.status_code == 200
 
-# Async — anything running inside an asyncio loop
+# Async -- anything running inside an asyncio loop
 from scalo.http import AsyncHttpClient
 
 async with AsyncHttpClient(base_url="https://api.example.com") as client:
@@ -83,7 +76,7 @@ def _is_retryable(exc):
 | Never retry on | 4xx, `httpx.LocalProtocolError`, `httpx.UnsupportedProtocol` |
 | Methods retried | GET, HEAD, PUT, DELETE and OPTIONS always. POST and PATCH only with an idempotency key, or `retry_non_idempotent=True` on the client |
 
-Both mean httpx refused to send the request, so they are raised at once. `httpx.LocalProtocolError` comes from a header value holding a line break, and `httpx.UnsupportedProtocol` from a URL with no `http://` or `https://` scheme. The `LocalProtocolError` message quotes the refused header value, which can be a credential. scalo's logger masks that value whatever its auth scheme (see [Layer 2](../core-pillars/logging.md#layer-2-field-name-regex)), and any other log path needs to log the class rather than the text.
+Both mean httpx refused to send the request, so they are raised at once. `httpx.LocalProtocolError` comes from a header value holding a line break, and `httpx.UnsupportedProtocol` from a URL with no `http://` or `https://` scheme. The `LocalProtocolError` message quotes the refused header value, which can be a credential. scalo's logger masks that value whatever its auth scheme (see [Layer 2](../core-pillars/scrubbing.md#layer-2-field-name-regex)), and any other log path needs to log the class rather than the text.
 
 Override via constructor:
 
@@ -91,8 +84,7 @@ Override via constructor:
 client = HttpClient(timeout=60.0, retries=5, base_url="https://slow.api")
 ```
 
-`response.raise_for_status()` runs before each retry decision — 4xx
-escapes immediately, 5xx feeds back into the retry loop.
+`response.raise_for_status()` runs before each retry decision: 4xx, and a 3xx when redirects are not followed, escape immediately, and 5xx feeds back into the retry loop.
 
 POST and PATCH are sent once by default, because a request that timed out or came back 5xx may already have been applied, and a resend would apply it twice. A request opts in with `idempotency_key=` (or its own `Idempotency-Key` header), which a deduplicating service such as Stripe or AWS honours. A client whose endpoint dedupes, or whose POST only reads, opts in for every request:
 
@@ -147,8 +139,7 @@ When to set them:
 
 ## Lifecycle
 
-Always close the client — connection pools and the underlying HTTP/2
-multiplex live until you do.
+Always close the client -- its connection pool lives until you do. The pool takes httpx's default limits (100 connections, 20 kept alive), and `limits=httpx.Limits(...)` passes through to change them. No response size cap is applied, so a body streams in whole whatever its length.
 
 ```python
 # Context manager (preferred)
@@ -191,8 +182,7 @@ def test_my_service():
     ...
 ```
 
-Single global flag, no per-client wiring. Use `httpx`'s `MockTransport`
-for fully offline tests:
+Single global flag, no per-client wiring. Use `httpx`'s `MockTransport` for fully offline tests:
 
 ```python
 import httpx
@@ -201,8 +191,8 @@ from scalo.http import HttpClient
 def handler(request):
     return httpx.Response(200, json={"ok": True})
 
-# Pass a custom transport through to httpx.Client
-client = HttpClient(transport=httpx.MockTransport(handler))
+# Pass a custom transport through to httpx.Client. A relative URL needs a base_url.
+client = HttpClient(base_url="http://test", transport=httpx.MockTransport(handler))
 assert client.get("/anything").json() == {"ok": True}
 ```
 
@@ -212,27 +202,20 @@ assert client.get("/anything").json() == {"ok": True}
 
 Errors that escape after retries are exhausted:
 
-- `httpx.TransportError` — DNS, TCP, TLS, read/write errors
-- `httpx.HTTPStatusError` — 5xx after `attempts` retries, a 5xx to a POST or PATCH that was not opted in, or any 4xx
-  immediately
-- `httpx.TimeoutException` — exceeded `timeout` per attempt
+- `httpx.TransportError` -- DNS, TCP, TLS, read/write errors
+- `httpx.HTTPStatusError` -- 5xx after `attempts` tries, a 5xx to a POST or PATCH that was not opted in, or any 4xx, and a 3xx when redirects are not followed, immediately
+- `httpx.TimeoutException` -- exceeded `timeout` on every attempt
 - `httpx.LocalProtocolError`, `httpx.UnsupportedProtocol` -- a request httpx refused to send, immediately
 
-Wrap with `try/except` at the call site; the clients never swallow
-exceptions.
+Wrap with `try/except` at the call site. The clients never swallow exceptions.
 
 ---
 
 ## When to reach for something else
 
-- **Circuit breaker around downstream**: compose with
-  [`resilience.md`](resilience.md)'s `CircuitBreaker`. The HTTP client
-  itself is retry-only; circuit breaking is a separate concern.
-- **Streaming responses**: drop down to raw `httpx` —
-  `HttpClient._client` is the underlying instance if you really need it,
-  but prefer building a sibling helper that exposes the bits you need.
-- **HTTP/2 server push, WebSockets**: out of scope. Use `httpx` or
-  `websockets` directly.
+- A circuit breaker around a downstream: compose with [`resilience.md`](resilience.md)'s `CircuitBreaker`, outside the retry loop. The HTTP client itself is retry-only.
+- Streaming responses: drop down to raw `httpx`. `HttpClient._client` is the underlying instance if you need it, but prefer a sibling helper that exposes the parts you need.
+- HTTP/2 server push and WebSockets: out of scope. Use `httpx` or `websockets` directly.
 
 ---
 
