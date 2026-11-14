@@ -15,7 +15,7 @@ test that calls it clears the first two and puts the third back afterwards.
 
 import io
 import logging
-from collections.abc import Iterator
+from collections.abc import Generator
 from contextlib import contextmanager
 
 # Environment variables that change what setup() writes.
@@ -48,7 +48,7 @@ class StreamDouble(io.StringIO):
 
 
 @contextmanager
-def preserved_stdlib_logging() -> Iterator[None]:
+def preserved_stdlib_logging() -> Generator[None]:
     """Restore the root and uvicorn loggers' handlers, level and propagation on exit."""
     root = logging.getLogger()
     saved_root = (list(root.handlers), root.level)

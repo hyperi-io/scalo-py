@@ -29,7 +29,7 @@ import json
 import os
 import sys
 import tempfile
-from collections.abc import Iterator
+from collections.abc import Generator
 from contextlib import contextmanager
 from dataclasses import dataclass
 from pathlib import Path
@@ -128,7 +128,7 @@ class Store:
         return self.home / ".credentials.lock"
 
     @contextmanager
-    def _credentials_locked(self) -> Iterator[None]:
+    def _credentials_locked(self) -> Generator[None]:
         """Hold the credentials lock, so two processes changing credentials take turns and neither loses an account."""
         self._ensure_home()
         fd = os.open(self.credentials_lock_file, os.O_RDWR | os.O_CREAT, 0o600)

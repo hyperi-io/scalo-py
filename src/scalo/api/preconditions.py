@@ -26,7 +26,7 @@ a second writer is checked against the ETag the first one left::
 import hashlib
 import json
 import re
-from collections.abc import Callable, Iterator
+from collections.abc import Callable, Generator
 from contextlib import AbstractContextManager, contextmanager
 from dataclasses import dataclass
 from typing import Annotated, Any, Literal
@@ -210,7 +210,7 @@ class Preconditions:
     @contextmanager
     def guard(
         self, lock: AbstractContextManager[Any], current_etag: Callable[[], str | None], *, require: bool = True
-    ) -> Iterator[str | None]:
+    ) -> Generator[str | None]:
         """Hold ``lock`` while the current ETag is read, checked and the write runs.
 
         A write in the ``with`` block cannot race another writer holding the same lock.

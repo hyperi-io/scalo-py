@@ -17,7 +17,7 @@ an AWS JSON error a test sets. Both speak plain HTTP, which is what the provider
 import http.server
 import json
 import threading
-from collections.abc import Iterator
+from collections.abc import Generator
 from contextlib import contextmanager
 from dataclasses import dataclass
 
@@ -33,7 +33,7 @@ class FakeBackend:
 
 
 @contextmanager
-def _serving(handler: type[http.server.BaseHTTPRequestHandler], backend: FakeBackend) -> Iterator[FakeBackend]:
+def _serving(handler: type[http.server.BaseHTTPRequestHandler], backend: FakeBackend) -> Generator[FakeBackend]:
     server = http.server.ThreadingHTTPServer(("127.0.0.1", 0), handler)
     backend.url = f"http://127.0.0.1:{server.server_address[1]}"
     thread = threading.Thread(target=server.serve_forever, daemon=True)
@@ -56,7 +56,7 @@ def _reply(handler: http.server.BaseHTTPRequestHandler, status: int, content_typ
 
 
 @contextmanager
-def running_fake_vault() -> Iterator[FakeBackend]:
+def running_fake_vault() -> Generator[FakeBackend]:
     """Serve ``/v1/sys/health`` on localhost, answering ``backend.status`` until the block exits."""
     backend = FakeBackend(url="")
 
@@ -73,7 +73,7 @@ def running_fake_vault() -> Iterator[FakeBackend]:
 
 
 @contextmanager
-def running_fake_aws() -> Iterator[FakeBackend]:
+def running_fake_aws() -> Generator[FakeBackend]:
     """Serve Secrets Manager on localhost: an empty ``ListSecrets`` at 200, else an AWS JSON error."""
     backend = FakeBackend(url="")
 

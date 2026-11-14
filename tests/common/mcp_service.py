@@ -15,7 +15,7 @@ The service checks bearer tokens and RBAC itself, so a test can tell the app's o
 
 import json
 import time
-from collections.abc import AsyncIterator
+from collections.abc import AsyncGenerator
 from contextlib import AsyncExitStack, asynccontextmanager
 from dataclasses import dataclass, field
 from typing import Any
@@ -262,7 +262,7 @@ def build_app(
 
 
 @asynccontextmanager
-async def running(*apps: FastAPI) -> AsyncIterator[None]:
+async def running(*apps: FastAPI) -> AsyncGenerator[None]:
     """Run each app's lifespan, as its server would at startup."""
     async with AsyncExitStack() as stack:
         for app in apps:
@@ -283,7 +283,7 @@ def http_client(
 @asynccontextmanager
 async def mcp_client(
     asgi: ASGIApp, token: str | None = WRITER, *, mode: str = "auto", headers: dict[str, str] | None = None
-) -> AsyncIterator[Client]:
+) -> AsyncGenerator[Client]:
     """The MCP SDK's own client, over streamable HTTP to the service's ``/mcp``."""
     async with (
         http_client(asgi, token, headers=headers) as http,

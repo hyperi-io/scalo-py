@@ -23,7 +23,7 @@ import json
 import re
 import ssl
 import threading
-from collections.abc import Callable, Iterator
+from collections.abc import Callable, Generator
 from contextlib import contextmanager
 from dataclasses import dataclass, field
 from pathlib import Path
@@ -207,7 +207,7 @@ def _self_signed(directory: Path) -> tuple[Path, Path]:
 
 
 @contextmanager
-def running_fake_kube_api(directory: Path, token: str) -> Iterator[FakeKubeApi]:
+def running_fake_kube_api(directory: Path, token: str) -> Generator[FakeKubeApi]:
     """Serve a fake API server on localhost over TLS until the block exits."""
     cert_file, key_file = _self_signed(directory)
     state: FakeKubeApi | None = None

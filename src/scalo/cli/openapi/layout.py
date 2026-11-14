@@ -262,6 +262,11 @@ def _add_pagination(builder: _Builder) -> None:
     )
 
 
+def _annotated(annotation: Any, info: Any) -> Any:
+    """Wrap a field type resolved at run time in ``Annotated`` for typer."""
+    return Annotated[annotation, info]
+
+
 def _add_field(builder: _Builder, field: Field, *, positional: bool, paginated: bool) -> None:
     name = option_name(field.name)
     claimed = builder.claim(name, f"{field.location}-{name}")
@@ -276,17 +281,17 @@ def _add_field(builder: _Builder, field: Field, *, positional: bool, paginated: 
     slot = Slot(param, "field", flag, field, positional=positional)
     if positional:
         builder.add(
-            slot, Annotated[annotation, typer.Argument(help=_field_help(field), show_default=False)], positional=True
+            slot, _annotated(annotation, typer.Argument(help=_field_help(field), show_default=False)), positional=True
         )
         return
     if field.type == "bool":
         flags = (flag, "-n") if field.location == "query" and field.name == "dry_run" else (f"{flag}/--no-{claimed}",)
         info = typer.Option(*flags, help=_field_help(field), rich_help_panel=panel, show_default=False)
-        builder.add(slot, Annotated[annotation, info])
+        builder.add(slot, _annotated(annotation, info))
         builder.flags.update({flag, f"--no-{claimed}", *flags})
         return
     info = typer.Option(flag, help=_field_help(field), rich_help_panel=panel, show_default=False)
-    builder.add(slot, Annotated[annotation, info])
+    builder.add(slot, _annotated(annotation, info))
 
 
 def layout_for(operation: Operation, *, skip_headers: frozenset[str] = frozenset()) -> Layout:
