@@ -13,9 +13,7 @@ corpus's "dfe" prefix).
 
 The corpus is vendored at ``tests/fixtures/patterns/metrics-naming.yaml`` from
 ``hyperi-ai/standards/patterns/`` by ``tools/vendor_patterns.sh``, the same route
-``pii_test_fixtures.toml`` takes. It used to be read from a
-``scalo-spec/test-fixtures/`` submodule that does not exist, so every entry here
-skipped in every environment including CI.
+``pii_test_fixtures.toml`` takes.
 
 Intended as a cross-language corpus, and scalo-rs does not read it yet, so
 passing here proves the Python behaviour only.

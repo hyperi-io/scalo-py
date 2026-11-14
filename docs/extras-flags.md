@@ -199,7 +199,7 @@ without committing to a transitive deps tree that may change.
 
 | Extra | Notes | Doc |
 |---|---|---|
-| `enhanced` | Reserved. Will bundle a curated feature set for data-pipeline services once the shape is locked. Currently a no-op marker. | (no doc yet) |
+| `enhanced` | Reserved, a no-op marker. | (none) |
 
 ### Development
 

@@ -12,10 +12,7 @@ against SensitiveDataFilter.
 
 The corpus is vendored at ``tests/fixtures/patterns/masking-patterns.yaml`` from
 ``hyperi-ai/standards/patterns/`` by ``tools/vendor_patterns.sh``, the same route
-``pii_test_fixtures.toml`` takes. It used to be read from a
-``scalo-spec/test-fixtures/`` submodule that does not exist -- no scalo-spec
-repo, no ``.gitmodules``, no checkout -- so every case here skipped in every
-environment including CI.
+``pii_test_fixtures.toml`` takes.
 
 Intended as a cross-language corpus, and scalo-rs does not read it yet, so
 passing here proves the Python behaviour only.

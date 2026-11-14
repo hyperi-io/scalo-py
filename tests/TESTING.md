@@ -25,12 +25,12 @@ Those run on four containers per run. Full adds the rest of the Kafka, OpenBao a
 
 | Service | Image | Container port |
 |---|---|---|
-| ClickHouse | `clickhouse/clickhouse-server:26.3.42.3@sha256:21d572843e59539c7d100286b6f5a6053c341fe4b33c2d7b74b1ff7cb24c5399` | 8123 HTTP, 9000 native |
-| Kafka | `apache/kafka:4.3.1@sha256:77e3df9054047a88b520d0cc46e16696d3b22022e1d580aeccd2632df6532837` | 9092 PLAINTEXT |
-| OpenBao | `openbao/openbao:2.7.1@sha256:6d2b93856e3fcf7b18ad855a0b51eaba474dc8b79cf554379ea32034797d2acf` | 8200, dev mode |
-| k3s | `rancher/k3s:v1.37.1-k3s1@sha256:ca7f37d993d82ef0dcdcfecb2e0e2618ea541dbaffc620c8cedebe01a82acd0d` | 6443, API server only |
+| ClickHouse | `clickhouse/clickhouse-server` | 8123 HTTP, 9000 native |
+| Kafka | `apache/kafka` | 9092 PLAINTEXT |
+| OpenBao | `openbao/openbao` | 8200, dev mode |
+| k3s | `rancher/k3s` | 6443, API server only |
 
-The first three are pinned in `scalo.deployment.test_support.services`, k3s in `tests/common/kube_cluster.py`. ClickHouse runs embedded Keeper with a one-replica cluster `default`, so `ON CLUSTER` and `ENGINE = Replicated` work as on a replicated server. Kafka refuses topic auto-create. The ClickHouse password and the OpenBao root token are generated per run and never logged.
+The first three are pinned by digest in `scalo.deployment.test_support.services`, k3s in `tests/common/kube_cluster.py`. ClickHouse runs embedded Keeper with a one-replica cluster `default`, so `ON CLUSTER` and `ENGINE = Replicated` work as on a replicated server. Kafka refuses topic auto-create. The ClickHouse password and the OpenBao root token are generated per run and never logged.
 
 `scalo.deployment.test_support.pytest_plugin`, loaded from `tests/conftest.py`, gives every xdist worker the same container per service:
 

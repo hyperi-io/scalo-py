@@ -48,7 +48,7 @@ All examples follow this structure:
 
 ## Requirements
 
-- Python 3.14+
+- Python at the `requires-python` floor in `pyproject.toml`
 - [uv](https://github.com/astral-sh/uv) package manager (recommended)
 - Docker (for postgres-cache and kafka examples)
 

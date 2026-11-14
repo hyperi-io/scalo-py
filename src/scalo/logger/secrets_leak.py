@@ -167,8 +167,7 @@ class SecretsLeakFilter:
 
     Raises:
         ImportError caught silently -- if detect-secrets is not
-        installed (impossible currently as it's a core dep, but
-        defensive), the filter becomes a no-op with a warning.
+        installed (it is a core dep, so this is defensive), the filter becomes a no-op with a warning.
     """
 
     def __init__(

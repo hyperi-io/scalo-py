@@ -12,11 +12,7 @@ Detects gitleaks-style secrets (AWS keys, GitHub tokens, JWTs,
 private keys, third-party SaaS API keys) and exposes them via the
 :class:`Scrubber` Protocol.
 
-Currently delegates to the existing :class:`SecretsLeakFilter`
-backed by ``detect-secrets``. Per spec Section 3.1, this will migrate to
-direct compilation from ``hyperi-ai/standards/patterns/gitleaks.toml``
-in Step 10 -- the public API of this class is the same after that
-swap.
+Delegates to :class:`SecretsLeakFilter`, backed by ``detect-secrets``.
 """
 
 import warnings
@@ -68,10 +64,8 @@ class SecretsScrubber:
     Args:
         patterns: rule-set selector (see above).
         extra_patterns: org-specific ``(type_name, regex)`` tuples
-            for in-house token formats. Currently honoured only by the
-            ``detect-secrets`` path -- the TOML path will gain a
-            corresponding ``[[rules]]``-append mechanism in a future
-            step.
+            for in-house token formats, honoured only by the
+            ``detect-secrets`` path.
         labeler: redaction-label producer. Defaults to static
             ``[LABEL_REDACTED]``; pass the result of
             :func:`make_hash_labeler` for deterministic-hash mode.
