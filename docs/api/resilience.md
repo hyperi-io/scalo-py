@@ -11,7 +11,7 @@ install):
 - `ReconnectingResilience` — reconnect and retry a pooled connection
   through a transient outage, until it recovers or a budget runs out.
   The sibling shape for a dependency you hold a pool against (a
-  ClickHouse client today, another pooled backend tomorrow) rather
+  ClickHouse client, or any other pooled backend) rather
   than a single request/response call. No `scalo-rs` equivalent exists
   yet — see "Cross-language parity" below.
 
@@ -252,8 +252,7 @@ a **pooled** connection through a transient outage — the caller gets back
 either a result or a `ServiceUnavailable`, never a bare exception from
 deep inside a half-broken client. Generic over the dependency: the
 caller injects the error classifiers and a name, so the same engine
-serves any pooled backend (a ClickHouse client today, another pooled
-connection tomorrow).
+serves any pooled backend, a ClickHouse client among them.
 
 ```python
 from scalo.resilience import ReconnectingResilience, ResilienceConfig, ServiceUnavailable

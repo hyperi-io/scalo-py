@@ -87,7 +87,7 @@ Zero Configuration Philosophy
 - **Container-aware** (K8s, Docker, bare metal)
 - **Production-ready** out of the box
 
-Requires Python 3.14+ for modern type hints and enterprise features
+Requires the Python version ``requires-python`` names in pyproject.toml.
 
 ---
 

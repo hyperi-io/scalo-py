@@ -13,11 +13,6 @@ useDefault = true
 [allowlist]
 description = "scalo historical false positives"
 
-# NOTE: the sensitive historical docs (docs/SERVICE-ACCESS.md and the
-# docs/superpowers infra/plan notes) were scrubbed from history via
-# git-filter-repo, so no doc-credential allowlist is needed. The entries
-# below are defensive backup-file patterns plus test fixtures that carry
-# deliberately fake secrets for the scrubber tests.
 
 # Paths to ignore (backup files no longer in use, test fixtures with fake secrets)
 paths = [
@@ -29,12 +24,8 @@ paths = [
     '''tests/unit/test_scrub_gitleaks_toml\.py''', # Fake API keys for L1 gitleaks-TOML scrubber tests
     '''tests/unit/test_scrub_parity_fixtures\.py''', # Fake API keys for L3 parity fixture tests
     '''src/scalo/data/gitleaks\.json''', # The JSON sidecar of gitleaks.toml, whose rules carry the key prefixes they match
-    # The masking corpus is BY CONSTRUCTION a list of credential-shaped strings:
-    # its whole job is to assert the masker redacts them. Scanning it for secrets
-    # will always fight it. Every value is synthetic -- the flagged one is
-    # `eyJhbGciOiJIUzI1NiJ9`, the base64 of the JWT header {"alg":"HS256"}, which
-    # is a public constant and not a credential at all.
-    # Its current home, and the path it had before it left the wheel (history scans).
+    # The masking corpus is synthetic credential-shaped strings, at its path and
+    # the one it had in the wheel (history scans).
     '''tests/fixtures/patterns/masking-patterns\.yaml''',
     '''src/scalo/data/masking-patterns\.yaml''',
 ]

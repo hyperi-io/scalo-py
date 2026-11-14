@@ -118,8 +118,7 @@ class SecretsManager:
         self._rotation_callbacks: list[tuple[RotationCallback, list[str] | None]] = []
         self._refresh_task: asyncio.Task | None = None
         self._refresh_stop_event: asyncio.Event | None = None
-        # Instance-scoped; previously class-level which cross-leaked between
-        # managers configured against different tenants/namespaces.
+        # Instance-scoped, so managers for different tenants never share it.
         self._memory_cache: dict[_CacheKey, SecretValue] = {}
         self._memory_cache_lock = threading.Lock()
         # Provider name -> its cache identity, derived on first use.

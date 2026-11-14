@@ -8,10 +8,9 @@
 
 """Snapshot tests for deployment artefact generators.
 
-Cross-language byte parity with scalo-rs will be wired in v2.29.0 once
-``scalo-rs/tests/parity/fixtures/`` lands. For now we verify shape
-and key fragments -- enough to catch regressions while the contract is
-being shaped.
+Cross-language byte parity with scalo-rs waits on
+``scalo-rs/tests/parity/fixtures/``. These verify shape and key
+fragments, enough to catch regressions.
 """
 
 import json

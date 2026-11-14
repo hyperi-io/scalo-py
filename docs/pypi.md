@@ -61,4 +61,4 @@ if __name__ == "__main__":
 
 Pick the secrets backend you use rather than `secrets`, since each backend brings its own cloud SDK.
 
-Docs and source are at <https://github.com/hyperi-io/scalo-py>. Requires Python 3.14 or later. Licensed Apache-2.0: <https://github.com/hyperi-io/scalo-py/blob/main/LICENSE>.
+Docs and source are at <https://github.com/hyperi-io/scalo-py>. Requires the Python version `requires-python` names in `pyproject.toml`. Licensed Apache-2.0: <https://github.com/hyperi-io/scalo-py/blob/main/LICENSE>.

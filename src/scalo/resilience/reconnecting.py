@@ -13,8 +13,8 @@ pooled connection through a transient outage: a transient error backs off and
 recovers on the next success, a CONNECTION outage additionally rebuilds the pool
 between attempts and may fire a warm-up hook (extending the budget to a
 cold-start window). Generic over the dependency - the caller injects the error
-classifiers + a name, so it serves any pooled backend (a ClickHouse client
-today, another pooled connection tomorrow). Tracks an :class:`OutageState` a
+classifiers + a name, so it serves any pooled backend, a ClickHouse client
+among them. Tracks an :class:`OutageState` a
 readiness surface can read.
 """
 
@@ -71,8 +71,7 @@ class ReconnectingResilience:
     """Run an operation with reconnecting back-off + outage-state tracking.
 
     Generic over the dependency: the caller injects the classifiers and a name so
-    the same engine serves any pooled backend (ClickHouse today; another pooled
-    connection tomorrow).
+    the same engine serves any pooled backend, ClickHouse among them.
 
     Args:
         config: the back-off + budget knobs (config-cascade).

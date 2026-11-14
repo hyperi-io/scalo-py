@@ -324,7 +324,7 @@ def _make_handler(health: HealthManager, metrics: Any | None) -> type[BaseHTTPRe
         def _send(self, code: int, body: bytes, content_type: str) -> None:
             self.send_response(code)
             # Strip CR/LF before it goes in a header. The value comes from our
-            # own metrics backend today, but a newline reaching a header is
+            # own metrics backend, but a newline reaching a header is
             # response splitting, and this is the one place it could.
             self.send_header("Content-Type", content_type.replace("\r", "").replace("\n", ""))
             self.send_header("Content-Length", str(len(body)))

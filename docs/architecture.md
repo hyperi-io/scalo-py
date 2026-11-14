@@ -143,10 +143,6 @@ scalo-rs ships several modules scalo-py does not, by design:
   STRmatch. None of these exist in scalo-py. Python's async model + GIL
   make the hot-path concurrency story different; we use
   `concurrency.gather_with_timeouts` for the simple cases.
-- `tracing` as a distinct module. Pylib emits structured log fields
-  but does not currently wire W3C `traceparent` propagation across
-  modules. Tracking issue: when this lands, it'll get a
-  `core-pillars/tracing.md`.
 
 What scalo-py has that scalo-rs doesn't:
 

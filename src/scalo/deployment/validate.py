@@ -23,7 +23,7 @@ from .errors import ContractMismatch
 def validate_base_image(contract: DeploymentContract) -> list[ContractMismatch]:
     """Check the contract's base image against the house rules.
 
-    One rule today: no musl/Alpine bases for application images. Python
+    The rule: no musl/Alpine bases for application images. Python
     wheels ship manylinux binaries, not musllinux, so an Alpine base silently
     falls back to compiling from source -- a slower build producing a slower
     runtime -- and the C libraries scalo links against (librdkafka, OpenSSL)

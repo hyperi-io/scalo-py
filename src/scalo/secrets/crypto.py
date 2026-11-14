@@ -12,9 +12,8 @@ other when the ``encryption_key`` matches:
   one secret cannot be renamed into another's slot and still decrypt.
 - Random 96-bit nonce per entry (AES-GCM standard).
 
-AES-256-GCM replaces the previous Fernet (AES-128-CBC + HMAC) at-rest
-cipher to meet the CNSA 2.0 AES-256 symmetric target -- the Rust twin was
-already AES-256-GCM, so this is parity, not a new design.
+AES-256-GCM meets the CNSA 2.0 AES-256 symmetric target, and is the
+cipher scalo-rs uses at rest.
 """
 
 import base64

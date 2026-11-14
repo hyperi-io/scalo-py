@@ -4,9 +4,7 @@
 
 license: Apache-2.0
 
-# Declared, never inferred. Category 4 (OSS): Apache-2.0, publishes to PyPI,
-# neutral branding. The repo stays private until the consuming apps migrate;
-# the package is already public.
+# Category 4 (OSS): Apache-2.0, publishes to PyPI, neutral branding.
 classification: oss
 
 release:
@@ -22,7 +20,7 @@ vendor:
       tests/fixtures/rules_corpus.json: tests/fixtures/rules_corpus.json
 
 test:
-  min_coverage: 70  # Current: 73%. Target: 80%. Ratchet up as coverage improves.
+  min_coverage: 70
   python:
     parallel: auto
   # The shared test services' run log (tests/TESTING.md), printed after the tests.
@@ -69,9 +67,7 @@ quality:
     # vulture: library code has extensive public API that looks "unused"
     vulture: warn
 
-  # hyperi-ci reads quality.ignore and passes each entry to its tool
-  # (pip-audit --ignore-vuln, semgrep --exclude-rule); a bare .pip-audit-ignore
-  # file is NOT read by anything. pip-audit carries no risk acceptances.
+  # hyperi-ci passes each entry to its tool. A bare .pip-audit-ignore is read by nothing.
   ignore:
     - tool: semgrep
       id: python.lang.compatibility.python37.python37-compatibility-importlib2

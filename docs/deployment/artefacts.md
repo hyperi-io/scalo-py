@@ -127,8 +127,8 @@ secrets are not shipped to the daemon at all.
 
 A JSON document hyperi-ci reads to plan the build. It contains the
 minimal subset of the contract CI needs -- no secrets, no K8s probes,
-no `entrypoint_args` interpretation. Schema is its own (currently
-string `"1"`), not the parent contract's `schema_version`.
+no `entrypoint_args` interpretation. Its schema version is its own,
+not the parent contract's `schema_version`.
 
 Shape:
 

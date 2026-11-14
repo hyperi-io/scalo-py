@@ -88,10 +88,7 @@ def build_scrubber(
     if not config.metrics_enabled or metrics is None:
         metrics = ScrubMetrics.noop()
     elif metrics._type_cap != config.metrics_type_cardinality_cap:
-        # Rebind onto the CONFIGURED cap. ScrubMetrics defaults to 64, and
-        # nothing used to pass config.metrics_type_cardinality_cap through,
-        # so the documented knob had no effect even when a caller supplied a
-        # real metrics instance.
+        # Rebind onto the CONFIGURED cap: ScrubMetrics defaults to 64.
         metrics = ScrubMetrics.from_manager(
             metrics._backend,
             type_cardinality_cap=config.metrics_type_cardinality_cap,
