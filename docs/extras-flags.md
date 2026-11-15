@@ -1,6 +1,6 @@
 # Extras flags
 
-Python equivalent of scalo-rs's `docs/feature-flags.md`. Where scalo-rs uses cargo features, scalo-py uses [PEP 631 extras](https://peps.python.org/pep-0631/): install what you need, pay nothing for what you don't.
+Python equivalent of scalo-rs's [feature flags page](https://github.com/hyperi-io/scalo-rs/blob/main/docs/feature-flags.md). Where scalo-rs uses cargo features, scalo-py uses [PEP 631 extras](https://peps.python.org/pep-0631/): install what you need, pay nothing for what you don't.
 
 This page covers the base install, which extras pull in which deps, native deps, and recommended bundles. For what an extra does, see the subsystem doc linked in each row.
 
