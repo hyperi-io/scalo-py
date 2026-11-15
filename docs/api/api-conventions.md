@@ -105,7 +105,7 @@ A declared verb equal to the trailing literal makes that literal the action. A d
 | `singletons` | none | Resource names with no id |
 | `roots` | any | Root resources the API may declare |
 | `max_depth` | 3 | Most resource levels a path may name |
-| `plurals` | `DEFAULT_PLURALS` | Extra plural names that do not end in `s` |
+| `plurals` | none | Extra plural names that do not end in `s`, on top of `DEFAULT_PLURALS` |
 | `tool_prefix` | `""` | Prefix of the derived MCP tool name |
 
 A name is plural when its last word ends in `s` but not `ss`, `us` or `is`, or is listed in `plurals` or `DEFAULT_PLURALS` (`children`, `criteria`, `data`, `indices`, `media`, `metadata`, `people`). `Hierarchy.parse(path, method, verb=None)` returns the `OperationName` (`hierarchy`, `verb`, `group`, `resource`, `depth`, `operation_id`, `problems`) for any path. `unique_id` never raises: a path that breaks a rule still gets an id, and the conformance check reports the rule.
@@ -183,7 +183,7 @@ A list takes these query parameters, after AIP-158 and AIP-132:
 
 A list answers `Page[T]`: `items`, `next_page_token` and an optional `total_size`. `next_page_token` is `null` on the last page. A UI stops paging on it with `getNextPageParam: p => p.next_page_token || undefined`. Use `||`, not `??`, so an empty string stops it too.
 
-`paginate(items, query, bound={...}, with_total=True)` cuts a page out of a list the server has already filtered and ordered. Pass in `bound` every list parameter of your own that shapes `items`, such as a search term. `encode_page_token` and `decode_page_token` do the same for a list that pages in its datastore.
+`paginate(items, query, bound={...}, with_total=True)` cuts a page out of a list the server has already filtered and ordered. Pass in `bound` every list parameter of your own that changes `items`, such as a search term. `encode_page_token` and `decode_page_token` do the same for a list that pages in its datastore.
 
 A page token is a Fernet token from `cryptography`, so a client can neither read nor forge one. It holds the offset and a hash of the request path, `filter`, `order_by` and `bound`. A token answers 400 `invalid_page_token` if it was tampered with, is older than `PAGE_TOKEN_TTL_SECONDS` (a day), or comes back with any of those changed. The client then starts again from the first page. `page_size` and `skip` may change between pages. A token grants nothing: the handler filters the list for each caller as it always does.
 
@@ -247,7 +247,7 @@ def test_api_conformance():
 
 | Rule | Fires on |
 |---|---|
-| `operation-id` | No operationId, one not shaped `<root>.<child...>.<verb>`, or one other than the derived id |
+| `operation-id` | No operationId, one not of the form `<root>.<child...>.<verb>`, or one other than the derived id |
 | `duplicate-operation-id` | One id on two operations |
 | `hierarchy` | A path that breaks a resource-name rule: kebab-case, plural collections, parameter position, base path, declared roots, a method with no standard verb |
 | `depth` | More resource levels than `max_depth` |
@@ -261,7 +261,7 @@ def test_api_conformance():
 | `dry-run` | A mutation, anything not read-only, without `dry_run` |
 | `if-match` | A PUT, PATCH or DELETE without the `If-Match` header |
 
-`exempt` takes patterns over route paths for protocol routes whose shape a standard fixes, such as SCIM, OIDC or `.well-known`. `allow` takes patterns over a violation's key, `"<rule> <METHOD> <path>"`, so an API adopts the conventions router by router: `"* * /api/v1/sigma/*"` allows a whole router. `report.allow_list()` returns the keys that would pass today, which is the starting allow-list. An entry that matches nothing fails the check (`strict=False` tolerates it), which keeps the list shrinking to empty. `spec=` checks a committed copy of the spec instead of `app.openapi()`.
+`exempt` takes patterns over route paths for protocol routes whose paths a standard fixes, such as SCIM, OIDC or `.well-known`. `allow` takes patterns over a violation's key, `"<rule> <METHOD> <path>"`, so an API adopts the conventions router by router: `"* * /api/v1/sigma/*"` allows a whole router. `report.allow_list()` returns the keys that would pass today, which is the starting allow-list. An entry that matches nothing fails the check (`strict=False` tolerates it), which keeps the list shrinking to empty. `spec=` checks a committed copy of the spec instead of `app.openapi()`.
 
 ---
 

@@ -1,16 +1,8 @@
 # Version check
 
-Non-blocking startup probe that asks a configured releases endpoint
-whether a newer version of your service is available, and logs the result.
-Daemon thread, fire-and-forget — never blocks startup, never raises,
-never affects exit code. Ships in the base package; needs `httpx` to
-actually make the call (otherwise skipped with a DEBUG line).
+Non-blocking startup probe that asks a configured releases endpoint whether a newer version of your service is available, and logs the result. It runs on a daemon thread, fire-and-forget: it never blocks startup, never raises and never affects the exit code. It ships in the base package and needs `httpx` to make the call, otherwise it is skipped with a DEBUG line.
 
-The check is OPT-OUT: wiring it into an app is the opt-in, so `enabled`
-defaults true — and it stays inert until an `api_url` is supplied, so
-nothing is ever sent unless the app (or config) names an endpoint. An
-explicit `version_check.enabled: false` in any config layer is the
-opt-out and always wins. Don't want a check at all? Don't call it.
+The check is OPT-OUT: wiring it into an app is the opt-in, so `enabled` defaults true, and it stays inert until an `api_url` is supplied, so nothing is sent unless the app (or config) names an endpoint. An explicit `version_check.enabled: false` is the opt-out and always wins. Don't want a check at all? Don't call it.
 
 ```python
 from scalo.version_check import check_on_startup
@@ -43,7 +35,7 @@ If a newer version is found:
 
 ```text
 INFO  new version available: orders-api (current: 1.2.0, latest: 1.3.1)
-      [released 12 days ago] — https://releases.example.com/orders-api/1.3.1
+      [released 12 days ago] -- https://releases.example.com/orders-api/1.3.1
 ```
 
 If you're up to date, the log goes out at DEBUG.
@@ -52,12 +44,9 @@ If you're up to date, the log goes out at DEBUG.
 
 ## Why this exists
 
-- Operators forget to check for updates. A startup line that says
-  "you're three months behind" beats an outage caused by a known bug.
-- It runs in a daemon thread so a hung HTTP server, broken DNS, or
-  network egress block never delays your service starting.
-- It posts a stable per-host anonymous instance ID so the release
-  service can show install counts without identifying anyone.
+- Operators forget to check for updates. A startup line that says "you're three months behind" beats an outage caused by a known bug.
+- It runs in a daemon thread so a hung HTTP server, broken DNS, or a network egress block never delays your service starting.
+- It posts a stable anonymous instance ID per install, so the release service can count installs without identifying anyone.
 
 ---
 
@@ -80,17 +69,13 @@ def check_on_startup(
 | `deployment` | Optional local context (`"k8s"`, `"docker"`, `"systemd"`). Never sent -- see Payload. |
 | `config` | Optional `VersionCheckConfig` override. |
 
-Returns the spawned `threading.Thread` if a check was kicked off, or
-`None` when the check was skipped (disabled, product missing, version
-missing). Production code can ignore the return value; tests use it to
-`.join()` deterministically instead of `time.sleep`.
+Returns the spawned `threading.Thread` if a check was kicked off, or `None` when the check was skipped (disabled, no `api_url`, product missing, version missing). Production code can ignore the return value, and tests use it to `.join()` deterministically instead of `time.sleep`.
 
 ---
 
 ## Configuration
 
-All settings live under the `version_check` key of the config cascade, so
-any layer (file or env, via the app's cascade prefix) can set them:
+All settings live under the `version_check` key, read from the module-level `settings`, so a discovered YAML file or an env key can set them. That object's env keys take the `ENV_PREFIX` prefix, or none, never `ServiceApp`'s `env_prefix`, and a `--config` file does not reach it:
 
 ```yaml
 version_check:
@@ -104,14 +89,12 @@ version_check:
 | Setting | Library default | Purpose |
 |---------|-----------------|---------|
 | `enabled` | `True` | The kill switch. An explicit `false` wins over any app default. |
-| `api_url` | `None` | Endpoint. No baked-in default -- the app supplies its own; without one the check is inert. |
+| `api_url` | `None` | Endpoint. No baked-in default: the app supplies its own, and without one the check is inert. |
 | `timeout` | `5.0` | HTTP timeout in seconds, kept short so the daemon thread exits quickly. |
 | `send_instance_id` | `True` | `false` strips the instance id from the payload. |
 | `instance_id` | `""` | Explicit id, sent verbatim -- overrides the derived one. |
 
-An app supplies its own defaults -- typically just the endpoint -- via
-`from_cascade_or`; the cascade overlays them, so unset keys fall to the
-app and set keys win:
+An app supplies its own defaults -- typically just the endpoint -- via `from_cascade_or`. The cascade overlays them, so unset keys fall to the app and set keys win:
 
 ```python
 from scalo.version_check.checker import VersionCheckConfig
@@ -148,9 +131,7 @@ class MyService(ServiceApp):
         # ... start serving ...
 ```
 
-Place the call early in `run_service` — after the logger is up so the
-result shows, before the long-running work so the daemon thread has
-network access while everything is still booting cleanly.
+Place the call early in `run_service`, after the logger is up so the result shows.
 
 ---
 
@@ -168,11 +149,7 @@ POST body:
 }
 ```
 
-The payload matches scalo-rs field for field. `deployment` is never
-sent -- operators embed sensitive names in free-form deployment
-strings; the config field remains accepted but stays local.
-`instance_id` is included unless `version_check.send_instance_id:
-false`, which yields a payload with no identifier at all.
+scalo-rs sends the same fields. `os` here is Python's platform name (`Linux`), where scalo-rs sends Rust's lowercase `linux`. `deployment` is never sent, because operators embed sensitive names in free-form deployment strings, and the field stays local. `instance_id` is included unless `version_check.send_instance_id: false`, which yields a payload with no identifier at all.
 
 Response:
 
@@ -182,59 +159,44 @@ Response:
   "update_available": true,
   "release_url": "https://releases.example.com/orders-api/1.3.1",
   "published_at": "2026-05-13T09:30:00Z",
-  "message": "Security fixes — recommend prompt upgrade."
+  "message": "Security fixes -- recommend prompt upgrade."
 }
 ```
 
-`message` (when present) is logged at INFO with the product name as a
-prefix — used for one-off operator advisories.
+`message` (when present) is logged at INFO with the product name as a prefix, for one-off operator advisories.
 
 ---
 
 ## Instance ID
 
-Derived from what the app is running on, so the same install reports as
-the same install across restarts. Resolution order, first hit wins:
+Derived from what the app is running on, so the same install reports as the same install across restarts. Resolution order, first hit wins:
 
 1. `version_check.instance_id` from the config, sent verbatim.
-2. Kubernetes: UUIDv5 over the serviceaccount cluster CA cert plus the
-   pod namespace — readable in-pod with no API permissions, unique per
-   cluster, stable across every pod restart and reschedule.
-3. `/etc/machine-id`, as an app-scoped UUIDv5 — the raw machine id never
-   leaves the host. Skipped inside containers, where a machine-id baked
-   into the image would make every install report as the same one.
+2. Kubernetes: UUIDv5 over the serviceaccount cluster CA cert plus the pod namespace. It is readable in-pod with no API permissions, unique per cluster and namespace, and stable across every pod restart and reschedule.
+3. `/etc/machine-id` (then `/var/lib/dbus/machine-id`), as an app-scoped UUIDv5, so the raw machine id never leaves the host. Skipped inside containers, where a machine-id baked into the image would make every install report as the same one.
 4. A v4 UUID persisted at `~/.config/scalo/instance_id` (dev machines).
 5. An ephemeral UUID for that run alone.
 
-The derived forms are one-way UUIDv5 values: nothing about the host can
-be recovered from them. scalo-rs shares the UUIDv5 namespace, so both
-chassis derive the SAME id on the same platform. Disable entirely with
-`version_check.send_instance_id: false`.
+The derived forms are one-way UUIDv5 values: nothing about the host can be recovered from them. scalo-rs shares the UUIDv5 namespace and the hashed material, so both libraries derive the SAME id on the same platform. Disable entirely with `version_check.send_instance_id: false`.
 
 ---
 
 ## Disabling in air-gapped environments
 
-Set `version_check.enabled: false` in any config layer -- a deployment
-yaml, or the env form of the cascade key with the app's prefix:
+Set `version_check.enabled: false` in a settings file the cascade discovers, or set the env form of the key. With no `ENV_PREFIX` exported it is bare, whatever the app's `ServiceApp.env_prefix`:
 
 ```bash
-export MY_SVC_VERSION_CHECK__ENABLED=false
+export VERSION_CHECK__ENABLED=false
+# with ENV_PREFIX=MY_SVC exported: MY_SVC_VERSION_CHECK__ENABLED=false
 ```
 
-The explicit `false` wins even when the app ships the check on by
-default. Air-gapped sites typically also block the endpoint at the
-egress layer; without the config opt-out that costs one WARN line and
-one connect timeout per restart, nothing more.
+The explicit `false` wins even when the app ships the check on by default. Air-gapped sites typically also block the endpoint at the egress layer, and without the config opt-out that costs one WARN line and one connect timeout per restart, nothing more.
 
 ---
 
 ## Failure handling
 
-Anything that goes wrong inside `_run_check` — DNS failure, TCP timeout,
-HTTP 5xx, malformed JSON — is caught and logged at WARN as
-`version check failed (non-fatal): <reason>`. The thread exits cleanly.
-Your service never sees the failure.
+Anything that goes wrong in the check thread -- DNS failure, TCP timeout, HTTP 5xx, malformed JSON -- is caught and logged at WARN as `version check failed (non-fatal): <reason>`. The thread exits cleanly, and your service never sees the failure.
 
 ---
 
@@ -263,4 +225,3 @@ check_on_startup("my-service", "1.0.0", config=cfg)
 - [../core-pillars/logging.md](../core-pillars/logging.md)
 - [http-client.md](http-client.md)
 - [../integration.md](../integration.md)
-- [../runtime/service-runtime.md](../runtime/service-runtime.md)

@@ -32,7 +32,7 @@ the CA store both read.
 - `is_empty()` -- shortcut the Dockerfile generator uses to emit a
   smaller APT block when there's nothing extra.
 - `for_scalo_extras(extras, base_image, *, distro_codename=...)` --
-  factory; see below.
+  factory for the scalo-py extras an app uses.
 - `for_scalo_features(features, base_image, *, distro_codename=...)`
   -- factory for polyglot apps that re-bind a scalo-rs core.
 
@@ -45,7 +45,9 @@ State it explicitly -- never sniff it out of the base-image string.
 `debian:13-slim`, `debian:stable-slim` and any digest-pinned reference
 all defeat substring matching, and getting it wrong produces a package
 name that does not exist in the target suite (see
-[Verify by building](#verify-by-building-not-by-reading-the-index)).
+[`for_scalo_features`](#for_scalo_features-polyglot-apps)).
+
+`for_scalo_extras(extras, base_image)` takes your `pyproject.toml` extras list, the same strings used in `pip install "scalo[...]"`. No extra, `kafka` included, maps to a package, so the contract records only the release (`distro_codename`) for CI to audit.
 
 ---
 
@@ -56,91 +58,43 @@ A custom APT repository, for a package no distro suite carries.
 | Field | Required | Notes |
 |---|---|---|
 | `key_url` | yes | GPG key URL -- fetched via `curl -fsSL` |
-| `keyring` | yes | Local path; the basename (sans extension) names the sources-list file |
+| `key_fingerprint` | no | Expected OpenPGP fingerprint of the key, uppercase hex with no spaces. The build fails when the downloaded key does not match. Empty skips the check |
+| `keyring` | yes | Local path. Its basename, without the extension, names the sources-list file |
 | `url` | yes | Base URL after `deb` |
-| `codename` | no | E.g. `noble`. The *vendor repo's* suite, the contract's `distro_codename` when empty |
+| `codename` | no | E.g. `noble`. The repository's own suite, the contract's `distro_codename` when empty |
 | `packages` | no | Packages installed from this specific repo |
 
-`codename` here is the suite the **vendor** publishes, which is not
-always the base image's own suite. Leave it empty to take the
-contract's release.
+`codename` is the suite the repository publishes, which is not always the base image's own suite. Leave it empty to take the contract's release.
 
 For distro-versioned package names (`libgit2-1.9` vs `libgit2-1.7`) use
 `distro_codename` on the contract instead -- never this field.
 
 ---
 
-## Extras -> APT mapping
-
-`NativeDepsContract.for_scalo_extras(extras, base_image)` builds the
-runtime contract from your `pyproject.toml` extras list. Pass the same
-strings used in `pip install "scalo[...]"`.
-
-| Extra | Adds repos | Adds packages |
-|---|---|---|
-| every extra, `kafka` included | -- | none |
-
-The contract still records the release (`distro_codename`), so CI can
-audit which suite the image targets.
-
----
-
 ## `for_scalo_features` (polyglot apps)
 
-For services with a Rust core re-bound to Python (or vice-versa),
-`for_scalo_features(features, base_image)` accepts Cargo feature
-names and maps them to runtime APT packages. The mapping mirrors
-scalo-rs's own `NativeDepsContract::for_scalo_features` -- both
-implementations resolve to the same package set for the same feature
-list, by design. The scalo-rs release build links librdkafka, OpenSSL,
-zlib and zstd statically.
+For a service with a Rust core re-bound to Python, `for_scalo_features(features, base_image)` takes scalo-rs Cargo feature names and maps them to runtime APT packages. The scalo-rs release build links librdkafka, OpenSSL, zlib and zstd statically, so only `directory-config-git` installs a package.
 
 | Cargo feature | APT packages |
 |---|---|
-| `directory-config-git` | `libgit2-1.9` (trixie) / `libgit2-1.7` (older) |
-| `transport-kafka`, `dlq-kafka*`, `spool`, `tiered-sink`, `http`, `secrets*`, `otel*` | none: linked statically |
+| `directory-config-git` | `libgit2-1.9` on trixie, `libgit2-1.7` on any other release |
+| any other | none |
 
-The libgit2 name is resolved from `distro_codename` via
-`libgit2_runtime_package()`. Soname-versioned packages do not alias --
-different ABI versions are genuinely different libraries, so there is
-no virtual provider to fall back on and the name must match the suite.
+The libgit2 name comes from `distro_codename` via `libgit2_runtime_package()`. A soname-versioned package has no alias to fall back on, so the name must match the release.
+
+scalo-rs's `NativeDepsContract::for_scalo_features` names the same package on trixie and noble, but `libgit2-1.5` on bookworm, `libgit2-1.1` on jammy and `libgit2-28` on focal, which are the names those releases carry. scalo-rs also derives the release from `base_image` and records `unresolved_base_image` or `contradicted_base_image`, where scalo-py takes `distro_codename` as given and ignores `base_image`.
+
+Check a package name by building the image on the target base, never by reading a distribution's package pages or search UI. A name that resolves through a `Provides:` alias does not show on those pages, so a name that looks missing there can still install.
 
 ---
 
 ## No musl, no Alpine
 
-Application images use a glibc base -- Debian slim. This is a house
-rule, and `validate_base_image()` flags a contract that breaks it.
+Application images use a glibc base -- Debian slim. `validate_base_image()` returns a mismatch for a base or builder image whose name contains `alpine` or `musl`.
 
-The reason is specific rather than tribal. Python wheels are published
-for manylinux, not musllinux, so on Alpine `pip`/`uv` silently falls
-back to building from source: a much slower build that yields a slower
-runtime, for no gain. scalo's own C-linked dependencies make it worse
--- `confluent-kafka` and `common-expression-language` have no musl
-wheels at all, which is exactly why the builder sets `UV_NO_BUILD=1`
-to turn that silent fallback into a loud failure.
+scalo's C-linked dependencies, `confluent-kafka` and `common-expression-language`, publish manylinux wheels and no musllinux ones. On Alpine, `uv` would build them from source, a much slower build that yields a slower runtime. The builder's `UV_NO_BUILD=1` on the dependency phase turns that into a build failure.
 
-Alpine images in this repo are test scaffolding, not application
-images: a public canary in `test-support.md` and a label-only mock in
-`tests/e2e/test_contract_artefacts.py`. Neither breaks the rule and
-neither should be "fixed".
-
----
-
-## Verify by building, not by reading the index
-
-Package names get checked by **building**, never by reading a
-distribution's package pages or search UI.
-
-This is not a style preference. An earlier review of this file reported
-three build-breaking package names, reasoned from published indexes.
-Two of the three were wrong: the packages resolved via `Provides:`
-aliases that the package pages do not surface. Only the libgit2 one was
-real, and it was real precisely because soname-versioned packages are
-the case where aliasing does *not* happen.
-
-So: change a package name, then build the image on the target base
-before believing it.
+The Alpine images in this repo are test scaffolding, not application images: a label-only mock in `tests/e2e/test_contract_artefacts.py` and the `python:3.12-alpine` input `tests/unit/deployment/test_container_standard.py` feeds the guard.
 
 ---
 
@@ -152,11 +106,8 @@ packages (plus dev tools if `image_profile=DEVELOPMENT`).
 
 When non-empty, the block:
 
-1. Installs base packages first (always includes `gnupg` so the next
-   step can verify the custom-repo key).
-2. For each `AptRepoContract`: downloads the GPG key, dearmors it to
-   the `keyring` path, writes a `deb [signed-by=<keyring>]` entry to
-   `/etc/apt/sources.list.d/<keyring-stem>.list`.
+1. Installs the base packages, adding `gnupg` when the contract names a custom repository, so the next step can read its key.
+2. For each `AptRepoContract`: downloads the GPG key, checks it against `key_fingerprint` when one is set, dearmors it to the `keyring` path, and writes a `deb [signed-by=<keyring>] <url> <codename> main` entry to `/etc/apt/sources.list.d/<keyring-stem>.list`.
 3. Re-runs `apt-get update` and installs the union of all per-repo
    packages plus `apt_packages`.
 4. Cleans `/var/lib/apt/lists/*`.

@@ -1,19 +1,8 @@
 # Extras flags
 
-Python equivalent of scalo-rs's `FEATURE-FLAGS.md`. Where scalo-rs uses
-cargo features, scalo-py uses [PEP 631 extras](https://peps.python.org/pep-0631/).
-Same idea: install what you need, pay nothing for what you don't.
+Python equivalent of scalo-rs's `docs/feature-flags.md`. Where scalo-rs uses cargo features, scalo-py uses [PEP 631 extras](https://peps.python.org/pep-0631/): install what you need, pay nothing for what you don't.
 
-This page covers:
-
-- The base install (what ships with no extras)
-- The extras tree (which extras pull in which deps)
-- Native deps (apt packages on Linux that some extras assume)
-- Recommended bundles for common app shapes
-
-For the *what* — what an extra actually does — see the subsystem doc
-linked in each row. This page is about which extras to enable and what
-that costs.
+This page covers the base install, which extras pull in which deps, native deps, and recommended bundles. For what an extra does, see the subsystem doc linked in each row.
 
 ---
 
@@ -21,7 +10,7 @@ that costs.
 
 ```toml
 [project]
-dependencies = ["scalo>=2.28.3"]
+dependencies = ["scalo"]
 ```
 
 That gives you:
@@ -29,7 +18,7 @@ That gives you:
 - 7-layer config cascade (`from scalo import config`)
 - Structured logger with autodetect format + secret scrubbing (`from scalo import logger`, then `logger.setup()`)
 - Container-aware runtime paths (`from scalo import runtime`)
-- Health probe router primitives (`from scalo import health`)
+- Health probe state and the observability listener (`from scalo import health`). `create_health_router` also needs FastAPI
 - CLI framework (`from scalo.cli import ServiceApp`)
 - Concurrency primitives (`from scalo import concurrency`)
 - Version-check probe (`from scalo.version_check import check_on_startup`)
@@ -76,11 +65,11 @@ flowchart TB
     Base --> Deploy
     Base --> Expr
 
-    Resil -.transitive.-> HTTP
+    HTTP -.carries.-> Resil
 
-    MCP -.transitive.-> API
+    MCP -.carries.-> API
 
-    Metrics -.transitive.-> OTel
+    Metrics -.carries.-> OTel
 
     SV --> SAll
     SA --> SAll
@@ -89,9 +78,7 @@ flowchart TB
     SK --> SAll
 ```
 
-Solid arrows: independent extra. Dotted arrows: extra automatically
-pulled in by another (no need to list both). The `secrets` extra is a
-meta-extra that installs every backend at once.
+Solid arrows: independent extra. A dotted arrow points from an extra to one whose packages it already carries, so there is no need to list both: `mcp` installs `scalo[api]`, `http` carries `stamina`, and `metrics` carries every `opentelemetry` package. The `secrets` extra is a meta-extra that installs every backend at once.
 
 ---
 
@@ -116,7 +103,7 @@ alone. `opentelemetry` is a subset of it, kept so existing
 | `resilience` | `stamina` | none | [api/resilience.md](api/resilience.md) |
 | `http` | `httpx`, `stamina` | none | [api/http-client.md](api/http-client.md) |
 
-`http` carries its retry dependency itself; the `secrets-*` extras do NOT pull `resilience` in. `scalo.resilience` (circuit breaker, reconnecting client) is stdlib-only and works on the base install.
+`http` carries its retry dependency itself, and no `secrets-*` extra pulls `resilience` in. `scalo.resilience` (circuit breaker, reconnecting client) needs no extra and works on the base install.
 
 ### API server
 
@@ -160,11 +147,9 @@ is part of the test suite, not a runtime artefact.
 
 | Extra | Adds | Native deps | Doc |
 |---|---|---|---|
-| `expression` | `common-expression-language` (PyO3 wrapper around the `cel` Rust crate) | none (precompiled wheels) | [api/expression.md](api/expression.md), [api/rules.md](api/rules.md) |
+| `expression` | `common-expression-language` (a Rust extension built on the `cel` crate) | none (precompiled wheels) | [api/expression.md](api/expression.md), [api/rules.md](api/rules.md) |
 
-Provides byte-identical CEL evaluation with scalo-rs's `expression`
-crate. Same expression, same result, regardless of which language the
-service is in.
+It evaluates CEL on the same `cel` crate scalo-rs's `expression` feature compiles against, so an expression means the same thing in either language.
 
 The same extra carries `scalo.rules`, the ordered rule sets scalo-rs builds behind its `rules` feature. Importing `scalo.rules` without it raises `ImportError` naming the extra.
 
@@ -179,27 +164,21 @@ The same extra carries `scalo.rules`, the ordered rule sets scalo-rs builds behi
 | `secrets-kubernetes` | `httpx`, `stamina` | none | [api/secrets.md](api/secrets.md#kubernetes-secret) |
 | `secrets` | all of the above | none | [api/secrets.md](api/secrets.md) |
 
-Pick the backend(s) you actually use. The meta-extra `secrets` is
-convenient but pulls ~50 MB of cloud SDKs. An installed SDK costs disk, not
-import time: `import scalo.secrets` loads none, and each loads when its
-provider is configured.
+Pick the backend(s) you actually use: the meta-extra `secrets` installs every cloud SDK. An installed SDK costs disk, not import time: `import scalo.secrets` loads none, and each loads when its provider is configured.
 
 ### Version check
 
 | Extra | Adds | Native deps | Doc |
 |---|---|---|---|
-| `version-check` | (none -- uses httpx if available, falls back gracefully) | none | [api/version-check.md](api/version-check.md) |
+| `version-check` | nothing -- the check uses httpx when it is installed and is skipped without it | none | [api/version-check.md](api/version-check.md) |
 
 ### Marker extras
 
-These extras intentionally pull no extra dependencies. They exist so
-downstream `pyproject.toml` files can document INTENT (this service
-uses the CLI framework / will get the future "enhanced" bundle)
-without committing to a transitive deps tree that may change.
+`version-check` and `enhanced` pull no dependencies, so listing one installs nothing more than the base.
 
 | Extra | Notes | Doc |
 |---|---|---|
-| `enhanced` | Reserved, a no-op marker. | (none) |
+| `enhanced` | Empty, installs nothing. | (none) |
 
 ### Development
 
@@ -215,7 +194,7 @@ without committing to a transitive deps tree that may change.
 ### Tooling CLI / one-shot script
 
 ```toml
-dependencies = ["scalo>=2.28.3"]
+dependencies = ["scalo"]
 ```
 
 Base install only. Config + logger + runtime + CLI framework.
@@ -226,11 +205,11 @@ Base install only. Config + logger + runtime + CLI framework.
 dependencies = ["scalo[api,metrics]"]
 ```
 
-### Kafka consumer (data-pipeline shape)
+### Kafka consumer
 
 ```toml
 dependencies = [
-    "scalo[kafka,metrics,resilience,http,deployment]>=2.28.3",
+    "scalo[kafka,metrics,resilience,http,deployment]",
 ]
 ```
 
@@ -238,7 +217,7 @@ dependencies = [
 
 ```toml
 dependencies = [
-    "scalo[kafka,metrics,secrets-vault,resilience,http,deployment]>=2.28.3",
+    "scalo[kafka,metrics,secrets-vault,resilience,http,deployment]",
 ]
 ```
 
@@ -246,7 +225,7 @@ dependencies = [
 
 ```toml
 dependencies = [
-    "scalo[kafka,metrics,secrets-vault,secrets-aws,resilience,http,deployment]>=2.28.3",
+    "scalo[kafka,metrics,secrets-vault,secrets-aws,resilience,http,deployment]",
 ]
 ```
 
@@ -254,40 +233,22 @@ dependencies = [
 
 ```toml
 dependencies = [
-    "scalo[kafka,metrics,http,secrets,deployment,expression,resilience,dev]>=2.28.3",
+    "scalo[kafka,metrics,http,secrets,deployment,expression,resilience,dev]",
 ]
 ```
 
 ---
 
-## Native deps cheat-sheet
+## Native deps
 
-For Linux container images, the `NativeDepsContract` (see
-[deployment/native-deps.md](deployment/native-deps.md)) automatically
-emits the right apt-install block for the extras the contract
-references. The mapping:
-
-| Extra | Apt packages |
-|---|---|
-| `kafka` | none (confluent-kafka wheels bundle librdkafka) |
-| `metrics` | none |
-| `secrets-aws` / `secrets-gcp` / `secrets-azure` | `ca-certificates` (already in base image) |
-| `expression` | none (CEL wheel bundles the Rust binary) |
-
-In short: scalo-py's wheels are largely self-contained. The
-`NativeDepsContract` exists to support edge cases where you opt out of
-binary wheels.
+No extra needs an apt package. The wheels carry their C libraries (confluent-kafka bundles librdkafka, the CEL wheel its Rust build), and the Dockerfile scalo generates always installs `ca-certificates`. `NativeDepsContract.for_scalo_extras(extras, base_image)` therefore maps no extra to a package and records only the distro release. `for_scalo_features`, for an app that re-binds a scalo-rs core, adds libgit2 for `directory-config-git`. See [deployment/native-deps.md](deployment/native-deps.md).
 
 ---
 
 ## Notes on pinning
 
-- Pylib pins minimum versions, not maximum, except where a breaking
-  change in a transitive dep is known.
-- Bump to >= the major version that ships the feature you need;
-  trailing pins (`<3` etc.) are deliberate.
-- `>=2.28.3` is the floor for [Contract Identity v1](deployment/identity.md);
-  earlier versions don't have `ContractIdentity`.
+- scalo-py pins minimum versions, not maximum, except where a breaking change in a dependency is known (`sphinx<10` in the `docs` extra).
+- `ContractIdentity` and [Contract Identity v1](deployment/identity.md) need scalo 2.28.3 or later.
 
 ---
 

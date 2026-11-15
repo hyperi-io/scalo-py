@@ -1,17 +1,11 @@
 # CLI
 
-Typer-based CLI framework with two entry shapes:
+Typer-based CLI framework with two entry points:
 
-- **`ServiceApp`** — service framework. Subclass it, get `run`, `version`,
-  `config-check`, and `generate-artefacts` subcommands for free, plus
-  standard flags wired into the config cascade, logger setup, and
-  metrics auto-init.
-- **Raw Typer** — for one-off tools and utilities. The
-  `scalo.cli` module re-exports `Typer`, `Argument`, `Option`
-  plus a library of pre-built standard options and output helpers.
+- `ServiceApp`, the service framework. Subclass it and get `run`, `version`, `config-check` and `generate-artefacts` subcommands, plus standard flags wired into the config cascade, logger setup and metrics auto-init.
+- Raw Typer, for one-off tools and utilities. The `scalo.cli` module re-exports `Typer`, `Argument`, `Option` plus a library of pre-built standard options and output helpers.
 
-Use `ServiceApp` for long-running services; use raw Typer for everything
-else. Ships in the base package — Typer is a core dependency.
+Use `ServiceApp` for long-running services and raw Typer for everything else. Both ship in the base package, where Typer is a core dependency.
 
 ```python
 from scalo.cli import (
@@ -22,7 +16,7 @@ from scalo.cli import (
 
 ---
 
-## Quick start — `ServiceApp`
+## Quick start -- `ServiceApp`
 
 ```python
 from scalo.cli import ServiceApp, VersionInfo
@@ -49,12 +43,12 @@ my-service run                  # start the service
 my-service version              # print version
 my-service config-check         # validate config and exit
 my-service generate-artefacts   # write the contract JSON + runtime Dockerfile
-my-service --help
+my-service --help               # also what my-service prints with no subcommand
 ```
 
 ---
 
-## Quick start — raw Typer tool
+## Quick start -- raw Typer tool
 
 ```python
 from pathlib import Path
@@ -78,14 +72,7 @@ if __name__ == "__main__":
 
 ## `ServiceApp` lifecycle
 
-`ServiceApp` is an abstract base class. Subclasses provide `name`,
-`env_prefix`, `version_info()`, and either `run_service()` (sync) or
-`run_service_async()` (async). The framework: builds the Typer app,
-initialises the logger from `--log-level`/`--log-format`/`--verbose`,
-loads configuration via the 7-layer cascade with the app's
-`env_prefix`, auto-initialises `AppMetrics` if `scalo[metrics]`
-is installed (exposed at `--metrics-addr`), and dispatches to whichever
-of `run_service` / `run_service_async` the subclass overrode.
+`ServiceApp` is an abstract base class. Subclasses provide `name`, `env_prefix`, `version_info()`, and `run_service()`, overriding `run_service_async()` as well for an async service. On `run` the framework loads configuration through the 7-layer cascade with the app's `env_prefix`, initialises the logger from `--log-level`, `--log-format`, `--verbose` and the cascade, runs the `check_config()` hook, creates the metrics manager with `AppMetrics` and `ResourceMetrics` when `scalo[metrics]` is installed, binds the observability port on `--metrics-addr`, marks the health manager started, and calls `run_service_async` if the subclass overrode it, else `run_service`.
 
 ```python
 class MyService(ServiceApp):
@@ -95,7 +82,7 @@ class MyService(ServiceApp):
     def version_info(self):
         return VersionInfo(self.name, "1.0.0", commit="abc123")
 
-    def run_service(self, config):       # sync — config is Dynaconf settings
+    def run_service(self, config):       # sync -- config is Dynaconf settings
         ...
     # async def run_service_async(self, config): ...   # async alternative
 ```
@@ -106,24 +93,23 @@ class MyService(ServiceApp):
 
 | Subcommand | What it does |
 |------------|--------------|
-| `run` (default) | Initialise logger + config + metrics, then call `run_service` / `run_service_async`. |
+| `run` | Load config, initialise the logger and metrics, then call `run_service` / `run_service_async`. |
 | `version` | Print the `VersionInfo` and exit. |
-| `config-check` | Validate the cascade loads cleanly, print a key-value summary to stderr, exit. |
+| `config-check` | Load the cascade and run `check_config()`, print a key-value summary to stderr, exit. |
 | `generate-artefacts` | Write `deployment-contract.json`, `container-manifest.json`, `Dockerfile.runtime` and `.dockerignore` to the output dir (default `ci/`). Requires `ServiceApp.deployment_contract()` to be overridden. |
 
-Standard flags accepted by `run` and `config-check`:
+Standard flags on `run`. `config-check` takes the same set without `--log-format`:
 
 | Flag | Env var | Default | Purpose |
 |------|---------|---------|---------|
-| `--config`, `-c` | `CLI_CONFIG` | — | Path to an extra config file added to the cascade. A relative path is read from the working directory, and a missing or unreadable file stops `run` and `config-check` with exit 1 |
-| `--log-level`, `-l` | `LOG_LEVEL` | `info` | Log level |
-| `--log-format` | `LOG_FORMAT` | config, else `auto` | `json`, `text` or `auto` (JSON unless stderr is a TTY); see [logging.md](../core-pillars/logging.md#format-selection) |
+| `--config`, `-c` | `CLI_CONFIG` | none | Path to an extra config file added to the cascade. A relative path is read from the working directory, and a missing or unreadable file stops `run` and `config-check` with exit 1 |
+| `--log-level`, `-l` | `LOG_LEVEL` | config, else `info` | Log level |
+| `--log-format` | `LOG_FORMAT` | config, else `auto` | `json`, `text` or `auto` (JSON unless stderr is a TTY), see [logging.md](../core-pillars/logging.md#format-selection) |
 | `--metrics-addr` | `METRICS_ADDR` | `0.0.0.0:9090` | Bind address for `/metrics`, `/livez` and `/readyz`. An IPv6 literal goes in brackets, and `[::]:9090` answers IPv4 as well where the kernel allows dual-stack |
-| `--verbose`, `-v` | — | False | Force `DEBUG` |
-| `--quiet`, `-q` | — | False | Suppress non-error output |
+| `--verbose`, `-v` | none | False | Force `DEBUG` |
+| `--quiet`, `-q` | none | False | Suppress non-error output |
 
-`--verbose` and `--quiet` are mutually exclusive — passing both exits
-with code 1.
+On `run`, `--verbose` and `--quiet` are mutually exclusive, and passing both exits with code 1. `config-check` takes both, and `--verbose` wins.
 
 ---
 
@@ -160,7 +146,7 @@ See [../deployment/artefacts.md](../deployment/artefacts.md#kubernetes-objects).
 
 ---
 
-## Raw Typer — `scalo.cli` re-exports
+## Raw Typer -- `scalo.cli` re-exports
 
 The `cli` package re-exports Typer plus a small library of utilities:
 
@@ -194,8 +180,7 @@ Pre-configured `Option(...)` values for any command signature:
 | `YES_OPTION` | `--yes`, `-y` | `bool` | `CLI_YES` |
 | `OUTPUT_OPTION` | `--output`, `-o` | `str` (`"table"`) | `CLI_OUTPUT_FORMAT` |
 
-`CONFIG_OPTION` is typed `str | None` (not `Path`) — convert at the
-call site if you need a `Path`.
+`CONFIG_OPTION` is typed `str | None` (not `Path`), so convert it at the call site if you need a `Path`. `LOG_LEVEL_OPTION` defaults to `"INFO"`.
 
 ```python
 @app.command()
@@ -230,8 +215,7 @@ print_table([{"name": "a", "status": "ok"}, {"name": "b", "status": "fail"}],
 print_json({"host": "localhost", "port": 5432})
 ```
 
-Built on `rich` — automatic colour when stdout is a TTY, plain text
-in pipes and CI.
+Built on `rich` (a Typer dependency), with plain-text output when it is missing. Colour follows rich's terminal detection.
 
 ---
 
@@ -248,8 +232,7 @@ def main(
     ...
 ```
 
-Adds `--version` to the root command. Reads the installed package
-version automatically.
+Adds `--version` (and `-V`) to the root command, reading the installed package's version.
 
 ---
 
@@ -265,8 +248,7 @@ result = CliRunner().invoke(app, ["process", "input.txt", "--verbose"])
 assert result.exit_code == 0
 ```
 
-For `ServiceApp`, invoke via `service.cli(["version"])` — pass `args` to
-skip `sys.argv`.
+For `ServiceApp`, invoke `MyService().cli(["version"])`, passing `args` in place of `sys.argv`. Typer's standalone mode ends it with `SystemExit`, so wrap the call in `pytest.raises(SystemExit)` or use `CliRunner`.
 
 ---
 
@@ -274,12 +256,11 @@ skip `sys.argv`.
 
 ```toml
 [project.scripts]
-my-service = "my_package.cli:MyService.cli"  # ServiceApp
-my-tool    = "my_package.cli:app"             # raw Typer
+my-service = "my_package.cli:main"   # ServiceApp: def main(): MyService().cli()
+my-tool    = "my_package.cli:app"    # raw Typer
 ```
 
-`pip install` (or `uv tool install`) puts the command on the user's
-PATH.
+A console script is called with no arguments, so a `ServiceApp` needs a module-level function that builds the instance. `pip install` (or `uv tool install`) puts the command on the user's PATH.
 
 ---
 
@@ -310,7 +291,7 @@ svc sources apply --generate-cli-skeleton -o yaml > input.yaml
 svc sources apply --cli-input-yaml file://input.yaml
 ```
 
-Without `x-scalo` a dotted `operationId` (`sources.rules.list`) places the command, else its path (`GET /sources/{source}/rules`). Names are lower kebab-case. `x-scalo.cli` hides an operation, adds hidden aliases, and makes parameters positional. Only the branch of the tree an invocation names is built: for a 307-operation spec that took 4 ms, against about 400 ms for the whole tree.
+Without `x-scalo` a dotted `operationId` (`sources.rules.list`) places the command, else its path (`GET /sources/{source}/rules`). Names are lower kebab-case. `x-scalo.cli` hides an operation, adds hidden aliases, and makes parameters positional. Only the branch of the tree an invocation names is built.
 
 | Option | What it does |
 |---|---|
@@ -329,11 +310,15 @@ Without `x-scalo` a dotted `operationId` (`sources.rules.list`) places the comma
 | `-q`, `--quiet` | No warnings, and a value or list of values printed bare, one per line, for piping |
 | `-d`, `--debug` | Tracebacks instead of one-line errors |
 
+## Spec CLI inputs, paging and credentials
+
 The global options go before any command, or after a generated one. In an input document a `null` counts as not given at any depth, and so does an empty parameter, so a filled-in skeleton sends only what was filled in. An object or list emptied that way is dropped, while one written as `{}` or `[]` is sent. To send an explicit `null`, as a merge patch does to remove a field, use `--body`. A YAML date or timestamp in a body is sent as its ISO 8601 text, and a value JSON has no form for, such as `!!binary`, is refused as bad input.
 
 An API `skip` (`--skip`) goes on the first request only, because it counts from the page token's position. A list stops following pages at an empty page that still names a next one, and after `max_pages` pages (`SpecCli(max_pages=...)`, 10,000 by default). Either way it warns and prints the `next_page_token` to resume from. A table prints that token on a last line, `next_page_token: <token>`.
 
 The endpoint comes from `--endpoint-url`, then `<PREFIX>_API_URL`, then the profile. The credential comes from `<PREFIX>_API_KEY` (sent as `X-API-Key`), then `<PREFIX>_API_TOKEN` (a bearer token), then the profile's stored credential. Profiles live under `~/.config/<name>`, moved by `<PREFIX>_CONFIG_HOME`. `Store` reads and writes them, and `Credential` is what it stores, for a login command. The credential file is replaced whole on every save, and one that does not parse is a configuration error rather than an empty store, so a save never drops accounts it could not read. A save or delete holds an advisory lock on `.credentials.lock` beside it, `fcntl` on POSIX and `msvcrt` on Windows, so two CLI processes saving at once keep both accounts.
+
+## Spec CLI errors, transports and exports
 
 Exit codes come from the problem+json status. A failed command prints its report on stderr: a JSON object when the output format is JSON, otherwise lines for a person. Both name the input that failed and, where the CLI can tell, a suggestion:
 
@@ -351,7 +336,7 @@ Exit codes come from the problem+json status. A failed command prints its report
 | 4 | 401 or 403 |
 | 5 | 409 or 412 |
 
-`UrllibTransport` sends requests by default, stdlib only and with scalo's TLS posture, never carrying credentials to a redirect target. `ScaloHttpTransport` sends through `scalo.http`, retrying GET and HEAD, for a consumer with the `http` extra. Any object with the `Transport` method serves, such as one over an in-process ASGI app in tests: it returns a `Response`, and raises `TransportError` when no answer arrived.
+`UrllibTransport` sends requests by default, stdlib only and with scalo's TLS settings, never carrying credentials to a redirect target. `ScaloHttpTransport` sends through `scalo.http`, retrying GET and HEAD, for a consumer with the `http` extra. Any object with the `Transport` method serves, such as one over an in-process ASGI app in tests: it returns a `Response`, and raises `TransportError` when no answer arrived.
 
 `SpecCli.command(*path)` registers a Typer function at a path and `SpecCli.add_typer(app, *path)` mounts a Typer app. Both refuse a taken path unless `replace=True`. `invocation(ctx)` hands a hand-written command the run's `Invocation`: the same endpoint, credential, output and error handling the generated ones use. `load_spec` raises `SpecError` for a document it cannot read. Those twelve names are the package's exports.
 

@@ -1,19 +1,9 @@
 # Resilience
 
-Two complementary primitives, both in the base package (no extras to
-install):
+Two primitives, both in the base package with no extra to install:
 
-- `CircuitBreaker` -- trip-and-reject a one-shot outbound call. It runs
-  the three-state machine (CLOSED / OPEN / HALF_OPEN) and the defaults
-  of the breaker in `scalo-rs`'s tiered sink, `src/tiered_sink/circuit.rs`.
-  The API differs, and so do the behaviours listed under
-  "Cross-language parity" below.
-- `ReconnectingResilience` — reconnect and retry a pooled connection
-  through a transient outage, until it recovers or a budget runs out.
-  The sibling shape for a dependency you hold a pool against (a
-  ClickHouse client, or any other pooled backend) rather
-  than a single request/response call. No `scalo-rs` equivalent exists
-  yet — see "Cross-language parity" below.
+- `CircuitBreaker` -- trip-and-reject a one-shot outbound call. It runs the three-state machine (CLOSED / OPEN / HALF_OPEN) and the defaults of the breaker in scalo-rs's tiered sink, `src/tiered_sink/circuit.rs`. The API differs, and so do the behaviours listed under "Cross-language parity" below.
+- `ReconnectingResilience` -- reconnect and retry a pooled connection through a transient outage, until it recovers or a budget runs out. It is for a dependency you hold a pool against (a ClickHouse client, or any other pooled backend) rather than a single request/response call. scalo-rs has no equivalent.
 
 ```python
 from scalo.resilience import (
@@ -52,9 +42,7 @@ stateDiagram-v2
 | `OPEN` | All calls rejected with `CircuitBreakerError`. After `reset_timeout` seconds elapses, the breaker auto-transitions to `HALF_OPEN` on the next state check. |
 | `HALF_OPEN` | A small number of probe calls (`half_open_max_calls`, default 1) are permitted. A success closes the breaker and a failure reopens it. Subsequent calls during the probe window are rejected. A probe slot with no outcome once `reset_timeout` has passed since the newest probe was admitted is lost, and the next caller probes again. |
 
-The OPEN → HALF_OPEN transition is **lazy** — it happens the next time
-the state is read, not at the `reset_timeout` instant. Reading
-`cb.state` or calling `cb.is_call_permitted()` triggers the check.
+The OPEN -> HALF_OPEN transition is **lazy**: it happens the next time the state is read, not at the `reset_timeout` instant. Reading `cb.state` or calling `cb.is_call_permitted()` triggers the check.
 
 ---
 
@@ -86,13 +74,11 @@ try:
     with cb:
         response = payment_gateway.charge(amount)
 except CircuitBreakerError:
-    # OPEN or HALF_OPEN-max-reached — short-circuit the caller
+    # OPEN, or HALF_OPEN with every probe slot taken -- short-circuit the caller
     return {"status": "queued_for_later"}
 ```
 
-The context manager records a success on clean exit and a failure on
-any exception — the exception always propagates (`__exit__` never
-returns truthy).
+The context manager records a success on clean exit and a failure on any exception, and the exception always propagates (`__exit__` never returns truthy).
 
 ---
 
@@ -105,10 +91,7 @@ async with cb:
     await producer.send(topic, key, value)
 ```
 
-The async path delegates to the sync `__enter__` / `__exit__` —
-acquiring the internal lock is fast (no I/O), and matching Rust's
-behaviour matters more than slightly faster lock contention. Safe for
-concurrent use from many tasks or threads via `threading.Lock`.
+The async path delegates to the sync `__enter__` / `__exit__`, because taking the internal lock does no I/O. The breaker is safe for concurrent use from many tasks or threads via a `threading.Lock`.
 
 ---
 
@@ -124,9 +107,7 @@ if cb.is_call_permitted():
         raise
 ```
 
-Use the explicit `record_success` / `record_failure` API when you can't
-wrap the call in a `with` block — for example, when you're already
-inside someone else's retry harness.
+Use the explicit `record_success` / `record_failure` API when you can't wrap the call in a `with` block, for example inside someone else's retry harness. `is_call_permitted()` is advisory and reserves no slot, so in HALF_OPEN two callers can both see `True`. Use `with cb:` or `cb.probe()` for atomic admission.
 
 ```python
 cb.reset()  # force CLOSED, clear counters (operational override)
@@ -166,9 +147,7 @@ permitted = cb.is_call_permitted()
 name = cb.name             # the instance label
 ```
 
-`cb.state` triggers the OPEN → HALF_OPEN auto-transition if the reset
-timeout has elapsed — useful for emitting "would this call go through?"
-metrics without actually attempting the call.
+`cb.state` triggers the OPEN -> HALF_OPEN auto-transition if the reset timeout has elapsed, which lets a metric report "would this call go through?" without attempting the call.
 
 ---
 
@@ -191,10 +170,7 @@ async def charge(amount: int):
             return await http.post("/charge", json={"amount": amount})
 ```
 
-Layer order: bulkhead **outside** the breaker. Otherwise a tripped
-breaker rejects calls instantly without holding a bulkhead slot, but a
-slow downstream that doesn't trip the breaker can still saturate the
-bulkhead — that's by design, the bulkhead exists for exactly that case.
+Layer order: bulkhead **outside** the breaker, so a slow downstream that never trips the breaker still holds at most `limit` calls. While the breaker is OPEN it rejects inside the bulkhead at once, so a rejected call frees its slot straight away.
 
 ---
 
@@ -209,8 +185,7 @@ inventory_cb = CircuitBreaker("inventory.reserve")
 vault_cb = CircuitBreaker("vault.read")
 ```
 
-The name appears in `CircuitBreakerError` messages and is the natural
-label for any future observability hooks.
+The name appears in `CircuitBreakerError` messages. Pass the same string as the `target` label of `CircuitBreakerMetrics` to graph the breaker.
 
 ---
 
@@ -239,20 +214,13 @@ The Rust breaker is `scalo::tiered_sink::CircuitBreaker`, in `src/tiered_sink/ci
 - The circuit is `HALF_OPEN` and `half_open_max_calls` probes are
   already in flight.
 
-The error message includes the breaker name. It is a plain
-`Exception` subclass — catch with `try/except CircuitBreakerError`.
+The error message includes the breaker name. It is a plain `Exception` subclass, so catch it with `try/except CircuitBreakerError`.
 
 ---
 
 ## Reconnecting resilience
 
-The sibling shape to `CircuitBreaker`: where the breaker trip-and-rejects
-a one-shot outbound call, `ReconnectingResilience` reconnects and retries
-a **pooled** connection through a transient outage — the caller gets back
-either a result or a `ServiceUnavailable`, never a bare exception from
-deep inside a half-broken client. Generic over the dependency: the
-caller injects the error classifiers and a name, so the same engine
-serves any pooled backend, a ClickHouse client among them.
+Where the breaker trip-and-rejects a one-shot outbound call, `ReconnectingResilience` reconnects and retries a **pooled** connection through a transient outage. A transient failure gives the caller a result or a `ServiceUnavailable`, and a non-transient error re-raises as it was. The caller injects the error classifiers and a name, so the same engine serves any pooled backend, a ClickHouse client among them.
 
 ```python
 from scalo.resilience import ReconnectingResilience, ResilienceConfig, ServiceUnavailable
@@ -293,20 +261,15 @@ off exponentially (`wait_initial` -> `wait_max`, multiplied by
 `wait_multiplier` each attempt) and retries until `budget_seconds` runs
 out, then raises `unavailable_exc` (default `ServiceUnavailable`).
 
-A caller that wants to wait out an outage forever (nothing else to do
-until the dependency comes back, as the hunt runner does at startup) sets
-`budget_seconds=math.inf` and `waking_budget_seconds=math.inf` — `run()`
-then only returns a result, never raises.
+A caller that wants to wait out an outage forever, with nothing else to do until the dependency comes back, sets `budget_seconds=math.inf` and `waking_budget_seconds=math.inf`. `run()` then never raises `ServiceUnavailable`, though a non-transient error still re-raises.
 
 ### `ResilienceConfig`
 
-Back-off and budget knobs — a dataclass, not hardcoded at the call site,
-so an operator widens the budget for a slow cold start via config rather
-than a code change:
+Back-off and budget knobs, a dataclass the app fills from its config so an operator widens the budget for a slow cold start without a code change:
 
 | Field | Default | Meaning |
 |-------|---------|---------|
-| `enabled` | `True` | `False` runs `op()` once, un-retried — a kill switch. |
+| `enabled` | `True` | `False` runs `op()` once, un-retried -- a kill switch. |
 | `wait_initial` | `0.5` | First back-off, in seconds. |
 | `wait_max` | `10.0` | Back-off cap per attempt (the poll cadence once ramped). |
 | `wait_multiplier` | `2.0` | Exponential factor applied each retry. |
@@ -319,20 +282,18 @@ than a code change:
 |----------|------|---------|
 | `config` | `ResilienceConfig` | The back-off + budget knobs. |
 | `name` | `str` | The dependency's name, for log lines (`"ClickHouse"`, ...). |
-| `is_transient` | `Callable[[Exception], bool]` | `True` when an error is worth retrying at all (a connection outage OR a rate-limit); `False` for a genuine query/logic error, which re-raises immediately un-retried. |
-| `is_reconnectable` | `Callable[[Exception], bool]` | `True` when an error is a CONNECTION outage (rebuild the pool between attempts); `False` for a transient-but-connected error (e.g. a rate-limit), where reconnecting would be wrong. |
+| `is_transient` | `Callable[[Exception], bool]` | `True` when an error is worth retrying at all (a connection outage OR a rate-limit). `False` for a query or logic error, which re-raises immediately un-retried. |
+| `is_reconnectable` | `Callable[[Exception], bool]` | `True` when an error is a CONNECTION outage (rebuild the pool between attempts). `False` for a transient-but-connected error (e.g. a rate-limit), where reconnecting would be wrong. |
 | `reconnect` | `Callable[[], None]` | Tears down the pooled client so the next attempt rebuilds a fresh one. Called only when `is_reconnectable` was `True`. |
-| `on_connect_failure` | `Callable[[], bool] \| None` | Optional warm-up hook, called once when a CONNECTION outage begins. Returning `True` extends the budget to `waking_budget_seconds` and flips the state to `WAKING`. A hook that raises is caught and logged; the outage is then treated as plain `TRANSIENT`. |
-| `unavailable_exc` | `type[ServiceUnavailable]` | The exception type raised when the budget is exhausted — subclass it so a backend keeps its own typed exception that its surface already catches. |
-| `sleep` / `now` | `Callable` | Injectable clock, so tests pass fakes that never really sleep and never race a wall clock. |
+| `on_connect_failure` | `Callable[[], bool] \| None` | Optional warm-up hook, called once when a CONNECTION outage begins. Returning `True` extends the budget to `waking_budget_seconds` and flips the state to `WAKING`. A hook that raises is caught and logged, and the outage is then treated as plain `TRANSIENT`. |
+| `unavailable_exc` | `type[ServiceUnavailable]` | The exception type raised when the budget is exhausted. Subclass it so a backend keeps its own typed exception that its surface already catches. |
+| `sleep` / `now` | `Callable` | Injectable clock, so tests pass fakes that never really sleep or race real time. |
 
 Methods and properties:
 
-- `run(op: Callable[[], T]) -> T` — execute `op`, retrying a transient
-  error with exponential back-off; see "Quick start" above.
-- `state -> OutageState` — the current outage state (read by a
-  health/readiness probe).
-- `healthy -> bool` — `state == OutageState.HEALTHY`.
+- `run(op: Callable[[], T]) -> T` -- execute `op`, retrying a transient error with exponential back-off, see "Quick start" above.
+- `state -> OutageState` -- the current outage state, for a health or readiness probe.
+- `healthy -> bool` -- `state == OutageState.HEALTHY`.
 
 ### Outage states
 
@@ -344,8 +305,8 @@ from scalo.resilience import OutageState
 |-------|---------|
 | `HEALTHY` | The last operation succeeded. |
 | `TRANSIENT` | Backing off after a failure that was not a connection outage (or no warm-up hook fired). |
-| `WAKING` | Backing off after a connection outage whose warm-up hook returned `True` — a known cold start, not a dead dependency. |
-| `DEAD` | The budget ran out; the next `run()` call starts a fresh outage from `TRANSIENT`/`WAKING`. |
+| `WAKING` | Backing off after a connection outage whose warm-up hook returned `True`: a known cold start, not a dead dependency. |
+| `DEAD` | The budget ran out. The next `run()` call that fails starts a fresh outage from `TRANSIENT`/`WAKING`. |
 
 ### Errors (ReconnectingResilience)
 
@@ -364,7 +325,7 @@ The message counts the calls `run()` made, the first one included, so a `budget_
 |----------|-----------|
 | A one-shot outbound call (HTTP request, RPC) that should fail fast once a downstream is known-bad | `CircuitBreaker` |
 | A pooled connection (a DB client, a broker connection) that should reconnect and retry through a transient outage | `ReconnectingResilience` |
-| Both — a pooled client behind a breaker that also protects callers who are not retrying | Layer them: breaker around the pool's call sites, `ReconnectingResilience` inside the pool's own reconnect logic |
+| Both -- a pooled client behind a breaker that also protects callers who are not retrying | Layer them: breaker around the pool's call sites, `ReconnectingResilience` inside the pool's own reconnect logic |
 
 ---
 

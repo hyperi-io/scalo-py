@@ -12,7 +12,7 @@ data_file   = paths.data_dir / "state.db"     # /app/data,                ~/.my-
 cache_file  = paths.cache_dir / "warmup.json" # /app/cache,               ~/.my-app/cache
 ```
 
-Detection runs once at startup and is cached for the process lifetime.
+Each `get_runtime_paths()` call runs detection again and creates the directories unless `ensure_dirs=False`. Nothing is cached.
 
 ---
 
@@ -34,23 +34,19 @@ method is stamped into `RuntimePaths.detection_method` for audit trails.
 
 If none match -- bare-metal local mode (`detection_method="local"`).
 
-Checks 1 to 6 are the same ones `get_mount_config()` uses; check 7 is only here.
+Checks 1 to 6 are the same ones `get_mount_config()` uses, and check 7 is only here.
 
-The order matters. K8s and Docker indicators are 100% reliable; cgroups and the root mount are next; env vars and PID 1 are fallbacks. A container that hides every indicator above PID 1 will still be detected when running as init.
+The order is by confidence: K8s and Docker markers first, the cgroup and the root mount next, env vars and PID 1 last. A container that hides every indicator above PID 1 is still detected when its process runs as init.
 
 Only container evidence counts. A host's daemon cgroups (`docker.service`, `containerd.service`) and the container mounts a docker host lists in its own mountinfo do not match, so a developer machine that runs docker stays in local mode.
 
 ---
 
-## `RuntimeEnvironment` enum
+## Telling K8s from Docker
 
-`RuntimeEnvironment` is the detection class, not an enum. The
-environment **kind** is a boolean (`is_container`) plus the
-`detection_method` tag -- there is no `kubernetes` / `docker` /
-`bare_metal` enum value. Both K8s and Docker collapse to the same
-container path set; the tag distinguishes them for diagnostics.
+`RuntimeEnvironment` is the detection class. It reports a boolean (`is_container`) plus the `detection_method` tag, and K8s and Docker get the same container path set. `scalo.config.get_environment()` names the kind instead: `kubernetes`, `docker`, `container` or `bare_metal`, from the same checks run once at import.
 
-If you need to branch on K8s specifically, check the tag:
+To branch on K8s from the paths, check the tag:
 
 ```python
 paths = get_runtime_paths("my-app")
@@ -132,50 +128,28 @@ CONTAINER_BASE_PATH=/mnt python -m my_app
 | `log_dir` | `/var/log/{app}` |
 | `run_dir` | `/run/{app}` |
 
-Root detection: `os.getuid() == 0` on Unix; falls through to non-root
-paths on platforms without `getuid` (Windows).
+Root detection: `os.getuid() == 0` on Unix. Platforms without `getuid` (Windows) get the non-root paths.
 
----
-
-## `CONTAINER_BASE_PATH` override
-
-Single env var rebases every container path:
+`CONTAINER_BASE_PATH` rebases every container path but `run_dir`, which stays at `/run/{app}` to line up with systemd and `tmpfs` conventions. It is read bare, whatever the env prefix:
 
 ```python
 # Default
-RuntimeEnvironment("myapp").detect_runtime().config_dir  # Path('/app/config')
+RuntimeEnvironment("myapp", force_mode="container").detect_runtime().config_dir  # Path('/app/config')
 
 # Override
 os.environ["CONTAINER_BASE_PATH"] = "/mnt"
-RuntimeEnvironment("myapp").detect_runtime().config_dir  # Path('/mnt/config')
+RuntimeEnvironment("myapp", force_mode="container").detect_runtime().config_dir  # Path('/mnt/config')
 ```
 
-Use cases:
-
-- Multi-tenant images that mount under `/mnt/<tenant>`
-- Shared-base layouts (`/opt/app`) for fleets of services
-- Migration from legacy mount paths without a code change
-- Test harnesses pinning to a `tmp_path` under pytest
-
-`run_dir` is **not** rebased -- it stays at `/run/{app}` so it lines
-up with systemd / `tmpfs` conventions regardless of base.
+Use it for multi-tenant images that mount under `/mnt/<tenant>`, a shared `/opt/app` layout across services, or a test that points a forced-container layout at a pytest `tmp_path`.
 
 ---
 
 ## `ensure_directories()` behaviour
 
-`RuntimeEnvironment.ensure_directories(paths, create_config=False)`:
+`RuntimeEnvironment.ensure_directories(paths, create_config=False)` creates `data_dir` and `temp_dir` always, and raises `RuntimeError` when it cannot. It creates `log_dir`, `effective_cache_dir` and `run_dir` when they are set, and logs a warning on failure. It creates `config_dir` only with `create_config=True` or outside a container, because a container mounts that directory and creating it would hide the mount.
 
-- **`data_dir` and `temp_dir`** -- always created. Failure raises
-  `RuntimeError` (these are required).
-- **`log_dir`, `cache_dir`, `run_dir`** -- created if non-`None`.
-  Failure logs a warning and continues (best-effort).
-- **`config_dir`** -- created only if `create_config=True` **or** not in
-  a container. Containers mount `config_dir` from a ConfigMap or
-  Secret; creating it would mask the mount.
-
-`get_runtime_paths(app_name, ensure_dirs=True)` (the default) calls
-this for you.
+`get_runtime_paths(app_name, ensure_dirs=True)` (the default) calls this for you.
 
 ---
 
@@ -193,11 +167,7 @@ paths = RuntimeEnvironment("my-app", force_mode="container").detect_runtime()
 paths = RuntimeEnvironment("my-app", force_mode="local").detect_runtime()
 ```
 
-The `force_mode` skips the seven-indicator walk; the resulting
-`detection_method` is `"forced"` (container) or `"local"` (local).
-
-Combine with `monkeypatch.setenv("CONTAINER_BASE_PATH", str(tmp_path))`
-to redirect a forced-container test into a pytest `tmp_path`.
+`force_mode` skips the seven-indicator walk, and the resulting `detection_method` is `"forced"` (container) or `"local"` (local). Combine it with `monkeypatch.setenv("CONTAINER_BASE_PATH", str(tmp_path))` to redirect a forced-container test into a pytest `tmp_path`.
 
 ---
 
@@ -245,6 +215,5 @@ python -m my_app          # uses ~/.my-app/config, ~/.my-app/data, /tmp/my-app-{
 - [../integration.md](../integration.md)
 - [../architecture.md](../architecture.md)
 - [../auto-wiring.md](../auto-wiring.md)
-- [service-runtime.md](service-runtime.md)
 - [../core-pillars/config.md](../core-pillars/config.md)
 - [../core-pillars/logging.md](../core-pillars/logging.md)

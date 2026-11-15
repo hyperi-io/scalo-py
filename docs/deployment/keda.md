@@ -11,9 +11,7 @@ chart renders a `ScaledObject` from it.
 from scalo.deployment import KedaConfig, KedaContract
 ```
 
-Both subclass `BaseModel` with `extra="forbid"`; both share the same
-numeric field validators -- nonsense values fail at construction, not
-at deploy.
+Both subclass `BaseModel` with `extra="forbid"` and carry the same numeric bounds, so a nonsense value fails at construction, not at deploy.
 
 ---
 
@@ -26,13 +24,12 @@ at deploy.
 | `max_replicas` | `10` | `>= 1` |
 | `polling_interval` | `15` (seconds) | `>= 1` |
 | `cooldown_period` | `300` (seconds) | `>= 0` |
-| `kafka_lag_threshold` | `1000` | `>= 0` (per-partition lag to trigger scale-up) |
+| `kafka_lag_threshold` | `1000` | `>= 0` (KEDA's `lagThreshold`, a target for the group's total lag summed over partitions) |
 | `activation_lag_threshold` | `0` | `>= 0` (lag to wake from zero replicas) |
 | `cpu_enabled` | `True` | -- |
 | `cpu_threshold` | `80` (percent) | `1..100` |
 
-Cascade env-var overrides follow the standard `__` nesting:
-`APP__KEDA__KAFKA_LAG_THRESHOLD=5000`.
+Under the env prefix `APP`, `APP_KEDA__KAFKA_LAG_THRESHOLD=5000` sets `keda.kafka_lag_threshold`: one `_` after the prefix, `__` between levels.
 
 ---
 
@@ -46,7 +43,7 @@ keda_contract = KedaContract.from_config(my_config.keda)
 
 `from_config` copies every field verbatim, `enabled` included, and takes the default `kafka_trigger`.
 
-`enabled=False` renders exactly what `keda=None` does -- no ScaledObject -- so off has one meaning. A contract written before `enabled` existed loads with it on.
+`enabled=False` and `keda=None` both render no ScaledObject, so off has one meaning. A contract with no `enabled` key loads with it on.
 
 With `enabled` true, `DeploymentContract` refuses KEDA when the Kafka lag trigger and the CPU trigger are both off, because there is nothing to scale on. It also refuses a CPU-only KEDA with `min_replicas` of 0, because KEDA's CPU scaler cannot wake a workload from zero.
 
@@ -66,33 +63,25 @@ With `enabled` true, `DeploymentContract` refuses KEDA when the Kafka lag trigge
 ## When the chart renders a ScaledObject
 
 The scalo-service chart renders a ScaledObject named `<fullname>-scaler`
-while KEDA is on: `DeploymentContract.keda` is set with `enabled=True`,
-unless `keda.enabled` in values says otherwise. A singleton never gets
-one. The chart's `keda.*` values override each contract field per
-deployment.
+while KEDA is on: `DeploymentContract.keda` is set with `enabled=True`, unless `keda.enabled` in values says otherwise. A singleton never gets one, and `keda.enabled: true` on a singleton fails the render. The chart's `keda.*` values override the contract's bounds, thresholds and trigger switches per deployment.
 
 With KEDA off, `autoscaling.enabled: true` renders a CPU
 HorizontalPodAutoscaler instead, so clusters without the KEDA operator
 still scale on CPU by setting `keda.enabled: false` and
 `autoscaling.enabled: true`.
 
-The Deployment sets `replicas: <replicaCount>` exactly when neither KEDA
-nor the HPA is on, because whichever is on owns the replica count and a
-GitOps sync must not revert a scale.
+The Deployment sets `replicas: <replicaCount>` only when neither KEDA nor the HPA is on, because whichever is on owns the replica count and a GitOps sync must not revert a scale. A singleton is pinned at `replicas: 1`.
 
 ---
 
 ## The triggers it derives
 
-1. **CPU** (unless `cpu_enabled` or `keda.cpu.enabled` turns it off) --
-   utilisation target `cpu_threshold`, `metricType: Utilization`;
-   `keda.cpu.targetUtilization` overrides the target.
-2. **Kafka** (unless `kafka_trigger` or `keda.kafka.enabled` turns it
-   off) -- `lagThreshold` per partition and `activationLagThreshold` for
-   wake-from-zero, from the contract or `keda.kafka.*`. Brokers, consumer
-   group and topic come from the `kafka_trigger` paths: a broker list is
-   joined with commas, and the first topic is taken whether the topics are
-   a list or a comma-separated string.
+| Trigger | Switched by | Threshold, then its values override |
+|---|---|---|
+| `cpu`, `metricType: Utilization` | `cpu_enabled`, then `keda.cpu.enabled` | `cpu_threshold` percent, then `keda.cpu.targetUtilization` |
+| `kafka` | `kafka_trigger.enabled`, then `keda.kafka.enabled` | `kafka_lag_threshold` and `activation_lag_threshold`, then `keda.kafka.lagThreshold` and `keda.kafka.activationLagThreshold` |
+
+In each pair the `keda.*` value wins. The Kafka trigger's brokers, consumer group and topic come from the `kafka_trigger` paths: a broker list is joined with commas, and the first topic is taken whether the topics are a list or a comma-separated string.
 
 `keda.triggers` replaces both, and `keda.extraTriggers` is appended after
 them. KEDA scales to the max of all triggers -- high lag OR high CPU
@@ -111,11 +100,7 @@ The scalo-service README lists every `keda.*` value the chart reads.
 
 ## Runtime signal feed
 
-The runtime side of scaling is `scalo.scaling.ScalingPressure`
--- a composite consumer-lag + buffer-pressure + CPU pressure score the
-service exports as a single gauge. KEDA's external/prometheus trigger
-can scrape that gauge for finer-grained signals than raw consumer lag.
-See [../api/scaling.md](../api/scaling.md).
+`scalo.scaling.ScalingPressure` is a weighted 0-100 score of memory, queue depth, latency, error rate and one custom signal. `register_gauge` writes it as the `scaling_pressure` gauge, which a KEDA Prometheus trigger in `keda.extraTriggers` can target once Prometheus scrapes the service. See [../api/scaling.md](../api/scaling.md).
 
 ---
 

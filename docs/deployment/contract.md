@@ -1,13 +1,12 @@
 # DeploymentContract
 
-The Pydantic model an app builds once from its `Config.default()`. `validate_dockerfile` checks a committed Dockerfile against it, generators emit the image artefacts from it, and the [scalo-service](https://github.com/hyperi-io/scalo-rs/blob/main/charts/scalo-service/README.md) library chart renders the Kubernetes objects from its JSON. scalo-py parses every field scalo-rs's `scalo::deployment::contract` writes, under the same name and JSON shape, and writes it back unchanged. Only scalo-py has `builder_image`, `python_version`, `emit_healthcheck` and `native_deps.distro_codename`, which scalo-rs ignores.
+The Pydantic model an app builds once from its `Config.default()`. `validate_dockerfile` checks a committed Dockerfile against it, generators emit the image artefacts from it, and the [scalo-service](https://github.com/hyperi-io/scalo-rs/blob/main/charts/scalo-service/README.md) library chart renders the Kubernetes objects from its JSON. scalo-py parses every field scalo-rs's `scalo::deployment::contract` writes, under the same name and JSON type, and writes it back unchanged. Only scalo-py has `builder_image`, `python_version`, `emit_healthcheck` and `native_deps.distro_codename`, which scalo-rs ignores.
 
 `tests/fixtures/contract-parity/deployment-contract.json` is a contract scalo-rs emitted with every optional field set, copied from scalo-rs's own `tests/fixtures/contract-parity/`. `tests/unit/deployment/test_contract_parity.py` parses it, re-emits it and checks nothing changed, so a field scalo-rs adds fails here until scalo-py carries it.
 
 `src/scalo/deployment/data/contract.schema.json` ships in the wheel. It is scalo-rs's `charts/scalo-service/schema/deployment-contract.v4.schema.json`, the JSON Schema a chart assembler validates every contract against, copied byte for byte. `.hyperi-ci-vendor.lock` records the source repo, path, ref and sha256 of the copy. `tests/unit/deployment/test_contract_schema.py` checks the copy against the lock and validates what scalo-py emits against it. Update the copy from scalo-rs, never by hand: move `ref` in the `vendor:` block of `.hyperi-ci.yaml` and run `hyperi-ci vendor sync`.
 
-Import surface (gated on the `[deployment]` extra; importing without
-`pydantic` defers and raises `ProviderNotAvailableError`):
+Import surface, gated on the `[deployment]` extra. Without `pydantic` the import succeeds, and the first use of a model raises `ProviderNotAvailableError`:
 
 ```python
 from scalo.deployment import (
@@ -26,12 +25,12 @@ from scalo.deployment import (
 | Field | Type | Default | Purpose |
 |---|---|---|---|
 | `schema_version` | `int` | `4` (`DEFAULT_SCHEMA_VERSION`) | A reader refuses a version it does not support. The v4 schema accepts only 4 |
-| `app_name` | `str` | required | Matches `Chart.yaml` `name`; image repo segment. A Kubernetes Service name: 1 to 63 lowercase letters, digits and inner hyphens, starting with a letter. Anything else is refused at construction |
+| `app_name` | `str` | required | Matches `Chart.yaml` `name` and the image repo segment. A Kubernetes Service name: 1 to 63 lowercase letters, digits and inner hyphens, starting with a letter. Anything else is refused at construction |
 | `binary_name` | `str` | `""` | Falls back to `app_name` via `.binary()` |
 | `description` | `str` | `""` | Chart description |
 | `metrics_port` | `int` (1..65535) | required | Metrics + health listen port |
 | `health` | `HealthContract` | factory | Probe paths -- see below |
-| `env_prefix` | `str` | required | Dynaconf prefix; `__` is the nesting separator |
+| `env_prefix` | `str` | required | Dynaconf prefix. Env keys read as `<PREFIX>_<SECTION>__<KEY>`, one `_` after the prefix and `__` between levels |
 | `metric_prefix` | `str` | required | Prometheus namespace |
 | `config_mount_path` | `str` | `""` | E.g. `/etc/event-loader/config.yaml`. Empty means the app reads no config file (v4) |
 | `image_registry` | `str` | required | Container registry base. A blank value is refused at construction |
@@ -42,11 +41,12 @@ from scalo.deployment import (
 | `default_config` | `Any \| None` | `None` | Embedded `values.yaml` `config:` block |
 | `depends_on` | `list[str]` | `[]` | Compose-only service deps |
 | `keda` | `KedaContract \| None` | `None` | See [keda.md](keda.md) |
-| `base_image` | `str` | `""` -> `python:{python_version}-slim` | Runtime base for Dockerfile; read via `effective_base_image()` |
-| `builder_image` | `str` | `""` -> uv image for `python_version` | Builder stage; read via `effective_builder_image()` |
+| `base_image` | `str` | `""` -> `python:{python_version}-slim` | Runtime base for the Dockerfile, read via `effective_base_image()` |
+| `builder_image` | `str` | `""` -> uv image for `python_version` | Builder stage, read via `effective_builder_image()` |
 | `python_version` | `str` | `DEFAULT_PYTHON_VERSION` (`scalo.deployment.registry`) | Drives BOTH default images |
 | `native_deps` | `NativeDepsContract` | factory | See [native-deps.md](native-deps.md) |
 | `image_profile` | `ImageProfile` | `PRODUCTION` | See below |
+| `emit_healthcheck` | `bool` | `True` | A Dockerfile `HEALTHCHECK` on the liveness path. Kubernetes ignores it and Compose uses it, so set False for a cluster-only image. scalo-py only |
 | `oci_labels` | `OciLabels` | factory | Static OCI labels and the namespace of scalo's own keys -- see [`OciLabels`](#ocilabels) |
 | `config_schema` | `dict \| None` | `None` | JSON Schema of the app's `Config` (v3). Dials carry `x-scalo-dial` (v4) -- see [Dials](#dials) |
 | `capabilities` | `list[Capability]` | `[]` | Runtime-surface catalogue (v3) |
@@ -69,13 +69,7 @@ through their accessors, so `python_version` is the single knob: bump it
 and both images move together. Set either field to override (a digest
 pin belongs here).
 
-The two ends sit on different Debian releases deliberately. The runtime
-is `python:{python_version}-slim` (Debian 13 trixie); the builder is
-held on `-bookworm-slim` (Debian 12). The rule is
-`glibc(runtime) >= glibc(build)` -- a binary built against older glibc
-runs on newer, never the reverse. If that ever inverts, the failure is
-`version 'GLIBC_x.yz' not found` at container exec, in the target
-environment rather than at build time.
+The two ends sit on different Debian releases deliberately. The runtime is `python:{python_version}-slim` (Debian 13 trixie), and the builder is held on `-bookworm-slim` (Debian 12). The rule is `glibc(runtime) >= glibc(build)` -- a binary built against older glibc runs on newer, never the reverse. If that ever inverts, the failure is `version 'GLIBC_x.yz' not found` at container exec, in the target environment rather than at build time.
 
 ### Pin a digest for anything you ship
 
@@ -108,8 +102,7 @@ typos fail at construction, not at deploy.
 
 ## `ImageProfile`
 
-`StrEnum` with two members. Both profiles share the same dynamic
-linking strategy; the difference is debug tooling and tag suffix.
+`StrEnum` with two members. The difference is debug tooling and the tag suffix.
 
 | Profile | Tag suffix | Adds these APT packages |
 |---|---|---|
@@ -133,11 +126,9 @@ variants from one contract.
 | `licenses` | `""` | `org.opencontainers.image.licenses` and the Dockerfile `# License` line. Empty writes neither |
 | `copyright` | `""` | The Dockerfile `# Copyright` line. Empty writes no line |
 
-Dynamic labels (`org.opencontainers.image.source`, `revision`,
-`version`, `created`) are CI-injected via `--build-arg`; the static
-labels listed here come from the contract.
+Dynamic labels (`org.opencontainers.image.source`, `revision`, `version`, `created`) are CI-injected via `--build-arg`, and the static labels listed here come from the contract.
 
-`vendor`, `licenses` and `copyright` name the app's vendor, licence and copyright holder. scalo names none of its own, so an app's artefacts carry only the terms the app states.
+`vendor`, `licenses` and `copyright` name the app's distributor, licence and copyright holder. scalo names none of its own, so an app's artefacts carry only the terms the app states.
 
 scalo stamps a few keys of its own beside the standard `org.opencontainers.image.*` labels, all under `label_namespace`:
 
@@ -146,7 +137,7 @@ scalo stamps a few keys of its own beside the standard `org.opencontainers.image
 | `<namespace>.profile` | Dockerfile, runtime stage, container manifest | `production` or `development` |
 | `<namespace>.app` | container manifest | `app_name` |
 | `<namespace>.metrics_port` | container manifest | `metrics_port` |
-| `<namespace>.contract.version` / `.source-commit` / `.image-ref` | Dockerfile, runtime stage, container manifest, when a `ContractIdentity` is passed; `ContractIdentity.as_yaml_annotations` renders the same keys for a chart or `Application` built elsewhere | see [identity.md](identity.md) |
+| `<namespace>.contract.version` / `.source-commit` / `.image-ref` | Dockerfile, runtime stage, container manifest, when a `ContractIdentity` is passed. `ContractIdentity.as_yaml_annotations` renders the same keys for a chart or `Application` built elsewhere | see [identity.md](identity.md) |
 
 An app that already ships its own namespace keeps it by setting `label_namespace`, and every key above moves with it.
 
@@ -203,13 +194,11 @@ scalo-py's generators read none of the four yet: the Dockerfile `EXPOSE`, the co
 
 `SecretEnvContract` -- one env var fed from a K8s Secret:
 
-- `env_var` -- full env-var name (e.g. `EVENT_LOADER__KAFKA__PASSWORD`)
+- `env_var` -- full env-var name. For a scalo-py app it is the cascade key the app reads, `<PREFIX>_<SECTION>__<KEY>` (e.g. `EVENT_LOADER_KAFKA__PASSWORD` for `kafka.password` under prefix `EVENT_LOADER`)
 - `key_name` -- the values key `secrets.<group>.keys.<key_name>` that overrides the data key
 - `secret_key` -- default K8s Secret key (e.g. `kafka-password`)
 
-`SecretGroupContract` -- a group of secrets from the same K8s Secret.
-`group_name` names the scalo-service chart's `secrets.<group>` values
-section, and the Secret defaults to `<fullname>-<group>`. The chart's KEDA
+`SecretGroupContract` -- a group of secrets from the same K8s Secret, one `SecretEnvContract` per variable in `env_vars`. `group_name` names the scalo-service chart's `secrets.<group>` values section, and the Secret defaults to `<fullname>-<group>`. The chart's KEDA
 `TriggerAuthentication` takes its credentials from
 `keda.triggerAuthentication.secretTargetRef`, not from a group -- see
 [keda.md](keda.md). `optional=True` (v4) lets the app start without the group,
@@ -293,8 +282,7 @@ It also refuses a `$ref` that the search for dials follows and that is not local
   (e.g. `loader.yaml`).
 - `config_dir()` -- parent directory (e.g. `/etc/event-loader`). Used for the
   K8s `volumeMounts.mountPath`.
-- `to_json()` -- pretty-printed JSON; the `deployment-contract.json`
-  that `generate-artefacts` writes.
+- `to_json()` -- pretty-printed JSON, the `deployment-contract.json` that `generate-artefacts` writes.
 - `from_json(raw)` -- inverse. Round-trips losslessly.
 - `with_dev_profile()` -- deep-copied clone with development profile.
 
@@ -309,11 +297,11 @@ MAX_SUPPORTED_SCHEMA_VERSION = 4
 
 `schema_version` is the handshake between whatever writes a contract and
 whatever reads it, and it equals scalo-rs's `CONTRACT_SCHEMA_VERSION`. The
-vendored JSON Schema pins it to 4, so a chart assembler refuses any other
+JSON Schema copied from scalo-rs pins it to 4, so a chart assembler refuses any other
 version. `DeploymentContract` itself reads a v3 contract with every v4 field at
 its default, as scalo-rs's types do.
 
-scalo-rs owns the contract shape. A new field lands there first, with a new
+scalo-rs owns the contract's fields. A new field lands there first, with a new
 parity fixture and, for a breaking change, a new schema version. scalo-py then
 mirrors the field, copies the fixture and the schema, and bumps both
 constants.
@@ -370,12 +358,12 @@ def deployment_contract(cfg: AppConfig) -> DeploymentContract:
                 group_name="kafka",
                 env_vars=[
                     SecretEnvContract(
-                        env_var="EVENT_LOADER__KAFKA__USERNAME",
+                        env_var="EVENT_LOADER_KAFKA__USERNAME",
                         key_name="username",
                         secret_key="kafka-username",
                     ),
                     SecretEnvContract(
-                        env_var="EVENT_LOADER__KAFKA__PASSWORD",
+                        env_var="EVENT_LOADER_KAFKA__PASSWORD",
                         key_name="password",
                         secret_key="kafka-password",
                     ),
@@ -385,7 +373,7 @@ def deployment_contract(cfg: AppConfig) -> DeploymentContract:
         keda=KedaContract.from_config(cfg.keda),
         native_deps=NativeDepsContract.for_scalo_extras(
             ["kafka", "metrics", "opentelemetry", "secrets-vault"],
-            base_image="python:{python_version}-slim",
+            base_image="python:3.14-slim",   # no extra maps to a package, see native-deps.md
         ),
     )
 ```

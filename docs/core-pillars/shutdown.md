@@ -1,18 +1,12 @@
 # Shutdown
 
-Pylib does not install signal handlers on import -- shutdown ordering
-is the app's job. What scalo-py ships is the primitive set every shutdown
-path needs: `gather_with_timeouts` for parallel drain with per-task
-budgets, an `atexit` hook in the OTel backend that flushes pending
-metrics before the SDK's own hook, and the readiness flag on
-`HealthManager` so K8s removes the pod from the load balancer before
-the drain starts. Wire these into your SIGTERM handler and the pod
-exits cleanly within the K8s `terminationGracePeriodSeconds` budget.
+scalo-py installs no signal handlers, and neither does `ServiceApp`, which turns Ctrl-C into a clean exit and leaves SIGTERM to Python's default. Shutdown ordering is the app's job. What scalo-py ships is the set of pieces every shutdown path needs: `gather_with_timeouts` for parallel drain with per-task budgets, bounded `atexit` flushes for OTel metrics and spans, and the readiness flag on `HealthManager` so K8s removes the pod from the load balancer before the drain starts. Wire these into your SIGTERM handler and the pod exits inside its termination grace period.
 
 ```python
 import signal
 import asyncio
-from scalo.concurrency import gather_with_timeouts
+from scalo.concurrency import gather_with_timeouts, run_blocking
+from scalo.logger import logger
 
 shutdown_event = asyncio.Event()
 
@@ -30,59 +24,51 @@ async def main():
 async def drain():
     health.set_ready(False)           # K8s stops routing
     await asyncio.sleep(5)             # in-flight requests finish
-    await gather_with_timeouts(
+    results = await gather_with_timeouts(
         {
-            "kafka": lambda: producer.flush(timeout=10),
+            "kafka": lambda: run_blocking(producer.flush, 10.0),
             "db": lambda: db.close(),
             "cache": lambda: cache.close(),
         },
-        per_task_timeout=10.0,
+        per_task_timeout=12.0,
     )
+    if results["kafka"] != 0:          # messages still queued, or the exception that stopped the flush
+        logger.error("kafka drain incomplete", result=repr(results["kafka"]))
 ```
+
+`health` is the `HealthManager` your probes read (`self.health()` in a `ServiceApp`). Each value passed to `gather_with_timeouts` must return an awaitable: `KafkaProducer.flush` is synchronous, so it goes through `run_blocking`, while `AsyncKafkaProducer.flush` can be passed as is. `gather_with_timeouts` returns each task's result or the exception that stopped it, and `flush` returns the count of messages still queued, so anything but 0 means undelivered messages. The task budget sits above the flush timeout so the flush answers first.
 
 ---
 
 ## The K8s shutdown sequence
 
-K8s shutdown is a six-step dance the app cannot skip. The pod gets
-`terminationGracePeriodSeconds` (default 30s) from SIGTERM to exit;
-miss it and K8s SIGKILLs the process.
+K8s shutdown is a six-step sequence the app cannot skip. The pod gets `terminationGracePeriodSeconds` from SIGTERM to exit (the Kubernetes default is 30s, and the scalo-service chart sets it from its `terminationGracePeriodSeconds` value, else the contract's `termination_grace_seconds`, default 45). Miss it and K8s SIGKILLs the process.
 
-| # | Actor | Action | Pylib piece |
-|---|-------|--------|-------------|
+| # | Actor | Action | scalo-py piece |
+|---|-------|--------|----------------|
 | 1 | K8s | Sends SIGTERM to PID 1 | -- |
-| 2 | K8s | Removes pod from Endpoints (eventual; ~5s) | -- |
+| 2 | K8s | Removes pod from Endpoints (eventual, ~5s) | -- |
 | 3 | App | Flips `/readyz` to 503 | `health.set_ready(False)` |
 | 4 | App | Waits for in-flight requests to drain | `asyncio.sleep(preStop_delay)` |
 | 5 | App | Closes downstreams in parallel | `gather_with_timeouts(...)` |
 | 6 | App | Process exits | `sys.exit(0)` |
 
-The Endpoints removal is asynchronous; ingress controllers and
-kube-proxy have their own caches. Step 3 (flip readiness) tells the
-service mesh and load balancer immediately, well before step 2 has
-propagated.
+The Endpoints removal is asynchronous, and ingress controllers and kube-proxy have their own caches. Step 3 (flip readiness) tells the service mesh and load balancer immediately, well before step 2 has propagated.
 
----
-
-## preStop hook
-
-K8s `preStop` runs synchronously before SIGTERM. Use it to give the
-service mesh time to remove the pod before the app starts draining:
+A `preStop` hook runs before SIGTERM is sent. Use it to give the service mesh time to remove the pod before the app starts draining:
 
 ```yaml
 spec:
+  terminationGracePeriodSeconds: 30
   containers:
     - name: my-service
       lifecycle:
         preStop:
           exec:
             command: ["sleep", "5"]
-      terminationGracePeriodSeconds: 30
 ```
 
-5 seconds is the rough rule for kube-proxy iptables refresh +
-service-mesh sidecar drain. The app doesn't see SIGTERM until the
-sleep finishes, so in-flight requests have time to land.
+5 seconds is the rough rule for kube-proxy iptables refresh + service-mesh sidecar drain. The app doesn't see SIGTERM until the sleep finishes, so in-flight requests have time to land.
 
 If you can't add `preStop`, wire the same delay into the drain:
 
@@ -97,19 +83,17 @@ async def drain():
 
 ## Parallel drain with budgets
 
-`gather_with_timeouts` runs every drain task concurrently with its
-own timeout. One slow downstream doesn't extend the total drain;
-exceptions are captured per-task and returned alongside results.
+`gather_with_timeouts` runs every drain task concurrently with its own timeout. One slow downstream doesn't extend the total drain, and exceptions are captured per-task and returned alongside results.
 
 ```python
-from scalo.concurrency import gather_with_timeouts
+from scalo.concurrency import gather_with_timeouts, run_blocking
 
 results = await gather_with_timeouts(
     {
-        "kafka_flush": lambda: producer.flush(timeout=10),
+        "kafka_flush": lambda: run_blocking(producer.flush, 10.0),
         "db_close": lambda: db.close(),
         "cache_close": lambda: cache.close(),
-        "secrets_flush": lambda: secrets.flush(),
+        "secrets_close": lambda: secrets.close(),
     },
     per_task_timeout=10.0,
 )
@@ -118,66 +102,31 @@ for name, result in results.items():
         logger.warning("drain task failed", task=name, error=str(result))
 ```
 
-Pass factories (`lambda: producer.flush(...)`) not coroutines --
-factories let the helper cancel cleanly on timeout.
+Pass factories (`lambda: producer.flush(...)`) not coroutines -- factories let the helper cancel cleanly on timeout. `SecretsManager.close()` is async.
 
----
-
-## Kafka producer flush
-
-Producer buffers can hold thousands of records at SIGTERM. Flush
-synchronously with a timeout matching your drain budget:
+Producer buffers can hold thousands of records at SIGTERM. Outside the event loop, flush synchronously with a timeout matching your drain budget:
 
 ```python
-async def drain_kafka():
-    # Stop accepting new sends first.
-    producer.stop_accepting()
-    # Flush waits for librdkafka to ack everything in the buffer.
-    producer.flush(timeout=10.0)
+def drain_kafka():
+    # Returns the number of messages still queued, 0 when all were delivered.
+    remaining = producer.flush(timeout=10.0)
 ```
 
-See [transport/kafka.md](../transport/kafka.md#async-clients) for the
-async producer/consumer drain pattern.
+A `with KafkaProducer(...) as producer:` block flushes, with no timeout, when it exits. See [transport/kafka.md](../transport/kafka.md#async-clients) for the async producer/consumer drain pattern.
 
 ---
 
 ## OTel flush
 
-The OTel metrics backend registers an `atexit` hook that fires
-BEFORE the OTel SDK's own atexit hook (Python runs atexit handlers
-LIFO; registering last means running first). The hook calls
-`MeterProvider.shutdown()` which flushes pending OTLP exports.
+The OTel metrics backend builds its `MeterProvider` with the SDK's own exit hook turned off and registers its own `atexit` hook instead. It shuts each metric reader and then the provider down, each bounded at 2 seconds, and ignores export errors, so a collector that is unreachable at shutdown costs the unsent metrics and nothing else. No app code is needed.
 
-```python
-# Already wired by OpenTelemetryBackend.__init__ -- no app code needed.
-import atexit
-
-def _graceful_shutdown():
-    try:
-        meter_provider.shutdown(timeout_millis=2000)
-    except Exception:
-        pass
-
-atexit.register(_graceful_shutdown)
-```
-
-Span export registers its own `atexit` hook when `logger.setup()`
-turns it on. It flushes buffered spans and stops the tracer provider,
-bounded at 2 seconds for both, and drops what is still queued at the
-bound. See [tracing.md](tracing.md#bounded-so-a-missing-collector-costs-telemetry-and-nothing-else).
-
-If the OTel collector is unreachable at shutdown, the flush will
-fail and the process exits with code 1 even if everything else
-worked. Run a collector sidecar (or accept the exit code in CI) --
-this is the known atexit-failure pattern.
+Span export registers its own `atexit` hook when `logger.setup()` turns it on. It flushes buffered spans and stops the tracer provider, bounded at 2 seconds for both, and drops what is still queued at the bound. See [tracing.md](tracing.md#bounded-so-a-missing-collector-costs-telemetry-and-nothing-else).
 
 ---
 
 ## Log flush
 
-Loguru sinks default to `enqueue=True` (fire-and-forget on a
-background thread). At shutdown, `logger.remove()` blocks until the
-queue drains:
+scalo's sinks are enqueued by default (`enqueue=True`, written on a background thread). Flush them as the last drain step:
 
 ```python
 async def drain():
@@ -186,9 +135,7 @@ async def drain():
     logger.remove()           # stop sinks
 ```
 
-Set `LOG_ENQUEUE=0` for synchronous sinks if you need
-guaranteed ordering with stdout (CI test capture, audit logs).
-See [logging.md](logging.md#async-safety).
+Set `LOG_ENQUEUE=0` (`<PREFIX>_LOG_ENQUEUE` under a prefix) for synchronous sinks if you need guaranteed ordering with stdout (CI test capture, audit logs). See [logging.md](logging.md#async-safety).
 
 ---
 
@@ -199,36 +146,32 @@ flowchart TB
     Sigterm["SIGTERM"] --> NotReady["health.set_ready(False)"]
     NotReady --> Sleep["asyncio.sleep(5) -- mesh drain"]
     Sleep --> Drain["gather_with_timeouts: kafka, db, cache"]
-    Drain --> Otel["OTel atexit flush"]
-    Otel --> Log["logger.complete() + remove()"]
+    Drain --> Log["logger.complete() + remove()"]
     Log --> Exit["sys.exit(0)"]
+    Exit --> Otel["atexit: OTel metric and span flush"]
 ```
 
-`terminationGracePeriodSeconds` must cover (`preStop sleep`) +
-(in-flight request budget) + (drain per_task_timeout) + (OTel flush
-budget). For a typical service: 5s preStop + 5s readiness fade + 10s
-drain + 5s OTel = 25s. Set 30s and leave headroom.
+`terminationGracePeriodSeconds` must cover (`preStop sleep`) + (in-flight request budget) + (drain per_task_timeout) + (the OTel flush bounds). For the example above: 5s preStop + 5s readiness fade + 10s drain + about 6s OTel = 26s, inside the contract default of 45s.
 
 ---
 
 ## What scalo-py does NOT do
 
-- Install signal handlers on import. The app owns SIGTERM/SIGINT.
+- Install signal handlers. The app owns SIGTERM and SIGINT, `ServiceApp` included.
 - Auto-flip readiness on shutdown. You must call `set_ready(False)`.
-- Auto-flush Kafka producers. The producer lifecycle is app-specific.
+- Flush Kafka producers on SIGTERM. The producer lifecycle is app-specific.
 - Auto-close database pools. Connection ownership lives in app code.
 
-The only scalo-py component with a process-wide hook is OTel's atexit
-flush -- because the SDK's own hook would otherwise misorder it.
+The process-wide hooks scalo-py registers are the two OTel `atexit` flushes, and only once metrics or span export is set up. They replace the SDK's own hooks, whose 30-second timeout an unreachable collector would spend in full.
 
 ---
 
 ## Related
 
 - [health.md](health.md) -- flip ready off first
-- [metrics.md](metrics.md) -- OTel flush ordering
+- [metrics.md](metrics.md) -- OTel metrics backend
 - [logging.md](logging.md) -- log flush at shutdown
 - [api/concurrency.md](../api/concurrency.md) -- `gather_with_timeouts` reference
 - [transport/kafka.md](../transport/kafka.md) -- producer/consumer drain
-- [deployment/contract.md](../deployment/contract.md) -- `terminationGracePeriodSeconds`
+- [deployment/contract.md](../deployment/contract.md) -- `termination_grace_seconds`
 - [auto-wiring.md](../auto-wiring.md) -- what's automatic vs manual

@@ -1,20 +1,13 @@
 # Kafka
 
-`scalo.kafka` wraps the `confluent-kafka` Python client (librdkafka
-under the hood) with corporate defaults, a simplified API, optional async
-wrappers, schema-sampling helpers, and a consumer-lag health probe that
-does not require JMX. Defaults are at-least-once
-(`acks=all`, `retries=5`, manual commit); librdkafka idempotence is
-**not** enabled by default, and application-level retry is layered with
-`stamina` at the call site rather than via librdkafka transactions.
+`scalo.kafka` wraps the `confluent-kafka` Python client, which runs librdkafka, with corporate defaults, a simplified API, optional async wrappers, schema-sampling helpers, and a consumer-lag health probe that does not require JMX. Defaults are at-least-once (`acks=all`, `retries=5`, manual commit). librdkafka idempotence is **not** on by default, and the module adds no retry beyond librdkafka's own `retries`.
 
 What you get over raw librdkafka:
 
-- Sensible production defaults (durability, batching, manual commit)
-- One-arg construction from a bootstrap string
+- Production defaults for durability, batching and manual commit
+- One-arg construction from a bootstrap string, and `subscribe(str)` for a single topic (librdkafka requires a list)
 - JSON / str / bytes serialisation in `producer.send()`
 - A `Message` dataclass with `value_as_json()` / `value_as_str()` helpers
-- `subscribe(str)` accepts a single topic (librdkafka requires a list)
 - `KafkaAdmin` for the ops admins do (partition resize, retention,
   cleanup policy, offset reset)
 - `AsyncKafka*` wrappers for asyncio call sites
@@ -45,8 +38,8 @@ with KafkaProducer("localhost:9092") as producer:
 
 API surface (the whole thing):
 
-- `send(topic, value, key=None, partition=None, headers=None, on_delivery=None)` -- single message. `value` is `str`/`bytes`/`dict`/`list`; dict/list get `json.dumps`'d. Calls `produce()` then `poll(0)` to drain callbacks.
-- `flush(timeout=None)` -- block until queue drains; returns messages still queued.
+- `send(topic, value, key=None, partition=None, headers=None, on_delivery=None)` -- single message. `value` is `str`/`bytes`/`dict`/`list`, and a dict or list goes through `json.dumps`. Calls `produce()` then `poll(0)` to drain callbacks.
+- `flush(timeout=None)` -- block until the queue drains, and return the count of messages still queued.
 - `poll(timeout=0)` -- trigger delivery callbacks.
 
 No `send_batch()` -- librdkafka already batches via `linger.ms` and
@@ -72,16 +65,15 @@ with KafkaConsumer("localhost:9092", group_id="my-service") as consumer:
 
 | Group | Methods |
 |-------|---------|
-| Polling | `poll(timeout=1.0) -> Message\|None` (single message; `None` on timeout or partition EOF; raises `KafkaConsumerError` on fatal). `consume(num_messages=1, timeout=1.0) -> list[Message]` (batch; skips EOF silently). `__iter__` / `__next__` blocks indefinitely with 1s polls until `close()` or `break`. |
+| Polling | `poll(timeout=1.0) -> Message\|None` returns one message, or `None` on timeout or partition EOF, and raises `KafkaConsumerError` on any other error. `consume(num_messages=1, timeout=1.0) -> list[Message]` returns a batch and skips EOF silently. `__iter__` / `__next__` blocks indefinitely with 1s polls until `close()` or `break`. |
 | Subscription | `subscribe(str\|list[str])`, `unsubscribe()`, `assign(topic, partitions)`, `assignment()`. |
 | Offsets | `commit(asynchronous=False)` commits **all** current offsets -- no `commit_message(msg)`. `committed(topic, partitions)`, `seek(topic, partition, offset)`, `seek_to_beginning/end(topic, partition)`, `position(topic, partition)`. |
 
-`commit()` covers only messages `poll` and `consume` have handed over: the consumer sets `enable.auto.offset.store` false and stores each partition's next offset itself as it returns messages. A `consume` batch that carries an error raises `KafkaConsumerError` and returns none of its messages, and each partition it read is sought back to its first message in the batch, so the next read returns them again. A config that sets `enable.auto.offset.store` keeps librdkafka's store, which marks every fetched message as done, and then a commit after a batch error skips that batch. `AsyncKafkaConsumer` behaves the same.
+`commit()` covers only messages `poll` and `consume` have handed over: the consumer sets `enable.auto.offset.store` false and stores each partition's next offset itself as it returns messages. A `consume` batch that carries an error raises `KafkaConsumerError` and returns none of its messages, and each partition it read is sought back to its first message in the batch, so the next read returns them again.
 
-For seek-by-timestamp use `KafkaAdmin.reset_offsets_to_timestamp()` or
-`KafkaAdmin.reset_offsets_to_time()` -- there is no `seek_to_timestamp()`
-on the consumer. `KafkaConsumerError` carries `.error_code` from
-librdkafka when fatal.
+A seek that fails raises `KafkaConsumerError` saying the rewind failed, and the partitions it did not reach are left past the batch. Close that consumer and start a new one, which resumes from the committed offsets, before anything commits again. A config that sets `enable.auto.offset.store` keeps librdkafka's store, which stores every message librdkafka returns, and then a commit after a batch error skips that batch. `AsyncKafkaConsumer` behaves the same.
+
+For seek-by-timestamp use `KafkaAdmin.reset_offsets_to_timestamp()` or `KafkaAdmin.reset_offsets_to_time()` -- there is no `seek_to_timestamp()` on the consumer. `KafkaConsumerError` carries librdkafka's `.error_code`.
 
 ### KafkaClient and KafkaAdmin
 
@@ -111,18 +103,13 @@ admin.reset_offsets_to_time(
 
 `alter_config()` uses `incremental_alter_configs` so unspecified keys
 keep their current values rather than reverting to broker defaults.
-`KafkaAdminError` wraps the underlying futures. `seek_to_json_match()`
-(offset seek by JSON field value) is on the backlog in `admin.py`, not
-implemented.
+`KafkaAdminError` wraps the exception of a failed admin future.
 
 ---
 
 ## Async clients
 
-`AsyncKafkaProducer`, `AsyncKafkaConsumer`, `AsyncKafkaClient` are thin
-wrappers that push blocking librdkafka calls into a `ThreadPoolExecutor`
-(4 workers by default; pass `executor=...` to share). They own the
-executor unless one is supplied, shutting it down on `__aexit__`.
+`AsyncKafkaProducer`, `AsyncKafkaConsumer` and `AsyncKafkaClient` are thin wrappers that run each blocking librdkafka call in a worker thread through `scalo.concurrency.run_blocking` (see [../api/concurrency.md](../api/concurrency.md)). `__aexit__` flushes the producer and closes the consumer and the client. `AsyncKafkaProducer.send()` is fire-and-forget, and `send_and_wait()` returns a `DeliveryReport` once the broker acknowledges.
 
 ```python
 from scalo.kafka import AsyncKafkaProducer, AsyncKafkaConsumer
@@ -150,20 +137,15 @@ Which one to pick:
 Async wrappers are *not* faster than sync -- they exist to let you
 call Kafka from an event loop without blocking it. `AsyncKafkaClient`
 covers `list_topics`, `describe_topic`, `get_watermark_offsets`,
-`get_topic_message_count`. It does **not** expose `get_consumer_lag`
-or `get_offsets_for_times`; use the sync `KafkaClient` (or
-`run_in_executor`) for those.
+`get_topic_message_count`. It does **not** expose `get_consumer_lag` or `get_offsets_for_times`. Use the sync `KafkaClient`, through `run_blocking`, for those.
 
 ---
 
 ## Configuration
 
-Two layers stack: corporate defaults from `kafka.config`, then your
-user config (user wins). `merge_config(user, defaults)` does the
-overlay; `verify_ssl=False` flips
-`enable.ssl.certificate.verification` to `"false"`.
+Two layers stack: corporate defaults from `kafka.config`, then your user config (user wins). `merge_config(user, defaults, verify_ssl=True)` does the overlay, and `verify_ssl=False` sets `enable.ssl.certificate.verification` to `"false"`.
 
-librdkafka accepts some settings under two names (`compression.type` and `compression.codec`, `acks` and `request.required.acks`, `linger.ms` and `queue.buffering.max.ms`, and the rest of the pairs scalo-rs lists). A user setting under either name replaces the default under the other, so only your value reaches librdkafka. The codec name is matched without regard to case.
+librdkafka accepts some settings under two names, and scalo-py knows the same ten pairs as scalo-rs: `bootstrap.servers`/`metadata.broker.list`, `max.in.flight`/`max.in.flight.requests.per.connection`, `sasl.mechanism`/`sasl.mechanisms`, the `sasl.oauthbearer.client.credentials.client.id` and `.client.secret` pairs with their short forms, `max.partition.fetch.bytes`/`fetch.message.max.bytes`, `linger.ms`/`queue.buffering.max.ms`, `retries`/`message.send.max.retries`, `compression.type`/`compression.codec` and `acks`/`request.required.acks`. A user setting under either name replaces the default under the other, so only your value reaches librdkafka. The codec name is matched without regard to case.
 
 ### Producer defaults (`PRODUCER_DEFAULTS`)
 
@@ -176,11 +158,10 @@ librdkafka accepts some settings under two names (`compression.type` and `compre
 | `request.timeout.ms` | `30000` | Per-request timeout. |
 | `linger.ms` | `5` | Small wait to batch. |
 | `compression.type` | `"zstd"` | Corporate default codec. |
-| `compression.level` | `3` | zstd tuning; dropped by `merge_config` if you override the codec without setting your own level. |
+| `compression.level` | `3` | zstd tuning. `merge_config` drops it when you override the codec without setting your own level. |
 | `batch.size` | `16384` | 16 KiB batches. |
 
-`enable.idempotence` is **not** set by the defaults. Opt in explicitly
-if you need exactly-once produce semantics:
+`enable.idempotence` is **not** set by the defaults. Opt in when a retried send must not write a duplicate:
 
 ```python
 producer = KafkaProducer({
@@ -189,8 +170,7 @@ producer = KafkaProducer({
 })
 ```
 
-Application-level retry around Kafka calls is layered with `stamina` at
-the call site, not via librdkafka transactions.
+A retry around a whole call is yours to add, for example with `stamina`, which the `resilience` extra installs.
 
 ### Consumer defaults (`CONSUMER_DEFAULTS`)
 
@@ -199,8 +179,8 @@ the call site, not via librdkafka transactions.
 | `auto.offset.reset` | `"earliest"` | New groups start at the beginning. |
 | `enable.auto.commit` | `False` | Manual commit -- at-least-once. |
 | `session.timeout.ms` | `45000` | Tolerates 45s of pause before kicked out. |
-| `heartbeat.interval.ms` | `3000` | 1/3 of session timeout. |
-| `max.poll.interval.ms` | `300000` | 5-minute processing budget per batch. |
+| `heartbeat.interval.ms` | `3000` | Heartbeat every 3s, well inside the session timeout. |
+| `max.poll.interval.ms` | `300000` | Up to 5 minutes between polls before the consumer leaves the group. |
 | `fetch.min.bytes` | `1` | Return immediately with whatever arrives. |
 | `fetch.wait.max.ms` | `500` | Cap on the wait. |
 
@@ -215,7 +195,7 @@ Every blocking metadata, watermark, committed-offset and offsets-for-times call 
 | Helper | Source |
 |--------|--------|
 | `config_from_env(prefix="KAFKA_")` | `KAFKA_BOOTSTRAP_SERVERS`, `KAFKA_SASL_USERNAME`, etc. Maps to librdkafka keys. |
-| `config_from_file(path)` | `.properties` / `.json` / `.yaml` / `.ini` (PyYAML required for YAML). |
+| `config_from_file(path)` | `.properties` / `.json` / `.yaml` / `.yml` / `.ini` (the `[kafka]` section). |
 | `external_sasl_scram(brokers, user, pw)` | SASL_SSL + SCRAM-SHA-512 (production-facing brokers). |
 | `internal_sasl_scram(brokers, user, pw)` | SASL_PLAINTEXT + SCRAM-SHA-512 (in-cluster, TLS-terminated upstream). |
 | `get_default_config()` | `config_from_env()` + `ADMIN_DEFAULTS`. |
@@ -292,7 +272,7 @@ Sampling helpers:
 |----------|----------|
 | `reservoir_sample(messages, k, seed=None)` | Uniform random `k` from a stream of unknown length (Vitter's Algorithm R). |
 | `partition_sample(messages, n_per_partition, seed=None)` | Independent reservoir per partition -- representative across partitions. |
-| `time_bounded_consume(consumer, start_time, end_time, limit=None, timeout=1.0)` | Poll until 3 consecutive empty polls or `end_time` passes; only collects messages with timestamps in `[start_time, end_time]` (both millis since epoch). Consumer must already be subscribed/assigned. |
+| `time_bounded_consume(consumer, start_time, end_time, limit=None, timeout=1.0)` | Poll until 3 consecutive empty polls, a message past `end_time`, or `limit` messages. Only collects messages with timestamps in `[start_time, end_time]` (both millis since epoch). Consumer must already be subscribed/assigned. |
 
 `time_bounded_consume()` reads messages but does **not** seek -- pair
 with `consumer.seek()` or `KafkaAdmin.reset_offsets_to_timestamp()`
@@ -343,9 +323,9 @@ Thresholds come from the config cascade (`kafka.health.*` in
 | `lag_growth_threshold` | 1000 | Lag-delta per check flagged as `LAG_GROWING`. |
 | `rebalance_threshold` | 3 | Rebalances in window before flagging `FREQUENT_REBALANCES`. |
 | `rebalance_window_sec` | 300 | Window for the rebalance count. |
-| `imbalance_ratio` | 3.0 | Per-consumer partition load relative to fair share. |
+| `imbalance_ratio` | 3.0 | This consumer's largest per-topic partition count over its smallest, across two or more topics. Imbalance across consumers is not visible from one consumer. |
 
-`get_health_metrics()` returns Prometheus-shaped values
+`get_health_metrics()` returns a dict keyed by Prometheus-style metric names
 (`kafka_consumer_healthy`, `kafka_consumer_lag_total`,
 `kafka_consumer_rebalance_total`, plus per-`HealthIssue` counters) --
 feed into the metrics pillar via a custom collector for `/metrics`.
@@ -354,10 +334,7 @@ feed into the metrics pillar via a custom collector for `/metrics`.
 
 ## Read-only client (for tools)
 
-`ReadOnlyKafkaClient` is `KafkaClient` minus the produce path -- same
-admin / lag / watermark methods, no way to write. Useful when a
-metrics scraper or monitoring tool runs with admin credentials and you
-want a hard guarantee it cannot mutate data.
+`ReadOnlyKafkaClient` reads topics, watermarks, message counts and consumer lag, and has no method that writes. Use it for a metrics scraper or monitoring tool that holds credentials with write access.
 
 ```python
 from scalo.kafka import ReadOnlyKafkaClient, config_from_env

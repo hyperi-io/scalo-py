@@ -1,6 +1,6 @@
 # scalo
 
-The runtime layer for Python control-plane services: config, logging, metrics, health probes, secrets and a service CLI, already wired together. Subclass one class and your service reads its config, logs in the right format for where it runs, and serves its health probes.
+The runtime layer for Python control-plane services: config, logging, metrics, health, secrets and a service CLI. It comes already wired together: subclass one class and your service reads its config, logs in the right format for where it runs, and serves its health probes.
 
 It is built for APIs, orchestrators, CLI tools and integration glue. For the hot path there is a Rust sister library, [scalo-rs](https://github.com/hyperi-io/scalo-rs), with the same conventions and a different API.
 
@@ -59,6 +59,6 @@ if __name__ == "__main__":
 | `secrets-vault`, `secrets-aws`, `secrets-gcp`, `secrets-azure`, `secrets-kubernetes` | One secrets backend each |
 | `secrets` | Every secrets backend |
 
-Pick the secrets backend you use rather than `secrets`, since each backend brings its own cloud SDK.
+Pick the secrets backend you use rather than `secrets`, since the AWS, GCP and Azure backends each bring a cloud SDK.
 
 Docs and source are at <https://github.com/hyperi-io/scalo-py>. Requires the Python version `requires-python` names in `pyproject.toml`. Licensed Apache-2.0: <https://github.com/hyperi-io/scalo-py/blob/main/LICENSE>.

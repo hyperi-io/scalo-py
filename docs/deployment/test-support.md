@@ -1,15 +1,13 @@
 # Test support
 
-`scalo.deployment.test_support` -- reusable helpers for the
-deployment-contract e2e suite. Std-library only; no new runtime deps.
-Consumers import these into their own `tests/e2e/` modules; the
-canonical template lives at `tests/e2e/test_contract_artefacts.py`.
+`scalo.deployment.test_support` -- reusable helpers for the deployment-contract e2e suite. Beyond the standard library it imports `pytest`, and the Kafka fixtures import `confluent-kafka`. Consumers import these into their own `tests/e2e/` modules, and the template lives at `tests/e2e/test_contract_artefacts.py`.
 
 ```python
 from scalo.deployment.test_support import (
     SKIP_PREFIX,
-    docker_available, helm_available, kubeconform_available,
-    kind_available, kubectl_available,
+    docker_available, buildx_available, helm_available,
+    kubeconform_available, kind_available, kubectl_available,
+    docker_build_cmd, docker_env,
     tier_b_enabled,
     skip,
     docker_empty_creds_json,
@@ -18,9 +16,7 @@ from scalo.deployment.test_support import (
 )
 ```
 
-Mirrors `scalo::deployment::test_support` once that lands;
-both emit the same `HYPERCI-SKIP[contract-e2e][...]:` prefix so the
-hyperi-ci runner aggregates skip counts uniformly.
+scalo-rs's `scalo::deployment::test_support` writes the same `HYPERCI-SKIP[contract-e2e][<tier>]:` skip line.
 
 ---
 
@@ -54,6 +50,7 @@ shared_service_repo = "my-app"
 - Containers carry `io.hyperi.test.*` owner labels, and each create removes the suite's containers whose owner has gone.
 - ClickHouse and Kafka use the always-present pet named by `HYPERI_TEST_*` settings (the environment, then `.env`, then the file `HYPERI_TEST_ENV_FILE` names) when a quick probe answers, never in CI or under the full tier. A Kafka pet's groups take `HYPERI_TEST_KAFKA_GROUP_PREFIX`, else its topic prefix.
 - Without Docker a test skips on a developer's machine, and fails in CI or under `HYPERCI_TEST_TIER=full`. `unavailable(reason)` applies the same rule to a test's own prerequisites.
+- POSIX only: process identity comes from `/proc` or `ps`, and the lock from `fcntl`.
 
 A service the plugin does not cover takes a `ServiceSpec` (image, ports, env, `secret_env`, files, readiness by HTTP, log line or command) to `shared_service.acquire(suite_for(config), spec)`. A test that stops or reconfigures its server holds one alone with `start_alone(suite, spec, container_name(suite, test, service))`. The pinned images and their specs are `scalo.deployment.test_support.services`.
 
@@ -61,34 +58,26 @@ A service the plugin does not cover takes a `ServiceSpec` (image, ports, env, `s
 
 ## Tool probes
 
-All five probes are `@lru_cache`d -- each tool shells out at most
-once per process. They return `True` when the binary is on `$PATH`
-AND its trivial `--version`/`info`/`version --client` invocation
-returns zero within 10s.
+The six probes are cached with `functools.cache`, so each tool shells out at most once per process. They return `True` when the binary is on `$PATH` AND its trivial `info`/`version` invocation returns zero within 10s.
 
 | Probe | Checks |
 |---|---|
 | `docker_available()` | `which docker` + `docker info` (daemon must be reachable, not just CLI) |
+| `buildx_available()` | `which docker` + `docker buildx version` |
 | `helm_available()` | `which helm` + `helm version` |
 | `kubeconform_available()` | `which kubeconform` only (no execution) |
 | `kind_available()` | `which kind` + `kind version` |
 | `kubectl_available()` | `which kubectl` + `kubectl version --client` (no server needed) |
 
-Probes never raise. A timeout or `FileNotFoundError` returns `False`.
+Probes never raise. A timeout, `FileNotFoundError` or other `OSError` returns `False`.
+
+`docker_build_cmd(tag, *, dockerfile="Dockerfile", context=".", no_cache=False)` returns the build argv: `docker buildx build --load` when buildx answers, else `docker build`. Use it rather than a hand-written `["docker", "build", ...]`, because the legacy builder ignores the active `docker context`.
 
 ---
 
 ## Tier B env gate
 
-```python
-def tier_b_enabled() -> bool:
-    raw = os.environ.get("E2E_CLUSTER", "").lower()
-    return raw in ("1", "true", "yes", "on")
-```
-
-Tier B (the cluster-creating tests) opts in via the `E2E_CLUSTER`
-env var. The default is off so local `pytest` runs don't spin up
-kind clusters by accident. CI sets it explicitly on the e2e job.
+Tier B (the cluster-creating tests) opts in through `E2E_CLUSTER`: `tier_b_enabled()` is true when it is `1`, `true`, `yes` or `on`, in any case. Once an env prefix is set, the variable read is `<PREFIX>_E2E_CLUSTER`. The default is off, so a local `pytest` run doesn't spin up kind clusters by accident, and nothing in scalo-py's own CI sets it.
 
 ---
 
@@ -104,10 +93,7 @@ to `sys.stderr` AND appends it to a side-channel log, then calls
 `pytest.skip(reason)` (which raises -- callers don't need a trailing
 `return`).
 
-`tier` must be `"tier-a"` or `"tier-b"`; other values raise
-`ValueError`. The greppable prefix is exposed as
-`SKIP_PREFIX = "HYPERCI-SKIP[contract-e2e]"` for runner-side
-aggregation.
+`tier` must be `"tier-a"` or `"tier-b"`, and any other value raises `ValueError`. The greppable prefix is exposed as `SKIP_PREFIX = "HYPERCI-SKIP[contract-e2e]"`. A log write that fails with `OSError` is dropped, and the skip still happens.
 
 ### Side-channel log path
 
@@ -123,29 +109,22 @@ first write. File mode is append, UTF-8, LF newlines.
 
 ## `docker_empty_creds_json()`
 
-Returns `'{"auths": {}}'`. Write it into a tempdir's `config.json`
-and point Docker at it via `DOCKER_CONFIG=<tempdir>` to bypass
-credential helpers that don't exist in CI (`docker-credential-*`
-binaries on minimal images). The Tier A Docker build test in the
-template uses this to keep `docker build` working without registry
-auth.
+Returns a Docker `config.json` with empty `auths`, so public base images pull anonymously whatever credential helper the host has. It also carries `cliPluginsExtraDirs` for every CLI plugin directory that exists, so `docker buildx` still resolves under the new config directory.
+
+`docker_env(config_dir)` returns the environment to build with: `DOCKER_CONFIG` set to `config_dir`, and `DOCKER_HOST` set to the active context's endpoint, which a new config directory would otherwise lose. The template's Tier A build uses both:
 
 ```python
 with tempfile.TemporaryDirectory() as cfg_dir:
-    (Path(cfg_dir) / "config.json").write_text(docker_empty_creds_json())
-    env = {**os.environ, "DOCKER_CONFIG": cfg_dir}
-    subprocess.run(["docker", "build", ...], env=env, check=True)
+    (Path(cfg_dir) / "config.json").write_text(docker_empty_creds_json(), encoding="utf-8")
+    env = docker_env(cfg_dir)
+    subprocess.run(docker_build_cmd(tag), cwd=build_dir, env=env, check=True)
 ```
 
 ---
 
 ## `wait_until(deadline_seconds, interval_seconds, predicate)`
 
-Generic poll helper. Calls `predicate()` until it returns `True` or
-`deadline_seconds` elapses; sleeps `interval_seconds` between calls.
-Returns `predicate()`'s final value (re-evaluates once at deadline
-expiry so a transition that lands exactly on the boundary isn't
-missed). Uses `time.monotonic()` for clock-skew immunity.
+Generic poll helper. Calls `predicate()` until it returns `True` or `deadline_seconds` elapses, sleeping `interval_seconds` between calls. Returns `predicate()`'s final value: it re-evaluates once at the deadline, so a transition that lands on the boundary isn't missed. Uses `time.monotonic()`, so a clock change does not move the deadline.
 
 ---
 
@@ -158,13 +137,12 @@ class KindClusterGuard:
     kubeconfig: Path | None = None
 ```
 
-A context-manager-shaped lifecycle wrapper for a uniquely-named kind
-cluster.
+A context manager for the lifecycle of a uniquely-named kind cluster.
 
 - Cluster name = `f"scalo-py-e2e-{sha256(test_name)[:12]}"` -- 12-char
   digest keeps it under K8s 63-char name limits and gives parallel
   pytest-xdist workers distinct clusters.
-- `__enter__` validates prereqs and returns `self`. The cluster
+- `__enter__` raises `RuntimeError` when a prereq is missing, else returns `self`. The cluster
   itself is brought up by the test body via `subprocess.run(["kind",
   "create", "cluster", "--name", guard.name, ...])` so individual
   tests can pass their own `--image` / `--config` flags.
@@ -197,9 +175,7 @@ finally:
 
 ## The e2e template
 
-`tests/e2e/test_contract_artefacts.py` is dual-purpose: it self-tests
-scalo-py's own deployment subsystem AND serves as the template Python
-consumers copy into their own `tests/e2e/`. One test function:
+`tests/e2e/test_contract_artefacts.py` is dual-purpose: it self-tests scalo-py's own deployment subsystem AND is the template Python consumers copy into their own `tests/e2e/`. One test function:
 
 | Test | Exercises | Tool required |
 |---|---|---|
@@ -215,15 +191,9 @@ Tier B helpers above stay for a consumer that brings up its own cluster.
 
 ## Markers + tier mapping
 
-Two pytest markers, declared in `pyproject.toml`, map to the tiers:
+scalo-py's `pyproject.toml` declares the markers, among them `integration` (Docker required), `e2e` (a cluster required) and `full`. Its `addopts` passes `-m 'not full'`.
 
-- `@pytest.mark.integration` -- Tier A, which the template uses. Runs
-  wherever Docker is, against the shared services above.
-- `@pytest.mark.e2e` -- Tier B. Env-gated and only runs in the
-  dedicated e2e job that has kind installed.
-
-Map your consumer tests to the same markers; `hyperi-ci`'s test
-runner already knows how to split them into the right CI jobs.
+The template's test carries `@pytest.mark.integration` and `@pytest.mark.full`, so it runs only in hyperi-ci's full tier. hyperi-ci's `core` tier keeps the project's `addopts -m`, and its `full` tier passes `-m <test.full.python.markers>` instead, every test by default. Under `full` a skip fails the run unless its reason matches `test.full.python.allow_skip`.
 
 ---
 

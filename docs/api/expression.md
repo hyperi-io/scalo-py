@@ -1,7 +1,6 @@
 # Expression
 
-CEL (Common Expression Language) evaluation backed by the
-`common-expression-language` package, which wraps the Rust `cel` crate (formerly `cel-interpreter`) via PyO3. The Rust crate is the same one used by the `scalo` crate, so Python and Rust services parse and evaluate expressions identically. The extra needs 0.10.0 or later, the first release built on cel-rust 0.14.5 that also imports in a clean install.
+CEL (Common Expression Language) evaluation backed by the `common-expression-language` package, which wraps the Rust `cel` crate (formerly `cel-interpreter`) via PyO3. scalo-rs (the `scalo` crate) compiles against the same crate, so Python and Rust services parse and evaluate an expression the same way. The extra's floor in `pyproject.toml`, with its reason beside it, is the first release that imports in a clean install and is built on the `cel` version scalo-rs compiles against.
 
 ```bash
 pip install scalo[expression]
@@ -25,11 +24,8 @@ assert result is True
 
 ## Why CEL, why this wrapper
 
-- CEL has known costs, no side effects, terminates by construction —
-  safe to evaluate untrusted operator-supplied rules.
-- One Rust implementation means a rule that scores `true` in Python
-  scores `true` in Rust. No "the Python and Rust scorers disagree"
-  outages.
+- CEL has no side effects and terminates by construction, so an operator-supplied rule is safe to evaluate.
+- One Rust implementation means a rule that scores `true` in Python scores `true` in Rust.
 - This wrapper adds the **expression profile**, the subset of CEL with a bounded cost per record. Regex, per-element iteration and time functions are refused until the app unlocks them, see [The expression profile](#the-expression-profile).
 
 ---
@@ -109,8 +105,7 @@ result = evaluate('size(tags) > 0', {"tags": ["foo", "bar"]})
 assert result is True
 ```
 
-`evaluate` compiles every call — fine for occasional checks, wasteful
-for repeated evaluation against many records.
+`evaluate` compiles on every call, which is fine for occasional checks and wasteful for repeated evaluation against many records.
 
 ---
 
@@ -127,17 +122,13 @@ for record in stream:
         forward(record)
 ```
 
-`compile_expression` validates against the profile and compiles once.
-`program.execute(ctx)` is the per-record hot path — no parsing, no
-profile checks.
+`compile_expression` validates against the profile and compiles once. `program.execute(ctx)` is the per-record hot path, with no parsing and no profile checks.
 
 ---
 
 ## Safe boolean evaluation
 
-`evaluate_condition` is the right shape for routing rules, alert
-triggers, and `when:` clauses. Missing fields return `False` instead
-of raising:
+`evaluate_condition` suits routing rules, alert triggers, and `when:` clauses. Missing fields return `False` instead of raising:
 
 ```python
 from scalo.expression import evaluate_condition
@@ -148,7 +139,7 @@ evaluate_condition('severity == "critical"', {"severity": "critical"})  # True
 evaluate_condition('user.role == "admin"', {"user": {}})  # False
 ```
 
-An invalid expression returns `False`, and so does every error the cel package raises while evaluating: a missing variable or map key, a type mismatch, division by zero, an index out of range, an overflow. Each distinct expression is compiled once and kept, up to 1,024 of them with the least recently used dropped first, so calling it per record with the same few conditions compiles nothing after the first call.
+An invalid expression returns `False`, and so does every error the cel package raises while evaluating: a missing variable or map key, a type mismatch, division by zero, an index out of range, an overflow. Each distinct expression is compiled once and kept in an LRU cache of 1,024, so calling it per record with the same few conditions compiles nothing after the first call.
 
 ---
 
@@ -172,7 +163,7 @@ Restricted categories, each refused until its flag is set (`DISALLOWED_FUNCTIONS
 | `RESTRICTED_ITERATION` | `map`, `filter`, `exists`, `exists_one`, `existsOne`, `all` | `allow_iteration` | cost grows with the collection |
 | `RESTRICTED_TIME` | `timestamp`, `duration` | `allow_time` | keeps a result independent of when the pipeline ran it |
 
-An app sets the flags under `expression` in its config, and every call with `profile=None` reads them from there:
+An app sets the flags under `expression` in its config, and every call with `profile=None` reads them from the module-level `settings`, which a `--config` file never reaches:
 
 ```yaml
 expression:
@@ -192,10 +183,7 @@ sql_where = transpile_to_clickhouse('severity == "critical" && amount > 10000')
 # Returns the ClickHouse WHERE-clause fragment
 ```
 
-Use this when you have a CEL rule the operator defined, and you want
-to push the filter down into a ClickHouse `WHERE` clause instead of
-fetching every row and filtering in Python. Raises `TranspileError` for
-constructs that don't map to SQL. `matches()` transpiles to `match()` only under a profile that allows regex.
+Use this when you have a CEL rule the operator defined, and you want to push the filter down into a ClickHouse `WHERE` clause instead of fetching every row and filtering in Python. Raises `TranspileError` for constructs that don't map to SQL. `matches()` transpiles to `match()` only under a profile that allows regex.
 
 Division pushes down only where the expression fixes its type, because CEL divides ints as integers and doubles as doubles. An int literal, `int()`, `size()` or `%` on either side makes it ClickHouse's `intDiv`, which truncates toward zero as CEL does, and a double literal or `double()` makes it `/`. `total / count`, with no typed operand, raises `TranspileError`: evaluate it in process, or write `total / double(count)`.
 
@@ -219,8 +207,7 @@ Limits, all from ClickHouse:
 
 ## Result types
 
-CEL types map to Python types directly: `bool`, `int`, `float`, `str`,
-`list`, `dict`. CEL never mixes int and double: `evaluate('1 + 1.0')` raises `TypeError`, so write `1.0 + 1.0` or convert with `double()`. Int division truncates toward zero (`-7 / 2` is `-3`), and `%` takes the dividend's sign.
+CEL types map to Python types directly: `bool`, `int`, `float`, `str`, `list`, `dict`. CEL never mixes int and double: `evaluate('1 + 1.0')` raises `TypeError`, so write `1.0 + 1.0` or convert with `double()`. Int division truncates toward zero (`-7 / 2` is `-3`), and `%` takes the dividend's sign.
 
 ---
 
@@ -229,7 +216,8 @@ CEL types map to Python types directly: `bool`, `int`, `float`, `str`,
 | Exception | When |
 |-----------|------|
 | `ExpressionError(errors=[...])` | Profile violation or parse error. `errors` is the list returned by `validate`. |
-| `RuntimeError` | Evaluation failed at runtime (missing field with unsafe access, type mismatch). |
+| `RuntimeError` | Evaluation failed at runtime, such as a missing variable. |
+| `TypeError` | An operation CEL does not define for its operand types, such as `"a" > 1` or `1 + 1.0`. |
 | `TranspileError` | `transpile_to_clickhouse` couldn't lower this construct. |
 
 ---
@@ -237,19 +225,18 @@ CEL types map to Python types directly: `bool`, `int`, `float`, `str`,
 ## Cross-language parity
 
 ```python
-# Python — scalo
+# Python -- scalo
 from scalo.expression import evaluate
 evaluate('amount > threshold', {"amount": 15000, "threshold": 10000})  # True
 ```
 
 ```rust
-// Rust — the scalo crate
+// Rust -- the scalo crate
 use scalo::expression::evaluate;
 evaluate("amount > threshold", &ctx)?  // also true
 ```
 
-Same crate, same parser, same evaluator — a CEL test suite that passes
-on one passes on the other.
+Both parse and evaluate with the same `cel` crate.
 
 ---
 
