@@ -134,7 +134,7 @@ A pod mounting the Secret sees a write after the kubelet's next sync of the moun
 
 ## Reading secrets
 
-Three call shapes:
+Three ways to call it:
 
 ```python
 # Named source (recommended)
@@ -282,7 +282,7 @@ async def secrets_ready() -> bool:
 health.register_ready_check("secrets", secrets_ready)
 ```
 
-The OpenBao, AWS, GCP, Azure and Kubernetes providers catch their own errors, so each logs its own reason and still returns `False` to a direct caller. The warning names the provider with the error type and message. A sealed OpenBao store gives the status it answered, such as `503 (sealed)`. The message is scrubbed first ([logging.md](../core-pillars/scrubbing.md#scrub-architecture)), and one the scrubbers cannot process is withheld.
+The OpenBao, AWS, GCP, Azure and Kubernetes providers catch their own errors, so each logs its own reason and still returns `False` to a direct caller. The warning names the provider with the error type and message. A sealed OpenBao store gives the status it answered, such as `503 (sealed)`. The message is scrubbed first ([scrubbing.md](../core-pillars/scrubbing.md#scrub-architecture)), and one the scrubbers cannot process is withheld.
 
 The warning is written when the check first fails and not again while it keeps failing, so a probe that runs every few seconds writes one line per outage. The first check to pass writes one INFO line. A provider whose check raises is reported `False` and logged by the manager the same way, once per error type until its check stops raising. Scrubbing runs on a worker thread, because the first one builds the scrubber and the event loop must not wait for it.
 

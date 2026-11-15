@@ -49,7 +49,7 @@ Each extra adds its row to the base install. Extras do not include each other, e
 | `scalo[expression]` | `expression` + `common-expression-language` | CEL evaluation, the same crate scalo-rs evaluates with |
 | `scalo[api]` | `api` + `fastapi` + `pydantic` + `cryptography` | `install(app, hierarchy)`: problem+json handlers and a spec whose operation ids and `x-scalo` come from the resource hierarchy. The app still passes `generate_unique_id_function=hierarchy.unique_id` itself |
 | `scalo[mcp]` | `mcp` + the MCP SDK + `httpx2` + `jsonschema`, and `[api]` | `mount(app)`: MCP tools generated from the spec at startup, each call run in-process with the caller's token, writes that preview first and commit only the previewed request, and an `Origin` check. Naming an issuer adds RFC 9728 metadata and the token challenge |
-| `scalo[resilience]` | `stamina` | The stamina retry engine without the HTTP client. `scalo.resilience` itself is stdlib-only and needs no extra |
+| `scalo[resilience]` | `stamina` | The stamina retry engine without the HTTP client. `scalo.resilience` itself needs no extra |
 | `scalo[cli]` | `cli.openapi` + `typer` + `jmespath` | A whole CLI from an OpenAPI spec alone: the resource hierarchy as the command tree, `--output`, `--query`, pagination, input documents, problem+json exit codes |
 
 ---

@@ -71,7 +71,7 @@ except Exception:
     logger.exception("processing failed", retries=3)   # logs the traceback too
 ```
 
-`setup()` autodetects the format: JSON when stderr is not a TTY (containers), and human-readable text on a TTY or in CI. Secrets, credential field names and PII values are scrubbed from every message and field. Timestamps are RFC 3339.
+`setup()` autodetects the format: JSON when `OTEL_EXPORTER_OTLP_ENDPOINT` is set, else human-readable text in CI or on a TTY, and JSON otherwise, as in a container (see [Format selection](core-pillars/logging.md#format-selection)). Secrets, credential field names and PII values are scrubbed from every message and field at every level but TRACE. Timestamps are RFC 3339.
 
 See [core-pillars/logging.md](core-pillars/logging.md) for scrub, rate
 limiting, CI mode, and the emoji-to-text conversion.
@@ -211,7 +211,7 @@ dockerfile = generate_dockerfile(contract, identity=identity)
 manifest = generate_container_manifest(contract, identity=identity)
 ```
 
-That gives you a Dockerfile and a container manifest, both carrying the three `io.scalo.contract.*` identity keys (version, source-commit, image-ref). The contract names no vendor, licence or copyright until you set `OciLabels(vendor=..., licenses=..., copyright=...)`, and `OciLabels(label_namespace=...)` moves scalo's own keys under your reverse-DNS name.
+That gives you a Dockerfile and a container manifest, both carrying the three `io.scalo.contract.*` identity keys (version, source-commit, image-ref). The contract names no distributor, licence or copyright until you set `OciLabels(vendor=..., licenses=..., copyright=...)`, and `OciLabels(label_namespace=...)` moves scalo's own keys under your reverse-DNS name.
 
 The Kubernetes objects come from the scalo-service library chart, which renders the `deployment-contract.json` that `generate-artefacts` writes. To preview a service's chart locally, run `hyperi-ci chart assemble` -- see [deployment/artefacts.md](deployment/artefacts.md#kubernetes-objects).
 

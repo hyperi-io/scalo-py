@@ -1,6 +1,6 @@
 # DeploymentContract
 
-The Pydantic model an app builds once from its `Config.default()`. `validate_dockerfile` checks a committed Dockerfile against it, generators emit the image artefacts from it, and the [scalo-service](https://github.com/hyperi-io/scalo-rs/blob/main/charts/scalo-service/README.md) library chart renders the Kubernetes objects from its JSON. scalo-py parses every field scalo-rs's `scalo::deployment::contract` writes, under the same name and JSON shape, and writes it back unchanged. Only scalo-py has `builder_image`, `python_version`, `emit_healthcheck` and `native_deps.distro_codename`, which scalo-rs ignores.
+The Pydantic model an app builds once from its `Config.default()`. `validate_dockerfile` checks a committed Dockerfile against it, generators emit the image artefacts from it, and the [scalo-service](https://github.com/hyperi-io/scalo-rs/blob/main/charts/scalo-service/README.md) library chart renders the Kubernetes objects from its JSON. scalo-py parses every field scalo-rs's `scalo::deployment::contract` writes, under the same name and JSON type, and writes it back unchanged. Only scalo-py has `builder_image`, `python_version`, `emit_healthcheck` and `native_deps.distro_codename`, which scalo-rs ignores.
 
 `tests/fixtures/contract-parity/deployment-contract.json` is a contract scalo-rs emitted with every optional field set, copied from scalo-rs's own `tests/fixtures/contract-parity/`. `tests/unit/deployment/test_contract_parity.py` parses it, re-emits it and checks nothing changed, so a field scalo-rs adds fails here until scalo-py carries it.
 
@@ -128,7 +128,7 @@ variants from one contract.
 
 Dynamic labels (`org.opencontainers.image.source`, `revision`, `version`, `created`) are CI-injected via `--build-arg`, and the static labels listed here come from the contract.
 
-`vendor`, `licenses` and `copyright` name the app's vendor, licence and copyright holder. scalo names none of its own, so an app's artefacts carry only the terms the app states.
+`vendor`, `licenses` and `copyright` name the app's distributor, licence and copyright holder. scalo names none of its own, so an app's artefacts carry only the terms the app states.
 
 scalo stamps a few keys of its own beside the standard `org.opencontainers.image.*` labels, all under `label_namespace`:
 
@@ -297,11 +297,11 @@ MAX_SUPPORTED_SCHEMA_VERSION = 4
 
 `schema_version` is the handshake between whatever writes a contract and
 whatever reads it, and it equals scalo-rs's `CONTRACT_SCHEMA_VERSION`. The
-vendored JSON Schema pins it to 4, so a chart assembler refuses any other
+JSON Schema copied from scalo-rs pins it to 4, so a chart assembler refuses any other
 version. `DeploymentContract` itself reads a v3 contract with every v4 field at
 its default, as scalo-rs's types do.
 
-scalo-rs owns the contract shape. A new field lands there first, with a new
+scalo-rs owns the contract's fields. A new field lands there first, with a new
 parity fixture and, for a breaking change, a new schema version. scalo-py then
 mirrors the field, copies the fixture and the schema, and bumps both
 constants.

@@ -64,7 +64,7 @@ For each YAML layer (`defaults`, `settings`, `settings.{env}`), scalo-py searche
 
 Both `.yaml` and `.yml` are read, `.yaml` first, so a `.yml` in the same directory wins a tie. Every file found is loaded, later overriding earlier. `get_config()` deep-merges them. The module-level `settings` does not: a later file that sets `database` replaces the whole `database` mapping an earlier file set.
 
-YAML values are read as written. `${POSTGRES_HOST:-localhost}` arrives as that literal string, so override a file value from the environment with its env key (layer 2) instead.
+YAML values are read as written, except Dynaconf's `@` tokens (`@int 5` reads back as `5`). `${POSTGRES_HOST:-localhost}` arrives as that literal string, so override a file value from the environment with its env key (layer 2) instead.
 
 App name resolves from the bare `APP_NAME` env var (the K8s/Docker convention), then the prefix-aware `<PREFIX>_APP_NAME`, then the program name, then `"app"`. The program name is the top-level package for `python -m pkg[.mod]`, else the stem of the script or console entry point, with underscores turned into hyphens. `python -c`, `python -`, an empty `argv[0]`, `__main__`, `pytest` and `python` give no name. Nothing is imported to guess one, so set `APP_NAME` wherever the name matters.
 
@@ -155,7 +155,7 @@ scalo has no `/config` endpoint, and `config-check` prints the service name, the
 
 The config accessors return values as set, unmasked: `settings.database.password` is the password, and `get_container_config()` and `get_standard_env_vars()` include `POSTGRES_PASSWORD`, `MYSQL_PASSWORD`, `MONGO_PASSWORD` and `CLICKHOUSE_PASSWORD` when the environment sets them.
 
-The logger masks a value by its key, at any depth: `logger.info("loaded", database=settings.database)` logs `database.password` as `***REDACTED***`, and `get_container_config()` logged the same way loses its passwords. Code that prints config or serves it judges each key with `scalo.logger.filters.is_credential_name(name, parent)`, the matcher the logger uses, and masks a URL password in a value with `scalo.logger.filters.mask_url_userinfo`. See [logging.md](scrubbing.md#layer-2-field-name-regex).
+The logger masks a value by its key, at any depth: `logger.info("loaded", database=settings.database)` logs `database.password` as `***REDACTED***`, and `get_container_config()` logged the same way loses its passwords. Code that prints config or serves it judges each key with `scalo.logger.filters.is_credential_name(name, parent)`, the matcher the logger uses, and masks a URL password in a value with `scalo.logger.filters.mask_url_userinfo`. See [scrubbing.md](scrubbing.md#layer-2-field-name-regex).
 
 ---
 

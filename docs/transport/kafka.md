@@ -325,7 +325,7 @@ Thresholds come from the config cascade (`kafka.health.*` in
 | `rebalance_window_sec` | 300 | Window for the rebalance count. |
 | `imbalance_ratio` | 3.0 | This consumer's largest per-topic partition count over its smallest, across two or more topics. Imbalance across consumers is not visible from one consumer. |
 
-`get_health_metrics()` returns Prometheus-shaped values
+`get_health_metrics()` returns a dict keyed by Prometheus-style metric names
 (`kafka_consumer_healthy`, `kafka_consumer_lag_total`,
 `kafka_consumer_rebalance_total`, plus per-`HealthIssue` counters) --
 feed into the metrics pillar via a custom collector for `/metrics`.

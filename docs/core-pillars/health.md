@@ -1,6 +1,6 @@
 # Health
 
-Kubernetes-style probe endpoints. Instantiate `HealthManager`, register downstream checks, serve it, and the service exposes `/livez` and `/readyz`, each returning a 200 JSON body when healthy and a 503 with check details when not. The manager is pure Python with no external dependencies, and the FastAPI router factory imports FastAPI lazily so the module installs without it.
+Kubernetes-style probe endpoints. Instantiate `HealthManager`, register downstream checks, serve it, and the service exposes `/livez` and `/readyz`, each returning a 200 JSON body when healthy and a 503 with check details when not. The manager needs no extra, and the FastAPI router factory imports FastAPI lazily so the module installs without it.
 
 ```python
 from fastapi import FastAPI
@@ -120,7 +120,7 @@ health = HealthManager()
 server = serve_observability(health, metrics, "0.0.0.0:9090")
 ```
 
-That listener is stdlib-only, so it does not need FastAPI.
+That listener is built on the standard library's `http.server`, so it needs no extra and no FastAPI.
 
 **App-mounted router.** `create_health_router` still exists for services that want the probes on their own FastAPI app. Be aware this puts the operator surface behind the same ingress as user traffic -- which is how an unauthenticated `/metrics` ends up on a public API port.
 
@@ -155,7 +155,7 @@ async def liveness_handler():
     return JSONResponse(resp, status_code=status)
 ```
 
-The async responses (`liveness_response_async()`, `readiness_response_async()`) and checks (`is_live_async()`, `is_ready_async()`) enforce each check's timeout. The sync ones (`liveness_response()`, `readiness_response()`, `startup_response()`, `is_live()`, `is_ready()`, `is_started()`) call each check in turn with no timeout, so a hung check blocks the caller.
+The async responses (`liveness_response_async()`, `readiness_response_async()`) and checks (`is_live_async()`, `is_ready_async()`) enforce each check's timeout. The sync ones (`liveness_response()`, `readiness_response()`, `startup_response()`, `is_live()`, `is_ready()`, `is_started()`) call each check in turn. A sync check gets no timeout, so a hung one blocks the caller, and an async check called on the sync path runs on a fresh event loop within its timeout.
 
 ---
 

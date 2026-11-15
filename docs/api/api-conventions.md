@@ -183,7 +183,7 @@ A list takes these query parameters, after AIP-158 and AIP-132:
 
 A list answers `Page[T]`: `items`, `next_page_token` and an optional `total_size`. `next_page_token` is `null` on the last page. A UI stops paging on it with `getNextPageParam: p => p.next_page_token || undefined`. Use `||`, not `??`, so an empty string stops it too.
 
-`paginate(items, query, bound={...}, with_total=True)` cuts a page out of a list the server has already filtered and ordered. Pass in `bound` every list parameter of your own that shapes `items`, such as a search term. `encode_page_token` and `decode_page_token` do the same for a list that pages in its datastore.
+`paginate(items, query, bound={...}, with_total=True)` cuts a page out of a list the server has already filtered and ordered. Pass in `bound` every list parameter of your own that changes `items`, such as a search term. `encode_page_token` and `decode_page_token` do the same for a list that pages in its datastore.
 
 A page token is a Fernet token from `cryptography`, so a client can neither read nor forge one. It holds the offset and a hash of the request path, `filter`, `order_by` and `bound`. A token answers 400 `invalid_page_token` if it was tampered with, is older than `PAGE_TOKEN_TTL_SECONDS` (a day), or comes back with any of those changed. The client then starts again from the first page. `page_size` and `skip` may change between pages. A token grants nothing: the handler filters the list for each caller as it always does.
 

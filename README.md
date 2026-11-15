@@ -8,7 +8,7 @@
 | Meta | [![License](https://img.shields.io/badge/license-Apache--2.0-green)](https://www.apache.org/licenses/LICENSE-2.0) |
 <!-- BADGES:END -->
 
-The runtime layer for Python control-plane services: config, logging, metrics, health, secrets and a service CLI. It comes already wired together. In a DFE deployment dfe-engine is built on it, with the same config and logging conventions scalo-rs gives the Rust services.
+The runtime layer for Python control-plane services: config, logging, metrics, health, secrets and a service CLI. It comes already wired together, and follows the same config and logging conventions as scalo-rs, its Rust sister library.
 
 ## What it gives you
 
@@ -53,9 +53,9 @@ Core, always installed:
 
 | Module | What it does | Deps |
 |---|---|---|
-| `logger` | Structured logging, JSON in a container. Redacts gitleaks secret patterns, credential field names, card numbers (Luhn-checked), IBANs, emails and phone numbers, and AU ABN, ACN, TFN and Medicare numbers where a keyword names them. TRACE records skip the scrubber by default (`logging.scrub.log_levels.trace`) | loguru, detect-secrets, regex, phonenumbers, python-stdnum |
+| `logger` | Structured logging, JSON in a container. Redacts gitleaks secret patterns, credential field names, card numbers (Luhn-checked), IBANs, emails and phone numbers, and AU ABN, ACN, TFN and Medicare numbers where a keyword names them. TRACE records skip the scrubber by default, and `ScrubConfig(log_levels=LogLevelsConfig(trace=True))` turns it on | loguru, detect-secrets, regex, phonenumbers, python-stdnum |
 | `config` | 7-layer cascade (CLI -> ENV -> .env -> YAML -> defaults) | dynaconf, pyyaml, python-dotenv, mergedeep, tomli-w, dulwich |
-| `runtime` | Detects K8s / Docker / local, resolves config and data paths | stdlib only |
+| `runtime` | Detects K8s / Docker / local, resolves config and data paths | none beyond `config` and `logger` |
 | `cli` | `ServiceApp` -- subclass for `run` / `version` / `config-check` | typer |
 | `version-check` | Optional startup check for a newer release | httpx (lazy) |
 

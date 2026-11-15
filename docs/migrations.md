@@ -88,7 +88,7 @@ AWS refuses to read, update or re-create a secret inside its deletion recovery w
 
 ## 2.31.12 -- URL passwords mask to the last `@`, and a list of two names is not a pair (BEHAVIOUR CHANGE)
 
-The password in `scheme://user:password@host` is masked up to the last `@` a host follows, so `postgres://u:ab@cd/ef@host/db`, which logged `cd/ef`, now logs as `postgres://u:***REDACTED***@host/db`. The same holds when `?` or `#` follows an `@` in the password. `scalo.logger.filters.mask_url_userinfo` applies the rule to any string. See [core-pillars/logging.md](core-pillars/scrubbing.md#layer-2-field-name-regex).
+The password in `scheme://user:password@host` is masked up to the last `@` a host follows, so `postgres://u:ab@cd/ef@host/db`, which logged `cd/ef`, now logs as `postgres://u:***REDACTED***@host/db`. The same holds when `?` or `#` follows an `@` in the password. `scalo.logger.filters.mask_url_userinfo` applies the rule to any string. See [core-pillars/scrubbing.md](core-pillars/scrubbing.md#layer-2-field-name-regex).
 
 A two-item list under a key is no longer read as a `(name, value)` pair, so `{"fields": ["email", "name"]}` is logged whole. A two-item tuple, and a two-item list inside a list or tuple, stay pairs. See [core-pillars/logging.md](core-pillars/logging.md#fields).
 
@@ -96,7 +96,7 @@ A two-item list under a key is no longer read as a `(name, value)` pair, so `{"f
 
 ## 2.31.11 -- Credential names match by substring, in any spelling (BEHAVIOUR CHANGE)
 
-Log fields, dict keys, `key=value` and `key: value` text, and Kafka config reprs now mask a value whose name holds a sensitive field anywhere in it, the rule scalo-rs uses. Separators and camelCase do not hide one, so `sasl_password`, `x-api-key`, `secretAccessKey` and `PGPASSWORD`, which went out in clear, are masked. `SENSITIVE_FIELDS` is now the union of the scalo-py and scalo-rs lists and the standard's sensitive-field floor, adding `pass`, `pin`, `session`, `private`, `email`, `phone` and qualified keys such as `signing_key`. A URL password holding `@` is masked whole. All of it goes through one matcher, `scalo.logger.filters.is_credential_name`. See [core-pillars/logging.md](core-pillars/scrubbing.md#layer-2-field-name-regex).
+Log fields, dict keys, `key=value` and `key: value` text, and Kafka config reprs now mask a value whose name holds a sensitive field anywhere in it, the rule scalo-rs uses. Separators and camelCase do not hide one, so `sasl_password`, `x-api-key`, `secretAccessKey` and `PGPASSWORD`, which went out in clear, are masked. `SENSITIVE_FIELDS` is now the union of the scalo-py and scalo-rs lists and the standard's sensitive-field floor, adding `pass`, `pin`, `session`, `private`, `email`, `phone` and qualified keys such as `signing_key`. A URL password holding `@` is masked whole. All of it goes through one matcher, `scalo.logger.filters.is_credential_name`. See [core-pillars/scrubbing.md](core-pillars/scrubbing.md#layer-2-field-name-regex).
 
 **Consumer adjustment** -- expect more masking. A name that only contains a field is masked too: `token_count`, `tokenizer`, `mapping` (`pin`), `author` (`auth`), `session_timeout_ms` (`session`) and `email_count` (`email`). Log a value an operator must read under a name that holds no field. Code that matches a name against `SENSITIVE_FIELDS` itself calls `is_credential_name` instead.
 
@@ -128,7 +128,7 @@ With `enabled=True` the stale-grace fallback now serves from the in-memory tier 
 
 ## 2.31.4 -- L3 email redaction needs a letter in the domain's last label (BEHAVIOUR CHANGE)
 
-`pkg@1.2.3`, npm and pip specs such as `@scope/pkg@2.0.0`, and `user@10.0.0.1` now pass through unredacted. Literal, `%40` and `%2540` addresses are redacted as before. See [core-pillars/logging.md](core-pillars/scrubbing.md#layer-3-email-addresses).
+`pkg@1.2.3`, npm and pip specs such as `@scope/pkg@2.0.0`, and `user@10.0.0.1` now pass through unredacted. Literal, `%40` and `%2540` addresses are redacted as before. See [core-pillars/scrubbing.md](core-pillars/scrubbing.md#layer-3-email-addresses).
 
 **Consumer adjustment** -- none. A consumer that must hide a user-at-IPv4 value masks its field by name with `SensitiveDataFilter.add_sensitive_fields`.
 

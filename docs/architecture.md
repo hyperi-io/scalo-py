@@ -17,7 +17,7 @@ Sibling concerns:
 - Transport: Kafka producer/consumer/admin (sync + async wrappers).
 - Deployment: `DeploymentContract` Pydantic model and the Dockerfile / container manifest / Compose / ArgoCD AppProject generators. The scalo-service chart renders the Kubernetes objects from the serialised contract.
 
-`health` needs no extra: `HealthManager` and the observability listener are stdlib-only, and only `create_health_router` needs FastAPI.
+`health` needs no extra: `HealthManager` and the observability listener run on the base install, and only `create_health_router` needs FastAPI.
 
 ---
 

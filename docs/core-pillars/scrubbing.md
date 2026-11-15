@@ -18,7 +18,7 @@ Three layers fire in order on every message at a scrubbed level. They are built 
 | L2 fields | `scrub/field_names.py` (regex on key names) | `password=...`, `"token":"..."`, `CARGO_REGISTRY_TOKEN=...`, `token = "..."`, bearer tokens, DB URLs, refused header values |
 | L3 PII | `scrub/pii/` validators (Luhn, mod-97, libphonenumber, structural regex) | Credit cards, IBANs, emails (literal and percent-encoded), phones, AU ABN, ACN, TFN and Medicare |
 
-There is no NLP or NER layer. The L1 rule set is the gitleaks TOML vendored from hyperi-ai, parsed by `scrub/gitleaks_toml.py`. L1 replaces only a rule's secret, so the key name and quoting around it survive and a JSON line still parses: the rule's `secretGroup` when it has one, else its first non-empty capture group when only a terminator follows it in the match, else the whole match.
+There is no NLP or NER layer. The L1 rule set is `src/scalo/data/gitleaks.toml`, a byte-for-byte copy of hyperi-ai's gitleaks TOML, parsed by `scrub/gitleaks_toml.py`. L1 replaces only a rule's secret, so the key name and quoting around it survive and a JSON line still parses: the rule's `secretGroup` when it has one, else its first non-empty capture group when only a terminator follows it in the match, else the whole match.
 
 `build_scrubber()` compiles no rule. A rule's regex compiles on the first scrub whose text hits one of its keywords (a rule with no keywords, on the first scrub), so a rule whose regex does not compile warns, and joins `skipped_rules` and the `log_scrub_skipped_rules_total` gauge, at that first scrub, not at build. `GitleaksTomlScrubber.compile_all()` compiles them all at once.
 
@@ -54,7 +54,7 @@ from scalo.logger.scrub import ScrubConfig, SecretsConfig
 setup(scrub_config=ScrubConfig(secrets=SecretsConfig(exclude_rules=frozenset({"generic-api-key"}))))
 ```
 
-The specific rules still catch the credential formats, so a real GitHub token is still `[GITHUB_PAT_REDACTED]` with `generic-api-key` excluded. L2 still masks by key name, so `CARGO_REGISTRY_TOKEN=...` and `token = "..."` stay masked too. Do not reach for `patterns: minimal` to silence a false positive: it keeps 13 rules and drops cloudflare, npm and pypi detection with it.
+The specific rules still catch the credential formats, so a real GitHub token is still `[GITHUB_PAT_REDACTED]` with `generic-api-key` excluded. L2 still masks by key name, so `CARGO_REGISTRY_TOKEN=...` and `token = "..."` stay masked too. Do not reach for `patterns: minimal` to silence a false positive: it keeps only the rules in `_MINIMAL_RULES` (`scrub/secrets.py`) and drops cloudflare, npm and pypi detection with it.
 
 An id the rule set does not carry raises a `RuntimeWarning` at startup and excludes nothing. `exclude_rules` applies to `patterns: gitleaks` and `patterns: minimal`, and the `detect-secrets` path warns and ignores it.
 
@@ -81,7 +81,7 @@ A quoted value after `=`, or a single-quoted one after `:`, is masked whole with
 
 A `Name(...)` value, as a Rust `Debug` dump or a Python repr writes one, is masked whole up to its closing parenthesis, so `db_password: Some("a b")` and `token=Token(value='a b')` leave nothing of the value behind. The name is letters, digits and `_`. Parentheses nest, and a quoted string inside may hold `)` and span lines. It closes at its first quote no backslash escapes or, with none left in the text, at its next quote. A value that does not close within 4096 UTF-8 bytes is masked to the end of the text, short of a line break that ends it.
 
-These rules are checked against scalo-rs's credential-masking corpus, vendored as `tests/fixtures/patterns/credential_masking_parity.json`, so scalo-py and scalo-rs mask the same text the same way.
+These rules are checked against scalo-rs's credential-masking corpus, copied as `tests/fixtures/patterns/credential_masking_parity.json`, so scalo-py and scalo-rs mask the same text the same way.
 
 `SensitiveDataFilter` in `scalo.logger.filters` holds the L2 field set. Add custom fields with `SensitiveDataFilter.add_sensitive_fields({"employee_id", "ssn"})`.
 
@@ -116,7 +116,7 @@ After any other credential key, an unquoted value whose first word is an authent
 
 A key and its value may be joined by `::`, and L2 reads the value after both colons, so `password::abc` becomes `password::***REDACTED***`. A path whose first segment names a credential loses the rest: `aws_sdk_secretsmanager::client` becomes `aws_sdk_secretsmanager::***REDACTED***`.
 
-scalo-rs leaves a Hiera-style key such as `profile::db::password: x` in clear, an accepted divergence, because in its text logs that shape reads exactly like a log target and it cannot tell the two apart.
+scalo-rs leaves a Hiera-style key such as `profile::db::password: x` in clear, an accepted divergence, because in its text logs a `module::path: value` line reads exactly like a log target and it cannot tell the two apart.
 
 L2 masks the value of `sig`, `X-Amz-Signature`, `X-Amz-Security-Token` and `X-Goog-Signature`, named in any case right after `?` or `&` and followed by `=`, up to the next `&`, white space, quote or the end of the text. So an Azure SAS URL keeps everything but its `sig=`, and S3 and GCS presigned URLs lose their signatures. A name that only holds `sig`, such as `signal=`, `design=` or `?signature_type=`, is left alone.
 

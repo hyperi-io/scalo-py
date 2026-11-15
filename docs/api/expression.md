@@ -1,6 +1,6 @@
 # Expression
 
-CEL (Common Expression Language) evaluation backed by the `common-expression-language` package, which wraps the Rust `cel` crate (formerly `cel-interpreter`) via PyO3. scalo-rs (the `scalo` crate) compiles against the same crate, so Python and Rust services parse and evaluate an expression the same way. The extra needs 0.10.0 or later, the first release built on cel-rust 0.14.5 that also imports in a clean install.
+CEL (Common Expression Language) evaluation backed by the `common-expression-language` package, which wraps the Rust `cel` crate (formerly `cel-interpreter`) via PyO3. scalo-rs (the `scalo` crate) compiles against the same crate, so Python and Rust services parse and evaluate an expression the same way. The extra's floor in `pyproject.toml`, with its reason beside it, is the first release that imports in a clean install and is built on the `cel` version scalo-rs compiles against.
 
 ```bash
 pip install scalo[expression]

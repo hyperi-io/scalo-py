@@ -103,7 +103,7 @@ alone. `opentelemetry` is a subset of it, kept so existing
 | `resilience` | `stamina` | none | [api/resilience.md](api/resilience.md) |
 | `http` | `httpx`, `stamina` | none | [api/http-client.md](api/http-client.md) |
 
-`http` carries its retry dependency itself, and no `secrets-*` extra pulls `resilience` in. `scalo.resilience` (circuit breaker, reconnecting client) is stdlib-only and works on the base install.
+`http` carries its retry dependency itself, and no `secrets-*` extra pulls `resilience` in. `scalo.resilience` (circuit breaker, reconnecting client) needs no extra and works on the base install.
 
 ### API server
 

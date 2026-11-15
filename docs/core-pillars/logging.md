@@ -50,7 +50,7 @@ The scrub filter runs on the fields before either format sees them. A key naming
 
 Such a name heading a pair masks the value beside it. A pair is a two-item tuple such as `("authorization", "Basic ...")`, or a two-item list inside a list or tuple, as a JSON header list carries them. A two-item list under a key is a list, so `{"fields": ["email", "name"]}` is logged whole, while a tuple of two names, `("email", "name")`, has its second masked.
 
-The filter never fails the record. A value whose `str()` raises renders as `<unprintable TypeName>`, a reference cycle as `<cycle>`, and nesting past 32 levels as `<depth limit>`. Scrubbing costs about 0.15 ms a string on the caller's thread, so a record scrubs at most 64 keys and strings inside its fields' containers. Past that, the rest of each list becomes `"<elided: N more items>"` and the rest of each dict an `"<elided>"` entry. Top-level fields are never elided.
+The filter never fails the record. A value whose `str()` raises renders as `<unprintable TypeName>`, a reference cycle as `<cycle>`, and nesting past `_MAX_FIELD_DEPTH` levels as `<depth limit>`. Scrubbing runs on the caller's thread, so a record scrubs at most `_FIELD_SCRUB_BUDGET` keys and strings inside its fields' containers (both constants in `scalo/logger/logger.py`). Past that, the rest of each list becomes `"<elided: N more items>"` and the rest of each dict an `"<elided>"` entry. Top-level fields are never elided.
 
 After the filter has run, `record["extra"]` holds the scrubbed fields as plain JSON data, which is what a sink you add yourself sees.
 

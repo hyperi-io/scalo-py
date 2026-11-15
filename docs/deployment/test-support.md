@@ -137,8 +137,7 @@ class KindClusterGuard:
     kubeconfig: Path | None = None
 ```
 
-A context-manager-shaped lifecycle wrapper for a uniquely-named kind
-cluster.
+A context manager for the lifecycle of a uniquely-named kind cluster.
 
 - Cluster name = `f"scalo-py-e2e-{sha256(test_name)[:12]}"` -- 12-char
   digest keeps it under K8s 63-char name limits and gives parallel
