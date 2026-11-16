@@ -25,6 +25,7 @@ OpenBao        dev mode on 8200, the root token generated per run
 =============  ==========================================================
 """
 
+from scalo.deployment.test_support.images import mirror_image
 from scalo.deployment.test_support.shared_service import HttpReady, LogReady, ServiceSpec, SharedContainer
 
 # renovate: datasource=docker depName=clickhouse/clickhouse-server
@@ -93,7 +94,7 @@ def clickhouse_spec() -> ServiceSpec:
     """
     return ServiceSpec(
         service="clickhouse",
-        image=CLICKHOUSE_IMAGE,
+        image=mirror_image(CLICKHOUSE_IMAGE),
         startup_timeout=_CLICKHOUSE_STARTUP_SECONDS,
         ready=HttpReady(port=CLICKHOUSE_HTTP_PORT, path="/ping", body="Ok."),
         ports=(CLICKHOUSE_HTTP_PORT, CLICKHOUSE_NATIVE_PORT),
@@ -137,7 +138,7 @@ def kafka_spec(host_port: int | None = None) -> ServiceSpec:
     ports, pinned = ((), ((KAFKA_PORT, host_port),)) if host_port is not None else ((KAFKA_PORT,), ())
     return ServiceSpec(
         service="kafka",
-        image=KAFKA_IMAGE,
+        image=mirror_image(KAFKA_IMAGE),
         startup_timeout=_KAFKA_STARTUP_SECONDS,
         ready=LogReady("Kafka Server started"),
         ports=ports,
@@ -157,7 +158,7 @@ def openbao_spec() -> ServiceSpec:
     """
     return ServiceSpec(
         service="openbao",
-        image=OPENBAO_IMAGE,
+        image=mirror_image(OPENBAO_IMAGE),
         startup_timeout=_OPENBAO_STARTUP_SECONDS,
         ready=LogReady("OpenBao server started"),
         ports=(OPENBAO_PORT,),
