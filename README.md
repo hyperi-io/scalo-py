@@ -8,14 +8,16 @@
 | Meta | [![License](https://img.shields.io/badge/license-Apache--2.0-green)](https://www.apache.org/licenses/LICENSE-2.0) |
 <!-- BADGES:END -->
 
-The runtime layer for Python control-plane services: config, logging, metrics, health, secrets and a service CLI. It comes already wired together, and follows the same config and logging conventions as scalo-rs, its Rust sister library.
+The runtime layer for Python control-plane services: config, logging, metrics, health, secrets and a service CLI.
+
+It comes wired together, and follows the same config and logging conventions as scalo-rs, its Rust sister library.
 
 ## What it gives you
 
 - A seven-layer config cascade, from CLI flags and env vars down to YAML and defaults, that reads the same in a laptop shell and a Kubernetes pod.
 - Structured logs, JSON in a container and readable text at a terminal, with secrets, credential fields and validated PII values redacted at every level but TRACE, which the scrubber skips by default.
 - `ServiceApp`: subclass it and get `run`, `version`, `config-check` and `generate-artefacts`, with config and logging started for you.
-- `/livez` and `/readyz` on an observability port kept apart from your application's own.
+- `/livez` and `/readyz` on an observability port kept apart from your application's port.
 - Prometheus and OpenTelemetry metrics with the `metrics` extra, scraped from `/metrics` on the same port. Without a metrics manager that path answers 404.
 - Secrets from OpenBao or Vault, AWS, GCP, Azure, and Kubernetes, one extra per backend.
 - A deployment contract that writes your runtime Dockerfile and the input the scalo-service Helm chart renders from.
@@ -28,7 +30,7 @@ uv add "scalo[http,metrics,kafka]"              # common extras
 uv add "scalo[http,metrics,expression,kafka,opentelemetry,secrets,deployment]"
 ```
 
-`scalo` on PyPI, `scalo` for imports. The extras are in [docs/extras-flags.md](docs/extras-flags.md). Each secrets backend has its own extra, so pick the one you use rather than `secrets`, which installs every cloud SDK.
+`scalo` on PyPI, `scalo` for imports. The extras are in [docs/extras-flags.md](docs/extras-flags.md). Each secrets backend has a separate extra, so pick the one you use rather than `secrets`, which installs every cloud SDK.
 
 ## What it is for
 
@@ -66,10 +68,10 @@ gauges), `expression` (CEL), `kafka` (produce, consume, schema inference),
 `opentelemetry` (OTLP traces and metrics), `secrets` (OpenBao/Vault, AWS, GCP,
 Azure, Kubernetes Secret), `deployment` (Dockerfile, container manifest, compose generators).
 
-Wired together already, which is the part you would otherwise build: config and logging are global singletons with no init dance beyond the logger's one `setup()`, and `ServiceApp` runs that and builds the metrics manager for you. The cascade feeds the
+Wired together, which is the part you would otherwise build: config and logging are global singletons with no init dance beyond the logger's one `setup()`, and `ServiceApp` runs that and builds the metrics manager for you. The cascade feeds the
 CLI so `run`, `version` and `config-check` work without you parsing an argument.
 The metrics and health wiring feeds the Kubernetes probes. The deployment contract,
-built from the config the app already declares, writes your Dockerfile and drives
+built from the config the app declares, writes your Dockerfile and drives
 the scalo-service chart that renders your Kubernetes objects.
 
 ## Documentation
@@ -97,16 +99,12 @@ operator surface. Both are in [health.md](docs/core-pillars/health.md).
 
 ## Related
 
-- **[scalo-rs](https://github.com/hyperi-io/scalo-rs)** -- sister library for Rust
-  services. Same opinions, same patterns, native Rust performance for hot-path
-  workloads.
-- **[Migrating from hyperi-pylib](docs/migrating-from-hyperi-pylib.md)** -- `scalo`
-  is the renamed, Apache-2.0 continuation of `hyperi-pylib`, and this guide covers the
-  mechanical changes.
+- [scalo-rs](https://github.com/hyperi-io/scalo-rs) is the sister library for Rust services: same opinions, same patterns, native Rust performance for hot-path workloads.
+- [Migrating from hyperi-pylib](docs/migrating-from-hyperi-pylib.md) covers the mechanical changes, because `scalo` is the renamed, Apache-2.0 continuation of `hyperi-pylib`.
 
 ## Help and contributing
 
-How to work in this repo, the commands that prove a change and what tends to bite are in [CONTRIBUTING.md](CONTRIBUTING.md). A question that is not a bug goes in a new issue.
+How to work in this repo, the commands that check a change and what tends to bite are in [CONTRIBUTING.md](CONTRIBUTING.md). A question that is not a bug goes in a new issue.
 
 Open bugs: [this repo](https://github.com/hyperi-io/scalo-py/issues?q=is%3Aopen+is%3Aissue+type%3ABug+-label%3Abacklog+-label%3Anext-minor) | [whole DFE suite](https://github.com/search?type=issues&q=is%3Aopen+is%3Aissue+type%3ABug+-label%3Abacklog+-label%3Anext-minor+repo%3Ahyperi-io%2Fdfe-infra+repo%3Ahyperi-io%2Fdfe-docker+repo%3Ahyperi-io%2Fdfe-deploy+repo%3Ahyperi-io%2Fdfe-engine+repo%3Ahyperi-io%2Fdfe-loader+repo%3Ahyperi-io%2Fdfe-receiver+repo%3Ahyperi-io%2Fdfe-fetcher+repo%3Ahyperi-io%2Fdfe-archiver+repo%3Ahyperi-io%2Fdfe-transform-vrl+repo%3Ahyperi-io%2Fdfe-transform-vector+repo%3Ahyperi-io%2Fdfe-transform-elastic+repo%3Ahyperi-io%2Fdfe-ui+repo%3Ahyperi-io%2Fdfe-hyperdx+repo%3Ahyperi-io%2Fscalo-rs+repo%3Ahyperi-io%2Fscalo-py+repo%3Ahyperi-io%2Flogreducer+repo%3Ahyperi-io%2Fdfe-schemas+repo%3Ahyperi-io%2Fvector-vrl+repo%3Ahyperi-io%2Fculvert+repo%3Ahyperi-io%2Fdfe-clickhouse-rs+repo%3Ahyperi-io%2Ffactbook-rs)
 

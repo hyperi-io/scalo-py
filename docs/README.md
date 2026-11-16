@@ -1,14 +1,8 @@
 # scalo docs
 
-The runtime layer for Python control-plane services. Import the modules you need, configure them once, and you get a 7-layer config cascade, structured logs, Prometheus + OTel metrics, K8s health probes, secrets management, resilience primitives, a Kafka client, and deployment-artefact generation.
+The runtime layer for Python control-plane services. Import the modules you need, configure them once, and you get a 7-layer config cascade, structured logs, Prometheus + OTel metrics, K8s health probes, secrets management, resilience primitives, a Kafka client, and deployment-artefact generation. The package is [scalo](https://pypi.org/project/scalo/) on PyPI, the supported Python is `requires-python` in `pyproject.toml`, and the Rust sibling is [scalo-rs](https://github.com/hyperi-io/scalo-rs), with the same docs layout where a concept maps one to one.
 
-This is the index. Read [architecture.md](architecture.md) for the
-10,000-foot view, [integration.md](integration.md) for a recipe to build
-a scalo-based service, [auto-wiring.md](auto-wiring.md) for the "you get
-this for free" model, and [extras-flags.md](extras-flags.md) for which
-Python extras pull in which deps.
-
----
+This is the index. Read [architecture.md](architecture.md) for the module map, [integration.md](integration.md) for a recipe to build a scalo-based service, [auto-wiring.md](auto-wiring.md) for what wires itself, and [extras-flags.md](extras-flags.md) for which Python extras pull in which deps.
 
 ## What you get for free
 
@@ -25,35 +19,40 @@ Python extras pull in which deps.
 | `from scalo.mcp import mount` | MCP tools generated from the spec, called in-process with the caller's token, writes that preview before they commit, stateless 2026-07-28 transport, RFC 9728 metadata | Hand-write a tool per route, re-implement RBAC in a second server, pin MCP clients to one replica |
 | `from scalo.kafka import KafkaProducer, KafkaConsumer` | confluent-kafka clients with at-least-once producer defaults, schema sampling, consumer lag health, async wrappers | Configure librdkafka, write a lag probe |
 
----
+## What scalo-py talks to
 
-## 10,000-foot view
-
-A service imports the pillars and the modules it needs, and its `DeploymentContract` generates the build files and the contract the chart renders. The import graph between the modules is in [architecture.md](architecture.md#module-import-graph).
+scalo-py is a library inside your process, so every arrow out of it is your service talking.
 
 ```mermaid
 flowchart LR
-    App["scalo-based service"]
-    Pillars["core pillars: config, logger, metrics, health"]
-    Runtime["runtime: RuntimeContext, RuntimePaths"]
-    Mods["modules: http, secrets, kafka, expression, rules, resilience, concurrency, scaling, api, mcp, cli"]
-    DC["DeploymentContract"]
-    DF["Dockerfile, container manifest, Compose fragment"]
-    CJ["deployment-contract.json"]
-    CH["scalo-service chart, in scalo-rs"]
-    ID["io.scalo.contract.* labels"]
+    accTitle: L1 Context -- scalo-py
+    accDescr: Your service imports scalo-py. scalo-py calls secrets backends, Kafka and the OTLP collector, serves Prometheus and the kubelet on its observability port, and writes a Dockerfile and the contract JSON. The scalo-service chart renders the Kubernetes objects from the contract JSON.
 
-    App --> Pillars
-    App --> Runtime
-    App --> Mods
-    App --> DC
-    DC --> DF
-    DC --> CJ
-    DF -->|carries| ID
-    CJ -->|rendered by| CH
+    app["Your service"]
+    scalo["scalo-py"]
+    deps["Secrets, Kafka,<br/>OTLP collector"]
+    ops["Prometheus,<br/>kubelet"]
+    build[("Dockerfile,<br/>contract JSON")]
+    chart["scalo-service<br/>chart"]
+
+    app -->|imports| scalo
+    scalo -->|calls| deps
+    scalo -->|serves| ops
+    scalo -->|writes| build
+    build -->|contract| chart
+
+    classDef default fill:#F8FAFC,stroke:#64748B,stroke-width:1px,color:#0F172A
+    classDef core fill:#DCEBF7,stroke:#0072B2,stroke-width:2px,color:#0B2A3F
+    classDef store fill:#DDF3EC,stroke:#00785A,stroke-width:1px,color:#0B3327
+    classDef ext fill:#EEF0F2,stroke:#6B7280,stroke-width:1px,stroke-dasharray:4 3,color:#1F2937
+    class app,deps,ops,chart ext
+    class scalo core
+    class build store
 ```
 
----
+*Figure 1. L1 Context -- scalo-py. Dashed boxes are outside scalo-py.* Up: top of scalo-py. Down: [L4 Detail -- scalo-py module tiers](architecture.md#module-import-graph).
+
+The scalo-service chart ships in scalo-rs. The Dockerfile and the container manifest have the `io.scalo.contract.*` identity labels.
 
 ## Where to read what
 
@@ -93,11 +92,3 @@ Config, logger and health need no extra. Metrics and tracing need the `metrics` 
 | API modules | [api/cli.md](api/cli.md) | Typer-based CLI framework, `ServiceApp`, standard options |
 | API modules | [api/api-conventions.md](api/api-conventions.md) | `scalo.api` (the `api` extra): resource hierarchy and operation ids, `x-scalo`, preconditions, problem+json, pagination, conformance check |
 | API modules | [api/mcp.md](api/mcp.md) | `scalo.mcp` (the `mcp` extra): MCP tools from the spec, in-process calls, preview and commit, stateless transport, RFC 9728 |
-
----
-
-## Project facts
-
-- The package is [scalo](https://pypi.org/project/scalo/) on PyPI.
-- The supported Python is `requires-python` in `pyproject.toml`.
-- The sibling library is [scalo-rs](https://github.com/hyperi-io/scalo-rs), the Rust equivalent, with the same docs layout where a concept maps one to one.

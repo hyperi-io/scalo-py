@@ -4,8 +4,6 @@
 
 This guide lists every change a consumer needs to make. Most are mechanical.
 
----
-
 ## 1. Package + import rename
 
 ```diff
@@ -27,16 +25,12 @@ A project-wide find/replace of `hyperi_pylib` -> `scalo` (imports) and
 
 Extras keep their names: `scalo[kafka,metrics,opentelemetry,secrets,deployment]`.
 
----
-
 ## 2. Licence change: BUSL-1.1 -> Apache-2.0
 
 `scalo` is licensed under **Apache-2.0** (was BUSL-1.1). Third-party
 attributions (gitleaks rules, python-stdnum) are recorded in `NOTICE`.
 There are no longer any commercial-use restrictions, AI-training
 restrictions, or `COMMERCIAL.md` / `AI-TRAINING-POLICY.md` files.
-
----
 
 ## 3. Removed subsystems
 
@@ -47,11 +41,9 @@ These were dropped, with the replacement where there is one.
 | `hyperi_pylib.database` (URL builders) | Build your DSN directly, or with your driver's helpers. |
 | `hyperi_pylib.cache` (`PostgresCache`) | No drop-in replacement: a shared Postgres cache is one more single point of failure. For config last-known-good, use `scalo.config.DirectoryConfigStore`. |
 | PostgreSQL config-cascade layer | The cascade is now 7 layers (was 8). Load DB config like any other setting via `settings`. |
-| `hyperi_pylib.harness` | Was test-only, and moved into the library's own test suite. |
+| `hyperi_pylib.harness` | Was test-only, and moved into the library's test suite. |
 
-Dropping `cache` also removed `psycopg`, `cashews`, and `msgpack` from scalo's dependencies.
-
----
+Dropping `cache` removed `psycopg`, `cashews`, and `msgpack` from scalo's dependencies.
 
 ## 4. Environment variables: bare by default, single prefix
 
@@ -61,7 +53,7 @@ configurable env-var prefix that is **bare ("") by default**:
 
 - With no prefix set, control/config vars are read bare: `DEBUG`,
   `LOG_LEVEL`, `DATABASE_HOST`, ...
-- A consuming app sets its own prefix once, and scalo's control knobs and your config-cascade keys are then read as `<PREFIX>_<KEY>`:
+- A consuming app sets its prefix once, and scalo's control knobs and your config-cascade keys are then read as `<PREFIX>_<KEY>`:
 
   ```python
   from scalo.cli import ServiceApp
@@ -71,13 +63,11 @@ configurable env-var prefix that is **bare ("") by default**:
       env_prefix = "APP"        # -> APP_DEBUG, APP_DATABASE__HOST, ...
   ```
 
-  or via the bare `ENV_PREFIX` environment variable. `ServiceApp`'s prefix reaches the `config` it hands `run_service` and the knobs read after startup. The module-level `settings`, and knobs read at import such as `AUTO_DETECT`, see only `ENV_PREFIX`, so export it too if you read those. `set_env_prefix()` exists only in the private `scalo._env_compat`. See [core-pillars/config.md](core-pillars/config.md#read-it-like-a-dict).
+  or via the bare `ENV_PREFIX` environment variable. `ServiceApp`'s prefix reaches the `config` it hands `run_service` and the knobs read after startup. The module-level `settings`, and knobs read at import such as `AUTO_DETECT`, see only `ENV_PREFIX`, so export it as well if you read those. `set_env_prefix()` exists only in the private `scalo._env_compat`. See [core-pillars/config.md](core-pillars/config.md#read-it-like-a-dict).
 
 **Action for downstream apps:** pick your prefix (e.g. `APP`, `ORDERS_API`)
 and set it on your `ServiceApp`. Any `HYPERI_*` env vars in your
 deployment must be renamed to `<YOURPREFIX>_*` (or bare).
-
----
 
 ## 5. CLI: `DfeApp` -> `ServiceApp`
 
@@ -90,8 +80,6 @@ alias for one release and has since been removed.
 + from scalo.cli import ServiceApp
 + class MyService(ServiceApp): ...
 ```
-
----
 
 ## 6. Metrics: `dfe_groups` -> `groups`, and a configurable namespace
 
@@ -107,7 +95,7 @@ Metric **names are now bare by default** -- no library brand prefix
 labels the platform/scrape adds (`job`, `instance`, k8s `pod`/`namespace`),
 not a name prefix. There is a single, optional **metric namespace** that
 mirrors the env-prefix rule: bare unless you set it, and when set it
-prefixes *all* metrics (built-in groups and your own).
+prefixes *all* metrics (built-in groups and your).
 
 **To keep your existing `dfe_`-prefixed metric names**, set the
 namespace to `dfe`:
@@ -123,9 +111,7 @@ or config `metrics.namespace: dfe`. Dashboards/alerts that assume
 
 The naming validator `validate_dfe_prefix(name, app)` shipped as a deprecated alias and has since been removed. Use `validate_metric_prefix(name, app, prefix=...)`.
 
----
-
-## 7. version-check: opt-in, configurable URL
+## 7. version-check: inert until you name an endpoint
 
 The startup version check has no built-in endpoint, so it does nothing until you name one. `version_check.enabled` defaults to true, and the URL is a config-cascade value:
 
@@ -137,13 +123,9 @@ version_check:
 
 It is a version check, not telemetry, and it contacts nothing until `api_url` points at a URL you control.
 
----
-
 ## 8. Deployment contract: neutral defaults
 
-The deployment generators (`scalo.deployment`) carry no organisation's name. There is no default registry, vendor, licence or copyright, and scalo's own label keys sit under `io.scalo`. Name yours in the contract (`image_registry`, `oci_labels`) or the `deployment.*` config cascade keys (`deployment.image_registry`, `deployment.base_image`). scalo writes no Helm chart or ArgoCD `Application`: the scalo-service chart renders the Kubernetes objects from the contract. See [migrations.md](migrations.md).
-
----
+The deployment generators (`scalo.deployment`) have no organisation's name. There is no default registry, `OciLabels.vendor`, licence or copyright, and scalo's label keys sit under `io.scalo`. Name yours in the contract (`image_registry`, `oci_labels`) or the `deployment.*` config cascade keys (`deployment.image_registry`, `deployment.base_image`). scalo writes no Helm chart or ArgoCD `Application`: the scalo-service chart renders the Kubernetes objects from the contract. See [migrations.md](migrations.md).
 
 ## Quick checklist
 

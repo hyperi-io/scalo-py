@@ -8,16 +8,36 @@ pip install 'scalo[api]'
 
 The `api` extra adds `fastapi`, `pydantic` and `cryptography`, which seals page tokens. Base `import scalo` never imports `scalo.api` or FastAPI, and `import scalo.api` without the extra raises `ImportError: scalo.api needs the 'api' extra: pip install 'scalo[api]'`.
 
+The routes name each operation once, in the spec, and every client and check reads it from there.
+
 ```mermaid
 flowchart LR
-    R["routes + scalo.api conventions"] --> S["OpenAPI spec with x-scalo"]
-    S --> UI["typed UI client"]
-    S --> CLI["generated CLI"]
-    S --> MCP["generated MCP tools"]
-    S --> T["conformance test in CI"]
+    accTitle: L4 Detail -- What reads the spec
+    accDescr: Routes written with scalo.api produce an OpenAPI spec with the x-scalo extension. A typed UI client, the CLI scalo.cli.openapi generates, the MCP tools scalo.mcp generates and the conformance test in CI are all built from that spec.
+
+    routes["Routes with<br/>scalo.api"]
+    spec["OpenAPI spec<br/>with x-scalo"]
+
+    subgraph readers["Built from the spec"]
+        ui["Typed UI client"]
+        cli["Generated CLI"]
+        mcp["MCP tools"]
+        test["Conformance test"]
+    end
+
+    routes --> spec
+    spec --> readers
+
+    classDef default fill:#F8FAFC,stroke:#64748B,stroke-width:1px,color:#0F172A
+    classDef ext fill:#EEF0F2,stroke:#6B7280,stroke-width:1px,stroke-dasharray:4 3,color:#1F2937
+    classDef group fill:none,stroke:#64748B,stroke-width:1px,stroke-dasharray:2 4
+    class ui ext
+    class readers group
 ```
 
----
+*Figure 1. L4 Detail -- What reads the spec. The dashed box is the app's client, outside scalo.* Up: [scalo docs](../README.md).
+
+`scalo.cli.openapi` generates the CLI and `scalo.mcp` the MCP tools, and `assert_conformant` runs the conformance test.
 
 ## Quick start
 
@@ -64,9 +84,7 @@ app.include_router(router, prefix="/api/v1")
 install(app, hierarchy)                     # problem+json handlers + annotated spec
 ```
 
-`install` refuses an app built without `generate_unique_id_function=hierarchy.unique_id`. It wraps whatever `app.openapi` is when called, so assign a custom one first, or call `annotate_openapi(spec, app.routes, hierarchy)` and `declare_problem_responses(spec)` inside it.
-
----
+`install` rejects an app built without `generate_unique_id_function=hierarchy.unique_id`. It wraps whatever `app.openapi` is when called, so assign a custom one first, or call `annotate_openapi(spec, app.routes, hierarchy)` and `declare_problem_responses(spec)` inside it.
 
 ## The hierarchy
 
@@ -101,7 +119,7 @@ A declared verb equal to the trailing literal makes that literal the action. A d
 
 | Argument | Default | Meaning |
 |---|---|---|
-| `base_path` | `""` | Prefix every path carries, part of no name |
+| `base_path` | `""` | Prefix every path has, part of no name |
 | `singletons` | none | Resource names with no id |
 | `roots` | any | Root resources the API may declare |
 | `max_depth` | 3 | Most resource levels a path may name |
@@ -109,8 +127,6 @@ A declared verb equal to the trailing literal makes that literal the action. A d
 | `tool_prefix` | `""` | Prefix of the derived MCP tool name |
 
 A name is plural when its last word ends in `s` but not `ss`, `us` or `is`, or is listed in `plurals` or `DEFAULT_PLURALS` (`children`, `criteria`, `data`, `indices`, `media`, `metadata`, `people`). `Hierarchy.parse(path, method, verb=None)` returns the `OperationName` (`hierarchy`, `verb`, `group`, `resource`, `depth`, `operation_id`, `problems`) for any path. `unique_id` never raises: a path that breaks a rule still gets an id, and the conformance check reports the rule.
-
----
 
 ## The `x-scalo` extension
 
@@ -139,9 +155,7 @@ A route declares through `openapi_extra=scalo_extra(...)`:
 | `cli` | `CliHints(hidden=False, aliases=(), positional=())` |
 | `mcp` | `McpHints(tool=None, read_only=None, destructive=None, task=False)`. Passing it opts the operation in. `tool` defaults to `tool_prefix` plus the id with `_` separators, `destructive` to DELETE |
 
-The permission hook keeps scalo out of the consumer's roles. Decorate the dependency that performs the check with `permission(action)`. Every route whose dependency tree reaches it, through its own dependencies, a router's or a nested one, carries that action. The tag is the `ACTION_ATTRIBUTE` attribute on the callable.
-
----
+The permission hook keeps scalo out of the consumer's roles. Decorate the dependency that performs the check with `permission(action)`. Every route whose dependency tree reaches it, through its dependencies, a router's or a nested one, has that action. The tag is the `ACTION_ATTRIBUTE` attribute on the callable.
 
 ## Writes: apply, preconditions and dry_run
 
@@ -157,13 +171,11 @@ One `apply` (PUT) creates and updates, after AIP-133, AIP-134 and AIP-154. The c
 
 `pre.check()` followed by a write races: two requests holding the same ETag can both pass the check before either writes. `pre.guard(lock, read_etag)` holds `lock` while it reads the current ETag, checks it and runs the write in the `with` block, so the second writer is checked against the ETag the first one left. Every writer of the resource must take the same lock. A lock holds only within one process, so with several replicas the store's write must itself be conditional: the guard yields the ETag it checked, to pass to a compare-and-swap write.
 
-`install` declares the `ETag` response header on each GET whose path also takes a PUT, PATCH or DELETE with `If-Match`, so client generators can type it. `check(current, require=False)` lets a write with neither header through. `check_preconditions` is the same check as a function. `etag_of(value)` is the SHA-256 of bytes or text as given, and of anything else as canonical JSON, so key order does not change it. `format_etag(value)` quotes an opaque value such as a git blob sha. `parse_etags(header)` returns `"*"` or a tuple of `EntityTag`.
+`install` declares the `ETag` response header on each GET whose path takes a PUT, PATCH or DELETE with `If-Match`, so client generators can type it. `check(current, require=False)` lets a write with neither header through. `check_preconditions` is the same check as a function. `etag_of(value)` is the SHA-256 of bytes or text as given, and of anything else as canonical JSON, so key order does not change it. `format_etag(value)` quotes an opaque value such as a git blob sha. `parse_etags(header)` returns `"*"` or a tuple of `EntityTag`.
 
-`DryRun` is the `dry_run` query parameter, default false, after AIP-163. A handler given `dry_run=true` validates, reports the change and the ETag it would write, and commits nothing. To bind a commit to the state its preview saw, a client sends the resource's current ETag, the one the preview was computed against, as `If-Match` on both the preview and the commit: the commit then answers 412 if anyone wrote in between. The ETag it would write cannot serve, because `If-Match` is compared with the current one. `If-Match` binds the state, not the change, so a commit that should be exactly the previewed request needs the client to bind that too. `scalo.mcp` does both, with a preview token over the ETag and the request ([mcp.md](mcp.md)).
+`DryRun` is the `dry_run` query parameter, default false, after AIP-163. A handler given `dry_run=true` validates, reports the change and the ETag it would write, and commits nothing. To bind a commit to the state its preview saw, a client sends the resource's current ETag, the one the preview was computed against, as `If-Match` on both the preview and the commit: the commit then answers 412 if anyone wrote in between. The ETag it would write cannot serve, because `If-Match` is compared with the current one. `If-Match` binds the state, not the change, so a commit that should be exactly the previewed request needs the client to bind that as well. `scalo.mcp` does both, with a preview token over the ETag and the request ([mcp.md](mcp.md)).
 
 `dry_run` is a parameter the handler must honour. scalo does not turn the request into a no-op, and the `dry-run` conformance rule checks only that the parameter is declared.
-
----
 
 ## Lists and views
 
@@ -174,24 +186,22 @@ A list takes these query parameters, after AIP-158 and AIP-132:
 | `page_size` | 0 or absent gives the default (50). Above the cap (1000) is cut to it. Negative is refused with 422 |
 | `page_token` | The previous page's `next_page_token` |
 | `skip` | Items to skip after the token's position. Negative is refused with 422. Send it on the first request only, because it counts from the token |
-| `filter` | Filter expression, in the API's own syntax. Only on a list built with `filter=True` |
+| `filter` | Filter expression, in the API's syntax. Only on a list built with `filter=True` |
 | `order_by` | Ordering, such as `display_name desc, name`. Only on a list built with an `order_by` allow-list |
 
-`ListParams` takes `page_size`, `page_token` and `skip`. `list_query(order_by=("name", "display_name"), tiebreak="name", filter=True)` builds a dependency for a list that also takes `filter` and `order_by`. A list that doesn't take `filter` or `order_by` leaves it out of the spec, and a request that sends it anyway answers 400 `unsupported_parameter`. `list_query` also takes `default_page_size` and `max_page_size`. It raises `ValueError` on a default outside the cap, or an `order_by` with no `tiebreak`.
+`ListParams` takes `page_size`, `page_token` and `skip`. `list_query(order_by=("name", "display_name"), tiebreak="name", filter=True)` builds a dependency for a list that takes `filter` and `order_by`. A list that doesn't take `filter` or `order_by` leaves it out of the spec, and a request that sends it anyway answers 400 `unsupported_parameter`. `list_query` takes `default_page_size` and `max_page_size`. It raises `ValueError` on a default outside the cap, or an `order_by` with no `tiebreak`.
 
-`order_by` is a comma-separated list of fields, each optionally followed by `asc` or `desc`. A field outside the allow-list, a field named twice, or any other direction answers 400 `invalid_order_by`. The parsed `ListQuery.order_by` is a tuple of `SortKey(field, descending)`. It ends in the `tiebreak` field when the client didn't name it, so pages stay stable when sort values tie. With no `order_by`, it's the `tiebreak` field alone. `sort_by_order(items, query.order_by)` sorts mappings or objects in memory by dotted field paths. Missing values go last ascending and first descending.
+`order_by` is a comma-separated list of fields, each optionally followed by `asc` or `desc`. A field outside the allow-list, a field given twice, or any other direction answers 400 `invalid_order_by`. The parsed `ListQuery.order_by` is a tuple of `SortKey(field, descending)`. It ends in the `tiebreak` field when the client didn't name it, so pages stay stable when sort values tie. With no `order_by`, it's the `tiebreak` field alone. `sort_by_order(items, query.order_by)` sorts mappings or objects in memory by dotted field paths. Missing values go last ascending and first descending.
 
-A list answers `Page[T]`: `items`, `next_page_token` and an optional `total_size`. `next_page_token` is `null` on the last page. A UI stops paging on it with `getNextPageParam: p => p.next_page_token || undefined`. Use `||`, not `??`, so an empty string stops it too.
+A list answers `Page[T]`: `items`, `next_page_token` and an optional `total_size`. `next_page_token` is `null` on the last page. A UI stops paging on it with `getNextPageParam: p => p.next_page_token || undefined`. Use `||`, not `??`, so an empty string stops it as well.
 
-`paginate(items, query, bound={...}, with_total=True)` cuts a page out of a list the server has already filtered and ordered. Pass in `bound` every list parameter of your own that changes `items`, such as a search term. `encode_page_token` and `decode_page_token` do the same for a list that pages in its datastore.
+`paginate(items, query, bound={...}, with_total=True)` cuts a page out of a list the server has filtered and ordered. Pass in `bound` every list parameter of your that changes `items`, such as a search term. `encode_page_token` and `decode_page_token` do the same for a list that pages in its datastore.
 
 A page token is a Fernet token from `cryptography`, so a client can neither read nor forge one. It holds the offset and a hash of the request path, `filter`, `order_by` and `bound`. A token answers 400 `invalid_page_token` if it was tampered with, is older than `PAGE_TOKEN_TTL_SECONDS` (a day), or comes back with any of those changed. The client then starts again from the first page. `page_size` and `skip` may change between pages. A token grants nothing: the handler filters the list for each caller as it always does.
 
 The key comes from the `api.page_token_key` setting (`PAGE_TOKEN_KEY_SETTING`) in the config cascade. It needs at least 32 characters and is read on first use. Without one, each process makes a random key and logs a warning. Then a token from one replica fails on another, and every token fails after a restart. Set the key wherever a service runs more than one replica.
 
 `View` is `basic` or `full`, after AIP-157. `ListView` defaults to `basic` and `GetView` to `full`.
-
----
 
 ## Long-running operations
 
@@ -205,8 +215,6 @@ def deploy(source: str, response: Response) -> Operation[DeployProgress, DeployR
 ```
 
 `Operation[M, R]` has `name`, `done`, `metadata` (an `M`), `error` (a `Problem`) and `response` (an `R`). A pending operation has neither `error` nor `response`, and a done one has exactly one. The model checks both. `accept(response, operation, location=...)` sets the 202 and the `Location` header, and `ACCEPTED_RESPONSES` declares that header in the spec. Storing operations, running the work and serving `GET` on the polling URL are up to the app.
-
----
 
 ## Errors: problem+json
 
@@ -227,13 +235,11 @@ def deploy(source: str, response: Response) -> Operation[DeployProgress, DeployR
 | Request validation | 422 `validation_error`, one `FieldError` per field (AIP-193): `field`, `location`, `detail`, `code`, and `pointer` for a body field |
 | Anything else | 500, logged with the route template, never echoing the exception's message. `catch_unhandled=False` leaves it to the server |
 
-`install` registers handlers for `StarletteHTTPException`, `RequestValidationError` and, unless `catch_unhandled=False`, `Exception`. FastAPI keeps the last handler registered per exception, so these replace any the app registered earlier. Pass `problem_handlers=False` to keep the app's own.
+`install` registers handlers for `StarletteHTTPException`, `RequestValidationError` and, unless `catch_unhandled=False`, `Exception`. FastAPI keeps the last handler registered per exception, so these replace any the app registered earlier. Pass `problem_handlers=False` to keep the app's.
 
 `declare_problem_responses(spec)` makes the spec say the same: it adds the `Problem` schema, with `code` and `errors` typed, and points every 4xx and 5xx response a route declares at it as `application/problem+json`, FastAPI's 422 included. It adds a `default` problem response where an operation has none, and drops FastAPI's validation-error schemas once nothing references them. `install` does both, so client generators can type the errors.
 
 The schemas dropped are `HTTPValidationError` and `ValidationError`. A client generated from the spec that names them must move to the `Problem` schema.
-
----
 
 ## Conformance
 
@@ -263,8 +269,6 @@ def test_api_conformance():
 
 `exempt` takes patterns over route paths for protocol routes whose paths a standard fixes, such as SCIM, OIDC or `.well-known`. `allow` takes patterns over a violation's key, `"<rule> <METHOD> <path>"`, so an API adopts the conventions router by router: `"* * /api/v1/sigma/*"` allows a whole router. `report.allow_list()` returns the keys that would pass today, which is the starting allow-list. An entry that matches nothing fails the check (`strict=False` tolerates it), which keeps the list shrinking to empty. `spec=` checks a committed copy of the spec instead of `app.openapi()`.
 
----
-
 ## Public API
 
 | Name | What it is |
@@ -282,14 +286,3 @@ def test_api_conformance():
 | `check_conformance`, `assert_conformant`, `ConformanceReport`, `Violation` | The conformance check |
 
 scalo-rs has no counterpart: this is a control-plane concern, and scalo-rs serves the data plane.
-
----
-
-## Related
-
-- [../extras-flags.md](../extras-flags.md)
-- [mcp.md](mcp.md)
-- [cli.md](cli.md)
-- [../core-pillars/health.md](../core-pillars/health.md)
-- Google AIPs 122, 132 to 136, 151, 154, 157, 158, 163 and 193: <https://google.aip.dev>
-- RFC 9110 (conditional requests) and RFC 9457 (problem details)

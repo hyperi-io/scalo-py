@@ -14,8 +14,6 @@ File provider is always available, with no extra install. There is no Ansible Va
 
 `import scalo.secrets` imports no provider SDK. A provider's module, and its SDK with it, loads when `from_config` builds that provider or when its name (`AWSProvider`, `BOTO3_AVAILABLE` and the like) is first read from `scalo.secrets` or `scalo.secrets.providers`.
 
----
-
 ## Quick start
 
 ```python
@@ -27,8 +25,6 @@ sm = SecretsManager.from_config({
 })
 password = await sm.get_string("db_password")
 ```
-
----
 
 ## Provider matrix
 
@@ -43,9 +39,7 @@ password = await sm.get_string("db_password")
 
 `pattern` is a client-side fnmatch on every provider.
 
-OpenBao and HashiCorp Vault share the KV v2 protocol, so the same provider talks to both. Use the `openbao` provider for Vault too. A config key of either `openbao` or `vault` builds it, registered under both names.
-
----
+OpenBao and HashiCorp Vault share the KV v2 protocol, so the same provider talks to both. Use the `openbao` provider for Vault as well. A config key of either `openbao` or `vault` builds it, registered under both names.
 
 ## Configuration
 
@@ -95,13 +89,11 @@ sm = SecretsManager.from_config({
 })
 ```
 
-`kms_key_id` takes a key ID, ARN or alias and encrypts each secret the provider creates. A secret that already exists keeps its key.
+`kms_key_id` takes a key ID, ARN or alias and encrypts each secret the provider creates. A secret that exists keeps its key.
 
 `recovery_window_days` applies to `delete()`. Unset, AWS keeps a deleted secret recoverable for 30 days. `0` deletes it with no recovery, and 7-30 sets the window. Any other value is refused when the config is built. Inside the window a read, update or create of the name raises `SecretPendingDeletionError`.
 
-A forced delete (`0`) also completes asynchronously on AWS. The DeleteSecret reference says Secrets Manager performs it "with an asynchronous background process", so a `create()` of the same name straight after can be refused for a short while, and AWS says to back off and retry. scalo does not retry. A caller that deletes and re-creates a name retries on `SecretPendingDeletionError`. Reference: <https://docs.aws.amazon.com/secretsmanager/latest/apireference/API_DeleteSecret.html>
-
----
+Even a forced delete (`0`) completes asynchronously on AWS. The DeleteSecret reference says Secrets Manager performs it "with an asynchronous background process", so a `create()` of the same name straight after can be refused for a short while, and AWS says to back off and retry. scalo does not retry. A caller that deletes and re-creates a name retries on `SecretPendingDeletionError`. Reference: <https://docs.aws.amazon.com/secretsmanager/latest/apireference/API_DeleteSecret.html>
 
 ## Kubernetes Secret
 
@@ -130,8 +122,6 @@ The other settings are `namespace`, `api_server`, `token_path`, `ca_cert` (`None
 
 A pod mounting the Secret sees a write after the kubelet's next sync of the mount. A `subPath` mount never does.
 
----
-
 ## Reading secrets
 
 Three ways to call it:
@@ -149,9 +139,7 @@ cert = await sm.get_string("/etc/ssl/cert.pem")
 
 Sync siblings exist for every method (`get_sync`, `get_string_sync`, `list_sync`, ...). Use them in startup code, signal handlers, or any non-async context.
 
-`SecretValue` carries the raw `data: bytes`, `fetched_at`, `version` (for rotation detection), and `source` (provider name).
-
----
+`SecretValue` has the raw `data: bytes`, `fetched_at`, `version` (for rotation detection), and `source` (provider name).
 
 ## ENV fallback
 
@@ -162,8 +150,6 @@ When a named source's read fails -- a `ProviderError`, a provider left out of th
 3. else `NAME.upper()` (no prefix)
 
 An unset variable does not fall through to the next one. For `env_prefix="APP"` and source `db_password`, the manager reads `APP_DB_PASSWORD` only, so a set `DB_PASSWORD` is never used. The fallback is logged at WARNING, naming the source and the variable.
-
----
 
 ## Caching
 
@@ -186,8 +172,6 @@ Background refresh runs every `refresh_interval_secs` (default 1800) plus jitter
 
 Each refresh re-reads every secret held in the memory cache from its provider, fresh entries included, replaces the cached value and reports any rotation it finds. A secret whose provider has an outage keeps its cached value, and the failure is logged. One the provider says is gone or forbidden is dropped. With `"enabled": False` the memory cache is empty, so there is nothing to refresh.
 
----
-
 ## Rotation callbacks
 
 ```python
@@ -205,8 +189,6 @@ Triggered when the cached and the freshly fetched `SecretValue.version` are both
 
 With `"enabled": False` there is no cached version to compare against, so no rotation event fires.
 
----
-
 ## Versioning
 
 OpenBao, AWS, GCP, Azure support per-version reads:
@@ -218,8 +200,6 @@ history = await sm.list_versions("secret/data/api-key", provider="openbao")
 
 File and Kubernetes providers raise `VersioningNotSupportedError`.
 
----
-
 ## CRUD
 
 ```python
@@ -230,11 +210,9 @@ await sm.delete("secret/data/old-key", provider="openbao")
 
 Tags are stored by the providers that have them and ignored by the file and Kubernetes providers. Writes raise `SecretAlreadyExistsError`, `SecretPermissionError`, or `ProviderError`, and never fail silently.
 
-The file provider writes each secret file as `0600` and makes any missing directory `0700`, whatever the umask. A create or update writes a private sibling, flushes it to disk and then renames it into place, so a reader sees the old secret or the new one, never an empty or partial file, and a write that fails (a full disk) leaves the old secret. Updating a file the process does not own or cannot write raises `SecretPermissionError` and leaves the file as it was. An update through a symlink replaces the file it points to.
+The file provider writes each secret file as `0600` and makes any missing directory `0700`, whatever the umask. A create or update writes a private sibling, flushes it to disk and then renames it into place, so a reader sees the old secret or the new one, never an empty or partial file, and a write that fails (a full disk) leaves the old secret. Updating a file the process cannot write, or does not hold as owner, raises `SecretPermissionError` and leaves the file as it was. An update through a symlink replaces the file it points to.
 
 On AWS, `delete()` follows `recovery_window_days` (see [AWS region, KMS key and deletion window](#aws-region-kms-key-and-deletion-window)).
-
----
 
 ## Listing and filtering
 
@@ -251,8 +229,6 @@ Which filters run where is in the [provider matrix](#provider-matrix): AWS and G
 
 `get_metadata(path, provider=...)` returns `SecretMetadata` without fetching the value: `created_at`, `updated_at`, `expires_at`, `version`, `version_count`, `tags`.
 
----
-
 ## Batch get
 
 ```python
@@ -263,8 +239,6 @@ secrets = await sm.batch_get(
 ```
 
 AWS uses its native `BatchGetSecretValue` API. Other providers fall back to `asyncio.gather` with per-item error isolation: a `SecretNotFoundError` or `ProviderError` is logged and the path omitted from the result. `batch_get` reads the provider directly, never the cache.
-
----
 
 ## Health
 
@@ -282,11 +256,9 @@ async def secrets_ready() -> bool:
 health.register_ready_check("secrets", secrets_ready)
 ```
 
-The OpenBao, AWS, GCP, Azure and Kubernetes providers catch their own errors, so each logs its own reason and still returns `False` to a direct caller. The warning names the provider with the error type and message. A sealed OpenBao store gives the status it answered, such as `503 (sealed)`. The message is scrubbed first ([scrubbing.md](../core-pillars/scrubbing.md#scrub-architecture)), and one the scrubbers cannot process is withheld.
+The OpenBao, AWS, GCP, Azure and Kubernetes providers catch their errors, so each logs its reason and still returns `False` to a direct caller. The warning names the provider with the error type and message. A sealed OpenBao store gives the status it answered, such as `503 (sealed)`. The message is scrubbed first ([scrubbing.md](../core-pillars/scrubbing.md#scrub-architecture)), and one the scrubbers cannot process is withheld.
 
 The warning is written when the check first fails and not again while it keeps failing, so a probe that runs every few seconds writes one line per outage. The first check to pass writes one INFO line. A provider whose check raises is reported `False` and logged by the manager the same way, once per error type until its check stops raising. Scrubbing runs on a worker thread, because the first one builds the scrubber and the event loop must not wait for it.
-
----
 
 ## Exceptions
 
@@ -305,8 +277,6 @@ The warning is written when the check first fails and not again while it keeps f
 | `VersioningNotSupportedError` | versioned op on file/kubernetes |
 | `CacheError` | disk cache I/O failed |
 
----
-
 ## Lifecycle
 
 ```python
@@ -317,14 +287,3 @@ await sm.close()              # on SIGTERM (closes providers + stops refresh)
 ```
 
 `close()` stops the refresh task, then closes every provider, which releases httpx clients, aiobotocore sessions and Azure credentials.
-
----
-
-## Related
-
-- [../integration.md](../integration.md)
-- [../core-pillars/config.md](../core-pillars/config.md)
-- [../extras-flags.md](../extras-flags.md)
-- [http-client.md](http-client.md)
-- [concurrency.md](concurrency.md)
-- [resilience.md](resilience.md)

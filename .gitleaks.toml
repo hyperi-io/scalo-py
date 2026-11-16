@@ -5,16 +5,12 @@
 # Copyright:    (c) 2026 HYPERI PTY LIMITED
 
 [extend]
-# Use the default gitleaks config as base
 useDefault = true
 
-# Allowlist for historical commits containing secrets in deleted/backup files
-# These tokens have been rotated and the files are no longer in use
 [allowlist]
 description = "scalo historical false positives"
 
 
-# Paths to ignore (backup files no longer in use, test fixtures with fake secrets)
 paths = [
     '''backup/.*''',
     '''\.env\.backup''',
@@ -23,20 +19,16 @@ paths = [
     '''tests/unit/test_logger_secrets_leak\.py''', # Fake API keys for L1 secret-leak scrubber tests
     '''tests/unit/test_scrub_gitleaks_toml\.py''', # Fake API keys for L1 gitleaks-TOML scrubber tests
     '''tests/unit/test_scrub_parity_fixtures\.py''', # Fake API keys for L3 parity fixture tests
-    '''src/scalo/data/gitleaks\.json''', # The JSON sidecar of gitleaks.toml, whose rules carry the key prefixes they match
+    '''src/scalo/data/gitleaks\.json''', # gitleaks.toml as JSON, with the key prefixes its rules match
     # The masking corpus is synthetic credential-shaped strings, at its path and
     # the one it had in the wheel (history scans).
     '''tests/fixtures/patterns/masking-patterns\.yaml''',
     '''src/scalo/data/masking-patterns\.yaml''',
 ]
 
-# Regex patterns that are test fixtures (fake secrets for testing), plus one
-# genuinely public identifier.
+# Fake secrets the tests use, and two PGP fingerprints.
 regexes = [
-    # A PGP fingerprint is a PUBLIC key identifier, but its 40 hex chars read as
-    # high entropy to the generic-api-key rule. Allowlisted by VALUE rather than
-    # by file, as scalo-rs does: the Confluent APT signing key, which the history
-    # carries, and the made-up one the contract tests' vendor repo uses.
+    # Public key ids that read as high entropy: the Confluent APT key and the contract tests' fake one.
     '''CBBB821E8FAF364F79835C438B1DA6120C2BF624''',
     '''0123456789ABCDEF0123456789ABCDEF01234567''',
     '''sk-proj-abc123def456ghi789''',

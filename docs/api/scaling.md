@@ -8,10 +8,6 @@ from scalo.scaling import (
 )
 ```
 
----
-
-## Quick start
-
 ```python
 from scalo.scaling import ScalingPressure
 
@@ -23,9 +19,7 @@ pressure.set_component("latency", 0.4)
 score = pressure.calculate()   # 0-100, feed to KEDA external scaler
 ```
 
----
-
-## Gate logic
+## Gate logic and weights
 
 Three gates evaluated in order:
 
@@ -42,10 +36,6 @@ weighted_sum = (
     custom       * custom_weight
 ) * 100.0
 ```
-
----
-
-## Default weights
 
 | Component | Weight | What it measures |
 |-----------|--------|------------------|
@@ -73,9 +63,7 @@ cfg = ScalingPressureConfig(
 pressure = ScalingPressure(cfg)
 ```
 
----
-
-## Updating components
+## Updating components and the circuit signal
 
 ```python
 pressure.set_component("memory", 0.75)        # 75% memory utilisation
@@ -96,11 +84,7 @@ pressure.set_memory(used_bytes=psutil.Process().memory_info().rss,
                     limit_bytes=cgroup_memory_limit())
 ```
 
-It calls `set_component("memory", used / limit)`, and sets memory to `0.0` when `limit_bytes <= 0` (no limit set). `cgroup_memory_limit()` above stands for your own reader of the cgroup limit.
-
----
-
-## Circuit-open signal
+It calls `set_component("memory", used / limit)`, and sets memory to `0.0` when `limit_bytes <= 0` (no limit set). `cgroup_memory_limit()` above stands for your reader of the cgroup limit.
 
 ```python
 pressure.set_circuit_open(True)   # downstream tripped -- calculate() now returns 0.0
@@ -109,8 +93,6 @@ pressure.set_circuit_open(False)  # recovered -- back to weighted sum
 ```
 
 Wire this into your `CircuitBreaker` state changes. The gate keeps KEDA from scaling out under a failure that adding pods can't fix.
-
----
 
 ## Reading the score
 
@@ -135,9 +117,7 @@ snap = pressure.snapshot()
 # )
 ```
 
-`PressureSnapshot` is frozen, so a structured-log line or a test assertion gets one consistent read of the state. It carries no custom slot, though `overall` includes it.
-
----
+`PressureSnapshot` is frozen, so a structured-log line or a test assertion gets one consistent read of the state. It has no custom slot, though `overall` includes it.
 
 ## Exposing as a Prometheus gauge
 
@@ -176,13 +156,7 @@ triggers:
 
 Above 70 (configurable per service), KEDA scales out.
 
----
-
-## Concurrent updates
-
 All mutating methods (`set_component`, `set_memory`, `set_circuit_open`) and read methods (`calculate`, `snapshot`) take one internal lock, so they are safe to call from any thread or async task without external synchronisation.
-
----
 
 ## Cross-language parity
 
@@ -190,21 +164,10 @@ Both libraries gate in the same order (circuit open, then memory, then the weigh
 
 | | scalo-py | scalo-rs `scalo::scaling::ScalingPressure` |
 |---|---|---|
-| Components | five fixed slots: `memory`, `queue`, `latency`, `error`, `custom` | the app's own `ScalingComponent(name, weight, saturation)` list |
+| Components | five fixed slots: `memory`, `queue`, `latency`, `error`, `custom` | the app's `ScalingComponent(name, weight, saturation)` list |
 | `set_component` value | a saturation, clamped to `[0, 1]` | a raw value, scored as `min(value / saturation, 1)` |
-| Default weights | 0.25 / 0.30 / 0.25 / 0.15 / 0.05 | none, each app sets its own |
+| Default weights | 0.25 / 0.30 / 0.25 / 0.15 / 0.05 | none, each app sets its |
 | Default memory gate | `0.85` | `0.8` |
 | Kill switch | none | `enabled: false` returns `0.0` |
 
 So the same KEDA threshold means the same thing in both only when the two apps weight comparable signals the same way and set the same memory gate.
-
----
-
-## Related
-
-- [resilience.md](resilience.md)
-- [../deployment/keda.md](../deployment/keda.md)
-- [../core-pillars/metrics.md](../core-pillars/metrics.md)
-- [../core-pillars/health.md](../core-pillars/health.md)
-- [concurrency.md](concurrency.md)
-- [../integration.md](../integration.md)

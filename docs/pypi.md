@@ -1,6 +1,6 @@
 # scalo
 
-The runtime layer for Python control-plane services: config, logging, metrics, health, secrets and a service CLI. It comes already wired together: subclass one class and your service reads its config, logs in the right format for where it runs, and serves its health probes.
+The runtime layer for Python control-plane services: config, logging, metrics, health, secrets and a service CLI. It comes wired together: subclass one class and your service reads its config, logs in the right format for where it runs, and serves its health probes.
 
 It is built for APIs, orchestrators, CLI tools and integration glue. For the hot path there is a Rust sister library, [scalo-rs](https://github.com/hyperi-io/scalo-rs), with the same conventions and a different API.
 
@@ -8,12 +8,12 @@ It is built for APIs, orchestrators, CLI tools and integration glue. For the hot
 
 - A seven-layer config cascade, from CLI flags and env vars down to YAML and defaults, that reads the same in a laptop shell and a Kubernetes pod.
 - Structured logs, JSON in a container and readable text at a terminal. Credentials, tokens and keys are masked, and so are cards, IBANs, emails and phone numbers, and Australian ABN, ACN, TFN and Medicare numbers where a keyword names them. TRACE records skip the scrubber by default.
-- `ServiceApp`: subclass it and get `run`, `version`, `config-check` and `generate-artefacts`, with config and logging started for you, and metrics too once `scalo[metrics]` is installed.
-- `/livez` and `/readyz` on an observability port kept apart from your application's own.
+- `ServiceApp`: subclass it and get `run`, `version`, `config-check` and `generate-artefacts`, with config and logging started for you, and metrics as well once `scalo[metrics]` is installed.
+- `/livez` and `/readyz` on an observability port kept apart from your application's port.
 - With the `metrics` extra, Prometheus and OpenTelemetry metrics, process and container gauges included, scraped from `/metrics` on the same port. Without a metrics manager that path answers 404.
 - Secrets from OpenBao or Vault, AWS, GCP, Azure, and Kubernetes, one extra per backend.
 - A deployment contract: return one from `deployment_contract()` and `generate-artefacts` writes your runtime Dockerfile and the contract the scalo-service Helm chart renders from.
-- Kafka, CEL expressions and an HTTP client with jittered retry, each behind its own extra.
+- Kafka, CEL expressions and an HTTP client with jittered retry, each behind a separate extra.
 
 ## Example
 
@@ -25,7 +25,6 @@ uv add scalo
 from scalo.cli import ServiceApp, VersionInfo
 from scalo.logger import logger
 
-
 class Greeter(ServiceApp):
     name = "greeter"
     env_prefix = "GREETER"
@@ -35,7 +34,6 @@ class Greeter(ServiceApp):
 
     def run_service(self, config) -> None:
         logger.info("hello", target=config.get("target", "world"))
-
 
 if __name__ == "__main__":
     Greeter().cli()
@@ -52,7 +50,7 @@ if __name__ == "__main__":
 | `mcp` | MCP tools generated from a `scalo.api` app's spec, served on the same app |
 | `http` | An httpx client with jittered retry |
 | `metrics` | Prometheus and OTLP export, process and container gauges |
-| `opentelemetry` | The OpenTelemetry half of `metrics` on its own |
+| `opentelemetry` | The four OpenTelemetry packages of `metrics` |
 | `expression` | CEL expressions |
 | `kafka` | Produce, consume and schema inference |
 | `deployment` | The deployment contract and its Dockerfile and manifest generators |
@@ -61,4 +59,4 @@ if __name__ == "__main__":
 
 Pick the secrets backend you use rather than `secrets`, since the AWS, GCP and Azure backends each bring a cloud SDK.
 
-Docs and source are at <https://github.com/hyperi-io/scalo-py>. Requires the Python version `requires-python` names in `pyproject.toml`. Licensed Apache-2.0: <https://github.com/hyperi-io/scalo-py/blob/main/LICENSE>.
+Docs and source are at <https://github.com/hyperi-io/scalo-py>. Needs the Python version that `requires-python` sets in `pyproject.toml`. Licensed Apache-2.0: <https://github.com/hyperi-io/scalo-py/blob/main/LICENSE>.

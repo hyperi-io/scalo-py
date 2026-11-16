@@ -2,21 +2,36 @@
 
 `scalo.rules` (needs the `expression` extra) sets target fields on a record from an ordered rule set. For each target in the order the set lists them, the first row in declared order that matches the record and resolves a value sets it. A row tests the record with a native test or a CEL Fast condition, and takes its value as a literal, a copy of a field, or a field mapped through a bounded lookup table.
 
-The format, the findings and the outcomes are scalo-rs's `scalo::rules`, checked against the same corpus (`tests/fixtures/rules_corpus.json`, vendored from scalo-rs). Every corpus case gives the same findings and outcomes in both, and both read CEL literals and comments the same way when they scan a `when` condition for restricted calls (scalo-rs 2.14.19 and later). One difference is known:
+The format, the findings and the outcomes are scalo-rs's `scalo::rules`, checked against the same corpus (`tests/fixtures/rules_corpus.json`, copied from scalo-rs). Every corpus case gives the same findings and outcomes in both, and both read CEL literals and comments the same way when they scan a `when` condition for restricted calls (scalo-rs 2.14.19 and later). One difference is known, in number text. A native test or lookup reads a number's text, and Python writes a float as `repr` gives it. So `1e16` reads `1e+16` here and `1e16` in scalo-rs, `0.00001` reads `1e-05`, and `1e400` reads `inf` where scalo-rs rejects the record. An integer past 2^64 stays exact here and becomes a float in scalo-rs. Rows that test integers, plain decimals, strings and booleans route the same way in both.
 
-- **Number text.** A native test or lookup reads a number's text, and Python writes a float as `repr` gives it. So `1e16` reads `1e+16` here and `1e16` in scalo-rs, `0.00001` reads `1e-05`, and `1e400` reads `inf` where scalo-rs refuses to parse the record. An integer past 2^64 stays exact here and becomes a float in scalo-rs. Rows that test integers, plain decimals, strings and booleans route the same way in both.
+Each target takes the value of its first matching row, in the order the set lists the targets, and a per-call clamp can then replace a value outside its allowed set.
 
 ```mermaid
 flowchart LR
-    R[record] --> T1["target 1 rows, in order"]
-    T1 -->|first match sets target 1| T2["target 2 rows, in order"]
-    T2 -->|first match sets target 2| C{clamp?}
-    C -->|value outside the allowed set| D[default, counted]
-    C -->|inside| O[outcome]
-    D --> O
+    accTitle: L4 Detail -- Rule set evaluation
+    accDescr: A record goes through the rows for target 1, then the rows for target 2, in order. The first row that matches sets each target. A per-call clamp then checks the value against its allowed set. An allowed value is the outcome, and any other is replaced by the default and counted.
+
+    record(["Record"])
+    t1["Target 1 rows,<br/>in order"]
+    t2["Target 2 rows,<br/>in order"]
+    clamp{"Value in the<br/>allowed set?"}
+    outcome(["Outcome"])
+    fallback(["Default,<br/>counted"])
+
+    record --> t1
+    t1 --> t2
+    t2 --> clamp
+    clamp -->|yes| outcome
+    clamp -.->|no| fallback
+
+    classDef default fill:#F8FAFC,stroke:#64748B,stroke-width:1px,color:#0F172A
+    classDef decision fill:#FCF1D6,stroke:#9A6700,stroke-width:1px,color:#3D2A00
+    class clamp decision
 ```
 
----
+*Figure 1. L4 Detail -- Rule set evaluation. The dotted arrow is a value the clamp replaces.* Up: [scalo docs](../README.md).
+
+The default replaces the value and becomes the outcome. A call with no clamp takes the targets' values as they are.
 
 ## A rule set
 
@@ -68,13 +83,13 @@ Every test but `exists` reads the field's text: a string as written, an integer 
 | `exists` | none | is present and not empty, or the field is an object or array |
 | `regex` | `value` | matches the pattern. Refused unless the profile sets `allow_regex` |
 
-`negate: true` inverts any test. `all: [...]` holds when every part does, and takes `negate` too. A test given an operand it does not take is refused.
+`negate: true` inverts any test. `all: [...]` holds when every part does, and takes `negate` as well. A test given an operand it does not take is refused.
 
-A `regex` pattern compiles and matches on the Rust `regex` crate inside the CEL package. scalo-rs runs its own strmatch matcher, which parses patterns with the same regex-syntax crate, so both accept and refuse the same patterns, with different error text. Lookaround and backreferences are refused, an empty pattern is refused, and `$` matches only at the end of the text.
+A `regex` pattern compiles and matches on the Rust `regex` crate inside the CEL package. scalo-rs runs its strmatch matcher, which parses patterns with the same regex-syntax crate, so both accept and refuse the same patterns, with different error text. Lookaround and backreferences are refused, an empty pattern is refused, and `$` matches at the end of the text and nowhere else.
 
 ### CEL Fast conditions
 
-`when` compiles under the expression profile ([expression.md](expression.md#the-expression-profile)): the options' `profile`, or `expression.*` from the config cascade when no options are given. Each top-level name the condition reads comes from an earlier target's new value, else the record. A condition that is not `true`, or fails to evaluate, does not match.
+`when` compiles under the expression profile ([expression.md](expression.md#the-expression-profile)): the options' `profile`, or `expression.*` from the config cascade when no options are given. Each top-level name the condition reads comes from the value an earlier target set, else the record. A condition that is not `true`, or fails to evaluate, does not match.
 
 ### Actions
 
@@ -90,8 +105,6 @@ Empty text reads as no value everywhere: `from` an empty field does not match, a
 
 A row for a later target that reads an earlier target's field reads the value this pass set, when a row set one, else the record's. An earlier target reads the record's value of a later one. So with `targets: [_source, _org_id]` an org row can test the source the same pass chose.
 
----
-
 ## Compile and check
 
 ```python
@@ -103,7 +116,7 @@ rules = RuleSet.compile(config, CompileOptions(profile=ProfileConfig(allow_regex
 findings = RuleSet.check(config)                    # never raises
 ```
 
-One pass reports every finding, so an editor shows them all at once. `compile` raises `RulesError`, whose `diagnostics` lists them. A `RuleDiagnostic` carries:
+One pass reports every finding, so an editor shows them all at once. `compile` raises `RulesError`, and its `diagnostics` lists them. A `RuleDiagnostic` has:
 
 | Field | Holds |
 | --- | --- |
@@ -113,9 +126,7 @@ One pass reports every finding, so an editor shows them all at once. `compile` r
 | `message` | What is wrong |
 | `span` | For `when`, the byte range in the condition: the function name the profile refused, or the character the parser stopped at |
 
-`dataclasses.asdict(finding)` gives a JSON-ready dict. The span is UTF-8 bytes, and `finding.span.utf16_offsets(condition)` gives the offsets a JavaScript editor indexes by ([expression.md](expression.md#locating-a-problem)). Warnings are reported once the set has no errors: a row an earlier row of the same target always fires before, because the earlier row sets a literal and is unconditional, has the same test, or is a plain `exists` on the field the later row needs. `rules.warnings` keeps the warnings of a compiled set.
-
----
+`dataclasses.asdict(finding)` gives a JSON-ready dict. The span is UTF-8 bytes, and `finding.span.utf16_offsets(condition)` gives the offsets a JavaScript editor indexes by ([expression.md](expression.md#validating-and-locating-a-problem)). Warnings are reported once the set has no errors: a row an earlier row of the same target always fires before, because the earlier row sets a literal and is unconditional, has the same test, or is a plain `exists` on the field the later row needs. `rules.warnings` keeps the warnings of a compiled set.
 
 ## Evaluate
 
@@ -138,7 +149,7 @@ A record is a parsed JSON object, a `dict` or any `Mapping`.
 
 ### The clamp
 
-`Clamp(target, allowed, default)` is per call, so each credential or listener brings its own allowed set. After every target is set, the clamp target's final value, the row's or else the record's own, is checked against `allowed`. A value outside it becomes `default` (`REPLACED`, naming the row that produced it). No value at all becomes `default` (`DEFAULTED`). The caller keeps `default` inside `allowed`, and a `frozenset` keeps the check one hash lookup.
+`Clamp(target, allowed, default)` is per call, so each credential or listener brings a separate allowed set. After every target is set, the clamp target's final value, the row's or else the record's, is checked against `allowed`. A value outside it becomes `default` (`REPLACED`, naming the row that produced it). No value at all becomes `default` (`DEFAULTED`). The caller keeps `default` inside `allowed`, and a `frozenset` keeps the check one hash lookup.
 
 ### Counting
 
@@ -153,8 +164,6 @@ Every row counts the records it set its target on, and the clamp counts what it 
 
 `rules.evaluate` takes a lock per record to count. `with rules.batch() as batch:` counts each `batch.evaluate` locally and adds the totals once, at `batch.flush()` or when the block ends. A set is safe to share between threads.
 
----
-
 ## Reload
 
 ```python
@@ -162,12 +171,3 @@ rules = RuleSet.from_file_section("config.yaml", "routing.rules")
 ```
 
 `from_file_section` reads the YAML file and compiles the section at the dotted key. A file that cannot be read or parsed, or has no such section, raises `RulesLoadError`. A section that does not compile raises `RulesError` with its findings. To reload a set the app keeps in its config cascade, compile it in the `ConfigReloader` `validate_fn`, which keeps the last good config when it returns false ([../core-pillars/config.md](../core-pillars/config.md#hot-reload)).
-
----
-
-## Related
-
-- [expression.md](expression.md) -- the CEL Fast profile and `diagnose`
-- [../core-pillars/config.md](../core-pillars/config.md#hot-reload) -- `ConfigReloader`
-- [../core-pillars/metrics.md](../core-pillars/metrics.md) -- the `MetricsManager` the counters register with
-- scalo-rs `docs/pipeline/rules.md` -- the same rule set in Rust, over raw JSON bytes
