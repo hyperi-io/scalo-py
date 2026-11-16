@@ -18,7 +18,7 @@ That gives you:
 - CLI framework (`from scalo.cli import ServiceApp`)
 - Concurrency and resilience primitives: bulkheads, the circuit breaker and the reconnecting wrapper (`from scalo import concurrency, resilience`)
 - Version-check probe (`from scalo.version_check import check_on_startup`)
-- `ContractIdentity` and `scalo.deployment.test_support`, which need no pydantic
+- `ContractIdentity`, which needs no pydantic
 
 Base runtime deps (transitive): dynaconf, loguru, python-dotenv, pyyaml, mergedeep, tomli-w, typer, dulwich, anyio, asyncer, detect-secrets, phonenumbers, python-stdnum, regex. If that is all you need, stop here.
 
@@ -87,7 +87,7 @@ flowchart LR
 
 `expression` evaluates CEL on the same `cel` crate scalo-rs's `expression` feature compiles against, so an expression means the same thing in either language. The same extra serves `scalo.rules`, the ordered rule sets scalo-rs builds behind its `rules` feature. Importing `scalo.rules` without it raises `ImportError` naming the extra.
 
-`deployment` adds the `DeploymentContract` model and the generators. The fixture under `tests/fixtures/contract-parity/` is part of the test suite, not a runtime artefact.
+`deployment` adds the `DeploymentContract` model and the generators. `scalo.deployment.test_support` needs no pydantic but imports pytest, so it loads where the test dependencies are installed. The fixture under `tests/fixtures/contract-parity/` is part of the test suite, not a runtime artefact.
 
 Pick the secrets backends you use: the meta-extra `secrets` installs every cloud SDK. An installed SDK costs disk, not import time: `import scalo.secrets` loads none, and each loads when its provider is configured.
 
