@@ -172,6 +172,8 @@ A retry around a whole call is yours to add, for example with `stamina`, which t
 | `fetch.min.bytes` | `1` | Return immediately with whatever arrives. |
 | `fetch.wait.max.ms` | `500` | Cap on the wait. |
 
+### Admin defaults (`ADMIN_DEFAULTS`)
+
 `ADMIN_DEFAULTS` sets `request.timeout.ms: 30000`. Every blocking metadata, watermark, committed-offset and offsets-for-times call in `KafkaClient`, `AsyncKafkaClient`, `ReadOnlyKafkaClient` and `KafkaConsumer` waits at most the config's `socket.timeout.ms`, or 30 s where it is unset. `KafkaAdmin` bounds the same calls by each method's `timeout` argument. A call that gets no broker answer in time raises `KafkaTimeoutError`, a `TimeoutError` naming the call. A per-partition read makes one call per partition, so `describe_topic` on 12 partitions can wait up to 13 bounds. A `socket.timeout.ms` that is not a positive number fails the client's constructor with `ValueError`.
 
 ### Loading from elsewhere
