@@ -1,52 +1,50 @@
 # Migrations
 
-Behaviour and API changes that need a consumer adjustment, indexed by the scalo release where each first ships. Moving over from `hyperi-pylib` has its own guide, [migrating-from-hyperi-pylib.md](migrating-from-hyperi-pylib.md).
+Behaviour and API changes that need a consumer adjustment, indexed by the scalo release where each first ships. Moving over from `hyperi-pylib` has its guide, [migrating-from-hyperi-pylib.md](migrating-from-hyperi-pylib.md).
 
----
+## 2.32.4 -- `DirectoryConfigStore` rejects a write over a table it cannot read (BEHAVIOUR CHANGE)
 
-## Unreleased -- `DirectoryConfigStore` refuses a write over a table it cannot read (BEHAVIOUR CHANGE)
+`set` read a malformed, non-mapping or unreadable table as empty and wrote back only the new key. It raises `ValueError` or the `OSError`, as `delete` does. **Consumer adjustment** -- fix or remove a broken table before writing to it.
 
-`set` read a malformed, non-mapping or unreadable table as empty and wrote back only the new key. It now raises `ValueError` or the `OSError`, as `delete` does. **Consumer adjustment** -- fix or remove a broken table before writing to it.
+## 2.32.4 -- The secrets disk cache is keyed by backend and principal (BEHAVIOUR CHANGE)
 
-## Unreleased -- The secrets disk cache is keyed by backend and principal (BEHAVIOUR CHANGE)
+A disk entry was keyed `<provider name>:<path>:<key>`, so managers reading one path from different backends or principals shared it, and colons could collide. It is keyed by the provider's `cache_identity`, the path and the sub-key, and old entries are not read. See [api/secrets.md](api/secrets.md#caching). **Consumer adjustment** -- a custom `SecretProvider` whose reads depend on its config overrides `cache_identity(salt)`, passing each credential through `credential_digest(value, salt)`.
 
-A disk entry was keyed `<provider name>:<path>:<key>`, so managers reading one path from different backends or principals shared it, and colons could collide. It is now keyed by the provider's `cache_identity`, the path and the sub-key, and old entries are not read. See [api/secrets.md](api/secrets.md#caching). **Consumer adjustment** -- a custom `SecretProvider` whose reads depend on its config overrides `cache_identity(salt)`, passing each credential through `credential_digest(value, salt)`.
+## 2.32.4 -- A Kafka consume error no longer skips its batch on the next commit (BEHAVIOUR CHANGE)
 
-## Unreleased -- A Kafka consume error no longer skips its batch on the next commit (BEHAVIOUR CHANGE)
+`consume` dropped a failed batch's good messages while librdkafka had stored their offsets, so the next `commit()` skipped them. `KafkaConsumer` and `AsyncKafkaConsumer` store an offset only once its message is returned, and seek a failed batch back. See [transport/kafka.md](transport/kafka.md#kafkaconsumer). **Consumer adjustment** -- a `commit()` with nothing returned since the last one raises `_NO_OFFSET`. Setting `enable.auto.offset.store` keeps the old behaviour.
 
-`consume` dropped a failed batch's good messages while librdkafka had stored their offsets, so the next `commit()` skipped them. `KafkaConsumer` and `AsyncKafkaConsumer` now store an offset only once its message is returned, and seek a failed batch back. See [transport/kafka.md](transport/kafka.md#kafkaconsumer). **Consumer adjustment** -- a `commit()` with nothing returned since the last one raises `_NO_OFFSET`. Setting `enable.auto.offset.store` keeps the old behaviour.
+## 2.32.4 -- Kafka broker calls end at `socket.timeout.ms`, and topic errors raise (BEHAVIOUR CHANGE)
 
-## Unreleased -- Kafka broker calls end at `socket.timeout.ms`, and topic errors raise (BEHAVIOUR CHANGE)
+Broker calls that waited forever wait at most `socket.timeout.ms` (30 s unset), or the `KafkaAdmin` method's `timeout`, then raise `KafkaTimeoutError`. A missing topic raises `TopicNotFoundError` where the read clients returned empty, and any other topic error raises `KafkaException`. `scalo.kafka.readonly.TopicNotFoundError` is now `scalo.kafka.TopicNotFoundError`. See [transport/kafka.md](transport/kafka.md#admin-defaults-admin_defaults). **Consumer adjustment** -- catch the new errors where an empty answer or a hang stood in for them.
 
-Broker calls that waited forever now wait at most `socket.timeout.ms` (30 s unset), or the `KafkaAdmin` method's `timeout`, then raise `KafkaTimeoutError`. A missing topic raises `TopicNotFoundError` where the read clients returned empty, and any other topic error raises `KafkaException`. `scalo.kafka.readonly.TopicNotFoundError` is now `scalo.kafka.TopicNotFoundError`. See [transport/kafka.md](transport/kafka.md#admin-defaults-admin_defaults). **Consumer adjustment** -- catch the new errors where an empty answer or a hang stood in for them.
+## 2.32.4 -- A division with no fixed type no longer pushes down (BEHAVIOUR CHANGE)
 
-## Unreleased -- A division with no fixed type no longer pushes down (BEHAVIOUR CHANGE)
+`transpile_to_clickhouse` wrote CEL's `/` as ClickHouse's double `/` even between ints. It writes `intDiv` where an operand is int-typed, `/` where one is double-typed, and raises `TranspileError` where neither is. See [api/expression.md](api/expression.md#transpile-to-clickhouse-sql). **Consumer adjustment** -- evaluate such a filter in process, or type an operand with `double()` or `int()`.
 
-`transpile_to_clickhouse` wrote CEL's `/` as ClickHouse's double `/` even between ints. It now writes `intDiv` where an operand is int-typed, `/` where one is double-typed, and raises `TranspileError` where neither is. See [api/expression.md](api/expression.md#transpile-to-clickhouse-sql). **Consumer adjustment** -- evaluate such a filter in process, or type an operand with `double()` or `int()`.
-
-## Unreleased -- Generated images install no Kafka C libraries (API CHANGE)
+## 2.32.4 -- Generated images install no Kafka C libraries (API CHANGE)
 
 `NativeDepsContract.for_scalo_extras` maps no extra to a package, and `for_scalo_features` maps only `directory-config-git` (libgit2), as scalo-rs does. `CONFLUENT_KEY_FINGERPRINT` is gone, and an `AptRepoContract` with an empty `codename` takes `distro_codename`. See [deployment/native-deps.md](deployment/native-deps.md). **Consumer adjustment** -- regenerate a committed `Dockerfile` or `Dockerfile.runtime`.
 
-## Unreleased -- Shared test services, and the compose files gone (additive)
+## 2.32.4 -- Shared test services, and the compose files gone (additive)
 
 `scalo.deployment.test_support.pytest_plugin` gives a pytest run one ClickHouse, Kafka and OpenBao, shared by every xdist worker. See [deployment/test-support.md](deployment/test-support.md#shared-test-services). scalo-py's `docker-compose.kafka.yml` and `docker-compose.openbao.yml` are gone.
 
 ## 2.31.20 -- `matches()` needs `allow_regex` (BEHAVIOUR CHANGE)
 
-The expression profile refuses `matches()` unless it allows regex, as scalo-rs's does, because regex cost per record is unbounded. `validate`, `diagnose`, `compile_expression`, `evaluate`, `evaluate_condition` and `transpile_to_clickhouse` all enforce it. The profile is now `ProfileConfig` (`allow_regex`, `allow_iteration`, `allow_time`), read from the cascade's `expression` key, and `validate`, `diagnose`, `compile_expression` and `transpile_to_clickhouse` take `profile=` to override it per call. `matches` moved from `ALLOWED_FUNCTIONS` to `DISALLOWED_FUNCTIONS` and `RESTRICTED_REGEX`. The profile check now reads string and bytes literals (quoted, triple-quoted and raw), `//` comments and the gap before a call the way CEL's lexer does. A function name inside a literal or comment is no longer reported, so `msg.contains("map(x)")` validates clean. A call hidden behind a raw literal's backslash, a triple-quoted literal, a comment, or a tab or newline before its `(` is now refused, where it validated clean and ran: `r"\" == "x" || x.matches("a")` and `x.matches//\n("a")` are two. See [api/expression.md](api/expression.md#the-expression-profile).
+The expression profile rejects `matches()` unless it allows regex, as scalo-rs's does, because regex cost per record is unbounded. `validate`, `diagnose`, `compile_expression`, `evaluate`, `evaluate_condition` and `transpile_to_clickhouse` all enforce it. The profile is now `ProfileConfig` (`allow_regex`, `allow_iteration`, `allow_time`), read from the cascade's `expression` key, and `validate`, `diagnose`, `compile_expression` and `transpile_to_clickhouse` take `profile=` to override it per call. `matches` moved from `ALLOWED_FUNCTIONS` to `DISALLOWED_FUNCTIONS` and `RESTRICTED_REGEX`. The profile check reads string and bytes literals (quoted, triple-quoted and raw), `//` comments and the gap before a call the way CEL's lexer does. A function name inside a literal or comment is no longer reported, so `msg.contains("map(x)")` validates clean. A call hidden behind a raw literal's backslash, a triple-quoted literal, a comment, or a tab or newline before its `(` is refused, where it validated clean and ran: `r"\" == "x" || x.matches("a")` and `x.matches//\n("a")` are two. See [api/expression.md](api/expression.md#the-expression-profile).
 
 **Consumer adjustment** -- an app that validates, evaluates or transpiles regex conditions sets `expression.allow_regex: true` in its config, or passes `profile=ProfileConfig(allow_regex=True)`. A test that expects `matches` in `ALLOWED_FUNCTIONS` looks in `RESTRICTED_REGEX`.
 
 ## 2.31.20 -- `evaluate_condition` returns `False` on every evaluation error (BEHAVIOUR CHANGE)
 
-A missing map key, division by zero, an index out of range or an overflow raised `KeyError`, `ZeroDivisionError`, `IndexError` or `OverflowError` out of `evaluate_condition`. Each now returns `False`, like a missing variable. Each distinct expression is also compiled once and kept, where it was compiled on every call.
+A missing map key, division by zero, an index out of range or an overflow raised `KeyError`, `ZeroDivisionError`, `IndexError` or `OverflowError` out of `evaluate_condition`. Each returns `False`, like a missing variable. Each distinct expression is compiled once and kept, where it was compiled on every call.
 
 **Consumer adjustment** -- none, unless a caller caught one of those errors around `evaluate_condition`.
 
 ## 2.31.20 -- A reload that fails validation keeps the last good config (BEHAVIOUR CHANGE)
 
-`ConfigReloader.reload_now` reloaded the live settings and then validated them, so a config `validate_fn` rejected stayed live. It now reloads a copy, validates the copy and swaps it in only when it passes. `validate_fn` receives the copy, and `on_reload` still receives `scalo.config.settings`. See [core-pillars/config.md](core-pillars/config.md#hot-reload).
+`ConfigReloader.reload_now` reloaded the live settings and then validated them, so a config `validate_fn` rejected stayed live. It reloads a copy, validates the copy and swaps it in only when it passes. `validate_fn` receives the copy, and `on_reload` still receives `scalo.config.settings`. See [core-pillars/config.md](core-pillars/config.md#hot-reload).
 
 **Consumer adjustment** -- a `validate_fn` that read `scalo.config.settings` instead of its argument reads its argument.
 
@@ -58,47 +56,47 @@ The floor rose from 0.5.6 to 0.10.0. It is the first release that imports in a c
 
 ## 2.31.20 -- `scalo.rules` and `diagnose` (additive)
 
-New `scalo.rules`, needing the `expression` extra: ordered first-match rule sets, with native tests and CEL Fast conditions, literal, copy and lookup actions, a per-call clamp and per-row hit counters, checked against scalo-rs's rules corpus. `diagnose` returns `validate`'s findings with the UTF-8 byte span each covers, and `Span.char_offsets` and `Span.utf16_offsets` convert a span for an editor that indexes by character or by UTF-16 code unit. See [api/rules.md](api/rules.md) and [api/expression.md](api/expression.md#locating-a-problem).
+New `scalo.rules`, needing the `expression` extra: ordered first-match rule sets, with native tests and CEL Fast conditions, literal, copy and lookup actions, a per-call clamp and per-row hit counters, checked against scalo-rs's rules corpus. `diagnose` returns `validate`'s findings with the UTF-8 byte span each covers, and `Span.char_offsets` and `Span.utf16_offsets` convert a span for an editor that indexes by character or by UTF-16 code unit. See [api/rules.md](api/rules.md) and [api/expression.md](api/expression.md#validating-and-locating-a-problem).
 
 **Consumer adjustment** -- none.
 
 ## 2.31.15 -- A configured secrets provider with no SDK is left out, not fatal (BEHAVIOUR CHANGE)
 
-`SecretsManager.from_config` caught `ImportError` for a provider whose extra is not installed, but the providers raise `ProviderNotAvailableError`. The warning never fired and `from_config` raised at startup. It now logs the warning and returns without that provider. Using the provider raises `ProviderNotConfiguredError`, and a named source falls back to ENV. See [api/secrets.md](api/secrets.md#a-provider-whose-sdk-is-not-installed).
+`SecretsManager.from_config` caught `ImportError` for a provider whose extra is not installed, but the providers raise `ProviderNotAvailableError`. The warning never fired and `from_config` raised at startup. It logs the warning and returns without that provider. Using the provider raises `ProviderNotConfiguredError`, and a named source falls back to ENV. See [api/secrets.md](api/secrets.md#a-provider-whose-sdk-is-not-installed).
 
 **Consumer adjustment** -- code that relied on the startup exception to catch a missing extra checks that the provider is in `health_check()`, or builds it directly (`AWSProvider(...)`), which still raises `ProviderNotAvailableError`.
 
 ## 2.31.14 -- The AWS secrets provider has no default region (BEHAVIOUR CHANGE)
 
-`AWSConfig.region` defaults to `None`, and the client sets a region only when one is configured. `SecretsManager.from_config` takes it from `aws.region`, then `AWS_REGION`, then `AWS_DEFAULT_REGION`. An unset region was forced to `us-east-1`, so a deployment with no region configured read and wrote secrets in the wrong region. It now goes to the SDK, which reads the active profile's region. With none, every call fails because botocore cannot build a client (`NoRegionError`). scalo-rs dropped the same default in 2.12.3. See [api/secrets.md](api/secrets.md#aws-region-kms-key-and-deletion-window).
+`AWSConfig.region` defaults to `None`, and the client sets a region only when one is configured. `SecretsManager.from_config` takes it from `aws.region`, then `AWS_REGION`, then `AWS_DEFAULT_REGION`. An unset region was forced to `us-east-1`, so a deployment with no region configured read and wrote secrets in the wrong region. It goes to the SDK, which reads the active profile's region. With none, every call fails because botocore cannot build a client (`NoRegionError`). scalo-rs dropped the same default in 2.12.3. See [api/secrets.md](api/secrets.md#aws-region-kms-key-and-deletion-window).
 
 **Consumer adjustment** -- anything that relied on the `us-east-1` default names the region it means, in `aws.region`, `AWSConfig(region=...)`, `AWS_REGION` or `AWS_DEFAULT_REGION`.
 
 ## 2.31.14 -- A secret pending deletion raises `SecretPendingDeletionError` (BEHAVIOUR CHANGE)
 
-AWS refuses to read, update or re-create a secret inside its deletion recovery window. That answer was a bare `ProviderError` reading `InvalidRequestException`. It is now `SecretPendingDeletionError`, a `ProviderError` subclass naming the operation and the path. New `AWSConfig` fields set the window and the encryption key: `recovery_window_days` (`None` keeps the AWS default of 30 days, `0` deletes at once, 7-30 sets the window, anything else is refused when the config is built) and `kms_key_id`, which encrypts the secrets the provider creates.
+AWS will not read, update or re-create a secret inside its deletion recovery window. That answer was a bare `ProviderError` reading `InvalidRequestException`. It is now `SecretPendingDeletionError`, a `ProviderError` subclass naming the operation and the path. New `AWSConfig` fields set the window and the encryption key: `recovery_window_days` (`None` keeps the AWS default of 30 days, `0` deletes at once, 7-30 sets the window, anything else is refused when the config is built) and `kms_key_id`, which encrypts the secrets the provider creates.
 
 **Consumer adjustment** -- none. A handler for `ProviderError` still catches it.
 
 ## 2.31.14 -- File provider secrets are owner-only (BEHAVIOUR CHANGE)
 
-`FileProvider` wrote each secret file with the process umask, which is `0644` under the usual `022`. `create` now writes `0600` and makes each missing directory `0700`, whatever the umask. `update` sets an existing file to `0600` before it writes.
+`FileProvider` wrote each secret file with the process umask, which is `0644` under the usual `022`. `create` writes `0600` and makes each missing directory `0700`, whatever the umask. `update` sets an existing file to `0600` before it writes.
 
-**Consumer adjustment** -- a reader running as another user gets `PermissionError` on a file scalo writes. Run it as the same user, or read the secret through scalo. An `update` of a file the process does not own fails with `SecretPermissionError` and leaves the file as it was.
+**Consumer adjustment** -- a reader running as another user gets `PermissionError` on a file scalo writes. Run it as the same user, or read the secret through scalo. An `update` of a file the process does not hold as owner fails with `SecretPermissionError` and leaves the file as it was.
 
 ## 2.31.12 -- URL passwords mask to the last `@`, and a list of two names is not a pair (BEHAVIOUR CHANGE)
 
-The password in `scheme://user:password@host` is masked up to the last `@` a host follows, so `postgres://u:ab@cd/ef@host/db`, which logged `cd/ef`, now logs as `postgres://u:***REDACTED***@host/db`. The same holds when `?` or `#` follows an `@` in the password. `scalo.logger.filters.mask_url_userinfo` applies the rule to any string. See [core-pillars/scrubbing.md](core-pillars/scrubbing.md#layer-2-field-name-regex).
+The password in `scheme://user:password@host` is masked up to the last `@` a host follows, so `postgres://u:ab@cd/ef@host/db`, which logged `cd/ef`, logs as `postgres://u:***REDACTED***@host/db`. The same holds when `?` or `#` follows an `@` in the password. `scalo.logger.filters.mask_url_userinfo` applies the rule to any string. See [core-pillars/scrubbing.md](core-pillars/scrubbing.md#layer-2-field-name-regex).
 
 A two-item list under a key is no longer read as a `(name, value)` pair, so `{"fields": ["email", "name"]}` is logged whole. A two-item tuple, and a two-item list inside a list or tuple, stay pairs. See [core-pillars/logging.md](core-pillars/logging.md#fields).
 
-**Consumer adjustment** -- an `@` later in the path or query of a URL that carries a password is masked with it: `https://u:p@host/x?to=ops@example.com` logs as `https://u:***REDACTED***@example.com`. Code carrying its own URL-password regex calls `mask_url_userinfo` instead.
+**Consumer adjustment** -- an `@` later in the path or query of a URL that has a password is masked with it: `https://u:p@host/x?to=ops@example.com` logs as `https://u:***REDACTED***@example.com`. Code carrying its URL-password regex calls `mask_url_userinfo` instead.
 
 ## 2.31.11 -- Credential names match by substring, in any spelling (BEHAVIOUR CHANGE)
 
-Log fields, dict keys, `key=value` and `key: value` text, and Kafka config reprs now mask a value whose name holds a sensitive field anywhere in it, the rule scalo-rs uses. Separators and camelCase do not hide one, so `sasl_password`, `x-api-key`, `secretAccessKey` and `PGPASSWORD`, which went out in clear, are masked. `SENSITIVE_FIELDS` is now the union of the scalo-py and scalo-rs lists and the standard's sensitive-field floor, adding `pass`, `pin`, `session`, `private`, `email`, `phone` and qualified keys such as `signing_key`. A URL password holding `@` is masked whole. All of it goes through one matcher, `scalo.logger.filters.is_credential_name`. See [core-pillars/scrubbing.md](core-pillars/scrubbing.md#layer-2-field-name-regex).
+Log fields, dict keys, `key=value` and `key: value` text, and Kafka config reprs mask a value whose name holds a sensitive field anywhere in it, the rule scalo-rs uses. Separators and camelCase do not hide one, so `sasl_password`, `x-api-key`, `secretAccessKey` and `PGPASSWORD`, which went out in clear, are masked. `SENSITIVE_FIELDS` is the union of the scalo-py and scalo-rs lists and the standard's sensitive-field floor, adding `pass`, `pin`, `session`, `private`, `email`, `phone` and qualified keys such as `signing_key`. A URL password holding `@` is masked whole. All of it goes through one matcher, `scalo.logger.filters.is_credential_name`. See [core-pillars/scrubbing.md](core-pillars/scrubbing.md#layer-2-field-name-regex).
 
-**Consumer adjustment** -- expect more masking. A name that only contains a field is masked too: `token_count`, `tokenizer`, `mapping` (`pin`), `author` (`auth`), `session_timeout_ms` (`session`) and `email_count` (`email`). Log a value an operator must read under a name that holds no field. Code that matches a name against `SENSITIVE_FIELDS` itself calls `is_credential_name` instead.
+**Consumer adjustment** -- expect more masking. A longer name that includes a field is masked as well: `token_count`, `tokenizer`, `mapping` (`pin`), `author` (`auth`), `session_timeout_ms` (`session`) and `email_count` (`email`). Log a value an operator must read under a name that holds no field. Code that matches a name against `SENSITIVE_FIELDS` itself calls `is_credential_name` instead.
 
 ## 2.31.6 -- scalo writes no Helm chart or ArgoCD Application (API CHANGE)
 
@@ -114,39 +112,39 @@ The classmethod did nothing. The memory cache belongs to each instance, so there
 
 ## 2.31.4 -- `CacheConfig(enabled=False)` turns off the memory cache too (BEHAVIOUR CHANGE)
 
-`enabled=False` used to switch off only the disk tier, and the in-process memory cache still served each value for `ttl_secs`. Now every read goes to the provider, there is no stale-grace fallback, and a provider failure raises. See [api/secrets.md](api/secrets.md#caching).
+`enabled=False` used to switch off only the disk tier, and the in-process memory cache still served each value for `ttl_secs`. Every read goes to the provider, there is no stale-grace fallback, and a provider failure raises. See [api/secrets.md](api/secrets.md#caching).
 
 **Consumer adjustment** -- a consumer that wants in-process caching sets `enabled: true`. One that turned caching off so a rotated secret is read at once needs no change.
 
 ## 2.31.4 -- The secrets disk tier writes only sealed entries, or plaintext under an opt-in (BEHAVIOUR CHANGE)
 
-With no `encryption_key` the disk cache wrote each secret as hex JSON. It now writes only with `encryption_key` set or `allow_plaintext_disk_cache: true`, and otherwise caches in memory only and does not read a plaintext file it finds. The opt-in is refused when the app environment is `production` or `prod`.
+With no `encryption_key` the disk cache wrote each secret as hex JSON. It writes only with `encryption_key` set or `allow_plaintext_disk_cache: true`, and otherwise caches in memory only and does not read a plaintext file it finds. The opt-in is refused when the app environment is `production` or `prod`.
 
-With `enabled=True` the stale-grace fallback now serves from the in-memory tier as well as the disk tier, taking the newest fetched value still inside `stale_grace_secs`. It used to consult only the disk entry. Without `encryption_key` or the opt-in there is no disk entry, so a stale value no longer survives a restart: after one, a provider failure raises until the first successful read.
+With `enabled=True` the stale-grace fallback serves from the in-memory tier as well as the disk tier, taking the newest fetched value still inside `stale_grace_secs`. Before 2.31.4 it read the disk entry alone. Without `encryption_key` or the opt-in there is no disk entry, so a stale value no longer survives a restart: after one, a provider failure raises until the first successful read.
 
-**Consumer adjustment** -- a consumer that needs cached secrets, or the stale-grace fallback, to survive a restart sets `encryption_key`. Plaintext entries already on disk are no longer read, so delete them.
+**Consumer adjustment** -- a consumer that needs cached secrets, or the stale-grace fallback, to survive a restart sets `encryption_key`. Plaintext entries on disk are no longer read, so delete them.
 
 ## 2.31.4 -- L3 email redaction needs a letter in the domain's last label (BEHAVIOUR CHANGE)
 
-`pkg@1.2.3`, npm and pip specs such as `@scope/pkg@2.0.0`, and `user@10.0.0.1` now pass through unredacted. Literal, `%40` and `%2540` addresses are redacted as before. See [core-pillars/scrubbing.md](core-pillars/scrubbing.md#layer-3-email-addresses).
+`pkg@1.2.3`, npm and pip specs such as `@scope/pkg@2.0.0`, and `user@10.0.0.1` pass through unredacted. Literal, `%40` and `%2540` addresses are redacted as before. See [core-pillars/scrubbing.md](core-pillars/scrubbing.md#layer-3-email-addresses).
 
 **Consumer adjustment** -- none. A consumer that must hide a user-at-IPv4 value masks its field by name with `SensitiveDataFilter.add_sensitive_fields`.
 
 ## 2.31.4 -- An unreachable OpenBao fails login as `ProviderError` (BEHAVIOUR CHANGE)
 
-The AppRole and Kubernetes logins raised `AuthenticationError` for every failure, a refusal and a connection error alike, with the cause dropped. A 400-499 answer other than 429 is still `AuthenticationError`. A server that cannot be reached, rate limits the login (429), redirects it (3xx), answers 5xx or sends a body that is not JSON now raises plain `ProviderError`. Both chain the underlying `httpx` error as `__cause__`.
+The AppRole and Kubernetes logins raised `AuthenticationError` for every failure, a refusal and a connection error alike, with the cause dropped. A 400-499 answer other than 429 is still `AuthenticationError`. A server that cannot be reached, rate limits the login (429), redirects it (3xx), answers 5xx or sends a body that is not JSON raises plain `ProviderError`. Both chain the underlying `httpx` error as `__cause__`.
 
 **Consumer adjustment** -- code that catches `AuthenticationError` to handle an outage catches `ProviderError` as well, or instead. `AuthenticationError` subclasses `ProviderError`, so a handler for `ProviderError` still sees both.
 
 ## 2.31.4 -- Background refresh re-fetches fresh secrets (BEHAVIOUR CHANGE)
 
-`start_refresh()` read each cached secret back through the normal read path, which answered from the memory cache while the entry was fresh. With the default `refresh_interval_secs` (1800) under `ttl_secs` (3600) it never reached a provider. Each refresh now fetches every cached secret from its provider, replaces the cached value and reports a rotation when the version changed.
+`start_refresh()` read each cached secret back through the normal read path, which answered from the memory cache while the entry was fresh. With the default `refresh_interval_secs` (1800) under `ttl_secs` (3600) it never reached a provider. Each refresh fetches every cached secret from its provider, replaces the cached value and reports a rotation when the version changed.
 
 **Consumer adjustment** -- expect one provider read per cached secret per refresh interval. Lengthen `refresh_interval_secs` if that is more load than the secrets backend should take.
 
 ## 2.31.4 -- HTTP retry logs name the error by class and status (BEHAVIOUR CHANGE)
 
-stamina's default retry hooks recorded `repr()` of the httpx error, which carries the request URL. `HttpClient` and `AsyncHttpClient` now hand them a carrier whose repr is the class plus any status, so `stamina.caused_by` reads `HTTPStatusError(status=503)` or `ConnectError`. The Prometheus `stamina_retries_total` `error_type` label for these retries reads `scalo.http.client._RetriedHTTPError` where it read `httpx.HTTPStatusError`, `httpx.ConnectError` and so on. Callers still receive the original httpx exception. See [api/http-client.md](api/http-client.md#observability).
+stamina's default retry hooks recorded `repr()` of the httpx error, which has the request URL. `HttpClient` and `AsyncHttpClient` hand them a carrier whose repr is the class plus any status, so `stamina.caused_by` reads `HTTPStatusError(status=503)` or `ConnectError`. The Prometheus `stamina_retries_total` `error_type` label for these retries reads `scalo.http.client._RetriedHTTPError` where it read `httpx.HTTPStatusError`, `httpx.ConnectError` and so on. Callers still receive the original httpx exception. See [api/http-client.md](api/http-client.md#observability).
 
 **Consumer adjustment** -- a dashboard or alert that filters retries on an httpx `error_type` value filters on `scalo.http.client._RetriedHTTPError`, and reads the class and status from the log field.
 
@@ -164,29 +162,29 @@ The module (`DeploymentTopology`, `load_topology` and its errors) loaded a cross
 
 ## 2.31.3 -- The secret schema marker is `x-scalo-secret` alone (BEHAVIOUR CHANGE)
 
-`config_schema_json` no longer writes `x-dfe-secret`, and `json_schema_extra={"x-dfe-secret": True}` no longer opts a field in. A secret field now ends `"x-scalo-secret": true, "writeOnly": true`, as scalo-rs's `SensitiveString` emits.
+`config_schema_json` no longer writes `x-dfe-secret`, and `json_schema_extra={"x-dfe-secret": True}` no longer opts a field in. A secret field ends `"x-scalo-secret": true, "writeOnly": true`, as scalo-rs's `SensitiveString` emits.
 
 **Consumer adjustment** -- a field marked with `x-dfe-secret` is marked with `x-scalo-secret` in the same change as the bump, or its schema stops calling it a secret. A reader that keyed on `x-dfe-secret` keys on `x-scalo-secret`. A committed `config-schema.*` loses the old marker on regeneration, so `check_config_artifact_drift` fails until it is regenerated.
 
-## 2.31.3 -- The contract carries every field scalo-rs writes (BEHAVIOUR CHANGE)
+## 2.31.3 -- The contract has every field scalo-rs writes (BEHAVIOUR CHANGE)
 
 `DeploymentContract` parses a contract scalo-rs emitted, where it used to refuse it with `extra_forbidden`. New fields, each with scalo-rs's name, type and default: `unbound_listen_paths`, `PortContract.when` (`EnabledCondition`, `EqualsCondition` or `OneOfCondition`) and `bound_from`, `KedaContract.enabled` and `kafka_trigger` (`KafkaLagTrigger`), and `NativeDepsContract.distro` (`BaseDistro`), `unresolved_base_image` and `contradicted_base_image`. See [deployment/contract.md](deployment/contract.md).
 
-- An emitted contract with a `keda` block gains `keda.enabled` and `keda.kafka_trigger`.
-- One built through `for_scalo_extras` or `for_scalo_features` gains `native_deps.distro`.
+- An emitted contract with a `keda` block adds `keda.enabled` and `keda.kafka_trigger`.
+- One built through `for_scalo_extras` or `for_scalo_features` adds `native_deps.distro`.
 - `KedaContract.from_config` copies `enabled`, where it dropped it, and `generate_chart` treats `enabled=False` as no KEDA.
 
-**Consumer adjustment** -- an app that builds `KedaContract.from_config` from a `KedaConfig` with `enabled=False` now gets a chart with no `ScaledObject`. A committed `deployment-contract.json` changes on regeneration as above.
+**Consumer adjustment** -- an app that builds `KedaContract.from_config` from a `KedaConfig` with `enabled=False` gets a chart with no `ScaledObject`. A committed `deployment-contract.json` changes on regeneration as above.
 
 ## 2.31.3 -- Deployment contract schema 4 (BEHAVIOUR CHANGE)
 
-`DEFAULT_SCHEMA_VERSION` and `MAX_SUPPORTED_SCHEMA_VERSION` are 4, matching scalo-rs. `DeploymentContract` gains `writable_paths` (`WritablePath`), `termination_grace_seconds` (45), `resources` (`ResourcesContract`, `ResourceList`), `security` (`SecurityContract`) and `singleton`. `HealthContract` gains `startup_budget_seconds` (150, at least 1), `PortContract` gains `public` and `app_protocol`, and `SecretGroupContract` gains `optional`. `config_mount_path` may be omitted or empty, meaning no config file. An app marks an operator dial with `json_schema_extra={DIAL_KEYWORD: "big"}` or `"small"`. The wheel ships scalo-rs's v4 contract JSON Schema. See [deployment/contract.md](deployment/contract.md).
+`DEFAULT_SCHEMA_VERSION` and `MAX_SUPPORTED_SCHEMA_VERSION` are 4, matching scalo-rs. `DeploymentContract` adds `writable_paths` (`WritablePath`), `termination_grace_seconds` (45), `resources` (`ResourcesContract`, `ResourceList`), `security` (`SecurityContract`) and `singleton`. `HealthContract` adds `startup_budget_seconds` (150, at least 1), `PortContract` adds `public` and `app_protocol`, and `SecretGroupContract` adds `optional`. `config_mount_path` may be omitted or empty, meaning no config file. An app marks an operator dial with `json_schema_extra={DIAL_KEYWORD: "big"}` or `"small"`. The wheel ships scalo-rs's v4 contract JSON Schema. See [deployment/contract.md](deployment/contract.md).
 
-**Consumer adjustment** -- an emitted contract now carries `schema_version: 4`, `termination_grace_seconds`, `security`, `singleton` and `health.startup_budget_seconds`, so a committed `deployment-contract.json` changes on regeneration. An app that passes `schema_version=3` passes nothing, or `DEFAULT_SCHEMA_VERSION`, because a v4 chart assembler refuses version 3. Construction now refuses a malformed writable path, a capability that is not an upper-case name, a singleton with KEDA on, and an `x-scalo-dial` other than `big` or `small`.
+**Consumer adjustment** -- an emitted contract has `schema_version: 4`, `termination_grace_seconds`, `security`, `singleton` and `health.startup_budget_seconds`, so a committed `deployment-contract.json` changes on regeneration. An app that passes `schema_version=3` passes nothing, or `DEFAULT_SCHEMA_VERSION`, because a v4 chart assembler rejects version 3. Construction rejects a malformed writable path, a capability that is not an upper-case name, a singleton with KEDA on, and an `x-scalo-dial` other than `big` or `small`.
 
-## 2.31.3 -- Construction refuses the rest of what scalo-rs's `validate()` refuses (BEHAVIOUR CHANGE)
+## 2.31.3 -- Construction rejects the rest of what scalo-rs's `validate()` rejects (BEHAVIOUR CHANGE)
 
-`DeploymentContract` now refuses five more things when it is built or parsed. Each was accepted before:
+`DeploymentContract` now rejects five more things when it is built or parsed. Each was accepted before:
 
 - An `app_name` that is not a Kubernetes Service name: 1 to 63 lowercase letters, digits and inner hyphens, starting with a letter.
 - A port `name` that is not 1 to 15 lowercase letters, digits and single inner hyphens with a letter, or a `protocol` that is not `TCP`, `UDP` or `SCTP` in any case.
@@ -198,42 +196,42 @@ The module (`DeploymentTopology`, `load_topology` and its errors) loaded a cross
 
 ## 2.31.0 -- Console logs: JSON off a TTY, fields in text, colour only on a TTY (BEHAVIOUR CHANGE)
 
-`auto`, the default `LOG_FORMAT`, now does what [core-pillars/logging.md](core-pillars/logging.md#format-selection) always said: JSON when stderr is not a TTY, text when it is. It used to write coloured text everywhere, so a container's logs carried ANSI escapes and no keyword fields. Text now appends the fields as `key=value`, and colour is on only for a TTY unless `LOG_COLOR`, `NO_COLOR` or `logging.color` says otherwise.
+`auto`, the default `LOG_FORMAT`, does what [core-pillars/logging.md](core-pillars/logging.md#format-selection) always said: JSON when stderr is not a TTY, text when it is. Before 2.31.0 it wrote coloured text everywhere, so a container's logs held ANSI escapes and no keyword fields. Text appends the fields as `key=value`, and colour is on only for a TTY unless `LOG_COLOR`, `NO_COLOR` or `logging.color` says otherwise.
 
-`LOG_FORMAT=json` no longer dumps loguru's raw record (`{"text": ..., "record": {...}}`). Each line is one flat object, `timestamp`, `level`, `target`, `function`, `line_number`, `message` and `fields`, described in [core-pillars/logging.md](core-pillars/logging.md#json-records). `logfmt` was documented but never had a renderer. It is now reported as unrecognised and treated as `auto`.
+`LOG_FORMAT=json` no longer dumps loguru's raw record (`{"text": ..., "record": {...}}`). Each line is one flat object, `timestamp`, `level`, `target`, `function`, `line_number`, `message` and `fields`, described in [core-pillars/logging.md](core-pillars/logging.md#json-records). `logfmt` was documented but never had a renderer. It is reported as unrecognised and treated as `auto`.
 
 **Consumer adjustment** -- a deployment that wants text in a container sets `LOG_FORMAT=text`. A parser that read `record.extra` or `text` from the old JSON reads `fields` and `message` instead.
 
 ## 2.31.0 -- Stdlib logging goes through the scalo sinks (BEHAVIOUR CHANGE)
 
-`setup()` now routes stdlib `logging` records into the scalo sinks, see [core-pillars/logging.md](core-pillars/logging.md#stdlib-logging). Before, a library logging through `logging` (uvicorn, clickhouse_connect, scalo's own secrets manager) wrote unformatted and unscrubbed lines, or nothing below WARNING. The root logger's existing handlers are replaced and its level follows the scalo level.
+`setup()` now routes stdlib `logging` records into the scalo sinks, see [core-pillars/logging.md](core-pillars/logging.md#library-and-stdlib-loggers). Before, a library logging through `logging` (uvicorn, clickhouse_connect, scalo's secrets manager) wrote unformatted and unscrubbed lines, or nothing below WARNING. The root logger's existing handlers are replaced and its level follows the scalo level.
 
-**Consumer adjustment** -- build any `uvicorn.Config` after `setup()` with `log_config=None`, or uvicorn's own handlers come back. An app that relies on its own root handler sets `logging.intercept_stdlib: false`.
+**Consumer adjustment** -- build any `uvicorn.Config` after `setup()` with `log_config=None`, or uvicorn's handlers come back. An app that relies on its root handler sets `logging.intercept_stdlib: false`.
 
 ## 2.31.0 -- Scrubbed tracebacks, bounded fields, httpx capped (BEHAVIOUR CHANGE)
 
-Tracebacks are now formatted the way the stdlib formats them and scrubbed before any sink writes them, in every format. loguru's extended frames above the `except` are gone. Keys and strings inside a field's containers are scrubbed up to 64 per record, and the rest of a larger list or dict is elided with a count, see [core-pillars/logging.md](core-pillars/logging.md#fields). `httpx` and `httpcore` join the loggers capped at WARNING, because their INFO request lines carry whole URLs.
+Tracebacks are formatted the way the stdlib formats them and scrubbed before any sink writes them, in every format. loguru's extended frames above the `except` are gone. Keys and strings inside a field's containers are scrubbed up to 64 per record, and the rest of a larger list or dict is elided with a count, see [core-pillars/logging.md](core-pillars/logging.md#fields). `httpx` and `httpcore` join the loggers capped at WARNING, because their INFO request lines have whole URLs.
 
 **Consumer adjustment** -- a sink added with `logger.add()` after `setup()` sees `record["extra"]` as the scrubbed fields in plain JSON data, not the objects passed in. An app that wants httpx's request lines sets `logging.getLogger("httpx").setLevel(logging.INFO)` after `setup()`, knowing a signed URL goes out whole.
 
-## 2.31.0 -- Contract names and defaults carry no organisation or product name
+## 2.31.0 -- Contract names and defaults have no organisation or product name
 
-The names `scalo.deployment` writes into artefacts, and the defaults it falls back on, named one organisation and one product. They are now scalo's own or the app's, and an app that relied on the old value sets it explicitly. Once it does, every artefact is byte-for-byte what it was with three exceptions: `deployment-contract.json` gains the two new `oci_labels` fields, a secret field's schema gains `x-scalo-secret` and ends with the three marker keys, and `Chart.yaml` names only the app. scalo-rs's section of the same name is the same change.
+The names `scalo.deployment` writes into artefacts, and the defaults it falls back on, named one organisation and one product. They are scalo's or the app's, and an app that relied on the old value sets it explicitly. Once it does, every artefact is byte-for-byte what it was with three exceptions: `deployment-contract.json` adds the two new `oci_labels` fields, a secret field's schema adds `x-scalo-secret` and ends with the three marker keys, and `Chart.yaml` names only the app. scalo-rs's section of the same name is the same change.
 
 | Old | New | To keep the old value |
 | --- | --- | --- |
-| Secret schema marker `x-dfe-secret` | `x-scalo-secret`, with `x-dfe-secret` still emitted beside it. Either one in `json_schema_extra` opts a field in. A secret field now ends `"x-scalo-secret": true, "x-dfe-secret": true, "writeOnly": true`, the order scalo-rs's `SensitiveString` emits | Nothing: both are emitted. Move every reader to `x-scalo-secret` |
+| Secret schema marker `x-dfe-secret` | `x-scalo-secret`, with `x-dfe-secret` still emitted beside it. Either one in `json_schema_extra` opts a field in. A secret field ends `"x-scalo-secret": true, "x-dfe-secret": true, "writeOnly": true`, the order scalo-rs's `SensitiveString` emits | Nothing: both are emitted. Move every reader to `x-scalo-secret` |
 | Label keys `io.hyperi.profile`, `io.hyperi.app`, `io.hyperi.metrics_port`, `io.hyperi.contract.*` | `io.scalo.*`, under the new `OciLabels.label_namespace` | `OciLabels(label_namespace="io.hyperi")` |
 | `KEY_PREFIX` (`io.hyperi.contract`) | `KEY_SEGMENT` (`contract`), under the label namespace, and `DEFAULT_LABEL_NAMESPACE` (`io.scalo`) | -- |
 | `ContractIdentity.as_dockerfile_labels()`, `as_yaml_annotations(indent=0)` | take the namespace: `as_dockerfile_labels(namespace)`, `as_yaml_annotations(namespace, indent=0)`. New `as_labels(namespace)` returns the keys as a dict | pass `"io.hyperi"` |
-| `DEFAULT_VENDOR` (`HYPERI PTY LIMITED`), the `OciLabels.vendor` default | removed. `vendor` is empty by default, and an empty vendor writes no label | `OciLabels(vendor="HYPERI PTY LIMITED")` |
-| `DEFAULT_LICENSE` (`Apache-2.0`), the `OciLabels.licenses` default | removed. `licenses` is empty by default, and an empty licence writes no `org.opencontainers.image.licenses` label and no `# License:` line | `OciLabels(licenses="Apache-2.0")`, or the app's own licence |
-| `generate_dockerfile` header `# License:   Apache-2.0` and `# Copyright: (c) 2026 HYPERI PTY LIMITED`, written whatever the contract named | `# License:` follows `OciLabels.licenses` and `# Copyright:` the new `OciLabels.copyright`, each only when set. With neither set the header drops both lines and the `#` after them | `OciLabels(licenses="Apache-2.0", copyright="(c) 2026 HYPERI PTY LIMITED")` writes the header exactly as before. An app that set another licence now gets it in the header too |
+| `DEFAULT_VENDOR` (`HYPERI PTY LIMITED`), the `OciLabels.vendor` default | removed. `vendor` is empty by default, and an empty `vendor` writes no label | `OciLabels(vendor="HYPERI PTY LIMITED")` |
+| `DEFAULT_LICENSE` (`Apache-2.0`), the `OciLabels.licenses` default | removed. `licenses` is empty by default, and an empty licence writes no `org.opencontainers.image.licenses` label and no `# License:` line | `OciLabels(licenses="Apache-2.0")`, or the app's licence |
+| `generate_dockerfile` header `# License:   Apache-2.0` and `# Copyright: (c) 2026 HYPERI PTY LIMITED`, written whatever the contract named | `# License:` follows `OciLabels.licenses` and `# Copyright:` the new `OciLabels.copyright`, each only when set. With neither set the header drops both lines and the `#` after them | `OciLabels(licenses="Apache-2.0", copyright="(c) 2026 HYPERI PTY LIMITED")` writes the header exactly as before. An app that set another licence gets it in the header as well |
 | `DeploymentContract.image_registry` default `localhost:5000`, and `DEFAULT_IMAGE_REGISTRY` | required, with no default. A missing or blank registry raises `ValidationError` when the contract is built. `DEFAULT_IMAGE_REGISTRY` is removed | `image_registry="localhost:5000"`, or the registry the app pushes to |
 | `image_registry_from_cascade() -> str`, falling back to `localhost:5000` | `-> str \| None`, `None` when unset | `image_registry_from_cascade() or "localhost:5000"` |
 | `argocd_repo_url_from_cascade(app_name) -> str`, falling back to `https://github.com/your-org/<app>` | `argocd_repo_url_from_cascade() -> str \| None`. `generate-artefacts` writes no `argocd-application.yaml` without it, and warns on stderr | `deployment.argocd.repo_url` in a config file the cascade reads |
 | `ArgocdConfig().dest_namespace` `dfe` | empty, which deploys into a namespace named after `app_name`. New cascade key `deployment.argocd.dest_namespace`, read by `argocd_dest_namespace_from_cascade()` | `ArgocdConfig(dest_namespace="dfe")`, or `deployment.argocd.dest_namespace: dfe` for `generate-artefacts` |
-| `generate_chart`'s `Chart.yaml` keywords `hyperi` and `dfe`, and maintainer `HyperI` at `https://github.com/hyperi-io` | one keyword, `app_name`, and no `maintainers` block | no setting: an app that wants its own keywords or maintainers edits the generated `Chart.yaml` |
+| `generate_chart`'s `Chart.yaml` keywords `hyperi` and `dfe`, and maintainer `HyperI` at `https://github.com/hyperi-io` | one keyword, `app_name`, and no `maintainers` block | no setting: an app that wants its keywords or maintainers edits the generated `Chart.yaml` |
 
 scalo-rs's rows for `KafkaSource` consumer groups, the DLQ paths and topic, and the spool and file-output paths have no counterpart here. scalo-py derives no consumer group (every consumer takes an explicit `group_id`) and has no DLQ, spool or file-output module.
 
@@ -246,8 +244,8 @@ scalo-rs's rows for `KafkaSource` consumer groups, the DLQ paths and topic, and 
 
 ## 2.30.2 -- Internal Kafka group ids derive from the client's config (BEHAVIOUR CHANGE)
 
-The consumer that `KafkaClient`, `AsyncKafkaClient` and `ReadOnlyKafkaClient` build for watermark and offset-for-time queries used fixed group ids of scalo's own: `scalo-offset-lookup-<n>`, `scalo-watermark-<n>`, `scalo-async-<n>`, `scalo-async-wm-<n>` and `scalo-readonly-<n>`, where `<n>` was the Python object id of the client. A broker granting groups by prefix refused all five, logging `GroupAuthorizationFailed`. They are now one id, `<group.id>-admin`, falling back to `<client.id>-admin` and then `scalo-admin`. See [transport/kafka.md](transport/kafka.md), "Internal consumer groups and broker ACLs".
+The consumer that `KafkaClient`, `AsyncKafkaClient` and `ReadOnlyKafkaClient` build for watermark and offset-for-time queries used fixed scalo group ids: `scalo-offset-lookup-<n>`, `scalo-watermark-<n>`, `scalo-async-<n>`, `scalo-async-wm-<n>` and `scalo-readonly-<n>`, where `<n>` was the Python object id of the client. A broker granting groups by prefix refused all five, logging `GroupAuthorizationFailed`. They are one id, `<group.id>-admin`, falling back to `<client.id>-admin` and then `scalo-admin`. See [transport/kafka.md](transport/kafka.md), "Internal consumer groups and broker ACLs".
 
 None of those consumers ever joined its group or committed an offset, and `<n>` changed with every process, so no offsets are stranded under the old names.
 
-**Consumer adjustment** -- none in code. A deployment that granted the old names is the only one affected, and since `<n>` changed with every process that grant was a prefix such as `scalo-`. It now needs to cover `<group.id>-admin`, which an app's own group prefix already does. A client given neither `group.id` nor `client.id` gets `scalo-admin`, so set one of them to land inside the app's prefix.
+**Consumer adjustment** -- none in code. A deployment that granted the old names is the only one affected, and since `<n>` changed with every process that grant was a prefix such as `scalo-`. It needs to cover `<group.id>-admin`, which an app's group prefix does. A client given neither `group.id` nor `client.id` gets `scalo-admin`, so set one of them to land inside the app's prefix.

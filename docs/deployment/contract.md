@@ -2,7 +2,7 @@
 
 The Pydantic model an app builds once from its `Config.default()`. `validate_dockerfile` checks a committed Dockerfile against it, generators emit the image artefacts from it, and the [scalo-service](https://github.com/hyperi-io/scalo-rs/blob/main/charts/scalo-service/README.md) library chart renders the Kubernetes objects from its JSON. scalo-py parses every field scalo-rs's `scalo::deployment::contract` writes, under the same name and JSON type, and writes it back unchanged. Only scalo-py has `builder_image`, `python_version`, `emit_healthcheck` and `native_deps.distro_codename`, which scalo-rs ignores.
 
-`tests/fixtures/contract-parity/deployment-contract.json` is a contract scalo-rs emitted with every optional field set, copied from scalo-rs's own `tests/fixtures/contract-parity/`. `tests/unit/deployment/test_contract_parity.py` parses it, re-emits it and checks nothing changed, so a field scalo-rs adds fails here until scalo-py carries it.
+`tests/fixtures/contract-parity/deployment-contract.json` is a contract scalo-rs emitted with every optional field set, copied from scalo-rs's `tests/fixtures/contract-parity/`. `tests/unit/deployment/test_contract_parity.py` parses it, re-emits it and checks nothing changed, so a field scalo-rs adds fails here until scalo-py has it.
 
 `src/scalo/deployment/data/contract.schema.json` ships in the wheel. It is scalo-rs's `charts/scalo-service/schema/deployment-contract.v4.schema.json`, the JSON Schema a chart assembler validates every contract against, copied byte for byte. `.hyperi-ci-vendor.lock` records the source repo, path, ref and sha256 of the copy. `tests/unit/deployment/test_contract_schema.py` checks the copy against the lock and validates what scalo-py emits against it. Update the copy from scalo-rs, never by hand: move `ref` in the `vendor:` block of `.hyperi-ci.yaml` and run `hyperi-ci vendor sync`.
 
@@ -18,13 +18,11 @@ from scalo.deployment import (
 )
 ```
 
----
-
 ## Top-level fields
 
 | Field | Type | Default | Purpose |
 |---|---|---|---|
-| `schema_version` | `int` | `4` (`DEFAULT_SCHEMA_VERSION`) | A reader refuses a version it does not support. The v4 schema accepts only 4 |
+| `schema_version` | `int` | `4` (`DEFAULT_SCHEMA_VERSION`) | A reader rejects a version it does not support. The v4 schema accepts only 4 |
 | `app_name` | `str` | required | Matches `Chart.yaml` `name` and the image repo segment. A Kubernetes Service name: 1 to 63 lowercase letters, digits and inner hyphens, starting with a letter. Anything else is refused at construction |
 | `binary_name` | `str` | `""` | Falls back to `app_name` via `.binary()` |
 | `description` | `str` | `""` | Chart description |
@@ -47,18 +45,18 @@ from scalo.deployment import (
 | `native_deps` | `NativeDepsContract` | factory | See [native-deps.md](native-deps.md) |
 | `image_profile` | `ImageProfile` | `PRODUCTION` | See below |
 | `emit_healthcheck` | `bool` | `True` | A Dockerfile `HEALTHCHECK` on the liveness path. Kubernetes ignores it and Compose uses it, so set False for a cluster-only image. scalo-py only |
-| `oci_labels` | `OciLabels` | factory | Static OCI labels and the namespace of scalo's own keys -- see [`OciLabels`](#ocilabels) |
-| `config_schema` | `dict \| None` | `None` | JSON Schema of the app's `Config` (v3). Dials carry `x-scalo-dial` (v4) -- see [Dials](#dials) |
+| `oci_labels` | `OciLabels` | factory | Static OCI labels and the namespace of scalo's keys -- see [`OciLabels`](#ocilabels) |
+| `config_schema` | `dict \| None` | `None` | JSON Schema of the app's `Config` (v3). Dials have `x-scalo-dial` (v4) -- see [Dials](#dials) |
 | `capabilities` | `list[Capability]` | `[]` | Runtime-surface catalogue (v3) |
 | `writable_paths` | `list[WritablePath]` | `[]`, left out when empty | Directories the app writes, so the root filesystem stays read-only (v4) -- see [Writable paths, resources and security](#writable-paths-resources-and-security) |
 | `termination_grace_seconds` | `int` (0..2^32-1) | `45` | Seconds between SIGTERM and SIGKILL (v4) |
-| `resources` | `ResourcesContract` | empty, left out when empty | The app's own requests and limits. Empty leaves the chart default (v4) |
+| `resources` | `ResourcesContract` | empty, left out when empty | The app's requests and limits. Empty leaves the chart default (v4) |
 | `security` | `SecurityContract` | uid/gid/fsGroup 1000, read-only root | Identity and capabilities the image runs with (v4) |
 | `singleton` | `bool` | `False` | Exactly one pod: nothing autoscales it, and a new pod starts only after the old one stops (v4) |
 | `service_account` | `ServiceAccount` | `OWN`, left out while `own` | `NONE` for an app that calls no Kubernetes API: the scalo-service chart creates no ServiceAccount and the pod names none (v4) |
 | `hot_paths` | `list[str]` | `[]`, left out when empty | Dotted paths in the app config that reload without a pod restart, so the chart leaves them out of the config checksum. Needs `config_mount_path` |
 
-`image_registry` has no default, and scalo-py refuses a missing or blank one when the contract is built. scalo-rs refuses it later, in `validate()`. Read an organisation-wide value from the cascade:
+`image_registry` has no default, and scalo-py rejects a missing or blank one when the contract is built. scalo-rs rejects it later, in `validate()`. Read an organisation-wide value from the cascade:
 
 ```python
 image_registry=image_registry_from_cascade() or "registry.example.com/team"
@@ -98,8 +96,6 @@ costs nothing ongoing. Note that pinning `base_image` opts out of the
 `model_config = ConfigDict(extra="forbid")` on every nested model --
 typos fail at construction, not at deploy.
 
----
-
 ## `ImageProfile`
 
 `StrEnum` with two members. The difference is debug tooling and the tag suffix.
@@ -113,8 +109,6 @@ typos fail at construction, not at deploy.
 `DEVELOPMENT`. Use it in CI matrix expansions to emit both image
 variants from one contract.
 
----
-
 ## `OciLabels`
 
 | Field | Default | Notes |
@@ -122,15 +116,15 @@ variants from one contract.
 | `title` | `""` | Falls back to `app_name` in generators |
 | `description` | `""` | |
 | `vendor` | `""` | `org.opencontainers.image.vendor`. Empty writes no label |
-| `label_namespace` | `"io.scalo"` (`DEFAULT_LABEL_NAMESPACE`) | Namespace of scalo's own keys, below |
+| `label_namespace` | `"io.scalo"` (`DEFAULT_LABEL_NAMESPACE`) | Namespace of scalo's keys, below |
 | `licenses` | `""` | `org.opencontainers.image.licenses` and the Dockerfile `# License` line. Empty writes neither |
 | `copyright` | `""` | The Dockerfile `# Copyright` line. Empty writes no line |
 
 Dynamic labels (`org.opencontainers.image.source`, `revision`, `version`, `created`) are CI-injected via `--build-arg`, and the static labels listed here come from the contract.
 
-`vendor`, `licenses` and `copyright` name the app's distributor, licence and copyright holder. scalo names none of its own, so an app's artefacts carry only the terms the app states.
+`vendor`, `licenses` and `copyright` name the app's distributor, licence and copyright holder. scalo names none, so an app's artefacts state the app's terms and no others.
 
-scalo stamps a few keys of its own beside the standard `org.opencontainers.image.*` labels, all under `label_namespace`:
+scalo stamps a few keys beside the standard `org.opencontainers.image.*` labels, all under `label_namespace`:
 
 | Key | Where | Value |
 | --- | --- | --- |
@@ -139,9 +133,7 @@ scalo stamps a few keys of its own beside the standard `org.opencontainers.image
 | `<namespace>.metrics_port` | container manifest | `metrics_port` |
 | `<namespace>.contract.version` / `.source-commit` / `.image-ref` | Dockerfile, runtime stage, container manifest, when a `ContractIdentity` is passed. `ContractIdentity.as_yaml_annotations` renders the same keys for a chart or `Application` built elsewhere | see [identity.md](identity.md) |
 
-An app that already ships its own namespace keeps it by setting `label_namespace`, and every key above moves with it.
-
----
+An app with a namespace of its choosing sets `label_namespace`, and every key above moves with it.
 
 ## `HealthContract`
 
@@ -152,7 +144,7 @@ An app that already ships its own namespace keeps it by setting `label_namespace
 | `metrics_path` | `/metrics` | Prometheus scrape annotation on the pod |
 | `startup_budget_seconds` | `150` | How long the scalo-service startup probe waits for the liveness path before a restart, at least 1 (v4) |
 
-The Helm `startupProbe` also points at `liveness_path`. There is no separate
+The Helm `startupProbe` points at `liveness_path`. There is no separate
 startup path and no `/startupz`: Kubernetes suspends liveness until the
 startup probe passes, so one path gives both a generous boot budget and a
 tight liveness period without the two drifting apart.
@@ -161,17 +153,15 @@ These three paths are the whole surface. There are no aliases -- a retired
 path returns 404, deliberately, because an alias that keeps answering 200
 hides a probe still aimed at the old name.
 
----
-
 ## `PortContract` / `SecretGroupContract` / `SecretEnvContract`
 
 `PortContract` -- additional container port beyond `metrics_port`.
 `name` (e.g. `http`), `port` (1..65535), `protocol` (default `TCP`).
 The Dockerfile `EXPOSE`, the container manifest and the Compose fragment
-carry each entry, and the scalo-service chart renders a `containerPort`
+have each entry, and the scalo-service chart renders a `containerPort`
 and a matching Service port for it.
 
-Construction refuses a `name` Kubernetes would not take: 1 to 15 lowercase letters, digits and single inner hyphens, with at least one letter. It refuses a `protocol` other than `TCP`, `UDP` or `SCTP` in any case. It also refuses a control character in a `when` condition, `bound_from` or `app_protocol`, because a generator prints each onto one line and a newline there starts an instruction of its own. The refusal reads `extra_ports[<name>].<field>: <reason>`, and names the port by index until its name is valid.
+Construction rejects a `name` Kubernetes would not take: 1 to 15 lowercase letters, digits and single inner hyphens, with at least one letter. It rejects a `protocol` other than `TCP`, `UDP` or `SCTP` in any case. It rejects a control character in a `when` condition, `bound_from` or `app_protocol`, because a generator prints each onto one line and a newline there starts an instruction of its. The refusal reads `extra_ports[<name>].<field>: <reason>`, and names the port by index until its name is valid.
 
 Four optional fields say when the listener exists, which address it serves and how clients reach it. Each is left out of the emitted contract when unset:
 
@@ -190,7 +180,7 @@ The condition is tagged by `kind`, as scalo-rs's `PortCondition` serialises it. 
 | `EqualsCondition(path=..., value=...)` | `{"kind": "equals", "path": ..., "value": ...}` |
 | `OneOfCondition(path=..., values=[...])` | `{"kind": "one_of", "path": ..., "values": [...]}` |
 
-scalo-py's generators read none of the four yet: the Dockerfile `EXPOSE`, the container manifest and the Compose fragment carry every port unconditionally, where scalo-rs's keep a gated port out of `EXPOSE`. The scalo-service chart renders a gated port only while its condition holds.
+scalo-py's generators read none of the four yet: the Dockerfile `EXPOSE`, the container manifest and the Compose fragment have every port unconditionally, where scalo-rs's keep a gated port out of `EXPOSE`. The scalo-service chart renders a gated port only while its condition holds.
 
 `SecretEnvContract` -- one env var fed from a K8s Secret:
 
@@ -204,8 +194,6 @@ scalo-py's generators read none of the four yet: the Dockerfile `EXPOSE`, the co
 [keda.md](keda.md). `optional=True` (v4) lets the app start without the group,
 so a missing Secret or key leaves the variable unset. It is left out of the
 emitted contract when false.
-
----
 
 ## Writable paths, resources and security
 
@@ -244,11 +232,9 @@ DeploymentContract(
 
 A chart always adds a scratch `/tmp` beside the declared paths.
 
-`service_account=ServiceAccount.NONE` (`"none"` in the JSON) is for an app with no Kubernetes client and no use for a token. The scalo-service chart then creates no ServiceAccount and leaves `serviceAccountName` off the pod, so it runs as the namespace's `default` account with the token still unmounted. Construction refuses any value other than `own` or `none`.
+`service_account=ServiceAccount.NONE` (`"none"` in the JSON) is for an app with no Kubernetes client and no use for a token. The scalo-service chart then creates no ServiceAccount and leaves `serviceAccountName` off the pod, so it runs as the namespace's `default` account with the token still unmounted. Construction rejects any value other than `own` or `none`.
 
-Construction refuses what scalo-rs's `validate()` refuses here: a writable path name or path outside the rules above, a control character in a writable path's `path`, `size`, `size_limit` or `when`, two writable paths with one name or one mount path (a trailing `/` ignored), a persistent path with a blank `size`, a capability that is not an upper-case name, a `singleton` with KEDA on, a `hot_paths` entry that is not a dotted path of letters, digits, `_` and `-` segments or is listed twice, `hot_paths` with no `config_mount_path`, and KEDA on with nothing to scale on (see [keda.md](keda.md)).
-
----
+Construction rejects what scalo-rs's `validate()` rejects here: a writable path name or path outside the rules above, a control character in a writable path's `path`, `size`, `size_limit` or `when`, two writable paths with one name or one mount path (a trailing `/` ignored), a persistent path with a blank `size`, a capability that is not an upper-case name, a `singleton` with KEDA on, a `hot_paths` entry that is not a dotted path of letters, digits, `_` and `-` segments or is listed twice, `hot_paths` with no `config_mount_path`, and KEDA on with nothing to scale on (see [keda.md](keda.md)).
 
 ## Dials
 
@@ -264,16 +250,14 @@ class Buffer(BaseModel):
     level: str | None = Field(default=None, json_schema_extra={DIAL_KEYWORD: "small"})
 ```
 
-`config_schema_json` carries the marker through to `config_schema`. On an
+`config_schema_json` passes the marker through to `config_schema`. On an
 `int | None` dial pydantic puts `minimum` inside `anyOf` while the marker
 stays on the field. A chart assembler copies each marked node into the
 chart's `values.schema.json` under `config`, so an operator gets a typed,
-bounded value for each dial. `DeploymentContract` refuses an `x-scalo-dial`
+bounded value for each dial. `DeploymentContract` rejects an `x-scalo-dial`
 other than `big` or `small` anywhere in `config_schema`.
 
-It also refuses a `$ref` that the search for dials follows and that is not local, points at nothing, or loops back through a dial. The search takes `properties`, `allOf`, `anyOf`, `oneOf` and each `$ref` once, and reads a marked node whole. A broken `$ref` anywhere else in the schema is left alone.
-
----
+It rejects a `$ref` that the search for dials follows and that is not local, points at nothing, or loops back through a dial. The search takes `properties`, `allOf`, `anyOf`, `oneOf` and each `$ref` once, and reads a marked node whole. A broken `$ref` anywhere else in the schema is left alone.
 
 ## Convenience accessors
 
@@ -286,8 +270,6 @@ It also refuses a `$ref` that the search for dials follows and that is not local
 - `from_json(raw)` -- inverse. Round-trips losslessly.
 - `with_dev_profile()` -- deep-copied clone with development profile.
 
----
-
 ## Schema versioning
 
 ```python
@@ -297,7 +279,7 @@ MAX_SUPPORTED_SCHEMA_VERSION = 4
 
 `schema_version` is the handshake between whatever writes a contract and
 whatever reads it, and it equals scalo-rs's `CONTRACT_SCHEMA_VERSION`. The
-JSON Schema copied from scalo-rs pins it to 4, so a chart assembler refuses any other
+JSON Schema copied from scalo-rs pins it to 4, so a chart assembler rejects any other
 version. `DeploymentContract` itself reads a v3 contract with every v4 field at
 its default, as scalo-rs's types do.
 
@@ -305,8 +287,6 @@ scalo-rs owns the contract's fields. A new field lands there first, with a new
 parity fixture and, for a breaking change, a new schema version. scalo-py then
 mirrors the field, copies the fixture and the schema, and bumps both
 constants.
-
----
 
 ## Round-trip
 
@@ -327,13 +307,11 @@ assert restored == contract
 `exclude_none=False` so a parsed contract round-trips byte-equal to the
 emitted JSON. CI uses this to diff a freshly emitted contract against
 the one committed in the repo. The fields scalo-rs leaves out when unset are
-left out here too: `unbound_listen_paths`, a port's `when`, `bound_from`,
+left out here as well: `unbound_listen_paths`, a port's `when`, `bound_from`,
 `public` and `app_protocol`, a secret group's `optional`, `writable_paths`
 and a writable path's `size_limit`, `persistent` and `when`, `resources` and
 its empty halves, `security.capabilities_add`, and `native_deps.distro`,
 `unresolved_base_image` and `contradicted_base_image`.
-
----
 
 ## Building a contract from your `Config`
 
@@ -377,15 +355,3 @@ def deployment_contract(cfg: AppConfig) -> DeploymentContract:
         ),
     )
 ```
-
----
-
-## Related
-
-- [artefacts.md](artefacts.md)
-- [native-deps.md](native-deps.md)
-- [keda.md](keda.md)
-- [identity.md](identity.md)
-- [test-support.md](test-support.md)
-- [../integration.md](../integration.md)
-- [../extras-flags.md](../extras-flags.md)

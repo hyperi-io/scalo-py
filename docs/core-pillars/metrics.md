@@ -10,58 +10,7 @@ requests = m.counter("requests_total", "Total requests", ["method", "status"])
 requests.labels(method="POST", status="200").inc()
 ```
 
----
-
-## Backend selection
-
-Backend resolves in this priority: explicit `backend=` arg, then the
-`METRICS_BACKEND` env var, then `settings.metrics.backend`, then
-`"opentelemetry"`. If OTel SDK imports fail (extras not installed),
-the manager logs a warning and falls back to the Prometheus backend so
-metrics keep working.
-
-The env var is subject to the env prefix like every other control var:
-bare `METRICS_BACKEND` by default, or `<PREFIX>_METRICS_BACKEND` when
-the app sets one. There is no `HYPERI_`-prefixed form -- scalo
-hard-codes no brand.
-
-`ServiceApp` honours the same cascade and the same default.
-
-| Backend | When chosen | What it does |
-|---------|-------------|--------------|
-| `opentelemetry` | Default, on the `[metrics]` extra | Prometheus scrape AND OTLP push |
-| `prometheus` | Explicit, or OTel SDK missing | Prometheus scrape only |
-
-### OTLP push is on by default
-
-The OTel backend pushes over OTLP to a local collector by default and keeps serving `/metrics`, so a Prometheus-only estate loses nothing, and scalo-rs does the same. Span export is wired separately, by `logger.setup()` (see [tracing.md](tracing.md)).
-
-The backend reads its settings from the `backend_config` it is given. `ServiceApp` passes the cascade's `metrics` section, so the keys below work there. A bare `create_metrics()` gets none of them and reads only the OTel env vars, so pass `backend_config=settings.get("metrics", {})` yourself outside `ServiceApp`.
-
-Two ways off, and neither costs the scrape endpoint:
-
-```yaml
-metrics:
-  opentelemetry:
-    enabled: false          # master switch
-    endpoint: ""            # or blank the endpoint
-```
-
-A blank `OTEL_EXPORTER_OTLP_ENDPOINT` does the same thing, for an
-operator who cannot reach the config file. The env var outranks config,
-per the OTel spec.
-
-Disable the scrape endpoint separately with `prometheus_scrape: false`.
-
-### When the collector is not there
-
-Laptops and CI runners have no collector, and neither does a service during a collector outage. The exporters are wrapped in a backoff gate (`scalo.otel_backoff`): the first failure logs one warning and starts a wait that doubles to a 15-minute ceiling with 20% jitter, so a fleet that lost its collector together does not come back in lockstep. One success resets it and logs what the outage cost. Suppressed exports report success to the SDK -- OTLP metrics are cumulative, so the next export that lands carries the full value.
-
-The flush on exit is bounded at 2 seconds per reader and 2 seconds for the provider, well inside a Kubernetes termination grace period, so an unreachable collector cannot hold a pod open until SIGKILL.
-
----
-
-## Metric types
+Counters, gauges and histograms:
 
 ```python
 # Counter -- monotonically increasing.
@@ -92,7 +41,48 @@ Stick to Prometheus conventions. The OTel backend renames the names in its `PROM
 | Size | `..._bytes` suffix |
 | Style | `snake_case`, lowercase |
 
----
+## Backend selection
+
+Backend resolves in this priority: explicit `backend=` arg, then the
+`METRICS_BACKEND` env var, then `settings.metrics.backend`, then
+`"opentelemetry"`. If OTel SDK imports fail (extras not installed),
+the manager logs a warning and falls back to the Prometheus backend so
+metrics keep working.
+
+The env var is subject to the env prefix like every other control var:
+bare `METRICS_BACKEND` by default, or `<PREFIX>_METRICS_BACKEND` when
+the app sets one. There is no `HYPERI_`-prefixed form -- scalo
+hard-codes no brand.
+
+`ServiceApp` honours the same cascade and the same default.
+
+| Backend | When chosen | What it does |
+|---------|-------------|--------------|
+| `opentelemetry` | Default, on the `[metrics]` extra | Prometheus scrape AND OTLP push |
+| `prometheus` | Explicit, or OTel SDK missing | Prometheus scrape, no OTLP push |
+
+The OTel backend pushes over OTLP to a local collector by default and keeps serving `/metrics`, so a Prometheus-only estate loses nothing, and scalo-rs does the same. Span export is wired separately, by `logger.setup()` (see [tracing.md](tracing.md)).
+
+The backend reads its settings from the `backend_config` it is given. `ServiceApp` passes the cascade's `metrics` section, so the keys below work there. A bare `create_metrics()` gets none of them and reads the OTel env vars alone, so pass `backend_config=settings.get("metrics", {})` yourself outside `ServiceApp`.
+
+Two ways off, and neither costs the scrape endpoint:
+
+```yaml
+metrics:
+  opentelemetry:
+    enabled: false          # master switch
+    endpoint: ""            # or blank the endpoint
+```
+
+A blank `OTEL_EXPORTER_OTLP_ENDPOINT` does the same thing, for an
+operator who cannot reach the config file. The env var outranks config,
+per the OTel spec.
+
+Disable the scrape endpoint separately with `prometheus_scrape: false`.
+
+Laptops and CI runners have no collector, and neither does a service during a collector outage. The exporters are wrapped in a backoff gate (`scalo.otel_backoff`): the first failure logs one warning and starts a wait that doubles to a 15-minute ceiling with 20% jitter, so a fleet that lost its collector together does not come back in lockstep. One success resets it and logs what the outage cost. Suppressed exports report success to the SDK -- OTLP metrics are cumulative, so the next export that lands has the full value.
+
+The flush on exit is bounded at 2 seconds per reader and 2 seconds for the provider, well inside a Kubernetes termination grace period, so an unreachable collector cannot hold a pod open until SIGKILL.
 
 ## Built-in metric groups
 
@@ -130,8 +120,8 @@ Every group prefixes its metrics with the manager's **metric prefix**
 / `METRIC_PREFIX` / `metrics.namespace` and is **bare by default**, so
 out of the box these names are unprefixed and two apps DO collide on
 name alone. That is deliberate: differentiation is meant to come from
-scrape labels (`job`, `instance`, `pod`, `namespace`), which is also
-how scalo-rs behaves.
+scrape labels (`job`, `instance`, `pod`, `namespace`), the same as
+scalo-rs.
 
 If you want the names themselves namespaced, set it explicitly:
 
@@ -140,8 +130,6 @@ create_metrics("ingest-loader", metric_prefix="ingest_loader")
 ```
 
 `app_name` names the meter, supplies the `app` label on the `AppMetrics` info metric, and is the OTel resource's `service.name` unless `OTEL_SERVICE_NAME` is set.
-
----
 
 ## Cardinality cap
 
@@ -164,9 +152,7 @@ tracker.track("requests_total", {"method": "POST", "status": "201"})
 tracker.get_cardinality("requests_total")    # 2
 ```
 
-The cap does not block anything: the metric still records, and the warning surfaces the issue so you can drop the offending label. `tracker.reset()` clears it, for test fixtures only.
-
----
+The cap does not block anything: the metric still records, and the warning surfaces the issue so you can drop the offending label. `tracker.reset()` clears it, and is meant for test fixtures.
 
 ## OpenTelemetry config
 
@@ -192,9 +178,9 @@ per-signal `OTEL_EXPORTER_OTLP_METRICS_ENDPOINT` and
 per-signal endpoint is used as given, where the generic one is a base URL
 that takes `/v1/metrics` on the `http` protocol.
 
-The resource carries `service.name`, `service.version`,
+The resource has `service.name`, `service.version`,
 `service.instance.id` and `deployment.environment.name` -- the stable
-semconv key, sourced from scalo's own env detection
+semconv key, sourced from scalo's env detection
 (`APP_ENV` / `ENVIRONMENT` / `ENV`), so telemetry is tagged with the
 tier without per-app wiring. `service.instance.id` is the first of
 `OTEL_RESOURCE_ATTRIBUTES`, `POD_NAME` and the hostname. Anything in
@@ -204,11 +190,9 @@ tier without per-app wiring. `service.instance.id` is the first of
 endpoint that accepts the connection and never answers holds the
 exporter open past the next interval and the attempts overlap.
 
-On the `http` protocol the OTLP signal path (`/v1/metrics`) is appended to the endpoint for you. The SDK only does that for an endpoint it reads from the environment itself. One passed in is used verbatim, so a base URL would POST to the collector's root.
+On the `http` protocol the OTLP signal path (`/v1/metrics`) is appended to the endpoint for you. The SDK does that for an endpoint it reads from the environment, and uses one passed in verbatim, so a base URL would POST to the collector's root.
 
-At shutdown, the backend's own `atexit` hook flushes pending metrics, with the SDK's hook turned off. See [shutdown.md](shutdown.md#otel-flush).
-
----
+At shutdown, the backend's `atexit` hook flushes pending metrics, with the SDK's hook turned off. See [shutdown.md](shutdown.md#otel-and-log-flush).
 
 ## HTTP exposition
 
@@ -231,13 +215,11 @@ In OTLP-only mode (`prometheus_scrape: false`, no Prometheus reader),
 the endpoint returns an informational message -- scraping is
 unnecessary because metrics push to the collector.
 
-### Request metrics
-
 `HttpServerMetricsMiddleware` records one histogram, `http_server_request_duration_seconds` (`http.server.request.duration` over OTLP), labelled `method`, `endpoint` (the route template) and `status_code`. It skips `/healthz`, `/livez`, `/metrics` and `/readyz`.
 
-The route label is the full template from the app root, with every router prefix and mount path above the route: `/api/v1/accounts/{username}`, never `/api/v1/accounts/alice`. A mount keeps its own template, so `/orgs/{org}` is one label for every org. A request that leaves no route on the scope is labelled `__unmatched__`. Under a FastAPI app that includes a 404 or 307 inside a mount, `/docs`, `/openapi.json` and `add_route` routes, because FastAPI's router records only its own API routes.
+The route label is the full template from the app root, with every router prefix and mount path above the route: `/api/v1/accounts/{username}`, never `/api/v1/accounts/alice`. A mount keeps its template, so `/orgs/{org}` is one label for every org. A request that leaves no route on the scope is labelled `__unmatched__`. Under a FastAPI app that includes a 404 or 307 inside a mount, `/docs`, `/openapi.json` and `add_route` routes, because FastAPI's router records its API routes and no others.
 
-A request whose template cannot be named without a request value is labelled `__unresolved__`, so a scan of values never mints a series per value. That covers a parameter in an included router's prefix, a mount inside an included router, a Host route with a parameter, and an included router's prefix below a parameterised mount, even when the prefix is static text that happens to equal the mount's value.
+A request with a template that cannot be written without a request value is labelled `__unresolved__`, so a scan of values never mints a series per value. That covers a parameter in an included router's prefix, a mount inside an included router, a Host route with a parameter, and an included router's prefix below a parameterised mount, even when the prefix is static text that happens to equal the mount's value.
 
 Two cases stay inside the route table's bound but are not exact. A typed value written in a non-canonical form (`/items/007` on `{x:int}`, `1.50` on a float, an uppercase UUID) is `__unresolved__`, so one route can show under two labels. A mount inside an included router that shares its path with a mount outside it takes the outside mount's template, or `__unresolved__` where their parameter names differ.
 
@@ -251,13 +233,11 @@ app = FastAPI(telemetry={"auto_configure": False, "metrics": False})
 app.add_middleware(HttpServerMetricsMiddleware, metrics=m)
 ```
 
----
-
 ## Process and container collectors
 
 The two backends register different sets.
 
-**Prometheus backend.** Its own psutil collector, on the backend's private registry:
+**Prometheus backend.** A psutil collector, on the backend's private registry:
 
 - `process_info` (app name, pid, Python version, platform, container detection)
 - `process_cpu_percent`, `process_cpu_seconds_total`
@@ -281,15 +261,3 @@ as a gauge, under the bare names scalo-rs uses:
 Registering them unregisters prometheus_client's default process collector, so `/metrics`
 on this backend serves each `process_*` name once. `process_cpu_seconds_total` is a gauge
 there, not prometheus_client's counter.
-
----
-
-## Related
-
-- [config.md](config.md) -- `metrics:` settings live in the cascade
-- [logging.md](logging.md) -- cardinality warnings log here
-- [health.md](health.md) -- probes are not exported as metrics
-- [shutdown.md](shutdown.md) -- the bounded OTel flush on exit
-- [api/resilience.md](../api/resilience.md) -- pairs with `CircuitBreakerMetrics`
-- [transport/kafka.md](../transport/kafka.md) -- pairs with `ConsumerMetrics`
-- [extras-flags.md](../extras-flags.md) -- what `[metrics]` installs

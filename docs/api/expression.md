@@ -6,10 +6,6 @@ CEL (Common Expression Language) evaluation backed by the `common-expression-lan
 pip install scalo[expression]
 ```
 
----
-
-## Quick start
-
 ```python
 from scalo.expression import evaluate, validate
 
@@ -20,15 +16,11 @@ result = evaluate('amount > 10000', {"amount": 15000})
 assert result is True
 ```
 
----
-
 ## Why CEL, why this wrapper
 
 - CEL has no side effects and terminates by construction, so an operator-supplied rule is safe to evaluate.
 - One Rust implementation means a rule that scores `true` in Python scores `true` in Rust.
 - This wrapper adds the **expression profile**, the subset of CEL with a bounded cost per record. Regex, per-element iteration and time functions are refused until the app unlocks them, see [The expression profile](#the-expression-profile).
-
----
 
 ## API
 
@@ -43,9 +35,7 @@ assert result is True
 
 `profile=None` enforces the profile the config cascade sets, and `evaluate` and `evaluate_condition` always do. `compile_expression`, `evaluate` and `transpile_to_clickhouse` raise `ExpressionError` on profile violations or syntax errors, with an `errors: list[str]` attribute carrying every diagnostic. [rules.md](rules.md) builds ordered first-match rule sets on top.
 
----
-
-## Validating
+## Validating and locating a problem
 
 ```python
 from scalo.expression import validate
@@ -60,10 +50,6 @@ errors = validate('items.map(x, x.size)')
 ```
 
 Returns a list rather than raising, so a UI renders every error at once. The profile check reads the expression the way CEL's lexer does. A function name inside a string or bytes literal (quoted, triple-quoted or raw) or a `//` comment is data, so `msg.contains("map(x)")` validates clean. Whitespace or a comment between a name and its `(` does not hide a call, so `x.matches//\n("a")` is refused like `x.matches("a")`.
-
----
-
-## Locating a problem
 
 `diagnose` finds what `validate` finds, each as a `Diagnostic` with a `message` and a `span`. The span is a byte range into the UTF-8 text, `end` exclusive, so `expr.encode()[span.start:span.end]` is the text at fault:
 
@@ -91,9 +77,7 @@ Both raise `ValueError` for a span outside the text or one that ends inside a ch
 
 A profile finding spans the function name, and the profile is checked before the expression is parsed. A syntax error spans the character the parser stopped at, one diagnostic per parser error. An empty expression has no span. `scan_profile(expr, profile=None)` runs only the profile check, and `check_profile` is the same without spans.
 
----
-
-## One-shot evaluation
+## Evaluating
 
 ```python
 from scalo.expression import evaluate
@@ -106,10 +90,6 @@ assert result is True
 ```
 
 `evaluate` compiles on every call, which is fine for occasional checks and wasteful for repeated evaluation against many records.
-
----
-
-## Hot-path compilation
 
 When the same expression runs against millions of records:
 
@@ -124,10 +104,6 @@ for record in stream:
 
 `compile_expression` validates against the profile and compiles once. `program.execute(ctx)` is the per-record hot path, with no parsing and no profile checks.
 
----
-
-## Safe boolean evaluation
-
 `evaluate_condition` suits routing rules, alert triggers, and `when:` clauses. Missing fields return `False` instead of raising:
 
 ```python
@@ -140,8 +116,6 @@ evaluate_condition('user.role == "admin"', {"user": {}})  # False
 ```
 
 An invalid expression returns `False`, and so does every error the cel package raises while evaluating: a missing variable or map key, a type mismatch, division by zero, an index out of range, an overflow. Each distinct expression is compiled once and kept in an LRU cache of 1,024, so calling it per record with the same few conditions compiles nothing after the first call.
-
----
 
 ## The expression profile
 
@@ -172,8 +146,6 @@ expression:
 
 `ProfileConfig(allow_regex=True)` passed as `profile=` overrides the cascade for one call. Once the cascade has an `expression` section that reads cleanly, that profile is kept for the life of the process. Until then each call reads the cascade again and keeps every restriction on, so a read before config loads never pins the defaults. A flag that is not `true` or `false` leaves every restriction on.
 
----
-
 ## Transpile to ClickHouse SQL
 
 ```python
@@ -195,7 +167,7 @@ transpile_to_clickhouse('doc.port == 8080', json_columns=["doc"])
 #          if(doc.port IS NULL, NULL, false))
 ```
 
-The answer is CEL's, row by row. `doc.port == 8080` never matches the string `"8080"`, `!=` holds for a row of another type, and a comparison that CEL refuses (`>` on a string and a number, `.contains()` on a number) matches nothing, negated or not. String methods read `.:String`, a bare path in a condition reads `.:Bool`, `size()`, `int()`, `uint()`, `double()` and `string()` read every sub-column they accept, and arithmetic reads `.:Int64` or `.:Float64` by its literal. A path compared with another path, or with a value of no fixed type, raises `TranspileError`.
+The answer is CEL's, row by row. `doc.port == 8080` never matches the string `"8080"`, `!=` holds for a row of another type, and a comparison that CEL rejects (`>` on a string and a number, `.contains()` on a number) matches nothing, negated or not. String methods read `.:String`, a bare path in a condition reads `.:Bool`, `size()`, `int()`, `uint()`, `double()` and `string()` read every sub-column they accept, and arithmetic reads `.:Int64` or `.:Float64` by its literal. A path compared with another path, or with a value of no fixed type, raises `TranspileError`.
 
 Limits, all from ClickHouse:
 
@@ -203,15 +175,9 @@ Limits, all from ClickHouse:
 - JSON `null` is stored as an absent path, so `== null` and `has()` cannot tell the two apart.
 - A string ClickHouse infers as a date or time is not a String. Insert with `input_format_try_infer_dates=0` and `input_format_try_infer_datetimes=0` to keep it one.
 
----
-
-## Result types
+## Result types and errors
 
 CEL types map to Python types directly: `bool`, `int`, `float`, `str`, `list`, `dict`. CEL never mixes int and double: `evaluate('1 + 1.0')` raises `TypeError`, so write `1.0 + 1.0` or convert with `double()`. Int division truncates toward zero (`-7 / 2` is `-3`), and `%` takes the dividend's sign.
-
----
-
-## Errors
 
 | Exception | When |
 |-----------|------|
@@ -219,8 +185,6 @@ CEL types map to Python types directly: `bool`, `int`, `float`, `str`, `list`, `
 | `RuntimeError` | Evaluation failed at runtime, such as a missing variable. |
 | `TypeError` | An operation CEL does not define for its operand types, such as `"a" > 1` or `1 + 1.0`. |
 | `TranspileError` | `transpile_to_clickhouse` couldn't lower this construct. |
-
----
 
 ## Cross-language parity
 
@@ -237,13 +201,3 @@ evaluate("amount > threshold", &ctx)?  // also true
 ```
 
 Both parse and evaluate with the same `cel` crate.
-
----
-
-## Related
-
-- [rules.md](rules.md) -- ordered first-match rules with native tests and CEL conditions
-- [../core-pillars/config.md](../core-pillars/config.md)
-- [directory-config.md](directory-config.md)
-- [../extras-flags.md](../extras-flags.md)
-- [../integration.md](../integration.md)

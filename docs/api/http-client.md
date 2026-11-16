@@ -1,14 +1,10 @@
 # HTTP client
 
-Sync and async HTTP clients built on `httpx`, with `stamina`-driven retries (exponential backoff + jitter) and a 30 s default timeout. stamina's own retry hooks log and count each retry (see [Observability](#observability)). Use it in place of ad-hoc `requests` / `httpx` calls, which trip Bandit's B113 (request without timeout).
+Sync and async HTTP clients built on `httpx`, with `stamina`-driven retries (exponential backoff + jitter) and a 30 s default timeout. stamina's default retry hooks log and count each retry (see [Observability](#observability)). Use it in place of ad-hoc `requests` / `httpx` calls, which trip Bandit's B113 (request without timeout).
 
 ```bash
 pip install scalo[http]
 ```
-
----
-
-## Quick start
 
 ```python
 from scalo.http import HttpClient
@@ -18,16 +14,10 @@ response = client.get("/users/123")
 data = response.json()
 ```
 
----
-
-## Why this exists
-
 - Default 30 s timeout silences Bandit B113 and stops hung connections from holding a worker forever.
 - Stamina retries transport errors and 5xx server errors, with exponential backoff and jitter. 4xx errors surface immediately, because retrying a client error repeats the same mistake.
 - A retry is logged and counted by stamina's default hooks, which name the error by class and status only, never the request URL.
 - `stamina.set_testing(True)` disables backoff in tests so suites stay fast and deterministic.
-
----
 
 ## Sync vs async
 
@@ -50,8 +40,6 @@ async with AsyncHttpClient(base_url="https://api.example.com") as client:
 
 Both expose the same surface: `get`, `post`, `put`, `patch`, `delete`,
 `head`, `options`. All return `httpx.Response`.
-
----
 
 ## Retry policy
 
@@ -86,7 +74,7 @@ client = HttpClient(timeout=60.0, retries=5, base_url="https://slow.api")
 
 `response.raise_for_status()` runs before each retry decision: 4xx, and a 3xx when redirects are not followed, escape immediately, and 5xx feeds back into the retry loop.
 
-POST and PATCH are sent once by default, because a request that timed out or came back 5xx may already have been applied, and a resend would apply it twice. A request opts in with `idempotency_key=` (or its own `Idempotency-Key` header), which a deduplicating service such as Stripe or AWS honours. A client whose endpoint dedupes, or whose POST only reads, opts in for every request:
+POST and PATCH are sent once by default, because a request that timed out or came back 5xx may have been applied, and a resend would apply it twice. A request opts in with `idempotency_key=` (or its `Idempotency-Key` header), which a deduplicating service such as Stripe or AWS honours. A client whose endpoint dedupes, or whose POST only reads, opts in for every request:
 
 ```python
 client = HttpClient(base_url="https://query.internal", retry_non_idempotent=True)
@@ -94,9 +82,7 @@ client = HttpClient(base_url="https://query.internal", retry_non_idempotent=True
 
 scalo-rs makes the same split with `retry_non_idempotent` in its HTTP client config.
 
----
-
-## Passing through to httpx
+## Passing through to httpx, and closing
 
 Extra kwargs on the constructor flow into `httpx.Client(...)`:
 
@@ -117,8 +103,6 @@ client.post("/data", json={"k": "v"}, headers={"X-Trace-Id": trace_id})
 client.get("/search", params={"q": "term", "limit": 10})
 ```
 
----
-
 ## TLS
 
 Both clients build their TLS context with `scalo.crypto.ssl_context` and the `PROD` profile: TLS 1.2 minimum, AES-256-GCM ciphers, peer certificate and hostname verified. `cafile=` or `capath=` trusts that CA in place of the system store, `crypto_profile=CryptoProfile.HIGHSEC` raises the minimum to TLS 1.3, and `crypto_profile=None` falls back to plain httpx defaults. Any `verify=` kwarg, like the CA bundle in the example above, replaces the scalo context outright.
@@ -134,10 +118,6 @@ When to set them:
 
 - `SCALO_TLS_VERIFY=false` is for a dev or test endpoint with a self-signed certificate. Anything on the network path can then impersonate the server, so never set it in production. Pointing `cafile=` at the issuing CA keeps verification on and is the better fix.
 - `SCALO_TLS_ALLOW_WEAK=true` weakens TLS. It exists only for a legacy endpoint that cannot negotiate TLS 1.2 with AES-256-GCM, and only until that endpoint is upgraded. It applies to every client in the process, so to confine it to the one legacy peer pass `verify=scalo.crypto.ssl_context(allow_weak=True)` to that client instead.
-
----
-
-## Lifecycle
 
 Always close the client -- its connection pool lives until you do. The pool takes httpx's default limits (100 connections, 20 kept alive), and `limits=httpx.Limits(...)` passes through to change them. No response size cap is applied, so a body streams in whole whatever its length.
 
@@ -158,19 +138,15 @@ finally:
     await client.aclose()  # async
 ```
 
----
-
 ## Observability
 
-scalo-py adds no retry hooks of its own. stamina enables its defaults whatever the app does: a `stamina.retry_scheduled` warning on the `stamina` logger (through structlog instead when structlog is installed), and a Prometheus retry counter when `prometheus_client` is importable. Call `stamina.instrumentation.set_on_retry_hooks` to change them.
+scalo-py adds no retry hooks. stamina enables its defaults whatever the app does: a `stamina.retry_scheduled` warning on the `stamina` logger (through structlog instead when structlog is installed), and a Prometheus retry counter when `prometheus_client` is importable. Call `stamina.instrumentation.set_on_retry_hooks` to change them.
 
-The error those hooks record is named by class, plus the status for an `HTTPStatusError`: `HTTPStatusError(status=503)` or `ConnectError`. An httpx error's own repr carries the request URL, which can hold user ids, so it never reaches them. The Prometheus counter's `error_type` label for these retries is `scalo.http.client._RetriedHTTPError`. The caller still receives the original httpx exception.
+The error those hooks record is identified by class, plus the status for an `HTTPStatusError`: `HTTPStatusError(status=503)` or `ConnectError`. An httpx error's repr has the request URL, which can hold user ids, so it never reaches them. The Prometheus counter's `error_type` label for these retries is `scalo.http.client._RetriedHTTPError`. The caller still receives the original httpx exception.
 
 For request-level metrics (latency histograms, status-code counters)
 wire the HTTP middleware from
 [`core-pillars/metrics.md`](../core-pillars/metrics.md).
-
----
 
 ## Testing
 
@@ -196,9 +172,7 @@ client = HttpClient(base_url="http://test", transport=httpx.MockTransport(handle
 assert client.get("/anything").json() == {"ok": True}
 ```
 
----
-
-## Errors
+## Errors, and when to reach for something else
 
 Errors that escape after retries are exhausted:
 
@@ -209,21 +183,6 @@ Errors that escape after retries are exhausted:
 
 Wrap with `try/except` at the call site. The clients never swallow exceptions.
 
----
-
-## When to reach for something else
-
 - A circuit breaker around a downstream: compose with [`resilience.md`](resilience.md)'s `CircuitBreaker`, outside the retry loop. The HTTP client itself is retry-only.
 - Streaming responses: drop down to raw `httpx`. `HttpClient._client` is the underlying instance if you need it, but prefer a sibling helper that exposes the parts you need.
 - HTTP/2 server push and WebSockets: out of scope. Use `httpx` or `websockets` directly.
-
----
-
-## Related
-
-- [../integration.md](../integration.md)
-- [resilience.md](resilience.md)
-- [concurrency.md](concurrency.md)
-- [../core-pillars/metrics.md](../core-pillars/metrics.md)
-- [../core-pillars/logging.md](../core-pillars/logging.md)
-- [../extras-flags.md](../extras-flags.md)

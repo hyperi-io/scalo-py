@@ -1,17 +1,10 @@
 # Integration
 
-Wiring `scalo` into a new Python service from an empty `pyproject.toml` to a running app. Details per subsystem live in the subsystem docs (core-pillars/, runtime/, transport/, deployment/, api/).
-
----
+Wiring `scalo` into a Python service, from an empty `pyproject.toml` to a running app. Details per subsystem live in the subsystem docs (core-pillars/, runtime/, transport/, deployment/, api/).
 
 ## 1. Pick your extras
 
-Two questions:
-
-- **Service or tool?** A long-running service (FastAPI, Kafka consumer,
-  scheduled worker) versus a one-shot CLI / data-pipeline run.
-- **Which integrations?** Kafka? AWS / GCP /
-  Azure / Vault secrets?
+Two questions decide them: is it a long-running service (FastAPI, Kafka consumer, scheduled worker) or a one-shot CLI or data-pipeline run, and which integrations does it use (Kafka, AWS, GCP, Azure or Vault secrets)?
 
 For a typical data-pipeline service that talks to Kafka, exports Prometheus +
 OTel metrics, uses Vault secrets, and ships container artefacts:
@@ -31,10 +24,7 @@ dependencies = ["scalo"]
 
 `config` and `logger` ship in the base package, so nothing extra is needed. Pin the floor to the release you test against.
 
-See [extras-flags.md](extras-flags.md) for the full extras tree and
-recommended bundles.
-
----
+See [extras-flags.md](extras-flags.md) for every extra and the recommended bundles.
 
 ## 2. Config
 
@@ -54,9 +44,7 @@ An env key nests with a double underscore: `KAFKA__BROKERS=...` maps to `setting
 See [core-pillars/config.md](core-pillars/config.md) for the full
 cascade and sensitive masking.
 
----
-
-## 3. Logger
+## 3. Logs, metrics and health
 
 ```python
 from scalo.logger import error, info, logger, setup
@@ -76,9 +64,7 @@ except Exception:
 See [core-pillars/logging.md](core-pillars/logging.md) for scrub, rate
 limiting, CI mode, and the emoji-to-text conversion.
 
----
-
-## 4. Metrics
+Metrics:
 
 ```python
 from scalo.metrics import create_metrics
@@ -94,9 +80,7 @@ For Kafka consumers and processing services, `scalo.metrics.groups` has the stan
 
 See [core-pillars/metrics.md](core-pillars/metrics.md).
 
----
-
-## 5. Health probes
+Health probes:
 
 ```python
 from fastapi import FastAPI
@@ -122,9 +106,7 @@ Aim a `startupProbe` at `/livez` -- there is no separate startup path.
 
 See [core-pillars/health.md](core-pillars/health.md).
 
----
-
-## 6. Runtime context
+## 4. Runtime paths
 
 ```python
 from scalo.runtime import get_runtime_paths
@@ -139,9 +121,7 @@ Same code in K8s, Docker, and bare metal. Each call walks 7 indicators (`/var/ru
 
 See [runtime/runtime-context.md](runtime/runtime-context.md).
 
----
-
-## 7. Secrets
+## 5. Secrets and Kafka
 
 ```python
 from scalo.secrets import SecretsManager
@@ -154,9 +134,7 @@ One interface over every backend. `from_config` builds a provider for each backe
 
 See [api/secrets.md](api/secrets.md).
 
----
-
-## 8. Kafka (if you need it)
+Kafka, if you need it:
 
 ```python
 from scalo.kafka import KafkaProducer, KafkaConsumer
@@ -181,9 +159,7 @@ At-least-once producer defaults, schema sampling, a consumer-lag health probe an
 
 See [transport/kafka.md](transport/kafka.md).
 
----
-
-## 9. Deployment contract
+## 6. Deployment contract
 
 Define the contract once, generate the image artefacts from it:
 
@@ -211,7 +187,7 @@ dockerfile = generate_dockerfile(contract, identity=identity)
 manifest = generate_container_manifest(contract, identity=identity)
 ```
 
-That gives you a Dockerfile and a container manifest, both carrying the three `io.scalo.contract.*` identity keys (version, source-commit, image-ref). The contract names no distributor, licence or copyright until you set `OciLabels(vendor=..., licenses=..., copyright=...)`, and `OciLabels(label_namespace=...)` moves scalo's own keys under your reverse-DNS name.
+That gives you a Dockerfile and a container manifest, both with the three `io.scalo.contract.*` identity keys (version, source-commit, image-ref). The contract names no distributor, licence or copyright until you set `OciLabels(vendor=..., licenses=..., copyright=...)`, and `OciLabels(label_namespace=...)` moves scalo's label keys under your reverse-DNS name.
 
 The Kubernetes objects come from the scalo-service library chart, which renders the `deployment-contract.json` that `generate-artefacts` writes. To preview a service's chart locally, run `hyperi-ci chart assemble` -- see [deployment/artefacts.md](deployment/artefacts.md#kubernetes-objects).
 
@@ -219,17 +195,13 @@ See [deployment/contract.md](deployment/contract.md),
 [deployment/artefacts.md](deployment/artefacts.md), and
 [deployment/identity.md](deployment/identity.md).
 
----
+## 7. Testing the service
 
-## 10. Testing the service
-
-For the deployment contract, an e2e TEMPLATE lives at [`tests/e2e/test_contract_artefacts.py`](../tests/e2e/test_contract_artefacts.py). Copy it into your own `tests/e2e/` and point it at your entrypoint. It runs Tier A (cluster-less: docker build and run) locally when docker is present, and every skip it takes prints a `HYPERCI-SKIP[contract-e2e][...]:` line. See [deployment/test-support.md](deployment/test-support.md) for that and the shared test services.
+For the deployment contract, an e2e TEMPLATE lives at [`tests/e2e/test_contract_artefacts.py`](../tests/e2e/test_contract_artefacts.py). Copy it into your `tests/e2e/` and point it at your entrypoint. It runs Tier A (cluster-less: docker build and run) locally when docker is present, and every skip it takes prints a `HYPERCI-SKIP[contract-e2e][...]:` line. See [deployment/test-support.md](deployment/test-support.md) for that and the shared test services.
 
 On a hyperi-ci project, `hyperi-ci check` runs quality and tests before a push, `--quick` runs quality only, and `--full` adds the build.
 
----
-
-## Checklist for a new service
+## Checklist
 
 - [ ] `pyproject.toml` lists `scalo` with the right extras
 - [ ] `settings.yaml` in the repo for static config, env vars for per-environment override
@@ -239,13 +211,3 @@ On a hyperi-ci project, `hyperi-ci check` runs quality and tests before a push, 
 - [ ] If Kafka: producer flushed in shutdown, consumer commits on `SIGTERM`
 - [ ] `DeploymentContract` returned from `deployment_contract()`, so `generate-artefacts` writes its files
 - [ ] e2e test template copied into `tests/e2e/` and adapted for the service's actual entrypoint
-
----
-
-## Related
-
-- [README.md](README.md)
-- [architecture.md](architecture.md)
-- [auto-wiring.md](auto-wiring.md)
-- [extras-flags.md](extras-flags.md)
-- [deployment/contract.md](deployment/contract.md)

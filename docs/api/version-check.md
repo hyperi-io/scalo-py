@@ -8,10 +8,6 @@ The check is OPT-OUT: wiring it into an app is the opt-in, so `enabled` defaults
 from scalo.version_check import check_on_startup
 ```
 
----
-
-## Quick start
-
 ```python
 from scalo.version_check import check_on_startup
 from scalo.version_check.checker import VersionCheckConfig
@@ -40,15 +36,9 @@ INFO  new version available: orders-api (current: 1.2.0, latest: 1.3.1)
 
 If you're up to date, the log goes out at DEBUG.
 
----
-
-## Why this exists
-
 - Operators forget to check for updates. A startup line that says "you're three months behind" beats an outage caused by a known bug.
 - It runs in a daemon thread so a hung HTTP server, broken DNS, or a network egress block never delays your service starting.
 - It posts a stable anonymous instance ID per install, so the release service can count installs without identifying anyone.
-
----
 
 ## API
 
@@ -71,8 +61,6 @@ def check_on_startup(
 
 Returns the spawned `threading.Thread` if a check was kicked off, or `None` when the check was skipped (disabled, no `api_url`, product missing, version missing). Production code can ignore the return value, and tests use it to `.join()` deterministically instead of `time.sleep`.
 
----
-
 ## Configuration
 
 All settings live under the `version_check` key, read from the module-level `settings`, so a discovered YAML file or an env key can set them. That object's env keys take the `ENV_PREFIX` prefix, or none, never `ServiceApp`'s `env_prefix`, and a `--config` file does not reach it:
@@ -89,12 +77,12 @@ version_check:
 | Setting | Library default | Purpose |
 |---------|-----------------|---------|
 | `enabled` | `True` | The kill switch. An explicit `false` wins over any app default. |
-| `api_url` | `None` | Endpoint. No baked-in default: the app supplies its own, and without one the check is inert. |
+| `api_url` | `None` | Endpoint. No baked-in default: the app supplies one, and without it the check is inert. |
 | `timeout` | `5.0` | HTTP timeout in seconds, kept short so the daemon thread exits quickly. |
 | `send_instance_id` | `True` | `false` strips the instance id from the payload. |
 | `instance_id` | `""` | Explicit id, sent verbatim -- overrides the derived one. |
 
-An app supplies its own defaults -- typically just the endpoint -- via `from_cascade_or`. The cascade overlays them, so unset keys fall to the app and set keys win:
+An app supplies its defaults -- typically just the endpoint -- via `from_cascade_or`. The cascade overlays them, so unset keys fall to the app and set keys win:
 
 ```python
 from scalo.version_check.checker import VersionCheckConfig
@@ -110,8 +98,6 @@ The check is auto-skipped when:
 - `enabled` resolves false, or no `api_url` is set
 - `product` or `version` is empty
 - `httpx` is not installed (logged at DEBUG)
-
----
 
 ## Wire it into `ServiceApp`
 
@@ -132,8 +118,6 @@ class MyService(ServiceApp):
 ```
 
 Place the call early in `run_service`, after the logger is up so the result shows.
-
----
 
 ## Payload
 
@@ -165,8 +149,6 @@ Response:
 
 `message` (when present) is logged at INFO with the product name as a prefix, for one-off operator advisories.
 
----
-
 ## Instance ID
 
 Derived from what the app is running on, so the same install reports as the same install across restarts. Resolution order, first hit wins:
@@ -179,9 +161,7 @@ Derived from what the app is running on, so the same install reports as the same
 
 The derived forms are one-way UUIDv5 values: nothing about the host can be recovered from them. scalo-rs shares the UUIDv5 namespace and the hashed material, so both libraries derive the SAME id on the same platform. Disable entirely with `version_check.send_instance_id: false`.
 
----
-
-## Disabling in air-gapped environments
+## Disabling it, and failures
 
 Set `version_check.enabled: false` in a settings file the cascade discovers, or set the env form of the key. With no `ENV_PREFIX` exported it is bare, whatever the app's `ServiceApp.env_prefix`:
 
@@ -190,15 +170,9 @@ export VERSION_CHECK__ENABLED=false
 # with ENV_PREFIX=MY_SVC exported: MY_SVC_VERSION_CHECK__ENABLED=false
 ```
 
-The explicit `false` wins even when the app ships the check on by default. Air-gapped sites typically also block the endpoint at the egress layer, and without the config opt-out that costs one WARN line and one connect timeout per restart, nothing more.
-
----
-
-## Failure handling
+The explicit `false` wins even when the app ships the check on by default. Air-gapped sites typically block the endpoint at the egress layer, and without the config opt-out that costs one WARN line and one connect timeout per restart, nothing more.
 
 Anything that goes wrong in the check thread -- DNS failure, TCP timeout, HTTP 5xx, malformed JSON -- is caught and logged at WARN as `version check failed (non-fatal): <reason>`. The thread exits cleanly, and your service never sees the failure.
-
----
 
 ## Testing
 
@@ -216,12 +190,3 @@ from scalo.version_check.checker import VersionCheckConfig
 cfg = VersionCheckConfig(api_url="http://localhost:8080/check", timeout=1.0)
 check_on_startup("my-service", "1.0.0", config=cfg)
 ```
-
----
-
-## Related
-
-- [cli.md](cli.md)
-- [../core-pillars/logging.md](../core-pillars/logging.md)
-- [http-client.md](http-client.md)
-- [../integration.md](../integration.md)

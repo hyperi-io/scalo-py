@@ -89,7 +89,7 @@ mcp = [
     "httpx2>=2.13.1",
     "jsonschema>=4.26.0",
 ]
-# stamina is the retry engine behind scalo.http; [http] carries it too.
+# stamina is the retry engine behind scalo.http, and the http extra has it as well.
 resilience = [
     "stamina>=26.1.0",
 ]
@@ -97,9 +97,7 @@ http = [
     "httpx>=0.28.0",
     "stamina>=26.1.0",
 ]
-# Carries the OTel SDK because the default backend is "opentelemetry" (OTLP
-# push + Prometheus scrape); without it the default degrades to Prometheus-only.
-# Mirrors the scalo-rs `metrics` feature, which bundles both exporters.
+# Has the OTel SDK because the default backend is "opentelemetry" (OTLP push + Prometheus scrape).
 metrics = [
     "prometheus-client>=0.25.0",
     "psutil>=7.2.0",
@@ -179,7 +177,7 @@ dev = [
     "pre-commit>=4.6.0",
     "tiktoken>=0.14.0",
     "faker>=40.0.0",
-    # Validates emitted contracts against the vendored scalo-rs contract schema (draft 2020-12).
+    # Validates emitted contracts against the copied scalo-rs contract schema.
     "jsonschema>=4.26.0",
 ]
 docs = [
@@ -255,7 +253,7 @@ target-version = "py314"
 line-length = 120
 indent-width = 4
 src = ["src"]
-# Vendored from aws-cli and botocore and kept byte for byte, so neither lint nor format rewrites them.
+# Copied byte for byte from aws-cli and botocore, so neither lint nor format rewrites them.
 extend-exclude = ["src/scalo/cli/openapi/vendor"]
 
 [tool.ruff.lint]
@@ -297,26 +295,22 @@ ignore = [
     "UP035",
     "SIM108",
     "W191",
-    # Production-specific security relaxations
     "S104",   # hardcoded-bind-all-interfaces (0.0.0.0 is intentional for containers)
     "S110",   # try-except-pass (intentional in error handling)
     "S112",   # try-except-continue (intentional skip patterns)
     "S311",   # suspicious-non-cryptographic-random (used for jitter, not crypto)
     "S603",   # subprocess-without-shell-equals-true (CI scripts)
     "S607",   # start-process-with-partial-path (CI scripts)
-    "S608",   # hardcoded-sql-expression (cache module SQL, not user input)
-    # Print statements — library uses print for CLI output, not logging
+    "S608",   # hardcoded-sql-expression (DDL and transpiled CEL, not user input)
+    # The library prints CLI output
     "T201",
-    # Ruff-specific relaxations
     "RUF012", # mutable-class-default (Pydantic/dataclass patterns)
-    "RUF059", # unused-unpacked-variable
-    "RUF001", # ambiguous-unicode-character-string
-    "RUF002", # ambiguous-unicode-character-docstring
+    "RUF059",
+    "RUF001",
+    "RUF002",
     "RUF006", # asyncio-dangling-task (intentional fire-and-forget)
-    # Naming relaxations
-    "N806",   # non-lowercase-variable-in-function
+    "N806",
     "N818",   # error-suffix-on-exception-name (existing exception names)
-    # Misc
     "PIE810", # multiple-starts-ends-with (stylistic)
     "SIM102", # collapsible-if (readability preference)
     "RUF005", # collection-literal-concatenation (readability preference)
@@ -333,19 +327,18 @@ dummy-variable-rgx = "^(_+|(_+[a-zA-Z0-9_]*[a-zA-Z0-9]+?))$"
 
 
 [tool.ruff.lint.per-file-ignores]
-# Tests use `assert` (pytest convention), hardcoded test passwords, and /tmp paths.
-# These are fine in test code — bandit-style hardening doesn't apply.
+# Tests use `assert`, fake passwords and /tmp paths.
 "tests/**" = [
     "S101", # use of assert
     "S105", # hardcoded password string (test fixtures)
     "S106", # hardcoded password in function arg (test fixtures)
     "S108", # probable insecure /tmp usage (tests use tempfile fixtures)
     "F541", # f-string without placeholders (sometimes intentional in test data)
-    "RUF013", # implicit Optional — legacy test files; fix incrementally
-    "PT017", # assertion-on-exception (legacy try/except pattern in test_secrets_exceptions.py)
-    "PT011", # broad pytest.raises(ValueError) — legacy tests; tighten incrementally
-    "PT012", # too-complex pytest.raises body — legacy
-    "RUF043", # match=str without raw string — legacy
+    "RUF013", # implicit Optional in older test files
+    "PT017", # try/except assertions in test_secrets_exceptions.py
+    "PT011", # broad pytest.raises(ValueError) in older tests
+    "PT012", # multi-statement pytest.raises bodies in older tests
+    "RUF043", # match= strings without r"" in older tests
 ]
 
 [tool.ruff.lint.pydocstyle]
@@ -394,7 +387,6 @@ warn_unused_configs = true
 disallow_untyped_defs = false
 ignore_missing_imports = true
 
-# UV package manager configuration
 [tool.uv]
 index-strategy = "unsafe-best-match"
 # Supply-chain cooldown. A CVE fix bypasses it with a per-package entry.
@@ -403,9 +395,7 @@ exclude-newer = "7 days"
 # per-package entry replaces the global span rather than widening it, so remove this
 # one on 2026-11-03.
 exclude-newer-package = { pyasn1 = "2026-10-28T00:00:00Z" }
-# Security floors on transitive packages, applied over whatever their dependents
-# declare. Re-evaluate at each /deps pass; drop one once the tree requires the
-# fixed version itself.
+# Security floors on transitive packages, over what their dependents declare.
 override-dependencies = [
     # Security fixes are exempt from the release-age cooldown.
     "aiohttp>=3.14.3",        # heap OOB read in the C parser, smuggling, unnegotiated deflate (Dependabot 8/9/10)

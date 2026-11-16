@@ -1,7 +1,7 @@
 # NativeDepsContract
 
 Runtime shared libraries the container needs beyond what the wheels
-carry. The contract drives the Dockerfile's APT block automatically --
+have. The contract drives the Dockerfile's APT block automatically --
 consumers don't hand-write `RUN apt-get install` lines.
 
 ```python
@@ -11,10 +11,8 @@ from scalo.deployment import NativeDepsContract, AptRepoContract
 No scalo-py extra installs a package beyond `ca-certificates curl
 netcat-openbsd iputils-ping` (the always-on base packages). The
 confluent-kafka wheel bundles a librdkafka with OpenSSL and zlib linked
-in, the Python image holds its own OpenSSL, and `ca-certificates` fills
+in, the Python image holds its OpenSSL, and `ca-certificates` fills
 the CA store both read.
-
----
 
 ## `NativeDepsContract`
 
@@ -27,7 +25,7 @@ the CA store both read.
 | `contradicted_base_image` | `str \| None` | `None`, left out when unset |
 | `distro_codename` | `str` | `trixie` |
 
-`distro`, `unresolved_base_image` and `contradicted_base_image` carry what scalo-rs records: the release the package names were resolved for (`trixie`, `bookworm`, `noble`, `jammy` or `focal`), the base image whose release could not be derived, and the base image that names a different release from the one config stated. Both factories set `distro` from `distro_codename` when scalo knows that release. A contract that names `distro` but not `distro_codename` takes `distro_codename` from it.
+`distro`, `unresolved_base_image` and `contradicted_base_image` have what scalo-rs records: the release the package names were resolved for (`trixie`, `bookworm`, `noble`, `jammy` or `focal`), the base image whose release could not be derived, and the base image that names a different release from the one config stated. Both factories set `distro` from `distro_codename` when scalo knows that release. A contract that names `distro` but not `distro_codename` takes `distro_codename` from it.
 
 - `is_empty()` -- shortcut the Dockerfile generator uses to emit a
   smaller APT block when there's nothing extra.
@@ -49,11 +47,9 @@ name that does not exist in the target suite (see
 
 `for_scalo_extras(extras, base_image)` takes your `pyproject.toml` extras list, the same strings used in `pip install "scalo[...]"`. No extra, `kafka` included, maps to a package, so the contract records only the release (`distro_codename`) for CI to audit.
 
----
-
 ## `AptRepoContract`
 
-A custom APT repository, for a package no distro suite carries.
+A custom APT repository, for a package no distro suite has.
 
 | Field | Required | Notes |
 |---|---|---|
@@ -61,15 +57,13 @@ A custom APT repository, for a package no distro suite carries.
 | `key_fingerprint` | no | Expected OpenPGP fingerprint of the key, uppercase hex with no spaces. The build fails when the downloaded key does not match. Empty skips the check |
 | `keyring` | yes | Local path. Its basename, without the extension, names the sources-list file |
 | `url` | yes | Base URL after `deb` |
-| `codename` | no | E.g. `noble`. The repository's own suite, the contract's `distro_codename` when empty |
+| `codename` | no | E.g. `noble`. The repository's suite, the contract's `distro_codename` when empty |
 | `packages` | no | Packages installed from this specific repo |
 
-`codename` is the suite the repository publishes, which is not always the base image's own suite. Leave it empty to take the contract's release.
+`codename` is the suite the repository publishes, which is not always the base image's suite. Leave it empty to take the contract's release.
 
 For distro-versioned package names (`libgit2-1.9` vs `libgit2-1.7`) use
 `distro_codename` on the contract instead -- never this field.
-
----
 
 ## `for_scalo_features` (polyglot apps)
 
@@ -82,11 +76,9 @@ For a service with a Rust core re-bound to Python, `for_scalo_features(features,
 
 The libgit2 name comes from `distro_codename` via `libgit2_runtime_package()`. A soname-versioned package has no alias to fall back on, so the name must match the release.
 
-scalo-rs's `NativeDepsContract::for_scalo_features` names the same package on trixie and noble, but `libgit2-1.5` on bookworm, `libgit2-1.1` on jammy and `libgit2-28` on focal, which are the names those releases carry. scalo-rs also derives the release from `base_image` and records `unresolved_base_image` or `contradicted_base_image`, where scalo-py takes `distro_codename` as given and ignores `base_image`.
+scalo-rs's `NativeDepsContract::for_scalo_features` names the same package on trixie and noble, but `libgit2-1.5` on bookworm, `libgit2-1.1` on jammy and `libgit2-28` on focal, which are the names those releases have. scalo-rs derives the release from `base_image` and records `unresolved_base_image` or `contradicted_base_image`, where scalo-py takes `distro_codename` as given and ignores `base_image`.
 
 Check a package name by building the image on the target base, never by reading a distribution's package pages or search UI. A name that resolves through a `Provides:` alias does not show on those pages, so a name that looks missing there can still install.
-
----
 
 ## No musl, no Alpine
 
@@ -95,8 +87,6 @@ Application images use a glibc base -- Debian slim. `validate_base_image()` retu
 scalo's C-linked dependencies, `confluent-kafka` and `common-expression-language`, publish manylinux wheels and no musllinux ones. On Alpine, `uv` would build them from source, a much slower build that yields a slower runtime. The builder's `UV_NO_BUILD=1` on the dependency phase turns that into a build failure.
 
 The Alpine images in this repo are test scaffolding, not application images: a label-only mock in `tests/e2e/test_contract_artefacts.py` and the `python:3.12-alpine` input `tests/unit/deployment/test_container_standard.py` feeds the guard.
-
----
 
 ## Dockerfile APT block behaviour
 
@@ -114,14 +104,3 @@ When non-empty, the block:
 
 The development profile additionally installs `bash strace tcpdump
 procps dnsutils net-tools less jq` in the base packages step.
-
----
-
-## Related
-
-- [contract.md](contract.md)
-- [artefacts.md](artefacts.md)
-- [../extras-flags.md](../extras-flags.md)
-- [identity.md](identity.md)
-- [test-support.md](test-support.md)
-- [../integration.md](../integration.md)
