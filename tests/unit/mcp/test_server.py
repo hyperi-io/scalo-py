@@ -49,6 +49,8 @@ from scalo.api import EXTENSION, assert_conformant, etag_of
 from scalo.logger import logger
 from scalo.mcp import CREATE_ETAG, DEFAULT_TOOLS_TTL_MS, PROTOCOL_VERSION, McpSpecError, mount
 
+SECRET = b"a-preview-secret-the-replicas-share"
+
 _CHALLENGE = f'resource_metadata="{BASE_URL}/.well-known/oauth-protected-resource/mcp"'
 
 
@@ -168,8 +170,8 @@ class TestStateless:
 
     async def test_two_replicas_with_no_session_affinity_serve_one_client(self):
         store = _store(alpha=1)
-        first, _ = build_app(store)
-        second, _ = build_app(store)
+        first, _ = build_app(store, preview_secret=SECRET)
+        second, _ = build_app(store, preview_secret=SECRET)
         balancer = RoundRobin(first, second)
 
         async with running(first, second), mcp_client(balancer) as client:
@@ -527,11 +529,20 @@ class TestWrites:
         assert store.sources["alpha"].size == 1
         assert WRITER not in str((preview, commit))
 
-    async def test_a_token_recomputed_without_the_key_is_refused(self):
+    @pytest.mark.parametrize(
+        "key",
+        [
+            pytest.param(None, id="plain-sha256"),
+            pytest.param(f"Bearer {WRITER}".encode(), id="the-callers-own-authorization-header"),
+            pytest.param(SECRET, id="a-guessed-secret"),
+        ],
+    )
+    async def test_a_token_recomputed_without_the_server_secret_is_refused(self, key):
         store = _store(alpha=1)
         app, _ = build_app(store)
         etag = etag_of(store.sources["alpha"])
-        digest = hashlib.sha256(_alpha_apply(etag).encode()).digest()
+        message = _alpha_apply(etag).encode()
+        digest = hashlib.sha256(message).digest() if key is None else hmac.new(key, message, hashlib.sha256).digest()
         forged = f"{_b64url(etag.encode())}.{_b64url(digest)}"
         arguments = {"source": "alpha", "body": {"size": 5}, "dry_run": False, "preview_token": forged}
 
@@ -542,6 +553,24 @@ class TestWrites:
         assert commit["status"] == 412
         assert commit["body"]["code"] == "preview_mismatch"
         assert store.seen == []
+        assert store.sources["alpha"].size == 1
+
+    async def test_a_token_from_a_server_with_another_secret_is_refused(self):
+        store = _store(alpha=1)
+        issuer, _ = build_app(store, preview_secret=SECRET)
+        committer, _ = build_app(store, preview_secret=b"another-secret-of-at-least-32-bytes")
+        arguments = {"source": "alpha", "body": {"size": 5}}
+
+        async with running(issuer, committer), mcp_client(issuer) as one, mcp_client(committer) as two:
+            preview, _ = await _call(one, "svc_sources_apply", arguments)
+            writes_before = list(store.seen)
+            commit, failed = await _call(
+                two, "svc_sources_apply", {**arguments, "dry_run": False, "preview_token": preview["preview_token"]}
+            )
+
+        assert failed
+        assert commit["body"]["code"] == "preview_mismatch"
+        assert store.seen == writes_before
         assert store.sources["alpha"].size == 1
 
     async def test_a_commit_with_no_authorization_is_refused_before_the_api(self):
@@ -963,3 +992,7 @@ class TestStartup:
             mount(FastAPI(), issuer="idp.example.test")
         with pytest.raises(ValueError, match="call_timeout"):
             mount(FastAPI(), call_timeout=0)
+        with pytest.raises(ValueError, match="preview_secret"):
+            mount(FastAPI(), preview_secret=b"too short")
+        with pytest.raises(ValueError, match="preview_secret"):
+            mount(FastAPI(), preview_secret="")
