@@ -16,8 +16,8 @@ would for the caller's direct request. A write runs in two calls:
 1. The preview (``dry_run`` true, the default) reads the resource's current
    ETag with a GET on the same path, then sends the write with ``dry_run=true``
    and that ETag as ``If-Match``. It returns the API's answer and a preview
-   token naming the ETag and the exact request, keyed with the caller's
-   ``Authorization`` header.
+   token naming the ETag and the exact request, keyed with a server secret
+   and the caller's ``Authorization`` header, so only this server can mint one.
 2. The commit (``dry_run`` false) sends the token back. It is refused with 412
    unless its own request, under the same ``Authorization``, is the one the
    token names, and it carries the token's ETag as ``If-Match``, so it lands
@@ -141,13 +141,15 @@ class AppClient:
         request: The MCP HTTP request, whose ``Authorization`` header, peer
             address, scheme, host and lifespan state each request reuses.
             ``None`` sends requests with no credentials and no peer address.
+        preview_secret: The server secret that keys the preview tokens.
 
     Attributes:
-        preview_key: The ``Authorization`` header's bytes, which key the
-            caller's preview tokens. Empty when the request carries none.
+        preview_key: An HMAC of the ``Authorization`` header under the server
+            secret, which keys the caller's preview tokens. Empty when the
+            request carries no ``Authorization``.
     """
 
-    def __init__(self, app: ASGIApp, request: Request | None) -> None:
+    def __init__(self, app: ASGIApp, request: Request | None, preview_secret: bytes) -> None:
         state = request.scope.get("state") if request is not None else None
         peer = request.client if request is not None else None
         exchange = request.scope.get(EXCHANGE) if request is not None else None
@@ -159,7 +161,7 @@ class AppClient:
             authorization = request.headers.get("authorization")
             if authorization:
                 self._headers["authorization"] = authorization
-                self.preview_key = authorization.encode("latin-1")
+                self.preview_key = hmac.new(preview_secret, authorization.encode("latin-1"), hashlib.sha256).digest()
             base_url = f"{request.url.scheme}://{request.url.netloc}"
         target = _in_process(
             app,
@@ -392,7 +394,7 @@ async def _commit(tool: ToolSpec, client: AppClient, write: _Write, token: str |
     if not client.preview_key:
         return failure(
             f"dry_run=false commits the change, which needs the caller's Authorization header: the preview_token of "
-            f"{tool.name} is keyed with it, and one keyed with nothing could be forged"
+            f"{tool.name} is bound to the credential that previewed it"
         )
     if not token:
         return failure(

@@ -16,7 +16,8 @@ served fails startup rather than the first call.
 The endpoint speaks the MCP revision of 2026-07-28: no session, no
 ``initialize``, one JSON-RPC request per POST. Older clients get the stateless
 form of the handshake-era transport. Nothing is kept between requests, so a
-deployment can run any number of replicas without sticky sessions.
+deployment can run any number of replicas without sticky sessions, provided
+every replica is given the same ``preview_secret``.
 
 Every request first passes the ``Origin`` check. With an issuer, a request with
 no bearer token or a token the configured verifier refuses gets HTTP 401 and the
@@ -27,6 +28,7 @@ call is the only token check.
 """
 
 import re
+import secrets
 import time
 from collections.abc import AsyncGenerator, Awaitable, Callable, Sequence
 from contextlib import asynccontextmanager
@@ -66,6 +68,9 @@ PROTOCOL_VERSION = "2026-07-28"
 DEFAULT_TOOLS_TTL_MS = 300_000
 
 DEFAULT_CALL_TIMEOUT = 60.0
+
+# Shortest preview secret accepted, in bytes: the SHA-256 digest size, so the key is never weaker than the MAC.
+MIN_PREVIEW_SECRET_BYTES = 32
 
 _WELL_KNOWN = "/.well-known/oauth-protected-resource"
 
@@ -145,12 +150,17 @@ class McpServer:
             ``Host`` allow-list. Its ``allowed_origins`` join ``allowed_origins``.
         tools_ttl_ms: How long a client may reuse a ``tools/list`` answer.
         call_timeout: Seconds one tool call may take, its preview read included.
+        preview_secret: The server secret that keys every preview token, so a
+            caller cannot compute one for a change it never previewed. At least
+            32 bytes. Replicas of one deployment share it, or a commit that
+            reaches another replica than its preview is refused with 412.
+            Defaults to a random secret for this process, which a restart drops.
 
     Raises:
         ValueError: On a path that does not start with ``/``, an issuer that is
             not an absolute http(s) URL, a verifier without an issuer, an allowed
-            origin that is not ``scheme://host[:port]``, a negative TTL or a
-            timeout that is not positive.
+            origin that is not ``scheme://host[:port]``, a negative TTL, a
+            timeout that is not positive or a preview secret under 32 bytes.
     """
 
     def __init__(
@@ -169,11 +179,18 @@ class McpServer:
         security_settings: TransportSecuritySettings | None = None,
         tools_ttl_ms: int = DEFAULT_TOOLS_TTL_MS,
         call_timeout: float = DEFAULT_CALL_TIMEOUT,
+        preview_secret: bytes | str | None = None,
     ) -> None:
         if not path.startswith("/") or path == "/":
             raise ValueError(f"path must start with '/' and name an endpoint, not {path!r}")
         if call_timeout <= 0:
             raise ValueError(f"call_timeout must be positive, not {call_timeout}")
+        secret = secrets.token_bytes(MIN_PREVIEW_SECRET_BYTES) if preview_secret is None else preview_secret
+        if isinstance(secret, str):
+            secret = secret.encode()
+        if len(secret) < MIN_PREVIEW_SECRET_BYTES:
+            raise ValueError(f"preview_secret must be at least {MIN_PREVIEW_SECRET_BYTES} bytes, not {len(secret)}")
+        self._preview_secret = secret
         if token_verifier is not None and issuer is None:
             raise ValueError("token_verifier needs an issuer: the 401 it answers points the client at it")
         self.path = path.rstrip("/")
@@ -266,7 +283,10 @@ class McpServer:
         # A deadline, not a TimeoutError catch: a TimeoutError the call raises is its own failure, not this one.
         with anyio.move_on_after(self._call_timeout):
             result = await call_tool(
-                tool, self._validators[tool.name], params.arguments, lambda: AppClient(self._app, request)
+                tool,
+                self._validators[tool.name],
+                params.arguments,
+                lambda: AppClient(self._app, request, self._preview_secret),
             )
         if result is None:
             return failure(f"the API did not answer {tool.name} within {self._call_timeout:g} seconds")
@@ -400,6 +420,7 @@ def mount(
     security_settings: TransportSecuritySettings | None = None,
     tools_ttl_ms: int = DEFAULT_TOOLS_TTL_MS,
     call_timeout: float = DEFAULT_CALL_TIMEOUT,
+    preview_secret: bytes | str | None = None,
 ) -> McpServer:
     """Serve MCP tools generated from the app's spec on the app itself.
 
@@ -423,6 +444,8 @@ def mount(
         security_settings: The MCP SDK's transport security settings.
         tools_ttl_ms: How long a client may reuse a ``tools/list`` answer.
         call_timeout: Seconds one tool call may take.
+        preview_secret: The server secret that keys preview tokens: at least 32
+            bytes, shared by every replica. Random per process when omitted.
 
     Returns:
         The mounted server.
@@ -444,6 +467,7 @@ def mount(
         security_settings=security_settings,
         tools_ttl_ms=tools_ttl_ms,
         call_timeout=call_timeout,
+        preview_secret=preview_secret,
     )
     routes = [Route(server.path, endpoint=server, include_in_schema=False)]
     if server.issuer is not None:
