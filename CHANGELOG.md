@@ -3,6 +3,13 @@
 Rendered by CI and committed back at the end of a release -- do not edit by
 hand. Release notes also appear on the GitHub Releases page, one per tag.
 
+## [2.32.9](https://github.com/hyperi-io/scalo-py/compare/v2.32.8...v2.32.9) (2026-11-17)
+
+### Bug Fixes
+
+* **config:** import scalo on Windows ([3f89a85](https://github.com/hyperi-io/scalo-py/commit/3f89a8572d989d5c721b4e14e75d3e9625779424))
+* **deployment:** read the test image mirror env var live ([8b5834d](https://github.com/hyperi-io/scalo-py/commit/8b5834db68d2fa1ea918d60c422a9e718bed7a27))
+
 ## [2.32.8](https://github.com/hyperi-io/scalo-py/compare/v2.32.7...v2.32.8) (2026-11-17)
 
 ### Bug Fixes
