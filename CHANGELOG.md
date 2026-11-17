@@ -3,6 +3,17 @@
 Rendered by CI and committed back at the end of a release -- do not edit by
 hand. Release notes also appear on the GitHub Releases page, one per tag.
 
+## [2.32.8](https://github.com/hyperi-io/scalo-py/compare/v2.32.7...v2.32.8) (2026-11-17)
+
+### Bug Fixes
+
+* **deps:** take opentelemetry-api 1.45.2 for CVE-2026-126360 ([a0fb403](https://github.com/hyperi-io/scalo-py/commit/a0fb40319505a726422b75785555a85a9300a39d))
+* **deps:** update clickhouse/clickhouse-server Docker tag to v26.3.62.3 ([3d3ea0a](https://github.com/hyperi-io/scalo-py/commit/3d3ea0a0bff29138a82593e72e72cd857ec44ef3))
+* **deps:** update openbao/openbao Docker tag to v2.7.2 ([654e63d](https://github.com/hyperi-io/scalo-py/commit/654e63d7f3c41b246628c56f60afe8150f74f094))
+* **mcp:** key preview tokens with a server secret ([#196](https://github.com/hyperi-io/scalo-py/issues/196)) ([0d2c7b5](https://github.com/hyperi-io/scalo-py/commit/0d2c7b5d8d8f9ee8048cc6973d2dee434048180c))
+* **test-support:** pull Docker Hub test images through GHCR mirror ([#197](https://github.com/hyperi-io/scalo-py/issues/197)) ([d13ab31](https://github.com/hyperi-io/scalo-py/commit/d13ab31c8ad25e1610dea8cef25bcf4b84cc0a72))
+* **types:** clear the diagnostics ty 0.0.95 raises ([#188](https://github.com/hyperi-io/scalo-py/issues/188)) ([335ac35](https://github.com/hyperi-io/scalo-py/commit/335ac3512a7faae42fcb38231af4a40116dd7889))
+
 ## [2.32.7](https://github.com/hyperi-io/scalo-py/compare/v2.32.6...v2.32.7) (2026-11-11)
 
 ### Bug Fixes
