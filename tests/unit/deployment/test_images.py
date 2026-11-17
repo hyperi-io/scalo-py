@@ -44,6 +44,20 @@ def test_env_layer_without_config(monkeypatch: pytest.MonkeyPatch, env: str | No
     assert image_mirror() == expected
 
 
+@pytest.mark.parametrize("later", ["", "r/later"])
+def test_env_set_after_the_cascade_loads_wins(monkeypatch: pytest.MonkeyPatch, later: str) -> None:
+    """The cascade reads ENV when it loads, so a later setenv must still apply."""
+    from scalo.config import settings
+
+    monkeypatch.setenv("DEPLOYMENT__TEST_IMAGE_MIRROR", "r/first")
+    settings.reload()
+    assert image_mirror() == "r/first"
+    monkeypatch.setenv("DEPLOYMENT__TEST_IMAGE_MIRROR", later)
+    assert image_mirror() == later
+    monkeypatch.undo()
+    settings.reload()
+
+
 def test_shared_specs_pull_through_the_mirror(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setenv("DEPLOYMENT__TEST_IMAGE_MIRROR", "m")
     assert services.kafka_spec().image == f"m/{services.KAFKA_IMAGE}"
