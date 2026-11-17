@@ -26,20 +26,20 @@ _DOCKER_HUB_HOSTS = ("docker.io/", "index.docker.io/", "registry-1.docker.io/")
 def image_mirror() -> str:
     """Return the registry path Docker Hub test images are pulled through.
 
-    Reads ``deployment.test_image_mirror`` from the cascade, then its ENV-layer
-    spelling ``DEPLOYMENT__TEST_IMAGE_MIRROR``, then ``DEFAULT_IMAGE_MIRROR``.
-    Tests often run without the app's config loaded, so the env layer is read
-    directly. An empty value at either layer means Docker Hub itself.
+    Reads ``DEPLOYMENT__TEST_IMAGE_MIRROR``, then ``deployment.test_image_mirror``
+    from the cascade, then ``DEFAULT_IMAGE_MIRROR``. The env var is read live
+    because the cascade snapshots ENV when it loads, so a test that sets it later
+    would get the old value. An empty value at either layer means Docker Hub itself.
     """
+    if _ENV in os.environ:
+        return os.environ[_ENV]
     try:
         from scalo.config import settings
 
         value = settings.get(_KEY)
     except Exception:
         value = None
-    if value is not None:
-        return str(value)
-    return os.environ.get(_ENV, DEFAULT_IMAGE_MIRROR)
+    return DEFAULT_IMAGE_MIRROR if value is None else str(value)
 
 
 def mirrored(mirror: str, reference: str) -> str:
