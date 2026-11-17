@@ -41,7 +41,6 @@ Usage:
     store.stop()
 """
 
-import fcntl
 import os
 import tempfile
 import threading
@@ -570,7 +569,15 @@ class DirectoryConfigStore:
         """Hold an exclusive advisory lock on the table's directory across a read-modify-write.
 
         The table file itself cannot carry the lock, because each write replaces its inode.
+
+        Raises:
+            NotImplementedError: On a platform without ``fcntl``, such as Windows.
         """
+        # fcntl is POSIX only, so it is imported here and `import scalo` still works on Windows
+        try:
+            import fcntl
+        except ModuleNotFoundError as e:
+            raise NotImplementedError("DirectoryConfigStore writes need POSIX flock, which this platform lacks") from e
         dir_fd = os.open(str(path.parent), os.O_RDONLY)
         try:
             fcntl.flock(dir_fd, fcntl.LOCK_EX)
