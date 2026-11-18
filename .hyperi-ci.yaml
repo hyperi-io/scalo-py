@@ -2,8 +2,6 @@
 #
 # Only set values that differ from defaults.
 
-license: Apache-2.0
-
 # Category 4 (OSS): Apache-2.0, publishes to PyPI, neutral branding.
 classification: oss
 
