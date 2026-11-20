@@ -1093,8 +1093,8 @@ def setup(
         allow_all_emojis = False  # Can't allow all if emojis disabled
 
     # Resolver order here: `scrubber=`, `scrub_config=`, the `mask_sensitive` /
-    # `masking_level` args, then defaults -- get_logging_config() carries no
-    # scrub keys. See logger/scrub_resolver.py.
+    # `masking_level` args, `logging.scrub` from get_logging_config(), then
+    # defaults. See logger/scrub_resolver.py.
     resolved_scrubber = resolve_scrubber(
         scrubber=scrubber,
         scrub_config=scrub_config,

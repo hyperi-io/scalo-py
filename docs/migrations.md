@@ -2,6 +2,10 @@
 
 Behaviour and API changes that need a consumer adjustment, indexed by the scalo release where each first ships. Moving over from `hyperi-pylib` has its guide, [migrating-from-hyperi-pylib.md](migrating-from-hyperi-pylib.md).
 
+## Next release -- A `ServiceApp` applies `logging.scrub` (BEHAVIOUR CHANGE)
+
+`ServiceApp` ignored `logging.scrub.*` and ran the default scrubber. It reads the section from the config it loaded, a `--config` file and the app's env prefix included, and `setup()` reads it from the process-wide settings. See [core-pillars/scrubbing.md](core-pillars/scrubbing.md). **Consumer adjustment** -- check a `logging.scrub` section already in your config, because `enabled: false` or `pii.enabled: false` now takes effect.
+
 ## 2.32.4 -- `DirectoryConfigStore` rejects a write over a table it cannot read (BEHAVIOUR CHANGE)
 
 `set` read a malformed, non-mapping or unreadable table as empty and wrote back only the new key. It raises `ValueError` or the `OSError`, as `delete` does. **Consumer adjustment** -- fix or remove a broken table before writing to it.

@@ -19,7 +19,7 @@ from scalo.logger.scrub import (
 )
 from scalo.logger.scrub_resolver import (
     _legacy_to_scrub_config,
-    _parse_scrub_dict,
+    parse_scrub_config,
     resolve_scrubber,
 )
 
@@ -133,35 +133,35 @@ class TestLegacyMapping:
 
 class TestSchemaParsing:
     def test_empty_dict_gives_defaults(self):
-        cfg = _parse_scrub_dict({})
+        cfg = parse_scrub_config({})
         assert cfg.enabled is True
         assert cfg.observe_only is False
         assert cfg.pii.enabled is True
         assert cfg.log_levels.trace is False
 
     def test_master_disable(self):
-        cfg = _parse_scrub_dict({"enabled": False})
+        cfg = parse_scrub_config({"enabled": False})
         assert cfg.enabled is False
 
     def test_observe_only(self):
-        cfg = _parse_scrub_dict({"observe_only": True})
+        cfg = parse_scrub_config({"observe_only": True})
         assert cfg.observe_only is True
 
     def test_secrets_patterns(self):
-        cfg = _parse_scrub_dict({"secrets": {"patterns": "minimal"}})
+        cfg = parse_scrub_config({"secrets": {"patterns": "minimal"}})
         assert cfg.secrets.patterns == "minimal"
 
     def test_secrets_exclude_rules_list(self):
-        cfg = _parse_scrub_dict({"secrets": {"exclude_rules": ["generic-api-key"]}})
+        cfg = parse_scrub_config({"secrets": {"exclude_rules": ["generic-api-key"]}})
         assert cfg.secrets.exclude_rules == frozenset({"generic-api-key"})
 
     def test_secrets_exclude_rules_csv_string(self):
         # Env-var convenience -- comma-separated string converts to a set
-        cfg = _parse_scrub_dict({"secrets": {"exclude_rules": "generic-api-key, jwt"}})
+        cfg = parse_scrub_config({"secrets": {"exclude_rules": "generic-api-key, jwt"}})
         assert cfg.secrets.exclude_rules == frozenset({"generic-api-key", "jwt"})
 
     def test_secrets_exclude_rules_default_empty(self):
-        assert _parse_scrub_dict({}).secrets.exclude_rules == frozenset()
+        assert parse_scrub_config({}).secrets.exclude_rules == frozenset()
 
     def test_config_dict_exclusion_reaches_the_scrubber(self):
         # The cascade key has to change what the built scrubber does, not only the parsed config.
@@ -173,38 +173,43 @@ class TestSchemaParsing:
         # Legacy configs may still carry `pii.nlp = true`. The resolver
         # silently drops it (NLP/NER was dropped from scope) and the
         # rest of the PiiConfig still parses correctly.
-        cfg = _parse_scrub_dict({"pii": {"nlp": True, "enabled": True}})
+        cfg = parse_scrub_config({"pii": {"nlp": True, "enabled": True}})
         assert cfg.pii.enabled is True
         assert not hasattr(cfg.pii, "nlp")
 
     def test_national_ids_enabled_list(self):
-        cfg = _parse_scrub_dict({"pii": {"validators": {"national_ids": {"enabled": ["au", "us"]}}}})
+        cfg = parse_scrub_config({"pii": {"validators": {"national_ids": {"enabled": ["au", "us"]}}}})
         assert cfg.pii.validators.national_ids.enabled == ["au", "us"]
 
     def test_national_ids_csv_string(self):
         # Env-var convenience -- comma-separated string converts to list
-        cfg = _parse_scrub_dict({"pii": {"validators": {"national_ids": {"enabled": "au, us, uk"}}}})
+        cfg = parse_scrub_config({"pii": {"validators": {"national_ids": {"enabled": "au, us, uk"}}}})
         assert cfg.pii.validators.national_ids.enabled == ["au", "us", "uk"]
 
     def test_log_levels_off_trace_on_others(self):
-        cfg = _parse_scrub_dict({"log_levels": {"trace": False, "debug": True, "info": True}})
+        cfg = parse_scrub_config({"log_levels": {"trace": False, "debug": True, "info": True}})
         assert cfg.log_levels.trace is False
         assert cfg.log_levels.debug is True
         assert cfg.log_levels.info is True
 
     def test_bool_coercion_from_strings(self):
         # Env vars come through as strings
-        cfg = _parse_scrub_dict({"enabled": "true", "observe_only": "yes"})
+        cfg = parse_scrub_config({"enabled": "true", "observe_only": "yes"})
         assert cfg.enabled is True
         assert cfg.observe_only is True
 
-        cfg2 = _parse_scrub_dict({"enabled": "false", "observe_only": "0"})
+        cfg2 = parse_scrub_config({"enabled": "false", "observe_only": "0"})
         assert cfg2.enabled is False
         assert cfg2.observe_only is False
 
     def test_unknown_keys_ignored(self):
-        cfg = _parse_scrub_dict({"bogus": True, "enabled": True})
+        cfg = parse_scrub_config({"bogus": True, "enabled": True})
         assert cfg.enabled is True
+
+    @pytest.mark.parametrize("bare", [True, "on", 3, ["enabled"]])
+    def test_a_bare_value_for_the_section_is_rejected(self, bare):
+        with pytest.raises(TypeError, match="logging.scrub must be a mapping"):
+            parse_scrub_config(bare)
 
 
 # ---------------------------------------------------------------------------

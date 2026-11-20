@@ -514,3 +514,20 @@ def test_a_curl_command_in_a_traceback_is_scrubbed_like_a_message(monkeypatch):
         logger.exception("fetch failed")
 
     assert secret not in stream.getvalue()
+
+
+def test_logging_scrub_reaches_the_scrub_resolver_through_get_logging_config(logging_settings):
+    logging_settings.set("logging.scrub", {"secrets": {"exclude_rules": ["generic-api-key"]}})
+
+    assert config_module.get_logging_config()["scrub"]["secrets"]["exclude_rules"] == ["generic-api-key"]
+
+
+@pytest.mark.parametrize("bare", [False, 0, []])
+def test_a_falsy_scrub_value_is_carried_for_the_resolver_to_reject(logging_settings, bare):
+    logging_settings.set("logging.scrub", bare)
+
+    assert config_module.get_logging_config()["scrub"] == bare
+
+
+def test_get_logging_config_has_no_scrub_key_when_none_is_set(logging_settings):
+    assert "scrub" not in config_module.get_logging_config()
