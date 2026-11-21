@@ -2,6 +2,10 @@
 
 Behaviour and API changes that need a consumer adjustment, indexed by the scalo release where each first ships. Moving over from `hyperi-pylib` has its guide, [migrating-from-hyperi-pylib.md](migrating-from-hyperi-pylib.md).
 
+## Next release -- `DirectoryConfigStore` reads return deep copies (BEHAVIOUR CHANGE)
+
+`get` returned a shallow copy of a table and the cached value itself for a key, so changing a nested dict you got back changed the cache for every reader. It returns a deep copy, as `set` and the change callbacks now copy what they take or hand out. See [api/directory-config.md](api/directory-config.md). **Consumer adjustment** -- write a change back with `set`, because mutating what `get` returned no longer reaches the store.
+
 ## Next release -- A `ServiceApp` makes its config the module-level `settings` (BEHAVIOUR CHANGE)
 
 The version check, span export, the expression profile and the Kafka health thresholds read `scalo.config.settings`, which had the import-time `ENV_PREFIX` and no `--config` file. `ServiceApp` now adopts the config it loads as `settings`, so they read the app's `env_prefix` and its `--config` file. An `otel_tracing` or `kafka.health` key set from the environment was also dropped for its upper-case name, and now takes effect. See [core-pillars/config.md](core-pillars/config.md#read-it-like-a-dict). **Consumer adjustment** -- export those keys under the app's prefix (`MYAPP_VERSION_CHECK__ENABLED`, not `VERSION_CHECK__ENABLED`), and check an `otel_tracing` or `kafka.health` env key you set that had no effect.

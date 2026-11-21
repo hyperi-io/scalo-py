@@ -124,6 +124,52 @@ class TestRead:
         assert "mutated" not in data2
 
 
+class TestReadsAreCopies:
+    """A caller cannot change the cache through anything the store hands out."""
+
+    def test_a_nested_dict_from_a_whole_table_read_is_a_copy(self, store):
+        store.get("dfe-loader")["database"]["host"] = "mutated"
+
+        assert store.get("dfe-loader", "database.host") == "localhost"
+
+    def test_a_dict_from_a_keyed_read_is_a_copy(self, store):
+        store.get("dfe-loader", "database")["host"] = "mutated"
+
+        assert store.get("dfe-loader", "database") == {"host": "localhost", "port": 5432, "name": "loader_db"}
+        assert store.get("dfe-loader")["database"]["host"] == "localhost"
+
+    def test_a_list_from_a_keyed_read_is_a_copy(self, store):
+        store.set("dfe-loader", "tags", ["a", "b"])
+        store.get("dfe-loader", "tags").append("c")
+
+        assert store.get("dfe-loader", "tags") == ["a", "b"]
+
+    def test_a_value_changed_after_set_does_not_reach_the_cache(self, store):
+        tags = ["a", "b"]
+        store.set("dfe-loader", "tags", tags)
+        tags.append("c")
+
+        assert store.get("dfe-loader", "tags") == ["a", "b"]
+
+    def test_a_callback_changing_its_table_does_not_reach_the_cache(self, store):
+        def vandal(table, data):
+            data["database"]["host"] = "mutated"
+
+        store.on_change("dfe-loader", vandal)
+        store.set("dfe-loader", "batch_size", 2000)
+
+        assert store.get("dfe-loader", "database.host") == "localhost"
+
+    def test_a_default_is_returned_as_given(self, store):
+        default = {"fallback": True}
+
+        assert store.get("dfe-loader", "missing", default) is default
+        assert store.get("missing-table", default=default) is default
+
+    def test_a_missing_key_is_not_mistaken_for_a_none_default(self, store):
+        assert store.get("dfe-loader", "database.nothing") is None
+
+
 class TestListTables:
     """Test table listing."""
 
