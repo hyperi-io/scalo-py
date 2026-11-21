@@ -96,7 +96,7 @@ On the `ServiceApp` path the level comes from these, highest first:
 
 `--log-level` and `--log-format` have no default, deliberately: a default is indistinguishable from an explicit flag, so one would outrank the cascade permanently. scalo-rs's flags have none either.
 
-`run` and `config-check` load config before they build the logger, so its level and format can come from the loaded config, a `--config` file included. Span export reads the module-level `settings` instead, see [tracing.md](tracing.md#on-by-default-and-the-settings). Anything the cascade logs on the way up goes to loguru's default sink, unscrubbed. Those lines are DEBUG-gated, and the resolved config path is logged once the sinks are up.
+`run` and `config-check` load config before they build the logger, so its level and format can come from the loaded config, a `--config` file included. Span export reads the module-level `settings`, which `ServiceApp` has by then made that loaded config, see [tracing.md](tracing.md#on-by-default-and-the-settings). Anything the cascade logs on the way up goes to loguru's default sink, unscrubbed. Those lines are DEBUG-gated, and the resolved config path is logged once the sinks are up.
 
 ## Library and stdlib loggers
 

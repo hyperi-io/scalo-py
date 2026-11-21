@@ -44,15 +44,38 @@ def _known_distro(codename: str) -> BaseDistro | None:
         return None
 
 
+_LIBGIT2_PACKAGES: dict[BaseDistro, str] = {
+    BaseDistro.TRIXIE: "libgit2-1.9",
+    BaseDistro.BOOKWORM: "libgit2-1.5",
+    BaseDistro.NOBLE: "libgit2-1.7",
+    BaseDistro.JAMMY: "libgit2-1.1",
+    BaseDistro.FOCAL: "libgit2-28",
+}
+
+
 def libgit2_runtime_package(codename: str) -> str:
     """Runtime libgit2 package name for a Debian/Ubuntu suite.
 
-    Trixie ships ``libgit2-1.9``; older suites ship ``libgit2-1.7``. There is
-    no virtual provider to paper over the difference -- soname-versioned
-    packages do not alias, because different ABI versions are genuinely
-    different libraries. Verified by building on ``debian:trixie-slim``.
+    The library version is part of the package name and there is no virtual
+    provider, so each release has its own: trixie ``libgit2-1.9``, bookworm
+    ``libgit2-1.5``, noble ``libgit2-1.7``, jammy ``libgit2-1.1`` and focal
+    ``libgit2-28``. This is the same table as scalo-rs's ``libgit2_package``.
+
+    Args:
+        codename: Release codename, one of the ``BaseDistro`` values.
+
+    Returns:
+        The apt package name for that release.
+
+    Raises:
+        ValueError: If ``codename`` is not a release scalo knows. A guessed
+            name fails the image build with ``Unable to locate package``.
     """
-    return "libgit2-1.9" if codename == "trixie" else "libgit2-1.7"
+    distro = _known_distro(codename)
+    if distro is None:
+        known = ", ".join(sorted(BaseDistro))
+        raise ValueError(f"No libgit2 package is known for release {codename!r}, expected one of: {known}")
+    return _LIBGIT2_PACKAGES[distro]
 
 
 class AptRepoContract(BaseModel):

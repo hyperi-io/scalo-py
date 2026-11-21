@@ -898,6 +898,33 @@ def get_config(
     )
 
 
+def adopt_config(config):
+    """Make ``config`` the content of the module-level ``settings``.
+
+    ``settings`` is built at import, with the ``ENV_PREFIX`` of that moment and
+    none of the files an app names later. Code that reads it directly -- the
+    version check, span export, the expression profile and the Kafka health
+    thresholds among it -- would otherwise never see the app's own env prefix or
+    its ``--config`` file. ``ServiceApp`` adopts the config it loads for that
+    reason. A later reload, which swaps the content of ``settings`` the same way,
+    then reloads the adopted config.
+
+    Call it once per process, as ``ServiceApp`` does. The expression profile and the
+    span exporter are kept for the life of the process, so a second adoption does
+    not reach them.
+
+    Args:
+        config: A settings object from :func:`get_config`.
+
+    Returns:
+        The module-level ``settings``, now reading through ``config``'s content.
+    """
+    if not config.configured:
+        config.configure()
+    settings._wrapped = config._wrapped
+    return settings
+
+
 def setup():
     """Return the shared settings object, kept for compatibility."""
     return settings
@@ -1025,8 +1052,9 @@ def get_logging_config():
     """Get container-aware logging configuration with K8s standard env vars.
 
     Reads standard K8s/cloud-native logging environment variables. The logger's
-    ``setup()`` applies ``level``, ``format``, ``color``, ``console``, ``file``
-    and ``intercept_stdlib`` (``logging.intercept_stdlib``, default true); the
+    ``setup()`` applies ``level``, ``format``, ``color``, ``console``, ``file``,
+    ``intercept_stdlib`` (``logging.intercept_stdlib``, default true) and
+    ``scrub`` (the ``logging.scrub`` section, present only when set). The
     remaining keys are resolved here and are not applied by it.
 
     - LOG_LEVEL: Log level (DEBUG, INFO, WARNING, ERROR, CRITICAL)
@@ -1123,7 +1151,7 @@ def get_logging_config():
             )
         intercept_stdlib = word not in ("false", "0", "no", "off")
 
-    return {
+    resolved = {
         "level": log_level,
         "format": log_format,
         "output": log_output,
@@ -1135,6 +1163,12 @@ def get_logging_config():
         "file": log_file,
         "intercept_stdlib": bool(intercept_stdlib),
     }
+    # The logger's scrub resolver reads this section from the dict, so it is
+    # carried through as the config holds it and left out when unset.
+    scrub = logging_config.get("scrub")
+    if scrub is not None:
+        resolved["scrub"] = scrub
+    return resolved
 
 
 def get_target_config(target: str | None = None, targets_file: str | None = None) -> dict:
@@ -1328,6 +1362,7 @@ __all__ = [
     "MOUNT_CONFIG",
     # Container-aware exports
     "MountConfig",
+    "adopt_config",
     "detect_environment",
     "detect_helm_deployment",
     "detect_standard_mounts",

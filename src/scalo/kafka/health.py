@@ -85,8 +85,11 @@ def _get_health_config() -> dict:
     try:
         from scalo.config import settings
 
+        # Not copied into a plain dict: an env key reaches the config upper-cased, and only
+        # the settings' own mapping still finds it under the lower-case name read below.
         health_config = settings.get("kafka.health", {})
-        health_config = dict(health_config) if isinstance(health_config, dict) else {}
+        if not isinstance(health_config, dict):
+            health_config = {}
     except Exception:
         health_config = {}
 

@@ -81,7 +81,7 @@ def resolve_scrubber(
 
     # 4. New schema in config -- `logging.scrub.*`
     if "scrub" in config:
-        return build_scrubber(_parse_scrub_dict(config["scrub"]), metrics=scrub_metrics)
+        return build_scrubber(parse_scrub_config(config["scrub"]), metrics=scrub_metrics)
 
     # 5. Legacy schema in config
     if "mask_sensitive_data" in config or "masking_level" in config:
@@ -170,12 +170,23 @@ def _legacy_to_scrub_config(
     return ScrubConfig()
 
 
-def _parse_scrub_dict(d: dict[str, Any]) -> ScrubConfig:
+def parse_scrub_config(d: dict[str, Any]) -> ScrubConfig:
     """Parse a ``logging.scrub.*`` config dict into a ScrubConfig.
 
-    Tolerant: missing keys take defaults; unknown keys are silently
-    dropped. Boolean-like values are coerced.
+    Tolerant: missing keys take defaults and unknown keys are dropped.
+    Boolean-like values are coerced.
+
+    Args:
+        d: The ``logging.scrub`` section of a loaded config.
+
+    Returns:
+        The scrub configuration those keys describe.
+
+    Raises:
+        TypeError: If ``d`` is not a mapping, as when ``logging.scrub`` is set to a bare value.
     """
+    if not isinstance(d, dict):
+        raise TypeError(f"logging.scrub must be a mapping of settings, not {type(d).__name__}")
 
     def _bool(value: Any, default: bool) -> bool:
         if value is None:

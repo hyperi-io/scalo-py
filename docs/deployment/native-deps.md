@@ -71,12 +71,12 @@ For a service with a Rust core re-bound to Python, `for_scalo_features(features,
 
 | Cargo feature | APT packages |
 |---|---|
-| `directory-config-git` | `libgit2-1.9` on trixie, `libgit2-1.7` on any other release |
+| `directory-config-git` | `libgit2-1.9` on trixie, `libgit2-1.5` on bookworm, `libgit2-1.7` on noble, `libgit2-1.1` on jammy, `libgit2-28` on focal |
 | any other | none |
 
-The libgit2 name comes from `distro_codename` via `libgit2_runtime_package()`. A soname-versioned package has no alias to fall back on, so the name must match the release.
+The libgit2 name comes from `distro_codename` via `libgit2_runtime_package()`, which raises `ValueError` for a release outside `BaseDistro`. A soname-versioned package has no alias to fall back on, so the name must match the release.
 
-scalo-rs's `NativeDepsContract::for_scalo_features` names the same package on trixie and noble, but `libgit2-1.5` on bookworm, `libgit2-1.1` on jammy and `libgit2-28` on focal, which are the names those releases have. scalo-rs derives the release from `base_image` and records `unresolved_base_image` or `contradicted_base_image`, where scalo-py takes `distro_codename` as given and ignores `base_image`.
+scalo-rs's `NativeDepsContract::for_scalo_features` names the same packages. It derives the release from `base_image` and records `unresolved_base_image` or `contradicted_base_image`, where scalo-py takes `distro_codename` as given and ignores `base_image`.
 
 Check a package name by building the image on the target base, never by reading a distribution's package pages or search UI. A name that resolves through a `Provides:` alias does not show on those pages, so a name that looks missing there can still install.
 

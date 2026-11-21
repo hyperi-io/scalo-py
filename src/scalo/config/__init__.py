@@ -2,6 +2,7 @@
 
 from .config import (
     MountConfig,
+    adopt_config,
     detect_environment,
     detect_helm_deployment,
     detect_standard_mounts,
@@ -40,6 +41,7 @@ __all__ = [
     # Config classes and functions
     "MountConfig",
     "ReloaderConfig",
+    "adopt_config",
     "detect_environment",
     # Merge functions
     "detect_file_type",

@@ -55,18 +55,31 @@ pytestmark = pytest.mark.skipif(
 # name here is an outright build failure (`Unable to locate package`).
 ABSENT_FROM_SUITE = {
     "trixie": {"libgit2-1.7"},
-    "bookworm": {"libgit2-1.9"},
+    "bookworm": {"libgit2-1.7", "libgit2-1.9"},
+    "jammy": {"libgit2-1.7"},
+    "focal": {"libgit2-1.7"},
+}
+
+LIBGIT2_BY_SUITE = {
+    "trixie": "libgit2-1.9",
+    "bookworm": "libgit2-1.5",
+    "noble": "libgit2-1.7",
+    "jammy": "libgit2-1.1",
+    "focal": "libgit2-28",
 }
 
 
 class TestLibgit2SuiteResolution:
-    """libgit2-1.7 does not exist in Debian trixie."""
+    """Each release carries a different libgit2 soname package, and none aliases another."""
 
-    def test_trixie_gets_1_9(self):
-        assert libgit2_runtime_package("trixie") == "libgit2-1.9"
+    @pytest.mark.parametrize(("codename", "package"), sorted(LIBGIT2_BY_SUITE.items()))
+    def test_each_suite_gets_its_own_package(self, codename: str, package: str):
+        assert libgit2_runtime_package(codename) == package
 
-    def test_older_suites_get_1_7(self):
-        assert libgit2_runtime_package("bookworm") == "libgit2-1.7"
+    @pytest.mark.parametrize("codename", ["", "sid", "stable", "Trixie", "24.04"])
+    def test_unknown_suite_is_rejected(self, codename: str):
+        with pytest.raises(ValueError, match="No libgit2 package is known"):
+            libgit2_runtime_package(codename)
 
     def test_default_codename_is_trixie(self):
         # python:*-slim is trixie underneath; the default must follow it.
@@ -83,7 +96,7 @@ class TestLibgit2SuiteResolution:
             "python:3.12-slim",
             distro_codename="bookworm",
         )
-        assert "libgit2-1.7" in deps.apt_packages
+        assert deps.apt_packages == ["libgit2-1.5"]
         assert deps.distro_codename == "bookworm"
 
     def test_codename_is_not_sniffed_from_base_image(self):

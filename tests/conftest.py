@@ -29,6 +29,20 @@ def _reset_scalo_env_prefix():
     _ec._metric_prefix_override = None
 
 
+@pytest.fixture(autouse=True)
+def _restore_module_settings():
+    """Put the module-level settings back as a test found them.
+
+    ServiceApp adopts the config it loads as ``scalo.config.settings``, so a
+    test that runs an app would otherwise hand its prefix and files to the next.
+    """
+    from scalo.config import settings
+
+    wrapped = settings._wrapped
+    yield
+    settings._wrapped = wrapped
+
+
 @pytest.fixture(scope="session", autouse=True)
 def _drop_logger_sinks_at_session_end():
     """Remove every loguru sink once the session ends.

@@ -516,36 +516,3 @@ class KafkaAdmin:
 
         finally:
             consumer.close()
-
-
-# =============================================================================
-# BACKLOG: JSON Key-Value Offset Seek
-# =============================================================================
-#
-# Future feature: seek_to_json_match()
-#
-# Seek to first message where a nested JSON field matches a value.
-# Unlike timestamp-based seek (which uses Kafka's built-in index),
-# this requires reading and parsing actual message content.
-#
-# Proposed API:
-#     def seek_to_json_match(
-#         self,
-#         group_id: str,
-#         topic: str,
-#         json_path: str,           # e.g., "user.id" or "event.type"
-#         value: Any,               # Match value
-#         *,
-#         timeout: float = 60.0,    # Max search time
-#         max_messages: int = 100_000,  # Safety limit
-#         cancel_event: threading.Event | None = None,
-#     ) -> dict[int, int] | None:
-#
-# Implementation considerations:
-# - No index: Worst case is full topic scan
-# - Parallel partition search for performance
-# - Cancellation support via threading.Event
-# - Timeout handling to prevent hangs
-# - Graceful handling of non-JSON messages
-#
-# Estimated effort: 1-2 days for production-ready implementation
