@@ -2,6 +2,10 @@
 
 Behaviour and API changes that need a consumer adjustment, indexed by the scalo release where each first ships. Moving over from `hyperi-pylib` has its guide, [migrating-from-hyperi-pylib.md](migrating-from-hyperi-pylib.md).
 
+## Next release -- `libgit2_runtime_package` names the package each release carries (BEHAVIOUR CHANGE)
+
+It returned `libgit2-1.7` for every release but trixie, so an image on bookworm, jammy or focal failed to build. It returns `libgit2-1.5`, `libgit2-1.1` and `libgit2-28` for those, and raises `ValueError` for a codename outside `BaseDistro`, where it guessed `libgit2-1.7` before. See [deployment/native-deps.md](deployment/native-deps.md#for_scalo_features-polyglot-apps). **Consumer adjustment** -- pass one of `trixie`, `bookworm`, `noble`, `jammy` or `focal` as `distro_codename`, and regenerate a committed `Dockerfile` built on bookworm, jammy or focal.
+
 ## 2.32.4 -- `DirectoryConfigStore` rejects a write over a table it cannot read (BEHAVIOUR CHANGE)
 
 `set` read a malformed, non-mapping or unreadable table as empty and wrote back only the new key. It raises `ValueError` or the `OSError`, as `delete` does. **Consumer adjustment** -- fix or remove a broken table before writing to it.
