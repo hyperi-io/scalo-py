@@ -5,7 +5,7 @@
 ```python
 from scalo.deployment.test_support import (
     SKIP_PREFIX,
-    docker_available, buildx_available, helm_available,
+    docker_available, docker_unreachable_reason, buildx_available, helm_available,
     kubeconform_available, kind_available, kubectl_available,
     docker_build_cmd, docker_env,
     tier_b_enabled,
@@ -58,7 +58,7 @@ The six probes are cached with `functools.cache`, so each tool shells out at mos
 
 | Probe | Checks |
 |---|---|
-| `docker_available()` | `which docker` + `docker info` (daemon must be reachable, not just CLI) |
+| `docker_available()` | `which docker` + `docker version --format '{{.Server.Version}}'` (daemon must be reachable, not just CLI). Retries in CI and the full tier |
 | `buildx_available()` | `which docker` + `docker buildx version` |
 | `helm_available()` | `which helm` + `helm version` |
 | `kubeconform_available()` | `which kubeconform` only (no execution) |
@@ -66,6 +66,10 @@ The six probes are cached with `functools.cache`, so each tool shells out at mos
 | `kubectl_available()` | `which kubectl` + `kubectl version --client` (no server needed) |
 
 Probes never raise. A timeout, `FileNotFoundError` or other `OSError` returns `False`.
+
+The first calls of a job can stall on a hosted runner's daemon. Under `CI` or `HYPERCI_TEST_TIER=full`, `docker_available()` asks again every 2 s until 30 s have passed, allowing 20 s a call. Elsewhere it asks once, allowing 10 s, so a stopped Docker Desktop does not stall every collection.
+
+`docker_unreachable_reason()` returns why it said no (the exit status and last stderr line, or the timeout) and None when the daemon answers, so a skip reason can carry it. Call both from the test body, not at import, because a module-level `skipif` runs while every xdist worker is still collecting.
 
 `docker_build_cmd(tag, *, dockerfile="Dockerfile", context=".", no_cache=False)` returns the build argv: `docker buildx build --load` when buildx answers, else `docker build`. Use it rather than a hand-written `["docker", "build", ...]`, because the legacy builder ignores the active `docker context`.
 

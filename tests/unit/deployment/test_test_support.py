@@ -17,7 +17,10 @@ log path resolution (Linux/macOS/WSL vs native Windows), and the
 from __future__ import annotations
 
 import os
+import re
 import subprocess
+import sys
+from collections.abc import Callable, Iterator
 from pathlib import Path
 from unittest.mock import patch
 
@@ -139,38 +142,177 @@ def test_skip_appends_not_truncates(tmp_path: Path, capsys: pytest.CaptureFixtur
 # ---------------------------------------------------------------------------
 
 
-def test_docker_available_cached(monkeypatch: pytest.MonkeyPatch) -> None:
-    """`docker_available()` calls shutil.which at most once across invocations."""
+_FAKE_DOCKER = """#!/bin/sh
+dir="$(dirname "$0")"
+n=$(cat "$dir/calls" 2>/dev/null || echo 0)
+n=$((n + 1))
+echo "$n" > "$dir/calls"
+action=$(sed -n "${n}p" "$dir/plan")
+[ -n "$action" ] || action=$(tail -n 1 "$dir/plan")
+case "$action" in
+  ok) echo "29.4.2" ;;
+  refuse) echo "Cannot connect to the Docker daemon at unix:///var/run/docker.sock" >&2; exit 1 ;;
+  hang) exec sleep 30 ;;
+esac
+"""
+
+
+@pytest.fixture
+def fake_docker(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> Iterator[Callable[[list[str]], Path]]:
+    """Put a real executable called ``docker`` first on PATH, in a CI run, with the waits shrunk to fractions of a second.
+
+    Call it with the plan: what the n-th call does (``ok``, ``refuse`` or ``hang``), the last line repeating.
+    It returns the file that counts the calls.
+    """
     from scalo.deployment import test_support
 
-    test_support.docker_available.cache_clear()
-    call_counter = {"which": 0, "run": 0}
+    bin_dir = tmp_path / "bin"
+    bin_dir.mkdir()
+    script = bin_dir / "docker"
+    script.write_text(_FAKE_DOCKER, encoding="utf-8", newline="\n")
+    script.chmod(0o755)
+    monkeypatch.setenv("PATH", f"{bin_dir}{os.pathsep}{os.environ['PATH']}")
+    monkeypatch.setenv("CI", "1")
+    monkeypatch.delenv("HYPERCI_TEST_TIER", raising=False)
+    monkeypatch.setattr(test_support, "_DOCKER_WAIT_SECONDS", 2.0)
+    monkeypatch.setattr(test_support, "_DOCKER_ATTEMPT_SECONDS", 0.3)
+    monkeypatch.setattr(test_support, "_DOCKER_LOCAL_ATTEMPT_SECONDS", 0.3)
+    monkeypatch.setattr(test_support, "_DOCKER_RETRY_PAUSE_SECONDS", 0.05)
+    monkeypatch.setattr(test_support, "_DOCKER_MIN_ATTEMPT_SECONDS", 0.1)
+    test_support.docker_unreachable_reason.cache_clear()
 
-    def fake_which(name: str) -> str | None:
-        call_counter["which"] += 1
-        return "/usr/bin/docker"
+    def install(plan: list[str]) -> Path:
+        (bin_dir / "plan").write_text("\n".join(plan) + "\n", encoding="utf-8", newline="\n")
+        return bin_dir / "calls"
 
-    def fake_run(*a, **kw) -> subprocess.CompletedProcess[str]:
-        call_counter["run"] += 1
-        return subprocess.CompletedProcess(args=a[0], returncode=0, stdout="", stderr="")
-
-    monkeypatch.setattr(test_support.shutil, "which", fake_which)
-    monkeypatch.setattr(test_support.subprocess, "run", fake_run)
-
-    test_support.docker_available()
-    test_support.docker_available()
-    test_support.docker_available()
-
-    assert call_counter["which"] == 1
-    assert call_counter["run"] == 1
+    yield install
+    test_support.docker_unreachable_reason.cache_clear()
 
 
-def test_docker_available_false_when_no_binary(monkeypatch: pytest.MonkeyPatch) -> None:
+def _calls(counter: Path) -> int:
+    return int(counter.read_text(encoding="utf-8"))
+
+
+_POSIX_ONLY = pytest.mark.skipif(sys.platform == "win32", reason="the stand-in docker is a POSIX shell script")
+
+
+@_POSIX_ONLY
+@pytest.mark.parametrize(
+    ("plan", "reachable", "min_calls"),
+    [
+        pytest.param(["ok"], True, 1, id="answers-at-once"),
+        pytest.param(["refuse", "refuse", "ok"], True, 3, id="daemon-still-starting"),
+        pytest.param(["hang", "ok"], True, 2, id="first-call-stalls-past-the-attempt-timeout"),
+        pytest.param(["refuse"], False, 2, id="no-daemon"),
+        pytest.param(["hang"], False, 2, id="wedged-daemon"),
+    ],
+)
+def test_docker_probe_waits_out_a_daemon_that_is_slow_or_starting_in_ci(
+    fake_docker: Callable[[list[str]], Path], plan: list[str], reachable: bool, min_calls: int
+) -> None:
     from scalo.deployment import test_support
 
-    test_support.docker_available.cache_clear()
-    monkeypatch.setattr(test_support.shutil, "which", lambda _name: None)
+    calls = fake_docker(plan)
+
+    assert test_support.docker_available() is reachable
+    reason = test_support.docker_unreachable_reason()
+    assert (reason is None) is reachable
+    assert reason is None or reason.startswith("docker version --format")
+    assert _calls(calls) >= min_calls
+
+
+@_POSIX_ONLY
+def test_docker_probe_is_as_patient_under_the_full_tier_without_ci(
+    fake_docker: Callable[[list[str]], Path], monkeypatch: pytest.MonkeyPatch
+) -> None:
+    from scalo.deployment import test_support
+
+    monkeypatch.delenv("CI")
+    monkeypatch.setenv("HYPERCI_TEST_TIER", "full")
+    calls = fake_docker(["refuse", "refuse", "ok"])
+
+    assert test_support.docker_available() is True
+    assert _calls(calls) == 3
+
+
+@_POSIX_ONLY
+@pytest.mark.parametrize(
+    ("plan", "reason_part"),
+    [
+        pytest.param(["refuse", "ok"], "exited 1: Cannot connect", id="refused"),
+        pytest.param(["hang", "ok"], "did not finish within 0.3 s", id="stalled"),
+    ],
+)
+def test_docker_probe_asks_once_where_no_daemon_is_expected(
+    fake_docker: Callable[[list[str]], Path], monkeypatch: pytest.MonkeyPatch, plan: list[str], reason_part: str
+) -> None:
+    """A stopped Docker Desktop must not stall every collection, so a developer's run takes the first answer."""
+    from scalo.deployment import test_support
+
+    monkeypatch.delenv("CI")
+    calls = fake_docker(plan)
+
     assert test_support.docker_available() is False
+    reason = test_support.docker_unreachable_reason()
+    assert reason is not None
+    assert reason_part in reason
+    assert _calls(calls) == 1
+
+
+@pytest.mark.parametrize(
+    ("left", "expected"),
+    [
+        pytest.param(30.0, 20.0, id="plenty-left-takes-the-full-limit"),
+        pytest.param(8.0, 8.0, id="less-than-the-limit-caps-the-call"),
+        pytest.param(1.0, 1.0, id="exactly-the-floor-still-starts"),
+        pytest.param(0.99, None, id="under-the-floor-stops"),
+        pytest.param(-3.0, None, id="past-the-deadline-stops"),
+    ],
+)
+def test_docker_probe_caps_each_call_at_the_time_left(left: float, expected: float | None) -> None:
+    from scalo.deployment import test_support
+
+    assert test_support._next_docker_timeout(left, 20.0) == expected
+
+
+@_POSIX_ONLY
+def test_docker_probe_asks_the_daemon_once_per_process(fake_docker: Callable[[list[str]], Path]) -> None:
+    from scalo.deployment import test_support
+
+    calls = fake_docker(["ok"])
+
+    assert [test_support.docker_available() for _ in range(3)] == [True, True, True]
+    assert _calls(calls) == 1
+
+
+@_POSIX_ONLY
+def test_docker_probe_asks_again_after_cache_clear(
+    fake_docker: Callable[[list[str]], Path], monkeypatch: pytest.MonkeyPatch
+) -> None:
+    from scalo.deployment import test_support
+
+    monkeypatch.delenv("CI")
+    fake_docker(["refuse"])
+    assert test_support.docker_available() is False
+
+    calls = fake_docker(["ok"])
+    test_support.docker_unreachable_reason.cache_clear()
+
+    assert test_support.docker_available() is True
+    assert test_support.docker_unreachable_reason() is None
+    assert _calls(calls) > 1
+
+
+def test_docker_probe_says_when_docker_is_not_installed(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    from scalo.deployment import test_support
+
+    monkeypatch.setenv("PATH", str(tmp_path))
+    test_support.docker_unreachable_reason.cache_clear()
+    try:
+        assert test_support.docker_available() is False
+        assert test_support.docker_unreachable_reason() == "docker is not on PATH"
+    finally:
+        test_support.docker_unreachable_reason.cache_clear()
 
 
 def test_helm_available_when_present(monkeypatch: pytest.MonkeyPatch) -> None:

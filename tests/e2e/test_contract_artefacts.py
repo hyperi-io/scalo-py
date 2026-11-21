@@ -40,10 +40,10 @@ from scalo.deployment import (
     ContractIdentity,
 )
 from scalo.deployment.test_support import (
-    docker_available,
     docker_build_cmd,
     docker_empty_creds_json,
     docker_env,
+    docker_unreachable_reason,
     skip,
 )
 
@@ -88,11 +88,12 @@ def test_tier_a_dockerfile_builds_and_image_runs() -> None:
     AND survive build->inspect, using a minimal hand-crafted wrapper.
     Real consumers replace this body with their own full build.
     """
-    if not docker_available():
+    reason = docker_unreachable_reason()
+    if reason is not None:
         skip(
             "tier-a",
             "test_tier_a_dockerfile_builds_and_image_runs",
-            "docker daemon not reachable",
+            f"docker daemon not reachable: {reason}",
         )
 
     identity = _make_identity()

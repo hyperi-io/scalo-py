@@ -46,7 +46,9 @@ _VALID_TIERS = frozenset({"tier-a", "tier-b"})
 # ---------------------------------------------------------------------------
 
 
-def _shell_ok(args: list[str], timeout: float = 10.0) -> bool:
+def _probe(args: list[str], timeout: float = 10.0) -> str | None:
+    """Run ``args``. None when it exits 0, otherwise a one-line reason it did not."""
+    command = " ".join(args)
     try:
         result = subprocess.run(
             args,
@@ -57,17 +59,74 @@ def _shell_ok(args: list[str], timeout: float = 10.0) -> bool:
             check=False,
             timeout=timeout,
         )
-    except FileNotFoundError, subprocess.TimeoutExpired, OSError:
-        return False
-    return result.returncode == 0
+    except subprocess.TimeoutExpired:
+        return f"{command} did not finish within {timeout:g} s"
+    except FileNotFoundError:
+        return f"{args[0]} is not on PATH"
+    except OSError as exc:
+        return f"{command} could not start: {exc}"
+    if result.returncode == 0:
+        return None
+    stderr_lines = result.stderr.strip().splitlines()
+    detail = f": {stderr_lines[-1][:200]}" if stderr_lines else ""
+    return f"{command} exited {result.returncode}{detail}"
+
+
+def _shell_ok(args: list[str], timeout: float = 10.0) -> bool:
+    return _probe(args, timeout) is None
+
+
+# Where a daemon is expected: retry for _WAIT in all, never start a call with under _MIN left, which would only time out.
+_DOCKER_DAEMON_ARGV = ["docker", "version", "--format", "{{.Server.Version}}"]
+_DOCKER_WAIT_SECONDS = 30.0
+_DOCKER_ATTEMPT_SECONDS = 20.0
+_DOCKER_RETRY_PAUSE_SECONDS = 2.0
+_DOCKER_LOCAL_ATTEMPT_SECONDS = 10.0
+_DOCKER_MIN_ATTEMPT_SECONDS = 1.0
+
+
+def _docker_is_expected() -> bool:
+    """CI and the full tier run with a daemon, so a failed probe there is a stall, not an absent daemon."""
+    return "CI" in os.environ or (os.environ.get("HYPERCI_TEST_TIER") or "").strip().lower() == "full"
+
+
+def _next_docker_timeout(left: float, attempt_limit: float) -> float | None:
+    """Timeout for the next call with ``left`` seconds of the wait remaining, None when too little is left to start one."""
+    if left < _DOCKER_MIN_ATTEMPT_SECONDS:
+        return None
+    return min(attempt_limit, left)
 
 
 @cache
+def docker_unreachable_reason() -> str | None:
+    """Why no docker daemon answers, or None when one does. Asked once per process.
+
+    Where a daemon is expected, the first calls of a job can stall, so a failed call is retried for
+    ``_DOCKER_WAIT_SECONDS`` in all. Elsewhere one call is enough: a stopped Docker Desktop must not
+    stall every collection.
+
+    ``docker version`` reaches the daemon without the CLI plugin scan that ``docker info`` also runs.
+    """
+    if shutil.which("docker") is None:
+        return "docker is not on PATH"
+    patient = _docker_is_expected()
+    attempt_limit = _DOCKER_ATTEMPT_SECONDS if patient else _DOCKER_LOCAL_ATTEMPT_SECONDS
+    deadline = time.monotonic() + (_DOCKER_WAIT_SECONDS if patient else 0.0)
+    timeout = attempt_limit
+    while True:
+        problem = _probe(_DOCKER_DAEMON_ARGV, timeout)
+        if problem is None:
+            return None
+        next_timeout = _next_docker_timeout(deadline - time.monotonic() - _DOCKER_RETRY_PAUSE_SECONDS, attempt_limit)
+        if next_timeout is None:
+            return problem
+        time.sleep(_DOCKER_RETRY_PAUSE_SECONDS)
+        timeout = next_timeout
+
+
 def docker_available() -> bool:
     """Docker daemon reachable for build/run."""
-    if shutil.which("docker") is None:
-        return False
-    return _shell_ok(["docker", "info"])
+    return docker_unreachable_reason() is None
 
 
 @cache
