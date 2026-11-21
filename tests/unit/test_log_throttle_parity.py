@@ -18,7 +18,24 @@ the next emission after the window appends a "(suppressed N similar)" summary.
 
 import time
 
+import pytest
+
 from scalo.logger.filters import RateLimitFilter
+
+
+@pytest.fixture
+def clock(monkeypatch):
+    """A fake ``time.time`` that a test moves by hand, so no assertion depends on how long the host takes to run a line.
+
+    Returns the function that advances it by a number of seconds.
+    """
+    now = {"t": 1_000.0}
+    monkeypatch.setattr(time, "time", lambda: now["t"])
+
+    def advance(seconds: float) -> None:
+        now["t"] += seconds
+
+    return advance
 
 
 def _make_record(message: str, level_no: int = 20, name: str = "test.logger") -> dict:
@@ -66,7 +83,7 @@ class TestDeduplicationWithinWindow:
 class TestSummaryAppend:
     """Suppressed count is appended to the next emission -- parity with scalo_rs summary field."""
 
-    def test_summary_appended_after_window_expires(self):
+    def test_summary_appended_after_window_expires(self, clock):
         """After window expiry, the resumed message includes suppression count."""
         f = RateLimitFilter(period_sec=0.1, summary_enabled=True)
         msg = "Retrying upstream call"
@@ -79,12 +96,12 @@ class TestSummaryAppend:
             f(_make_record(msg))
 
         # Expire window, next emission should carry summary
-        time.sleep(0.15)
+        clock(0.15)
         resume = _make_record(msg)
         assert f(resume) is True
         assert "(suppressed 3 similar)" in resume["message"]
 
-    def test_summary_format_matches_scalo_rs(self):
+    def test_summary_format_matches_scalo_rs(self, clock):
         """Summary text format: '<original> (suppressed N similar)'."""
         f = RateLimitFilter(period_sec=0.1, summary_enabled=True)
         msg = "Health check failed"
@@ -93,12 +110,12 @@ class TestSummaryAppend:
         for _ in range(7):
             f(_make_record(msg))
 
-        time.sleep(0.15)
+        clock(0.15)
         resume = _make_record(msg)
         f(resume)
         assert resume["message"] == f"{msg} (suppressed 7 similar)"
 
-    def test_summary_count_resets_after_emission(self):
+    def test_summary_count_resets_after_emission(self, clock):
         """Suppressed count resets to zero after a summary is emitted."""
         f = RateLimitFilter(period_sec=0.1, summary_enabled=True)
         msg = "Cache miss"
@@ -109,14 +126,14 @@ class TestSummaryAppend:
         f(_make_record(msg))
 
         # Second window: resume, count resets
-        time.sleep(0.15)
+        clock(0.15)
         resume = _make_record(msg)
         f(resume)  # emits with "(suppressed 2 similar)"
 
         # Third window: no suppressions yet, count should be 0
         assert f.get_suppressed_count(name="test.logger", level=20, message=msg) == 0
 
-    def test_summary_disabled_leaves_message_unchanged(self):
+    def test_summary_disabled_leaves_message_unchanged(self, clock):
         """When summary_enabled=False, resumed message is not modified."""
         f = RateLimitFilter(period_sec=0.1, summary_enabled=False)
         msg = "Worker stalled"
@@ -125,20 +142,20 @@ class TestSummaryAppend:
         for _ in range(4):
             f(_make_record(msg))
 
-        time.sleep(0.15)
+        clock(0.15)
         resume = _make_record(msg)
         f(resume)
         assert resume["message"] == msg
         assert "suppressed" not in resume["message"]
 
-    def test_no_summary_when_nothing_suppressed(self):
+    def test_no_summary_when_nothing_suppressed(self, clock):
         """No summary appended when there were no suppressions in the previous window."""
         f = RateLimitFilter(period_sec=0.1, summary_enabled=True)
         msg = "Heartbeat OK"
 
         f(_make_record(msg))
         # No suppressions -- window expires cleanly
-        time.sleep(0.15)
+        clock(0.15)
 
         resume = _make_record(msg)
         f(resume)
@@ -246,7 +263,7 @@ class TestDifferentMessagesPassThrough:
 class TestWindowExpiry:
     """After the period, the same message is allowed again -- window semantics."""
 
-    def test_message_allowed_after_window_expires(self):
+    def test_message_allowed_after_window_expires(self, clock):
         """Same message passes again once the period has elapsed."""
         f = RateLimitFilter(period_sec=0.1)
         msg = "Upstream timeout"
@@ -254,17 +271,17 @@ class TestWindowExpiry:
         assert f(_make_record(msg)) is True
         assert f(_make_record(msg)) is False  # suppressed within window
 
-        time.sleep(0.15)
+        clock(0.15)
         assert f(_make_record(msg)) is True  # window expired, passes again
 
-    def test_suppression_resumes_after_resumed_emission(self):
+    def test_suppression_resumes_after_resumed_emission(self, clock):
         """After resuming post-expiry, further messages within the new window are suppressed."""
         f = RateLimitFilter(period_sec=0.1)
         msg = "Write buffer full"
 
         f(_make_record(msg))  # first pass
 
-        time.sleep(0.15)
+        clock(0.15)
         f(_make_record(msg))  # resumed after expiry
 
         # Now within a new window -- must suppress again
@@ -294,7 +311,7 @@ class TestWindowExpiry:
         assert f(_make_record(msg_a)) is True  # msg_a window expired
         assert f(_make_record(msg_b)) is False  # msg_b window still active
 
-    def test_multiple_expiry_cycles_work_correctly(self):
+    def test_multiple_expiry_cycles_work_correctly(self, clock):
         """Filter correctly handles multiple pass/suppress cycles over time."""
         f = RateLimitFilter(period_sec=0.1)
         msg = "Metric collection lag"
@@ -309,7 +326,7 @@ class TestWindowExpiry:
             f(suppress)  # should suppress
 
             if cycle < 2:
-                time.sleep(0.15)  # expire before next cycle
+                clock(0.15)  # expire before next cycle
 
         assert all(p is True for p in passes)
 
