@@ -63,7 +63,7 @@ Returns the spawned `threading.Thread` if a check was kicked off, or `None` when
 
 ## Configuration
 
-All settings live under the `version_check` key, read from the module-level `settings`, so a discovered YAML file or an env key can set them. That object's env keys take the `ENV_PREFIX` prefix, or none, never `ServiceApp`'s `env_prefix`, and a `--config` file does not reach it:
+All settings live under the `version_check` key, read from the module-level `settings`, so a discovered YAML file or an env key can set them. Under a `ServiceApp` that object is the app's loaded config, so its env keys take the app's `env_prefix` and a `--config` file reaches it. Outside one they take the `ENV_PREFIX` prefix, or none:
 
 ```yaml
 version_check:

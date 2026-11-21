@@ -2,6 +2,10 @@
 
 Behaviour and API changes that need a consumer adjustment, indexed by the scalo release where each first ships. Moving over from `hyperi-pylib` has its guide, [migrating-from-hyperi-pylib.md](migrating-from-hyperi-pylib.md).
 
+## Next release -- A `ServiceApp` makes its config the module-level `settings` (BEHAVIOUR CHANGE)
+
+The version check, span export, the expression profile and the Kafka health thresholds read `scalo.config.settings`, which had the import-time `ENV_PREFIX` and no `--config` file. `ServiceApp` now adopts the config it loads as `settings`, so they read the app's `env_prefix` and its `--config` file. An `otel_tracing` or `kafka.health` key set from the environment was also dropped for its upper-case name, and now takes effect. See [core-pillars/config.md](core-pillars/config.md#read-it-like-a-dict). **Consumer adjustment** -- export those keys under the app's prefix (`MYAPP_VERSION_CHECK__ENABLED`, not `VERSION_CHECK__ENABLED`), and check an `otel_tracing` or `kafka.health` env key you set that had no effect.
+
 ## Next release -- A `ServiceApp` applies `logging.scrub` (BEHAVIOUR CHANGE)
 
 `ServiceApp` ignored `logging.scrub.*` and ran the default scrubber. It reads the section from the config it loaded, a `--config` file and the app's env prefix included, and `setup()` reads it from the process-wide settings. See [core-pillars/scrubbing.md](core-pillars/scrubbing.md). **Consumer adjustment** -- check a `logging.scrub` section already in your config, because `enabled: false` or `pii.enabled: false` now takes effect.

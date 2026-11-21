@@ -70,7 +70,7 @@ An env key names a nested path with a double underscore between levels. A single
 | `cache.disk.enabled` | `MYAPP_CACHE__DISK__ENABLED` |
 | `kafka.brokers` | `MYAPP_KAFKA__BROKERS` |
 
-The prefix is fixed when the settings object is built. The module-level `settings`, and `get_config()` called without `env_prefix`, take it from the `ENV_PREFIX` env var as it stood at import, else no prefix at all, so the key above is just `DATABASE__HOST`. `get_config(env_prefix="MYAPP")` takes it per call, and that is what `ServiceApp` does with its `env_prefix` class attribute: the `config` it hands `run_service` is prefixed, the module-level `settings` is not unless `ENV_PREFIX` was exported. scalo hard-codes no brand.
+The prefix is fixed when the settings object is built. The module-level `settings`, and `get_config()` called without `env_prefix`, take it from the `ENV_PREFIX` env var as it stood at import, else no prefix at all, so the key above is just `DATABASE__HOST`. `get_config(env_prefix="MYAPP")` takes it per call. `ServiceApp` does that with its `env_prefix` class attribute, then adopts the result as the module-level `settings` with `adopt_config()`. The `config` it hands `run_service` is therefore `settings`, prefixed and carrying the `--config` file, and so is everything that reads `settings` directly: the version check, span export, the expression profile and the Kafka health thresholds. Env keys exported bare, or under another prefix, stop reaching them. scalo hard-codes no brand.
 
 ## Multi-file discovery
 
@@ -82,7 +82,7 @@ For each YAML layer (`defaults`, `settings`, `settings.{env}`), scalo-py searche
 4. `~/.config/{app_name}/` -- XDG user config, only when the app name is not the `"app"` fallback
 5. the mount config directory `get_mount_config()` resolves, when it is not in the list yet
 
-Both `.yaml` and `.yml` are read, `.yaml` first, so a `.yml` in the same directory wins a tie. Every file found is loaded, later overriding earlier. `get_config()` deep-merges them. The module-level `settings` does not: a later file that sets `database` replaces the whole `database` mapping an earlier file set.
+Both `.yaml` and `.yml` are read, `.yaml` first, so a `.yml` in the same directory wins a tie. Every file found is loaded, later overriding earlier. `get_config()` deep-merges them, and so does the `settings` a `ServiceApp` adopts. A module-level `settings` that nothing adopted into does not: a later file that sets `database` replaces the whole `database` mapping an earlier file set.
 
 YAML values are read as written, except Dynaconf's `@` tokens (`@int 5` reads back as `5`). `${POSTGRES_HOST:-localhost}` arrives as that literal string, so override a file value from the environment with its env key (layer 2) instead.
 
@@ -110,7 +110,7 @@ await reloader.start()
 await reloader.stop()
 ```
 
-Each reload loads the cascade into a copy of the settings, and `validate_fn` checks the copy. Only a copy that loads and validates replaces the live `settings`, so a reload that fails to load, fails validation or raises in `validate_fn` leaves the last good config in place. `on_reload` then receives the live `settings`. The reloader reloads the module-level `settings` only, never an object `get_config()` returned, `ServiceApp`'s `config` included.
+Each reload loads the cascade into a copy of the settings, and `validate_fn` checks the copy. Only a copy that loads and validates replaces the live `settings`, so a reload that fails to load, fails validation or raises in `validate_fn` leaves the last good config in place. `on_reload` then receives the live `settings`. The reloader reloads the module-level `settings` only, never an object `get_config()` returned. A `ServiceApp`'s `config` is that `settings`, so a reload reaches it.
 
 `reload_count_success` and `reload_count_error` are counters you can feed into [AppMetrics.record_config_reload](metrics.md#built-in-metric-groups). The reloader does not do it for you -- it imports nothing from `metrics` or `health`, so read the properties and record them from your code.
 

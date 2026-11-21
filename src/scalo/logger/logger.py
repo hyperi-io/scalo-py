@@ -999,11 +999,9 @@ def setup(
                 metrics = create_metrics("my-app")
                 logger.setup(metrics=metrics)
         level: Explicit log level, already resolved by the caller.
-            ``get_logging_config()`` reads the process-wide Dynaconf instance,
-            which never sees a config file passed to
-            ``get_config(additional_files=...)``. A caller that HAS loaded such
-            a file -- ``ServiceApp``, via ``--config`` -- passes the resolved
-            level here instead of hoping the two agree.
+            ``get_logging_config()`` reads the module-level ``settings``, which
+            knows nothing of ``--log-level`` or ``--verbose``. ``ServiceApp``
+            passes the level it resolved from those flags and the config here.
         log_format: Format selector resolved by the caller: "json", "text"
             (aliases "console", "pretty", "human") or "auto". Same reasoning
             as ``level``. "auto" or None defers to ``LOG_FORMAT``, then to

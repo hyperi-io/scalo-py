@@ -41,7 +41,7 @@ otel_tracing:
   export_timeout_millis: 10000
 ```
 
-`setup()` reads `otel_tracing` from the module-level `settings`, so a file `ServiceApp` adds with `--config` does not reach it, and the env vars always do. Env vars outrank config, per the OTel spec. The per-signal
+`setup()` reads `otel_tracing` from the module-level `settings`. A `ServiceApp` adopts its loaded config as that object, so its `--config` file and `env_prefix` reach it, and the bare OTel env vars always do. Env vars outrank config, per the OTel spec. The per-signal
 `OTEL_EXPORTER_OTLP_TRACES_ENDPOINT` and `OTEL_EXPORTER_OTLP_TRACES_PROTOCOL`
 outrank the generic pair, and a per-signal endpoint is used as given. With no
 endpoint set anywhere, the default port follows the resolved protocol (4317 for
