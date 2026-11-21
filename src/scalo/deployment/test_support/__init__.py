@@ -378,7 +378,8 @@ class KindClusterGuard:
 def ensure_kind_cluster(test_name: str) -> KindClusterGuard | None:
     """Return a :class:`KindClusterGuard` or skip the test with a clear reason.
 
-    Returns the guard (entered, so no cluster exists yet) when all of
+    Returns the guard (entered: it creates no cluster and does not check
+    whether the name is already used) when all of
     ``kind_available()``, ``kubectl_available()`` and ``tier_b_enabled()``
     are true. Otherwise calls :func:`skip` (which raises
     ``pytest.skip.Exception``).

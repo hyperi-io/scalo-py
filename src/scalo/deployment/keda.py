@@ -48,7 +48,7 @@ class KedaConfig(BaseModel):
     """Seconds before scale-down after load drops."""
 
     kafka_lag_threshold: int = Field(default=1000, ge=0)
-    """Scale when the consumer group's lag, summed over all its partitions, exceeds this."""
+    """Scale when the watched topic's lag, summed over its partitions, exceeds this."""
 
     activation_lag_threshold: int = Field(default=0, ge=0)
     """Wake from zero replicas when lag exceeds this."""
@@ -111,8 +111,9 @@ class KedaContract(BaseModel):
     """Whether the chart turns KEDA on.
 
     False turns it off, as ``keda=None`` does. A ``keda.enabled: true`` chart value
-    turns it on either way, and only a contract with ``keda`` set gets the Kafka lag
-    trigger then.
+    turns it on either way. The Kafka lag trigger then follows the contract's
+    ``kafka_trigger``, and a contract with no ``keda`` has none unless the chart's
+    ``keda.kafka.enabled`` is also true.
     """
 
     min_replicas: int = Field(default=1, ge=0)

@@ -221,9 +221,9 @@ async def gather_with_timeouts[T](
         >>> results = await gather_with_timeouts(
         ...     {
         ...         "db": lambda: db.ping(),
-        ...         "kafka": lambda: run_blocking(producer.flush, 1.0),
+        ...         "cache": lambda: cache.ping(),
         ...     },
-        ...     per_task_timeout=2.0,
+        ...     per_task_timeout=1.0,
         ... )
         >>> failed = {k: v for k, v in results.items() if isinstance(v, Exception)}
     """
