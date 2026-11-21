@@ -335,8 +335,10 @@ class KindClusterGuard:
     """Context manager wrapping a uniquely-named kind cluster.
 
     Cluster name is derived from a hash of ``test_name`` so parallel
-    pytest-xdist workers get distinct clusters. ``__enter__`` brings the
-    cluster up via ``kind create cluster``; ``__exit__`` runs
+    pytest-xdist workers get distinct clusters. ``__enter__`` only checks
+    that ``kind``, ``kubectl`` and ``E2E_CLUSTER=1`` are present and creates
+    nothing: the test body runs ``kind create cluster --name <guard.name>``
+    itself, so it can pass ``--image`` or ``--config``. ``__exit__`` runs
     ``kind delete cluster`` with ``check=False`` so test failures don't
     suppress cleanup.
 
@@ -376,9 +378,11 @@ class KindClusterGuard:
 def ensure_kind_cluster(test_name: str) -> KindClusterGuard | None:
     """Return a :class:`KindClusterGuard` or skip the test with a clear reason.
 
-    Returns the guard (entered) when all of ``kind_available()``,
-    ``kubectl_available()``, ``tier_b_enabled()`` are true. Otherwise
-    calls :func:`skip` (which raises ``pytest.skip.Exception``).
+    Returns the guard (entered: it creates no cluster and does not check
+    whether the name is already used) when all of
+    ``kind_available()``, ``kubectl_available()`` and ``tier_b_enabled()``
+    are true. Otherwise calls :func:`skip` (which raises
+    ``pytest.skip.Exception``).
     """
     missing: list[str] = []
     if not tier_b_enabled():

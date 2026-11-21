@@ -534,7 +534,10 @@ class TestNativeDepsForRustlibFeatures:
         [
             pytest.param(STATICALLY_LINKED_FEATURES, "trixie", [], id="statically-linked"),
             pytest.param(["directory-config-git", "transport-kafka"], "trixie", ["libgit2-1.9"], id="libgit2-trixie"),
-            pytest.param(["directory-config-git"], "bookworm", ["libgit2-1.7"], id="libgit2-bookworm"),
+            pytest.param(["directory-config-git"], "bookworm", ["libgit2-1.5"], id="libgit2-bookworm"),
+            pytest.param(["directory-config-git"], "noble", ["libgit2-1.7"], id="libgit2-noble"),
+            pytest.param(["directory-config-git"], "jammy", ["libgit2-1.1"], id="libgit2-jammy"),
+            pytest.param(["directory-config-git"], "focal", ["libgit2-28"], id="libgit2-focal"),
         ],
     )
     def test_only_libgit2_installs_a_package(self, features, codename, packages):

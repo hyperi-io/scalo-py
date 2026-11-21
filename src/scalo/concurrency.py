@@ -221,11 +221,11 @@ async def gather_with_timeouts[T](
         >>> results = await gather_with_timeouts(
         ...     {
         ...         "db": lambda: db.ping(),
-        ...         "kafka": lambda: producer.health_check(),
+        ...         "cache": lambda: cache.ping(),
         ...     },
         ...     per_task_timeout=1.0,
         ... )
-        >>> healthy = {k: v for k, v in results.items() if not isinstance(v, Exception)}
+        >>> failed = {k: v for k, v in results.items() if isinstance(v, Exception)}
     """
 
     async def _run_one(name: str, fn: Callable[[], Awaitable[T]]) -> tuple[str, T | Exception]:

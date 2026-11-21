@@ -529,5 +529,16 @@ def test_a_falsy_scrub_value_is_carried_for_the_resolver_to_reject(logging_setti
     assert config_module.get_logging_config()["scrub"] == bare
 
 
+def test_a_rejected_scrub_section_leaves_the_earlier_sink_in_place(monkeypatch, logging_settings):
+    stream = _setup(monkeypatch)
+    logging_settings.set("logging.scrub", False)
+
+    with pytest.raises(TypeError, match="logging.scrub must be a mapping"):
+        setup(otel_tracing=False, log_format="json")
+    logger.info("still here")
+
+    assert _only_json(stream)["message"] == "still here"
+
+
 def test_get_logging_config_has_no_scrub_key_when_none_is_set(logging_settings):
     assert "scrub" not in config_module.get_logging_config()

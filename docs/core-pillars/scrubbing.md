@@ -43,7 +43,7 @@ logging:
       exclude_rules: [generic-api-key]   # a comma-separated string also works, for env vars
 ```
 
-A `ServiceApp` reads that section from its loaded config. A direct `setup()` call reads it from the process-wide settings, or takes the same rule as an argument:
+A `ServiceApp` reads that section from its loaded config. A direct `setup()` call reads it from the process-wide settings, or takes the same rule as an argument. A `logging.scrub` that is not a mapping stops startup, and a null one reads as unset:
 
 ```python
 from scalo.logger import setup
