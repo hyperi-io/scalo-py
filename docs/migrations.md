@@ -6,6 +6,14 @@ Behaviour and API changes that need a consumer adjustment, indexed by the scalo 
 
 The version check, span export, the expression profile and the Kafka health thresholds read `scalo.config.settings`, which had the import-time `ENV_PREFIX` and no `--config` file. `ServiceApp` now adopts the config it loads as `settings`, so they read the app's `env_prefix` and its `--config` file. An `otel_tracing` or `kafka.health` key set from the environment was also dropped for its upper-case name, and now takes effect. See [core-pillars/config.md](core-pillars/config.md#read-it-like-a-dict). **Consumer adjustment** -- export those keys under the app's prefix (`MYAPP_VERSION_CHECK__ENABLED`, not `VERSION_CHECK__ENABLED`), and check an `otel_tracing` or `kafka.health` env key you set that had no effect.
 
+## Next release -- A `ServiceApp` applies `logging.scrub` (BEHAVIOUR CHANGE)
+
+`ServiceApp` ignored `logging.scrub.*` and ran the default scrubber. It reads the section from the config it loaded, a `--config` file and the app's env prefix included, and `setup()` reads it from the process-wide settings. See [core-pillars/scrubbing.md](core-pillars/scrubbing.md). **Consumer adjustment** -- check a `logging.scrub` section already in your config, because `enabled: false` or `pii.enabled: false` now takes effect.
+
+## Next release -- `libgit2_runtime_package` names the package each release carries (BEHAVIOUR CHANGE)
+
+It returned `libgit2-1.7` for every release but trixie, so an image on bookworm, jammy or focal failed to build. It returns `libgit2-1.5`, `libgit2-1.1` and `libgit2-28` for those, and raises `ValueError` for a codename outside `BaseDistro`, where it guessed `libgit2-1.7` before. See [deployment/native-deps.md](deployment/native-deps.md#for_scalo_features-polyglot-apps). **Consumer adjustment** -- pass one of `trixie`, `bookworm`, `noble`, `jammy` or `focal` as `distro_codename`, and regenerate a committed `Dockerfile` built on bookworm, jammy or focal.
+
 ## 2.32.4 -- `DirectoryConfigStore` rejects a write over a table it cannot read (BEHAVIOUR CHANGE)
 
 `set` read a malformed, non-mapping or unreadable table as empty and wrote back only the new key. It raises `ValueError` or the `OSError`, as `delete` does. **Consumer adjustment** -- fix or remove a broken table before writing to it.

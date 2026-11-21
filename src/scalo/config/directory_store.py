@@ -32,7 +32,7 @@ Usage:
 
     # Write (if writable) -- creates subdirectories automatically
     store.set("loaders/edge-loader", "database.host", "new-host",
-              message="Update DB host", author="derek@hyperi.io")
+              message="Update DB host", author="Config Admin <config-admin@example.com>")
 
     # Git branch management
     store.list_branches()

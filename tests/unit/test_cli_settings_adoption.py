@@ -135,3 +135,15 @@ def test_a_reload_keeps_the_adopted_prefix(monkeypatch):
     assert ConfigReloader().reload_now()
 
     assert settings.get("kafka.health.lag_threshold") == 321
+
+
+def test_a_reload_picks_up_an_edit_to_the_adopted_file(tmp_path):
+    path = tmp_path / "app.yaml"
+    path.write_text(yaml.safe_dump({"kafka": {"health": {"lag_threshold": 1}}}), encoding="utf-8", newline="\n")
+    adopt_config(get_config(additional_files=[str(path)], env_prefix=PREFIX, load_dotenv=False))
+    assert settings.get("kafka.health.lag_threshold") == 1
+
+    path.write_text(yaml.safe_dump({"kafka": {"health": {"lag_threshold": 2}}}), encoding="utf-8", newline="\n")
+
+    assert ConfigReloader().reload_now()
+    assert settings.get("kafka.health.lag_threshold") == 2

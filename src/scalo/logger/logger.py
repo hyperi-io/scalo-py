@@ -1039,13 +1039,27 @@ def setup(
     Raises:
         RuntimeError: The console sink is on and ``sys.stderr`` is None.
     """
+    # Get logging config (lazy import to avoid circular dependency)
+    config = _get_logging_config()
+
+    # Resolved before any sink is removed, so a scrub section that is rejected
+    # leaves the sinks a previous call installed in place. Order: `scrubber=`,
+    # `scrub_config=`, the `mask_sensitive` / `masking_level` args,
+    # `logging.scrub` from get_logging_config(), then defaults. See
+    # logger/scrub_resolver.py.
+    resolved_scrubber = resolve_scrubber(
+        scrubber=scrubber,
+        scrub_config=scrub_config,
+        mask_sensitive=mask_sensitive,
+        masking_level=masking_level,
+        config_dict=config,
+        metrics=metrics,
+    )
+
     # Remove default handler
     logger.remove()
 
     _cap_library_loggers()
-
-    # Get logging config (lazy import to avoid circular dependency)
-    config = _get_logging_config()
 
     if config.get("console", True) and sys.stderr is None:
         raise RuntimeError(
@@ -1089,18 +1103,6 @@ def setup(
     # If allow_all_emojis is True but use_emojis is False, warn and disable
     if allow_all_emojis and not use_emojis:
         allow_all_emojis = False  # Can't allow all if emojis disabled
-
-    # Resolver order here: `scrubber=`, `scrub_config=`, the `mask_sensitive` /
-    # `masking_level` args, then defaults -- get_logging_config() carries no
-    # scrub keys. See logger/scrub_resolver.py.
-    resolved_scrubber = resolve_scrubber(
-        scrubber=scrubber,
-        scrub_config=scrub_config,
-        mask_sensitive=mask_sensitive,
-        masking_level=masking_level,
-        config_dict=config,
-        metrics=metrics,
-    )
 
     # Sensitive data masking (default: enabled). Retained for backwards
     # compatibility -- _add_emoji_to_record will prefer `resolved_scrubber`

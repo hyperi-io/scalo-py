@@ -164,10 +164,17 @@ class CommonArgs:
                 os.environ["LOG_FORMAT"] = log_format
 
             from scalo.logger import setup
+            from scalo.logger.scrub_resolver import parse_scrub_config
+
+            # The scrub section comes from the loaded config, so a --config file
+            # and the app's env prefix both reach it.
+            scrub = _config_section(config, "logging").get("scrub")
+            scrub_config = parse_scrub_config(scrub) if scrub is not None else None
 
             setup(
                 level=level,
                 log_format=log_format,
+                scrub_config=scrub_config,
                 metrics=metrics,
                 service_name=service_name,
                 otel_tracing=otel_tracing,
