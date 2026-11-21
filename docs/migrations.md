@@ -2,6 +2,10 @@
 
 Behaviour and API changes that need a consumer adjustment, indexed by the scalo release where each first ships. Moving over from `hyperi-pylib` has its guide, [migrating-from-hyperi-pylib.md](migrating-from-hyperi-pylib.md).
 
+## Next release -- A `ServiceApp` applies `logging.scrub` (BEHAVIOUR CHANGE)
+
+`ServiceApp` ignored `logging.scrub.*` and ran the default scrubber. It reads the section from the config it loaded, a `--config` file and the app's env prefix included, and `setup()` reads it from the process-wide settings. See [core-pillars/scrubbing.md](core-pillars/scrubbing.md). **Consumer adjustment** -- check a `logging.scrub` section already in your config, because `enabled: false` or `pii.enabled: false` now takes effect.
+
 ## Next release -- `libgit2_runtime_package` names the package each release carries (BEHAVIOUR CHANGE)
 
 It returned `libgit2-1.7` for every release but trixie, so an image on bookworm, jammy or focal failed to build. It returns `libgit2-1.5`, `libgit2-1.1` and `libgit2-28` for those, and raises `ValueError` for a codename outside `BaseDistro`, where it guessed `libgit2-1.7` before. See [deployment/native-deps.md](deployment/native-deps.md#for_scalo_features-polyglot-apps). **Consumer adjustment** -- pass one of `trixie`, `bookworm`, `noble`, `jammy` or `focal` as `distro_codename`, and regenerate a committed `Dockerfile` built on bookworm, jammy or focal.

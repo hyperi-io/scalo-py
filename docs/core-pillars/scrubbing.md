@@ -4,7 +4,7 @@ What the logger redacts and how. `setup()` builds one scrubber and every sink sh
 
 `LogLevelsConfig.trace` is false by default, so a TRACE record's message and traceback reach the sinks unscrubbed, and a field with a credential name is the one thing still masked. To scrub TRACE, call `setup(scrub_config=ScrubConfig(log_levels=LogLevelsConfig(trace=True)))`. `ScrubConfig(enabled=False)` turns the scrubber off, and `ScrubConfig(observe_only=True)` counts matches without redacting them.
 
-`setup()` does not read these from `logging.scrub.*` (see [Excluding one L1 rule](#excluding-one-l1-rule)), and `ServiceApp` calls `setup()` with no `scrub_config`, so a `ServiceApp` service runs the defaults.
+`setup()` reads the same settings from `logging.scrub.*` when no scrubber or `scrub_config` argument is given (see [Excluding one L1 rule](#excluding-one-l1-rule)). `ServiceApp` reads that section from the config it loaded, a `--config` file and the app's env prefix included, and passes it as `scrub_config`.
 
 ## Scrub architecture
 
@@ -20,7 +20,7 @@ There is no NLP or NER layer. The L1 rule set is `src/scalo/data/gitleaks.toml`,
 
 `build_scrubber()` compiles no rule. A rule's regex compiles on the first scrub with text that hits one of its keywords (a rule with no keywords, on the first scrub), so a regex that does not compile warns, and joins `skipped_rules` and the `log_scrub_skipped_rules_total` gauge, at that first scrub, not at build. `GitleaksTomlScrubber.compile_all()` (in `gitleaks_toml.py`) compiles them all at once.
 
-`setup()` picks the scrubber through `src/scalo/logger/scrub_resolver.py`: an explicit `scrubber=`, then `scrub_config=`, then the legacy `mask_sensitive` / `masking_level` arguments, then the defaults. The resolver reads `logging.scrub.*` and the legacy `logging.mask_sensitive_data` from a config dict, but `setup()` hands it `get_logging_config()`, which holds neither, so through `setup()` those keys do nothing.
+`setup()` picks the scrubber through `src/scalo/logger/scrub_resolver.py`: an explicit `scrubber=`, then `scrub_config=`, then the legacy `mask_sensitive` / `masking_level` arguments, then `logging.scrub`, then the defaults. The resolver reads `logging.scrub.*` and the legacy `logging.mask_sensitive_data` from a config dict. `setup()` hands it `get_logging_config()`, which carries `logging.scrub` when set and not `logging.mask_sensitive_data`, so that legacy key does nothing through `setup()`.
 
 ```python
 from scalo.logger import setup
@@ -43,7 +43,7 @@ logging:
       exclude_rules: [generic-api-key]   # a comma-separated string also works, for env vars
 ```
 
-`setup()` never reads the `logging.scrub.*` form above, so use the `scrub_config=` form below instead.
+A `ServiceApp` reads that section from its loaded config. A direct `setup()` call reads it from the process-wide settings, or takes the same rule as an argument. A `logging.scrub` that is not a mapping stops startup, and a null one reads as unset:
 
 ```python
 from scalo.logger import setup
