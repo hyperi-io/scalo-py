@@ -162,7 +162,9 @@ def config_from_cascade(settings: Any | None = None) -> OtelTracingConfig:
 
             settings = get_settings()
         raw = settings.get("otel_tracing", {})
-        section = dict(raw) if raw else {}
+        # Not copied into a plain dict: an env key reaches the config upper-cased, and only
+        # the settings' own mapping still finds it under the lower-case name read below.
+        section = raw if isinstance(raw, dict) else {}
     except Exception:
         section = {}
 

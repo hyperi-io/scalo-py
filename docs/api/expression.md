@@ -137,7 +137,7 @@ Restricted categories, each refused until its flag is set (`DISALLOWED_FUNCTIONS
 | `RESTRICTED_ITERATION` | `map`, `filter`, `exists`, `exists_one`, `existsOne`, `all` | `allow_iteration` | cost grows with the collection |
 | `RESTRICTED_TIME` | `timestamp`, `duration` | `allow_time` | keeps a result independent of when the pipeline ran it |
 
-An app sets the flags under `expression` in its config, and every call with `profile=None` reads them from the module-level `settings`, which a `--config` file never reaches:
+An app sets the flags under `expression` in its config, and every call with `profile=None` reads them from the module-level `settings`, which a `ServiceApp` makes its loaded config, `--config` file and `env_prefix` included:
 
 ```yaml
 expression:

@@ -134,9 +134,8 @@ class CommonArgs:
 
         Call this AFTER :meth:`load_config` so ``logging.*`` from the config
         cascade -- including a file named by ``--config`` -- can configure the
-        logger. ``get_logging_config()`` reads the process-wide Dynaconf
-        instance, which never sees ``get_config(additional_files=...)``, so the
-        resolved values are passed in explicitly rather than left to it.
+        logger. The level and format resolved here, ``--log-level`` and
+        ``--verbose`` included, are passed to ``setup()`` explicitly.
 
         The resolved level and format are also exported as ``LOG_LEVEL`` /
         ``LOG_FORMAT`` because subprocesses and libraries that read those env
@@ -180,13 +179,15 @@ class CommonArgs:
         """Load configuration via the scalo config cascade.
 
         Uses ``get_config()`` with the app's env prefix and optional
-        config file path from ``--config``.
+        config file path from ``--config``, then adopts the result as the
+        module-level ``scalo.config.settings`` so the code that reads that
+        object sees the same prefix and file.
 
         Args:
             env_prefix: Environment variable prefix (e.g. "MYAPP").
 
         Returns:
-            Dynaconf settings object.
+            Dynaconf settings object, the module-level ``settings``.
 
         Raises:
             ConfigError: If configuration cannot be loaded, or ``--config``
@@ -198,11 +199,13 @@ class CommonArgs:
 
             set_env_prefix(env_prefix)
 
-            from scalo.config import get_config
+            from scalo.config import adopt_config, get_config
 
-            return get_config(
-                additional_files=additional_files,
-                env_prefix=env_prefix,
+            return adopt_config(
+                get_config(
+                    additional_files=additional_files,
+                    env_prefix=env_prefix,
+                )
             )
         except Exception as exc:
             raise ConfigError(str(exc)) from exc

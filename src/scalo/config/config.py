@@ -898,6 +898,33 @@ def get_config(
     )
 
 
+def adopt_config(config):
+    """Make ``config`` the content of the module-level ``settings``.
+
+    ``settings`` is built at import, with the ``ENV_PREFIX`` of that moment and
+    none of the files an app names later. Code that reads it directly -- the
+    version check, span export, the expression profile and the Kafka health
+    thresholds among it -- would otherwise never see the app's own env prefix or
+    its ``--config`` file. ``ServiceApp`` adopts the config it loads for that
+    reason. A later reload, which swaps the content of ``settings`` the same way,
+    then reloads the adopted config.
+
+    Call it once per process, as ``ServiceApp`` does. The expression profile and the
+    span exporter are kept for the life of the process, so a second adoption does
+    not reach them.
+
+    Args:
+        config: A settings object from :func:`get_config`.
+
+    Returns:
+        The module-level ``settings``, now reading through ``config``'s content.
+    """
+    if not config.configured:
+        config.configure()
+    settings._wrapped = config._wrapped
+    return settings
+
+
 def setup():
     """Return the shared settings object, kept for compatibility."""
     return settings
@@ -1328,6 +1355,7 @@ __all__ = [
     "MOUNT_CONFIG",
     # Container-aware exports
     "MountConfig",
+    "adopt_config",
     "detect_environment",
     "detect_helm_deployment",
     "detect_standard_mounts",

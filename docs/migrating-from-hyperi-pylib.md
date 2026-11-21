@@ -63,7 +63,7 @@ configurable env-var prefix that is **bare ("") by default**:
       env_prefix = "APP"        # -> APP_DEBUG, APP_DATABASE__HOST, ...
   ```
 
-  or via the bare `ENV_PREFIX` environment variable. `ServiceApp`'s prefix reaches the `config` it hands `run_service` and the knobs read after startup. The module-level `settings`, and knobs read at import such as `AUTO_DETECT`, see only `ENV_PREFIX`, so export it as well if you read those. `set_env_prefix()` exists only in the private `scalo._env_compat`. See [core-pillars/config.md](core-pillars/config.md#read-it-like-a-dict).
+  or via the bare `ENV_PREFIX` environment variable. `ServiceApp`'s prefix reaches the `config` it hands `run_service`, which is also the module-level `settings`, and the knobs read after startup. Knobs read at import such as `AUTO_DETECT` see only `ENV_PREFIX`, so export it as well if you read those. `set_env_prefix()` exists only in the private `scalo._env_compat`. See [core-pillars/config.md](core-pillars/config.md#read-it-like-a-dict).
 
 **Action for downstream apps:** pick your prefix (e.g. `APP`, `ORDERS_API`)
 and set it on your `ServiceApp`. Any `HYPERI_*` env vars in your
