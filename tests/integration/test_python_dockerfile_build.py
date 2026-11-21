@@ -38,10 +38,10 @@ except Exception:
 
 
 from scalo.deployment.test_support import (
-    docker_available,
     docker_build_cmd,
     docker_empty_creds_json,
     docker_env,
+    docker_unreachable_reason,
 )
 
 pytestmark = [
@@ -49,8 +49,15 @@ pytestmark = [
     pytest.mark.full,
     pytest.mark.skipif(not deployment_importable, reason="requires the [deployment] extra"),
     pytest.mark.skipif(shutil.which("uv") is None, reason="requires uv"),
-    pytest.mark.skipif(not docker_available(), reason="requires a running docker daemon"),
 ]
+
+
+@pytest.fixture(autouse=True)
+def _require_docker_daemon() -> None:
+    """Ask for the daemon when the test runs, not while every xdist worker is still collecting."""
+    reason = docker_unreachable_reason()
+    if reason is not None:
+        pytest.skip(f"requires a running docker daemon: {reason}")
 
 
 def _write_minimal_uv_app(root: Path, binary: str) -> None:
