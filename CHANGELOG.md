@@ -3,6 +3,18 @@
 Rendered by CI and committed back at the end of a release -- do not edit by
 hand. Release notes also appear on the GitHub Releases page, one per tag.
 
+## [2.32.10](https://github.com/hyperi-io/scalo-py/compare/v2.32.9...v2.32.10) (2026-11-21)
+
+### Bug Fixes
+
+* **config:** protect the DirectoryConfigStore cache ([85e64d5](https://github.com/hyperi-io/scalo-py/commit/85e64d50af54e73193a850072d1e087bb29e726e))
+* **config:** use app prefix and --config file ([aa96bb5](https://github.com/hyperi-io/scalo-py/commit/aa96bb53604240495bdd5116b57deba93c77ba5a))
+* **deployment:** use libgit2 packages by release ([c45747a](https://github.com/hyperi-io/scalo-py/commit/c45747ace1e01267d344d010ca82142825e16a22))
+* **docs:** correct docstrings and drop a commented-out block ([0e28df9](https://github.com/hyperi-io/scalo-py/commit/0e28df98e36528378c8bd26905360c938586703c))
+* **logger:** apply ServiceApp logging.scrub ([0a2a431](https://github.com/hyperi-io/scalo-py/commit/0a2a43127f3698ac321c4a49071196d983e807e6))
+* **test-support:** retry the Docker daemon probe ([a9336f0](https://github.com/hyperi-io/scalo-py/commit/a9336f0f9fa297fc04760e8804916d2ff1de92dc))
+* **tests:** use a fake clock in log throttle tests ([cbb752d](https://github.com/hyperi-io/scalo-py/commit/cbb752d09e06167be4621909cc3f7a5f2d207111))
+
 ## [2.32.9](https://github.com/hyperi-io/scalo-py/compare/v2.32.8...v2.32.9) (2026-11-17)
 
 ### Bug Fixes
