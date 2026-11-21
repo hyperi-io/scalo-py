@@ -41,6 +41,7 @@ Usage:
     store.stop()
 """
 
+import copy
 import os
 import tempfile
 import threading
@@ -57,6 +58,9 @@ from dulwich.repo import Repo as DulwichRepo
 
 from .._yaml import safe_load
 from ..logger import logger
+
+# Tells a key that is absent from one the caller asked for with a default of None.
+_MISSING = object()
 
 
 def _process_umask() -> int:
@@ -187,7 +191,8 @@ class DirectoryConfigStore:
             default: Value to return if key not found.
 
         Returns:
-            Config value, or default if not found.
+            A copy of the config value, or default if not found. Changing
+            the copy leaves the store's cache as it was.
         """
         table = self._validate_table_name(table)
         with self._lock:
@@ -196,8 +201,11 @@ class DirectoryConfigStore:
                 return default
             data, _ = entry
             if key is None:
-                return data.copy()
-            return self._get_nested(data, key, default)
+                return copy.deepcopy(data)
+            found = self._get_nested(data, key, _MISSING)
+            if found is _MISSING:
+                return default
+            return copy.deepcopy(found)
 
     def list_tables(self) -> list[str]:
         """List available config tables (including subdirectories).
@@ -249,7 +257,7 @@ class DirectoryConfigStore:
         file_path.parent.mkdir(parents=True, exist_ok=True)
         with self._write_lock(file_path):
             data = self._load_for_write(file_path) if file_path.exists() else {}
-            self._set_nested(data, key, value)
+            self._set_nested(data, key, copy.deepcopy(value))
             self._write_yaml_locked(file_path, data)
             mtime = file_path.stat().st_mtime
 
@@ -400,7 +408,8 @@ class DirectoryConfigStore:
         """Register a callback for when a table's config changes.
 
         The callback receives (table_name, new_data_dict) and is invoked
-        from the background refresh thread.
+        from the background refresh thread. The dict is the callback's own
+        copy of the table.
 
         Args:
             table: Table name to watch (supports path-like names e.g. "loaders/edge-loader").
@@ -462,7 +471,7 @@ class DirectoryConfigStore:
         callbacks = self._watchers.get(table, [])
         for cb in callbacks:
             try:
-                cb(table, data)
+                cb(table, copy.deepcopy(data))
             except Exception as e:
                 logger.error(f"Config change callback error for '{table}': {e}")
 

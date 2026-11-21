@@ -2,6 +2,10 @@
 
 Behaviour and API changes that need a consumer adjustment, indexed by the scalo release where each first ships. Moving over from `hyperi-pylib` has its guide, [migrating-from-hyperi-pylib.md](migrating-from-hyperi-pylib.md).
 
+## Next release -- `DirectoryConfigStore` reads return deep copies (BEHAVIOUR CHANGE)
+
+`get` returned a shallow copy of a table and the cached value itself for a key, so changing a nested dict you got back changed the cache for every reader. It returns a deep copy, as `set` and the change callbacks now copy what they take or hand out. See [api/directory-config.md](api/directory-config.md). **Consumer adjustment** -- write a change back with `set`, because mutating what `get` returned no longer reaches the store.
+
 ## 2.32.4 -- `DirectoryConfigStore` rejects a write over a table it cannot read (BEHAVIOUR CHANGE)
 
 `set` read a malformed, non-mapping or unreadable table as empty and wrote back only the new key. It raises `ValueError` or the `OSError`, as `delete` does. **Consumer adjustment** -- fix or remove a broken table before writing to it.

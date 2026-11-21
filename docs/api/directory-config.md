@@ -67,7 +67,7 @@ tables = store.list_tables()
 #  "monitoring/alerts/thresholds"]
 ```
 
-A whole-table read returns a shallow copy, and a keyed read returns the cached value itself, so mutating a nested dict you got back changes the cache for every reader. Copy it (`copy.deepcopy`) before you change it. Reads are thread-safe via an `RLock`.
+Every read returns a deep copy, so changing what you got back leaves the cache as it was for every other reader. `set()` copies the value you pass in the same way, and each callback gets its own copy of the table. Reads are thread-safe via an `RLock`.
 
 ## Writing
 
