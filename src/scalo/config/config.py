@@ -119,6 +119,7 @@ from dynaconf import Dynaconf
 from loguru import logger as _loguru_logger
 
 from scalo._env_compat import control_flag, control_var, env_prefix
+from scalo.config.managed import ManagedSource, loader_module
 
 
 def _debug_log(msg: str) -> None:
@@ -765,6 +766,7 @@ def get_config(
     merge_existing: bool = True,
     dotenv_cascade: bool = False,
     dotenv_files: list[str] | None = None,
+    managed: ManagedSource | None = None,
 ):
     """Get configuration with optional additional file sources.
 
@@ -830,9 +832,17 @@ def get_config(
         dotenv_files: Custom list of .env files to load in order (optional)
                      Later files override earlier ones. Implies load_dotenv=True.
                      Example: ["~/.env", "/etc/myapp/.env", ".env"]
+        managed: The Windows registry key or macOS preference domain Group
+                 Policy or MDM writes. Read on every load and reload, above
+                 the settings files and below env vars. None reads nothing.
+                 See docs/core-pillars/managed-config.md.
 
     Returns:
         Dynaconf settings object with cascade built-in
+
+    Raises:
+        ValueError: On first access, when the managed store sets a key
+            holding a secret.
 
     Examples:
         # Add monitoring config
@@ -888,6 +898,9 @@ def get_config(
             else:
                 _debug_log(f"[WARN] Config file not found: {path}")
 
+    # Dynaconf runs its loaders after the settings files, so the managed layer sits between them and env vars.
+    managed_layer = {"loaders": [loader_module(managed), "dynaconf.loaders.env_loader"]} if managed else {}
+
     # Create new Dynaconf instance (bare env vars when no prefix supplied)
     return Dynaconf(
         envvar_prefix=prefix or False,
@@ -895,6 +908,7 @@ def get_config(
         load_dotenv=False,
         environments=False,
         merge_enabled=True,
+        **managed_layer,
     )
 
 
@@ -1360,6 +1374,7 @@ __all__ = [
     # Constants
     "ENV_PREFIX",
     "MOUNT_CONFIG",
+    "ManagedSource",
     # Container-aware exports
     "MountConfig",
     "adopt_config",

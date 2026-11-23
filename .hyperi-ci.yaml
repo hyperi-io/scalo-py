@@ -28,7 +28,7 @@ test:
     required_for_release: true
     python:
       # Each names a setting or platform no CI runner has: a live cloud account,
-      # the scalo-rs golden file, macOS, or a moto gap the live tests cover.
+      # the scalo-rs golden file, macOS, Windows, or a moto gap the live tests cover.
       allow_skip:
         - "AWS credentials not available"
         - "GCP ADC cannot mint a token"
@@ -37,6 +37,7 @@ test:
         - "Vault credentials not configured"
         - "SCALO_RS_GOLDEN_PATH is not set"
         - "macOS-specific test"
+        - "Windows registry test"
         - "moto raises KeyError instead of ResourceNotFoundException"
 
 quality:
