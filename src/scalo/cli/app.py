@@ -41,11 +41,14 @@ import sys
 from abc import ABC, abstractmethod
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Any
+from typing import TYPE_CHECKING, Any
 
 from .error import CliError, ConfigError, LoggerError, ServiceError
 from .output import print_error, print_info, print_success
 from .version_info import VersionInfo
+
+if TYPE_CHECKING:
+    from scalo.config.managed import ManagedSource
 
 __all__ = [
     "CommonArgs",
@@ -182,7 +185,7 @@ class CommonArgs:
         except Exception as exc:
             raise LoggerError(str(exc)) from exc
 
-    def load_config(self, env_prefix: str) -> Any:
+    def load_config(self, env_prefix: str, managed: ManagedSource | None = None) -> Any:
         """Load configuration via the scalo config cascade.
 
         Uses ``get_config()`` with the app's env prefix and optional
@@ -192,6 +195,7 @@ class CommonArgs:
 
         Args:
             env_prefix: Environment variable prefix (e.g. "MYAPP").
+            managed: The app's Group Policy or MDM store, or None.
 
         Returns:
             Dynaconf settings object, the module-level ``settings``.
@@ -212,6 +216,7 @@ class CommonArgs:
                 get_config(
                     additional_files=additional_files,
                     env_prefix=env_prefix,
+                    managed=managed,
                 )
             )
         except Exception as exc:
@@ -250,6 +255,11 @@ class ServiceApp(ABC):
 
     env_prefix: str
     """Environment variable prefix for config cascade (e.g. 'MYAPP')."""
+
+    managed_source: ManagedSource | None = None
+    """Group Policy or MDM store read above the config files, e.g.
+    ``ManagedSource(windows_key="Example\\\\App", macos_domain="com.example.app")``.
+    None reads nothing."""
 
     def __init_subclass__(cls, **kwargs: Any) -> None:
         super().__init_subclass__(**kwargs)
@@ -522,7 +532,7 @@ def _handle_run(service_app: ServiceApp, args: CommonArgs) -> None:
         # and unscrubbed. It is DEBUG-gated (config._debug_log), so the exposure
         # is a developer who asked for it; the resolved config path is reported
         # below regardless.
-        config = args.load_config(service_app.env_prefix)
+        config = args.load_config(service_app.env_prefix, service_app.managed_source)
 
         args.init_logger(config=config, service_name=service_app.name)
 
@@ -675,7 +685,7 @@ def _handle_config_check(service_app: ServiceApp, args: CommonArgs) -> None:
         # Same order as `run`, and for a second reason: this subcommand PRINTS
         # the resolved log level, so building the logger first would report the
         # hard-coded default rather than what the cascade yields.
-        config = args.load_config(service_app.env_prefix)
+        config = args.load_config(service_app.env_prefix, service_app.managed_source)
         args.init_logger(config=config, otel_tracing=False)
         _run_check_config(service_app, config)
 

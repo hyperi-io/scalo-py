@@ -1,6 +1,7 @@
 """scalo Config Module - Re-exports from config.py for backward compatibility."""
 
 from .config import (
+    ManagedSource,
     MountConfig,
     adopt_config,
     detect_environment,
@@ -39,6 +40,7 @@ __all__ = [
     # Directory config store
     "DirectoryConfigStore",
     # Config classes and functions
+    "ManagedSource",
     "MountConfig",
     "ReloaderConfig",
     "adopt_config",

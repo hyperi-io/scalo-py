@@ -18,6 +18,8 @@ Nothing maps a CLI flag into `settings`. `ServiceApp` applies three: `--log-leve
 
 A key resolves from the first layer that sets it, and a reload re-reads every layer but `.env`.
 
+An app that names a Group Policy or MDM store gets one more layer, between `.env` and `settings.{env}.yaml`. See [managed-config.md](managed-config.md).
+
 ```mermaid
 flowchart TB
     accTitle: L4 Detail -- Config cascade

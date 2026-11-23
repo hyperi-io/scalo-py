@@ -66,6 +66,7 @@ Config, logger and health need no extra. Metrics and tracing need the `metrics` 
 | Start here | [extras-flags.md](extras-flags.md) | extras tree, recommended bundles, native deps |
 | Start here | [migrations.md](migrations.md) | behaviour and API changes a consumer adjusts for, by release |
 | Core pillars | [core-pillars/config.md](core-pillars/config.md) | 7-layer cascade, YAML discovery, hot reload, container-aware paths |
+| Core pillars | [core-pillars/managed-config.md](core-pillars/managed-config.md) | opt-in Group Policy and MDM layer, precedence, secret refusal |
 | Core pillars | [core-pillars/logging.md](core-pillars/logging.md) | loguru setup, JSON/text autodetect, fields, the JSON record's keys, rate-limit, CI mode |
 | Core pillars | [core-pillars/scrubbing.md](core-pillars/scrubbing.md) | the three scrub layers and what each masks |
 | Core pillars | [core-pillars/metrics.md](core-pillars/metrics.md) | Prometheus + OTel dual, metric groups, cardinality cap |
