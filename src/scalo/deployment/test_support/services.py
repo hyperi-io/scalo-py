@@ -29,8 +29,8 @@ from scalo.deployment.test_support.images import mirror_image
 from scalo.deployment.test_support.shared_service import HttpReady, LogReady, ServiceSpec, SharedContainer
 
 # renovate: datasource=docker depName=clickhouse/clickhouse-server
-CLICKHOUSE_TAG = "26.3.62.3"
-CLICKHOUSE_DIGEST = "sha256:de3e47c64078aa196dae2349e048fc98ba81947f651f5c20e06e46baea8ae40a"
+CLICKHOUSE_TAG = "26.3.64.3"
+CLICKHOUSE_DIGEST = "sha256:deadd72fe8b8b8608f8b7d6a988fcb5a8aee21dfaadc0f106c75f21bb9536395"
 CLICKHOUSE_IMAGE = f"clickhouse/clickhouse-server:{CLICKHOUSE_TAG}@{CLICKHOUSE_DIGEST}"
 CLICKHOUSE_HTTP_PORT = 8123
 CLICKHOUSE_NATIVE_PORT = 9000
