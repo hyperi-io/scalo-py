@@ -64,7 +64,7 @@ Core, always installed:
 By extra: `api` (FastAPI conventions: operation ids, ETag/If-Match, problem+json,
 pagination, a conformance check), `cli` (a whole CLI generated from an OpenAPI spec alone),
 `http` (retry with jitter), `metrics` (Prometheus + process and container
-gauges), `expression` (CEL), `kafka` (produce, consume, schema inference),
+gauges), `expression` ([CEL](https://github.com/cel-expr/cel-spec/blob/master/doc/langdef.md)), `kafka` (produce, consume, schema inference),
 `opentelemetry` (OTLP traces and metrics), `secrets` (OpenBao/Vault, AWS, GCP,
 Azure, Kubernetes Secret), `deployment` (Dockerfile, container manifest, compose generators).
 

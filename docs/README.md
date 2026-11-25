@@ -85,7 +85,7 @@ Config, logger and health need no extra. Metrics and tracing need the `metrics` 
 | API modules | [api/http-client.md](api/http-client.md) | `HttpClient` + `AsyncHttpClient` with retries |
 | API modules | [api/concurrency.md](api/concurrency.md) | `run_blocking`, `Bulkhead`, `gather_with_timeouts` |
 | API modules | [api/directory-config.md](api/directory-config.md) | YAML directory store with optional git tracking |
-| API modules | [api/expression.md](api/expression.md) | CEL via Rust/PyO3 (Python/Rust evaluation parity) |
+| API modules | [api/expression.md](api/expression.md) | [CEL](https://github.com/cel-expr/cel-spec/blob/master/doc/langdef.md) via Rust/PyO3 (Python/Rust evaluation parity) |
 | API modules | [api/rules.md](api/rules.md) | ordered first-match rules setting target fields, with a per-call clamp and hit counters |
 | API modules | [api/resilience.md](api/resilience.md) | `CircuitBreaker` Closed/Open/HalfOpen, `ReconnectingResilience` for pooled connections |
 | API modules | [api/version-check.md](api/version-check.md) | non-blocking startup version probe |
