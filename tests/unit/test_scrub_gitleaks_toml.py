@@ -184,21 +184,29 @@ _DEPRECATION_LINE = (
 )
 
 
+_GENERIC_VALUE = "Vq7LmZ3xWk9TbR2nHj5C"
+_GENERIC_LINE = f"deploy-key: {_GENERIC_VALUE}"
+
+
 class TestExcludeRules:
     """``exclude_rules`` narrows a false positive without dropping the rest of the set."""
 
     def _excluding(self, *rule_ids: str) -> ScrubConfig:
         return ScrubConfig(secrets=SecretsConfig(exclude_rules=frozenset(rule_ids)))
 
-    def test_default_set_eats_the_deprecation_warning(self):
-        # The control: without it the survival test below proves nothing.
-        out = build_scrubber().scrub(_DEPRECATION_LINE)
-        assert "[GENERIC_API_KEY_REDACTED]" in out
-        assert "publish.container" not in out
+    def test_default_set_leaves_the_deprecation_warning_alone(self):
+        # Gitleaks allows it: the matched "secret", publish.container, holds the stopword "container".
+        assert build_scrubber().scrub(_DEPRECATION_LINE) == _DEPRECATION_LINE
 
-    def test_deprecation_warning_survives_with_generic_api_key_excluded(self):
+    def test_default_set_eats_a_high_entropy_value_under_a_generic_key(self):
+        # The control: without it the survival test below proves nothing.
+        out = build_scrubber().scrub(_GENERIC_LINE)
+        assert "[GENERIC_API_KEY_REDACTED]" in out
+        assert _GENERIC_VALUE not in out
+
+    def test_value_survives_with_generic_api_key_excluded(self):
         scrubber = build_scrubber(self._excluding("generic-api-key"))
-        assert scrubber.scrub(_DEPRECATION_LINE) == _DEPRECATION_LINE
+        assert scrubber.scrub(_GENERIC_LINE) == _GENERIC_LINE
 
     def test_real_github_pat_still_redacted_by_its_own_rule(self):
         pat = _real_shaped_github_pat()
@@ -249,7 +257,8 @@ class TestGitleaksTomlScrubberLabeler:
         assert re.search(r"\[AWS_ACCESS_TOKEN_[0-9a-f]{6}\]", out)
 
 
-_DENY_EVENT = {"event": "deny", "tier": 2, "password": "hunter2-not-real"}
+_DENY_PASSWORD = "Tq9v-Lw3x-Zk7m-Rb2n"
+_DENY_EVENT = {"event": "deny", "tier": 2, "password": _DENY_PASSWORD}
 
 
 def _teams_webhook() -> str:
@@ -268,10 +277,10 @@ class TestSecretSpanOnly:
     def test_layered_scrubber_json_line_parses(self):
         out = build_scrubber().scrub(json.dumps(_DENY_EVENT))
         parsed = json.loads(out)
-        assert "hunter2-not-real" not in out
+        assert _DENY_PASSWORD not in out
         assert parsed["event"] == "deny"
         assert parsed["tier"] == 2
-        assert parsed["password"] != "hunter2-not-real"
+        assert parsed["password"] != _DENY_PASSWORD
 
     def test_rule_without_groups_redacts_whole_match(self):
         s = GitleaksTomlScrubber(rules=[{"id": "whole", "regex": r"tok-[a-z]{8}"}])

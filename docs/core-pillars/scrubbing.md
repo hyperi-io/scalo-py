@@ -18,6 +18,8 @@ Three layers fire in order on every message at a scrubbed level. They are built 
 
 There is no NLP or NER layer. The L1 rule set is `src/scalo/data/gitleaks.toml`, a byte-for-byte copy of hyperi-ai's gitleaks TOML, parsed by `src/scalo/logger/scrub/gitleaks_toml.py`. L1 replaces a rule's secret and nothing more, so the key name and quoting around it survive and a JSON line still parses: the rule's `secretGroup` when it has one, else its first non-empty capture group when only a terminator follows it in the match, else the whole match.
 
+A match is redacted only when gitleaks would report it. The rule's `entropy` threshold, the global allowlist and the rule's own allowlists (`regexes` against the secret, the match or the line, `stopwords`, and the `OR` and `AND` conditions) judge the secret the way gitleaks judges it, so `AKIA` followed by sixteen `X` is left alone. An allowlist's `paths` and `commits` have nothing to test in log text. Decoding passes, `gitleaks:allow` comments and a rule's own `path` are not applied.
+
 `build_scrubber()` compiles no rule. A rule's regex compiles on the first scrub with text that hits one of its keywords (a rule with no keywords, on the first scrub), so a regex that does not compile warns, and joins `skipped_rules` and the `log_scrub_skipped_rules_total` gauge, at that first scrub, not at build. `GitleaksTomlScrubber.compile_all()` (in `gitleaks_toml.py`) compiles them all at once.
 
 `setup()` picks the scrubber through `src/scalo/logger/scrub_resolver.py`: an explicit `scrubber=`, then `scrub_config=`, then the legacy `mask_sensitive` / `masking_level` arguments, then `logging.scrub`, then the defaults. The resolver reads `logging.scrub.*` and the legacy `logging.mask_sensitive_data` from a config dict. `setup()` hands it `get_logging_config()`, which carries `logging.scrub` when set and not `logging.mask_sensitive_data`, so that legacy key does nothing through `setup()`.
@@ -34,7 +36,7 @@ setup(scrubber=scrubber)
 
 ## Excluding one L1 rule
 
-L1 runs every gitleaks rule over log prose, where a broad rule can match ordinary text. `generic-api-key` is the one known to: it turns `Renamed config keys in .hyperi-ci.yaml: publish.container -> ...` into `Renamed config keys in .hyperi-ci.yaml: [GENERIC_API_KEY_REDACTED] -> ...`. Drop the offending rule by id and keep the rest of the set running:
+L1 applies gitleaks' entropy thresholds and allowlists, but a broad rule can still match ordinary log prose that clears them. `generic-api-key` is the likeliest. Drop the offending rule by id and keep the rest of the set running:
 
 ```yaml
 logging:

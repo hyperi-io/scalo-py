@@ -23,9 +23,18 @@ syntaxes plus a superset. Pylib is not on the hot path
 ``re`` overhead is fine. Rustlib will compile the same rules through
 the ``regex`` Rust crate which also accepts the superset.
 
-Unused upstream sections (``[allowlist]``, ``[[rules.tags]]``,
-``[[rules.allowlists]]``, ``title``, ``minVersion``) are tolerated
-silently -- the loader reads only the fields it understands.
+A match is redacted only when gitleaks would report it. Per match the scrubber
+applies, in gitleaks' own terms: the rule's ``entropy`` (a Shannon entropy at or
+below the threshold drops the match), the global ``[allowlist]`` and
+``[[allowlists]]``, and the rule's ``[[rules.allowlists]]`` (``regexes`` against the
+secret, the whole match or the line per ``regexTarget``, ``stopwords`` against the
+secret, ``condition`` ``OR`` or ``AND``). An allowlist's ``paths`` and ``commits``
+need a file or commit that log text lacks, so an ``AND`` allowlist that lists one
+never applies and an ``OR`` allowlist ignores it, as gitleaks does for an empty
+path. A rule's own ``path`` is not evaluated, so those rules still fire on text.
+Secret decoding passes, ``gitleaks:allow`` comments and ``[[rules.required]]`` are
+not applied. Sections the loader does not use (``[[rules.tags]]``, ``title``,
+``minVersion``) are tolerated silently.
 
 The legacy :mod:`scalo.logger.secrets_leak` path
 (detect-secrets-backed) remains available for callers that want
@@ -33,11 +42,13 @@ entropy heuristics; ``SecretsScrubber`` picks between them via the
 ``patterns`` setting.
 """
 
+import math
 import re
 import threading
 import tomllib
 import warnings
-from collections.abc import Collection
+from collections import Counter
+from collections.abc import Callable, Collection, Mapping
 from pathlib import Path
 from typing import Any
 
@@ -67,16 +78,22 @@ def load_gitleaks_rules(
     Returns:
         A tuple ``(rules, meta)`` where ``rules`` is a list of rule
         dicts (with keys ``id``, ``regex``, optional ``label``,
-        optional ``keywords``) and ``meta`` is the metadata derived
-        from the TOML's top-level ``title``/``minVersion`` fields (or
-        an explicit ``[meta]`` table, when present).
+        optional ``keywords``, ``entropy`` and ``allowlists``) and ``meta`` is the
+        metadata derived from the TOML's top-level ``title``/``minVersion`` fields
+        (or an explicit ``[meta]`` table, when present).
 
     Tolerant: a missing or malformed file emits a one-time warning and
-    returns ``([], {})`` rather than raising. Unknown rule fields and
-    top-level sections (``[allowlist]``, ``[[allowlists]]``, etc.)
-    are ignored -- the loader extracts what it needs and leaves the
-    rest alone.
+    returns ``([], {})`` rather than raising. The global ``[allowlist]`` is not part
+    of the return value: :class:`GitleaksTomlScrubber` reads it from the same file.
     """
+    rules, _, meta = _load_config(path)
+    return rules, meta
+
+
+def _load_config(
+    path: Path | None,
+) -> tuple[list[dict[str, Any]], list[dict[str, Any]], dict[str, Any]]:
+    """Return ``(rules, global_allowlists, meta)`` from the gitleaks TOML, as ``([], [], {})`` when it does not load."""
     if path is not None:
         try:
             with path.open("rb") as f:
@@ -85,9 +102,9 @@ def load_gitleaks_rules(
             warnings.warn(
                 f"gitleaks TOML at {path} not loadable: {e}. L1 will have no rules.",
                 RuntimeWarning,
-                stacklevel=2,
+                stacklevel=3,
             )
-            return [], {}
+            return [], [], {}
     else:
         try:
             data = load_bundled_table("gitleaks")
@@ -95,18 +112,18 @@ def load_gitleaks_rules(
             warnings.warn(
                 f"bundled gitleaks.toml not loadable: {e}. L1 will have no rules.",
                 RuntimeWarning,
-                stacklevel=2,
+                stacklevel=3,
             )
-            return [], {}
+            return [], [], {}
 
     rules = data.get("rules", []) or []
     if not isinstance(rules, list):
         warnings.warn(
             f"gitleaks.toml [[rules]] must be an array of tables; got {type(rules).__name__}. L1 will have no rules.",
             RuntimeWarning,
-            stacklevel=2,
+            stacklevel=3,
         )
-        return [], {}
+        return [], [], {}
 
     # Meta resolution: prefer explicit [meta] (HyperI-added when we
     # extend upstream); fall back to upstream's [title]/[minVersion].
@@ -124,7 +141,169 @@ def load_gitleaks_rules(
         if not meta:
             meta["version"] = "unversioned"
 
-    return rules, meta
+    # Gitleaks reads the global list from `[[allowlists]]` and, deprecated, `[allowlist]`.
+    allowlists: list[dict[str, Any]] = []
+    legacy = data.get("allowlist")
+    if isinstance(legacy, dict):
+        allowlists.append(legacy)
+    modern = data.get("allowlists")
+    if isinstance(modern, list):
+        allowlists.extend(a for a in modern if isinstance(a, dict))
+
+    return rules, allowlists, meta
+
+
+def _shannon_entropy(data: str) -> float:
+    """Return gitleaks' Shannon entropy of ``data``: per code point, with frequencies over the UTF-8 byte length."""
+    if not data:
+        return 0.0
+    inverse_length = 1.0 / len(data.encode("utf-8", "replace"))
+    entropy = 0.0
+    for count in Counter(data).values():
+        frequency = count * inverse_length
+        entropy -= frequency * math.log2(frequency)
+    return entropy
+
+
+_ALLOWLIST_COMPILE_LOCK = threading.Lock()
+
+
+class _Allowlist:
+    """One gitleaks allowlist, reduced to the checks that can apply to log text.
+
+    ``paths`` and ``commits`` need a file or commit that text lacks. Under ``OR`` they
+    never allow anything, so they are dropped. Under ``AND`` every listed check has to
+    hold, so an allowlist that lists one can never allow and is not built at all.
+    """
+
+    __slots__ = (
+        "_broken",
+        "_pattern",
+        "and_condition",
+        "regex_sources",
+        "regex_target",
+        "stopword_lengths",
+        "stopwords",
+    )
+
+    def __init__(
+        self,
+        regex_sources: tuple[str, ...],
+        stopwords: tuple[str, ...],
+        regex_target: str,
+        *,
+        and_condition: bool,
+    ) -> None:
+        self.regex_sources = regex_sources
+        self.stopwords = frozenset(stopwords)
+        # Probing the secret's substrings of each stopword length beats scanning for every word.
+        self.stopword_lengths = tuple(sorted({len(word) for word in stopwords}))
+        self.regex_target = regex_target
+        self.and_condition = and_condition
+        self._broken = False
+        # regex ships no type stubs, so ty cannot see that its Pattern is generic.
+        self._pattern: regex.Pattern[str] | None = None  # ty: ignore[invalid-type-form]
+
+    @classmethod
+    def from_spec(cls, spec: Mapping[str, Any], origin: str) -> _Allowlist | None:
+        """Build an allowlist from its TOML table, or return None when it can never allow anything.
+
+        A table gitleaks would refuse (an unknown ``condition`` or ``regexTarget``, no check at all)
+        is skipped with a warning, so the matches it would have excused stay redacted.
+        """
+        condition = str(spec.get("condition", "")).upper()
+        if condition not in ("", "OR", "||", "AND", "&&"):
+            warnings.warn(
+                f"gitleaks allowlist for {origin} has unknown condition {spec.get('condition')!r}. Ignoring it.",
+                RuntimeWarning,
+                stacklevel=3,
+            )
+            return None
+        target = str(spec.get("regexTarget", ""))
+        if target not in ("", "secret", "match", "line"):
+            warnings.warn(
+                f"gitleaks allowlist for {origin} has unknown regexTarget {target!r}. Ignoring it.",
+                RuntimeWarning,
+                stacklevel=3,
+            )
+            return None
+        regexes = tuple(str(r) for r in spec.get("regexes") or ())
+        stopwords = tuple(dict.fromkeys(w for w in (str(w).lower() for w in spec.get("stopwords") or ()) if w))
+        has_file_checks = bool(spec.get("paths") or spec.get("commits"))
+        if not (regexes or stopwords or has_file_checks):
+            warnings.warn(
+                f"gitleaks allowlist for {origin} has no commits, paths, regexes or stopwords. Ignoring it.",
+                RuntimeWarning,
+                stacklevel=3,
+            )
+            return None
+        and_condition = condition in ("AND", "&&")
+        if (and_condition and has_file_checks) or not (regexes or stopwords):
+            return None
+        return cls(regexes, stopwords, "" if target == "secret" else target, and_condition=and_condition)
+
+    def _compiled(self) -> regex.Pattern[str] | None:  # ty: ignore[invalid-type-form]
+        """Return the allowlist's regexes as one alternation, as gitleaks joins them, compiled on first use."""
+        if self._pattern is not None or self._broken:
+            return self._pattern
+        with _ALLOWLIST_COMPILE_LOCK:
+            if self._pattern is None and not self._broken:
+                joined = "(?:" + "|".join(self.regex_sources) + ")"
+                try:
+                    self._pattern = regex.compile(joined, regex.V1)
+                except regex.error as e:
+                    warnings.warn(
+                        f"gitleaks allowlist regexes did not compile: {e}. The allowlist excuses nothing.",
+                        RuntimeWarning,
+                        stacklevel=2,
+                    )
+                    self._broken = True
+        return self._pattern
+
+    def _has_stopword(self, lowered: str) -> bool:
+        """Return True when ``lowered`` contains any stopword."""
+        size = len(lowered)
+        for length in self.stopword_lengths:
+            if length > size:
+                break
+            if any(lowered[i : i + length] in self.stopwords for i in range(size - length + 1)):
+                return True
+        return False
+
+    def allows(self, secret: str, match: str, line: Callable[[], str]) -> bool:
+        """Return True when this allowlist excuses a match whose secret, whole match and line are given."""
+        regex_hit: bool | None = None
+        if self.regex_sources:
+            if self.regex_target == "line":
+                target = line()
+            elif self.regex_target == "match":
+                target = match
+            else:
+                target = secret
+            pattern = self._compiled()
+            if pattern is None:
+                return False
+            regex_hit = bool(target) and pattern.search(target) is not None
+        stopword_hit: bool | None = None
+        if self.stopwords:
+            stopword_hit = self._has_stopword(secret.lower())
+        if self.and_condition:
+            return all(hit for hit in (regex_hit, stopword_hit) if hit is not None)
+        return bool(regex_hit) or bool(stopword_hit)
+
+
+def _line_around(text: str, start: int, end: int) -> str:
+    """Return the line holding the match ``text[start:end]``, cut as gitleaks cuts ``Finding.Line``.
+
+    The line runs to the first newline at or after ``end`` and, past the first line,
+    starts at the newline that precedes it.
+    """
+    line_start = max(text.rfind("\n", 0, start), 0)
+    newline = text.find("\n", end)
+    if newline < 0:
+        carriage_return = text.find("\r", end)
+        newline = len(text) if carriage_return < 0 else carriage_return
+    return text[line_start:newline]
 
 
 class _CompiledRule:
@@ -135,7 +314,7 @@ class _CompiledRule:
     :meth:`GitleaksTomlScrubber.scrub` compiles a rule only once its keywords hit.
     """
 
-    __slots__ = ("id", "keywords", "label", "pattern", "regex_str", "secret_group", "skipped")
+    __slots__ = ("allowlists", "entropy", "id", "keywords", "label", "pattern", "regex_str", "secret_group", "skipped")
 
     def __init__(
         self,
@@ -144,12 +323,16 @@ class _CompiledRule:
         regex_str: str,
         keywords: tuple[str, ...],
         secret_group: int = 0,
+        entropy: float = 0.0,
+        allowlists: tuple[_Allowlist, ...] = (),
     ) -> None:
         self.id = id_
         self.label = label
         self.regex_str = regex_str
         self.keywords = keywords
         self.secret_group = secret_group
+        self.entropy = entropy
+        self.allowlists = allowlists
         # regex ships no type stubs, so ty cannot see that its Pattern is generic.
         self.pattern: regex.Pattern[str] | None = None  # ty: ignore[invalid-type-form]
         self.skipped = False
@@ -201,6 +384,10 @@ class GitleaksTomlScrubber:
             ``rule_ids`` selects. An ID the rule set does not carry is
             reported with a one-time warning, since a typo would otherwise
             leave the rule running unnoticed.
+        allowlists: global allowlist tables, applied to every rule. ``None``
+            takes the ones in the TOML read for ``rules=None`` and applies
+            none to an explicit ``rules`` list. A table with ``targetRules``
+            joins those rules' own allowlists instead.
 
     Each rule's regex compiles on the first :meth:`scrub` whose text hits one of
     the rule's keywords, or on the first :meth:`scrub` at all for a rule with no
@@ -219,14 +406,31 @@ class GitleaksTomlScrubber:
         metrics: ScrubMetrics | None = None,
         rule_ids: Collection[str] | None = None,
         exclude_rule_ids: Collection[str] | None = None,
+        allowlists: Collection[Mapping[str, Any]] | None = None,
     ) -> None:
         excluded = frozenset(exclude_rule_ids or ())
         seen_ids: set[str] = set()
         if rules is None:
-            rules, meta = load_gitleaks_rules(path)
+            rules, loaded_allowlists, meta = _load_config(path)
+            if allowlists is None:
+                allowlists = loaded_allowlists
             self.version: str = str(meta.get("version", "unversioned"))
         else:
             self.version = "explicit-rules"
+
+        global_allowlists: list[_Allowlist] = []
+        targeted: dict[str, list[_Allowlist]] = {}
+        for spec in allowlists or ():
+            built = _Allowlist.from_spec(spec, "the global list")
+            if built is None:
+                continue
+            target_rules = spec.get("targetRules")
+            if target_rules:
+                for target_id in target_rules:
+                    targeted.setdefault(str(target_id), []).append(built)
+            else:
+                global_allowlists.append(built)
+        self._global_allowlists: tuple[_Allowlist, ...] = tuple(global_allowlists)
 
         self._labeler: LabelFn = labeler if labeler is not None else _static_label
         self._metrics = metrics if metrics is not None else ScrubMetrics.noop()
@@ -257,7 +461,21 @@ class GitleaksTomlScrubber:
             secret_group = entry.get("secretGroup", 0)
             if not isinstance(secret_group, int) or secret_group < 0:
                 secret_group = 0
-            self._rules.append(_CompiledRule(rule_id, label, regex_str, tuple(str(k) for k in keywords), secret_group))
+            entropy = entry.get("entropy", 0.0)
+            if isinstance(entropy, bool) or not isinstance(entropy, (int, float)):
+                entropy = 0.0
+            rule_allowlists = self._rule_allowlists(entry, rule_id) + tuple(targeted.get(rule_id, ()))
+            self._rules.append(
+                _CompiledRule(
+                    rule_id,
+                    label,
+                    regex_str,
+                    tuple(str(k).lower() for k in keywords),
+                    secret_group,
+                    float(entropy),
+                    rule_allowlists,
+                )
+            )
 
         unknown = sorted(excluded - seen_ids)
         if unknown:
@@ -267,6 +485,19 @@ class GitleaksTomlScrubber:
                 RuntimeWarning,
                 stacklevel=2,
             )
+
+    @staticmethod
+    def _rule_allowlists(entry: Mapping[str, Any], rule_id: str) -> tuple[_Allowlist, ...]:
+        """Return the allowlists a rule table carries, from ``allowlists`` and the older single ``allowlist``."""
+        specs: list[Mapping[str, Any]] = []
+        legacy = entry.get("allowlist")
+        if isinstance(legacy, Mapping):
+            specs.append(legacy)
+        modern = entry.get("allowlists")
+        if isinstance(modern, list):
+            specs.extend(a for a in modern if isinstance(a, Mapping))
+        built = (_Allowlist.from_spec(spec, f"rule {rule_id!r}") for spec in specs)
+        return tuple(a for a in built if a is not None)
 
     @property
     def rule_count(self) -> int:
@@ -306,6 +537,50 @@ class GitleaksTomlScrubber:
                 self._metrics.set_skipped("L1", rule.id, value=1)
             return rule.pattern
 
+    def _reported(
+        self,
+        rule: _CompiledRule,
+        pattern: regex.Pattern[str],  # ty: ignore[invalid-type-form]
+        text: str,
+        start: int,
+        end: int,
+    ) -> bool:
+        """Return True when gitleaks would report the match ``text[start:end]`` of ``rule``.
+
+        The secret is taken as gitleaks takes it: the match with its newlines trimmed, narrowed
+        to ``secretGroup`` or the first non-empty group of the regex run again over that text.
+        Entropy and the allowlists judge that secret, so they can differ from the span that
+        :meth:`_CompiledRule.secret_span` redacts.
+        """
+        whole = text[start:end].strip("\n")
+        if not whole:
+            return False
+        secret = whole
+        if pattern.groups:
+            found = pattern.search(whole)
+            if found is not None:
+                if rule.secret_group:
+                    if rule.secret_group > pattern.groups:
+                        return False
+                    secret = found.group(rule.secret_group) or ""
+                else:
+                    secret = next((g for g in found.groups() if g), whole)
+
+        if rule.entropy and _shannon_entropy(secret) <= rule.entropy:
+            return False
+
+        line: str | None = None
+
+        def line_of_match() -> str:
+            nonlocal line
+            if line is None:
+                line = _line_around(text, start, end)
+            return line
+
+        return not any(
+            allowlist.allows(secret, whole, line_of_match) for allowlist in (*self._global_allowlists, *rule.allowlists)
+        )
+
     def scrub(self, text: str) -> str:
         """Return ``text`` with the secret in each gitleaks rule match replaced by the labeler's output for it."""
         if not text or not self._rules:
@@ -333,6 +608,8 @@ class GitleaksTomlScrubber:
                 start, end = m.span()
                 # Zero-length matches don't redact anything sensible
                 if end <= start:
+                    continue
+                if not self._reported(rule, pattern, text, start, end):
                     continue
                 secret_start, secret_end = rule.secret_span(pattern, m)
                 candidates.append((start, end, secret_start, secret_end, rule))

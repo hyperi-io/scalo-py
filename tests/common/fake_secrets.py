@@ -29,12 +29,24 @@ match), but produces ``"sk_live_"`` at runtime (which the scrubber's
 regex catches normally).
 
 All helpers are deterministic -- same call yields the same string so
-test assertions stay stable. Bodies are low-entropy (all-X, repeated
-``FAKE``) so even the runtime output isn't realistic enough to trip a
-secondary content-based scanner.
+test assertions stay stable. Bodies are seeded pseudo-random, because the
+L1 scrubber applies each gitleaks rule's entropy threshold and an all-X body
+(``AKIAXXXXXXXXXXXXXXXX``) is a gitleaks false positive, not a secret.
 """
 
-from __future__ import annotations
+import random
+import string
+
+_ALNUM = string.ascii_letters + string.digits
+# The AWS access-key rule takes its 16 body characters from base32.
+_BASE32 = string.ascii_uppercase + "234567"
+
+
+def _body(length: int, alphabet: str = _ALNUM) -> str:
+    """Return ``length`` seeded pseudo-random characters of ``alphabet``, the same on every call."""
+    rng = random.Random(f"scalo-fake-secret:{length}:{alphabet}")
+    return "".join(rng.choice(alphabet) for _ in range(length))
+
 
 # ---------------------------------------------------------------------------
 # AWS -- long-lived + session
@@ -45,13 +57,13 @@ def aws_access_key() -> str:
     """AWS access key id (`AKIA` + 16 uppercase alphanumeric)."""
     # Source never contains the literal "AKIA".
     prefix = "A" + "K" + "I" + "A"
-    return prefix + "X" * 16
+    return prefix + _body(16, _BASE32)
 
 
 def aws_session_token() -> str:
     """AWS session token id (`ASIA` + 16 uppercase alphanumeric)."""
     prefix = "A" + "S" + "I" + "A"
-    return prefix + "X" * 16
+    return prefix + _body(16, _BASE32)
 
 
 # ---------------------------------------------------------------------------
@@ -62,37 +74,37 @@ def aws_session_token() -> str:
 def github_classic_pat() -> str:
     """Classic GitHub PAT (`ghp_` + 36 alphanumeric)."""
     prefix = "gh" + "p" + "_"
-    return prefix + "X" * 36
+    return prefix + _body(36)
 
 
 def github_fine_grained_pat() -> str:
     """Fine-grained GitHub PAT (`github_pat_` + 82+ alphanumeric/underscores)."""
     prefix = "github" + "_pat_"
-    return prefix + "X" * 82
+    return prefix + _body(82)
 
 
 def github_oauth() -> str:
     """GitHub OAuth token (`gho_` + 36 alphanumeric)."""
     prefix = "gh" + "o" + "_"
-    return prefix + "X" * 36
+    return prefix + _body(36)
 
 
 def github_server_token() -> str:
     """GitHub server-to-server token (`ghs_` + 36 alphanumeric)."""
     prefix = "gh" + "s" + "_"
-    return prefix + "X" * 36
+    return prefix + _body(36)
 
 
 def github_user_token() -> str:
     """GitHub user-to-server token (`ghu_` + 36 alphanumeric)."""
     prefix = "gh" + "u" + "_"
-    return prefix + "X" * 36
+    return prefix + _body(36)
 
 
 def github_refresh_token() -> str:
     """GitHub refresh token (`ghr_` + 36 alphanumeric)."""
     prefix = "gh" + "r" + "_"
-    return prefix + "X" * 36
+    return prefix + _body(36)
 
 
 # ---------------------------------------------------------------------------
@@ -103,7 +115,7 @@ def github_refresh_token() -> str:
 def gitlab_pat() -> str:
     """GitLab personal access token (`glpat-` + 20 alphanumeric)."""
     prefix = "gl" + "pat" + "-"
-    return prefix + "X" * 20
+    return prefix + _body(20)
 
 
 # ---------------------------------------------------------------------------
@@ -115,19 +127,19 @@ def stripe_live_key() -> str:
     """Stripe live secret key (`sk_live_` + 24+ alphanumeric)."""
     # No literal "sk_live_" anywhere in source.
     prefix = "sk" + "_" + "live" + "_"
-    return prefix + "X" * 30
+    return prefix + _body(30)
 
 
 def stripe_test_key() -> str:
     """Stripe test secret key (`sk_test_` + 24+ alphanumeric)."""
     prefix = "sk" + "_" + "test" + "_"
-    return prefix + "X" * 30
+    return prefix + _body(30)
 
 
 def stripe_live_restricted_key() -> str:
     """Stripe live restricted key (`rk_live_` + 24+ alphanumeric)."""
     prefix = "rk" + "_" + "live" + "_"
-    return prefix + "X" * 30
+    return prefix + _body(30)
 
 
 # ---------------------------------------------------------------------------
@@ -138,13 +150,13 @@ def stripe_live_restricted_key() -> str:
 def openai_key() -> str:
     """OpenAI API key (`sk-` + 20+ alphanumeric/underscore/hyphen)."""
     prefix = "sk" + "-"
-    return prefix + "X" * 40
+    return prefix + _body(40, _ALNUM + "_-")
 
 
 def openai_proj_key() -> str:
     """OpenAI project key (`sk-proj-` + 20+ alphanumeric/underscore/hyphen)."""
     prefix = "sk" + "-" + "proj" + "-"
-    return prefix + "X" * 40
+    return prefix + _body(40, _ALNUM + "_-")
 
 
 # ---------------------------------------------------------------------------
@@ -155,13 +167,13 @@ def openai_proj_key() -> str:
 def slack_bot_token() -> str:
     """Slack bot token (`xoxb-` + 10-48 alphanumeric/hyphen)."""
     prefix = "xo" + "xb" + "-"
-    return prefix + "X" * 30
+    return prefix + _body(11, string.digits) + "-" + _body(12, string.digits) + "-" + _body(24)
 
 
 def slack_user_token() -> str:
     """Slack user token (`xoxp-` + 10-48 alphanumeric/hyphen)."""
     prefix = "xo" + "xp" + "-"
-    return prefix + "X" * 30
+    return prefix + _body(11, string.digits) + "-" + _body(12, string.digits) + "-" + _body(24)
 
 
 # ---------------------------------------------------------------------------
@@ -224,12 +236,12 @@ def opaque_secret(label: str = "value") -> str:
 def twilio_api_key() -> str:
     """Twilio API key (`SK` + 32 hex)."""
     prefix = "S" + "K"
-    return prefix + "0" * 32
+    return prefix + _body(32, string.hexdigits[:16])
 
 
 def sendgrid_api_key() -> str:
     """SendGrid API key (`SG.` + 22 + `.` + 43, all alphanumeric/_-)."""
     prefix = "S" + "G" + "."
-    seg1 = "X" * 22
-    seg2 = "X" * 43
+    seg1 = _body(22, _ALNUM + "_-")
+    seg2 = _body(43, _ALNUM + "_-")
     return f"{prefix}{seg1}.{seg2}"

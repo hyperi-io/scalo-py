@@ -20,6 +20,7 @@ paths = [
     '''tests/unit/test_scrub_gitleaks_toml\.py''', # Fake API keys for L1 gitleaks-TOML scrubber tests
     '''tests/unit/test_scrub_parity_fixtures\.py''', # Fake API keys for L3 parity fixture tests
     '''src/scalo/data/gitleaks\.json''', # gitleaks.toml as JSON, with the key prefixes its rules match
+    '''tests/fixtures/patterns/gitleaks_vectors\.json''', # gitleaks' rule test vectors, compressed: two base64 lines read as a generic key
     # The masking corpus is synthetic credential-shaped strings, at its path and
     # the one it had in the wheel (history scans).
     '''tests/fixtures/patterns/masking-patterns\.yaml''',

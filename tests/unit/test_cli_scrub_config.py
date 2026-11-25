@@ -14,12 +14,13 @@ process-wide settings that ``setup()`` falls back on.
 
 import pytest
 import yaml
+from common.fake_secrets import github_classic_pat
 from common.log_capture import LOGGER_ENV_VARS, StreamDouble, preserved_stdlib_logging
 from loguru import logger
 
 from scalo.cli import ServiceApp, VersionInfo
 
-GITHUB_TOKEN = "ghp_abcdefghijklmnopqrstuvwxyz0123456789"
+GITHUB_TOKEN = github_classic_pat()
 EMAIL = "someone@example.com"
 LINE = f"push with {GITHUB_TOKEN} for {EMAIL}"
 
