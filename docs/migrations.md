@@ -36,7 +36,7 @@ Broker calls that waited forever wait at most `socket.timeout.ms` (30 s unset), 
 
 ## 2.32.4 -- A division with no fixed type no longer pushes down (BEHAVIOUR CHANGE)
 
-`transpile_to_clickhouse` wrote CEL's `/` as ClickHouse's double `/` even between ints. It writes `intDiv` where an operand is int-typed, `/` where one is double-typed, and raises `TranspileError` where neither is. See [api/expression.md](api/expression.md#transpile-to-clickhouse-sql). **Consumer adjustment** -- evaluate such a filter in process, or type an operand with `double()` or `int()`.
+`transpile_to_clickhouse` wrote [CEL](https://github.com/cel-expr/cel-spec/blob/master/doc/langdef.md)'s `/` as ClickHouse's double `/` even between ints. It writes `intDiv` where an operand is int-typed, `/` where one is double-typed, and raises `TranspileError` where neither is. See [api/expression.md](api/expression.md#transpile-to-clickhouse-sql). **Consumer adjustment** -- evaluate such a filter in process, or type an operand with `double()` or `int()`.
 
 ## 2.32.4 -- Generated images install no Kafka C libraries (API CHANGE)
 

@@ -13,7 +13,7 @@ It is built for APIs, orchestrators, CLI tools and integration glue. For the hot
 - With the `metrics` extra, Prometheus and OpenTelemetry metrics, process and container gauges included, scraped from `/metrics` on the same port. Without a metrics manager that path answers 404.
 - Secrets from OpenBao or Vault, AWS, GCP, Azure, and Kubernetes, one extra per backend.
 - A deployment contract: return one from `deployment_contract()` and `generate-artefacts` writes your runtime Dockerfile and the contract the scalo-service Helm chart renders from.
-- Kafka, CEL expressions and an HTTP client with jittered retry, each behind a separate extra.
+- Kafka, [CEL](https://github.com/cel-expr/cel-spec/blob/master/doc/langdef.md) expressions and an HTTP client with jittered retry, each behind a separate extra.
 
 ## Example
 

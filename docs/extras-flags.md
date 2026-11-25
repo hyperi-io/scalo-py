@@ -85,7 +85,7 @@ flowchart LR
 
 `scalo.cli.openapi` builds a whole CLI from an OpenAPI spec: a file or a server's `/openapi.json`, never the app. It imports no FastAPI, uvicorn or mcp. `import scalo.cli.openapi` without the extra raises an `ImportError` naming `scalo[cli]`. `ServiceApp` and the rest of `scalo.cli` stay in the base install, which has `typer`.
 
-`expression` evaluates CEL on the same `cel` crate scalo-rs's `expression` feature compiles against, so an expression means the same thing in either language. The same extra serves `scalo.rules`, the ordered rule sets scalo-rs builds behind its `rules` feature. Importing `scalo.rules` without it raises `ImportError` naming the extra.
+`expression` evaluates [CEL](https://github.com/cel-expr/cel-spec/blob/master/doc/langdef.md) on the same `cel` crate scalo-rs's `expression` feature compiles against, so an expression means the same thing in either language. The same extra serves `scalo.rules`, the ordered rule sets scalo-rs builds behind its `rules` feature. Importing `scalo.rules` without it raises `ImportError` naming the extra.
 
 `deployment` adds the `DeploymentContract` model and the generators. `scalo.deployment.test_support` needs no pydantic but imports pytest, so it loads where the test dependencies are installed. The fixture under `tests/fixtures/contract-parity/` is part of the test suite, not a runtime artefact.
 
