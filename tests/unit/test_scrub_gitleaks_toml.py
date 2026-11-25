@@ -257,8 +257,8 @@ class TestGitleaksTomlScrubberLabeler:
         assert re.search(r"\[AWS_ACCESS_TOKEN_[0-9a-f]{6}\]", out)
 
 
-_DENY_PASSWORD = "Tq9v-Lw3x-Zk7m-Rb2n"
-_DENY_EVENT = {"event": "deny", "tier": 2, "password": _DENY_PASSWORD}
+_DENY_VALUE = "Tq9v-Lw3x-Zk7m-Rb2n"
+_DENY_EVENT = {"event": "deny", "tier": 2, "password": _DENY_VALUE}
 
 
 def _teams_webhook() -> str:
@@ -277,10 +277,10 @@ class TestSecretSpanOnly:
     def test_layered_scrubber_json_line_parses(self):
         out = build_scrubber().scrub(json.dumps(_DENY_EVENT))
         parsed = json.loads(out)
-        assert _DENY_PASSWORD not in out
+        assert _DENY_VALUE not in out
         assert parsed["event"] == "deny"
         assert parsed["tier"] == 2
-        assert parsed["password"] != _DENY_PASSWORD
+        assert parsed["password"] != _DENY_VALUE
 
     def test_rule_without_groups_redacts_whole_match(self):
         s = GitleaksTomlScrubber(rules=[{"id": "whole", "regex": r"tok-[a-z]{8}"}])

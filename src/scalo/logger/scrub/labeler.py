@@ -72,6 +72,7 @@ def make_hash_labeler(secret_hash_key: bytes | None = None) -> LabelFn:
         secret_hash_key = secret_hash_key[:64]
 
     def _hash_label(label: str, value: str) -> str:
+        # Keyed with a per-process random or operator-set key, so the 24-bit label can't be matched offline without it.
         digest = hashlib.blake2b(
             value.encode("utf-8"),
             key=secret_hash_key,
