@@ -3,6 +3,16 @@
 Rendered by CI and committed back at the end of a release -- do not edit by
 hand. Release notes also appear on the GitHub Releases page, one per tag.
 
+## [2.32.11](https://github.com/hyperi-io/scalo-py/compare/v2.32.10...v2.32.11) (2026-11-26)
+
+### Bug Fixes
+
+* **config:** read an opt-in managed config layer ([ddc87e5](https://github.com/hyperi-io/scalo-py/commit/ddc87e54235441263f9b9ec729a38b7d23033fca))
+* **deps:** update clickhouse/clickhouse-server Docker tag to v26.3.64.3 ([#211](https://github.com/hyperi-io/scalo-py/issues/211)) ([bc61251](https://github.com/hyperi-io/scalo-py/commit/bc61251546d4f532e461d1bdfb9d669aebfe1903))
+* **scrub:** hash labels with HMAC-SHA256, 16 hex ([d90018b](https://github.com/hyperi-io/scalo-py/commit/d90018b26d698192c07d5264fc293d8971e08992))
+* **scrub:** honour gitleaks entropy and allowlists ([#215](https://github.com/hyperi-io/scalo-py/issues/215)) ([ea3d0a8](https://github.com/hyperi-io/scalo-py/commit/ea3d0a887ea59ffb86416442f9590573cd1141eb))
+* **scrub:** match grippo's card and credential rules ([e8c3b76](https://github.com/hyperi-io/scalo-py/commit/e8c3b76e5d078adb22586b4554b6a0482767bff6))
+
 ## [2.32.10](https://github.com/hyperi-io/scalo-py/compare/v2.32.9...v2.32.10) (2026-11-21)
 
 ### Bug Fixes
