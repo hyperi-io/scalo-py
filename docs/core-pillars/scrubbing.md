@@ -14,7 +14,7 @@ Three layers fire in order on every message at a scrubbed level. They are built 
 |-------|--------|---------|
 | L1 secrets | `src/scalo/logger/scrub/secrets.py` + `gitleaks.toml` rules | AWS keys, GitHub tokens, JWTs, private keys, third-party API keys |
 | L2 fields | `src/scalo/logger/scrub/field_names.py` (regex on key names) | `password=...`, `"token":"..."`, `CARGO_REGISTRY_TOKEN=...`, `token = "..."`, bearer tokens, DB URLs, refused header values |
-| L3 PII | `src/scalo/logger/scrub/pii/` validators (Luhn, mod-97, libphonenumber, structural regex) | Credit cards, IBANs, emails (literal and percent-encoded), phones, AU ABN, ACN, TFN and Medicare |
+| L3 PII | `src/scalo/logger/scrub/pii/` validators (Luhn, mod-97, libphonenumber, structural regex) | Credit cards (grouped as printed, or after a card word), IBANs, emails (literal and percent-encoded), phones, AU ABN, ACN, TFN and Medicare |
 
 There is no NLP or NER layer. The L1 rule set is `src/scalo/data/gitleaks.toml`, a byte-for-byte copy of hyperi-ai's gitleaks TOML, parsed by `src/scalo/logger/scrub/gitleaks_toml.py`. L1 replaces a rule's secret and nothing more, so the key name and quoting around it survive and a JSON line still parses: the rule's `secretGroup` when it has one, else its first non-empty capture group when only a terminator follows it in the match, else the whole match.
 
@@ -60,7 +60,7 @@ An id the rule set does not hold raises a `RuntimeWarning` at startup and exclud
 
 ## Layer 2 field-name regex
 
-A key is masked when a field in `SENSITIVE_FIELDS` sits anywhere in it, case-insensitively, the substring rule scalo-rs applies. The key is read word by word as well, so separators and camelCase do not hide a field: `CARGO_REGISTRY_TOKEN=...`, `x-api-key: ...`, `secretAccessKey=...` and `PGPASSWORD=...` all mask. The rule over-masks, and that is accepted: `token_count=5`, `max_tokens=4096`, `tokenizer`, `mapping` (on `pin`) and `author` (on `auth`) are masked as well.
+A key is masked when its last words spell a field in `SENSITIVE_FIELDS`, case-insensitively, as scalo-rs reads names. Separators and camelCase split the words, so `CARGO_REGISTRY_TOKEN=...`, `x-api-key: ...`, `secretAccessKey=...` and `PGPASSWORD=...` all mask, and `TokenElevationType`, `token_count`, `max_tokens`, `tokenizer`, `mapping`, `author` and `oauth` keep their values. A trailing `value`, `values`, `pem`, `hash`, `b64`, `base64`, `enc`, `encrypted` or `raw` is read past (`api_token_value`). A field of six letters or more may end the last word part-way or take a plural `s` (`PGPASSWORD`, `passwords`), and a shorter one such as `pass` or `token` may not. `auth` matches as a last word (`aws_auth`), and bare `session` and `private` are not fields.
 
 One matcher decides every case, `scalo.logger.filters.is_credential_name`. Record fields, dicts, message text and Kafka config reprs all call it. A bare `key` or `value` is checked with the name of the mapping or list holding it, so `tls={"key": ...}` and `accepted_headers=[{"values": [...]}]` mask but `partitioner={"key": ...}` does not.
 

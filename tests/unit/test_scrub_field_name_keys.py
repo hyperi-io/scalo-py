@@ -52,19 +52,15 @@ UNTOUCHED = [
     pytest.param("partition_key=order_id&retries=3", id="unqualified-key"),
 ]
 
-# A key that only contains a sensitive field is masked too: the over-masking substring matching costs.
-OVER_MASKED = [
-    pytest.param("token_count=5", f"token_count={MASK_VALUE}", id="token-count"),
-    pytest.param("max_tokens=4096", f"max_tokens={MASK_VALUE}", id="max-tokens"),
-    pytest.param("mapping=raw_events->events_load", f"mapping={MASK_VALUE}", id="mapping"),
-    pytest.param('{"tokenizer":"whitespace"}', f'{{"tokenizer":"{MASK_VALUE}"}}', id="tokenizer-json"),
-    pytest.param(
-        '{"token_type":"Bearer","expires_in":3600}',
-        f'{{"token_type":"{MASK_VALUE}","expires_in":3600}}',
-        id="token-type-json",
-    ),
-    pytest.param("oauth=enabled", f"oauth={MASK_VALUE}", id="oauth"),
-    pytest.param("author: alice", f"author: {MASK_VALUE}", id="author"),
+# A key that only contains a sensitive field keeps its value: a name is a credential only when its last words spell one.
+NARROWED = [
+    pytest.param("token_count=5", id="token-count"),
+    pytest.param("max_tokens=4096", id="max-tokens"),
+    pytest.param("mapping=raw_events->events_load", id="mapping"),
+    pytest.param('{"tokenizer":"whitespace"}', id="tokenizer-json"),
+    pytest.param('{"token_type":"Bearer","expires_in":3600}', id="token-type-json"),
+    pytest.param("oauth=enabled", id="oauth"),
+    pytest.param("author: alice", id="author"),
 ]
 
 
@@ -140,7 +136,7 @@ class TestOrdinaryTextUntouched:
         assert build_scrubber(ScrubConfig(secrets=_EXCLUDE_GENERIC)).scrub(line) == line
 
 
-class TestSubstringOverMasking:
-    @pytest.mark.parametrize(("line", "expected"), OVER_MASKED)
-    def test_a_key_containing_a_field_is_masked(self, line, expected):
-        assert FieldNameScrubber().scrub(line) == expected
+class TestNameNarrowing:
+    @pytest.mark.parametrize("line", NARROWED)
+    def test_a_key_containing_a_field_keeps_its_value(self, line):
+        assert FieldNameScrubber().scrub(line) == line

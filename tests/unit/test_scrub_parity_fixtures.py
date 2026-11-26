@@ -48,6 +48,13 @@ def _load_fixtures() -> dict:
 
 
 FIXTURES = _load_fixtures()
+NARROWING = tomllib.loads(
+    (Path(__file__).resolve().parents[1] / "fixtures" / "patterns" / "narrowing_fixtures.toml").read_text(
+        encoding="utf-8"
+    )
+)
+# Card numbers the shared fixture lists as valid that no longer redact bare, which the narrowing fixture names.
+BARE_CARDS = NARROWING["supersedes"]["credit_card"]["unchanged"]
 
 
 # ---------------------------------------------------------------------------
@@ -91,10 +98,37 @@ class TestCreditCardFixtures:
     def s(cls):
         return _scrubber_only(credit_card=True)
 
-    @pytest.mark.parametrize("sample", FIXTURES["credit_card"]["valid"])
+    @pytest.mark.parametrize(
+        "sample", [sample for sample in FIXTURES["credit_card"]["valid"] if sample not in BARE_CARDS]
+    )
     def test_valid_samples_redact(self, s, sample):
         out = s.scrub(f"payment {sample} authorised")
         assert _was_redacted(out, sample, "CREDIT_CARD"), f"valid CC {sample!r} was not redacted: out={out!r}"
+
+    @pytest.mark.parametrize("sample", BARE_CARDS)
+    def test_a_bare_valid_sample_passes_through(self, s, sample):
+        assert FIXTURES["credit_card"]["valid"].count(sample) == 1
+        out = s.scrub(f"payment {sample} authorised")
+        assert sample in out, f"bare CC {sample!r} was redacted with no card evidence: out={out!r}"
+
+    @pytest.mark.parametrize("sample", NARROWING["credit_card"]["redact"])
+    def test_a_card_with_evidence_redacts(self, s, sample):
+        assert "[CREDIT_CARD_REDACTED]" in s.scrub(sample)
+
+    @pytest.mark.parametrize("sample", NARROWING["credit_card"]["unchanged"])
+    def test_a_luhn_pass_with_no_evidence_is_left(self, s, sample):
+        assert s.scrub(sample) == sample
+
+    def test_a_run_of_epoch_milliseconds_is_left(self, s):
+        start = NARROWING["credit_card"]["epoch_ms_start"]
+        changed = [
+            ms for ms in range(start, start + NARROWING["credit_card"]["epoch_ms_count"]) if s.scrub(str(ms)) != str(ms)
+        ]
+        assert changed == []
+
+    def test_a_card_word_must_be_a_whole_word(self, s):
+        assert s.scrub("accounts 4111111111111111") == "accounts 4111111111111111"
+        assert s.scrub("Visa: 4111111111111111") == "Visa: [CREDIT_CARD_REDACTED]"
 
     @pytest.mark.parametrize("sample", FIXTURES["credit_card"]["invalid"])
     def test_invalid_samples_pass_through(self, s, sample):

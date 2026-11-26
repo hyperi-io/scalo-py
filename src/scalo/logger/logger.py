@@ -47,6 +47,7 @@ from .filters import (
     SENSITIVE_FIELDS,
     RateLimitFilter,
     SensitiveDataFilter,
+    _CredentialTerms,
     _names_credential,
     _term_pattern,
     get_sensitive_filter,
@@ -333,7 +334,7 @@ class _FieldWalker:
     __slots__ = ("_budget", "_credential", "_path", "_scrub", "_scrub_key")
 
     def __init__(
-        self, scrub: Callable[[str], str], scrub_key: Callable[[str], str], credential: re.Pattern[str]
+        self, scrub: Callable[[str], str], scrub_key: Callable[[str], str], credential: _CredentialTerms
     ) -> None:
         self._scrub = scrub
         self._scrub_key = scrub_key

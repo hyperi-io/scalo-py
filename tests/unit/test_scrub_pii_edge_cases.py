@@ -272,7 +272,7 @@ class TestFailSafe:
     ("validator", "text"),
     [
         (EmailValidator(), "alice@example.com bob@example.com"),
-        (CreditCardValidator(), "4111-1111-1111-1111 and 5555555555554444"),
+        (CreditCardValidator(), "4111-1111-1111-1111 and 5555-5555-5555-4444"),
         (IbanValidator(), "GB82WEST12345698765432"),
         (_make("au.abn"), "ABN: 53 004 085 616"),
         (_make("au.tfn"), "TFN: 123 456 782"),

@@ -1,0 +1,89 @@
+# Card and credential-name cases grippo and scalo-py both assert.
+# The rules are in grippo's docs/scrub.md. [supersedes] replaces the named
+# cases of credential_masking_parity.json and pii_test_fixtures.toml.
+# All samples are synthetic.
+
+[meta]
+version = "1.0.0"
+
+[credit_card]
+card_words = ["card", "creditcard", "cc", "pan", "visa", "mastercard", "amex"]
+redact = [
+    "4111 1111 1111 1111",
+    "4532-1488-0343-6464",
+    "3782 822463 10005",
+    "card=4111111111111111",
+    "cc_number: 5555555555554444",
+    "paid by visa 4111111111111111",
+]
+unchanged = [
+    "4111111111111111",
+    "5555555555554444",
+    "378282246310005",
+    "6011000990139424",
+    "order 123456789012345",
+    "EventRecordID: 5555555555554444",
+    "access 4111111111111111",
+    "company 4111111111111111",
+    "4111-1111 1111-1111",
+]
+# 1,000 consecutive epoch milliseconds from this one, each alone, unchanged.
+epoch_ms_start = 1764116553000
+epoch_ms_count = 1000
+
+[credential_names]
+credential = [
+    "password",
+    "db_password",
+    "access_token",
+    "AWS_SECRET_ACCESS_KEY",
+    "x-api-key",
+    "Authorization",
+    "PGPASSWORD",
+    "passwords",
+    "bearer_tokens",
+    "api_token_value",
+    "password_hash",
+    "ssl.key.pem",
+    "aws_auth",
+    "SubjectPassword",
+]
+not_credential = [
+    "TokenElevationType",
+    "PasswordLastSet",
+    "tokens_used",
+    "token_count",
+    "max_tokens",
+    "token_type",
+    "tokenizer",
+    "mapping",
+    "author",
+    "oauth",
+    "bypass",
+    "passenger",
+    "shipping_address",
+    "private_ip",
+    "is_private",
+    "LogonSession",
+    "ping_ms",
+]
+
+# credential_masking_parity.json text_cases: id -> the expected output now.
+[supersedes.text_cases]
+"over-masked-path-first-segment" = "aws_sdk_secretsmanager::client: fetched"
+"over-masked-token-count" = "token_count=5"
+"over-masked-max-tokens" = "max_tokens=4096"
+"over-masked-mapping" = "mapping=raw_events->events_load"
+"over-masked-tokenizer-json" = '{"tokenizer":"whitespace"}'
+"over-masked-token-type-json" = '{"token_type":"Bearer","expires_in":3600}'
+"over-masked-oauth" = "oauth=enabled"
+"over-masked-author" = "author: alice"
+"over-masked-authorization-url" = "authorization_url=https://idp.example.com/authorize next=1"
+
+# credential_masking_parity.json coarse_cases: id -> should_mask now.
+[supersedes.coarse_cases]
+"key_containing_a_field_masked" = false
+
+# pii_test_fixtures.toml credit_card samples no longer redacted.
+[supersedes.credit_card]
+unchanged = ["4111111111111111", "5555555555554444", "378282246310005", "6011000990139424"]

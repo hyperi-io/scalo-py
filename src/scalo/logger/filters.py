@@ -39,7 +39,7 @@ from typing import Any
 
 from .secrets_leak import SecretsLeakFilter
 
-# A name holding any of these anywhere in it is a credential; scalo-rs masks by the same substring rule.
+# A name whose last words spell one of these is a credential; scalo-rs reads names by the same rule.
 SENSITIVE_FIELDS: set[str] = {
     # Passwords
     "password",
@@ -55,6 +55,7 @@ SENSITIVE_FIELDS: set[str] = {
     "session_token",
     "api_token",
     "bearer",
+    "bearer_token",
     # API Keys
     "api_key",
     "apikey",
@@ -96,8 +97,8 @@ SENSITIVE_FIELDS: set[str] = {
     "header_value",
     "headers_value",
     # Session
-    "session",
     "session_id",
+    "session_key",
     "sessionid",
     "cookie",
     "csrf",
@@ -105,7 +106,6 @@ SENSITIVE_FIELDS: set[str] = {
     "certificate",
     "cert",
     "ssl_cert",
-    "private",
     # Credentials
     "credential",
     "credentials",
@@ -135,8 +135,11 @@ _NAME_WORD = re.compile(r"[A-Z]+(?![a-z])|[A-Z]?[a-z]+|[0-9]+")
 # A name that says nothing until its parent qualifies it, as `tls` does `key`.
 _BARE_NAMES = frozenset({"key", "keys", "value", "values"})
 
-# Matches nothing, for a term set with no spelling in it.
-_NEVER = re.compile(r"(?!)")
+# Last words that say how a credential is held, not what it is, so `api_token_value`, `password_hash` and `ssl.key.pem` read without them.
+_QUALIFIERS = frozenset({"value", "values", "pem", "hash", "b64", "base64", "enc", "encrypted", "raw"})
+
+# A term this long also ends a name's last word part-way, as `password` does in `PGPASSWORD`, and takes a plural `s`, as in `passwords`. Shorter ones, such as `pass` in `bypass` and `token` in `tokens`, do not.
+_SUFFIX_MIN = 6
 
 # Where a URL's user ends, since it holds no whitespace, `:`, `/` or `@`.
 _URL_USER_END_RE = re.compile(r"[\s:/@]")
@@ -232,41 +235,92 @@ _CREDENTIAL_QUOTED_RE = re.compile(f"{_DOUBLE_QUOTED_LINE}|{_PLAIN_DOUBLE_QUOTED
 _CREDENTIAL_COMMA_RE = re.compile(r"[ \t]*+,[ \t]*+")
 
 
-def _spellings(name: str) -> tuple[str, str]:
-    """Return ``name`` lower-cased as written, and as its words joined by ``_``.
+def _joined_words(name: str) -> str:
+    """Return ``name`` as its lower-cased words joined by ``_``.
 
-    The second form reads ``secretAccessKey``, ``x-api-key`` and ``ssl.key.pem``
-    as ``secret_access_key``, ``x_api_key`` and ``ssl_key_pem``.
+    This reads ``secretAccessKey``, ``x-api-key`` and ``ssl.key.pem`` as
+    ``secret_access_key``, ``x_api_key`` and ``ssl_key_pem``.
     """
-    return name.lower(), "_".join(_NAME_WORD.findall(name)).lower()
+    return "_".join(_NAME_WORD.findall(name)).lower()
+
+
+class _CredentialTerms:
+    """The terms a credential name may end in, each as its words joined with nothing between them.
+
+    The terms are indexed by their last letter, so a name is compared with the
+    few terms that can end it.
+    """
+
+    __slots__ = ("_by_last",)
+
+    def __init__(self, terms: Iterable[str]) -> None:
+        by_last: dict[str, list[str]] = {}
+        for term in {_joined_words(term).replace("_", "") for term in terms}:
+            if term:
+                by_last.setdefault(term[-1], []).append(term)
+        self._by_last = {last: tuple(group) for last, group in by_last.items()}
+
+    def ends(self, stem: str) -> bool:
+        """Return whether the last words of ``stem``, a name's words joined by ``_``, spell a term."""
+        if any(_ends_with_term(stem, term, len(term) >= _SUFFIX_MIN) for term in self._by_last.get(stem[-1:], ())):
+            return True
+        if stem.endswith("s"):
+            singular = stem[:-1]
+            return any(
+                len(term) >= _SUFFIX_MIN and _ends_with_term(singular, term, in_last_word=True)
+                for term in self._by_last.get(singular[-1:], ())
+            )
+        return False
+
+
+def _ends_with_term(name: str, term: str, in_last_word: bool) -> bool:
+    """Return whether the words at the end of ``name``, joined by ``_``, spell ``term`` with the ``_`` left out.
+
+    With ``in_last_word``, ``term`` may also end the last word part-way through it.
+    """
+    at = len(name)
+    left = len(term)
+    crossed = False
+    while left:
+        if not at:
+            return False
+        at -= 1
+        if name[at] == "_":
+            crossed = True
+            continue
+        left -= 1
+        if name[at] != term[left]:
+            return False
+    return at == 0 or name[at - 1] == "_" or (in_last_word and not crossed)
 
 
 @functools.lru_cache(maxsize=64)
-def _term_pattern(terms: frozenset[str]) -> re.Pattern[str]:
-    """Compile one alternation over both spellings of every term."""
-    spellings = {spelling for term in terms for spelling in _spellings(term) if spelling}
-    if not spellings:
-        return _NEVER
-    return re.compile("|".join(re.escape(spelling) for spelling in sorted(spellings)))
+def _term_pattern(terms: frozenset[str]) -> _CredentialTerms:
+    """Build the matcher over ``terms``."""
+    return _CredentialTerms(terms)
 
 
-def _names_credential(name: str, parent: str, pattern: re.Pattern[str]) -> bool:
-    """Return whether ``name``, held under ``parent``, carries a term ``pattern`` matches."""
-    lower, joined = _spellings(name)
+def _names_credential(name: str, parent: str, terms: _CredentialTerms) -> bool:
+    """Return whether ``name``, held under ``parent``, ends in a term of ``terms``."""
+    joined = _joined_words(name)
     if parent and joined in _BARE_NAMES:
-        lower, joined = _spellings(f"{parent}_{name}")
-    return bool(pattern.search(lower) or pattern.search(joined))
+        joined = _joined_words(f"{parent}_{name}")
+    head, _, last = joined.rpartition("_")
+    return terms.ends(joined) or (bool(head) and last in _QUALIFIERS and terms.ends(head))
 
 
 def is_credential_name(name: str, parent: str = "", *, extra: Iterable[str] = ()) -> bool:
     """Return whether a field called ``name`` holds a credential.
 
-    A name is a credential when one of :data:`SENSITIVE_FIELDS`, or a field added
-    with :meth:`SensitiveDataFilter.add_sensitive_fields`, sits anywhere in it,
-    case-insensitively. Separators and case changes do not hide a term, so
-    ``db_password``, ``PGPASSWORD``, ``x-api-key`` and ``secretAccessKey`` all
-    match. A name that merely contains a term matches too: ``tokenizer`` and
-    ``mapping`` are masked, the same over-masking scalo-rs accepts.
+    A name is a credential when its last words, joined, spell one of
+    :data:`SENSITIVE_FIELDS`, or a field added with
+    :meth:`SensitiveDataFilter.add_sensitive_fields`, case-insensitively.
+    Separators and case changes split the words, so ``db_password``,
+    ``x-api-key`` and ``secretAccessKey`` match and ``TokenElevationType``,
+    ``tokens_used`` and ``mapping`` do not. A trailing ``value``, ``values``,
+    ``pem``, ``hash``, ``b64``, ``base64``, ``enc``, ``encrypted`` or ``raw`` is
+    read past (``api_token_value``). A term of six letters or more may also end
+    the last word part-way or take a plural ``s``: ``PGPASSWORD``, ``passwords``.
 
     Args:
         name: The field name as the record, dict or config spells it.
@@ -281,7 +335,7 @@ def is_credential_name(name: str, parent: str = "", *, extra: Iterable[str] = ()
     return _names_credential(name, parent, _credential_pattern(extra))
 
 
-def _credential_pattern(extra: Iterable[str] = ()) -> re.Pattern[str]:
+def _credential_pattern(extra: Iterable[str] = ()) -> _CredentialTerms:
     """Return the matcher for the default terms, every globally added field and ``extra``."""
     terms = SensitiveDataFilter._custom_fields | {term.lower() for term in extra}
     return _term_pattern(frozenset(SENSITIVE_FIELDS | terms))
@@ -583,7 +637,7 @@ class _Values:
 
 
 def _pair_spans(
-    text: str, head_re: re.Pattern[str], colon: bool, pattern: re.Pattern[str]
+    text: str, head_re: re.Pattern[str], colon: bool, pattern: _CredentialTerms
 ) -> tuple[list[tuple[int, int, str]], list[_Span]]:
     """Return the value after every ``head_re`` key that names a credential, and the run past each one.
 
@@ -660,7 +714,7 @@ def _apply(text: str, spans: Iterable[_Span]) -> str:
     return "".join(out)
 
 
-def _mask_pairs(text: str, pattern: re.Pattern[str]) -> str:
+def _mask_pairs(text: str, pattern: _CredentialTerms) -> str:
     """Mask the value after every ``key: value``, then every ``key=value``, whose key ``pattern`` names a credential.
 
     Each pass replaces a value only as far as its first reading goes, and the
@@ -724,7 +778,7 @@ class SensitiveDataFilter(logging.Filter):
         self._instance_fields = extra_fields or set()
         self._secrets_leak = secrets_leak
 
-    def _credential_pattern(self) -> re.Pattern[str]:
+    def _credential_pattern(self) -> _CredentialTerms:
         """Return the credential-name matcher for this filter's fields, global and per-instance."""
         return _term_pattern(frozenset(self._get_all_sensitive_fields()))
 

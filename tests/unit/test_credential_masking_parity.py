@@ -16,6 +16,7 @@ literal sits on disk.
 
 import json
 import sys
+import tomllib
 from pathlib import Path
 
 import pytest
@@ -30,6 +31,14 @@ from scalo.logger.scrub import FieldNameScrubber
 CORPUS_PATH = Path(__file__).resolve().parents[1] / "fixtures" / "patterns" / "credential_masking_parity.json"
 CORPUS = json.loads(CORPUS_PATH.read_text(encoding="utf-8"))
 SECRET = opaque_secret("credname")
+
+# Cases scalo-rs and scalo-py both assert since the name and card rules narrowed. Its `supersedes` table replaces the expectation of the corpus cases it names.
+NARROWING_PATH = CORPUS_PATH.with_name("narrowing_fixtures.toml")
+NARROWING = tomllib.loads(NARROWING_PATH.read_text(encoding="utf-8"))
+SUPERSEDED = {
+    "text_cases": ("expected", NARROWING["supersedes"]["text_cases"]),
+    "coarse_cases": ("should_mask", NARROWING["supersedes"]["coarse_cases"]),
+}
 
 SECTIONS = ("parent_cases", "text_cases", "url_cases", "structured_cases", "coarse_cases")
 
@@ -46,7 +55,11 @@ def _fill_value(value):
 
 
 def _cases(section: str) -> list:
-    return [pytest.param(case, id=case["id"]) for case in CORPUS[section]]
+    field, replaced = SUPERSEDED.get(section, ("", {}))
+    return [
+        pytest.param({**case, field: replaced[case["id"]]} if case["id"] in replaced else case, id=case["id"])
+        for case in CORPUS[section]
+    ]
 
 
 def _names(*lists: str) -> list:
@@ -65,6 +78,21 @@ def json_logger(monkeypatch):
         setup(otel_tracing=False, log_format="json")
         yield stream
         logger.remove()
+
+
+def test_every_superseded_case_is_in_the_corpus():
+    for section, (_field, replaced) in SUPERSEDED.items():
+        assert set(replaced) <= {case["id"] for case in CORPUS[section]}
+
+
+@pytest.mark.parametrize("name", NARROWING["credential_names"]["credential"])
+def test_a_name_ending_in_a_term_is_a_credential(name):
+    assert is_credential_name(name)
+
+
+@pytest.mark.parametrize("name", NARROWING["credential_names"]["not_credential"])
+def test_a_name_with_a_term_inside_it_is_not_a_credential(name):
+    assert not is_credential_name(name)
 
 
 @pytest.mark.parametrize("section", SECTIONS)
@@ -108,7 +136,23 @@ def test_a_coarse_case_is_masked_or_left_as_the_corpus_says(case):
     assert (FieldNameScrubber().scrub(text) != text) is case["should_mask"]
 
 
-@pytest.mark.parametrize("case", _cases("structured_cases"))
+# A bare `tokens` is no credential name under the narrowed rule (`token` is under 6 letters, so it takes no plural), though the corpus expects it masked.
+_UNSUPERSEDED_FLIPS = {"credential-key-masks-a-whole-container"}
+
+
+@pytest.mark.parametrize(
+    "case",
+    [
+        pytest.param(
+            case.values[0],
+            id=case.id,
+            marks=pytest.mark.xfail(strict=True, reason="bare `tokens` is no longer a credential name")
+            if case.id in _UNSUPERSEDED_FLIPS
+            else (),
+        )
+        for case in _cases("structured_cases")
+    ],
+)
 def test_record_fields_are_masked_as_the_corpus_says(json_logger, case):
     expected = _fill_value(case["expected"])
 

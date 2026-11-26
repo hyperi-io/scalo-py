@@ -85,7 +85,7 @@ class _Validator:
             # metric dashboards both want to see the detection rate
             # before validation/context filtering.
             self.metrics.inc_match("L3", self.LABEL)
-            if self.KEYWORDS and not self._has_keyword_context(text, match.start()):
+            if not self._anchored(text, match):
                 return candidate
             if not self.validate(candidate):
                 return candidate
@@ -93,6 +93,10 @@ class _Validator:
             return self.labeler(self.LABEL, candidate)
 
         return self.PATTERN.sub(_repl, text)
+
+    def _anchored(self, text: str, match: re.Match[str]) -> bool:
+        """Return True when the context lets ``match`` count: always for a strong-structural validator, else a keyword before it."""
+        return not self.KEYWORDS or self._has_keyword_context(text, match.start())
 
     def _has_keyword_context(self, text: str, candidate_start: int) -> bool:
         """Return True if any keyword appears within ``PROXIMITY`` chars before the candidate.
