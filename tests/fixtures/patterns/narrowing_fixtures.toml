@@ -4,7 +4,7 @@
 # All samples are synthetic.
 
 [meta]
-version = "1.0.0"
+version = "1.1.0"
 
 [credit_card]
 card_words = ["card", "creditcard", "cc", "pan", "visa", "mastercard", "amex"]
@@ -26,6 +26,8 @@ unchanged = [
     "access 4111111111111111",
     "company 4111111111111111",
     "4111-1111 1111-1111",
+    "[CREDIT_CARD_REDACTED] and 5555555555554444",
+    "[CREDIT_CARD_0123456789abcdef] and 5555555555554444",
 ]
 # 1,000 consecutive epoch milliseconds from this one, each alone, unchanged.
 epoch_ms_start = 1764116553000
@@ -47,13 +49,17 @@ credential = [
     "ssl.key.pem",
     "aws_auth",
     "SubjectPassword",
+    "api_key_v2",
+    "apiKey2",
+    "client_secret_01",
+    "password_v2_hash",
+    "tokens",
 ]
 not_credential = [
     "TokenElevationType",
     "PasswordLastSet",
     "tokens_used",
     "token_count",
-    "max_tokens",
     "token_type",
     "tokenizer",
     "mapping",
@@ -67,6 +73,33 @@ not_credential = [
     "LogonSession",
     "ping_ms",
 ]
+
+# A name that ends only in a short term's plural can be a count: it keeps a
+# number and masks anything else. Strings here are the value as written.
+[[value_cases]]
+name = "tokens"
+value = "FAKE-tok-XXXX"
+masked = true
+
+[[value_cases]]
+name = "max_tokens"
+value = "4096"
+masked = false
+
+[[value_cases]]
+name = "tokens"
+value = "4096"
+masked = false
+
+[[value_cases]]
+name = "access_tokens"
+value = "4096"
+masked = true
+
+[[value_cases]]
+name = "password"
+value = "1234"
+masked = true
 
 # credential_masking_parity.json text_cases: id -> the expected output now.
 [supersedes.text_cases]

@@ -42,6 +42,30 @@ def _card_grouped(candidate: str) -> bool:
     return tuple(len(group) for group in groups) in _CARD_GROUPS
 
 
+_LABEL_HASH_TAIL = re.compile(r"_[0-9a-f]{16}")
+
+
+def _in_label(text: str, at: int) -> bool:
+    """Return whether ``text[at]`` sits inside a redaction label, ``[CREDIT_CARD_REDACTED]`` or ``[CREDIT_CARD_<16 hex>]``.
+
+    A second pass over a label reads its ``CARD`` as no card word.
+    """
+
+    def inner(char: str) -> bool:
+        return (char.isascii() and char.isalnum()) or char == "_"
+
+    start = at
+    while start > 0 and inner(text[start - 1]):
+        start -= 1
+    end = at
+    while end < len(text) and inner(text[end]):
+        end += 1
+    if start == 0 or end == len(text) or text[start - 1] != "[" or text[end] != "]":
+        return False
+    body = text[start:end]
+    return body.endswith("_REDACTED") or (len(body) > 17 and _LABEL_HASH_TAIL.fullmatch(body[-17:]) is not None)
+
+
 class CreditCardValidator(_Validator):
     """13-19 digit credit-card numbers with optional separators, grouped as a card or after a card word."""
 
@@ -58,7 +82,10 @@ class CreditCardValidator(_Validator):
             return True
         start = max(0, match.start() - self.PROXIMITY)
         # A word may start inside the window and run into the number, which the lookahead then refuses.
-        return any(word.end() <= match.start() for word in _CARD_WORD_RE.finditer(text, start, match.start() + 1))
+        return any(
+            word.end() <= match.start() and not _in_label(text, word.start())
+            for word in _CARD_WORD_RE.finditer(text, start, match.start() + 1)
+        )
 
     @override
     def validate(self, candidate: str) -> bool:

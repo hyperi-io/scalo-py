@@ -28,6 +28,7 @@ return the field-name filter.
 
 import array
 import bisect
+import enum
 import functools
 import logging
 import re
@@ -141,6 +142,13 @@ _QUALIFIERS = frozenset({"value", "values", "pem", "hash", "b64", "base64", "enc
 # A term this long also ends a name's last word part-way, as `password` does in `PGPASSWORD`, and takes a plural `s`, as in `passwords`. Shorter ones, such as `pass` in `bypass` and `token` in `tokens`, do not.
 _SUFFIX_MIN = 6
 
+# How many trailing qualifier and version words a name may shed while it is read for a term.
+_MAX_STRIPPED = 4
+
+# A value that is a decimal number, once its spaces and one pair of double quotes are off.
+_NUMBER_RE = re.compile(r"-?[0-9]+(?:\.[0-9]+)?")
+_ASCII_SPACE = " \t\n\r\x0c"
+
 # Where a URL's user ends, since it holds no whitespace, `:`, `/` or `@`.
 _URL_USER_END_RE = re.compile(r"[\s:/@]")
 # Where a URL's password run ends: whitespace, or the next `://`.
@@ -244,6 +252,15 @@ def _joined_words(name: str) -> str:
     return "_".join(_NAME_WORD.findall(name)).lower()
 
 
+class _NameMatch(enum.IntEnum):
+    """How a name matched the terms."""
+
+    NONE = 0
+    PLURAL = 1
+    """It ends only in the plural of a term under :data:`_SUFFIX_MIN` letters, as ``tokens`` does, so it can be a count."""
+    TERM = 2
+
+
 class _CredentialTerms:
     """The terms a credential name may end in, each as its words joined with nothing between them.
 
@@ -260,17 +277,21 @@ class _CredentialTerms:
                 by_last.setdefault(term[-1], []).append(term)
         self._by_last = {last: tuple(group) for last, group in by_last.items()}
 
-    def ends(self, stem: str) -> bool:
-        """Return whether the last words of ``stem``, a name's words joined by ``_``, spell a term."""
+    def match(self, stem: str) -> _NameMatch:
+        """Return how the last words of ``stem``, a name's words joined by ``_``, spell a term."""
         if any(_ends_with_term(stem, term, len(term) >= _SUFFIX_MIN) for term in self._by_last.get(stem[-1:], ())):
-            return True
-        if stem.endswith("s"):
-            singular = stem[:-1]
-            return any(
-                len(term) >= _SUFFIX_MIN and _ends_with_term(singular, term, in_last_word=True)
-                for term in self._by_last.get(singular[-1:], ())
-            )
-        return False
+            return _NameMatch.TERM
+        if not stem.endswith("s"):
+            return _NameMatch.NONE
+        singular = stem[:-1]
+        found = _NameMatch.NONE
+        for term in self._by_last.get(singular[-1:], ()):
+            long = len(term) >= _SUFFIX_MIN
+            if _ends_with_term(singular, term, long):
+                if long:
+                    return _NameMatch.TERM
+                found = _NameMatch.PLURAL
+        return found
 
 
 def _ends_with_term(name: str, term: str, in_last_word: bool) -> bool:
@@ -294,19 +315,72 @@ def _ends_with_term(name: str, term: str, in_last_word: bool) -> bool:
     return at == 0 or name[at - 1] == "_" or (in_last_word and not crossed)
 
 
+def _strip_last_word(name: str) -> str | None:
+    """Return ``name`` without its last word when that word is a qualifier, a version such as ``v2``, or a number such as ``01``."""
+    rest, _, last = name.rpartition("_")
+    if not rest:
+        return None
+    if last in _QUALIFIERS:
+        return rest
+    if not (last.isascii() and last.isdigit()):
+        return None
+    # `v2` splits into `v` and `2`, and both go.
+    rest = rest.removesuffix("_v")
+    return None if rest == "v" else rest
+
+
 @functools.lru_cache(maxsize=64)
 def _term_pattern(terms: frozenset[str]) -> _CredentialTerms:
     """Build the matcher over ``terms``."""
     return _CredentialTerms(terms)
 
 
-def _names_credential(name: str, parent: str, terms: _CredentialTerms) -> bool:
-    """Return whether ``name``, held under ``parent``, ends in a term of ``terms``."""
-    joined = _joined_words(name)
-    if parent and joined in _BARE_NAMES:
-        joined = _joined_words(f"{parent}_{name}")
-    head, _, last = joined.rpartition("_")
-    return terms.ends(joined) or (bool(head) and last in _QUALIFIERS and terms.ends(head))
+def _name_match(name: str, parent: str, terms: _CredentialTerms) -> _NameMatch:
+    """Return how ``name``, held under ``parent``, ends in a term of ``terms``, shedding up to :data:`_MAX_STRIPPED` trailing words."""
+    stem: str | None = _joined_words(name)
+    if parent and stem in _BARE_NAMES:
+        stem = _joined_words(f"{parent}_{name}")
+    found = _NameMatch.NONE
+    for _ in range(_MAX_STRIPPED):
+        if stem is None:
+            break
+        matched = terms.match(stem)
+        if matched is _NameMatch.TERM:
+            return matched
+        found = max(found, matched)
+        stem = _strip_last_word(stem)
+    return found
+
+
+def _is_number(value: object) -> bool:
+    """Return whether ``value`` is a number: an int or float, or a string that is one less its spaces and double quotes."""
+    if isinstance(value, bool):
+        return False
+    if isinstance(value, (int, float)):
+        text = str(value)
+    elif isinstance(value, str):
+        text = value.strip(_ASCII_SPACE)
+        if len(text) >= 2 and text[0] == text[-1] == '"':
+            text = text[1:-1]
+    else:
+        return False
+    return _NUMBER_RE.fullmatch(text) is not None
+
+
+_NO_VALUE: Any = object()
+
+
+def _names_credential(name: str, parent: str, terms: _CredentialTerms, value: Any = _NO_VALUE) -> bool:
+    """Return whether ``name``, held under ``parent``, names a credential, given the ``value`` it holds when that is known.
+
+    A name that ends only in a short term's plural, such as ``max_tokens``, can
+    be a count, so a number under it is no credential. With no ``value`` such a
+    name is a credential.
+    """
+    matched = _name_match(name, parent, terms)
+    if matched is _NameMatch.PLURAL:
+        return value is _NO_VALUE or not _is_number(value)
+    return matched is _NameMatch.TERM
 
 
 def is_credential_name(name: str, parent: str = "", *, extra: Iterable[str] = ()) -> bool:
@@ -651,10 +725,16 @@ def _pair_spans(
     copied = 0
     for head in head_re.finditer(text):
         key = head["key"]
-        if head.start() < copied or not _names_credential(key, "", pattern):
+        if head.start() < copied:
+            continue
+        matched = _name_match(key, "", pattern)
+        if matched is _NameMatch.NONE:
             continue
         start = head.end()
         end, mask, reach = read(start, _AUTHORIZATION in key.lower())
+        # A count under a name that is only a short term's plural, as in `max_tokens=4096`, stays.
+        if matched is _NameMatch.PLURAL and end is not None and _is_number(text[start:end]):
+            continue
         if end is not None:
             spans.append((start, end, mask))
             copied = end
@@ -896,7 +976,7 @@ class SensitiveDataFilter(logging.Filter):
 
         for key, value in data.items():
             name = str(key)
-            if _names_credential(name, parent, pattern):
+            if _names_credential(name, parent, pattern, value):
                 # Mask this field entirely
                 masked_data[key] = MASK_VALUE
             elif isinstance(value, dict):

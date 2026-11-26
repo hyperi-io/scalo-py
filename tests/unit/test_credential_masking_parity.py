@@ -24,7 +24,7 @@ from common.fake_secrets import opaque_secret
 from common.log_capture import LOGGER_ENV_VARS, StreamDouble, preserved_stdlib_logging
 from loguru import logger
 
-from scalo.logger.filters import MASK_VALUE, is_credential_name, mask_url_userinfo
+from scalo.logger.filters import MASK_VALUE, SensitiveDataFilter, is_credential_name, mask_url_userinfo
 from scalo.logger.logger import setup
 from scalo.logger.scrub import FieldNameScrubber
 
@@ -95,6 +95,50 @@ def test_a_name_with_a_term_inside_it_is_not_a_credential(name):
     assert not is_credential_name(name)
 
 
+VALUE_CASES = [pytest.param(case, id=f"{case['name']}={case['value']}") for case in NARROWING["value_cases"]]
+
+
+@pytest.mark.parametrize("case", VALUE_CASES)
+def test_a_short_plural_name_keeps_a_number_in_text(case):
+    text = f"{case['name']}={case['value']}"
+
+    assert (FieldNameScrubber().scrub(text) != text) is case["masked"]
+
+
+@pytest.mark.parametrize("case", VALUE_CASES)
+def test_a_short_plural_name_keeps_a_number_in_a_dict(case):
+    masked = SensitiveDataFilter()._mask_sensitive_dict({case["name"]: case["value"]})
+
+    assert (masked[case["name"]] == MASK_VALUE) is case["masked"]
+
+
+@pytest.mark.parametrize("case", VALUE_CASES)
+def test_a_short_plural_name_keeps_a_number_in_a_record(json_logger, case):
+    logger.warning("corpus", **{case["name"]: case["value"]})
+
+    fields = json.loads(json_logger.getvalue().splitlines()[0])["fields"]
+    assert (fields[case["name"]] == MASK_VALUE) is case["masked"]
+
+
+@pytest.mark.parametrize(
+    ("value", "is_number"),
+    [
+        ("4096", True),
+        ("-1", True),
+        ("3.14", True),
+        (' "4096" ', True),
+        ("4096.", False),
+        (".5", False),
+        ("1e5", False),
+        ("12 34", False),
+    ],
+)
+def test_a_number_is_digits_with_one_optional_fraction(value, is_number):
+    name = "max_tokens"
+
+    assert (FieldNameScrubber().scrub(f"{name}={value}") == f"{name}={value}") is is_number
+
+
 @pytest.mark.parametrize("section", SECTIONS)
 def test_every_section_holds_cases(section):
     assert CORPUS[section], f"{section} is empty"
@@ -136,23 +180,7 @@ def test_a_coarse_case_is_masked_or_left_as_the_corpus_says(case):
     assert (FieldNameScrubber().scrub(text) != text) is case["should_mask"]
 
 
-# A bare `tokens` is no credential name under the narrowed rule (`token` is under 6 letters, so it takes no plural), though the corpus expects it masked.
-_UNSUPERSEDED_FLIPS = {"credential-key-masks-a-whole-container"}
-
-
-@pytest.mark.parametrize(
-    "case",
-    [
-        pytest.param(
-            case.values[0],
-            id=case.id,
-            marks=pytest.mark.xfail(strict=True, reason="bare `tokens` is no longer a credential name")
-            if case.id in _UNSUPERSEDED_FLIPS
-            else (),
-        )
-        for case in _cases("structured_cases")
-    ],
-)
+@pytest.mark.parametrize("case", _cases("structured_cases"))
 def test_record_fields_are_masked_as_the_corpus_says(json_logger, case):
     expected = _fill_value(case["expected"])
 
