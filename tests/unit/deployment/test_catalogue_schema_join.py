@@ -325,15 +325,16 @@ def test_reflectable_config_fixture_joins() -> None:
     ],
 )
 def test_openssl_conf_is_always_emitted(openssl_conf: str | None, emitted: str) -> None:
-    extra = {} if openssl_conf is None else {"openssl_conf": openssl_conf}
-    contract = DeploymentContract(
-        app_name="bare",
-        metrics_port=9090,
-        env_prefix="BARE",
-        metric_prefix="bare",
-        image_registry="r.example.com",
-        **extra,
-    )
+    fields: dict[str, object] = {
+        "app_name": "bare",
+        "metrics_port": 9090,
+        "env_prefix": "BARE",
+        "metric_prefix": "bare",
+        "image_registry": "r.example.com",
+    }
+    if openssl_conf is not None:
+        fields["openssl_conf"] = openssl_conf
+    contract = DeploymentContract.model_validate(fields)
     assert json.loads(contract.to_json())["openssl_conf"] == emitted
 
 
