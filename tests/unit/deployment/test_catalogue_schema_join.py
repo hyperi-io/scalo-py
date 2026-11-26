@@ -313,3 +313,38 @@ def test_reflectable_config_fixture_joins() -> None:
     contract = _contract(schema, [Capability.model_validate(entry) for entry in catalogue])
     assert check_catalogue_against_schema(contract) == []
     assert [c.model_dump() for c in contract.capabilities] == catalogue
+
+
+@pytest.mark.parametrize(
+    ("openssl_conf", "emitted"),
+    [
+        (None, ""),
+        ("", ""),
+        ("/tmp/scalo-openssl.cnf", "/tmp/scalo-openssl.cnf"),
+        ("/etc/ssl/site.cnf", "/etc/ssl/site.cnf"),
+    ],
+)
+def test_openssl_conf_is_always_emitted(openssl_conf: str | None, emitted: str) -> None:
+    extra = {} if openssl_conf is None else {"openssl_conf": openssl_conf}
+    contract = DeploymentContract(
+        app_name="bare",
+        metrics_port=9090,
+        env_prefix="BARE",
+        metric_prefix="bare",
+        image_registry="r.example.com",
+        **extra,
+    )
+    assert json.loads(contract.to_json())["openssl_conf"] == emitted
+
+
+@pytest.mark.parametrize("bad", ["tmp/x.cnf", "/tmp/a b.cnf", "/tmp/$HOME.cnf", '/tmp/"x".cnf', "/tmp/a\\b.cnf"])
+def test_openssl_conf_refuses_a_path_a_dockerfile_env_line_cannot_take(bad: str) -> None:
+    with pytest.raises(ValueError, match="openssl_conf"):
+        DeploymentContract(
+            app_name="bare",
+            metrics_port=9090,
+            env_prefix="BARE",
+            metric_prefix="bare",
+            image_registry="r.example.com",
+            openssl_conf=bad,
+        )
