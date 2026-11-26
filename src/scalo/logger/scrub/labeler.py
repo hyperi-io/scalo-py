@@ -15,19 +15,17 @@ Two modes:
   output -- no operator correlation possible.
 - **Deterministic hash** (opt-in, ``scrub.hash_redaction: true``): each
   unique value gets a short keyed-hash suffix, e.g.
-  ``[EMAIL_a3f5b2]``. Same value -> same suffix within a process (or
+  ``[EMAIL_a3f5b2c4d6e8f001]``. Same value -> same suffix within a process (or
   across processes when ``LOG_SCRUB_HASH_KEY`` is set), letting
   operators correlate events without exposing the value.
 
-Hash algorithm: BLAKE2b keyed with ``secret_hash_key``,
-``digest_size=4`` (8 hex chars), truncated to 6 hex chars per spec.
-BLAKE2b is in the Python stdlib (``hashlib.blake2b``) and has a Rust
-counterpart in the RustCrypto ``blake2`` crate -- chosen over BLAKE3
-to avoid a build-time Rust-wheel dep in scalo-py for what is functionally
-a short-label hash.
+Hash algorithm: HMAC-SHA256 keyed with ``secret_hash_key``, truncated to
+8 bytes (16 hex chars). grippo's Rust scrubber uses the same construction, so
+a Python and a Rust service given the same key label the same value the same way.
 """
 
 import hashlib
+import hmac
 import secrets
 from collections.abc import Callable
 
@@ -46,14 +44,14 @@ def make_hash_labeler(secret_hash_key: bytes | None = None) -> LabelFn:
     """Build a deterministic-hash labeler.
 
     Args:
-        secret_hash_key: Bytes used to key the BLAKE2b hash. If ``None``,
+        secret_hash_key: Bytes used to key the HMAC-SHA256 hash. If ``None``,
             the environment variable ``LOG_SCRUB_HASH_KEY`` is
             consulted; if it is empty/unset, a per-process random key is
             generated. Within a process, the same value always produces
             the same suffix.
 
     Returns:
-        A :data:`LabelFn` that produces ``[LABEL_xxxxxx]`` strings.
+        A :data:`LabelFn` that produces ``[LABEL_<16 hex>]`` strings.
 
     The key is bound into the returned closure -- callers may construct
     distinct labelers with distinct keys, but the typical case is one
@@ -66,18 +64,9 @@ def make_hash_labeler(secret_hash_key: bytes | None = None) -> LabelFn:
         else:
             secret_hash_key = secrets.token_bytes(32)
 
-    # BLAKE2b accepts keys up to 64 bytes. Truncate operator-supplied
-    # keys if necessary; longer keys add no entropy.
-    if len(secret_hash_key) > 64:
-        secret_hash_key = secret_hash_key[:64]
-
     def _hash_label(label: str, value: str) -> str:
-        # Keyed with a per-process random or operator-set key, so the 24-bit label can't be matched offline without it.
-        digest = hashlib.blake2b(
-            value.encode("utf-8"),
-            key=secret_hash_key,
-            digest_size=4,
-        ).hexdigest()[:6]
+        # Keyed, so a label can't be matched offline without the key.
+        digest = hmac.new(secret_hash_key, value.encode("utf-8"), hashlib.sha256).hexdigest()[:16]
         return f"[{label}_{digest}]"
 
     return _hash_label

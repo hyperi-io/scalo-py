@@ -45,10 +45,10 @@ class TestStaticLabeler:
 
 
 class TestHashLabeler:
-    def test_format_is_label_hex6(self):
+    def test_format_is_label_hex16(self):
         labeler = make_hash_labeler(secret_hash_key=b"test-key")
         out = labeler("EMAIL", "alice@example.com")
-        assert re.fullmatch(r"\[EMAIL_[0-9a-f]{6}\]", out)
+        assert re.fullmatch(r"\[EMAIL_[0-9a-f]{16}\]", out)
 
     def test_determinism_within_labeler(self):
         labeler = make_hash_labeler(secret_hash_key=b"test-key")
@@ -82,22 +82,27 @@ class TestHashLabeler:
         # Independent instances with random keys -> different outputs
         assert l1("EMAIL", "alice@x") != l2("EMAIL", "alice@x")
 
-    def test_oversized_key_truncated(self):
-        # blake2b accepts key up to 64 bytes; longer keys are truncated.
-        big_key = b"x" * 200
-        labeler = make_hash_labeler(secret_hash_key=big_key)
-        out = labeler("EMAIL", "alice@example.com")
-        assert re.fullmatch(r"\[EMAIL_[0-9a-f]{6}\]", out)
+    @pytest.mark.parametrize(
+        ("key", "expected"),
+        [
+            # The same vectors pin grippo's Rust labeler.
+            (b"fleet-key", "[EMAIL_a8a30ba0507c619c]"),
+            (b"x" * 200, "[EMAIL_cf3f1d8a636a15d6]"),
+        ],
+    )
+    def test_known_answer(self, key: bytes, expected: str):
+        labeler = make_hash_labeler(secret_hash_key=key)
+        assert labeler("EMAIL", "alice@example.com") == expected
 
     def test_unicode_value(self):
         labeler = make_hash_labeler(secret_hash_key=b"k")
         out = labeler("PERSON", "山田 太郎")
-        assert re.fullmatch(r"\[PERSON_[0-9a-f]{6}\]", out)
+        assert re.fullmatch(r"\[PERSON_[0-9a-f]{16}\]", out)
 
     def test_empty_label(self):
         labeler = make_hash_labeler(secret_hash_key=b"k")
         out = labeler("", "alice@example.com")
-        assert re.fullmatch(r"\[_[0-9a-f]{6}\]", out)
+        assert re.fullmatch(r"\[_[0-9a-f]{16}\]", out)
 
 
 # ---------------------------------------------------------------------------
@@ -113,7 +118,7 @@ class TestResolveLabeler:
     def test_hash_enabled_returns_hash_labeler(self):
         labeler = resolve_labeler(hash_redaction=True)
         out = labeler("EMAIL", "alice@example.com")
-        assert re.fullmatch(r"\[EMAIL_[0-9a-f]{6}\]", out)
+        assert re.fullmatch(r"\[EMAIL_[0-9a-f]{16}\]", out)
 
 
 # ---------------------------------------------------------------------------
@@ -130,35 +135,35 @@ class TestFactoryHashRedaction:
     def test_hash_redaction_replaces_email(self):
         s = build_scrubber(ScrubConfig(hash_redaction=True))
         out = s.scrub("contact alice@example.com please")
-        # Email label now carries a 6-hex suffix, not _REDACTED
-        assert re.search(r"\[EMAIL_[0-9a-f]{6}\]", out)
+        # Email label now carries a 16-hex suffix, not _REDACTED
+        assert re.search(r"\[EMAIL_[0-9a-f]{16}\]", out)
         assert "[EMAIL_REDACTED]" not in out
         assert "alice@example.com" not in out
 
     def test_hash_correlates_same_value(self):
         s = build_scrubber(ScrubConfig(hash_redaction=True))
         out = s.scrub("from alice@example.com to alice@example.com")
-        labels = re.findall(r"\[EMAIL_[0-9a-f]{6}\]", out)
+        labels = re.findall(r"\[EMAIL_[0-9a-f]{16}\]", out)
         assert len(labels) == 2
         assert labels[0] == labels[1]  # same value -> same suffix
 
     def test_hash_distinguishes_different_values(self):
         s = build_scrubber(ScrubConfig(hash_redaction=True))
         out = s.scrub("from alice@example.com to bob@example.com")
-        labels = re.findall(r"\[EMAIL_[0-9a-f]{6}\]", out)
+        labels = re.findall(r"\[EMAIL_[0-9a-f]{16}\]", out)
         assert len(labels) == 2
         assert labels[0] != labels[1]
 
     def test_hash_redaction_on_credit_card(self):
         s = build_scrubber(ScrubConfig(hash_redaction=True))
         out = s.scrub("paid with 4111-1111-1111-1111")
-        assert re.search(r"\[CREDIT_CARD_[0-9a-f]{6}\]", out)
+        assert re.search(r"\[CREDIT_CARD_[0-9a-f]{16}\]", out)
         assert "4111-1111-1111-1111" not in out
 
     def test_hash_redaction_on_abn_with_context(self):
         s = build_scrubber(ScrubConfig(hash_redaction=True))
         out = s.scrub("ABN: 53 004 085 616")
-        assert re.search(r"\[AU_ABN_[0-9a-f]{6}\]", out)
+        assert re.search(r"\[AU_ABN_[0-9a-f]{16}\]", out)
 
     def test_l2_field_redaction_unchanged_by_hash_mode(self):
         # L2 field names use the static ***REDACTED*** mask regardless of

@@ -254,7 +254,7 @@ class TestGitleaksTomlScrubberLabeler:
         labeler = make_hash_labeler(secret_hash_key=b"k")
         s = GitleaksTomlScrubber(labeler=labeler)
         out = s.scrub(aws_access_key())
-        assert re.search(r"\[AWS_ACCESS_TOKEN_[0-9a-f]{6}\]", out)
+        assert re.search(r"\[AWS_ACCESS_TOKEN_[0-9a-f]{16}\]", out)
 
 
 _DENY_VALUE = "Tq9v-Lw3x-Zk7m-Rb2n"

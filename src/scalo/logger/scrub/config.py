@@ -160,7 +160,7 @@ class ScrubConfig:
         observe_only: detect-only mode. Emit metrics, leave output
             unchanged. For tuning in staging (spec Section 5.5).
         hash_redaction: deterministic short-hash labels. When True,
-            redactions look like ``[EMAIL_a3f5b2]`` so operators can
+            redactions look like ``[EMAIL_a3f5b2c4d6e8f001]`` so operators can
             correlate the same value across log lines without
             revealing it (spec Section 4.4).
         metrics_enabled: emit per-layer scrub metrics (spec Section 8). True
