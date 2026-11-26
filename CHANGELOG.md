@@ -3,6 +3,13 @@
 Rendered by CI and committed back at the end of a release -- do not edit by
 hand. Release notes also appear on the GitHub Releases page, one per tag.
 
+## [2.32.12](https://github.com/hyperi-io/scalo-py/compare/v2.32.11...v2.32.12) (2026-11-26)
+
+### Bug Fixes
+
+* **scrub:** mask more credential names and keys ([1750e49](https://github.com/hyperi-io/scalo-py/commit/1750e4941e30ab3fa43282b9fb3c754eaa160c6d))
+* **tools:** copy in grippo's narrowing fixture ([7fafb27](https://github.com/hyperi-io/scalo-py/commit/7fafb27538ba5eaee764e41d4266c34d4c7b1190))
+
 ## [2.32.11](https://github.com/hyperi-io/scalo-py/compare/v2.32.10...v2.32.11) (2026-11-26)
 
 ### Bug Fixes
