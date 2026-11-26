@@ -157,6 +157,7 @@ else:
         DIAL_KEYWORD,
         DIAL_TIERS,
         assert_no_config_artifact_drift,
+        check_catalogue_against_schema,
         check_config_artifact_drift,
         config_schema_json,
         emit_config_artifacts,

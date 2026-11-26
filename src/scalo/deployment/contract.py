@@ -761,6 +761,24 @@ class DeploymentContract(BaseModel):
     when empty.
     """
 
+    openssl_conf: str = ""
+    """The file ``OPENSSL_CONF`` names in the pod.
+
+    Empty sets none, which suits scalo-py because it writes no OpenSSL config file. Always emitted, because the
+    scalo-service chart points ``OPENSSL_CONF`` at ``/tmp/scalo-openssl.cnf`` when the key is missing.
+    """
+
+    @field_validator("openssl_conf")
+    @classmethod
+    def _openssl_conf_is_empty_or_a_plain_absolute_path(cls, value: str) -> str:
+        """Refuse an ``openssl_conf`` a Dockerfile ENV line can't take unquoted, as scalo-rs's ``validate()`` does."""
+        if value and (not value.startswith("/") or any(char.isspace() or char in "\"'$\\" for char in value)):
+            raise ValueError(
+                f"openssl_conf: {_quoted(value)} must be empty or an absolute path with no space, quote, `$` or `\\`, "
+                "because it is written into a Dockerfile ENV line"
+            )
+        return value
+
     @field_validator("app_name")
     @classmethod
     def _app_name_is_a_service_name(cls, value: str) -> str:
