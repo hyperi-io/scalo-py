@@ -16,6 +16,7 @@ literal sits on disk.
 
 import json
 import sys
+import tomllib
 from pathlib import Path
 
 import pytest
@@ -23,13 +24,21 @@ from common.fake_secrets import opaque_secret
 from common.log_capture import LOGGER_ENV_VARS, StreamDouble, preserved_stdlib_logging
 from loguru import logger
 
-from scalo.logger.filters import MASK_VALUE, is_credential_name, mask_url_userinfo
+from scalo.logger.filters import MASK_VALUE, SensitiveDataFilter, is_credential_name, mask_url_userinfo
 from scalo.logger.logger import setup
 from scalo.logger.scrub import FieldNameScrubber
 
 CORPUS_PATH = Path(__file__).resolve().parents[1] / "fixtures" / "patterns" / "credential_masking_parity.json"
 CORPUS = json.loads(CORPUS_PATH.read_text(encoding="utf-8"))
 SECRET = opaque_secret("credname")
+
+# Cases scalo-rs and scalo-py both assert since the name and card rules narrowed. Its `supersedes` table replaces the expectation of the corpus cases it names.
+NARROWING_PATH = CORPUS_PATH.with_name("narrowing_fixtures.toml")
+NARROWING = tomllib.loads(NARROWING_PATH.read_text(encoding="utf-8"))
+SUPERSEDED = {
+    "text_cases": ("expected", NARROWING["supersedes"]["text_cases"]),
+    "coarse_cases": ("should_mask", NARROWING["supersedes"]["coarse_cases"]),
+}
 
 SECTIONS = ("parent_cases", "text_cases", "url_cases", "structured_cases", "coarse_cases")
 
@@ -46,7 +55,11 @@ def _fill_value(value):
 
 
 def _cases(section: str) -> list:
-    return [pytest.param(case, id=case["id"]) for case in CORPUS[section]]
+    field, replaced = SUPERSEDED.get(section, ("", {}))
+    return [
+        pytest.param({**case, field: replaced[case["id"]]} if case["id"] in replaced else case, id=case["id"])
+        for case in CORPUS[section]
+    ]
 
 
 def _names(*lists: str) -> list:
@@ -65,6 +78,65 @@ def json_logger(monkeypatch):
         setup(otel_tracing=False, log_format="json")
         yield stream
         logger.remove()
+
+
+def test_every_superseded_case_is_in_the_corpus():
+    for section, (_field, replaced) in SUPERSEDED.items():
+        assert set(replaced) <= {case["id"] for case in CORPUS[section]}
+
+
+@pytest.mark.parametrize("name", NARROWING["credential_names"]["credential"])
+def test_a_name_ending_in_a_term_is_a_credential(name):
+    assert is_credential_name(name)
+
+
+@pytest.mark.parametrize("name", NARROWING["credential_names"]["not_credential"])
+def test_a_name_with_a_term_inside_it_is_not_a_credential(name):
+    assert not is_credential_name(name)
+
+
+VALUE_CASES = [pytest.param(case, id=f"{case['name']}={case['value']}") for case in NARROWING["value_cases"]]
+
+
+@pytest.mark.parametrize("case", VALUE_CASES)
+def test_a_short_plural_name_keeps_a_number_in_text(case):
+    text = f"{case['name']}={case['value']}"
+
+    assert (FieldNameScrubber().scrub(text) != text) is case["masked"]
+
+
+@pytest.mark.parametrize("case", VALUE_CASES)
+def test_a_short_plural_name_keeps_a_number_in_a_dict(case):
+    masked = SensitiveDataFilter()._mask_sensitive_dict({case["name"]: case["value"]})
+
+    assert (masked[case["name"]] == MASK_VALUE) is case["masked"]
+
+
+@pytest.mark.parametrize("case", VALUE_CASES)
+def test_a_short_plural_name_keeps_a_number_in_a_record(json_logger, case):
+    logger.warning("corpus", **{case["name"]: case["value"]})
+
+    fields = json.loads(json_logger.getvalue().splitlines()[0])["fields"]
+    assert (fields[case["name"]] == MASK_VALUE) is case["masked"]
+
+
+@pytest.mark.parametrize(
+    ("value", "is_number"),
+    [
+        ("4096", True),
+        ("-1", True),
+        ("3.14", True),
+        (' "4096" ', True),
+        ("4096.", False),
+        (".5", False),
+        ("1e5", False),
+        ("12 34", False),
+    ],
+)
+def test_a_number_is_digits_with_one_optional_fraction(value, is_number):
+    name = "max_tokens"
+
+    assert (FieldNameScrubber().scrub(f"{name}={value}") == f"{name}={value}") is is_number
 
 
 @pytest.mark.parametrize("section", SECTIONS)

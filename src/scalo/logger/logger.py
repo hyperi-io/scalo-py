@@ -47,6 +47,7 @@ from .filters import (
     SENSITIVE_FIELDS,
     RateLimitFilter,
     SensitiveDataFilter,
+    _CredentialTerms,
     _names_credential,
     _term_pattern,
     get_sensitive_filter,
@@ -333,7 +334,7 @@ class _FieldWalker:
     __slots__ = ("_budget", "_credential", "_path", "_scrub", "_scrub_key")
 
     def __init__(
-        self, scrub: Callable[[str], str], scrub_key: Callable[[str], str], credential: re.Pattern[str]
+        self, scrub: Callable[[str], str], scrub_key: Callable[[str], str], credential: _CredentialTerms
     ) -> None:
         self._scrub = scrub
         self._scrub_key = scrub_key
@@ -345,7 +346,7 @@ class _FieldWalker:
         """Return the scrubbed copy of a record's top-level fields."""
         output = {}
         for key, value in extra.items():
-            raw, name, sensitive = self._key(key, nested=False, parent="")
+            raw, name, sensitive = self._key(key, value, nested=False, parent="")
             output[name] = MASK_VALUE if sensitive else self._value(value, 0, raw)
         return output
 
@@ -362,13 +363,13 @@ class _FieldWalker:
         """Scrub one string value."""
         return self._scrub(text) if self._charge(nested) else _ELIDED
 
-    def _key(self, key, *, nested: bool, parent: str) -> tuple[str, str, bool]:
-        """Return a key's text, its scrubbed text, and whether it names a credential under ``parent``."""
+    def _key(self, key, value, *, nested: bool, parent: str) -> tuple[str, str, bool]:
+        """Return a key's text, its scrubbed text, and whether it names a credential under ``parent`` for ``value``."""
         try:
             raw = key if isinstance(key, str) else str(key)
         except Exception:
             return "", _unprintable(key), False
-        sensitive = _names_credential(raw, parent, self._credential)
+        sensitive = _names_credential(raw, parent, self._credential, value)
         try:
             return raw, (self._scrub_key(raw) if self._charge(nested) else _ELIDED), sensitive
         except Exception:
@@ -413,13 +414,13 @@ class _FieldWalker:
             if self._budget <= 0:
                 output[_ELIDED] = f"{len(value) - index} more entries"
                 break
-            raw, name, sensitive = self._key(key, nested=True, parent=parent)
+            raw, name, sensitive = self._key(key, item, nested=True, parent=parent)
             output[name] = MASK_VALUE if sensitive else self._value(item, depth, raw)
         return output
 
     def _sequence(self, value: list | tuple, depth: int, parent: str, entry: bool) -> list:
         is_pair = len(value) == 2 and (entry or isinstance(value, tuple))
-        if is_pair and self._names_a_secret(value[0], parent):
+        if is_pair and self._names_a_secret(value[0], parent, value[1]):
             return [self._value(value[0], depth), MASK_VALUE]
         output = []
         for index, item in enumerate(value):
@@ -430,11 +431,11 @@ class _FieldWalker:
             output.append(self._value(item, depth, parent, entry=True))
         return output
 
-    def _names_a_secret(self, item, parent: str) -> bool:
-        """Return True when ``item`` is a credential name, as in an ``(authorization, value)`` header pair."""
+    def _names_a_secret(self, item, parent: str, held) -> bool:
+        """Return True when ``item`` is a credential name for the ``held`` value, as in an ``(authorization, value)`` header pair."""
         if isinstance(item, bytes):
             item = item.decode("latin-1")
-        return isinstance(item, str) and _names_credential(item, parent, self._credential)
+        return isinstance(item, str) and _names_credential(item, parent, self._credential, held)
 
 
 def _render_exception(exception) -> str:

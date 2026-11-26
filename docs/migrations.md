@@ -2,6 +2,10 @@
 
 Behaviour and API changes that need a consumer adjustment, indexed by the scalo release where each first ships. Moving over from `hyperi-pylib` has its guide, [migrating-from-hyperi-pylib.md](migrating-from-hyperi-pylib.md).
 
+## Next release -- Credential names match their last words, and a card needs evidence (BEHAVIOUR CHANGE)
+
+A name is a credential when its last words spell a sensitive field, so `TokenElevationType`, `PasswordLastSet`, `tokens_used`, `token_count`, `max_tokens`, `tokenizer`, `mapping`, `author`, `oauth`, `is_private` and `LogonSession` keep their values where the substring rule masked them. A trailing `value`, `pem`, `hash`, version (`v2`) or number word is read past, a short term's plural such as `tokens` masks any value but a number, and a field of six letters or more may end the last word part-way or take a plural (`PGPASSWORD`, `passwords`). `session` and `private` are no longer fields, and `bearer_token` and `session_key` are. A Luhn-valid number is a card only when it is printed as 4-4-4-4, 4-6-5 or 4-6-4 with one separator, or follows `card`, `creditcard`, `cc`, `pan`, `visa`, `mastercard` or `amex` as a whole word within 30 characters, where a word inside a redaction label doesn't count. See [core-pillars/scrubbing.md](core-pillars/scrubbing.md#layer-2-field-name-regex). **Consumer adjustment** -- a bare 16-digit number in a log line is no longer redacted, so log a card under a name or a card word if it must be masked, and expect a field the substring rule masked, such as `session_timeout_ms`, to show.
+
 ## Next release -- `DirectoryConfigStore` reads return deep copies (BEHAVIOUR CHANGE)
 
 `get` returned a shallow copy of a table and the cached value itself for a key, so changing a nested dict you got back changed the cache for every reader. It returns a deep copy, as `set` and the change callbacks now copy what they take or hand out. See [api/directory-config.md](api/directory-config.md). **Consumer adjustment** -- write a change back with `set`, because mutating what `get` returned no longer reaches the store.

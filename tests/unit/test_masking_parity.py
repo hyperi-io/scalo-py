@@ -18,6 +18,7 @@ Intended as a cross-language corpus, and scalo-rs does not read it yet, so
 passing here proves the Python behaviour only.
 """
 
+import tomllib
 from pathlib import Path
 
 import pytest
@@ -26,6 +27,11 @@ import yaml
 from scalo.logger.filters import SensitiveDataFilter
 
 _FIXTURES_PATH = Path(__file__).resolve().parents[1] / "fixtures" / "patterns" / "masking-patterns.yaml"
+
+# The narrowing fixture's `supersedes.coarse_cases` replaces `should_mask` for the cases it names, here as in the credential corpus.
+_SUPERSEDED = tomllib.loads(_FIXTURES_PATH.with_name("narrowing_fixtures.toml").read_text(encoding="utf-8"))[
+    "supersedes"
+]["coarse_cases"]
 
 
 def _load_fixtures() -> dict | None:
@@ -41,7 +47,11 @@ def _test_case_ids(test_cases: list[dict]) -> list[str]:
 
 
 _fixtures = _load_fixtures()
-_test_cases = _fixtures["test_cases"] if _fixtures else []
+_test_cases = (
+    [{**case, "should_mask": _SUPERSEDED.get(case["name"], case["should_mask"])} for case in _fixtures["test_cases"]]
+    if _fixtures
+    else []
+)
 
 _skip_reason = "masking corpus not vendored (run tools/vendor_patterns.sh)"
 
