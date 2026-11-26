@@ -48,6 +48,7 @@ SENSITIVE_FIELDS: set[str] = {
     "pwd",
     "pass",
     "passphrase",
+    "pgpass",
     # Tokens
     "token",
     "access_token",
@@ -137,7 +138,9 @@ _NAME_WORD = re.compile(r"[A-Z]+(?![a-z])|[A-Z]?[a-z]+|[0-9]+")
 _BARE_NAMES = frozenset({"key", "keys", "value", "values"})
 
 # Last words that say how a credential is held, not what it is, so `api_token_value`, `password_hash` and `ssl.key.pem` read without them.
-_QUALIFIERS = frozenset({"value", "values", "pem", "hash", "b64", "base64", "enc", "encrypted", "raw"})
+_QUALIFIERS = frozenset(
+    {"value", "values", "pem", "hash", "b64", "base64", "enc", "encrypted", "raw", "data", "primary", "secondary"}
+)
 
 # A term this long also ends a name's last word part-way, as `password` does in `PGPASSWORD`, and takes a plural `s`, as in `passwords`. Shorter ones, such as `pass` in `bypass` and `token` in `tokens`, do not.
 _SUFFIX_MIN = 6
@@ -339,6 +342,9 @@ def _name_match(name: str, parent: str, terms: _CredentialTerms) -> _NameMatch:
     """Return how ``name``, held under ``parent``, ends in a term of ``terms``, shedding up to :data:`_MAX_STRIPPED` trailing words."""
     stem: str | None = _joined_words(name)
     if parent and stem in _BARE_NAMES:
+        # A bare name under a credential, as `key` under `client_auth`, is one.
+        if _name_match(parent, "", terms) is _NameMatch.TERM:
+            return _NameMatch.TERM
         stem = _joined_words(f"{parent}_{name}")
     found = _NameMatch.NONE
     for _ in range(_MAX_STRIPPED):

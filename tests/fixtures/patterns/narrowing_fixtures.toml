@@ -4,7 +4,7 @@
 # All samples are synthetic.
 
 [meta]
-version = "1.1.0"
+version = "1.2.0"
 
 [credit_card]
 card_words = ["card", "creditcard", "cc", "pan", "visa", "mastercard", "amex"]
@@ -54,6 +54,12 @@ credential = [
     "client_secret_01",
     "password_v2_hash",
     "tokens",
+    "PGPASS",
+    "x-api-key-primary",
+    "privateKeyData",
+    "client_secret_secondary",
+    "sasl.password.encrypted",
+    "client.secret.v2",
 ]
 not_credential = [
     "TokenElevationType",
@@ -73,6 +79,32 @@ not_credential = [
     "LogonSession",
     "ping_ms",
 ]
+
+# A bare key, keys, value or values counts when its parent's name is a credential.
+[[parent_cases]]
+name = "key"
+parent = "client_auth"
+credential = true
+
+[[parent_cases]]
+name = "key"
+parent = "credentials"
+credential = true
+
+[[parent_cases]]
+name = "value"
+parent = "api_token"
+credential = true
+
+[[parent_cases]]
+name = "key"
+parent = "partitioner"
+credential = false
+
+[[parent_cases]]
+name = "values"
+parent = "metadata"
+credential = false
 
 # A name that ends only in a short term's plural can be a count: it keeps a
 # number and masks anything else. Strings here are the value as written.

@@ -95,6 +95,13 @@ def test_a_name_with_a_term_inside_it_is_not_a_credential(name):
     assert not is_credential_name(name)
 
 
+@pytest.mark.parametrize(
+    "case", [pytest.param(case, id=f"{case['name']}-under-{case['parent']}") for case in NARROWING["parent_cases"]]
+)
+def test_a_bare_name_is_a_credential_when_its_parent_is(case):
+    assert is_credential_name(case["name"], case["parent"]) is case["credential"]
+
+
 VALUE_CASES = [pytest.param(case, id=f"{case['name']}={case['value']}") for case in NARROWING["value_cases"]]
 
 
