@@ -29,7 +29,7 @@ from scalo.logger import setup
 from scalo.logger.scrub import ScrubConfig, build_scrubber
 
 scrubber = build_scrubber(ScrubConfig(
-    hash_redaction=True,    # [EMAIL_a3f5b2] lets you correlate without leaking
+    hash_redaction=True,    # [EMAIL_a3f5b2c4d6e8f001] lets you correlate without leaking
 ))
 setup(scrubber=scrubber)
 ```

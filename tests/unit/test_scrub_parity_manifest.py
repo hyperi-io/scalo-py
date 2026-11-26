@@ -119,8 +119,8 @@ class TestManifestShape:
     def test_redaction_label_format(self, m):
         fmt = m["redaction_label_format"]
         assert fmt["static"] == "[<LABEL>_REDACTED]"
-        assert fmt["hash"] == "[<LABEL>_<6-hex>]"
-        assert "blake2b" in fmt["hash_algorithm"]
+        assert fmt["hash"] == "[<LABEL>_<16-hex>]"
+        assert fmt["hash_algorithm"] == "hmac-sha256-keyed-truncated-to-16-hex"
 
     def test_no_layer_4_documented(self, m):
         assert "NLP/NER" in m["no_layer_4"]

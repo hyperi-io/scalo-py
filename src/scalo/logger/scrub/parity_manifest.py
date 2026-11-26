@@ -111,8 +111,8 @@ def build_manifest() -> dict[str, Any]:
         },
         "redaction_label_format": {
             "static": "[<LABEL>_REDACTED]",
-            "hash": "[<LABEL>_<6-hex>]",
-            "hash_algorithm": "blake2b-keyed-4byte-truncated-to-6-hex",
+            "hash": "[<LABEL>_<16-hex>]",
+            "hash_algorithm": "hmac-sha256-keyed-truncated-to-16-hex",
         },
         "no_layer_4": ("NLP/NER scrubbing dropped from scope; see spec Section 2 for rationale"),
     }
