@@ -45,8 +45,12 @@ class FieldSpec(BaseModel):
     """A single config field within a :class:`Capability`.
 
     Serialises to the Rust ``FieldSpec`` shape: ``name``/``type``/``required``
-    always present; ``default``/``secret``/``enum_values``/``example`` omitted
-    when empty/absent (``secret`` omitted when false).
+    always present; ``default``/``secret``/``enum_values``/``example``/
+    ``schema_path`` omitted when empty/absent (``secret`` omitted when false).
+
+    ``schema_path`` is the dotted path of the config option the field describes
+    in the app's config schema (``store.protocol``). The drift check resolves it,
+    and a field with ``enum_values`` needs one.
     """
 
     model_config = ConfigDict(extra="forbid")
@@ -59,6 +63,7 @@ class FieldSpec(BaseModel):
     secret: bool = False
     enum_values: list[str] = Field(default_factory=list)
     example: Any | None = None
+    schema_path: str | None = None
 
     @model_serializer
     def _serialize(self) -> dict[str, Any]:
@@ -76,6 +81,8 @@ class FieldSpec(BaseModel):
             out["enum_values"] = self.enum_values
         if self.example is not None:
             out["example"] = self.example
+        if self.schema_path is not None:
+            out["schema_path"] = self.schema_path
         return out
 
     # ---- Convenience constructors (mirror the Rust builders) ---------------

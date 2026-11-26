@@ -89,6 +89,9 @@ _WRITABLE_NAME_PATTERN = r"^[a-z0-9]([-a-z0-9]{0,48}[a-z0-9])?$"
 _CAPABILITY_PATTERN = r"^[A-Z0-9_]+$"
 """An upper-case Linux capability name without the ``CAP_`` prefix, e.g. ``NET_ADMIN``."""
 
+DEFAULT_OPENSSL_CONF = "/tmp/scalo-openssl.cnf"  # noqa: S108 - the path the chart sets, not a file this code opens
+"""Where the scalo-service chart points ``OPENSSL_CONF`` unless the contract says otherwise."""
+
 _HOT_PATH_PATTERN = r"^[A-Za-z0-9_-]+(\.[A-Za-z0-9_-]+)*$"
 """A dotted config path of letters, digits, ``_`` and ``-`` segments, e.g. ``routing.source_rules``."""
 
@@ -760,6 +763,24 @@ class DeploymentContract(BaseModel):
     without rolling the pods. Each path is unique and needs ``config_mount_path``. Left out of the emitted contract
     when empty.
     """
+
+    openssl_conf: str = Field(default=DEFAULT_OPENSSL_CONF, exclude_if=lambda value: value == DEFAULT_OPENSSL_CONF)
+    """The file ``OPENSSL_CONF`` names in the pod, where a Kafka client writes its OpenSSL TLS floor.
+
+    Empty sets no ``OPENSSL_CONF``, for an app with no Kafka client whose child processes should read the distro's
+    OpenSSL config. Left out of the emitted contract at its default, as scalo-rs does.
+    """
+
+    @field_validator("openssl_conf")
+    @classmethod
+    def _openssl_conf_is_empty_or_a_plain_absolute_path(cls, value: str) -> str:
+        """Refuse an ``openssl_conf`` a Dockerfile ENV line can't take unquoted, as scalo-rs's ``validate()`` does."""
+        if value and (not value.startswith("/") or any(char.isspace() or char in "\"'$\\" for char in value)):
+            raise ValueError(
+                f"openssl_conf: {_quoted(value)} must be empty or an absolute path with no space, quote, `$` or `\\`, "
+                "because it is written into a Dockerfile ENV line"
+            )
+        return value
 
     @field_validator("app_name")
     @classmethod

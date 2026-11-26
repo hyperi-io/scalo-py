@@ -2,11 +2,11 @@
 files:
   src/scalo/deployment/data/contract.schema.json:
     path: charts/scalo-service/schema/deployment-contract.v4.schema.json
-    ref: a2598c61bbc3a500cd07f30f09bc297c88d1eaf6
-    sha256: fd05176c038ed8b70d910097018122f7ee203fb3cf71dca910cdfbe377cbdd6c
+    ref: 2473a41033ca84a5cef662220c193d7dbcd76a44
+    sha256: 65a2c577f0f3c569120de949352f14808ea7c00b96aa7c616a2249fd29e6fe54
     source: hyperi-io/scalo-rs
   tests/fixtures/rules_corpus.json:
     path: tests/fixtures/rules_corpus.json
-    ref: a2598c61bbc3a500cd07f30f09bc297c88d1eaf6
+    ref: 2473a41033ca84a5cef662220c193d7dbcd76a44
     sha256: 57abd78a7573b45e4c9112b174d8b5a19f78725cc540649194de86782d5a173d
     source: hyperi-io/scalo-rs
