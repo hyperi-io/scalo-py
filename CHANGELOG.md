@@ -3,6 +3,12 @@
 Rendered by CI and committed back at the end of a release -- do not edit by
 hand. Release notes also appear on the GitHub Releases page, one per tag.
 
+## [2.32.13](https://github.com/hyperi-io/scalo-py/compare/v2.32.12...v2.32.13) (2026-11-26)
+
+### Bug Fixes
+
+* **deployment:** link each catalogue field to its schema option ([bd9583c](https://github.com/hyperi-io/scalo-py/commit/bd9583cb461136396209c863018dd4c55d9464a4))
+
 ## [2.32.12](https://github.com/hyperi-io/scalo-py/compare/v2.32.11...v2.32.12) (2026-11-26)
 
 ### Bug Fixes
