@@ -27,6 +27,8 @@
 #   1. $SCALO_RS_CHECKOUT env var
 #   2. ../scalo-rs (sibling to this project)
 #
+# grippo-rs checkout discovery, the same way: $GRIPPO_CHECKOUT, then ../grippo-rs.
+#
 # After a copy it rewrites the JSON sidecar of each runtime TOML (tools/pattern_json.py),
 # which the runtime reads in place of the TOML.
 #
@@ -66,6 +68,12 @@ SCALO_RS_TEST_FILES=(
     "credential_masking_parity.json"
 )
 
+# Corpora grippo-rs holds the source of truth for, read only by the parity tests.
+GRIPPO_RELATIVE="tests/fixtures/scrub"
+GRIPPO_TEST_FILES=(
+    "narrowing_fixtures.toml"
+)
+
 CHECK_MODE=false
 if [[ "${1:-}" == "--check" ]]; then
     CHECK_MODE=true
@@ -95,6 +103,21 @@ find_scalo_rs_checkout() {
     )
     for path in "${candidates[@]}"; do
         if [[ -n "$path" && -d "$path/$SCALO_RS_RELATIVE" ]]; then
+            echo "$path"
+            return 0
+        fi
+    done
+    return 1
+}
+
+# Discover grippo-rs checkout
+find_grippo_checkout() {
+    local candidates=(
+        "${GRIPPO_CHECKOUT:-}"
+        "$PYLIB_ROOT/../grippo-rs"
+    )
+    for path in "${candidates[@]}"; do
+        if [[ -n "$path" && -d "$path/$GRIPPO_RELATIVE" ]]; then
             echo "$path"
             return 0
         fi
@@ -139,6 +162,17 @@ if scalo_rs=$(find_scalo_rs_checkout); then
 else
     warn "no scalo-rs checkout found - scalo-rs corpora will not be vendored."
     warn "Set SCALO_RS_CHECKOUT or clone scalo-rs to ../scalo-rs"
+fi
+
+if grippo=$(find_grippo_checkout); then
+    info "using grippo-rs checkout at: $grippo"
+    for file in "${GRIPPO_TEST_FILES[@]}"; do
+        sources+=("$grippo/$GRIPPO_RELATIVE/$file")
+        targets+=("$FIXTURES_DIR/$file")
+    done
+else
+    warn "no grippo-rs checkout found - grippo-rs corpora will not be vendored."
+    warn "Set GRIPPO_CHECKOUT or clone grippo-rs to ../grippo-rs"
 fi
 
 if [[ ${#targets[@]} -eq 0 ]]; then
