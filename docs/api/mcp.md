@@ -64,7 +64,7 @@ sequenceDiagram
     M-->>A: {dry_run: true, etag: E, preview_token: T, body, next}
 ```
 
-*Figure 1. L4 Detail -- MCP write preview. Solid arrows are requests, dashed arrows are responses.* Up: [scalo docs](../README.md).
+*Figure 1. L4 Detail -- MCP write preview. The 200, the change and the preview token are responses.* Up: [scalo docs](../README.md).
 
 The commit sends the token back, and `/mcp` checks it before the write reaches the API.
 
@@ -82,7 +82,7 @@ sequenceDiagram
     M-->>A: {dry_run: false, status, body, etag}
 ```
 
-*Figure 2. L4 Detail -- MCP write commit. Solid arrows are requests, dashed arrows are responses.* Up: [scalo docs](../README.md).
+*Figure 2. L4 Detail -- MCP write commit. The 200 or 412 and the reply to the agent are responses.* Up: [scalo docs](../README.md).
 
 | Case | Preview `etag` | Commit sends |
 |---|---|---|
