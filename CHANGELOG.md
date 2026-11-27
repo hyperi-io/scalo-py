@@ -3,6 +3,13 @@
 Rendered by CI and committed back at the end of a release -- do not edit by
 hand. Release notes also appear on the GitHub Releases page, one per tag.
 
+## [2.32.14](https://github.com/hyperi-io/scalo-py/compare/v2.32.13...v2.32.14) (2026-11-27)
+
+### Bug Fixes
+
+* harden logging, secrets, MCP and CLI output ([c894cfd](https://github.com/hyperi-io/scalo-py/commit/c894cfd3a577593a127b383a4c571818171c2258))
+* **tests:** build the openssl_conf case contract with model_validate ([5cd52f2](https://github.com/hyperi-io/scalo-py/commit/5cd52f287030220f7631001ac206b505a984bd10))
+
 ## [2.32.13](https://github.com/hyperi-io/scalo-py/compare/v2.32.12...v2.32.13) (2026-11-26)
 
 ### Bug Fixes
