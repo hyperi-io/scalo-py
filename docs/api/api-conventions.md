@@ -35,7 +35,7 @@ flowchart LR
     class readers group
 ```
 
-*Figure 1. L4 Detail -- What reads the spec. The dashed box is the app's client, outside scalo.* Up: [scalo docs](../README.md).
+*Figure 1. L4 Detail -- What reads the spec. Typed UI client is the app's client, outside scalo.* Up: [scalo docs](../README.md).
 
 `scalo.cli.openapi` generates the CLI and `scalo.mcp` the MCP tools, and `assert_conformant` runs the conformance test.
 

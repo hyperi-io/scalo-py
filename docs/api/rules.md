@@ -29,7 +29,7 @@ flowchart LR
     class clamp decision
 ```
 
-*Figure 1. L4 Detail -- Rule set evaluation. The dotted arrow is a value the clamp replaces.* Up: [scalo docs](../README.md).
+*Figure 1. L4 Detail -- Rule set evaluation. The no arrow is a value the clamp replaces.* Up: [scalo docs](../README.md).
 
 The default replaces the value and becomes the outcome. A call with no clamp takes the targets' values as they are.
 

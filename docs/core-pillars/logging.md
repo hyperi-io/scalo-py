@@ -180,6 +180,6 @@ flowchart LR
     class rate decision
 ```
 
-*Figure 1. L4 Detail -- Log record path. The dotted arrow is a suppressed record.* Up: [scalo docs](../README.md).
+*Figure 1. L4 Detail -- Log record path. The no arrow is a suppressed record.* Up: [scalo docs](../README.md).
 
 The sink is stderr, a file, or the GitHub Actions sink in a workflow.

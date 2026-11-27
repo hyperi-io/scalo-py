@@ -50,7 +50,7 @@ flowchart LR
     class build store
 ```
 
-*Figure 1. L1 Context -- scalo-py. Dashed boxes are outside scalo-py.* Up: top of scalo-py. Down: [L4 Detail -- scalo-py module tiers](architecture.md#module-import-graph).
+*Figure 1. L1 Context -- scalo-py. Your service, Secrets, Kafka, OTLP collector, Prometheus, kubelet and the scalo-service chart are outside scalo-py.* Up: top of scalo-py. Down: [L4 Detail -- scalo-py module tiers](architecture.md#module-import-graph).
 
 The scalo-service chart ships in scalo-rs. The Dockerfile and the container manifest have the `io.scalo.contract.*` identity labels.
 
