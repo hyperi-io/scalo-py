@@ -48,7 +48,6 @@ class KafkaProducer:
         # Merge with defaults
         self._config = merge_config(config, PRODUCER_DEFAULTS, verify_ssl=verify_ssl)
 
-        # Create producer
         self._producer = Producer(self._config)
 
     def __repr__(self) -> str:

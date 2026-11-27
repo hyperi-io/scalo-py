@@ -83,7 +83,6 @@ class MetricsManager:
             except Exception:
                 backend = "opentelemetry"
 
-        self._requested_backend = backend  # Store original request
         self._actual_backend = backend  # Will be updated if fallback occurs
         self._backend = self._create_backend(backend, app_name, enable_auto_update, update_interval)
         self._backend.metric_prefix = self.metric_prefix

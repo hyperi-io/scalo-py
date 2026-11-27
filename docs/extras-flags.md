@@ -30,7 +30,7 @@ Base runtime deps (transitive): dynaconf, loguru, python-dotenv, pyyaml, mergede
 | `opentelemetry` | the four `opentelemetry-*` packages above | none | [core-pillars/metrics.md](core-pillars/metrics.md) |
 | `resilience` | `stamina` | none | [api/resilience.md](api/resilience.md) |
 | `http` | `httpx`, `stamina` | none | [api/http-client.md](api/http-client.md) |
-| `api` | `fastapi`, `pydantic`, `cryptography` | none | [api/api-conventions.md](api/api-conventions.md) |
+| `api` | `fastapi`, `pydantic` | none | [api/api-conventions.md](api/api-conventions.md) |
 | `mcp` | `mcp`, `httpx2`, `jsonschema`, and the `api` extra | none | [api/mcp.md](api/mcp.md) |
 | `cli` | `typer`, `jmespath` | none | [api/cli.md](api/cli.md#generated-from-an-openapi-spec) |
 | `kafka` | `confluent-kafka`, `genson` | `librdkafka` (bundled in confluent-kafka wheels) | [transport/kafka.md](transport/kafka.md) |
@@ -79,7 +79,7 @@ flowchart LR
 
 `metrics` is the one to install for metrics: it has the OTel SDK, so the default dual-export backend (OTLP push plus `/metrics`) works on that install alone. `opentelemetry` is a subset of it, kept so existing `scalo[metrics,opentelemetry]` pins resolve.
 
-`scalo.api` holds a FastAPI service to the API conventions: operation ids from one resource hierarchy, the `x-scalo` OpenAPI extension, ETag and If-Match, `dry_run`, problem+json, sealed-token pagination, long-running operations and the conformance check. Base `import scalo` never imports it or FastAPI, and `import scalo.api` without the extra raises an `ImportError` naming `scalo[api]`. `scalo.health.create_health_router` uses FastAPI as well, imported when called.
+`scalo.api` holds a FastAPI service to the API conventions: operation ids from one resource hierarchy, the `x-scalo` OpenAPI extension, ETag and If-Match, `dry_run`, problem+json, signed-token pagination, long-running operations and the conformance check. Base `import scalo` never imports it or FastAPI, and `import scalo.api` without the extra raises an `ImportError` naming `scalo[api]`. `scalo.health.create_health_router` uses FastAPI as well, imported when called.
 
 `scalo.mcp` serves MCP tools generated from the app's OpenAPI spec on the same app, over the stateless MCP revision of 2026-07-28. Base `import scalo` never imports it, and `import scalo.mcp` without the extra raises an `ImportError` naming `scalo[mcp]`. The MCP SDK brings `uvicorn` and `sse-starlette` as its dependencies.
 

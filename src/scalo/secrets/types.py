@@ -24,8 +24,8 @@ class ProviderType(Enum):
 class SecretValue:
     """Represents a fetched secret with metadata."""
 
-    data: bytes
-    """Raw secret data."""
+    data: bytes = field(repr=False)
+    """Raw secret data, left out of the repr so a logged value does not print it."""
 
     fetched_at: datetime
     """When fetched from provider."""

@@ -50,7 +50,8 @@ An arrow means some module in the box imports one in the next box, and a module 
 | `http` | `logger`, `crypto` |
 | `runtime` | `config`, `logger` |
 | `api` | `config`, `logger` |
-| `expression`, `version_check` | `config` |
+| `expression` | `config` |
+| `version_check` | `config`, `crypto` |
 | `resilience`, `ddl` | `logger` |
 | `config` / `logger` | each other |
 | `concurrency`, `crypto`, `scaling` | nothing |

@@ -70,7 +70,7 @@ topics = client.list_topics()
 
 ## Corporate Defaults
 
-The scalo Kafka clients include production-ready defaults:
+The scalo Kafka clients set these defaults:
 
 **Producer:**
 

@@ -227,7 +227,6 @@ class DiskCache:
                 source=cached.get("source", "cache"),
             )
 
-            # Check TTL
             if value.is_expired(self._config.ttl_secs):
                 if value.is_within_grace(self._config.ttl_secs, self._config.stale_grace_secs):
                     # secret_name names the secret; its value never reaches the log.

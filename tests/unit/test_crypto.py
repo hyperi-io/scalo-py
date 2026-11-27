@@ -255,6 +255,42 @@ def test_async_http_client_verifies_against_provided_ca(https_server):
     asyncio.run(_run())
 
 
+@pytest.mark.parametrize("client_class", ["HttpClient", "AsyncHttpClient"])
+def test_http_client_verify_false_warns_as_ssl_context_does(client_class, caplog, monkeypatch):
+    import scalo.crypto
+    import scalo.http
+
+    monkeypatch.setattr(scalo.crypto, "_warned_once", set())
+    with caplog.at_level("WARNING", logger="scalo.crypto"):
+        getattr(scalo.http, client_class)(verify=False)
+    assert "verification is DISABLED (HttpClient verify=False)" in caplog.text
+
+
+def test_http_client_keeps_quiet_with_verification_on(caplog, monkeypatch):
+    import scalo.crypto
+    from scalo.http import HttpClient
+
+    monkeypatch.setattr(scalo.crypto, "_warned_once", set())
+    with caplog.at_level("WARNING", logger="scalo.crypto"):
+        HttpClient()
+    assert "DISABLED" not in caplog.text
+
+
+@pytest.mark.parametrize(("verify_env", "raised"), [(None, httpx.ConnectError), ("false", httpx.HTTPStatusError)])
+def test_version_check_uses_the_scalo_tls_posture(https_server, monkeypatch, verify_env, raised):
+    from scalo.version_check.checker import VersionCheckConfig, _do_http_check
+
+    url, _ = https_server
+    if verify_env is None:
+        monkeypatch.delenv("SCALO_TLS_VERIFY", raising=False)
+    else:
+        # Only scalo's ssl_context reads this valve, so the handshake gets through to the server's 501.
+        monkeypatch.setenv("SCALO_TLS_VERIFY", verify_env)
+    config = VersionCheckConfig(product="scalo", current_version="1.0.0", api_url=url, send_instance_id=False)
+    with pytest.raises(raised):
+        _do_http_check(config)
+
+
 def test_http_client_verify_false_override(https_server):
     from scalo.http import HttpClient
 

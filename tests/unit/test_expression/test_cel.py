@@ -1,5 +1,5 @@
 # Project:   scalo
-# File:      tests/test_expression/test_cel.py
+# File:      tests/unit/test_expression/test_cel.py
 # Purpose:   Tests for CEL expression module
 # Language:  Python
 #
@@ -323,7 +323,7 @@ class TestEvaluate:
 
 
 class TestEvaluateCondition:
-    """Boolean condition evaluation -- missing fields → False."""
+    """Boolean condition evaluation -- missing fields -> False."""
 
     def test_match(self):
         assert evaluate_condition('severity == "critical"', {"severity": "critical"}) is True

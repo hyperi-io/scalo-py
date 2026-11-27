@@ -50,7 +50,7 @@ from mcp.server.transport_security import TransportSecurityMiddleware, Transport
 from mcp.shared.auth import ProtectedResourceMetadata
 from mcp.shared.exceptions import MCPError
 from mcp.types import INVALID_PARAMS, CallToolRequestParams, CallToolResult, ListToolsResult, PaginatedRequestParams
-from pydantic import AnyHttpUrl
+from pydantic import AnyHttpUrl, ValidationError
 from starlette.requests import Request
 from starlette.responses import JSONResponse, Response
 from starlette.routing import Route
@@ -299,6 +299,13 @@ class McpServer:
             return self.resource_url
         return str(request.base_url).rstrip("/") + self.path
 
+    def _resource_url(self, request: Request) -> AnyHttpUrl | None:
+        """:meth:`resource` as a URL, or None when the request's ``Host`` makes it unparseable."""
+        try:
+            return AnyHttpUrl(self.resource(request))
+        except ValidationError:
+            return None
+
     def metadata_endpoint(self, issuer: str) -> Callable[[Request], Awaitable[Response]]:
         """The endpoint answering the RFC 9728 protected-resource metadata request, naming ``issuer``."""
 
@@ -306,8 +313,17 @@ class McpServer:
             refused = await self._refusal(request)
             if refused is not None:
                 return refused
+            resource = self._resource_url(request)
+            if resource is None:
+                problem = Problem(
+                    title="Bad Request",
+                    status=400,
+                    detail="The request's Host is not a valid host",
+                    code="invalid_host",
+                )
+                return problem_response(problem)
             document = ProtectedResourceMetadata(
-                resource=AnyHttpUrl(self.resource(request)),
+                resource=resource,
                 authorization_servers=[AnyHttpUrl(issuer)],
                 scopes_supported=list(self.scopes) or None,
                 resource_name=self.server.name,
@@ -322,11 +338,12 @@ class McpServer:
         return metadata
 
     def _challenge(self, request: Request, *, error: str | None = None) -> Response:
-        """401 with the RFC 9728 ``WWW-Authenticate`` challenge, or a bare ``Bearer`` one with no issuer to name."""
-        if self.issuer is None:
+        """401 with the RFC 9728 ``WWW-Authenticate`` challenge, or a bare ``Bearer`` one with no issuer or resource URL to name."""
+        resource = self._resource_url(request) if self.issuer is not None else None
+        if resource is None:
             challenge = "Bearer"
         else:
-            metadata_url = build_resource_metadata_url(AnyHttpUrl(self.resource(request)))
+            metadata_url = build_resource_metadata_url(resource)
             challenge = "Bearer "
             if error is not None:
                 challenge += f'error="{error}", '

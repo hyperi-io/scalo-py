@@ -193,7 +193,6 @@ class KafkaConsumerHealth:
     _rebalance_times: deque = field(default_factory=lambda: deque(maxlen=20), init=False)
     _last_rebalance_cnt: int = field(default=0, init=False)
     _last_lag: dict[str, dict[int, int]] = field(default_factory=dict, init=False)
-    _last_check_time: float = field(default=0, init=False)
     _config: dict = field(default_factory=dict, init=False, repr=False)
 
     # Metrics counters
@@ -250,7 +249,6 @@ class KafkaConsumerHealth:
         """
         issues: list[HealthCheckResult] = []
         now = time.time()
-        self._last_check_time = now
 
         # Get current stats
         cgrp = self.collector.get_cgrp_metrics()

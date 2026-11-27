@@ -45,7 +45,7 @@ from typing import Any
 import httpx
 import stamina
 
-from scalo.crypto import CryptoProfile, ssl_context
+from scalo.crypto import CryptoProfile, _warn_verify_off_once, ssl_context
 from scalo.logger import logger
 
 # Default configuration
@@ -69,6 +69,8 @@ def _apply_crypto_posture(
     Certificate verification follows the ``SCALO_TLS_VERIFY`` escape valve inside
     :func:`scalo.crypto.ssl_context`.
     """
+    if client_kwargs.get("verify") is False:
+        _warn_verify_off_once("HttpClient verify=False")
     if crypto_profile is not None and "verify" not in client_kwargs:
         client_kwargs["verify"] = ssl_context(crypto_profile, cafile=cafile, capath=capath)
 

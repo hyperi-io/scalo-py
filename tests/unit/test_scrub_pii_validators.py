@@ -6,7 +6,7 @@
 #  License:   Apache-2.0
 #  Copyright: (c) 2026 HYPERI PTY LIMITED
 
-"""Tests for the L3 PII validators per spec §9.
+"""Tests for the L3 PII validators.
 
 Two tiers tested separately:
 
@@ -18,8 +18,6 @@ Two tiers tested separately:
 Plus :class:`TestProtocolSatisfaction` -- every validator satisfies
 the :class:`Scrubber` Protocol.
 """
-
-from __future__ import annotations
 
 import pytest
 
@@ -151,7 +149,7 @@ class TestEmail:
         assert "alice+work@example.com" not in out
 
     def test_non_ascii_email(self):
-        # IDN-like -- Unicode local + ASCII domain (spec §10a.5)
+        # IDN-like -- Unicode local + ASCII domain
         out = self.v.scrub("Sent to françois@example.fr")
         assert "françois@example.fr" not in out
 
@@ -261,7 +259,7 @@ class TestMedicareContextRequired:
         # 2123 45670 1 -- synthetic but checksum-valid example
         # Compute a valid one: weights [1,3,7,9,1,3,7,9]
         # 2*1+1*3+2*7+3*9+4*1+5*3+6*7+7*9 = 2+3+14+27+4+15+42+63 = 170 mod 10 = 0
-        # So d[8] = 0 ⇒ "21234567 0" with issue 1 ⇒ "2123 45670 1"
+        # So d[8] = 0 => "21234567 0" with issue 1 => "2123 45670 1"
         out = self.v.scrub("Medicare card 2123 45670 1 confirmed")
         assert "2123 45670 1" not in out
         assert "[AU_MEDICARE_REDACTED]" in out

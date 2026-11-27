@@ -1,5 +1,5 @@
 # Project:   scalo
-# File:      deployment/test_support.py
+# File:      deployment/test_support/__init__.py
 # Purpose:   Reusable test probes / skip helper / kind-cluster guard for
 #            consumer e2e tests of the deployment contract
 # Language:  Python
@@ -464,6 +464,8 @@ __all__ = [
     "docker_available",
     "docker_build_cmd",
     "docker_empty_creds_json",
+    "docker_env",
+    "docker_unreachable_reason",
     "ensure_kind_cluster",
     "helm_available",
     "kind_available",

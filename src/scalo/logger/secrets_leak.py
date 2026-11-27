@@ -145,11 +145,6 @@ def _label_slug(secret_type: str) -> str:
     return re.sub(r"[^A-Za-z0-9]+", "_", secret_type).strip("_").upper()
 
 
-def _redaction_label(secret_type: str) -> str:
-    """Convert ``"GitHub Token"`` to ``"[GITHUB_TOKEN_REDACTED]"`` (static mode only)."""
-    return f"[{_label_slug(secret_type)}_REDACTED]"
-
-
 class SecretsLeakFilter:
     """Detect and redact secret artefacts in log lines.
 
@@ -207,7 +202,6 @@ class SecretsLeakFilter:
 
             self._scan_line = scan_line
             self._transient_settings = transient_settings
-            self._detect_secrets_available = True
         except ImportError:
             warnings.warn(
                 "detect-secrets not installed; SecretsLeakFilter is a no-op. "
@@ -217,7 +211,6 @@ class SecretsLeakFilter:
             )
             self._scan_line = None
             self._transient_settings = None
-            self._detect_secrets_available = False
 
     def scrub(self, text: str) -> str:
         """Return text with detected secret artefacts redacted."""

@@ -130,11 +130,6 @@ class SecretsManager:
         # Provider name -> error type its health check last raised, so a probe loop logs one outage once.
         self._health_faults: dict[str, str] = {}
 
-    @property
-    def _file_provider(self) -> SecretProvider:
-        """File provider for backward compatibility."""
-        return self._providers["file"]
-
     @classmethod
     def from_config(cls, config: dict[str, Any]) -> SecretsManager:
         """Create manager from configuration dictionary.
@@ -147,6 +142,7 @@ class SecretsManager:
 
         Args:
             config: Configuration dictionary with optional keys:
+                - file: File provider config, ``root`` confining it to one directory
                 - openbao: OpenBao/Vault provider config
                 - aws: AWS Secrets Manager config
                 - cache: Cache configuration
@@ -155,7 +151,8 @@ class SecretsManager:
         Returns:
             Configured SecretsManager instance.
         """
-        providers: dict[str, SecretProvider] = {"file": FileProvider()}
+        file_config = config.get("file") or {}
+        providers: dict[str, SecretProvider] = {"file": FileProvider(root=file_config.get("root"))}
 
         # OpenBao/Vault provider. Config key is "openbao" or its alias
         # "vault" (HashiCorp Vault speaks the same KV API).

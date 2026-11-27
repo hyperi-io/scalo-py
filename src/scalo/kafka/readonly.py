@@ -131,7 +131,6 @@ class ReadOnlyKafkaClient:
 
         topic_meta = metadata.topics[topic]
 
-        # Get watermarks
         watermarks = self._get_watermarks_internal(topic, list(topic_meta.partitions.keys()))
 
         partitions = []

@@ -135,14 +135,14 @@ HyperI's shared Python library -- config cascade, logging, metrics, health,
 secrets, Kafka and the deployment-contract generators -- published as `scalo` on
 PyPI under Apache-2.0.
 
-scalo-py and scalo-rs share conventions and have separate APIs and repositories, so check each API on its own. Where the two must agree, a shared corpus vendored from scalo-rs says so: credential masking is checked against `tests/fixtures/patterns/credential_masking_parity.json`, and the rules engine against `tests/fixtures/rules_corpus.json`.
+scalo-py and scalo-rs share conventions and have separate APIs and repositories, so check each API on its own. Where the two must agree, a shared corpus copied in from scalo-rs says so: credential masking is checked against `tests/fixtures/patterns/credential_masking_parity.json`, and the rules engine against `tests/fixtures/rules_corpus.json`.
 
 ### Where things live
 
 | Path | What it holds |
 |------|---------------|
 | `src/scalo/<module>/` | One directory per module: `config`, `logger`, `metrics`, `health`, `http`, `kafka`, `secrets`, `deployment`, `cli` |
-| `src/scalo/data/` | Vendored runtime pattern files, copied by `tools/vendor_patterns.sh` |
+| `src/scalo/data/` | Runtime pattern files, copied in by `tools/vendor_patterns.sh` |
 | `tests/{unit,integration,e2e,smoke}/` | Split by what each needs in order to run |
 | `docs/architecture.md` | Layering, the module dependency graph, and what scalo-rs has that this does not |
 

@@ -1,6 +1,6 @@
 #  Project:   scalo
 #  File:      tests/unit/test_scrub_resolver.py
-#  Purpose:   Tests for resolve_scrubber() -- config + kwargs → Scrubber
+#  Purpose:   Tests for resolve_scrubber() -- config + kwargs -> Scrubber
 #  Language:  Python
 #
 #  License:   Apache-2.0
@@ -56,7 +56,7 @@ class TestResolverPriority:
             mask_sensitive=False,
             config_dict={"scrub": {"enabled": True}},  # ignored
         )
-        # mask_sensitive=False → ScrubConfig(enabled=False)
+        # mask_sensitive=False -> ScrubConfig(enabled=False)
         assert isinstance(result, LayeredScrubber)
         assert result.config.enabled is False
 
@@ -87,7 +87,7 @@ class TestResolverPriority:
 
 
 # ---------------------------------------------------------------------------
-# Legacy → ScrubConfig mapping
+# Legacy -> ScrubConfig mapping
 # ---------------------------------------------------------------------------
 
 
@@ -137,7 +137,7 @@ class TestSchemaParsing:
         assert cfg.enabled is True
         assert cfg.observe_only is False
         assert cfg.pii.enabled is True
-        assert cfg.log_levels.trace is False
+        assert cfg.log_levels.trace is True
 
     def test_master_disable(self):
         cfg = parse_scrub_config({"enabled": False})
@@ -222,8 +222,12 @@ from scalo.logger.scrub import LogLevelsConfig
 
 
 class TestLogLevelGate:
-    def test_trace_disabled_by_default(self):
-        gates = LogLevelsConfig()
+    @pytest.mark.parametrize("level", ["TRACE", "trace", "DEBUG", "INFO", "SUCCESS", "WARNING", "ERROR", "CRITICAL"])
+    def test_every_level_is_scrubbed_by_default(self, level):
+        assert _scrub_level_enabled(level, LogLevelsConfig()) is True
+
+    def test_trace_can_be_turned_off(self):
+        gates = LogLevelsConfig(trace=False)
         assert _scrub_level_enabled("TRACE", gates) is False
         assert _scrub_level_enabled("trace", gates) is False  # case-insensitive
 

@@ -192,7 +192,6 @@ class KafkaClient:
         Returns:
             Dict of partition -> (low_watermark, high_watermark)
         """
-        # Get partition list
         metadata = broker_call(self._timeout, self._admin.list_topics, topic)
         if _topic_missing(metadata, topic):
             raise TopicNotFoundError(topic)
@@ -234,7 +233,6 @@ class KafkaClient:
             # Create TopicPartition list with timestamps
             tps = [TopicPartition(topic, partition, timestamp) for partition, timestamp in timestamps.items()]
 
-            # Get offsets
             result = broker_call(self._timeout, consumer.offsets_for_times, tps)
 
             return {tp.partition: tp.offset for tp in result}
@@ -261,7 +259,6 @@ class KafkaClient:
         Returns:
             Dict of partition -> lag (messages behind)
         """
-        # Get partition list
         metadata = broker_call(self._timeout, self._admin.list_topics, topic)
         if _topic_missing(metadata, topic):
             raise TopicNotFoundError(topic)
@@ -280,14 +277,12 @@ class KafkaClient:
 
         consumer = Consumer(consumer_config)
         try:
-            # Create TopicPartition list
             tps = [TopicPartition(topic, p) for p in partition_ids]
 
             # Get committed offsets
             committed = broker_call(self._timeout, consumer.committed, tps)
             committed_map = {tp.partition: tp.offset for tp in committed}
 
-            # Get watermarks
             watermarks = {}
             for partition_id in partition_ids:
                 tp = TopicPartition(topic, partition_id)

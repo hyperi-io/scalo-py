@@ -15,7 +15,7 @@ It comes wired together, and follows the same config and logging conventions as 
 ## What it gives you
 
 - A seven-layer config cascade, from CLI flags and env vars down to YAML and defaults, that reads the same in a laptop shell and a Kubernetes pod.
-- Structured logs, JSON in a container and readable text at a terminal, with secrets, credential fields and validated PII values redacted at every level but TRACE, which the scrubber skips by default.
+- Structured logs, JSON in a container and readable text at a terminal, with secrets, credential fields and validated PII values redacted at every level.
 - `ServiceApp`: subclass it and get `run`, `version`, `config-check` and `generate-artefacts`, with config and logging started for you.
 - `/livez` and `/readyz` on an observability port kept apart from your application's port.
 - Prometheus and OpenTelemetry metrics with the `metrics` extra, scraped from `/metrics` on the same port. Without a metrics manager that path answers 404.
@@ -55,7 +55,7 @@ Core, always installed:
 
 | Module | What it does | Deps |
 |---|---|---|
-| `logger` | Structured logging, JSON in a container. Redacts gitleaks secret patterns, credential field names, card numbers (Luhn-checked), IBANs, emails and phone numbers, and AU ABN, ACN, TFN and Medicare numbers where a keyword names them. TRACE records skip the scrubber by default, and `ScrubConfig(log_levels=LogLevelsConfig(trace=True))` turns it on | loguru, detect-secrets, regex, phonenumbers, python-stdnum |
+| `logger` | Structured logging, JSON in a container. Redacts gitleaks secret patterns, credential field names, card numbers (Luhn-checked), IBANs, emails and phone numbers, and AU ABN, ACN, TFN and Medicare numbers where a keyword names them. Every level is scrubbed, and `ScrubConfig(log_levels=LogLevelsConfig(trace=False))` lets TRACE records through unscrubbed | loguru, detect-secrets, regex, phonenumbers, python-stdnum |
 | `config` | 7-layer cascade (CLI -> ENV -> .env -> YAML -> defaults) | dynaconf, pyyaml, python-dotenv, mergedeep, tomli-w, dulwich |
 | `runtime` | Detects K8s / Docker / local, resolves config and data paths | none beyond `config` and `logger` |
 | `cli` | `ServiceApp` -- subclass for `run` / `version` / `config-check` | typer |

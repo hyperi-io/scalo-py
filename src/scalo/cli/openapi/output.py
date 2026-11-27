@@ -73,6 +73,29 @@ def _scalar_columns(rows: list[dict[str, Any]]) -> list[str]:
     return columns
 
 
+# C0 and C1 controls and DEL, written as JSON escapes them, so API data can't send a terminal escape sequence.
+_CONTROL_ESCAPES = {
+    code: {"\t": "\\t", "\n": "\\n", "\r": "\\r"}.get(chr(code), f"\\u{code:04x}")
+    for code in (*range(0x20), *range(0x7F, 0xA0))
+}
+
+
+def _printable(text: str) -> str:
+    """``text`` with every control character escaped."""
+    return text.translate(_CONTROL_ESCAPES)
+
+
+def _printable_tree(value: Any) -> Any:
+    """``value`` with the control characters in every string and key escaped."""
+    if isinstance(value, str):
+        return _printable(value)
+    if isinstance(value, dict):
+        return {_printable(str(key)): _printable_tree(item) for key, item in value.items()}
+    if isinstance(value, list):
+        return [_printable_tree(item) for item in value]
+    return value
+
+
 def _cell(value: Any) -> str:
     if value is None:
         return ""
@@ -80,7 +103,7 @@ def _cell(value: Any) -> str:
         return "true" if value else "false"
     if isinstance(value, dict | list):
         return json.dumps(value, default=_default_json)
-    return str(value)
+    return _printable(str(value))
 
 
 def format_table(data: Any, stream: Any) -> None:
@@ -98,17 +121,17 @@ def format_table(data: Any, stream: Any) -> None:
         stream.write("\n")
     else:
         multitable = _table.MultiTable()
-        multitable.add_row_header(columns)
+        multitable.add_row_header([_printable(str(column)) for column in columns])
         for row in rows:
             multitable.add_row([_cell(row.get(column, "")) for column in columns])
         multitable.render(stream)
     if isinstance(data, dict) and isinstance(data.get("items"), list) and data.get("next_page_token"):
-        stream.write(f"next_page_token: {data['next_page_token']}\n")
+        stream.write(f"next_page_token: {_printable(str(data['next_page_token']))}\n")
 
 
 def format_text(data: Any, stream: Any) -> None:
-    """Write ``data`` as the AWS CLI's tab-delimited text."""
-    _text.format_text(plain(data), stream)
+    """Write ``data`` as the AWS CLI's tab-delimited text, control characters escaped."""
+    _text.format_text(_printable_tree(plain(data)), stream)
 
 
 _FORMATTERS: dict[str, Callable[[Any, Any], None]] = {

@@ -184,10 +184,13 @@ def _do_http_check(config: VersionCheckConfig) -> VersionCheckResponse:
     if config.send_instance_id:
         payload["instance_id"] = resolve_instance_id(config)
 
+    from scalo.crypto import ssl_context
+
     resp = httpx.post(
         api_url,
         json=payload,
         timeout=config.timeout,
+        verify=ssl_context(),
     )
     resp.raise_for_status()
 

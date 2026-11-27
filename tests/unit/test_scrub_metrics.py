@@ -1,6 +1,6 @@
 #  Project:   scalo
 #  File:      tests/unit/test_scrub_metrics.py
-#  Purpose:   Tests for ScrubMetrics emission per spec §8
+#  Purpose:   Tests for ScrubMetrics emission
 #  Language:  Python
 #
 #  License:   Apache-2.0
@@ -230,7 +230,7 @@ class TestFactoryEmitsMetrics:
         assert len(abn_red) >= 1
 
     def test_abn_without_context_emits_match_but_no_redaction(self, backend, metrics):
-        # Context-required validator: regex matches but keyword absent →
+        # Context-required validator: regex matches but keyword absent ->
         # match counter ticks, redaction counter does not.
         s = build_scrubber(
             ScrubConfig(
@@ -247,7 +247,7 @@ class TestFactoryEmitsMetrics:
             metrics=metrics,
         )
         # No "abn" keyword -- regex still matches the digit run though
-        # Bare ABN, no keyword → context-required validator must not redact
+        # Bare ABN, no keyword -> context-required validator must not redact
         s.scrub(f"Request {au_abn_bare().replace(' ', '')} logged")
         events = self._events_by_name(backend)
         abn_match = [ev for ev in events["log_scrub_matches_total"] if ev[2] == {"layer": "L3", "type": "AU_ABN"}]

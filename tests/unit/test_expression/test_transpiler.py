@@ -1,5 +1,5 @@
 # Project:   scalo
-# File:      tests/test_expression/test_transpiler.py
+# File:      tests/unit/test_expression/test_transpiler.py
 # Purpose:   Tests for CEL-to-ClickHouse SQL transpiler
 # Language:  Python
 #
@@ -14,16 +14,17 @@ from scalo.expression import (
     ExpressionError,
     ProfileConfig,
     TranspileError,
+    evaluate,
     transpile_to_clickhouse,
 )
 
 REGEX = ProfileConfig(allow_regex=True)
 
-# ── Mapping table (EXPRESSIONS-CEL.md) ────────────────────────
+# ── Mapping table ────────────────────────
 
 
 class TestMappingTable:
-    """Every row from docs/EXPRESSIONS-CEL.md lines 164-173."""
+    """Every row of the CEL-to-ClickHouse mapping table."""
 
     def test_string_equality(self):
         assert transpile_to_clickhouse('severity == "critical"') == "severity = 'critical'"
@@ -181,7 +182,7 @@ class TestFunctions:
 
 
 class TestTernary:
-    """Ternary conditional: a ? b : c → if(a, b, c)."""
+    """Ternary conditional: a ? b : c -> if(a, b, c)."""
 
     def test_simple(self):
         assert transpile_to_clickhouse("is_admin ? 95 : 50") == "if(is_admin, 95, 50)"
@@ -387,6 +388,35 @@ class TestSQLInjection:
         # Semicolons inside string literals are safe (just data).
         result = transpile_to_clickhouse('cmd == "DROP; --"')
         assert result == "cmd = 'DROP; --'"
+
+
+class TestStringEscapes:
+    """A string literal's escapes decode as the CEL evaluator decodes them, so a pushed-down filter matches the same rows."""
+
+    @pytest.mark.parametrize(
+        ("literal", "decoded", "sql"),
+        [
+            (r'"\x41"', "A", "f = 'A'"),
+            (r'"\X41"', "A", "f = 'A'"),
+            (r'"\101"', "A", "f = 'A'"),
+            (r'"é"', "é", "f = 'é'"),
+            (r'"\U0001F600"', "\U0001f600", "f = '\U0001f600'"),
+            (r'"a\nb"', "a\nb", r"f = 'a\x0ab'"),
+            (r'"\t\v\a"', "\t\v\a", r"f = '\x09\x0b\x07'"),
+            (r'"\\n"', "\\n", r"f = '\\n'"),
+            (r'"\?\`"', "?`", "f = '?`'"),
+            (r'"q\"x"', 'q"x', "f = 'q\"x'"),
+            (r"'it\'s'", "it's", r"f = 'it\'s'"),
+        ],
+    )
+    def test_an_escape_decodes_as_cel_does(self, literal, decoded, sql):
+        assert evaluate(literal, {}) == decoded
+        assert transpile_to_clickhouse(f"f == {literal}") == sql
+
+    @pytest.mark.parametrize("literal", [r'"\q"', r'"\x4"', r'"\uD800"', r'"\U00110000"'])
+    def test_an_escape_cel_does_not_define_is_refused(self, literal):
+        with pytest.raises((TranspileError, ExpressionError)):
+            transpile_to_clickhouse(f"f == {literal}")
 
 
 # ── JSON columns ──────────────────────────────────────────────

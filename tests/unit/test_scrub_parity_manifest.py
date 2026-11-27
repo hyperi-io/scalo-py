@@ -14,8 +14,6 @@ lock the manifest shape so unintentional drift in scalo-py's output gets
 caught locally.
 """
 
-from __future__ import annotations
-
 import json
 import subprocess
 import sys
@@ -78,7 +76,7 @@ class TestManifestShape:
         assert list(CONFIG_KEYS) == m["config_keys"]
 
     def test_config_keys_present(self, m):
-        # The seven (or more) canonical keys per spec §6 + §8.1
+        # The seven (or more) canonical keys
         # operator controls.
         for k in (
             "enabled",
@@ -153,7 +151,7 @@ class TestManifestStability:
     def test_gitleaks_rule_count_in_range(self):
         m = build_manifest()
         # Upstream gitleaks ships ~222 rules; allow drift but flag
-        # anything outside ±10%.
+        # anything outside +/-10%.
         loaded = len(m["gitleaks"]["loaded_rule_ids"])
         assert 200 <= loaded <= 250, f"unexpected loaded rule count: {loaded}"
 

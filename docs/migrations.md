@@ -2,27 +2,51 @@
 
 Behaviour and API changes that need a consumer adjustment, indexed by the scalo release where each first ships. Moving over from `hyperi-pylib` has its guide, [migrating-from-hyperi-pylib.md](migrating-from-hyperi-pylib.md).
 
-## Next release -- The drift check joins each catalogue field to its schema option (BEHAVIOUR CHANGE)
+## Next release -- TRACE records are scrubbed (BEHAVIOUR CHANGE)
+
+`LogLevelsConfig.trace` and the `logging.scrub.log_levels.trace` default are true, so a TRACE record's message and traceback go through the scrubber as every other level's do, as scalo-rs scrubs them. See [core-pillars/scrubbing.md](core-pillars/scrubbing.md). **Consumer adjustment** -- none for most. A service that logs at TRACE in volume and wants the old cost sets `logging.scrub.log_levels.trace: false`.
+
+## Next release -- Page tokens are signed, not encrypted, and the `api` extra drops `cryptography` (BEHAVIOUR CHANGE)
+
+A page token is base64url JSON with an HMAC-SHA256, so a client can read the offset in it but can't change it. A token an older release issued answers 400 `invalid_page_token`, and the client starts again from the first page. See [api/api-conventions.md](api/api-conventions.md). **Consumer adjustment** -- a service that imports `cryptography` itself and had it only through `scalo[api]` declares it.
+
+## Next release -- CEL string escapes decode before a filter is pushed down (BEHAVIOUR CHANGE)
+
+`transpile_to_clickhouse` kept `\x41`, `\101`, `\u00e9`, `\n` and the rest as written, so the SQL compared a different string than CEL does in process. It decodes every escape CEL defines, and writes a control character into the SQL as `\xHH`. See [api/expression.md](api/expression.md#transpile-to-clickhouse-sql). **Consumer adjustment** -- a pushed-down filter with an escape in a string literal matches the rows CEL matches, which may differ from what it matched before.
+
+## 2.32.13 -- The drift check joins each catalogue field to its schema option (BEHAVIOUR CHANGE)
 
 `FieldSpec` takes `schema_path`, the dotted path of the config option it describes (`store.protocol`, `tables[].format`, `outputs{}.levels[]`), and `check_config_artifact_drift` runs `check_catalogue_against_schema` before it compares files. It fails on a `schema_path` that reaches no option, and on a field with `enum_values` that has no `schema_path` or whose option allows a different set. `DeploymentContract` adds `openssl_conf`, default empty and always emitted, so the scalo-service chart sets no `OPENSSL_CONF` (it points it at `/tmp/scalo-openssl.cnf` when the key is missing, a file scalo-py never writes). **Consumer adjustment** -- set `schema_path` on every enum field, make a closed-set option an enum in the config model so the schema allows exactly its `enum_values`, then regenerate and commit `config-schema.*` and `capability-catalog.*`.
 
-## Next release -- Credential names match their last words, and a card needs evidence (BEHAVIOUR CHANGE)
+## 2.32.12 -- Credential names read past `data`, `primary` and `secondary` (BEHAVIOUR CHANGE)
+
+`pgpass` is a sensitive field, and a trailing `data`, `primary` or `secondary` is read past as `value` and `hash` are, so `PGPASS`, `privateKeyData`, `x-api-key-primary` and `client_secret_secondary` mask. A bare `key`, `keys`, `value` or `values` masks when the name of the mapping or list holding it is a credential, so `client_auth={"key": ...}` and `credentials={"key": ...}` mask and `partitioner={"key": ...}` does not. See [core-pillars/scrubbing.md](core-pillars/scrubbing.md#layer-2-field-name-regex). **Consumer adjustment** -- expect more masking, and log a value an operator must read under a name that holds no field.
+
+## 2.32.11 -- Hashed redaction labels are HMAC-SHA256, cut to 16 hex (BEHAVIOUR CHANGE)
+
+With `hash_redaction=True` a label was keyed BLAKE2b cut to 6 hex, so a Python and a Rust service gave two labels for one value. It is HMAC-SHA256 keyed with `secret_hash_key` or `LOG_SCRUB_HASH_KEY`, cut to 16 hex (`[EMAIL_a3f5b2c4d6e8f001]`), as the Rust scrubber writes it, and a key longer than 64 bytes is no longer cut. **Consumer adjustment** -- a saved search, alert or dashboard that matches an old 6-hex label matches the 16-hex one.
+
+## 2.32.11 -- L1 redacts only what gitleaks reports (BEHAVIOUR CHANGE)
+
+L1 read only each rule's keywords and `secretGroup` from `gitleaks.toml`. It applies each rule's `entropy` threshold, the global allowlist and the rule's own allowlists and stopwords the way gitleaks does, so log prose a rule matched but gitleaks passes is no longer redacted. See [core-pillars/scrubbing.md](core-pillars/scrubbing.md#scrub-architecture). **Consumer adjustment** -- a value that must stay masked and that gitleaks passes is masked by its field name, with `SensitiveDataFilter.add_sensitive_fields`.
+
+## 2.32.11 -- Credential names match their last words, and a card needs evidence (BEHAVIOUR CHANGE)
 
 A name is a credential when its last words spell a sensitive field, so `TokenElevationType`, `PasswordLastSet`, `tokens_used`, `token_count`, `max_tokens`, `tokenizer`, `mapping`, `author`, `oauth`, `is_private` and `LogonSession` keep their values where the substring rule masked them. A trailing `value`, `pem`, `hash`, version (`v2`) or number word is read past, a short term's plural such as `tokens` masks any value but a number, and a field of six letters or more may end the last word part-way or take a plural (`PGPASSWORD`, `passwords`). `session` and `private` are no longer fields, and `bearer_token` and `session_key` are. A Luhn-valid number is a card only when it is printed as 4-4-4-4, 4-6-5 or 4-6-4 with one separator, or follows `card`, `creditcard`, `cc`, `pan`, `visa`, `mastercard` or `amex` as a whole word within 30 characters, where a word inside a redaction label doesn't count. See [core-pillars/scrubbing.md](core-pillars/scrubbing.md#layer-2-field-name-regex). **Consumer adjustment** -- a bare 16-digit number in a log line is no longer redacted, so log a card under a name or a card word if it must be masked, and expect a field the substring rule masked, such as `session_timeout_ms`, to show.
 
-## Next release -- `DirectoryConfigStore` reads return deep copies (BEHAVIOUR CHANGE)
+## 2.32.10 -- `DirectoryConfigStore` reads return deep copies (BEHAVIOUR CHANGE)
 
 `get` returned a shallow copy of a table and the cached value itself for a key, so changing a nested dict you got back changed the cache for every reader. It returns a deep copy, as `set` and the change callbacks now copy what they take or hand out. See [api/directory-config.md](api/directory-config.md). **Consumer adjustment** -- write a change back with `set`, because mutating what `get` returned no longer reaches the store.
 
-## Next release -- A `ServiceApp` makes its config the module-level `settings` (BEHAVIOUR CHANGE)
+## 2.32.10 -- A `ServiceApp` makes its config the module-level `settings` (BEHAVIOUR CHANGE)
 
 The version check, span export, the expression profile and the Kafka health thresholds read `scalo.config.settings`, which had the import-time `ENV_PREFIX` and no `--config` file. `ServiceApp` now adopts the config it loads as `settings`, so they read the app's `env_prefix` and its `--config` file. An `otel_tracing` or `kafka.health` key set from the environment was also dropped for its upper-case name, and now takes effect. See [core-pillars/config.md](core-pillars/config.md#read-it-like-a-dict). **Consumer adjustment** -- export those keys under the app's prefix (`MYAPP_VERSION_CHECK__ENABLED`, not `VERSION_CHECK__ENABLED`), and check an `otel_tracing` or `kafka.health` env key you set that had no effect.
 
-## Next release -- A `ServiceApp` applies `logging.scrub` (BEHAVIOUR CHANGE)
+## 2.32.10 -- A `ServiceApp` applies `logging.scrub` (BEHAVIOUR CHANGE)
 
 `ServiceApp` ignored `logging.scrub.*` and ran the default scrubber. It reads the section from the config it loaded, a `--config` file and the app's env prefix included, and `setup()` reads it from the process-wide settings. See [core-pillars/scrubbing.md](core-pillars/scrubbing.md). **Consumer adjustment** -- check a `logging.scrub` section already in your config, because `enabled: false` or `pii.enabled: false` now takes effect.
 
-## Next release -- `libgit2_runtime_package` names the package each release carries (BEHAVIOUR CHANGE)
+## 2.32.10 -- `libgit2_runtime_package` names the package each release carries (BEHAVIOUR CHANGE)
 
 It returned `libgit2-1.7` for every release but trixie, so an image on bookworm, jammy or focal failed to build. It returns `libgit2-1.5`, `libgit2-1.1` and `libgit2-28` for those, and raises `ValueError` for a codename outside `BaseDistro`, where it guessed `libgit2-1.7` before. See [deployment/native-deps.md](deployment/native-deps.md#for_scalo_features-polyglot-apps). **Consumer adjustment** -- pass one of `trixie`, `bookworm`, `noble`, `jammy` or `focal` as `distro_codename`, and regenerate a committed `Dockerfile` built on bookworm, jammy or focal.
 

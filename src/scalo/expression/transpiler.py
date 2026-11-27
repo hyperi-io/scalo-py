@@ -192,6 +192,45 @@ def _tokenize(expr: str) -> list[Token]:
     return tokens
 
 
+# CEL's single-character escapes, from the language definition's string literal grammar.
+_SIMPLE_ESCAPES = {
+    "a": "\a",
+    "b": "\b",
+    "f": "\f",
+    "n": "\n",
+    "r": "\r",
+    "t": "\t",
+    "v": "\v",
+    "\\": "\\",
+    "?": "?",
+    '"': '"',
+    "'": "'",
+    "`": "`",
+}
+_ESCAPE = re.compile(r"\\(?:[xX]([0-9a-fA-F]{2})|u([0-9a-fA-F]{4})|U([0-9a-fA-F]{8})|([0-3][0-7]{2})|(.))", re.DOTALL)
+
+
+def _decode_string(body: str, pos: int) -> str:
+    r"""Decode the escapes in a quoted CEL string's ``body`` as CEL does.
+
+    Raises:
+        TranspileError: On an escape CEL does not define, or a ``\u`` / ``\U`` naming no code point.
+    """
+
+    def decode(match: re.Match[str]) -> str:
+        byte, short, long, octal, simple = match.groups()
+        if simple is not None:
+            if simple not in _SIMPLE_ESCAPES:
+                raise TranspileError(f"Invalid escape \\{simple} in the string at position {pos}")
+            return _SIMPLE_ESCAPES[simple]
+        code = int(byte, 16) if byte else int(octal, 8) if octal else int(short or long, 16)
+        if code > 0x10FFFF or 0xD800 <= code <= 0xDFFF:
+            raise TranspileError(f"Escape {match.group()} names no code point, in the string at position {pos}")
+        return chr(code)
+
+    return _ESCAPE.sub(decode, body)
+
+
 # -- Parser (Pratt) ------------------------------------------------
 
 # Precedence levels (higher = tighter binding).
@@ -341,11 +380,7 @@ class _Parser:
         # String literal
         if tok.type == TT.STRING:
             self._advance()
-            # Strip quotes
-            raw = tok.value[1:-1]
-            # Unescape backslash sequences
-            raw = raw.replace('\\"', '"').replace("\\'", "'").replace("\\\\", "\\")
-            return Literal(raw)
+            return Literal(_decode_string(tok.value[1:-1], tok.pos))
 
         # Number literal
         if tok.type == TT.NUMBER:
@@ -450,9 +485,13 @@ _SQL_PREC: dict[str, int] = {
 }
 
 
+# ClickHouse reads \xHH in a string literal as that byte, so a control character never reaches the query text raw.
+_SQL_CONTROL_ESCAPES = {code: f"\\x{code:02x}" for code in (*range(0x20), 0x7F)}
+
+
 def _escape_string(s: str) -> str:
     """Escape a string for ClickHouse SQL (single-quoted)."""
-    return "'" + s.replace("\\", "\\\\").replace("'", "\\'") + "'"
+    return "'" + s.replace("\\", "\\\\").replace("'", "\\'").translate(_SQL_CONTROL_ESCAPES) + "'"
 
 
 def _static_type(node: Expr) -> str | None:

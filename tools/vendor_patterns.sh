@@ -35,9 +35,6 @@
 # Usage:
 #   ./tools/vendor_patterns.sh            # vendor all canonical patterns
 #   ./tools/vendor_patterns.sh --check    # diff only, exit 1 on drift
-#
-# See docs/superpowers/specs/2026-05-13-log-scrub-spec.md §3.0 for
-# the vendoring-discipline rationale.
 
 set -uo pipefail
 
@@ -217,9 +214,9 @@ done
 
 if [[ "$CHECK_MODE" == "true" ]]; then
     if [[ "$drift_count" -gt 0 ]]; then
-        warn "$drift_count file(s) drift — run tools/vendor_patterns.sh"
+        warn "$drift_count file(s) drift -- run tools/vendor_patterns.sh"
         # In check mode we exit non-zero so CI can flag drift, but
-        # the warning is the primary signal — operators may choose
+        # the warning is the primary signal -- operators may choose
         # to suppress this in their CI configuration.
         exit 1
     fi
