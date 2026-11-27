@@ -156,6 +156,26 @@ class TestOutput:
         assert render({"items": [{"a": 1, "b": "x"}]}, "text") == "ITEMS\t1\tx\n"
         assert yaml.safe_load(render({"a": [1]}, "yaml")) == {"a": [1]}
 
+    # OSC 52 writes the clipboard, BEL ends it, CSI moves the cursor, a C1 CSI does the same in one byte.
+    @pytest.mark.parametrize(
+        ("raw", "escaped"),
+        [
+            ("\x1b]52;c;aGk=\x07", "\\u001b]52;c;aGk=\\u0007"),
+            ("a\x1b[2Jb", "a\\u001b[2Jb"),
+            ("x\x9bA", "x\\u009bA"),
+            ("tab\there", "tab\\there"),
+            ("line\nbreak\r", "line\\nbreak\\r"),
+            ("del\x7f", "del\\u007f"),
+            ("café", "café"),
+        ],
+    )
+    @pytest.mark.parametrize("output", ["table", "text"])
+    def test_table_and_text_escape_control_characters(self, raw, escaped, output):
+        text = render({"items": [{raw: raw}], "next_page_token": raw}, output)
+        assert escaped in text
+        assert not any(ord(char) < 0x20 and char not in "\t\n" for char in text)
+        assert not any(0x7F <= ord(char) < 0xA0 for char in text)
+
     def test_an_unknown_format(self):
         with pytest.raises(CliUsageError, match="unknown output format"):
             render({}, "xml")

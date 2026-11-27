@@ -103,7 +103,7 @@ class CardinalityTracker:
                 )
 
     def get_cardinality(self, metric_name: str) -> int:
-        """Number of unique label combinations CURRENTLY held for a metric.
+        """Return the number of unique label combinations held for a metric now.
 
         Note: under LRU eviction this may be less than the lifetime
         count. The warning at ``max_cardinality`` still fires once based

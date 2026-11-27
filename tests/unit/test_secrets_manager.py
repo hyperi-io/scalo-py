@@ -32,7 +32,7 @@ class TestSecretsManager:
         """Test creating manager with defaults."""
         manager = SecretsManager()
 
-        assert manager._file_provider is not None
+        assert manager._providers["file"] is not None
         assert manager._cache is not None
 
     def test_cache_disabled(self, tmp_path):

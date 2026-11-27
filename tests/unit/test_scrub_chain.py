@@ -6,9 +6,7 @@
 #  License:   Apache-2.0
 #  Copyright: (c) 2026 HYPERI PTY LIMITED
 
-"""Tests for the discrete-object scrubber surface (spec §2.3)."""
-
-from __future__ import annotations
+"""Tests for the discrete-object scrubber surface."""
 
 import pytest
 
@@ -103,7 +101,7 @@ class TestLayeredScrubberComposition:
         assert s.scrub("hello") == "HELLO"
 
     def test_layers_apply_in_order(self):
-        # Upper THEN reverse: "hello" → "HELLO" → "OLLEH"
+        # Upper THEN reverse: "hello" -> "HELLO" -> "OLLEH"
         s = LayeredScrubber(layers=[_UpperLayer(), _ReverseLayer()])
         assert s.scrub("hello") == "OLLEH"
 
@@ -152,7 +150,7 @@ class TestLayeredScrubberDisabled:
 
 
 # ---------------------------------------------------------------------------
-# LayeredScrubber -- fail-safe (spec §5.1)
+# LayeredScrubber -- fail-safe
 # ---------------------------------------------------------------------------
 
 
@@ -188,12 +186,12 @@ class TestLayeredScrubberFailSafe:
         s = LayeredScrubber(layers=[_UpperLayer(), _BrokenLayer(), _ReverseLayer()])
         with pytest.warns(RuntimeWarning):
             result = s.scrub("hello")
-        # "hello" → upper → "HELLO" → broken (skip) → reverse → "OLLEH"
+        # "hello" -> upper -> "HELLO" -> broken (skip) -> reverse -> "OLLEH"
         assert result == "OLLEH"
 
 
 # ---------------------------------------------------------------------------
-# ScrubConfig -- defaults match spec §6
+# ScrubConfig -- defaults
 # ---------------------------------------------------------------------------
 
 
@@ -238,8 +236,8 @@ class TestScrubConfigDefaults:
         assert lev.warn is True
         assert lev.info is True
         assert lev.debug is True
-        # trace OFF by default per spec §5.6
-        assert lev.trace is False
+        # every level is scrubbed by default, TRACE included
+        assert lev.trace is True
 
     def test_overrides(self):
         c = ScrubConfig(

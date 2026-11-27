@@ -6,7 +6,7 @@
 pip install 'scalo[api]'
 ```
 
-The `api` extra adds `fastapi`, `pydantic` and `cryptography`, which seals page tokens. Base `import scalo` never imports `scalo.api` or FastAPI, and `import scalo.api` without the extra raises `ImportError: scalo.api needs the 'api' extra: pip install 'scalo[api]'`.
+The `api` extra adds `fastapi` and `pydantic`. Base `import scalo` never imports `scalo.api` or FastAPI, and `import scalo.api` without the extra raises `ImportError: scalo.api needs the 'api' extra: pip install 'scalo[api]'`.
 
 The routes name each operation once, in the spec, and every client and check reads it from there.
 
@@ -197,7 +197,7 @@ A list answers `Page[T]`: `items`, `next_page_token` and an optional `total_size
 
 `paginate(items, query, bound={...}, with_total=True)` cuts a page out of a list the server has filtered and ordered. Pass in `bound` every list parameter you add that changes `items`, such as a search term. `encode_page_token` and `decode_page_token` do the same for a list that pages in its datastore.
 
-A page token is a Fernet token from `cryptography`, so a client can neither read nor forge one. It holds the offset and a hash of the request path, `filter`, `order_by` and `bound`. A token answers 400 `invalid_page_token` if it was tampered with, is older than `PAGE_TOKEN_TTL_SECONDS` (a day), or comes back with any of those changed. The client then starts again from the first page. `page_size` and `skip` may change between pages. A token grants nothing: the handler filters the list for each caller as it always does.
+A page token is base64url JSON and its HMAC-SHA256, so a client can read but not forge one. It holds the offset, the time it was issued and a hash of the request path, `filter`, `order_by` and `bound`. A token answers 400 `invalid_page_token` if it was tampered with, is older than `PAGE_TOKEN_TTL_SECONDS` (a day), or comes back with any of those changed. The client then starts again from the first page. `page_size` and `skip` may change between pages. A token grants nothing: the handler filters the list for each caller as it always does.
 
 The key comes from the `api.page_token_key` setting (`PAGE_TOKEN_KEY_SETTING`) in the config cascade. It needs at least 32 characters and is read on first use. Without one, each process makes a random key and logs a warning. Then a token from one replica fails on another, and every token fails after a restart. Set the key wherever a service runs more than one replica.
 

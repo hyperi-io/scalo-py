@@ -70,7 +70,6 @@ class AWSProvider(VersionedProvider):
 
         self._config = config
         self._sync_client = None
-        self._session = None
         self._health = HealthLog(logger, self.name)
 
     @property

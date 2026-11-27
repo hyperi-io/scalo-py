@@ -26,11 +26,10 @@ this module or FastAPI.
 """
 
 try:
-    import cryptography
     import fastapi
 except ImportError as exc:
     raise ImportError("scalo.api needs the 'api' extra: pip install 'scalo[api]'") from exc
-del cryptography, fastapi
+del fastapi
 
 from .conformance import ConformanceReport, Violation, assert_conformant, check_conformance
 from .extension import ACTION_ATTRIBUTE, EXTENSION, CliHints, McpHints, permission, scalo_extra

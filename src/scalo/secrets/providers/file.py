@@ -92,12 +92,42 @@ class FileProvider(SecretProvider):
     - Docker secrets in /run/secrets
     - Local development with file-based credentials
     - External Secrets Operator (ESO) synced files
+
+    Args:
+        root: Directory every secret path must resolve inside, symlinks followed. A relative
+            path is read under it. None, the default, allows any path the process can read.
     """
+
+    # A class default, so a subclass whose __init__ skips super() still reads any path, as before.
+    _root: Path | None = None
+
+    def __init__(self, root: str | Path | None = None) -> None:
+        self._root = Path(root).resolve() if root is not None else None
 
     @property
     def name(self) -> str:
         """Provider name."""
         return "file"
+
+    def cache_identity(self, salt: bytes) -> tuple[str, ...]:
+        """See base class. A root is part of it, because it decides which file a relative path names."""
+        return (self.name,) if self._root is None else (self.name, str(self._root))
+
+    def _path(self, path: str, operation: str) -> Path:
+        """``path`` under :attr:`_root`, refused when it resolves outside it.
+
+        The check reads the tree as it stands when the call starts, so it confines the paths a
+        caller names, not a tree another process rewrites during the call.
+
+        Raises:
+            SecretPermissionError: ``root`` is set and ``path`` resolves outside it.
+        """
+        if self._root is None:
+            return Path(path)
+        joined = self._root / path
+        if not joined.resolve().is_relative_to(self._root):
+            raise SecretPermissionError(self.name, operation, path, f"the file provider is confined to {self._root}")
+        return joined
 
     def _compute_version(self, path: Path) -> str:
         """Compute version from file mtime and size."""
@@ -137,7 +167,7 @@ class FileProvider(SecretProvider):
             SecretNotFoundError: File does not exist.
             ProviderError: Read or parse failed.
         """
-        file_path = Path(path)
+        file_path = self._path(path, "read")
 
         if not file_path.exists():
             raise SecretNotFoundError(path, self.name)
@@ -192,7 +222,7 @@ class FileProvider(SecretProvider):
         tags are ignored (filesystem has no tag concept).
         """
         if filter and filter.prefix:
-            base = Path(filter.prefix)
+            base = self._path(filter.prefix, "list")
         else:
             return []  # No prefix = no directory to list
 
@@ -214,7 +244,7 @@ class FileProvider(SecretProvider):
 
     def get_metadata_sync(self, path: str) -> SecretMetadata:
         """Get file metadata without reading contents."""
-        file_path = Path(path)
+        file_path = self._path(path, "read")
 
         if not file_path.exists():
             raise SecretNotFoundError(path, self.name)
@@ -232,7 +262,7 @@ class FileProvider(SecretProvider):
 
     def create_sync(self, path: str, value: bytes, tags: dict[str, str] | None = None) -> SecretMetadata:
         """Create a new secret file, mode 0o600, in directories it creates as 0o700. Fails if file already exists."""
-        file_path = Path(path)
+        file_path = self._path(path, "create")
 
         if file_path.exists():
             raise SecretAlreadyExistsError(path, self.name)
@@ -257,7 +287,7 @@ class FileProvider(SecretProvider):
 
     def update_sync(self, path: str, value: bytes) -> SecretMetadata:
         """Update an existing secret file, setting its mode to 0o600. Fails if file doesn't exist."""
-        file_path = Path(path)
+        file_path = self._path(path, "update")
 
         if not file_path.exists():
             raise SecretNotFoundError(path, self.name)
@@ -281,7 +311,7 @@ class FileProvider(SecretProvider):
 
     def delete_sync(self, path: str) -> None:
         """Delete a secret file."""
-        file_path = Path(path)
+        file_path = self._path(path, "delete")
 
         if not file_path.exists():
             raise SecretNotFoundError(path, self.name)

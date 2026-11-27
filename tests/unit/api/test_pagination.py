@@ -1,6 +1,6 @@
 #  Project:   scalo
 #  File:      tests/unit/api/test_pagination.py
-#  Purpose:   AIP-158 pagination: defaults, the server cap, sealed bound page tokens, skip, order_by and the shared query parameters
+#  Purpose:   AIP-158 pagination: defaults, the server cap, signed bound page tokens, skip, order_by and the shared query parameters
 #  Language:  Python
 #
 #  License:   Apache-2.0
@@ -45,11 +45,11 @@ ITEMS = list(range(7))
 
 @pytest.fixture
 def page_key():
-    """Set ``api.page_token_key`` for one test, and drop the cached sealer either side."""
+    """Set ``api.page_token_key`` for one test, and drop the cached signing key either side."""
 
     def use(key: str | None) -> None:
         settings.set(PAGE_TOKEN_KEY_SETTING, key)
-        pagination._sealer = None
+        pagination._signing_key = None
 
     yield use
     use(None)
@@ -138,17 +138,34 @@ class TestPaginate:
         with pytest.raises(ProblemError, match="page_token"):
             decode_page_token(ListQuery(page_size=2, page_token=flipped))
 
-    def test_an_expired_token_is_refused(self):
-        payload = json.dumps({"o": 2, "f": pagination._fingerprint(ListQuery(page_size=2), None)}).encode()
-        old = pagination._page_sealer().encrypt_at_time(payload, int(time.time()) - PAGE_TOKEN_TTL_SECONDS - 60)
+    def test_a_token_with_a_rewritten_offset_is_refused(self):
+        token = encode_page_token(2, ListQuery(page_size=2))
+        body, _, mac = token.partition(".")
+        fields = json.loads(pagination._unb64(body))
+        forged = pagination._b64(json.dumps({**fields, "o": 900}, separators=(",", ":")).encode()) + "." + mac
+
+        with pytest.raises(ProblemError, match="page_token"):
+            decode_page_token(ListQuery(page_size=2, page_token=forged))
+
+    @pytest.mark.parametrize(
+        "age", [PAGE_TOKEN_TTL_SECONDS + 60, -pagination._CLOCK_SKEW_SECONDS - 60], ids=["expired", "future"]
+    )
+    def test_a_token_outside_its_lifetime_is_refused(self, age):
+        fingerprint = pagination._fingerprint(ListQuery(page_size=2), None)
+        old = pagination._sign({"o": 2, "f": fingerprint, "t": int(time.time()) - age})
 
         with pytest.raises(ProblemError, match="expired"):
-            decode_page_token(ListQuery(page_size=2, page_token=old.decode()))
+            decode_page_token(ListQuery(page_size=2, page_token=old))
+
+    def test_a_token_carries_no_ciphertext(self):
+        token = encode_page_token(2, ListQuery(page_size=2))
+
+        assert json.loads(pagination._unb64(token.partition(".")[0]))["o"] == 2
 
     def test_the_configured_key_seals_tokens_across_processes(self, page_key):
         page_key("k" * 32)
         token = encode_page_token(2, ListQuery(page_size=2))
-        pagination._sealer = None
+        pagination._signing_key = None
 
         assert decode_page_token(ListQuery(page_size=2, page_token=token)) == 2
         page_key("j" * 32)

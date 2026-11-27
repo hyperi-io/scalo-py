@@ -250,6 +250,18 @@ class TestInProcessCalls:
         assert "error=" not in challenge
         assert response.json()["code"] == "unauthenticated"
 
+    async def test_an_unparseable_host_gets_a_bare_challenge_not_a_500(self):
+        app, _ = build_app(_store())
+
+        async with running(app), http_client(app, token=None, headers={"Host": "bad host"}) as http:
+            challenge = await _list(http)
+            metadata = await http.get("/.well-known/oauth-protected-resource/mcp")
+
+        assert challenge.status_code == 401
+        assert challenge.headers["www-authenticate"] == "Bearer"
+        assert metadata.status_code == 400
+        assert metadata.json()["code"] == "invalid_host"
+
     async def test_the_app_sees_the_mcp_requests_peer_address(self):
         store = _store()
         app, _ = build_app(store)

@@ -109,7 +109,6 @@ def time_bounded_consume(
 
         messages.append(msg)
 
-        # Check limit
         if limit is not None and len(messages) >= limit:
             break
 

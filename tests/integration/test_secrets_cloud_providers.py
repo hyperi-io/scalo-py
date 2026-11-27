@@ -9,9 +9,8 @@
 """
 Integration tests for cloud secrets providers against real provider endpoints.
 
-Tests gracefully skip when the required credentials or env vars are not configured.
-Failed tests do NOT block the build -- developers without access to specific cloud
-accounts simply skip those tests.
+A provider's tests skip when its credentials or env vars are not configured, so a
+developer without access to one cloud account skips that account's tests.
 
 Configuration via environment variables (or tests/.env.integration file):
 
@@ -22,17 +21,17 @@ Configuration via environment variables (or tests/.env.integration file):
     # Via SSO: eval $(aws configure export-credentials --profile your-aws-profile --format env)
 
     # GCP Secret Manager
-    TEST_GCP_PROJECT_ID=hyperi-dfe
+    TEST_GCP_PROJECT_ID=<project-id>
     TEST_GCP_SECRET_NAME=scalo-test
     # Credentials: gcloud auth application-default login
 
     # Azure Key Vault
-    TEST_AZURE_VAULT_URL=https://scalo-test.vault.azure.net/
+    TEST_AZURE_VAULT_URL=https://<vault-name>.vault.azure.net/
     TEST_AZURE_SECRET_NAME=scalo-test
     # Credentials: az login (ensure AZURE_CLIENT_SECRET is unset if stale)
 
     # OpenBao / Vault
-    TEST_VAULT_ADDR=https://bao.devex.hyperi.io:8200
+    TEST_VAULT_ADDR=https://<openbao-host>:8200
     TEST_VAULT_TOKEN=<token>
     TEST_VAULT_PATH=secret/data/scalo-test
     TEST_VAULT_KEY=api_key

@@ -252,7 +252,7 @@ def parse_scrub_config(d: dict[str, Any]) -> ScrubConfig:
             warn=_bool(sub.get("warn"), True),
             info=_bool(sub.get("info"), True),
             debug=_bool(sub.get("debug"), True),
-            trace=_bool(sub.get("trace"), False),
+            trace=_bool(sub.get("trace"), True),
         )
 
     def _int(value: Any, default: int) -> int:

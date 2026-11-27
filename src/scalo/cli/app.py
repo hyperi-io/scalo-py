@@ -36,9 +36,11 @@ Example::
 """
 
 import asyncio
+import functools
 import os
 import sys
 from abc import ABC, abstractmethod
+from collections.abc import Callable
 from dataclasses import dataclass
 from pathlib import Path
 from typing import TYPE_CHECKING, Any
@@ -563,26 +565,14 @@ def _handle_run(service_app: ServiceApp, args: CommonArgs) -> None:
             backend = control_var("METRICS_BACKEND") or metrics_section.get("backend") or "opentelemetry"
             _warn_on_unreachable_otlp_endpoint(backend)
             metrics_manager = create_metrics(ns, backend=backend, backend_config=metrics_section)
-            # Re-install the logger now that a metrics manager exists, so the
-            # scrub layers emit log_scrub_* (spec 8 / the parity manifest).
-            #
-            # Deliberately a second setup() rather than a reorder: the scrub
-            # layers must be live for the FIRST log line, and create_metrics()
-            # logs on its way up. Initialising metrics first would push those
-            # lines through loguru's default handler -- unformatted, and more
-            # importantly unscrubbed. setup() calls logger.remove() first, so
-            # re-running it swaps the sinks rather than stacking them.
-            #
-            # Its own try: setup() drops all sinks before rebuilding them, so a
-            # failure part-way leaves loguru with nothing attached. Reporting
-            # that through `logger` would post the bad news to the very logger
-            # that just went silent -- and the service would then run its whole
-            # life logging nothing. Report on stderr, then put a working logger
-            # back without the metrics wiring.
+            # A second setup() gives the scrub layers their log_scrub_* metrics, because
+            # create_metrics() logs and its lines must already go through the scrubber.
+            # setup() swaps the sinks, so a failure part-way leaves none: it is reported on
+            # stderr and the logger is rebuilt without metrics.
             try:
                 args.init_logger(config=config, metrics=metrics_manager, service_name=service_app.name)
             except Exception as exc:
-                print_error(f"scrub-metrics logger re-init failed: {exc}")
+                print_error(_scrubbed(f"scrub-metrics logger re-init failed: {exc}"))
                 args.init_logger(config=config, service_name=service_app.name)
             app_metrics = AppMetrics(metrics_manager, info.version, info.commit or "unknown")
             ResourceMetrics(mgr=metrics_manager)
@@ -598,7 +588,7 @@ def _handle_run(service_app: ServiceApp, args: CommonArgs) -> None:
             service_app._app_metrics = None
             # stderr as well as the logger: this handler also covers the
             # window where logging itself may be the thing that broke.
-            print_error(f"metrics initialisation failed: {e}")
+            print_error(_scrubbed(f"metrics initialisation failed: {e}"))
             logger.warning("metrics initialisation failed", error=str(e))
 
         # Bind the observability port BEFORE the service starts, so a probe
@@ -642,13 +632,13 @@ def _handle_run(service_app: ServiceApp, args: CommonArgs) -> None:
             service_app.run_service(config)
 
     except CliError as exc:
-        print_error(str(exc))
+        print_error(_scrubbed(str(exc)))
         raise Exit(1) from exc
     except KeyboardInterrupt:
         print_info("shutting down")
         raise Exit(0) from None
     except Exception as exc:
-        print_error(f"fatal: {exc}")
+        print_error(_scrubbed(f"fatal: {exc}"))
         raise Exit(1) from exc
     finally:
         # Release the port on every exit path, or a restart in the same
@@ -702,10 +692,10 @@ def _handle_config_check(service_app: ServiceApp, args: CommonArgs) -> None:
             _print_kv("metrics_addr", args.metrics_addr)
 
     except CliError as exc:
-        print_error(f"configuration invalid: {exc}")
+        print_error(_scrubbed(f"configuration invalid: {exc}"))
         raise Exit(1) from exc
     except Exception as exc:
-        print_error(f"configuration invalid: {exc}")
+        print_error(_scrubbed(f"configuration invalid: {exc}"))
         raise Exit(1) from exc
 
 
@@ -806,6 +796,22 @@ def _named_config_file(path: str) -> str:
     except OSError as exc:
         raise ConfigError(f"config file not readable: {resolved}: {exc.strerror or exc}") from exc
     return str(resolved)
+
+
+@functools.cache
+def _stderr_scrubber() -> Callable[[str], str]:
+    """The default log scrubber, for messages printed to stderr outside the logger."""
+    from scalo.logger.scrub import build_scrubber
+
+    return build_scrubber().scrub
+
+
+def _scrubbed(message: str) -> str:
+    """``message`` through the default scrubber, or a placeholder when the scrubber itself fails."""
+    try:
+        return _stderr_scrubber()(message)
+    except Exception as exc:
+        return f"(message withheld: the scrubber failed with {type(exc).__name__})"
 
 
 def _config_section(config: Any | None, name: str) -> dict[str, Any]:

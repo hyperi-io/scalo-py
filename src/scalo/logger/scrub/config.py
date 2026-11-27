@@ -136,19 +136,18 @@ class PiiConfig:
 
 @dataclass(slots=True)
 class LogLevelsConfig:
-    """Per-log-level scrubbing gate (spec Section 5.6).
+    """Per-log-level scrubbing gate.
 
-    Setting a level to False bypasses the scrubber entirely for
-    records at that level. Useful to disable on ``trace`` (volume),
-    or to keep enabled on ``debug`` (where devs sometimes paste
-    secrets into temporary logs).
+    Every level is scrubbed by default, as scalo-rs scrubs every level. Setting
+    a level to False bypasses the scrubber for records at that level, so their
+    message and traceback reach the sinks unscrubbed.
     """
 
     error: bool = True
     warn: bool = True
     info: bool = True
     debug: bool = True
-    trace: bool = False
+    trace: bool = True
 
 
 @dataclass(slots=True)

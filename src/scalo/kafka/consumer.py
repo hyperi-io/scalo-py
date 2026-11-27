@@ -134,7 +134,6 @@ class KafkaConsumer:
         if self._stores_offsets:
             self._config["enable.auto.offset.store"] = False
 
-        # Create consumer
         self._consumer = Consumer(self._config)
         self._closed = False
 

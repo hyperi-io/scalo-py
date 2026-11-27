@@ -267,7 +267,7 @@ class TestFileProviderList:
         """list_sync without a prefix returns empty (no 'list all' concept)."""
         (tmp_path / "a").write_text("1")
         provider = FileProvider()
-        # No filter means no prefix → provider cannot enumerate without a root
+        # No filter means no prefix -> provider cannot enumerate without a root
         result = provider.list_sync(None)
         assert result == []
 
@@ -494,3 +494,74 @@ class TestFileProviderDelete:
         provider = FileProvider()
         await provider.delete_async(str(path))
         assert not path.exists()
+
+
+class TestFileProviderRoot:
+    """``root=`` confines every operation to one directory."""
+
+    @pytest.fixture
+    def confined(self, tmp_path):
+        root = tmp_path / "secrets"
+        root.mkdir()
+        (root / "db").write_text("inside")
+        (tmp_path / "outside").write_text("outside")
+        (root / "escape").symlink_to(tmp_path / "outside")
+        return FileProvider(root=root), root, tmp_path
+
+    @pytest.mark.parametrize("name", ["db", "{root}/db"])
+    def test_a_path_under_the_root_is_read(self, confined, name):
+        provider, root, _ = confined
+        assert provider.get_sync(name.format(root=root)).decode() == "inside"
+
+    @pytest.mark.parametrize("name", ["../outside", "{tmp}/outside", "escape", "/etc/hostname"])
+    @pytest.mark.parametrize(
+        "operation",
+        [
+            lambda p, n: p.get_sync(n),
+            lambda p, n: p.get_metadata_sync(n),
+            lambda p, n: p.create_sync(n, b"x"),
+            lambda p, n: p.update_sync(n, b"x"),
+            lambda p, n: p.delete_sync(n),
+            lambda p, n: p.list_sync(SecretFilter(prefix=n)),
+        ],
+        ids=["get", "metadata", "create", "update", "delete", "list"],
+    )
+    def test_a_path_outside_the_root_is_refused(self, confined, name, operation):
+        provider, _, tmp_path = confined
+        with pytest.raises(SecretPermissionError, match="confined to"):
+            operation(provider, name.format(tmp=tmp_path))
+        assert (tmp_path / "outside").read_text() == "outside"
+
+    def test_without_a_root_any_path_is_read(self, confined):
+        _, _, tmp_path = confined
+        assert FileProvider().get_sync(str(tmp_path / "outside")).decode() == "outside"
+
+    def test_from_config_takes_the_root(self, confined):
+        from scalo.secrets import SecretsManager
+
+        _, root, tmp_path = confined
+        manager = SecretsManager.from_config({"file": {"root": str(root)}})
+        assert manager.get_sync("db").decode() == "inside"
+        with pytest.raises(SecretPermissionError):
+            manager.get_sync(str(tmp_path / "outside"))
+
+    def test_the_root_is_part_of_the_cache_identity(self, tmp_path):
+        assert FileProvider().cache_identity(b"salt") == ("file",)
+        first = FileProvider(root=tmp_path / "a").cache_identity(b"salt")
+        second = FileProvider(root=tmp_path / "b").cache_identity(b"salt")
+        assert first != second
+        assert first[0] == "file"
+
+    def test_two_roots_sharing_a_disk_cache_read_their_own_files(self, tmp_path):
+        from scalo.secrets import SecretsManager
+        from scalo.secrets.types import CacheConfig
+
+        for name, value in (("a", "alpha"), ("b", "bravo")):
+            (tmp_path / name).mkdir()
+            (tmp_path / name / "db").write_text(value)
+        cache = CacheConfig(enabled=True, directory=str(tmp_path / "cache"), encryption_key="k" * 32, ttl_secs=3600)
+
+        first = SecretsManager(providers={"file": FileProvider(root=tmp_path / "a")}, cache_config=cache)
+        assert first.get_sync("db").decode() == "alpha"
+        second = SecretsManager(providers={"file": FileProvider(root=tmp_path / "b")}, cache_config=cache)
+        assert second.get_sync("db").decode() == "bravo"

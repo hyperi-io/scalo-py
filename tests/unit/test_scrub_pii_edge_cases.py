@@ -11,7 +11,7 @@
 Companion to ``test_scrub_pii_validators.py`` covering corners the
 straight-line tests don't reach:
 
-- Multi-byte / non-ASCII content per spec §10a
+- Multi-byte / non-ASCII content
 - Multiple matches per line, including overlaps
 - Context boundary (keyword exactly at proximity distance)
 - Thread-safety of validator instances
@@ -20,8 +20,6 @@ straight-line tests don't reach:
 - Empty / whitespace / None-ish inputs
 - Boundary checksum cases
 """
-
-from __future__ import annotations
 
 import threading
 
@@ -109,7 +107,7 @@ class TestMultipleMatches:
 
 
 # ---------------------------------------------------------------------------
-# Non-ASCII content per spec §10a.5
+# Non-ASCII content
 # ---------------------------------------------------------------------------
 
 
@@ -225,7 +223,7 @@ class TestThreadSafety:
 
 
 # ---------------------------------------------------------------------------
-# Fail-safe contract (spec §5.1)
+# Fail-safe contract
 # ---------------------------------------------------------------------------
 
 
@@ -253,7 +251,7 @@ class TestFailSafe:
 
     def test_layered_scrubber_isolates_broken_validator(self):
         """A broken validator inside a LayeredScrubber doesn't break
-        the chain (per spec §5.1)."""
+        the chain."""
         good = EmailValidator()
         broken = _BrokenValidator()
         chain = LayeredScrubber(layers=[broken, good])

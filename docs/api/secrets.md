@@ -45,6 +45,7 @@ OpenBao and HashiCorp Vault share the KV v2 protocol, so the same provider talks
 
 ```python
 sm = SecretsManager.from_config({
+    "file": {"root": "/run/secrets"},  # file paths must resolve under it
     "openbao": {
         "address": "https://vault:8200",
         "namespace": "team-a",
@@ -64,12 +65,16 @@ sm = SecretsManager.from_config({
     "sources": {
         "db_password": {"provider": "openbao", "path": "secret/data/db", "key": "password"},
         "api_key":     {"provider": "aws",     "secret_id": "prod/api-key"},
-        "tls_cert":    {"provider": "file",    "path": "/etc/ssl/cert.pem"},
+        "tls_cert":    {"provider": "file",    "path": "/run/secrets/tls.crt"},
     },
 })
 ```
 
 A configured provider falls back to the usual env vars for a key the dict leaves out: `VAULT_ADDR`, `VAULT_TOKEN`, `VAULT_ROLE_ID`, `VAULT_SECRET_ID`, `VAULT_NAMESPACE`, `AWS_REGION`, `AWS_DEFAULT_REGION`, `GOOGLE_CLOUD_PROJECT`, `GOOGLE_APPLICATION_CREDENTIALS`, `AZURE_VAULT_URL`, `AZURE_TENANT_ID`, `AZURE_CLIENT_ID` and `AZURE_CLIENT_SECRET`. The cache and fallback settings read `SECRETS_CACHE_DIR`, `SECRETS_CACHE_TTL`, `SECRETS_CACHE_KEY` and `SECRETS_ENV_PREFIX`, as `<PREFIX>_SECRETS_CACHE_DIR` and so on under an env prefix.
+
+### Confining the file provider
+
+A secret name that is not a named source is read as a file path, so a caller that passes a name through from its own input can read any file the process can. `file.root` confines the file provider to one directory: a relative path is read under it, and a path that resolves outside it, symlinks followed, raises `SecretPermissionError`. `FileProvider(root=...)` does the same when built directly. With no root, any path is read. The check reads the tree as the call starts, so it confines the paths a caller names, not a directory another process rewrites during the call.
 
 ### A provider whose SDK is not installed
 

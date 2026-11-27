@@ -15,7 +15,7 @@ except Exception:
     error("processing failed", retries=3)
 ```
 
-Three layers scrub every message, field and traceback before a sink writes it: L1 secrets from the gitleaks rule set, L2 credential field names, and L3 PII values. TRACE records skip the scrubber by default (`log_levels.trace`), though a field with a credential name is masked at every level. [scrubbing.md](scrubbing.md) has the layers, the rules each one applies, and how to exclude a rule.
+Three layers scrub every message, field and traceback before a sink writes it: L1 secrets from the gitleaks rule set, L2 credential field names, and L3 PII values. Every level is scrubbed by default, and `log_levels` turns a level off, though a field with a credential name is masked at every level. [scrubbing.md](scrubbing.md) has the layers, the rules each one applies, and how to exclude a rule.
 
 ## Format selection
 

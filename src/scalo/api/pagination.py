@@ -1,6 +1,6 @@
 #  Project:   scalo
 #  File:      src/scalo/api/pagination.py
-#  Purpose:   AIP-158 list pagination: sealed page tokens, skip, a per-list order_by allow-list and a server cap
+#  Purpose:   AIP-158 list pagination: signed page tokens, skip, a per-list order_by allow-list and a server cap
 #  Language:  Python
 #
 #  License:   Apache-2.0
@@ -18,24 +18,23 @@ A list declares the parameters it honours and answers a :class:`Page`::
         return paginate(rows, query, bound={"enabled": enabled})
 
 A ``page_size`` of 0 or none gets the default, one above the cap is cut to it,
-and a negative one is refused. A page token is sealed with Fernet, so a client
-can neither read nor forge one, and it is bound to the request path,
-``filter``, ``order_by`` and every ``bound`` value: a token sent with any of
-them changed, tampered with, or older than :data:`PAGE_TOKEN_TTL_SECONDS`
-answers 400 ``invalid_page_token``.
+and a negative one is refused. A page token carries an HMAC-SHA256, so a client
+can't forge one, and it is bound to the request path, ``filter``, ``order_by``
+and every ``bound`` value: a token sent with any of them changed, tampered with,
+or older than :data:`PAGE_TOKEN_TTL_SECONDS` answers 400 ``invalid_page_token``.
 """
 
 import base64
 import hashlib
+import hmac
 import json
+import secrets
 import threading
+import time
 from collections.abc import Callable, Collection, Iterable, Mapping, Sequence
 from dataclasses import dataclass
 from typing import Annotated, Any
 
-from cryptography.fernet import Fernet, InvalidToken
-from cryptography.hazmat.primitives import hashes
-from cryptography.hazmat.primitives.kdf.hkdf import HKDF
 from fastapi import Depends, Query, Request
 from pydantic import BaseModel
 from pydantic_core import to_jsonable_python
@@ -50,30 +49,63 @@ PAGE_TOKEN_KEY_SETTING = "api.page_token_key"  # noqa: S105 -- a setting name, n
 
 _INVALID = "The page_token is not one this API issued for this list and these parameters, or it has expired"
 
-# One sealer per process, built on first use from the config cascade.
-_sealer: Fernet | None = None
-_sealer_lock = threading.Lock()
+# A token stamped this far ahead of the clock is refused, allowing for skew between replicas.
+_CLOCK_SKEW_SECONDS = 60
+
+# One signing key per process, derived on first use from the config cascade.
+_signing_key: bytes | None = None
+_signing_key_lock = threading.Lock()
 
 
-def _page_sealer() -> Fernet:
-    global _sealer
-    with _sealer_lock:
-        if _sealer is None:
+def _page_key() -> bytes:
+    global _signing_key
+    with _signing_key_lock:
+        if _signing_key is None:
             from scalo.config import settings
 
             secret = str(settings.get(PAGE_TOKEN_KEY_SETTING) or "")
             if secret:
                 if len(secret) < 32:
                     raise ValueError(f"{PAGE_TOKEN_KEY_SETTING} needs at least 32 characters")
-                hkdf = HKDF(algorithm=hashes.SHA256(), length=32, salt=None, info=b"scalo.api page token")
-                _sealer = Fernet(base64.urlsafe_b64encode(hkdf.derive(secret.encode("utf-8"))))
+                _signing_key = hmac.digest(secret.encode("utf-8"), b"scalo.api page token", "sha256")
             else:
                 logger.warning(
                     "No page token key: tokens break across replicas and restarts",
                     setting=PAGE_TOKEN_KEY_SETTING,
                 )
-                _sealer = Fernet(Fernet.generate_key())
-        return _sealer
+                _signing_key = secrets.token_bytes(32)
+        return _signing_key
+
+
+def _b64(data: bytes) -> str:
+    return base64.urlsafe_b64encode(data).decode("ascii").rstrip("=")
+
+
+def _unb64(text: str) -> bytes:
+    return base64.urlsafe_b64decode(text + "=" * (-len(text) % 4))
+
+
+def _sign(fields: Mapping[str, Any]) -> str:
+    """``fields`` as JSON, then a ``.`` and its HMAC-SHA256, both base64url."""
+    payload = json.dumps(fields, separators=(",", ":")).encode("utf-8")
+    return f"{_b64(payload)}.{_b64(hmac.digest(_page_key(), payload, 'sha256'))}"
+
+
+def _open(token: str) -> dict[str, Any]:
+    """The fields of a token :func:`_sign` made with this key and inside its TTL.
+
+    Raises:
+        ValueError: The token is malformed, its HMAC does not match, or it has expired.
+    """
+    body, _, mac = token.partition(".")
+    payload, signature = _unb64(body), _unb64(mac)
+    if not hmac.compare_digest(signature, hmac.digest(_page_key(), payload, "sha256")):
+        raise ValueError("bad signature")
+    fields = json.loads(payload)
+    issued = fields.get("t") if isinstance(fields, dict) else None
+    if not isinstance(issued, int) or not -_CLOCK_SKEW_SECONDS <= time.time() - issued <= PAGE_TOKEN_TTL_SECONDS:
+        raise ValueError("expired")
+    return fields
 
 
 @dataclass(frozen=True, slots=True)
@@ -228,9 +260,8 @@ def _fingerprint(query: ListQuery, bound: Mapping[str, Any] | None) -> str:
 
 
 def encode_page_token(offset: int, query: ListQuery, *, bound: Mapping[str, Any] | None = None) -> str:
-    """A sealed token resuming the list at ``offset`` under the same path, filter, ordering and ``bound``."""
-    payload = json.dumps({"o": offset, "f": _fingerprint(query, bound)}, separators=(",", ":"))
-    return _page_sealer().encrypt(payload.encode("utf-8")).decode("ascii").rstrip("=")
+    """A signed token resuming the list at ``offset`` under the same path, filter, ordering and ``bound``."""
+    return _sign({"o": offset, "f": _fingerprint(query, bound), "t": int(time.time())})
 
 
 def decode_page_token(query: ListQuery, *, bound: Mapping[str, Any] | None = None) -> int:
@@ -244,12 +275,11 @@ def decode_page_token(query: ListQuery, *, bound: Mapping[str, Any] | None = Non
     if not token:
         return 0
     try:
-        padded = token + "=" * (-len(token) % 4)
-        payload = json.loads(_page_sealer().decrypt(padded.encode("ascii"), ttl=PAGE_TOKEN_TTL_SECONDS))
-    # UnicodeError and JSONDecodeError are ValueErrors.
-    except (InvalidToken, ValueError) as exc:
+        payload = _open(token)
+    # binascii.Error, UnicodeError and JSONDecodeError are ValueErrors.
+    except ValueError as exc:
         raise ProblemError(400, _INVALID, code="invalid_page_token") from exc
-    offset = payload.get("o") if isinstance(payload, dict) else None
+    offset = payload.get("o")
     if not isinstance(offset, int) or offset < 0 or payload.get("f") != _fingerprint(query, bound):
         raise ProblemError(400, _INVALID, code="invalid_page_token")
     return offset

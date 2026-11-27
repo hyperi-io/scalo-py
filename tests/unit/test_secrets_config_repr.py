@@ -8,7 +8,7 @@
 
 """Provider config repr must not embed credential fields."""
 
-from __future__ import annotations
+from datetime import UTC, datetime
 
 from common.fake_secrets import opaque_secret
 
@@ -17,6 +17,7 @@ from scalo.secrets.types import (
     AzureConfig,
     GCPConfig,
     OpenBaoConfig,
+    SecretValue,
 )
 
 SECRET = opaque_secret("cred")
@@ -53,6 +54,14 @@ def test_gcp_config_unchanged():
     r = repr(cfg)
     assert "my-project" in r
     assert "/keys/sa.json" in r
+
+
+def test_secret_value_repr_leaves_out_the_data():
+    value = SecretValue(data=SECRET.encode(), fetched_at=datetime.now(UTC), version="7", source="file")
+    assert SECRET not in repr(value)
+    assert "data=" not in repr(value)
+    assert "version='7'" in repr(value)
+    assert value.decode() == SECRET
 
 
 def test_provider_configs_in_exception_chain_do_not_leak():

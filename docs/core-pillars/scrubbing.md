@@ -2,7 +2,7 @@
 
 What the logger redacts and how. `setup()` builds one scrubber and every sink shares it: the message, each field and the traceback pass through it before anything is written, at each level `ScrubConfig.log_levels` leaves on. See [logging.md](logging.md) for the sinks and formats around it.
 
-`LogLevelsConfig.trace` is false by default, so a TRACE record's message and traceback reach the sinks unscrubbed, and a field with a credential name is the one thing still masked. To scrub TRACE, call `setup(scrub_config=ScrubConfig(log_levels=LogLevelsConfig(trace=True)))`. `ScrubConfig(enabled=False)` turns the scrubber off, and `ScrubConfig(observe_only=True)` counts matches without redacting them.
+`LogLevelsConfig` scrubs every level by default, TRACE included, as scalo-rs does. A level set to false, as in `setup(scrub_config=ScrubConfig(log_levels=LogLevelsConfig(trace=False)))`, sends that level's message and traceback to the sinks unscrubbed, and a field with a credential name is the one thing still masked. `ScrubConfig(enabled=False)` turns the scrubber off, and `ScrubConfig(observe_only=True)` counts matches without redacting them.
 
 `setup()` reads the same settings from `logging.scrub.*` when no scrubber or `scrub_config` argument is given (see [Excluding one L1 rule](#excluding-one-l1-rule)). `ServiceApp` reads that section from the config it loaded, a `--config` file and the app's env prefix included, and passes it as `scrub_config`.
 

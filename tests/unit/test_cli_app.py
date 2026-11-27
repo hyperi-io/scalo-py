@@ -15,6 +15,7 @@ using Typer's CliRunner for CLI integration testing.
 from typing import Any
 
 import pytest
+from common.fake_secrets import opaque_secret
 from typer.testing import CliRunner
 
 from scalo.cli.app import CommonArgs, ServiceApp, _build_typer_app, _is_async_overridden
@@ -427,6 +428,28 @@ class TestServiceApp:
         assert result.exit_code == 1
         assert "jwt_secret is the known dev placeholder" in result.output
         assert app.ran is False
+
+    @pytest.mark.parametrize("command", [["config-check"], ["run", "--metrics-addr", EPHEMERAL_ADDR]])
+    @pytest.mark.parametrize("failure", ["check_config", "run_service"])
+    def test_a_fatal_error_printed_to_stderr_is_scrubbed(self, command, failure):
+        password = opaque_secret("dsn")
+        dsn = f"postgresql://app:{password}@db.example.com/orders"
+
+        class _LeakyApp(_RefusingApp):
+            def check_config(self, config: Any) -> None:
+                if failure == "check_config":
+                    raise ValueError(f"database.url {dsn} is unreachable")
+
+            def run_service(self, config: Any) -> None:
+                raise RuntimeError(f"cannot connect to {dsn}")
+
+        result = runner.invoke(_build_typer_app(_LeakyApp()), command)
+        if failure == "run_service" and command[0] == "config-check":
+            assert result.exit_code == 0
+            return
+        assert result.exit_code == 1
+        assert "postgresql://app:***REDACTED***@" in result.output
+        assert password not in result.output
 
     def test_default_check_config_accepts_anything(self):
         app = _SyncApp()

@@ -16,10 +16,8 @@ any ``invalid`` / ``should_NOT_match`` sample, and respect the
 context-keyword requirement for context-required validators.
 
 The corresponding scalo-rs test will use the same TOML to drive the
-same assertions in Rust. CI fails on any divergence (spec §11).
+same assertions in Rust. CI fails on any divergence.
 """
-
-from __future__ import annotations
 
 import tomllib
 from pathlib import Path
